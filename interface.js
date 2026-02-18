@@ -12,6 +12,11 @@ class InterfaceManager {
         this.dismissOnMoveBoxes = new Set(); // Text boxes to dismiss on player move
         this.autoDisposeTimers = new Map(); // Timers for auto-disposing boxes
 
+        // Default UI colors
+        this.defaultFillColor = 0xFFFAFB;
+        this.defaultBorderTint = 0x000000;
+        this.defaultTextTint = 0x000000;
+
         // Inventory interaction state
         this.inventoryMode = false; // True when player info is showing and accepting item selection
         this.currentPlayer = null; // Reference to player when inventory is open
@@ -71,8 +76,8 @@ class InterfaceManager {
             this.removeBox(id);
         }
 
-        const fillColor = options.fillColor ?? 0xFFFFFF;
-        const borderTint = options.borderTint ?? 0xFFFFFF;
+        const fillColor = options.fillColor ?? this.defaultFillColor;
+        const borderTint = options.borderTint ?? this.defaultBorderTint;
 
         // Create container for this box
         const boxContainer = new PIXI.Container();
@@ -433,9 +438,9 @@ class InterfaceManager {
 
         const padding = options.padding ?? 1;
         const maxContentWidth = (options.maxWidth ?? (mapWidth - 4)) - (padding * 2) - 2; // -2 for borders
-        const textTint = options.textTint ?? 0x000000;
-        const fillColor = options.fillColor ?? 0xFFFFFF;
-        const borderTint = options.borderTint ?? 0x000000;
+        const textTint = options.textTint ?? this.defaultTextTint;
+        const fillColor = options.fillColor ?? this.defaultFillColor;
+        const borderTint = options.borderTint ?? this.defaultBorderTint;
         const dismissOnMove = options.dismissOnMove ?? false;
 
         // If this box already exists, remove it from stack first
@@ -783,10 +788,7 @@ class InterfaceManager {
         const y = 1;
 
         // Create the box
-        const boxContainer = this.createBox(infoBoxId, x, y, boxWidth, boxHeight, {
-            fillColor: 0xFFFFFF,
-            borderTint: 0x000000
-        });
+        const boxContainer = this.createBox(infoBoxId, x, y, boxWidth, boxHeight);
 
         if (!boxContainer) return;
 
@@ -805,7 +807,7 @@ class InterfaceManager {
                 const charX = textStartX + (charIndex * globalVars.TILE_WIDTH);
                 const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
 
-                const sprite = this.createCharSprite(char, charX, charY, 0x000000);
+                const sprite = this.createCharSprite(char, charX, charY, this.defaultTextTint);
                 if (sprite) {
                     boxContainer.addChild(sprite);
                 }
@@ -981,10 +983,7 @@ class InterfaceManager {
         const y = 1;
 
         // Create the box
-        const boxContainer = this.createBox('item_action_menu', x, y, boxWidth, boxHeight, {
-            fillColor: 0xFFFFFF,
-            borderTint: 0x000000
-        });
+        const boxContainer = this.createBox('item_action_menu', x, y, boxWidth, boxHeight);
 
         if (!boxContainer) return;
 
@@ -999,7 +998,7 @@ class InterfaceManager {
                 const charX = textStartX + (charIndex * globalVars.TILE_WIDTH);
                 const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
 
-                const sprite = this.createCharSprite(char, charX, charY, 0x000000);
+                const sprite = this.createCharSprite(char, charX, charY, this.defaultTextTint);
                 if (sprite) {
                     boxContainer.addChild(sprite);
                 }
@@ -1287,10 +1286,7 @@ class InterfaceManager {
         const y = Math.floor((mapHeight - boxHeight) / 2);
 
         // Create the box
-        const boxContainer = this.createBox('confirm_dialog', x, y, boxWidth, boxHeight, {
-            fillColor: 0xFFFFFF,
-            borderTint: 0x000000
-        });
+        const boxContainer = this.createBox('confirm_dialog', x, y, boxWidth, boxHeight);
 
         if (!boxContainer) return;
 
@@ -1305,7 +1301,7 @@ class InterfaceManager {
                 const charX = textStartX + (charIndex * globalVars.TILE_WIDTH);
                 const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
 
-                const sprite = this.createCharSprite(char, charX, charY, 0x000000);
+                const sprite = this.createCharSprite(char, charX, charY, this.defaultTextTint);
                 if (sprite) {
                     boxContainer.addChild(sprite);
                 }
@@ -2440,10 +2436,7 @@ class InterfaceManager {
         const y = Math.floor((mapHeight - boxHeight) / 2);
 
         // Create the box
-        const boxContainer = this.createBox(menuId, x, y, boxWidth, boxHeight, {
-            fillColor: 0xFFFFFF,
-            borderTint: 0x000000
-        });
+        const boxContainer = this.createBox(menuId, x, y, boxWidth, boxHeight);
 
         if (!boxContainer) return;
 
@@ -2458,7 +2451,7 @@ class InterfaceManager {
                 const charX = textStartX + (charIndex * globalVars.TILE_WIDTH);
                 const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
 
-                const sprite = this.createCharSprite(char, charX, charY, 0x000000);
+                const sprite = this.createCharSprite(char, charX, charY, this.defaultTextTint);
                 if (sprite) {
                     boxContainer.addChild(sprite);
                 }
@@ -2616,10 +2609,7 @@ class InterfaceManager {
         const y = Math.floor((mapHeight - boxHeight) / 2);
 
         // Create the box
-        const boxContainer = this.createBox(menuId, x, y, boxWidth, boxHeight, {
-            fillColor: 0xFFFFFF,
-            borderTint: 0x000000
-        });
+        const boxContainer = this.createBox(menuId, x, y, boxWidth, boxHeight);
 
         if (!boxContainer) return;
 
@@ -2634,7 +2624,7 @@ class InterfaceManager {
                 const charX = textStartX + (charIndex * globalVars.TILE_WIDTH);
                 const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
 
-                const sprite = this.createCharSprite(char, charX, charY, 0x000000);
+                const sprite = this.createCharSprite(char, charX, charY, this.defaultTextTint);
                 if (sprite) {
                     boxContainer.addChild(sprite);
                 }

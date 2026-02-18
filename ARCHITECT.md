@@ -1,6 +1,6 @@
 # Architect - Dungeon Generation System
 
-The Architect class handles all map generation, loading, and terrain management. It replaces the former MapManager with an enhanced room type system inspired by Brogue.
+The Architect class handles all map generation, loading, and terrain management.
 
 ## Overview
 

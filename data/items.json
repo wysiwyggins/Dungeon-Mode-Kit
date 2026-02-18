@@ -33,7 +33,7 @@
     }
   },
   "dagger": {
-    "name": "Sword",
+    "name": "Dagger",
     "tileIndex": "LATIN_SMALL_LETTER_T",
     "flipV": true,
     "attributes": {
@@ -270,7 +270,7 @@
   },
 
   "vampiric_blade": {
-    "name": "Vampiric Blade",
+    "name": "Blooddrinker",
     "tileIndex": "CROSS",
     "flipV": true,
     "tint": "#880000",
