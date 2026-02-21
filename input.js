@@ -201,8 +201,8 @@ class InputManager {
             return;
         }
 
-        // Check if inventory or other UI is open
-        if (this.engine.interfaceManager?.inventoryMode) {
+        // Check if any dialog wants to handle this click
+        if (this.engine.interfaceManager?.handleDialogClick(this.hoveredTile.x, this.hoveredTile.y)) {
             return;
         }
 
@@ -259,7 +259,8 @@ class InputManager {
         }
 
         // Don't show path if UI is open
-        if (this.engine.interfaceManager?.inventoryMode) {
+        const ui = this.engine.interfaceManager;
+        if (ui?.inventoryMode || ui?.confirmDialog || ui?.throwMenuMode || ui?.equipmentMenuMode) {
             renderer.hideWalkPath();
             return;
         }

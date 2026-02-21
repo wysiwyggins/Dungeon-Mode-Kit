@@ -26,6 +26,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - FOV epistemology (currently messages aren't filtered by vision range, make sound alternate messages for those, also some things like mining walls can still be seen out of range)
 - Ball of thread item and entity trails (this is almost done, last tile of thread is hidden when walking down but still overlaps actor top tile when approaching from under on either side)
 
+## [0.8b] 2025-02-21
+
+### Added
+
+- Warning-styled confirm dialogs:
+  - `showConfirmDialog` now accepts an `options` parameter for `fillColor`, `borderTint`, and `textTint`
+  - New `warningFillColor` property on InterfaceManager (`#EB8A90` light red)
+  - All hazard movement confirmations (lava, void, traps) now display with the warning background
+- Mouse click support for all dialog types:
+  - Confirm dialogs: click "(Y)es" or "(N)o" text regions; clicking outside dismisses
+  - Inventory: click item lines to open action menu; click outside to close
+  - Item action menu: click numbered actions (Drop, Wear, Equip, Throw, etc.)
+  - Throw item menu: click items to select for throwing
+  - Equipment menu: click items to toggle equip/unequip
+  - Centralized `handleDialogClick` with tile-based hit-testing via `_hitTestBox`
+  - All keyboard shortcuts continue to work as before
+
+### Fixed
+
+- Walk path preview no longer renders behind open dialogs (confirm, throw menu, equipment menu)
+- Box geometry (`_boxX`, `_boxY`, `_boxWidth`, `_boxHeight`) now stored universally by `createBox` instead of manually in individual methods
+
 ## [0.8b] 2025-01-29
 
 ### Added

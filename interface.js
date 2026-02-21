@@ -99,6 +99,12 @@ class InterfaceManager {
         this.container.addChild(boxContainer);
         this.boxes.set(id, boxContainer);
 
+        // Store box geometry in tile coords for click hit-testing
+        boxContainer._boxX = x;
+        boxContainer._boxY = y;
+        boxContainer._boxWidth = width;
+        boxContainer._boxHeight = height;
+
         return boxContainer;
     }
 
@@ -793,9 +799,9 @@ class InterfaceManager {
 
         if (!boxContainer) return;
 
-        // Store box position for item action menu positioning
-        boxContainer._boxX = x;
-        boxContainer._boxWidth = boxWidth;
+        // Store click metadata
+        boxContainer._padding = padding;
+        boxContainer._inventoryLineIndices = inventoryLineIndices;
 
         // Add text sprites
         const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
@@ -909,6 +915,7 @@ class InterfaceManager {
 
         // Add action options with number keys
         lines.push('Actions:');
+        const actionStartLine = lines.length; // Line index of first action option
         let actionNum = 1;
 
         // Check if item is currently equipped
@@ -987,6 +994,11 @@ class InterfaceManager {
         const boxContainer = this.createBox('item_action_menu', x, y, boxWidth, boxHeight);
 
         if (!boxContainer) return;
+
+        // Store click metadata
+        boxContainer._padding = padding;
+        boxContainer._actionStartLine = actionStartLine;
+        boxContainer._actionCount = actionNum - 1;
 
         // Add text sprites
         const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
@@ -1297,6 +1309,10 @@ class InterfaceManager {
 
         if (!boxContainer) return;
 
+        // Store click metadata
+        boxContainer._padding = padding;
+        boxContainer._confirmYNLine = lines.length - 1;
+
         // Add text sprites
         const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
         const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
@@ -1355,6 +1371,228 @@ class InterfaceManager {
      */
     hasConfirmDialog() {
         return this.confirmDialog !== null;
+    }
+
+    // ========================================================================
+    // DIALOG CLICK HANDLING
+    // ========================================================================
+
+    /**
+     * Handle a mouse click that may target a dialog box.
+     * Converts the global tile coordinate to a content line within the
+     * topmost active dialog and dispatches the appropriate action.
+     * @param {number} tileX - Clicked tile X in global map coordinates
+     * @param {number} tileY - Clicked tile Y in global map coordinates
+     * @returns {boolean} True if a dialog consumed the click
+     */
+    handleDialogClick(tileX, tileY) {
+        // Priority order matches keyboard handler:
+
+        // 1. Confirm dialog (highest priority)
+        if (this.confirmDialog) {
+            const box = this.boxes.get('confirm_dialog');
+            if (box) {
+                const hit = this._hitTestBox(box, tileX, tileY);
+                if (hit) {
+                    this._handleConfirmClick(box, hit.contentLine, hit.contentCol);
+                } else {
+                    // Outside click dismisses (triggers cancel)
+                    const onCancel = this.confirmDialog.onCancel;
+                    this.closeConfirmDialog();
+                    if (onCancel) onCancel();
+                }
+            }
+            return true;
+        }
+
+        // 2. Item action menu (sub-menu of inventory)
+        if (this.inventoryMode && this.selectedItemIndex !== null) {
+            const actionBox = this.boxes.get('item_action_menu');
+            if (actionBox) {
+                const hit = this._hitTestBox(actionBox, tileX, tileY);
+                if (hit) {
+                    this._handleItemActionClick(actionBox, hit.contentLine);
+                } else {
+                    // Outside click closes action menu, stays in inventory
+                    this.closeItemActionMenu();
+                }
+            }
+            return true;
+        }
+
+        // 3. Inventory / Player info
+        if (this.inventoryMode && this.currentPlayer) {
+            const invBox = this.boxes.get('player_info');
+            if (invBox) {
+                const hit = this._hitTestBox(invBox, tileX, tileY);
+                if (hit) {
+                    this._handleInventoryClick(invBox, hit.contentLine);
+                } else {
+                    // Outside click closes inventory
+                    this.hidePlayerInfo();
+                }
+            }
+            return true;
+        }
+
+        // 4. Throw item menu
+        if (this.throwMenuMode) {
+            const throwBox = this.boxes.get('throw_item_menu');
+            if (throwBox) {
+                const hit = this._hitTestBox(throwBox, tileX, tileY);
+                if (hit) {
+                    this._handleThrowMenuClick(throwBox, hit.contentLine);
+                } else {
+                    this.closeThrowItemMenu();
+                }
+            }
+            return true;
+        }
+
+        // 5. Equipment menu
+        if (this.equipmentMenuMode) {
+            const equipBox = this.boxes.get('equipment_menu');
+            if (equipBox) {
+                const hit = this._hitTestBox(equipBox, tileX, tileY);
+                if (hit) {
+                    this._handleEquipmentClick(equipBox, hit.contentLine);
+                } else {
+                    this.closeEquipmentMenu();
+                }
+            }
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Test whether a global tile coordinate falls within a box's content area.
+     * @param {PIXI.Container} box - Box container with _boxX, _boxY, _boxWidth, _boxHeight, _padding
+     * @param {number} tileX - Global tile X
+     * @param {number} tileY - Global tile Y
+     * @returns {{ contentLine: number, contentCol: number } | null}
+     */
+    _hitTestBox(box, tileX, tileY) {
+        const bx = box._boxX;
+        const by = box._boxY;
+        const bw = box._boxWidth;
+        const bh = box._boxHeight;
+        const pad = box._padding ?? 1;
+
+        // Check if click is within the box bounds
+        if (tileX < bx || tileX >= bx + bw || tileY < by || tileY >= by + bh) {
+            return null;
+        }
+
+        // Content area starts at (bx + pad + 1, by + pad + 1), +1 for border
+        const contentCol = tileX - (bx + pad + 1);
+        const contentLine = tileY - (by + pad + 1);
+        const contentWidth = bw - (pad * 2) - 2;
+        const contentHeight = bh - (pad * 2) - 2;
+
+        if (contentCol < 0 || contentCol >= contentWidth ||
+            contentLine < 0 || contentLine >= contentHeight) {
+            return null;
+        }
+
+        return { contentLine, contentCol };
+    }
+
+    /**
+     * Handle click on confirm dialog content
+     */
+    _handleConfirmClick(box, contentLine, contentCol) {
+        if (!this.confirmDialog) return;
+
+        // The Y/N line: "  (Y)es  /  (N)o"
+        // "/" separator is at column 9; left = Yes, right = No
+        if (contentLine === box._confirmYNLine) {
+            if (contentCol <= 8) {
+                const onConfirm = this.confirmDialog.onConfirm;
+                this.closeConfirmDialog();
+                if (onConfirm) onConfirm();
+            } else {
+                const onCancel = this.confirmDialog.onCancel;
+                this.closeConfirmDialog();
+                if (onCancel) onCancel();
+            }
+        }
+    }
+
+    /**
+     * Handle click on inventory item line
+     */
+    _handleInventoryClick(invBox, contentLine) {
+        if (!invBox._inventoryLineIndices) return;
+
+        for (let i = 0; i < invBox._inventoryLineIndices.length; i++) {
+            if (contentLine === invBox._inventoryLineIndices[i].lineIndex) {
+                this.showItemActionMenu(i);
+                return;
+            }
+        }
+    }
+
+    /**
+     * Handle click on item action menu line
+     */
+    _handleItemActionClick(actionBox, contentLine) {
+        const startLine = actionBox._actionStartLine;
+        const count = actionBox._actionCount;
+        if (startLine === undefined || count === undefined) return;
+
+        if (contentLine >= startLine && contentLine < startLine + count) {
+            const actionNum = contentLine - startLine + 1;
+            this.executeItemAction(actionNum);
+        }
+    }
+
+    /**
+     * Handle click on throw item menu line
+     */
+    _handleThrowMenuClick(throwBox, contentLine) {
+        const startLine = throwBox._itemStartLine;
+        const count = throwBox._itemCount;
+        if (startLine === undefined || count === undefined) return;
+
+        if (contentLine >= startLine && contentLine < startLine + count) {
+            const itemIndex = contentLine - startLine;
+            if (this.currentPlayer && itemIndex < this.currentPlayer.inventory.length) {
+                const item = this.currentPlayer.inventory[itemIndex];
+                this.closeThrowItemMenu();
+                this.enterThrowAimingMode(item);
+            }
+        }
+    }
+
+    /**
+     * Handle click on equipment menu line
+     */
+    _handleEquipmentClick(equipBox, contentLine) {
+        const startLine = equipBox._itemStartLine;
+        const count = equipBox._itemCount;
+        if (startLine === undefined || count === undefined) return;
+
+        if (contentLine >= startLine && contentLine < startLine + count) {
+            const itemIndex = contentLine - startLine;
+            if (itemIndex < this.equipmentMenuItems.length) {
+                const entry = this.equipmentMenuItems[itemIndex];
+                const item = entry.item;
+                const player = this.equipmentMenuPlayer;
+
+                if (player.isItemEquipped(item)) {
+                    player.unequipItem(item);
+                    this.engine.playSound?.('tap2');
+                } else {
+                    player.equipItem(item);
+                    this.engine.playSound?.('tap2');
+                }
+
+                // Refresh menu to show updated state
+                this.showEquipmentMenu(player);
+            }
+        }
     }
 
     // ========================================================================
@@ -2447,6 +2685,11 @@ class InterfaceManager {
 
         if (!boxContainer) return;
 
+        // Store click metadata
+        boxContainer._padding = padding;
+        boxContainer._itemStartLine = 2; // Items start after "Throw which item?" and blank line
+        boxContainer._itemCount = player.inventory.length;
+
         // Add text sprites
         const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
         const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
@@ -2577,10 +2820,12 @@ class InterfaceManager {
         lines.push(`  Legs:   ${lowerItem ? lowerItem.name : '(none)'}`);
         lines.push('');
 
+        let itemsStartLine = -1;
         if (this.equipmentMenuItems.length === 0) {
             lines.push('No equippable items');
         } else {
             lines.push('Items:');
+            itemsStartLine = lines.length; // Line index of first item option
             for (let i = 0; i < this.equipmentMenuItems.length; i++) {
                 const entry = this.equipmentMenuItems[i];
                 const item = entry.item;
@@ -2620,6 +2865,11 @@ class InterfaceManager {
 
         if (!boxContainer) return;
 
+        // Store click metadata
+        boxContainer._padding = padding;
+        boxContainer._itemStartLine = itemsStartLine;
+        boxContainer._itemCount = this.equipmentMenuItems.length;
+
         // Add text sprites
         const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
         const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
@@ -2639,8 +2889,6 @@ class InterfaceManager {
         }
 
         // Render item tiles next to item names (offset for "  a) " = 5 chars)
-        // Items list starts after: title, blank, "Equipped:", 4 slot lines, blank, "Items:"
-        const itemsStartLine = 9; // Line index where item list starts
         for (let i = 0; i < this.equipmentMenuItems.length; i++) {
             const entry = this.equipmentMenuItems[i];
             const lineIndex = itemsStartLine + i;
