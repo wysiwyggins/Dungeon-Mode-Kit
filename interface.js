@@ -16,6 +16,7 @@ class InterfaceManager {
         this.defaultFillColor = 0xFFFAFB;
         this.defaultBorderTint = 0x000000;
         this.defaultTextTint = 0x000000;
+        this.warningFillColor = 0xEB8A90;
 
         // Inventory interaction state
         this.inventoryMode = false; // True when player info is showing and accepting item selection
@@ -1251,7 +1252,7 @@ class InterfaceManager {
      * @param {function} onConfirm - Callback when user confirms (Y)
      * @param {function} onCancel - Callback when user cancels (N/Escape)
      */
-    showConfirmDialog(message, onConfirm, onCancel) {
+    showConfirmDialog(message, onConfirm, onCancel, options = {}) {
         // Remove any existing confirm dialog
         this.closeConfirmDialog();
 
@@ -1286,7 +1287,13 @@ class InterfaceManager {
         const y = Math.floor((mapHeight - boxHeight) / 2);
 
         // Create the box
-        const boxContainer = this.createBox('confirm_dialog', x, y, boxWidth, boxHeight);
+        const fillColor = options.fillColor ?? this.defaultFillColor;
+        const borderTint = options.borderTint ?? this.defaultBorderTint;
+        const textTint = options.textTint ?? this.defaultTextTint;
+        const boxContainer = this.createBox('confirm_dialog', x, y, boxWidth, boxHeight, {
+            fillColor,
+            borderTint
+        });
 
         if (!boxContainer) return;
 
@@ -1301,7 +1308,7 @@ class InterfaceManager {
                 const charX = textStartX + (charIndex * globalVars.TILE_WIDTH);
                 const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
 
-                const sprite = this.createCharSprite(char, charX, charY, this.defaultTextTint);
+                const sprite = this.createCharSprite(char, charX, charY, textTint);
                 if (sprite) {
                     boxContainer.addChild(sprite);
                 }

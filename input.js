@@ -297,7 +297,8 @@ class InputManager {
             this.engine.interfaceManager?.showConfirmDialog(
                 `Walk into the ${hazardName}?`,
                 () => this.executeAutoWalk(targetX, targetY),
-                () => {} // Do nothing on cancel
+                () => {}, // Do nothing on cancel
+                { fillColor: this.engine.interfaceManager?.warningFillColor }
             );
             return;
         }
@@ -853,7 +854,8 @@ class InputManager {
                     },
                     () => {
                         // On cancel - do nothing
-                    }
+                    },
+                    { fillColor: this.engine.interfaceManager?.warningFillColor }
                 );
                 return;
             }
