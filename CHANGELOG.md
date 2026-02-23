@@ -14,7 +14,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - music engine
 - Continuity: start at any specified prototype as whatever that protos controllable actor is, OR enter from stairway as the previous player character, with inventory etc
 - Alternative first-person view pane (for perspective dungeon style play)
-- Extend the text discription area to optionally plug into parallel text environments for a paired room in Evennia or inform7 etc for text adventure or mud stuff?
 
 ### Planned
 

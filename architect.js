@@ -671,7 +671,7 @@ class Architect {
                 for (let y = 0; y < this.height; y++) {
                     for (let x = 0; x < this.width; x++) {
                         if (!floorTiles.has(`${x},${y}`)) {
-                            let roll = Math.random() * totalWeight;
+                            let roll = ROT.RNG.getUniform() * totalWeight;
                             let wallType = wallTypes[0].type;
                             for (const wt of wallTypes) {
                                 roll -= wt.weight;
@@ -820,7 +820,7 @@ class Architect {
                 for (let y = 0; y < this.height; y++) {
                     for (let x = 0; x < this.width; x++) {
                         if (!infernalFloorTiles.has(`${x},${y}`)) {
-                            let roll = Math.random() * infernalTotalWeight;
+                            let roll = ROT.RNG.getUniform() * infernalTotalWeight;
                             let wallType = infernalWallTypes[0].type;
                             for (const wt of infernalWallTypes) {
                                 roll -= wt.weight;
@@ -875,7 +875,7 @@ class Architect {
                             hasDiggerFloor(x - 1, y + 1) || hasDiggerFloor(x + 1, y + 1);
 
                         if (adjacentToFloor && y > 0) {
-                            let roll = Math.random() * diggerTotalWeight;
+                            let roll = ROT.RNG.getUniform() * diggerTotalWeight;
                             let wallType = diggerWallTypes[0].type;
                             for (const wt of diggerWallTypes) {
                                 roll -= wt.weight;
@@ -1300,7 +1300,7 @@ class Architect {
         const totalWeight = wallTypes.reduce((sum, wt) => sum + wt.weight, 0);
 
         for (const pos of wallPositions) {
-            let roll = Math.random() * totalWeight;
+            let roll = ROT.RNG.getUniform() * totalWeight;
             let wallType = wallTypes[0].type;
             for (const wt of wallTypes) {
                 roll -= wt.weight;
@@ -1423,7 +1423,7 @@ class Architect {
         const totalWeight = wallTypes.reduce((sum, wt) => sum + wt.weight, 0);
 
         for (const pos of wallPositions) {
-            let roll = Math.random() * totalWeight;
+            let roll = ROT.RNG.getUniform() * totalWeight;
             let wallType = wallTypes[0].type;
             for (const wt of wallTypes) {
                 roll -= wt.weight;
@@ -1601,7 +1601,7 @@ class Architect {
 
     getRandomWalkableTile() {
         if (this.walkableTiles.length === 0) return { x: 0, y: 0 };
-        return this.walkableTiles[Math.floor(Math.random() * this.walkableTiles.length)];
+        return this.walkableTiles[Math.floor(ROT.RNG.getUniform() * this.walkableTiles.length)];
     }
 
     isWalkable(x, y) {

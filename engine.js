@@ -505,7 +505,7 @@ class DungeonEngine {
                 // Fisher-Yates shuffle and take first sampleSize items
                 const shuffled = [...items];
                 for (let i = shuffled.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
+                    const j = Math.floor(ROT.RNG.getUniform() * (i + 1));
                     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
                 }
                 sampled[category] = shuffled.slice(0, Math.min(sampleSize, shuffled.length));
@@ -1320,7 +1320,7 @@ class Prototype {
         // Assign a random color from the global colors list
         const colors = this.engine.globalColors;
         if (colors && colors.length > 0) {
-            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            const randomColor = colors[Math.floor(ROT.RNG.getUniform() * colors.length)];
             this.itemColorAssignments.set(itemType, randomColor);
             console.log(`Assigned color '${randomColor.color}' (${randomColor.hex}) to item type '${itemType}'`);
             return randomColor;
@@ -1343,7 +1343,7 @@ class Prototype {
 
         if (availableColors.length === 0) {
             // All colors used, pick a random one (allows duplicate colors)
-            const color = colors[Math.floor(Math.random() * colors.length)];
+            const color = colors[Math.floor(ROT.RNG.getUniform() * colors.length)];
             this.lockColors.push(color);
             this.unpairedLockColors.push(color);
             console.log(`Assigned lock color '${color.color}' (reused, all colors taken)`);
@@ -1351,7 +1351,7 @@ class Prototype {
         }
 
         // Pick a random unused color
-        const color = availableColors[Math.floor(Math.random() * availableColors.length)];
+        const color = availableColors[Math.floor(ROT.RNG.getUniform() * availableColors.length)];
         this.usedLockColors.add(color.color);
         this.lockColors.push(color);
         this.unpairedLockColors.push(color);
@@ -1375,7 +1375,7 @@ class Prototype {
         // Assign a random color (the door might be spawned later)
         const colors = this.engine.globalColors;
         if (colors && colors.length > 0) {
-            const color = colors[Math.floor(Math.random() * colors.length)];
+            const color = colors[Math.floor(ROT.RNG.getUniform() * colors.length)];
             console.log(`Assigned key color '${color.color}' (no unpaired doors)`);
             return color;
         }
@@ -1697,21 +1697,21 @@ class Item extends Entity {
         }
 
         // Pick a random stat
-        const randomStat = statNames[Math.floor(Math.random() * statNames.length)];
+        const randomStat = statNames[Math.floor(ROT.RNG.getUniform() * statNames.length)];
 
         // Determine effect magnitude and direction
         // 70% chance positive, 30% chance negative
-        const isPositive = Math.random() < 0.7;
+        const isPositive = ROT.RNG.getUniform() < 0.7;
         // Effect magnitude: 5-25 for health-like stats, 1-5 for strength-like stats
         const statValue = playerData.stats[randomStat];
         const maxStat = typeof statValue === 'object' ? statValue.max : statValue;
         let magnitude;
         if (maxStat >= 50) {
             // Large stat (health, nutrition) - bigger effects
-            magnitude = Math.floor(Math.random() * 21) + 5; // 5-25
+            magnitude = Math.floor(ROT.RNG.getUniform() * 21) + 5; // 5-25
         } else {
             // Small stat (strength, etc.) - smaller effects
-            magnitude = Math.floor(Math.random() * 5) + 1; // 1-5
+            magnitude = Math.floor(ROT.RNG.getUniform() * 5) + 1; // 1-5
         }
 
         const effectValue = isPositive ? magnitude : -magnitude;
@@ -1764,7 +1764,7 @@ class Item extends Entity {
 
                 if (dataSource && dataSource[category] && dataSource[category].length > 0) {
                     // Pick a random value and store it so it's consistent
-                    const randomValue = dataSource[category][Math.floor(Math.random() * dataSource[category].length)];
+                    const randomValue = dataSource[category][Math.floor(ROT.RNG.getUniform() * dataSource[category].length)];
                     this.templateVars[key] = randomValue;
                     return randomValue;
                 }
@@ -4949,7 +4949,7 @@ const BehaviorLibrary = {
             if (validDirs.length === 0) {
                 return false; // No valid moves available
             }
-            const dir = validDirs[Math.floor(Math.random() * validDirs.length)];
+            const dir = validDirs[Math.floor(ROT.RNG.getUniform() * validDirs.length)];
             const result = actor.tryMove(actor.x + dir.dx, actor.y + dir.dy);
             return result.moved || result.actionTaken;
         }
@@ -4959,7 +4959,7 @@ const BehaviorLibrary = {
             {dx: -1, dy: 0}, {dx: 1, dy: 0},
             {dx: 0, dy: -1}, {dx: 0, dy: 1}
         ];
-        const dir = directions[Math.floor(Math.random() * directions.length)];
+        const dir = directions[Math.floor(ROT.RNG.getUniform() * directions.length)];
         const result = actor.tryMove(actor.x + dir.dx, actor.y + dir.dy);
         return result.moved || result.actionTaken;
     },
@@ -5038,7 +5038,7 @@ const BehaviorLibrary = {
 
         // Shuffle directions for variety
         for (let i = directions.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
+            const j = Math.floor(ROT.RNG.getUniform() * (i + 1));
             [directions[i], directions[j]] = [directions[j], directions[i]];
         }
 
@@ -5117,7 +5117,7 @@ const BehaviorLibrary = {
 
         // Shuffle for variety
         for (let i = directions.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
+            const j = Math.floor(ROT.RNG.getUniform() * (i + 1));
             [directions[i], directions[j]] = [directions[j], directions[i]];
         }
 
@@ -5502,7 +5502,7 @@ const BehaviorLibrary = {
         }
 
         // Clouds at the edge (fewer dense cloud neighbors) disperse into mist
-        if (cloudNeighbors <= disperseThreshold && Math.random() < disperseChance) {
+        if (cloudNeighbors <= disperseThreshold && ROT.RNG.getUniform() < disperseChance) {
             const x = actor.x;
             const y = actor.y;
             const tint = actor.tint;
@@ -5529,9 +5529,9 @@ const BehaviorLibrary = {
         }
 
         // Mist can spawn in adjacent empty tiles (spreading outward)
-        if (emptyNeighborPositions.length > 0 && Math.random() < spawnMistChance) {
+        if (emptyNeighborPositions.length > 0 && ROT.RNG.getUniform() < spawnMistChance) {
             // Pick a random empty neighbor
-            const pos = emptyNeighborPositions[Math.floor(Math.random() * emptyNeighborPositions.length)];
+            const pos = emptyNeighborPositions[Math.floor(ROT.RNG.getUniform() * emptyNeighborPositions.length)];
 
             const mist = entityManager.spawnActor(disperseTo, pos.x, pos.y);
             if (mist) {
@@ -5585,7 +5585,7 @@ const BehaviorLibrary = {
         }
 
         // Isolated mist fades faster
-        if (gasNeighbors <= fadeThreshold && Math.random() < fadeChance) {
+        if (gasNeighbors <= fadeThreshold && ROT.RNG.getUniform() < fadeChance) {
             actor.die();
             return true;
         }
@@ -5692,9 +5692,9 @@ const BehaviorLibrary = {
 
             // Check if this actor has items in inventory
             if (other.inventory && other.inventory.length > 0) {
-                if (Math.random() < dropChance) {
+                if (ROT.RNG.getUniform() < dropChance) {
                     // Pick a random item to drop
-                    const itemIndex = Math.floor(Math.random() * other.inventory.length);
+                    const itemIndex = Math.floor(ROT.RNG.getUniform() * other.inventory.length);
                     const item = other.inventory[itemIndex];
 
                     // Find an adjacent tile for the item to drift to
@@ -5729,7 +5729,7 @@ const BehaviorLibrary = {
                     let dropX = other.x;
                     let dropY = other.y;
                     if (validPositions.length > 0) {
-                        const dropPos = validPositions[Math.floor(Math.random() * validPositions.length)];
+                        const dropPos = validPositions[Math.floor(ROT.RNG.getUniform() * validPositions.length)];
                         dropX = dropPos.x;
                         dropY = dropPos.y;
                     }
@@ -5768,7 +5768,7 @@ const BehaviorLibrary = {
         );
 
         for (const item of itemsHere) {
-            if (Math.random() < driftChance) {
+            if (ROT.RNG.getUniform() < driftChance) {
                 // Get valid adjacent positions (must have floor, no solid actors)
                 const directions = [
                     {dx: 0, dy: -1}, {dx: 0, dy: 1}, {dx: -1, dy: 0}, {dx: 1, dy: 0}
@@ -5799,7 +5799,7 @@ const BehaviorLibrary = {
                 }
 
                 if (validPositions.length > 0) {
-                    const newPos = validPositions[Math.floor(Math.random() * validPositions.length)];
+                    const newPos = validPositions[Math.floor(ROT.RNG.getUniform() * validPositions.length)];
                     const oldX = item.x;
                     const oldY = item.y;
                     item.x = newPos.x;
@@ -5977,7 +5977,7 @@ const BehaviorLibrary = {
         ];
 
         for (const dir of directions) {
-            if (Math.random() > spreadChance) continue;
+            if (ROT.RNG.getUniform() > spreadChance) continue;
 
             const targetX = actor.x + dir.dx;
             const targetY = actor.y + dir.dy;
@@ -6589,11 +6589,11 @@ class EntityManager {
             if (!actorData) continue;
 
             // Spawn 1-3 of each unplaced actor type
-            const count = Math.floor(Math.random() * 3) + 1;
+            const count = Math.floor(ROT.RNG.getUniform() * 3) + 1;
             const availableTiles = getAvailableTiles();
 
             for (let i = 0; i < count && availableTiles.length > 0; i++) {
-                const tileIndex = Math.floor(Math.random() * availableTiles.length);
+                const tileIndex = Math.floor(ROT.RNG.getUniform() * availableTiles.length);
                 const tile = availableTiles.splice(tileIndex, 1)[0];
 
                 const actor = new Actor(tile.x, tile.y, actorType, actorData, this.engine);
