@@ -620,11 +620,6 @@ class DungeonEngine {
      * Uses Simple scheduler - all actors get one turn per round
      */
     initializeTurnEngine() {
-        // Initialize ROT.RNG for combat rolls (seedable for reproducibility)
-        if (!ROT.RNG.getSeed()) {
-            ROT.RNG.setSeed(Date.now());
-        }
-
         this.scheduler = new ROT.Scheduler.Simple();
         this.turnEngine = new ROT.Engine(this.scheduler);
 
@@ -8345,7 +8340,17 @@ async function initializeGame() {
         // Clear any existing content
         gameContainer.innerHTML = '<p>Loading game...</p>';
         
+        // Parse URL parameters early — needed for seed before any RNG consumption
+        const urlParams = new URLSearchParams(window.location.search);
+
+        // Seed the RNG before anything else (loadGlobalData, map generation, etc.)
+        const urlSeed = urlParams.get('seed');
+        const seed = urlSeed ? Number(urlSeed) : Date.now();
+        ROT.RNG.setSeed(seed);
+        console.log(`RNG seeded: ${seed}${urlSeed ? ' (from URL)' : ' (generated)'}`);
+
         engine = new DungeonEngine();
+        engine.currentSeed = seed;
         await engine.initialize();
 
         // Determine which prototype to load (priority order):
@@ -8353,7 +8358,6 @@ async function initializeGame() {
         // 2. Data attribute on game container: <div id="game" data-prototype="labyrinth">
         // 3. Global config object: window.DUNGEON_CONFIG = { prototype: 'labyrinth' }
         // 4. Default: 'default'
-        const urlParams = new URLSearchParams(window.location.search);
         const urlPrototype = urlParams.get('prototype');
         const dataPrototype = gameContainer.dataset.prototype;
         const configPrototype = window.DUNGEON_CONFIG?.prototype;
