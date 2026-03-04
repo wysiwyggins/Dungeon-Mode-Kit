@@ -162,6 +162,20 @@ function lerpColor(colorA, colorB, t) {
     );
 }
 
+function rgbToHue(color) {
+    const r = ((color >> 16) & 0xFF) / 255;
+    const g = ((color >> 8) & 0xFF) / 255;
+    const b = (color & 0xFF) / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    if (max === min) return 0;
+    const d = max - min;
+    let h;
+    if (max === r) h = ((g - b) / d + 6) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    return h * 60;
+}
+
 /**
  * Get the indefinite article ('a' or 'an') for a word
  * @param {string} word - The word to get the article for
@@ -405,6 +419,69 @@ function getEuclideanDistance(x0, y0, x1, y1) {
     const dx = x1 - x0;
     const dy = y1 - y0;
     return Math.sqrt(dx * dx + dy * dy);
+}
+
+// ============================================================================
+// SCUTIGERA CHAIN SPAWNING
+// ============================================================================
+
+/**
+ * Find a walkable, unoccupied tile adjacent to the given actor (cardinal only).
+ * Directions are shuffled using ROT.RNG for deterministic randomness.
+ */
+function findAdjacentWalkable(actor, entityManager) {
+    const dirs = [
+        {dx: 0, dy: -1}, {dx: 0, dy: 1},
+        {dx: -1, dy: 0}, {dx: 1, dy: 0}
+    ];
+    // Fisher-Yates shuffle with ROT.RNG
+    for (let i = dirs.length - 1; i > 0; i--) {
+        const j = Math.floor(ROT.RNG.getUniform() * (i + 1));
+        [dirs[i], dirs[j]] = [dirs[j], dirs[i]];
+    }
+    for (const dir of dirs) {
+        const nx = actor.x + dir.dx;
+        const ny = actor.y + dir.dy;
+        // Check floor exists
+        if (!actor.hasFloorAt(nx, ny)) continue;
+        // Only skip tiles with solid actors (ignore non-solid like water/sewage)
+        const occupant = entityManager.getActorAt(nx, ny);
+        if (occupant && occupant.hasAttribute('solid')) continue;
+        return { x: nx, y: ny };
+    }
+    return null;
+}
+
+/**
+ * Spawn a chain of scutigera_body segments behind a scutigera_head actor.
+ * Sets up _chainPrev/_chainNext/_chainHead links and _pathHistory on the head.
+ * Uses entityManager.spawnActor() so each segment gets sprites + scheduler registration.
+ */
+function spawnScutigeraChain(head, entityManager) {
+    const segmentCount = head.getAttribute('segment_count') || 4;
+
+    head._chainNext = null;
+    head._chainPrev = null;
+    head._chainHead = head;
+    head._pathHistory = [];
+
+    let prev = head;
+
+    for (let i = 0; i < segmentCount; i++) {
+        const spawnPos = findAdjacentWalkable(prev, entityManager);
+        if (!spawnPos) break;
+
+        const segment = entityManager.spawnActor('scutigera_body', spawnPos.x, spawnPos.y);
+        if (!segment) break;
+
+        segment._chainPrev = prev;
+        segment._chainNext = null;
+        segment._chainHead = head;
+        prev._chainNext = segment;
+
+        prev = segment;
+    }
+
 }
 
 // ============================================================================
@@ -828,6 +905,9 @@ class DungeonEngine {
 
         // Spawn random actors after wildcard processing (walkable tiles now exist)
         this.entityManager.spawnRandomActorsFromConfig();
+
+        // Spawn body segment chains for any scutigera heads
+        this.entityManager.spawnScutigeraChains();
 
         // Run cellular automata behaviors once to pre-calculate initial state
         this.entityManager.runCellularAutomataStep();
@@ -3818,6 +3898,19 @@ class Actor extends Entity {
                 }
             }
 
+            // Handle apply_state: apply a state to the target
+            if (key === 'apply_state' && isDamageSource) {
+                const stateName = value;
+                const statesData = this.engine.globalStates;
+                if (statesData && statesData[stateName]) {
+                    const applied = target.applyState(stateName, statesData[stateName]);
+                    if (applied) {
+                        sourceApplied = true;
+                    }
+                }
+                continue;
+            }
+
             // Fall back to attributes
             const currentValue = target.getAttribute(key);
 
@@ -4111,6 +4204,10 @@ class Actor extends Entity {
         // Check for blocking actors
         const actorAtTarget = this.engine.entityManager.getActorAt(newX, newY);
         if (actorAtTarget && actorAtTarget.hasAttribute('solid')) {
+            // Scutigera chain members never collide with each other
+            if (this._chainHead && actorAtTarget._chainHead === this._chainHead) {
+                return { moved: false, actionTaken: false };
+            }
             // Check if actor can be pushed
             if (actorAtTarget.hasAttribute('pushable')) {
                 const dx = newX - this.x;
@@ -4572,12 +4669,24 @@ class Actor extends Entity {
 
     updateSpritePosition() {
         if (this.spriteBase) {
-            this.spriteBase.x = this.x * globalVars.TILE_WIDTH;
-            this.spriteBase.y = this.y * globalVars.TILE_HEIGHT;
+            let bx = this.x * globalVars.TILE_WIDTH;
+            let by = this.y * globalVars.TILE_HEIGHT;
+            if (this.flipBaseH || this.flipBaseV) {
+                bx += globalVars.TILE_WIDTH / 2;
+                by += globalVars.TILE_HEIGHT / 2;
+            }
+            this.spriteBase.x = bx;
+            this.spriteBase.y = by;
         }
         if (this.spriteTop) {
-            this.spriteTop.x = this.x * globalVars.TILE_WIDTH;
-            this.spriteTop.y = (this.y - 1) * globalVars.TILE_HEIGHT;
+            let tx = this.x * globalVars.TILE_WIDTH;
+            let ty = (this.y - 1) * globalVars.TILE_HEIGHT;
+            if (this.flipTopH || this.flipTopV) {
+                tx += globalVars.TILE_WIDTH / 2;
+                ty += globalVars.TILE_HEIGHT / 2;
+            }
+            this.spriteTop.x = tx;
+            this.spriteTop.y = ty;
         }
         // Update equipment sprite positions
         // top: above actor's top tile (y - 2)
@@ -5739,17 +5848,18 @@ const BehaviorLibrary = {
      * Liquid Color Mixing - Gradually blends a liquid tile's tint toward
      * adjacent liquid tiles of DIFFERENT types, simulating fluid mixing.
      * Uses weighted bidirectional mixing where larger bodies of liquid
-     * exert more influence on smaller ones.
+     * exert more influence on smaller ones. Skips neighbors with similar
+     * hue to preserve visual distinction between related liquid types.
      *
      * Data parameters (from personality JSON):
      * - mix_chance: Probability (0-1) that mixing occurs this turn (default 0.3)
      * - mix_step: Maximum interpolation factor per turn (default 0.08)
      *
-     * Requires 'mixable' attribute on the actor.
+     * Requires 'liquid' attribute on the actor.
      * Always returns false so subsequent behaviors still execute.
      */
     liquid_color_mix: (actor, data) => {
-        if (!actor.hasAttribute('mixable')) return false;
+        if (!actor.hasAttribute('liquid')) return false;
 
         const mixChance = data.mix_chance ?? 0.3;
         if (ROT.RNG.getUniform() >= mixChance) return false;
@@ -5768,7 +5878,7 @@ const BehaviorLibrary = {
             const ny = actor.y + dir.dy;
 
             const neighbor = entityManager.actors.find(
-                a => a.x === nx && a.y === ny && !a.isDead && a.hasAttribute('mixable')
+                a => a.x === nx && a.y === ny && !a.isDead && a.hasAttribute('liquid')
             );
 
             if (!neighbor) continue;
@@ -5780,22 +5890,32 @@ const BehaviorLibrary = {
             }
         }
 
-        if (foreignNeighbors.length === 0) return false;
+        // Filter out neighbors with similar hue (e.g. sewage and deep_sewage)
+        const actorHue = rgbToHue(actor.originalTint);
+        const hueThreshold = 30;
+        const distinctNeighbors = foreignNeighbors.filter(fn => {
+            const fnHue = rgbToHue(fn.originalTint);
+            let hueDiff = Math.abs(actorHue - fnHue);
+            if (hueDiff > 180) hueDiff = 360 - hueDiff;
+            return hueDiff > hueThreshold;
+        });
+
+        if (distinctNeighbors.length === 0) return false;
 
         // Weight: more foreign neighbors = stronger pull toward foreign color
-        const foreignWeight = foreignNeighbors.length / (foreignNeighbors.length + sameCount + 1);
+        const foreignWeight = distinctNeighbors.length / (distinctNeighbors.length + sameCount + 1);
 
         // Average the originalTint of all foreign neighbors
         let avgR = 0, avgG = 0, avgB = 0;
-        for (const fn of foreignNeighbors) {
+        for (const fn of distinctNeighbors) {
             const rgb = extractRGB(fn.originalTint);
             avgR += rgb.r;
             avgG += rgb.g;
             avgB += rgb.b;
         }
-        avgR = Math.round(avgR / foreignNeighbors.length);
-        avgG = Math.round(avgG / foreignNeighbors.length);
-        avgB = Math.round(avgB / foreignNeighbors.length);
+        avgR = Math.round(avgR / distinctNeighbors.length);
+        avgG = Math.round(avgG / distinctNeighbors.length);
+        avgB = Math.round(avgB / distinctNeighbors.length);
         const foreignAvgColor = packRGB(avgR, avgG, avgB);
 
         // Target: blend between own original color and foreign average, weighted by neighbor ratio
@@ -5812,15 +5932,9 @@ const BehaviorLibrary = {
         const newTint = lerpColor(actor.tint, target, step);
         actor.tint = newTint;
 
-        // Tween sprite tint using createjs.Tween (same approach as flickerTint on fire)
-        if (actor.spriteBase) {
-            createjs.Tween.get(actor.spriteBase, { override: true })
-                .to({ tint: newTint }, 200);
-        }
-        if (actor.spriteTop) {
-            createjs.Tween.get(actor.spriteTop, { override: true })
-                .to({ tint: newTint }, 200);
-        }
+        // Apply directly to sprites (renderer only updates on lighting changes)
+        if (actor.spriteBase) actor.spriteBase.tint = newTint;
+        if (actor.spriteTop) actor.spriteTop.tint = newTint;
 
         return false;
     },
@@ -6589,6 +6703,122 @@ const BehaviorLibrary = {
         }
 
         return null;
+    },
+
+    // ========================================================================
+    // SCUTIGERA (CENTIPEDE) BEHAVIORS
+    // ========================================================================
+
+    /**
+     * Head AI: pursue the player via A* pathfinding, recording position history
+     * for body segments to follow. Falls through to random_walk if no target visible.
+     */
+    scutigera_head_ai: (actor, data) => {
+        // Scale strength by number of connected living segments
+        let segCount = 0;
+        let node = actor._chainNext;
+        while (node && !node.isDead) {
+            segCount++;
+            node = node._chainNext;
+        }
+        const baseSegments = actor.getAttribute('segment_count') || 4;
+        const scaledStrength = Math.round(5 + segCount * 2.5);
+        actor.setAttribute('strength', Math.min(scaledStrength, 5 + baseSegments * 2.5));
+
+        const target = actor.engine.entityManager.findNearestPlayer(actor);
+
+        // Record current position BEFORE moving so body can follow
+        if (!actor._pathHistory) actor._pathHistory = [];
+        actor._pathHistory.unshift({ x: actor.x, y: actor.y });
+
+        // Cap history length
+        const maxHistory = (actor.getAttribute('segment_count') || 4) + 2;
+        if (actor._pathHistory.length > maxHistory) {
+            actor._pathHistory.length = maxHistory;
+        }
+
+        // Pursue player if visible
+        if (target && actor.canSeeTarget(target)) {
+            const moved = actor.moveToward(target.x, target.y);
+            if (moved) return true;
+        }
+
+        return false; // Fall through to random_walk
+    },
+
+    /**
+     * Body follow: each segment reads the head's position history by chain index
+     * and moves to the tile the head (or preceding segment) vacated.
+     * If disconnected from a living head, falls through to scatter.
+     */
+    scutigera_body_follow: (actor, data) => {
+        const prev = actor._chainPrev;
+
+        // If no prev link or prev is dead, we're disconnected
+        if (!prev || prev.isDead) {
+            actor._chainPrev = null;
+            actor._chainHead = null;
+            return false; // Fall through to scatter
+        }
+
+        // If head is dead, sever chain
+        const head = actor._chainHead;
+        if (!head || head.isDead) {
+            actor._chainHead = null;
+            return false; // Fall through to scatter
+        }
+
+        // Find our index in the chain (0 = first segment after head)
+        let index = 0;
+        let node = head._chainNext;
+        while (node && node !== actor) {
+            index++;
+            node = node._chainNext;
+        }
+
+        // Get target position from head's path history
+        const history = head._pathHistory;
+        if (!history || index >= history.length) {
+            // Not enough history — move toward prev segment directly
+            if (Math.abs(actor.x - prev.x) > 1 || Math.abs(actor.y - prev.y) > 1) {
+                return actor.moveToward(prev.x, prev.y);
+            }
+            return false;
+        }
+
+        const target = history[index];
+
+        // Already at target position
+        if (actor.x === target.x && actor.y === target.y) return false;
+
+        // Move to the target position
+        const result = actor.tryMove(target.x, target.y);
+        return result.moved || result.actionTaken;
+    },
+
+    /**
+     * Scatter: random walk for body segments disconnected from a living head.
+     * Only activates when the segment has no living head reference.
+     */
+    scutigera_scatter: (actor, data) => {
+        // Only scatter if disconnected from a living head
+        if (actor._chainHead && !actor._chainHead.isDead) return false;
+
+        // Random 4-directional movement
+        const directions = [
+            {dx: 0, dy: -1}, {dx: 0, dy: 1},
+            {dx: -1, dy: 0}, {dx: 1, dy: 0}
+        ];
+        // Fisher-Yates shuffle with ROT.RNG
+        for (let i = directions.length - 1; i > 0; i--) {
+            const j = Math.floor(ROT.RNG.getUniform() * (i + 1));
+            [directions[i], directions[j]] = [directions[j], directions[i]];
+        }
+        for (const dir of directions) {
+            const result = actor.tryMove(actor.x + dir.dx, actor.y + dir.dy);
+            if (result.moved) return true;
+        }
+        return false;
     }
 };
 
@@ -6916,6 +7146,19 @@ class EntityManager {
                 this.addEntity(item);
                 console.log(`random_items: Spawned "${itemType}" at (${tile.x}, ${tile.y}) (${i + 1}/${count})`);
             }
+        }
+    }
+
+    /**
+     * Find all scutigera_head actors and spawn their body segment chains.
+     * Called once after all actors (Tiled, unplaced, random) have been created.
+     */
+    spawnScutigeraChains() {
+        for (const actor of [...this.actors]) {
+            if (actor.isDead) continue;
+            if (actor.type !== 'scutigera_head') continue;
+            if (actor._chainHead) continue;
+            spawnScutigeraChain(actor, this);
         }
     }
 

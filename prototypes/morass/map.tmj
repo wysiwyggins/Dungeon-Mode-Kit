@@ -254,6 +254,17 @@
                  "width":40,
                  "x":40,
                  "y":1080
+                }, 
+                {
+                 "height":30,
+                 "id":56,
+                 "name":"scutigera",
+                 "rotation":0,
+                 "type":"scutigera_head",
+                 "visible":true,
+                 "width":40,
+                 "x":960,
+                 "y":480
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -301,7 +312,7 @@
          "y":0
         }],
  "nextlayerid":9,
- "nextobjectid":56,
+ "nextobjectid":57,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",

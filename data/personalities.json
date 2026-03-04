@@ -120,7 +120,7 @@
     "neighbor_count": 4,
     "transform_to": "deep_sewage",
     "check_cardinal": true,
-    "mix_chance": 0.8,
+    "mix_chance": 1,
     "mix_step": 0.15
   },
 
@@ -133,7 +133,7 @@
     ],
     "item_drop_chance": 0.3,
     "item_drift_chance": 0.3,
-    "mix_chance": 0.8,
+    "mix_chance": 1,
     "mix_step": 0.15
   },
 
@@ -178,5 +178,24 @@
       "shoot_at_target"
     ],
     "attack_range": 8
+  },
+
+  "scutigera_head": {
+    "name": "Scutigera Head",
+    "hostile": true,
+    "behaviors": [
+      "attack_adjacent",
+      "scutigera_head_ai",
+      "random_walk"
+    ]
+  },
+
+  "scutigera_body": {
+    "name": "Scutigera Body",
+    "hostile": true,
+    "behaviors": [
+      "scutigera_body_follow",
+      "scutigera_scatter"
+    ]
   }
 }

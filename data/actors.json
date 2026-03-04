@@ -73,7 +73,58 @@
     },
     "default_items": ["arrow", "arrow", "arrow", "arrow", "arrow"]
   },
-
+  "scutigera_head": {
+    "name": "Scutigera",
+    "description": "A fast moving, enormous centipede with an immense fan of legs.",
+    "tileIndexBase": "DOUBLE_EXCLAMATION_MARK",
+    "tileIndexTop": "TWO_BLACK_DIAMONDS",
+    "flipBaseV": true,
+    "tint": "#ececec",
+    "personality": "scutigera_head",
+    "collision_effect": { "health": -5, "apply_state": "poisoned" },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
+    "attributes": {
+      "hostile": true,
+      "solid": true,
+      "visible": true,
+      "flammable": true,
+      "sentient": true,
+      "inventory": 0,
+      "accuracy": 60,
+      "defense": 5,
+      "strength": 15,
+      "segment_count": 4
+    },
+    "stats": {
+      "health": 10
+    }
+  },
+  "scutigera_body": {
+    "name": "Scutigera",
+    "description": "A fast moving, enormous centipede with an immense fan of legs.",
+    "tileIndexBase": "DOUBLE_EXCLAMATION_MARK",
+    "tileIndexTop": "OPAQUE_PRISON_WINDOW",
+    "flipBaseV": true,
+    "tint": "#ececec",
+    "personality": "scutigera_body",
+    "collision_effect": { "health": -3 },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] lashes at the [attacked_actor_name]!",
+    "attributes": {
+      "hostile": true,
+      "solid": true,
+      "visible": true,
+      "flammable": true,
+      "sentient": true,
+      "inventory": 0,
+      "accuracy": 50,
+      "defense": 3
+    },
+    "stats": {
+      "health": 8
+    }
+  },
   "basilisk": {
     "name": "Basilisk",
     "tileIndexBase": {"x": 10, "y": 7},
@@ -370,7 +421,6 @@
       "visible": true,
       "spreads": false,
       "liquid": true,
-      "mixable": true,
       "nauseates": true,
       "paint_tile": "IMPERFECT_DOTTED_LIGHT_SHADE",
       "mass_noun": true,
@@ -390,7 +440,6 @@
       "visible": true,
       "spreads": false,
       "liquid": true,
-      "mixable": true,
       "nauseates": true,
       "mass_noun": true,
       "entry_sound": "step_mud"
@@ -410,7 +459,6 @@
       "deep": true,
       "spreads": false,
       "liquid": true,
-      "mixable": true,
       "nauseates": true,
       "paint_tile": "OPAQUE_DOTTED_LIGHT_SHADE",
       "mass_noun": true,
@@ -431,7 +479,6 @@
       "visible": true,
       "spreads": false,
       "liquid": true,
-      "mixable": true,
       "nauseates": true,
       "mass_noun": true,
       "entry_sound": "step_mud"
