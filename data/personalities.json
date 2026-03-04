@@ -110,22 +110,28 @@
     "name": "Liquid Pooling",
     "hostile": false,
     "behaviors": [
-      "cellular_transform"
+      "cellular_transform",
+      "liquid_color_mix"
     ],
     "neighbor_type": "sewage",
     "neighbor_count": 4,
     "transform_to": "deep_sewage",
-    "check_cardinal": true
+    "check_cardinal": true,
+    "mix_chance": 0.8,
+    "mix_step": 0.15
   },
 
   "deep_water_behavior": {
     "name": "Deep Water",
     "hostile": false,
     "behaviors": [
-      "deep_water_currents"
+      "deep_water_currents",
+      "liquid_color_mix"
     ],
     "item_drop_chance": 0.3,
-    "item_drift_chance": 0.3
+    "item_drift_chance": 0.3,
+    "mix_chance": 0.8,
+    "mix_step": 0.15
   },
 
   "drain_behavior": {

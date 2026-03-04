@@ -357,6 +357,45 @@
       "locked": true
     }
   },
+  "water": {
+    "name": "water",
+    "tileIndexBase": "BLANK",
+    "tileIndexTop": "BLANK",
+    "animated": true,
+    "animation_frames": "fluid",
+    "tint": "#48639C",
+    "personality": "liquid_pooling",
+    "attributes": {
+      "solid": false,
+      "visible": true,
+      "spreads": false,
+      "liquid": true,
+      "mixable": true,
+      "nauseates": true,
+      "paint_tile": "IMPERFECT_DOTTED_LIGHT_SHADE",
+      "mass_noun": true,
+      "entry_sound": "step_mud"
+    }
+  },
+   "deep_water": {
+    "name": "water",
+    "tileIndexBase": "BLANK",
+    "tileIndexTop": "BLANK",
+    "animated": true,
+    "animation_frames": "fluid",
+    "tint": "#283656",
+    "personality": "liquid_pooling",
+    "attributes": {
+      "solid": false,
+      "visible": true,
+      "spreads": false,
+      "liquid": true,
+      "mixable": true,
+      "nauseates": true,
+      "mass_noun": true,
+      "entry_sound": "step_mud"
+    }
+  },
   "sewage": {
     "name": "sewage",
     "tileIndexBase": "BLANK",
@@ -368,8 +407,10 @@
     "attributes": {
       "solid": false,
       "visible": true,
+      "deep": true,
       "spreads": false,
       "liquid": true,
+      "mixable": true,
       "nauseates": true,
       "paint_tile": "OPAQUE_DOTTED_LIGHT_SHADE",
       "mass_noun": true,
@@ -390,6 +431,7 @@
       "visible": true,
       "spreads": false,
       "liquid": true,
+      "mixable": true,
       "nauseates": true,
       "mass_noun": true,
       "entry_sound": "step_mud"

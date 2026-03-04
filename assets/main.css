@@ -46,8 +46,6 @@
 .text {
   display: flex;
   flex-direction: column;
-  margin-top: 30px;
-  margin-left: 15px;
 }
 @media (max-width: 1000px) {
   .text {
@@ -109,6 +107,10 @@
 }
 .text .message-hover {
   font-family: "Computer Modern Italic", serif;
+}
+.text {
+  margin-top: 30px;
+  margin-left: 15px;
 }
 @media (max-width: 1000px) {
   .text {

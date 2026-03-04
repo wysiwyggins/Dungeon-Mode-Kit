@@ -140,6 +140,28 @@ function generateColorVariation(baseColor, variation = 0x101008) {
     };
 }
 
+function extractRGB(color) {
+    return {
+        r: (color >> 16) & 0xFF,
+        g: (color >> 8) & 0xFF,
+        b: color & 0xFF
+    };
+}
+
+function packRGB(r, g, b) {
+    return (r << 16) | (g << 8) | b;
+}
+
+function lerpColor(colorA, colorB, t) {
+    const a = extractRGB(colorA);
+    const b = extractRGB(colorB);
+    return packRGB(
+        Math.round(a.r + (b.r - a.r) * t),
+        Math.round(a.g + (b.g - a.g) * t),
+        Math.round(a.b + (b.b - a.b) * t)
+    );
+}
+
 /**
  * Get the indefinite article ('a' or 'an') for a word
  * @param {string} word - The word to get the article for
@@ -1874,6 +1896,7 @@ class Actor extends Entity {
         this.name = data.name || type;
         this.height = 2;
         this.tint = parseTint(data.tint);
+        this.originalTint = this.tint;
         this.flickerTint = data.flickerTint || false;
         this.visionRange = data.vision_range ?? 8;
 
@@ -5654,6 +5677,96 @@ const BehaviorLibrary = {
             }
 
             return true;
+        }
+
+        return false;
+    },
+
+    /**
+     * Liquid Color Mixing - Gradually blends a liquid tile's tint toward
+     * adjacent liquid tiles of DIFFERENT types, simulating fluid mixing.
+     * Uses weighted bidirectional mixing where larger bodies of liquid
+     * exert more influence on smaller ones.
+     *
+     * Data parameters (from personality JSON):
+     * - mix_chance: Probability (0-1) that mixing occurs this turn (default 0.3)
+     * - mix_step: Maximum interpolation factor per turn (default 0.08)
+     *
+     * Requires 'mixable' attribute on the actor.
+     * Always returns false so subsequent behaviors still execute.
+     */
+    liquid_color_mix: (actor, data) => {
+        if (!actor.hasAttribute('mixable')) return false;
+
+        const mixChance = data.mix_chance ?? 0.3;
+        if (ROT.RNG.getUniform() >= mixChance) return false;
+
+        const entityManager = actor.engine.entityManager;
+        const directions = [
+            {dx: 0, dy: -1}, {dx: 0, dy: 1},
+            {dx: -1, dy: 0}, {dx: 1, dy: 0}
+        ];
+
+        let sameCount = 0;
+        const foreignNeighbors = [];
+
+        for (const dir of directions) {
+            const nx = actor.x + dir.dx;
+            const ny = actor.y + dir.dy;
+
+            const neighbor = entityManager.actors.find(
+                a => a.x === nx && a.y === ny && !a.isDead && a.hasAttribute('mixable')
+            );
+
+            if (!neighbor) continue;
+
+            if (neighbor.type === actor.type) {
+                sameCount++;
+            } else {
+                foreignNeighbors.push(neighbor);
+            }
+        }
+
+        if (foreignNeighbors.length === 0) return false;
+
+        // Weight: more foreign neighbors = stronger pull toward foreign color
+        const foreignWeight = foreignNeighbors.length / (foreignNeighbors.length + sameCount + 1);
+
+        // Average the originalTint of all foreign neighbors
+        let avgR = 0, avgG = 0, avgB = 0;
+        for (const fn of foreignNeighbors) {
+            const rgb = extractRGB(fn.originalTint);
+            avgR += rgb.r;
+            avgG += rgb.g;
+            avgB += rgb.b;
+        }
+        avgR = Math.round(avgR / foreignNeighbors.length);
+        avgG = Math.round(avgG / foreignNeighbors.length);
+        avgB = Math.round(avgB / foreignNeighbors.length);
+        const foreignAvgColor = packRGB(avgR, avgG, avgB);
+
+        // Target: blend between own original color and foreign average, weighted by neighbor ratio
+        const target = lerpColor(actor.originalTint, foreignAvgColor, foreignWeight);
+
+        // Convergence check: stop if already close enough
+        const cur = extractRGB(actor.tint);
+        const tgt = extractRGB(target);
+        const diff = Math.abs(cur.r - tgt.r) + Math.abs(cur.g - tgt.g) + Math.abs(cur.b - tgt.b);
+        if (diff <= 3) return false;
+
+        // Incrementally shift current tint toward target
+        const step = data.mix_step ?? 0.08;
+        const newTint = lerpColor(actor.tint, target, step);
+        actor.tint = newTint;
+
+        // Tween sprite tint using createjs.Tween (same approach as flickerTint on fire)
+        if (actor.spriteBase) {
+            createjs.Tween.get(actor.spriteBase, { override: true })
+                .to({ tint: newTint }, 200);
+        }
+        if (actor.spriteTop) {
+            createjs.Tween.get(actor.spriteTop, { override: true })
+                .to({ tint: newTint }, 200);
         }
 
         return false;
