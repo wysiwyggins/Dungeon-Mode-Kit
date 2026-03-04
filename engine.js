@@ -5261,6 +5261,59 @@ const BehaviorLibrary = {
     },
 
     /**
+     * Steam generation - lava creates steam when adjacent to liquid actors.
+     * Checks cardinal neighbors for liquid actors; for each one found,
+     * spawns a steam cloud at the liquid's position and kills the liquid.
+     *
+     * Data parameters (from personality JSON):
+     * - steam_type: Actor type to spawn (default "steam")
+     * - steam_chance: Probability per adjacent liquid per turn (default 0.3)
+     */
+    steam_generation: (actor, data) => {
+        const entityManager = actor.engine.entityManager;
+        const steamType = data.steam_type || 'steam';
+        const steamChance = data.steam_chance ?? 0.3;
+
+        const directions = [
+            {dx: 0, dy: -1}, {dx: 0, dy: 1},
+            {dx: -1, dy: 0}, {dx: 1, dy: 0}
+        ];
+
+        let generated = false;
+
+        for (const dir of directions) {
+            const nx = actor.x + dir.dx;
+            const ny = actor.y + dir.dy;
+
+            const liquid = entityManager.actors.find(
+                a => a.x === nx && a.y === ny && !a.isDead && a.hasAttribute('liquid')
+            );
+
+            if (!liquid) continue;
+            if (ROT.RNG.getUniform() >= steamChance) continue;
+
+            const lx = liquid.x;
+            const ly = liquid.y;
+
+            // Kill the liquid
+            liquid.die();
+
+            // Spawn steam at the liquid's former position
+            const steam = entityManager.spawnActor(steamType, lx, ly);
+            if (steam) {
+                steam.isCloudOrigin = true;
+                steam.cloudOriginX = lx;
+                steam.cloudOriginY = ly;
+            }
+
+            actor.engine.playSound?.('match');
+            generated = true;
+        }
+
+        return generated;
+    },
+
+    /**
      * Cloud spreading behavior - gradually expands to fill an area
      * Uses actor's spreadTurnsRemaining and origin position
      */

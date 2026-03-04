@@ -63,9 +63,12 @@
     "name": "Lava",
     "hostile": false,
     "behaviors": [
-      "incinerate_entities"
+      "incinerate_entities",
+      "steam_generation"
     ],
-    "spawn_on_incinerate": "fire"
+    "spawn_on_incinerate": "fire",
+    "steam_type": "steam",
+    "steam_chance": 0.3
   },
 
   "fire_behavior": {

@@ -622,6 +622,23 @@
     "lifetime": 4
   },
 
+  "steam": {
+    "name": "steam",
+    "tileIndexBase": "BLANK",
+    "tileIndexTop": "BLANK",
+    "animated": true,
+    "animation_frames": "smoke",
+    "tint": "#DDDDDD",
+    "personality": "cloud_behavior",
+    "attributes": {
+      "solid": false,
+      "visible": true,
+      "mass_noun": true
+    },
+    "collision_effect": { "health": -3 },
+    "lifetime": 6
+  },
+
   "poison_gas_trap": {
     "name": "Poison Gas Trap",
     "tileIndexBase": "INVERSE_BULLET",
