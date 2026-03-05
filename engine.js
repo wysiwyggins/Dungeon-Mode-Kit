@@ -176,6 +176,33 @@ function rgbToHue(color) {
     return h * 60;
 }
 
+// ── Array / direction helpers ──────────────────────────────────────────
+
+const CARDINAL_DIRS = [
+    {dx: 0, dy: -1}, {dx: 0, dy: 1},
+    {dx: -1, dy: 0}, {dx: 1, dy: 0}
+];
+
+const ALL_DIRS = [
+    {dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1},
+    {dx: -1, dy: 0},                   {dx: 1, dy: 0},
+    {dx: -1, dy: 1},  {dx: 0, dy: 1},  {dx: 1, dy: 1}
+];
+
+/** Fisher-Yates shuffle in-place using ROT.RNG for deterministic randomness. */
+function shuffleArray(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(ROT.RNG.getUniform() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+/** Pick a random element from an array using ROT.RNG. */
+function randomElement(arr) {
+    return arr[Math.floor(ROT.RNG.getUniform() * arr.length)];
+}
+
 /**
  * Get the indefinite article ('a' or 'an') for a word
  * @param {string} word - The word to get the article for
@@ -430,23 +457,15 @@ function getEuclideanDistance(x0, y0, x1, y1) {
  * Directions are shuffled using ROT.RNG for deterministic randomness.
  */
 function findAdjacentWalkable(actor, entityManager) {
-    const dirs = [
-        {dx: 0, dy: -1}, {dx: 0, dy: 1},
-        {dx: -1, dy: 0}, {dx: 1, dy: 0}
-    ];
-    // Fisher-Yates shuffle with ROT.RNG
-    for (let i = dirs.length - 1; i > 0; i--) {
-        const j = Math.floor(ROT.RNG.getUniform() * (i + 1));
-        [dirs[i], dirs[j]] = [dirs[j], dirs[i]];
-    }
+    const dirs = shuffleArray([...CARDINAL_DIRS]);
     for (const dir of dirs) {
         const nx = actor.x + dir.dx;
         const ny = actor.y + dir.dy;
         // Check floor exists
         if (!actor.hasFloorAt(nx, ny)) continue;
         // Only skip tiles with solid actors (ignore non-solid like water/sewage)
-        const occupant = entityManager.getActorAt(nx, ny);
-        if (occupant && occupant.hasAttribute('solid')) continue;
+        const occupant = entityManager.getSolidActorAt(nx, ny);
+        if (occupant) continue;
         return { x: nx, y: ny };
     }
     return null;
@@ -601,12 +620,8 @@ class DungeonEngine {
         const sampled = {};
         for (const [category, items] of Object.entries(fullData)) {
             if (Array.isArray(items)) {
-                // Fisher-Yates shuffle and take first sampleSize items
-                const shuffled = [...items];
-                for (let i = shuffled.length - 1; i > 0; i--) {
-                    const j = Math.floor(ROT.RNG.getUniform() * (i + 1));
-                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-                }
+                // Shuffle and take first sampleSize items
+                const shuffled = shuffleArray([...items]);
                 sampled[category] = shuffled.slice(0, Math.min(sampleSize, shuffled.length));
             } else {
                 sampled[category] = items;
@@ -873,7 +888,7 @@ class DungeonEngine {
 
         this.entityManager = new EntityManager(this);
 
-        await this.entityManager.spawnEntities(this.currentPrototype.config, entryDirection);
+        await this.entityManager.spawnEntities(entryDirection);
 
         // Create context for Architect to access engine resources
         const architectContext = {
@@ -1262,8 +1277,7 @@ class DungeonEngine {
         }
 
         // Pick a random tile using ROT.RNG for consistency
-        const randomIndex = Math.floor(ROT.RNG.getUniform() * availableTiles.length);
-        const tile = availableTiles[randomIndex];
+        const tile = randomElement(availableTiles);
 
         // Determine which stairway type to spawn based on whether there's a previous level
         const hasPreviousLevel = !!this.currentPrototype.config.previous_level;
@@ -1417,7 +1431,7 @@ class Prototype {
         // Assign a random color from the global colors list
         const colors = this.engine.globalColors;
         if (colors && colors.length > 0) {
-            const randomColor = colors[Math.floor(ROT.RNG.getUniform() * colors.length)];
+            const randomColor = randomElement(colors);
             this.itemColorAssignments.set(itemType, randomColor);
             console.log(`Assigned color '${randomColor.color}' (${randomColor.hex}) to item type '${itemType}'`);
             return randomColor;
@@ -1440,7 +1454,7 @@ class Prototype {
 
         if (availableColors.length === 0) {
             // All colors used, pick a random one (allows duplicate colors)
-            const color = colors[Math.floor(ROT.RNG.getUniform() * colors.length)];
+            const color = randomElement(colors);
             this.lockColors.push(color);
             this.unpairedLockColors.push(color);
             console.log(`Assigned lock color '${color.color}' (reused, all colors taken)`);
@@ -1448,7 +1462,7 @@ class Prototype {
         }
 
         // Pick a random unused color
-        const color = availableColors[Math.floor(ROT.RNG.getUniform() * availableColors.length)];
+        const color = randomElement(availableColors);
         this.usedLockColors.add(color.color);
         this.lockColors.push(color);
         this.unpairedLockColors.push(color);
@@ -1472,7 +1486,7 @@ class Prototype {
         // Assign a random color (the door might be spawned later)
         const colors = this.engine.globalColors;
         if (colors && colors.length > 0) {
-            const color = colors[Math.floor(ROT.RNG.getUniform() * colors.length)];
+            const color = randomElement(colors);
             console.log(`Assigned key color '${color.color}' (no unpaired doors)`);
             return color;
         }
@@ -1794,7 +1808,7 @@ class Item extends Entity {
         }
 
         // Pick a random stat
-        const randomStat = statNames[Math.floor(ROT.RNG.getUniform() * statNames.length)];
+        const randomStat = randomElement(statNames);
 
         // Determine effect magnitude and direction
         // 70% chance positive, 30% chance negative
@@ -1861,7 +1875,7 @@ class Item extends Entity {
 
                 if (dataSource && dataSource[category] && dataSource[category].length > 0) {
                     // Pick a random value and store it so it's consistent
-                    const randomValue = dataSource[category][Math.floor(ROT.RNG.getUniform() * dataSource[category].length)];
+                    const randomValue = randomElement(dataSource[category]);
                     this.templateVars[key] = randomValue;
                     return randomValue;
                 }
@@ -4068,8 +4082,8 @@ class Actor extends Entity {
         } */
 
         // Check for blocking actors
-        const actorAt = this.engine.entityManager.getActorAt(x, y);
-        if (actorAt && actorAt.hasAttribute('solid')) {
+        const actorAt = this.engine.entityManager.getSolidActorAt(x, y);
+        if (actorAt) {
             return false;
         }
 
@@ -4081,12 +4095,7 @@ class Actor extends Entity {
      * Filters out directions that would lead to void tiles or blocking actors
      */
     getValidMoveDirections() {
-        const allDirections = [
-            {dx: -1, dy: 0}, {dx: 1, dy: 0},
-            {dx: 0, dy: -1}, {dx: 0, dy: 1}
-        ];
-
-        return allDirections.filter(dir => {
+        return CARDINAL_DIRS.filter(dir => {
             const newX = this.x + dir.dx;
             const newY = this.y + dir.dy;
 
@@ -4097,8 +4106,8 @@ class Actor extends Entity {
             }
 
             // Check for blocking actors
-            const actorAtTarget = this.engine.entityManager.getActorAt(newX, newY);
-            if (actorAtTarget && actorAtTarget.hasAttribute('solid')) {
+            const actorAtTarget = this.engine.entityManager.getSolidActorAt(newX, newY);
+            if (actorAtTarget) {
                 return false;
             }
 
@@ -4201,9 +4210,10 @@ class Actor extends Entity {
             return { moved: false, actionTaken: false };
         }
 
-        // Check for blocking actors
-        const actorAtTarget = this.engine.entityManager.getActorAt(newX, newY);
-        if (actorAtTarget && actorAtTarget.hasAttribute('solid')) {
+        // Check for blocking actors (use getSolidActorAt so non-solid actors
+        // sharing a tile don't shadow the solid one)
+        const actorAtTarget = this.engine.entityManager.getSolidActorAt(newX, newY);
+        if (actorAtTarget) {
             // Scutigera chain members never collide with each other
             if (this._chainHead && actorAtTarget._chainHead === this._chainHead) {
                 return { moved: false, actionTaken: false };
@@ -4873,8 +4883,8 @@ class Actor extends Entity {
             if (!this.hasFloorAt(x, y)) return true;
 
             // Check for solid actors at this position (but not self or target)
-            const actorAt = this.engine.entityManager.getActorAt(x, y);
-            if (actorAt && actorAt !== this && actorAt !== target && actorAt.hasAttribute('solid')) {
+            const actorAt = this.engine.entityManager.getSolidActorAt(x, y);
+            if (actorAt && actorAt !== this && actorAt !== target) {
                 return true;
             }
 
@@ -4901,8 +4911,8 @@ class Actor extends Entity {
         if (!this.hasFloorAt(x, y)) return false;
 
         // Check for solid actors (but allow the actor's own position)
-        const actorAt = this.engine.entityManager.getActorAt(x, y);
-        if (actorAt && actorAt !== this && actorAt.hasAttribute('solid')) {
+        const actorAt = this.engine.entityManager.getSolidActorAt(x, y);
+        if (actorAt && actorAt !== this) {
             return false;
         }
 
@@ -5023,13 +5033,7 @@ const BehaviorLibrary = {
      */
     attack_adjacent: (actor) => {
         // Check all adjacent tiles (8-directional)
-        const directions = [
-            {dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1},
-            {dx: -1, dy: 0},                   {dx: 1, dy: 0},
-            {dx: -1, dy: 1},  {dx: 0, dy: 1},  {dx: 1, dy: 1}
-        ];
-
-        for (const dir of directions) {
+        for (const dir of ALL_DIRS) {
             const targetX = actor.x + dir.dx;
             const targetY = actor.y + dir.dy;
             const target = actor.engine.entityManager.getActorAt(targetX, targetY);
@@ -5076,17 +5080,13 @@ const BehaviorLibrary = {
             if (validDirs.length === 0) {
                 return false; // No valid moves available
             }
-            const dir = validDirs[Math.floor(ROT.RNG.getUniform() * validDirs.length)];
+            const dir = randomElement(validDirs);
             const result = actor.tryMove(actor.x + dir.dx, actor.y + dir.dy);
             return result.moved || result.actionTaken;
         }
 
         // Non-sighted actors pick randomly (may fall into pits)
-        const directions = [
-            {dx: -1, dy: 0}, {dx: 1, dy: 0},
-            {dx: 0, dy: -1}, {dx: 0, dy: 1}
-        ];
-        const dir = directions[Math.floor(ROT.RNG.getUniform() * directions.length)];
+        const dir = randomElement(CARDINAL_DIRS);
         const result = actor.tryMove(actor.x + dir.dx, actor.y + dir.dy);
         return result.moved || result.actionTaken;
     },
@@ -5156,18 +5156,7 @@ const BehaviorLibrary = {
         if (!shouldFlee) return false;
 
         // Find a safe adjacent tile to flee to
-        const directions = [
-            { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
-            { dx: -1, dy: 0 }, { dx: 1, dy: 0 },
-            { dx: -1, dy: -1 }, { dx: 1, dy: -1 },
-            { dx: -1, dy: 1 }, { dx: 1, dy: 1 }
-        ];
-
-        // Shuffle directions for variety
-        for (let i = directions.length - 1; i > 0; i--) {
-            const j = Math.floor(ROT.RNG.getUniform() * (i + 1));
-            [directions[i], directions[j]] = [directions[j], directions[i]];
-        }
+        const directions = shuffleArray([...ALL_DIRS]);
 
         // Helper to check if a tile is safe (no harmful actors)
         const isTileSafe = (x, y) => {
@@ -5237,16 +5226,7 @@ const BehaviorLibrary = {
         }
 
         // Check all adjacent tiles for breakable walls
-        const directions = [
-            {dx: 0, dy: -1}, {dx: 0, dy: 1},
-            {dx: -1, dy: 0}, {dx: 1, dy: 0}
-        ];
-
-        // Shuffle for variety
-        for (let i = directions.length - 1; i > 0; i--) {
-            const j = Math.floor(ROT.RNG.getUniform() * (i + 1));
-            [directions[i], directions[j]] = [directions[j], directions[i]];
-        }
+        const directions = shuffleArray([...CARDINAL_DIRS]);
 
         for (const dir of directions) {
             const targetX = actor.x + dir.dx;
@@ -5383,14 +5363,9 @@ const BehaviorLibrary = {
         const steamType = data.steam_type || 'steam';
         const steamChance = data.steam_chance ?? 0.3;
 
-        const directions = [
-            {dx: 0, dy: -1}, {dx: 0, dy: 1},
-            {dx: -1, dy: 0}, {dx: 1, dy: 0}
-        ];
-
         let generated = false;
 
-        for (const dir of directions) {
+        for (const dir of CARDINAL_DIRS) {
             const nx = actor.x + dir.dx;
             const ny = actor.y + dir.dy;
 
@@ -5447,19 +5422,13 @@ const BehaviorLibrary = {
         // Don't spawn beyond spread radius
         if (actor.currentSpreadDistance > spreadRadius) return false;
 
-        // Spread to tiles at the current distance from origin
-        const directions = [
-            {dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1},
-            {dx: -1, dy: 0},                   {dx: 1, dy: 0},
-            {dx: -1, dy: 1},  {dx: 0, dy: 1},  {dx: 1, dy: 1}
-        ];
-
         // Get the origin cloud's lifetime (initialize if needed)
         if (actor.cloudLifetime === undefined) {
             actor.cloudLifetime = actor.lifetime || 10;
         }
 
-        for (const dir of directions) {
+        // Spread to tiles at the current distance from origin
+        for (const dir of ALL_DIRS) {
             const targetX = actor.cloudOriginX + dir.dx * actor.currentSpreadDistance;
             const targetY = actor.cloudOriginY + dir.dy * actor.currentSpreadDistance;
 
@@ -5644,18 +5613,11 @@ const BehaviorLibrary = {
             actor.cloudLifetime = actor.lifetime || 10;
         }
 
-        // All 8 directions for checking neighbors
-        const directions = [
-            {dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1},
-            {dx: -1, dy: 0},                   {dx: 1, dy: 0},
-            {dx: -1, dy: 1},  {dx: 0, dy: 1},  {dx: 1, dy: 1}
-        ];
-
         // Count cloud neighbors (same type as this actor, typically 'cloud')
         let cloudNeighbors = 0;
         const emptyNeighborPositions = [];
 
-        for (const dir of directions) {
+        for (const dir of ALL_DIRS) {
             const checkX = actor.x + dir.dx;
             const checkY = actor.y + dir.dy;
 
@@ -5711,7 +5673,7 @@ const BehaviorLibrary = {
         // Mist can spawn in adjacent empty tiles (spreading outward)
         if (emptyNeighborPositions.length > 0 && ROT.RNG.getUniform() < spawnMistChance) {
             // Pick a random empty neighbor
-            const pos = emptyNeighborPositions[Math.floor(ROT.RNG.getUniform() * emptyNeighborPositions.length)];
+            const pos = randomElement(emptyNeighborPositions);
 
             const mist = entityManager.spawnActor(disperseTo, pos.x, pos.y);
             if (mist) {
@@ -5740,16 +5702,10 @@ const BehaviorLibrary = {
 
         const entityManager = actor.engine.entityManager;
 
-        const directions = [
-            {dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1},
-            {dx: -1, dy: 0},                   {dx: 1, dy: 0},
-            {dx: -1, dy: 1},  {dx: 0, dy: 1},  {dx: 1, dy: 1}
-        ];
-
         // Count any gas neighbors (mist or cloud)
         let gasNeighbors = 0;
 
-        for (const dir of directions) {
+        for (const dir of ALL_DIRS) {
             const checkX = actor.x + dir.dx;
             const checkY = actor.y + dir.dy;
 
@@ -5797,13 +5753,7 @@ const BehaviorLibrary = {
         // Don't transform if already the target type
         if (actor.type === transformTo) return false;
 
-        const directions = checkCardinal
-            ? [{dx: 0, dy: -1}, {dx: 0, dy: 1}, {dx: -1, dy: 0}, {dx: 1, dy: 0}]
-            : [
-                {dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1},
-                {dx: -1, dy: 0},                   {dx: 1, dy: 0},
-                {dx: -1, dy: 1},  {dx: 0, dy: 1},  {dx: 1, dy: 1}
-            ];
+        const directions = checkCardinal ? CARDINAL_DIRS : ALL_DIRS;
 
         const entityManager = actor.engine.entityManager;
         let matchingNeighbors = 0;
@@ -5865,15 +5815,11 @@ const BehaviorLibrary = {
         if (ROT.RNG.getUniform() >= mixChance) return false;
 
         const entityManager = actor.engine.entityManager;
-        const directions = [
-            {dx: 0, dy: -1}, {dx: 0, dy: 1},
-            {dx: -1, dy: 0}, {dx: 1, dy: 0}
-        ];
 
         let sameCount = 0;
         const foreignNeighbors = [];
 
-        for (const dir of directions) {
+        for (const dir of CARDINAL_DIRS) {
             const nx = actor.x + dir.dx;
             const ny = actor.y + dir.dy;
 
@@ -5969,15 +5915,11 @@ const BehaviorLibrary = {
             if (other.inventory && other.inventory.length > 0) {
                 if (ROT.RNG.getUniform() < dropChance) {
                     // Pick a random item to drop
-                    const itemIndex = Math.floor(ROT.RNG.getUniform() * other.inventory.length);
-                    const item = other.inventory[itemIndex];
+                    const item = randomElement(other.inventory);
 
                     // Find an adjacent tile for the item to drift to
-                    const directions = [
-                        {dx: 0, dy: -1}, {dx: 0, dy: 1}, {dx: -1, dy: 0}, {dx: 1, dy: 0}
-                    ];
                     const validPositions = [];
-                    for (const dir of directions) {
+                    for (const dir of CARDINAL_DIRS) {
                         const newX = other.x + dir.dx;
                         const newY = other.y + dir.dy;
 
@@ -6004,7 +5946,7 @@ const BehaviorLibrary = {
                     let dropX = other.x;
                     let dropY = other.y;
                     if (validPositions.length > 0) {
-                        const dropPos = validPositions[Math.floor(ROT.RNG.getUniform() * validPositions.length)];
+                        const dropPos = randomElement(validPositions);
                         dropX = dropPos.x;
                         dropY = dropPos.y;
                     }
@@ -6045,12 +5987,8 @@ const BehaviorLibrary = {
         for (const item of itemsHere) {
             if (ROT.RNG.getUniform() < driftChance) {
                 // Get valid adjacent positions (must have floor, no solid actors)
-                const directions = [
-                    {dx: 0, dy: -1}, {dx: 0, dy: 1}, {dx: -1, dy: 0}, {dx: 1, dy: 0}
-                ];
-
                 const validPositions = [];
-                for (const dir of directions) {
+                for (const dir of CARDINAL_DIRS) {
                     const newX = actor.x + dir.dx;
                     const newY = actor.y + dir.dy;
 
@@ -6074,7 +6012,7 @@ const BehaviorLibrary = {
                 }
 
                 if (validPositions.length > 0) {
-                    const newPos = validPositions[Math.floor(ROT.RNG.getUniform() * validPositions.length)];
+                    const newPos = randomElement(validPositions);
                     const oldX = item.x;
                     const oldY = item.y;
                     item.x = newPos.x;
@@ -6186,15 +6124,9 @@ const BehaviorLibrary = {
             cellActors.push(a);
         }
 
-        const directions = [
-            {dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1},
-            {dx: -1, dy: 0},                   {dx: 1, dy: 0},
-            {dx: -1, dy: 1},  {dx: 0, dy: 1},  {dx: 1, dy: 1}
-        ];
-
         const countNeighbors = (x, y) => {
             let count = 0;
-            for (const dir of directions) {
+            for (const dir of ALL_DIRS) {
                 if (aliveCells.has(`${x + dir.dx},${y + dir.dy}`)) count++;
             }
             return count;
@@ -6245,13 +6177,7 @@ const BehaviorLibrary = {
         const entityManager = actor.engine.entityManager;
         const mapManager = actor.engine.mapManager;
 
-        // Cardinal directions for fire spread
-        const directions = [
-            {dx: 0, dy: -1}, {dx: 1, dy: 0},
-            {dx: 0, dy: 1},  {dx: -1, dy: 0}
-        ];
-
-        for (const dir of directions) {
+        for (const dir of CARDINAL_DIRS) {
             if (ROT.RNG.getUniform() > spreadChance) continue;
 
             const targetX = actor.x + dir.dx;
@@ -6511,9 +6437,8 @@ const BehaviorLibrary = {
             if (dist <= attackRange && dist < nearestDist) {
                 // Check line of sight - callback checks if a tile is blocked by solid actors
                 const isBlocked = (x, y) => {
-                    const actorAtTile = entityManager.getActorAt(x, y);
-                    return actorAtTile && !actorAtTile.isDead && actorAtTile.hasAttribute('solid') &&
-                           actorAtTile !== actor && actorAtTile !== other;
+                    const actorAtTile = entityManager.getSolidActorAt(x, y);
+                    return actorAtTile && actorAtTile !== actor && actorAtTile !== other;
                 };
                 if (hasLineOfSight(actor.x, actor.y, other.x, other.y, isBlocked)) {
                     target = other;
@@ -6677,17 +6602,7 @@ const BehaviorLibrary = {
      * @private
      */
     _findAdjacentFloor: (x, y, entityManager, mapManager) => {
-        const directions = [
-            { dx: -1, dy: -1 }, { dx: 0, dy: -1 }, { dx: 1, dy: -1 },
-            { dx: -1, dy: 0 },                     { dx: 1, dy: 0 },
-            { dx: -1, dy: 1 },  { dx: 0, dy: 1 },  { dx: 1, dy: 1 }
-        ];
-
-        // Shuffle for random placement
-        for (let i = directions.length - 1; i > 0; i--) {
-            const j = Math.floor(ROT.RNG.getUniform() * (i + 1));
-            [directions[i], directions[j]] = [directions[j], directions[i]];
-        }
+        const directions = shuffleArray([...ALL_DIRS]);
 
         for (const dir of directions) {
             const tx = x + dir.dx;
@@ -6696,8 +6611,8 @@ const BehaviorLibrary = {
             const floorTile = mapManager?.floorMap?.[ty]?.[tx];
             if (!floorTile || floorTile.tileId <= 0) continue;
 
-            const actor = entityManager?.getActorAt(tx, ty);
-            if (actor && !actor.isDead && actor.hasAttribute('solid')) continue;
+            const actor = entityManager?.getSolidActorAt(tx, ty);
+            if (actor) continue;
 
             return { x: tx, y: ty };
         }
@@ -6711,9 +6626,10 @@ const BehaviorLibrary = {
 
     /**
      * Head AI: pursue the player via A* pathfinding, recording position history
-     * for body segments to follow. Falls through to random_walk if no target visible.
+     * for body segments to follow. Avoids own body segments in both pathfinding
+     * and random walk fallback, producing snake-like movement.
      */
-    scutigera_head_ai: (actor, data) => {
+    scutigera_head_ai: (actor, _data) => {
         // Scale strength by number of connected living segments
         let segCount = 0;
         let node = actor._chainNext;
@@ -6725,25 +6641,71 @@ const BehaviorLibrary = {
         const scaledStrength = Math.round(5 + segCount * 2.5);
         actor.setAttribute('strength', Math.min(scaledStrength, 5 + baseSegments * 2.5));
 
+        // Collect body segment positions so the head avoids them
+        const bodyPositions = new Set();
+        node = actor._chainNext;
+        while (node && !node.isDead) {
+            bodyPositions.add(`${node.x},${node.y}`);
+            node = node._chainNext;
+        }
+
         const target = actor.engine.entityManager.findNearestPlayer(actor);
 
-        // Record current position BEFORE moving so body can follow
         if (!actor._pathHistory) actor._pathHistory = [];
-        actor._pathHistory.unshift({ x: actor.x, y: actor.y });
-
-        // Cap history length
         const maxHistory = (actor.getAttribute('segment_count') || 4) + 2;
-        if (actor._pathHistory.length > maxHistory) {
-            actor._pathHistory.length = maxHistory;
-        }
 
-        // Pursue player if visible
+        // Passability check that also avoids own body segments
+        const isPassable = (x, y) => {
+            if (bodyPositions.has(`${x},${y}`)) return false;
+            return actor.isPassableAt(x, y);
+        };
+
+        // Helper: record position in history only when the head actually moves
+        const recordMove = () => {
+            actor._pathHistory.unshift({ x: beforeX, y: beforeY });
+            if (actor._pathHistory.length > maxHistory) {
+                actor._pathHistory.length = maxHistory;
+            }
+        };
+
+        const beforeX = actor.x, beforeY = actor.y;
+
+        // Pursue player if visible — use body-aware pathfinding
         if (target && actor.canSeeTarget(target)) {
-            const moved = actor.moveToward(target.x, target.y);
-            if (moved) return true;
+            const targetX = target.x;
+            const targetY = target.y;
+
+            // Allow target tile even if a body segment is on it
+            const isPassableForPursuit = (x, y) => {
+                if (x === targetX && y === targetY) return true;
+                return isPassable(x, y);
+            };
+
+            const nextStep = getNextPathStep(actor.x, actor.y, targetX, targetY, isPassableForPursuit);
+            if (nextStep) {
+                const result = actor.tryMove(nextStep.x, nextStep.y);
+                if (result.moved) {
+                    recordMove();
+                    return true;
+                }
+                if (result.actionTaken) return true; // attacked but didn't move — don't record
+            }
         }
 
-        return false; // Fall through to random_walk
+        // No target or path failed — random walk avoiding body
+        const directions = shuffleArray([...CARDINAL_DIRS]);
+        for (const dir of directions) {
+            const nx = actor.x + dir.dx;
+            const ny = actor.y + dir.dy;
+            if (bodyPositions.has(`${nx},${ny}`)) continue;
+            const result = actor.tryMove(nx, ny);
+            if (result.moved) {
+                recordMove();
+                return true;
+            }
+        }
+
+        return false;
     },
 
     /**
@@ -6751,7 +6713,7 @@ const BehaviorLibrary = {
      * and moves to the tile the head (or preceding segment) vacated.
      * If disconnected from a living head, falls through to scatter.
      */
-    scutigera_body_follow: (actor, data) => {
+    scutigera_body_follow: (actor, _data) => {
         const prev = actor._chainPrev;
 
         // If no prev link or prev is dead, we're disconnected
@@ -6791,29 +6753,29 @@ const BehaviorLibrary = {
         // Already at target position
         if (actor.x === target.x && actor.y === target.y) return false;
 
-        // Move to the target position
-        const result = actor.tryMove(target.x, target.y);
-        return result.moved || result.actionTaken;
+        const dx = Math.abs(actor.x - target.x);
+        const dy = Math.abs(actor.y - target.y);
+
+        // If target is adjacent (1 tile away), use tryMove directly
+        if (dx <= 1 && dy <= 1) {
+            const result = actor.tryMove(target.x, target.y);
+            return result.moved || result.actionTaken;
+        }
+
+        // Target is too far — use pathfinding to catch up
+        return actor.moveToward(target.x, target.y);
     },
 
     /**
      * Scatter: random walk for body segments disconnected from a living head.
      * Only activates when the segment has no living head reference.
      */
-    scutigera_scatter: (actor, data) => {
+    scutigera_scatter: (actor, _data) => {
         // Only scatter if disconnected from a living head
         if (actor._chainHead && !actor._chainHead.isDead) return false;
 
         // Random 4-directional movement
-        const directions = [
-            {dx: 0, dy: -1}, {dx: 0, dy: 1},
-            {dx: -1, dy: 0}, {dx: 1, dy: 0}
-        ];
-        // Fisher-Yates shuffle with ROT.RNG
-        for (let i = directions.length - 1; i > 0; i--) {
-            const j = Math.floor(ROT.RNG.getUniform() * (i + 1));
-            [directions[i], directions[j]] = [directions[j], directions[i]];
-        }
+        const directions = shuffleArray([...CARDINAL_DIRS]);
         for (const dir of directions) {
             const result = actor.tryMove(actor.x + dir.dx, actor.y + dir.dy);
             if (result.moved) return true;
@@ -6835,7 +6797,7 @@ class EntityManager {
         this.player = null;
     }
     
-    async spawnEntities(prototypeConfig, entryDirection = null) {
+    async spawnEntities(entryDirection = null) {
         // Track which actor/item types are placed in the map
         const placedActorTypes = new Set();
         const placedItemTypes = new Set();
@@ -6886,13 +6848,7 @@ class EntityManager {
 
                 if (!transformTo || actor.type === transformTo) continue;
 
-                const directions = checkCardinal
-                    ? [{dx: 0, dy: -1}, {dx: 0, dy: 1}, {dx: -1, dy: 0}, {dx: 1, dy: 0}]
-                    : [
-                        {dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1},
-                        {dx: -1, dy: 0},                   {dx: 1, dy: 0},
-                        {dx: -1, dy: 1},  {dx: 0, dy: 1},  {dx: 1, dy: 1}
-                    ];
+                const directions = checkCardinal ? CARDINAL_DIRS : ALL_DIRS;
 
                 let matchingNeighbors = 0;
 
@@ -6927,10 +6883,7 @@ class EntityManager {
                 this.removeEntity(t.actor);
 
                 // Spawn the new actor
-                const newActor = this.spawnActor(t.transformTo, t.x, t.y);
-                /* if (newActor) {
-                    console.log(`Initial CA: ${t.actor.type} at (${t.x}, ${t.y}) -> ${t.transformTo}`);
-                } */
+                this.spawnActor(t.transformTo, t.x, t.y);
             }
 
             if (transformations.length > 0) {
@@ -6945,7 +6898,7 @@ class EntityManager {
      * @param {Set} placedActorTypes - Actor types already placed from the map
      * @param {Set} placedItemTypes - Item types already placed from the map
      */
-    spawnUnplacedEntities(placedActorTypes, placedItemTypes) {
+    spawnUnplacedEntities(placedActorTypes, _placedItemTypes) {
         const prototype = this.engine.currentPrototype;
         if (!prototype) return;
 
@@ -7368,6 +7321,10 @@ class EntityManager {
         return this.actors.find(a => a.x === x && a.y === y && a !== excludeActor);
     }
 
+    getSolidActorAt(x, y) {
+        return this.actors.find(a => a.x === x && a.y === y && !a.isDead && a.hasAttribute('solid'));
+    }
+
     getItemAt(x, y) {
         return this.items.find(i => i.x === x && i.y === y);
     }
@@ -7404,7 +7361,7 @@ class EntityManager {
     }
     
     findAdjacentTarget(actor) {
-        const dirs = [{dx: -1, dy: 0}, {dx: 1, dy: 0}, {dx: 0, dy: -1}, {dx: 0, dy: 1}];
+        const dirs = CARDINAL_DIRS;
         for (const dir of dirs) {
             const target = this.getActorAt(actor.x + dir.dx, actor.y + dir.dy);
             if (target && target !== actor && !target.isDead) {
@@ -7864,8 +7821,8 @@ class RenderSystem {
             }
 
             // Check for solid actors that would block the path
-            const actor = this.engine.entityManager?.getActorAt(point.x, point.y);
-            if (actor && !actor.isDead && actor.hasAttribute('solid')) {
+            const actor = this.engine.entityManager?.getSolidActorAt(point.x, point.y);
+            if (actor) {
                 blockedAt = point;
                 displayPath.push(point); // Include the blocked tile
                 break;
@@ -7958,11 +7915,12 @@ class RenderSystem {
                 return floorTile && floorTile.tileId > 0;
             }
             // Check for solid actors
-            const actor = this.engine.entityManager?.getActorAt(x, y);
-            if (actor && !actor.isDead && actor.hasAttribute('solid')) {
+            const solidActor = this.engine.entityManager?.getSolidActorAt(x, y);
+            if (solidActor) {
                 return false;
             }
             // Check for hazardous actors - avoid unless player has matching immunity
+            const actor = this.engine.entityManager?.getActorAt(x, y);
             const damageType = actor?.getAttribute('damage_type');
             if (damageType && !actor.isDead) {
                 const player = this.engine.entityManager?.player;
@@ -8123,6 +8081,13 @@ class RenderSystem {
         // Render all actors
         for (const actor of entityManager.actors) {
             if (!actor.hasAttribute('visible')) continue;
+
+            // Skip actors that already have sprites (e.g., dynamically spawned
+            // by spawnActor before renderActors runs)
+            if (actor.spriteBase) {
+                actorsRendered++;
+                continue;
+            }
 
             // Render base sprite (static or animated)
             actor.spriteBase = this.createActorSprite(

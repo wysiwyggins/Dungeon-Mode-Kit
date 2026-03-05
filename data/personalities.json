@@ -185,8 +185,7 @@
     "hostile": true,
     "behaviors": [
       "attack_adjacent",
-      "scutigera_head_ai",
-      "random_walk"
+      "scutigera_head_ai"
     ]
   },
 
