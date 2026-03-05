@@ -22,11 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### In Progress
 
+- Adjacent liquid actors mix colors (works but isn't super performant)
+- multi actor "snakes" (works, example is scutigera_head and scutigera_body, should be more modular and generalized)
 - Mining (works but requires testing and refinement, Currently 3 hits always removes a breakable actor, which feels unnatural)
 - FOV epistemology (currently messages aren't filtered by vision range, make sound alternate messages for those, also some things like mining walls can still be seen out of range)
 - Ball of thread item and entity trails (this is almost done, last tile of thread is hidden when walking down but still overlaps actor top tile when approaching from under on either side). Monsters should be able to follow thread.
 
-## [0.8b] 2025-02-21
+## [0.8b] 2025-03-05
 
 ### Added
 
@@ -42,6 +44,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Equipment menu: click items to toggle equip/unequip
   - Centralized `handleDialogClick` with tile-based hit-testing via `_hitTestBox`
   - All keyboard shortcuts continue to work as before
+- Liquid color tint blending
+  - adjacent actors with a tint and liquid attribute will mix their tints together over turns
+- Chained actors behavior
+  - created a scutigera centipede out of a head and body actor that moves like "snake"
 
 ### Fixed
 
