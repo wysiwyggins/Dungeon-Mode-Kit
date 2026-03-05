@@ -537,6 +537,18 @@ class DungeonEngine {
         // Canvas dimensions will be set when map loads
         this.canvasWidth = null;
         this.canvasHeight = null;
+
+        // Viewport properties (set in loadPrototype after map loads)
+        this.viewportWidth = null;
+        this.viewportHeight = null;
+        this.viewportEnabled = false;
+        this.sectionCol = 0;
+        this.sectionRow = 0;
+        this.sectionOriginX = 0;
+        this.sectionOriginY = 0;
+        this.viewportOffsetX = 0;
+        this.viewportOffsetY = 0;
+        this.aiMargin = 5;
     }
     
     async initialize() {
@@ -831,6 +843,58 @@ class DungeonEngine {
         // Update the sidebar with visible actors and items
         this.interfaceManager?.updateSidebar();
     }
+
+    snapViewportToTile(tileX, tileY) {
+        if (!this.viewportEnabled) return false;
+
+        const newCol = Math.floor(tileX / this.viewportWidth);
+        const newRow = Math.floor(tileY / this.viewportHeight);
+
+        const maxCol = Math.ceil(this.mapManager.width / this.viewportWidth) - 1;
+        const maxRow = Math.ceil(this.mapManager.height / this.viewportHeight) - 1;
+        const col = Math.min(newCol, maxCol);
+        const row = Math.min(newRow, maxRow);
+
+        if (col === this.sectionCol && row === this.sectionRow) return false;
+
+        this.sectionCol = col;
+        this.sectionRow = row;
+        this.sectionOriginX = Math.max(0, Math.min(col * this.viewportWidth,
+            this.mapManager.width - this.viewportWidth));
+        this.sectionOriginY = Math.max(0, Math.min(row * this.viewportHeight,
+            this.mapManager.height - this.viewportHeight));
+        this.viewportOffsetX = -(this.sectionOriginX * this.config.tileWidth);
+        this.viewportOffsetY = -(this.sectionOriginY * this.config.tileHeight);
+
+        return true;
+    }
+
+    applyViewportOffset() {
+        if (!this.viewportEnabled || !this.renderer) return;
+        for (const c of [
+            this.renderer.backgroundContainer, this.renderer.floorContainer,
+            this.renderer.entityContainer, this.renderer.lightColorContainer,
+            this.renderer.darknessContainer, this.renderer.uiContainer
+        ]) {
+            c.x = this.viewportOffsetX;
+            c.y = this.viewportOffsetY;
+        }
+    }
+
+    onSectionChange() {
+        this.applyViewportOffset();
+        this.renderer.updateTileVisibility(
+            this.sectionOriginX, this.sectionOriginY,
+            this.viewportWidth, this.viewportHeight
+        );
+        this.renderer.updateEntityVisibility(
+            this.sectionOriginX, this.sectionOriginY,
+            this.viewportWidth, this.viewportHeight
+        );
+        if (this.lightingManager) this.updateLighting();
+        this.renderer.updateSubmersionOverlay();
+    }
+
     playSound(soundName) {
         if (this.audioManager) {
             this.audioManager.play(soundName);
@@ -881,8 +945,25 @@ class DungeonEngine {
             this.mapManager.generateProceduralMap(prototypeConfig.map_generator);
         }
 
-        this.canvasWidth = this.mapManager.width * this.config.tileWidth;
-        this.canvasHeight = this.mapManager.height * this.config.tileHeight;
+        // Viewport: per-prototype viewport_width/height in tile columns/rows
+        const mechanics = prototypeConfig.mechanics || {};
+        const vpW = mechanics.viewport_width || null;
+        const vpH = mechanics.viewport_height || null;
+
+        if (vpW && vpH && (vpW < this.mapManager.width || vpH < this.mapManager.height)) {
+            this.viewportWidth = vpW;
+            this.viewportHeight = vpH;
+            this.viewportEnabled = true;
+            this.aiMargin = mechanics.ai_margin ?? 5;
+        } else {
+            this.viewportWidth = this.mapManager.width;
+            this.viewportHeight = this.mapManager.height;
+            this.viewportEnabled = false;
+            this.aiMargin = Infinity;
+        }
+
+        this.canvasWidth = this.viewportWidth * this.config.tileWidth;
+        this.canvasHeight = this.viewportHeight * this.config.tileHeight;
 
         await this.initializeRenderer();
 
@@ -911,6 +992,11 @@ class DungeonEngine {
         if (!prototypeConfig.mechanics?.observer_mode) {
             this.ensureUpStairway();
             this.spawnPlayerAtStairway(entryDirection);
+        }
+
+        // Snap viewport to player's spawn position before rendering
+        if (this.viewportEnabled && this.entityManager.player) {
+            this.snapViewportToTile(this.entityManager.player.x, this.entityManager.player.y);
         }
 
         this.mapManager.spawnPendingWalls(architectContext);
@@ -956,6 +1042,18 @@ class DungeonEngine {
             this.updateLighting();
         }
 
+        // Apply viewport offset and visibility after all rendering/darkness is set up
+        if (this.viewportEnabled) {
+            this.applyViewportOffset();
+            this.renderer.updateTileVisibility(
+                this.sectionOriginX, this.sectionOriginY,
+                this.viewportWidth, this.viewportHeight
+            );
+            this.renderer.updateEntityVisibility(
+                this.sectionOriginX, this.sectionOriginY,
+                this.viewportWidth, this.viewportHeight
+            );
+        }
 
         this.initializeTurnEngine();
 
@@ -971,6 +1069,9 @@ class DungeonEngine {
 
         console.log(`Prototype ${prototypeName} loaded successfully`);
         console.log(`Map size: ${this.mapManager.width}x${this.mapManager.height} tiles`);
+        if (this.viewportEnabled) {
+            console.log(`Viewport: ${this.viewportWidth}x${this.viewportHeight} tiles, section (${this.sectionCol},${this.sectionRow}), origin (${this.sectionOriginX},${this.sectionOriginY})`);
+        }
         console.log(`Canvas size: ${this.canvasWidth}x${this.canvasHeight}px`);
         console.log(`Walkable tiles: ${this.mapManager.walkableTiles.length}`);
         console.log(`Actors spawned: ${this.entityManager.actors.length}`);
@@ -1346,6 +1447,17 @@ class DungeonEngine {
         if (this.lightingManager) {
             this.lightingManager = null;
         }
+
+        // Reset viewport state
+        this.viewportEnabled = false;
+        this.viewportWidth = null;
+        this.viewportHeight = null;
+        this.sectionCol = 0;
+        this.sectionRow = 0;
+        this.sectionOriginX = 0;
+        this.sectionOriginY = 0;
+        this.viewportOffsetX = 0;
+        this.viewportOffsetY = 0;
     }
 }
 
@@ -2217,6 +2329,19 @@ class Actor extends Entity {
      * @returns {Promise} Resolves when action is complete
      */
     act() {
+        // Viewport AI margin: skip entire turn for off-screen actors
+        if (this.engine.viewportEnabled && !this.isPlayerControlled()) {
+            const ox = this.engine.sectionOriginX;
+            const oy = this.engine.sectionOriginY;
+            const vw = this.engine.viewportWidth;
+            const vh = this.engine.viewportHeight;
+            const m = this.engine.aiMargin;
+            if (this.x < ox - m || this.x >= ox + vw + m ||
+                this.y < oy - m || this.y >= oy + vh + m) {
+                return Promise.resolve();
+            }
+        }
+
         // Process per-turn stat changes (regeneration, hunger, poison, etc.)
         this.processPerTurnStats();
         if (this.isDead) return Promise.resolve(); // Died from stat depletion
@@ -4256,6 +4381,13 @@ class Actor extends Entity {
                     this.y = newY;
                     this.updateSpritePosition();
 
+                    // Viewport snap check after push-move
+                    if (this.isPlayerControlled() && this.engine.viewportEnabled) {
+                        if (this.engine.snapViewportToTile(this.x, this.y)) {
+                            this.engine.onSectionChange();
+                        }
+                    }
+
                     // Update lighting if needed
                     if (this.isPlayerControlled() || this.hasAttribute('light_source')) {
                         this.engine.updateLighting();
@@ -4314,6 +4446,12 @@ class Actor extends Entity {
             this.x = newX;
             this.y = newY;
             this.updateSpritePosition();
+            // Viewport snap check before fall
+            if (this.isPlayerControlled() && this.engine.viewportEnabled) {
+                if (this.engine.snapViewportToTile(this.x, this.y)) {
+                    this.engine.onSectionChange();
+                }
+            }
             this.fall();
             return { moved: true, actionTaken: true }; // Move happened, actor just died
         }
@@ -4323,6 +4461,13 @@ class Actor extends Entity {
         this.x = newX;
         this.y = newY;
         this.updateSpritePosition();
+
+        // Viewport snap check after successful move
+        if (this.isPlayerControlled() && this.engine.viewportEnabled) {
+            if (this.engine.snapViewportToTile(this.x, this.y)) {
+                this.engine.onSectionChange();
+            }
+        }
 
         // Process passive effects from inventory items (e.g., thread trail)
         this.processPassiveEffects(this._lastPosition, { x: newX, y: newY });
@@ -4486,7 +4631,7 @@ class Actor extends Entity {
 
         const trailData = item._trailData;
 
-        // Show previously hidden trail segment (was hidden when walking down)
+        // Show previously hidden trail segment (was hidden to avoid covering actor's spriteTop)
         if (trailData.hiddenSegment) {
             const hiddenEntity = trailData.hiddenSegment.entity;
             if (hiddenEntity?.sprite) hiddenEntity.sprite.alpha = 1;
@@ -4509,6 +4654,7 @@ class Actor extends Entity {
                 if (trailData.positions.length > 0) {
                     this.updateTrailTile(trailData, trailData.positions.length - 1);
                 }
+                this._hideTrailAtSpriteTop(trailData, toPos);
                 return;
             }
         }
@@ -4530,12 +4676,25 @@ class Actor extends Entity {
                 exitDirection: direction
             };
             trailData.positions.push(newSegment);
+        }
 
-            // Hide trail segment when walking down (it would overlap actor's top sprite)
-            if (direction === 'down') {
-                if (entity.sprite) entity.sprite.alpha = 0;
-                if (entity.tileSprite) entity.tileSprite.alpha = 0;
-                trailData.hiddenSegment = newSegment;
+        this._hideTrailAtSpriteTop(trailData, toPos);
+    }
+
+    /**
+     * Hide any trail segment that overlaps the actor's spriteTop position.
+     * Thread trails render in uiContainer (above entityContainer), so they
+     * cover actor top sprites. This hides the segment at (toPos.x, toPos.y - 1).
+     */
+    _hideTrailAtSpriteTop(trailData, toPos) {
+        const topTileX = toPos.x;
+        const topTileY = toPos.y - 1;
+        for (const seg of trailData.positions) {
+            if (seg.x === topTileX && seg.y === topTileY) {
+                if (seg.entity?.sprite) seg.entity.sprite.alpha = 0;
+                if (seg.entity?.tileSprite) seg.entity.tileSprite.alpha = 0;
+                trailData.hiddenSegment = seg;
+                return;
             }
         }
     }
@@ -4713,6 +4872,25 @@ class Actor extends Entity {
         if (this.spriteEquipment.lower) {
             this.spriteEquipment.lower.x = this.x * globalVars.TILE_WIDTH;
             this.spriteEquipment.lower.y = this.y * globalVars.TILE_HEIGHT;
+        }
+
+        // Update viewport visibility when actors move
+        if (this.engine.viewportEnabled) {
+            const ox = this.engine.sectionOriginX;
+            const oy = this.engine.sectionOriginY;
+            const vw = this.engine.viewportWidth;
+            const vh = this.engine.viewportHeight;
+            const inView = this.x >= ox && this.x < ox + vw &&
+                           this.y >= oy && this.y < oy + vh;
+            if (this.spriteBase) this.spriteBase.visible = inView;
+            if (this.spriteTop) {
+                const topInView = (this.y - 1) >= oy && (this.y - 1) < oy + vh &&
+                                  this.x >= ox && this.x < ox + vw;
+                this.spriteTop.visible = inView || topInView;
+            }
+            for (const slot of ['top', 'middle', 'lower']) {
+                if (this.spriteEquipment[slot]) this.spriteEquipment[slot].visible = inView;
+            }
         }
     }
 
@@ -5068,6 +5246,84 @@ const BehaviorLibrary = {
             return actor.moveToward(target.x, target.y);
         }
         return false;
+    },
+
+    /**
+     * Follow thread trail entities toward the player.
+     * Gated on the actor having a 'follows_thread' attribute.
+     * The monster detects thread_trail entities at its position or adjacent tiles,
+     * then walks along the trail toward the player (higher index in positions array).
+     */
+    follow_thread: (actor, data) => {
+        if (!actor.hasAttribute('follows_thread')) return false;
+
+        const em = actor.engine.entityManager;
+
+        // Find trail data from any controlled actor's inventory
+        let trailData = null;
+        for (const a of em.actors) {
+            if (!a.hasAttribute('controlled') || a.isDead) continue;
+            for (const item of a.inventory) {
+                if (item._trailData && item._trailData.positions.length > 0) {
+                    trailData = item._trailData;
+                    break;
+                }
+            }
+            if (trailData) break;
+        }
+        if (!trailData) return false;
+
+        // Find the trail segment closest to the actor (at current pos or adjacent)
+        let bestIdx = -1;
+        let bestDist = Infinity;
+        for (let i = 0; i < trailData.positions.length; i++) {
+            const seg = trailData.positions[i];
+            const dist = Math.abs(seg.x - actor.x) + Math.abs(seg.y - actor.y);
+            if (dist <= 1 && dist < bestDist) {
+                bestDist = dist;
+                bestIdx = i;
+            }
+        }
+
+        // If not adjacent to trail, check if any segment is within vision range
+        // and pathfind toward the nearest visible one
+        if (bestIdx < 0) {
+            const visionRange = actor.getAttribute('vision_range') || 10;
+            let nearestVisibleIdx = -1;
+            let nearestVisibleDist = Infinity;
+            for (let i = 0; i < trailData.positions.length; i++) {
+                const seg = trailData.positions[i];
+                const dist = Math.abs(seg.x - actor.x) + Math.abs(seg.y - actor.y);
+                if (dist <= visionRange && dist < nearestVisibleDist) {
+                    nearestVisibleDist = dist;
+                    nearestVisibleIdx = i;
+                }
+            }
+            if (nearestVisibleIdx < 0) return false;
+            const seg = trailData.positions[nearestVisibleIdx];
+            return actor.moveToward(seg.x, seg.y);
+        }
+
+        // Move toward the player end of the trail (higher index)
+        // If we're at the last segment, move toward the trail owner
+        let targetX, targetY;
+        if (bestIdx < trailData.positions.length - 1) {
+            const next = trailData.positions[bestIdx + 1];
+            targetX = next.x;
+            targetY = next.y;
+        } else {
+            // At end of trail — head toward the trail owner
+            const owner = em.actors.find(a => a.id === trailData.ownerId && !a.isDead);
+            if (owner) {
+                targetX = owner.x;
+                targetY = owner.y;
+            } else {
+                return false;
+            }
+        }
+
+        const result = actor.tryMove(targetX, targetY);
+        return result.moved || result.actionTaken;
     },
 
     /**
@@ -7684,22 +7940,39 @@ class RenderSystem {
     applySubmersionTint(tint) {
         if (this.submersionOverlay) return;
 
-        // Create a filled rectangle that covers the entire game area
+        const engine = this.engine;
         const graphics = new PIXI.Graphics();
         graphics.beginFill(tint);
-        graphics.drawRect(0, 0, this.mapWidth * globalVars.TILE_WIDTH, this.mapHeight * globalVars.TILE_HEIGHT);
+        if (engine.viewportEnabled) {
+            graphics.drawRect(
+                engine.sectionOriginX * globalVars.TILE_WIDTH,
+                engine.sectionOriginY * globalVars.TILE_HEIGHT,
+                engine.viewportWidth * globalVars.TILE_WIDTH,
+                engine.viewportHeight * globalVars.TILE_HEIGHT
+            );
+        } else {
+            graphics.drawRect(0, 0, this.mapWidth * globalVars.TILE_WIDTH, this.mapHeight * globalVars.TILE_HEIGHT);
+        }
         graphics.endFill();
 
         // Use multiply blend mode for realistic color mixing
         graphics.blendMode = PIXI.BLEND_MODES.MULTIPLY;
 
         // Add to darkness container (above entities, below UI)
-        // Use a high zIndex to ensure it's on top of other elements in that container
         graphics.zIndex = 100;
         this.darknessContainer.addChild(graphics);
 
         this.submersionOverlay = graphics;
-        console.log(`Applied submersion overlay: #${tint.toString(16)}`);
+        this._submersionTint = tint;
+    }
+
+    updateSubmersionOverlay() {
+        if (!this.submersionOverlay || !this.engine.viewportEnabled) return;
+        const tint = this._submersionTint;
+        this.darknessContainer.removeChild(this.submersionOverlay);
+        this.submersionOverlay.destroy();
+        this.submersionOverlay = null;
+        this.applySubmersionTint(tint);
     }
 
     /**
@@ -7784,6 +8057,49 @@ class RenderSystem {
         }
         this.highlightedSprites = [];
         this.highlightEnabled = false;
+    }
+
+    updateTileVisibility(originX, originY, vpW, vpH) {
+        const margin = 1;
+        const minX = Math.max(0, originX - margin);
+        const minY = Math.max(0, originY - margin);
+        const maxX = Math.min(this.mapWidth, originX + vpW + margin);
+        const maxY = Math.min(this.mapHeight, originY + vpH + margin);
+
+        for (let y = 0; y < this.mapHeight; y++) {
+            for (let x = 0; x < this.mapWidth; x++) {
+                const vis = (x >= minX && x < maxX && y >= minY && y < maxY);
+                if (this.backgroundSprites[y]?.[x]) this.backgroundSprites[y][x].visible = vis;
+                if (this.floorSprites[y]?.[x]) this.floorSprites[y][x].visible = vis;
+                if (this.darknessSprites[y]?.[x]) this.darknessSprites[y][x].visible = vis;
+                if (this.lightColorSprites[y]?.[x]) this.lightColorSprites[y][x].visible = vis;
+            }
+        }
+    }
+
+    updateEntityVisibility(originX, originY, vpW, vpH) {
+        if (!this.engine.viewportEnabled) return;
+        for (const actor of this.engine.entityManager.actors) {
+            const inView = actor.x >= originX && actor.x < originX + vpW &&
+                           actor.y >= originY && actor.y < originY + vpH;
+            if (actor.spriteBase) actor.spriteBase.visible = inView;
+            if (actor.spriteTop) {
+                const topInView = (actor.y - 1) >= originY && (actor.y - 1) < originY + vpH &&
+                                  actor.x >= originX && actor.x < originX + vpW;
+                actor.spriteTop.visible = inView || topInView;
+            }
+            if (actor.spriteEquipment) {
+                for (const slot of ['top', 'middle', 'lower']) {
+                    if (actor.spriteEquipment[slot]) actor.spriteEquipment[slot].visible = inView;
+                }
+            }
+        }
+        for (const item of this.engine.entityManager.items) {
+            if (item.sprite) {
+                item.sprite.visible = item.x >= originX && item.x < originX + vpW &&
+                                      item.y >= originY && item.y < originY + vpH;
+            }
+        }
     }
 
     /**
@@ -8538,8 +8854,19 @@ class RenderSystem {
     updateDarkness(lightingManager, fogOfWar = false) {
         if (!this.darknessSprites.length) return;
 
-        for (let y = 0; y < lightingManager.height; y++) {
-            for (let x = 0; x < lightingManager.width; x++) {
+        const engine = this.engine;
+        const margin = 2;
+        const startX = engine.viewportEnabled ? Math.max(0, engine.sectionOriginX - margin) : 0;
+        const startY = engine.viewportEnabled ? Math.max(0, engine.sectionOriginY - margin) : 0;
+        const endX = engine.viewportEnabled
+            ? Math.min(lightingManager.width, engine.sectionOriginX + engine.viewportWidth + margin)
+            : lightingManager.width;
+        const endY = engine.viewportEnabled
+            ? Math.min(lightingManager.height, engine.sectionOriginY + engine.viewportHeight + margin)
+            : lightingManager.height;
+
+        for (let y = startY; y < endY; y++) {
+            for (let x = startX; x < endX; x++) {
                 const darkSprite = this.darknessSprites[y]?.[x];
                 const lightColorSprite = this.lightColorSprites[y]?.[x];
 

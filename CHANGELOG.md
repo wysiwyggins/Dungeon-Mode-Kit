@@ -17,18 +17,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned
 
-- Multi-canvas levels
 - put a counter by repeated description messages rather than let them add additional messages to list
 
 ### In Progress
 
 - Adjacent liquid actors mix colors (works but isn't super performant)
-- multi actor "snakes" (works, example is scutigera_head and scutigera_body, should be more modular and generalized)
 - Mining (works but requires testing and refinement, Currently 3 hits always removes a breakable actor, which feels unnatural)
 - FOV epistemology (currently messages aren't filtered by vision range, make sound alternate messages for those, also some things like mining walls can still be seen out of range)
-- Ball of thread item and entity trails (this is almost done, last tile of thread is hidden when walking down but still overlaps actor top tile when approaching from under on either side). Monsters should be able to follow thread.
 
-## [0.8b] 2025-03-05
+## [0.9b] 2026-03-05
+
+### Added
+
+- Viewport system for maps larger than the canvas:
+  - Per-prototype `viewport_width` and `viewport_height` in mechanics config
+  - Zelda-style screen snap when player crosses section boundaries
+  - Backwards compatible: levels without viewport config display full map as before
+  - AI margin system freezes off-screen actors beyond configurable tile distance
+  - Mouse input, walk paths, line paths, darkness, and lighting all viewport-aware
+- Ball of thread `follow_thread` AI behavior:
+  - Monsters with `follows_thread` attribute detect and follow thread trail entities
+  - Pathfinds toward nearest trail segment within vision range, then walks along trail toward player
+  - At trail end, pursues the trail owner directly
+  - Added to `stationed_melee` and `aggressive_melee` personality behavior chains (gated on attribute)
+  - Minotaur (Asterion) given `follows_thread` attribute
+- Chained actor (scutigera) fixes:
+  - Body segments follow head via path history with pathfinding fallback
+  - Fixed double sprite creation bug (renderActors no longer orphans spawn-time sprites)
+  - Added `getSolidActorAt` to prevent head walking over body segments on shared tiles
+  - Chain members skip collision with each other in tryMove
+
+### Fixed
+
+- Thread trail overlap: trail segments now hidden at actor's `spriteTop` position regardless of movement direction (was only hidden when walking down)
+- `getActorAt` returning non-solid actors (water/sewage) before solid ones no longer causes invisible collisions — 10 callsites migrated to `getSolidActorAt`
+
+## [0.8b] 2026-02-25
 
 ### Added
 

@@ -147,9 +147,11 @@ class InputManager {
         const scaleX = this.engine.canvasWidth / rect.width;
         const scaleY = this.engine.canvasHeight / rect.height;
 
-        // Convert to tile coordinates
-        const tileX = Math.floor((mouseX * scaleX) / this.engine.config.tileWidth);
-        const tileY = Math.floor((mouseY * scaleY) / this.engine.config.tileHeight);
+        // Convert to tile coordinates (add viewport offset for scrolled maps)
+        const mapPixelX = (mouseX * scaleX) - (this.engine.viewportOffsetX || 0);
+        const mapPixelY = (mouseY * scaleY) - (this.engine.viewportOffsetY || 0);
+        const tileX = Math.floor(mapPixelX / this.engine.config.tileWidth);
+        const tileY = Math.floor(mapPixelY / this.engine.config.tileHeight);
 
         // Only update if tile changed
         if (tileX !== this.hoveredTile.x || tileY !== this.hoveredTile.y) {

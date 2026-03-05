@@ -208,6 +208,7 @@
       "flammable": true,
       "proper_named": true,
       "sentient": true,
+      "follows_thread": true,
       "inventory": 1,
       "remains": "skull",
       "strength": 8,

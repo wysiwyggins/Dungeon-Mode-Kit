@@ -7,7 +7,10 @@
   "next_level": "labyrinth",
   "mechanics": {
     "fog_of_war": false,
-    "darkness": false
+    "darkness": false,
+    "viewport_width": 20,
+    "viewport_height": 20,
+    "ai_margin": 5
   },
   "random_actors": {
     "poison_gas_trap": { "chance": 60, "min": 1, "max": 2 },

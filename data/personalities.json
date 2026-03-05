@@ -4,6 +4,7 @@
     "hostile": true,
     "behaviors": [
       "attack_adjacent",
+      "follow_thread",
       "pursue_target",
       "random_walk"
     ]
@@ -14,6 +15,7 @@
     "hostile": true,
     "behaviors": [
       "attack_adjacent",
+      "follow_thread",
       "pursue_target",
       "flee_from_danger"
     ]
