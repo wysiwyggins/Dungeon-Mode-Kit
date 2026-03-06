@@ -79,14 +79,13 @@ Item JSON schema:
 - `stat_bonus` - Adds stat bonuses while item is in inventory (e.g., `{"type": "stat_bonus", "defense": 10}`)
 - `leave_trail` - Leaves entity trail behind carrier as they move (e.g., thread ball)
 
-  ```json
+```json
   {
     "type": "leave_trail",
     "trail_type": "thread_trail",
     "use_item_tint": true,
     "backtrack_removes": true
   }
-
 ```
 
 **[Items](/ITEMS.md)** | **[Combat](/COMBAT.md)**
