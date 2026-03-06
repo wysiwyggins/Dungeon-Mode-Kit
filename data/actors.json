@@ -235,6 +235,19 @@
       "remains": "rubble"
     }
   },
+  "metal_wall": {
+    "name": "Wall",
+    "tileIndexBase": "OPAQUE_DARK_SHADE",
+    "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
+    "tint": "#3322AA",
+    "attributes": {
+      "solid": true,
+      "visible": true,
+      "pushable": false,
+      "breakable": false,
+      "remains": "rubble"
+    }
+  },
   "column": {
     "name": "Column",
     "tileIndexBase": "CANDLE_STICK",

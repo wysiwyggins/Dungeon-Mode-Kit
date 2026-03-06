@@ -23,6 +23,7 @@ class Architect {
         this.pendingDoorSpawns = [];
         this.pendingTorchSpawns = [];
         this.pendingLavaSpawns = [];
+        this.diggerRooms = null;
 
         // Tiled map metadata
         this.tileWidth = 16;
@@ -893,6 +894,7 @@ class Architect {
 
                 // Also spawn doors and torches from rooms
                 const rooms = generator.getRooms();
+                this.diggerRooms = rooms;  // saved for treasure room feature
                 const wallPositions = new Set(this.pendingWallSpawns.map(p => `${p.x},${p.y}`));
 
                 for (const room of rooms) {
@@ -1596,6 +1598,89 @@ class Architect {
     }
 
     // ========================================================================
+    // TREASURE ROOM
+    // ========================================================================
+
+    /**
+     * Designate one digger-generated room as the treasure room.
+     * Removes one of its pending door spawns and returns the room's floor tiles
+     * and chosen door position so the engine can place a locked door + loot.
+     * Must be called after generateProceduralMap() and before spawnPendingDoors().
+     * @returns {{ roomTiles: Array<{x,y}>, doorPos: {x,y} }|null}
+     */
+    spawnTreasureRoom() {
+        if (!this.diggerRooms || this.diggerRooms.length === 0) {
+            console.warn('Treasure room: no digger rooms available');
+            return null;
+        }
+
+        // Find rooms that have at least one corridor entrance (getDoors() returns all connections,
+        // regardless of the 50% chance that gave them a pending door spawn)
+        const eligibleRooms = this.diggerRooms.filter(room => {
+            let count = 0;
+            room.getDoors(() => count++);
+            return count > 0;
+        });
+
+        if (eligibleRooms.length === 0) {
+            console.warn('Treasure room: no eligible rooms with entrances');
+            return null;
+        }
+
+        const treasureRoom = eligibleRooms[Math.floor(ROT.RNG.getUniform() * eligibleRooms.length)];
+
+        // Collect interior floor tiles
+        const roomTiles = [];
+        for (let y = treasureRoom.getTop(); y <= treasureRoom.getBottom(); y++) {
+            for (let x = treasureRoom.getLeft(); x <= treasureRoom.getRight(); x++) {
+                if (this.floorMap[y] && this.floorMap[y][x]) {
+                    roomTiles.push({ x, y });
+                }
+            }
+        }
+
+        // Collect ALL corridor connection points for this room (not just the 50% that got door spawns)
+        const allEntrances = [];
+        treasureRoom.getDoors((x, y) => allEntrances.push({ x, y }));
+
+        if (allEntrances.length === 0) return null;
+
+        // Use the first entrance as the locked door; wall off every other corridor connection
+        const chosenDoor = allEntrances[0];
+        const doorSet = new Set(this.pendingDoorSpawns.map(p => `${p.x},${p.y}`));
+
+        for (const entrance of allEntrances) {
+            // Remove any pending plain door at this position
+            if (doorSet.has(`${entrance.x},${entrance.y}`)) {
+                this.pendingDoorSpawns = this.pendingDoorSpawns.filter(
+                    p => !(p.x === entrance.x && p.y === entrance.y)
+                );
+            }
+            // Wall off every entrance that isn't the chosen locked door
+            if (entrance !== chosenDoor) {
+                this.pendingWallSpawns.push({ x: entrance.x, y: entrance.y, type: 'metal_wall' });
+                this.walkableTiles = this.walkableTiles.filter(
+                    t => !(t.x === entrance.x && t.y === entrance.y)
+                );
+            }
+        }
+
+        // Retype all existing perimeter wall spawns to metal_wall
+        const left = treasureRoom.getLeft() - 1;
+        const right = treasureRoom.getRight() + 1;
+        const top = treasureRoom.getTop() - 1;
+        const bottom = treasureRoom.getBottom() + 1;
+        for (const wall of this.pendingWallSpawns) {
+            if (wall.x >= left && wall.x <= right && wall.y >= top && wall.y <= bottom) {
+                wall.type = 'metal_wall';
+            }
+        }
+
+        console.log(`Treasure room: ${roomTiles.length} floor tiles, locked door at (${chosenDoor.x}, ${chosenDoor.y}), ${allEntrances.length - 1} extra entrance(s) walled off`);
+        return { roomTiles, doorPos: chosenDoor };
+    }
+
+    // ========================================================================
     // UTILITIES
     // ========================================================================
 
@@ -1688,6 +1773,7 @@ class Architect {
         this.pendingDoorSpawns = [];
         this.pendingTorchSpawns = [];
         this.pendingLavaSpawns = [];
+        this.diggerRooms = null;
         this.actorWildcardCache = null;
     }
 }

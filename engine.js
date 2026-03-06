@@ -999,10 +999,21 @@ class DungeonEngine {
             this.snapViewportToTile(this.entityManager.player.x, this.entityManager.player.y);
         }
 
+        // Check for treasure room before pending doors are promoted to actors
+        const treasureRoomChance = prototypeConfig.mechanics?.treasure_room ?? 0;
+        let treasureRoomData = null;
+        if (treasureRoomChance > 0 && ROT.RNG.getPercentage() <= treasureRoomChance) {
+            treasureRoomData = this.mapManager.spawnTreasureRoom();
+        }
+
         this.mapManager.spawnPendingWalls(architectContext);
         this.mapManager.spawnPendingDoors(architectContext);
         this.mapManager.spawnPendingTorches(architectContext);
         this.mapManager.spawnPendingLava(architectContext);
+
+        if (treasureRoomData) {
+            this.entityManager.spawnTreasureRoomContents(treasureRoomData, architectContext);
+        }
 
         // Spawn random actors after wildcard processing (walkable tiles now exist)
         this.entityManager.spawnRandomActorsFromConfig();
@@ -6596,7 +6607,7 @@ const BehaviorLibrary = {
         actor.engine.inputManager?.showMessage(trapMessage);
 
         // Play trap sound
-        actor.engine.playSound?.('trap1');
+        actor.engine.playSound?.('tap2');
 
         // Spawn the trap effect - supports two formats:
         // 1. trap_effect: { center, radius, outer } - spell-like area effect (like fireball)
@@ -7355,6 +7366,58 @@ class EntityManager {
                 this.addEntity(item);
                 console.log(`random_items: Spawned "${itemType}" at (${tile.x}, ${tile.y}) (${i + 1}/${count})`);
             }
+        }
+    }
+
+    /**
+     * Spawn the contents of a designated treasure room:
+     *  - A color-locked door at the entrance (must come before the key so color pairing works)
+     *  - A matching key placed randomly outside the room
+     *  - A random weapon or staff inside the room
+     */
+    spawnTreasureRoomContents({ roomTiles, doorPos }, architectContext) {
+        const prototype = this.engine.currentPrototype;
+
+        // 1. Spawn a locked_door at the entrance — triggers assignLockColor() → color enters unpairedLockColors
+        const lockedDoorData = prototype.getActorData('locked_door');
+        if (lockedDoorData) {
+            architectContext.createActor(doorPos.x, doorPos.y, 'locked_door', lockedDoorData);
+            console.log(`Treasure room: locked_door at (${doorPos.x}, ${doorPos.y})`);
+        } else {
+            console.warn('Treasure room: locked_door actor data not found');
+        }
+
+        // 2. Spawn a matching key outside the room — triggers getKeyColor() → pops the matching color
+        const roomTileSet = new Set(roomTiles.map(t => `${t.x},${t.y}`));
+        const occupied = new Set([...this.actors, ...this.items].map(e => `${e.x},${e.y}`));
+        const keyTiles = this.engine.mapManager.walkableTiles.filter(
+            t => !roomTileSet.has(`${t.x},${t.y}`) && !occupied.has(`${t.x},${t.y}`)
+        );
+
+        const keyData = prototype.getItemData('key');
+        if (keyData && keyTiles.length > 0) {
+            const keyPos = keyTiles[Math.floor(ROT.RNG.getUniform() * keyTiles.length)];
+            const key = new Item(keyPos.x, keyPos.y, 'key', keyData, this.engine);
+            this.addEntity(key);
+            console.log(`Treasure room: key at (${keyPos.x}, ${keyPos.y})`);
+        } else {
+            console.warn('Treasure room: could not place key (no key data or no valid tiles)');
+        }
+
+        // 3. Spawn a random weapon or staff inside the room
+        const lootCandidates = Object.entries(prototype.items).filter(([type, data]) => {
+            const attrs = data.attributes || {};
+            return attrs.weapon || type.startsWith('staff_');
+        });
+
+        if (lootCandidates.length > 0 && roomTiles.length > 0) {
+            const [lootType, lootData] = lootCandidates[Math.floor(ROT.RNG.getUniform() * lootCandidates.length)];
+            const lootPos = roomTiles[Math.floor(ROT.RNG.getUniform() * roomTiles.length)];
+            const loot = new Item(lootPos.x, lootPos.y, lootType, lootData, this.engine);
+            this.addEntity(loot);
+            console.log(`Treasure room: ${lootType} at (${lootPos.x}, ${lootPos.y})`);
+        } else {
+            console.warn('Treasure room: no weapon/staff candidates found for loot');
         }
     }
 
