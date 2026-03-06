@@ -1,28 +1,20 @@
 {
-  "name": "Default Test Prototype",
+  "name": "Morass",
   "loaded_sound": "tone3",
-  "description": "Welcome to the Dungeon of Doom. \nFind the crown and wear it to clear the way downward. \nPress 'i' for info.",
+  "description": "There's something moving in here.",
   "depth": 1,
   "turn_speed": 50,
   "next_level": "labyrinth",
   "mechanics": {
     "fog_of_war": false,
-    "darkness": false,
+    "darkness": true,
     "viewport_width": 40,
     "viewport_height": 40,
     "ai_margin": 5
   },
-  "random_actors": {
-    "poison_gas_trap": { "chance": 60, "min": 1, "max": 2 },
-    "fire_trap": { "chance": 40, "min": 1, "max": 2 },
-    "paralysis_gas_trap": { "chance": 50, "min": 1, "max": 2 },
-    "confusion_gas_trap": { "chance": 50, "min": 1, "max": 2 }
-  },
+  
   "random_items": {
     "staff_of_fireball": { "chance": 100, "min": 1, "max": 1 },
-    "potion_of_haste": { "chance": 50, "min": 1, "max": 2 },
-    "potion_of_confusion": { "chance": 40, "min": 1, "max": 2 },
-    "potion_of_paralysis": { "chance": 30, "min": 1, "max": 1 },
     "potion_of_regeneration": { "chance": 50, "min": 1, "max": 2 }
   }
 }
