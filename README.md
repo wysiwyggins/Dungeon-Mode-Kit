@@ -226,6 +226,49 @@ See **[ITEMS.md](ITEMS.md)** for the full attribute reference. Quick summary:
 | `collision_effect: { "health": -10 }` | Damage dealt when holder bumps a target |
 | `weapon: true` | Marks as weapon (also `"knockback"`, `"lifesteal"`, `"critical"`) |
 | `consumable: true` | Removed from inventory after use |
+| `light_source: true` | Emits light when carried; uses item `tint` as light color |
+| `lightRadius: N` | Light radius in tiles when carried (default 5) |
+| `burns_out_item: "id"` | Item type to replace this item with when its `burns` stat hits 0 |
+| `burnout_message: "..."` | Message shown to player when the item burns out |
+
+### Item stats
+
+Items support the same stat format as actors. Additional fields specific to items:
+
+| Stat field | Effect |
+| ---------- | ------ |
+| `per_turn: -1` | Decrements the stat by 1 each turn (positive values recharge) |
+| `display_label: "Fuel"` | Shows this stat in the inventory UI as `"Fuel: current/max"` with a bar |
+| `warnings: [{threshold, message}]` | Shows a message when the stat drops below `threshold * max` (e.g. `0.1` = 10%) |
+| `ready_at: N` | Used with `charge_stat` for usable items — minimum value needed to fire |
+| `ready_message: "..."` | Message shown when a recharging item becomes ready |
+
+A stat with `display_label` shows in inventory automatically. Items without `charge_stat` or any stat with `display_label` show no stat bar.
+
+Example — a torch that burns out into an unlit version:
+
+```json
+"torch": {
+  "name": "Torch",
+  "tileIndex": "BOX_VERTICAL_INVERSE_TOP",
+  "tint": "#EC7505",
+  "attributes": {
+    "pickupable": true,
+    "light_source": true,
+    "lightRadius": 6,
+    "burns_out_item": "torch_unlit",
+    "burnout_message": "Your torch burns out."
+  },
+  "stats": {
+    "burns": {
+      "max": 500,
+      "per_turn": -1,
+      "display_label": "Fuel",
+      "warnings": [{ "threshold": 0.1, "message": "Your torch is almost out!" }]
+    }
+  }
+}
+```
 
 ---
 
