@@ -9,11 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Pie in the sky
 
-- falling between levels instead of instadeath
-- tile flipbook animations
 - music engine
-- Continuity: start at any specified prototype as whatever that protos controllable actor is, OR enter from stairway as the previous player character, with inventory etc
-- Alternative first-person view pane (for perspective dungeon style play)
+- Alternative first-person view pane (for perspective dungeon style play, this is prob a whole different thing)
 
 ### Planned
 
