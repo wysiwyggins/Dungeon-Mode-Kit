@@ -78,6 +78,7 @@ Item JSON schema:
 
 - `stat_bonus` - Adds stat bonuses while item is in inventory (e.g., `{"type": "stat_bonus", "defense": 10}`)
 - `leave_trail` - Leaves entity trail behind carrier as they move (e.g., thread ball)
+
   ```json
   {
     "type": "leave_trail",
@@ -85,7 +86,7 @@ Item JSON schema:
     "use_item_tint": true,
     "backtrack_removes": true
   }
-  ```
+
 ```
 
 **[Items](/ITEMS.md)** | **[Combat](/COMBAT.md)**
@@ -224,6 +225,7 @@ Personality → behaviors[] → BehaviorLibrary
 **Fire System:** Lava incinerates any entity without `fireproof` attribute. Fire spreads to adjacent tiles with `flammable` entities. Use `fireproof: true` to make items/actors immune to incineration.
 
 **Trap System:** Traps start invisible (`visible: false`) and become visible when triggered. They remain on the tile and can be re-triggered. Items on traps "hold down" the trigger, preventing re-triggering until removed. Players are warned before stepping on visible traps (unless an item holds the trigger). Traps support:
+
 - `trap_spawn`: single actor (e.g., `"trap_spawn": "cloud"` with `trap_collision_effect` and `trap_spawn_tint`)
 - `trap_effect`: spell-like area effect (e.g., `"trap_effect": { "center": "intense_fire", "radius": 1, "outer": "fire" }`)
 - `trap_apply_state`: applies a state to actors caught in the effect (e.g., `"trap_apply_state": "paralyzed"`)
