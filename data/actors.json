@@ -448,12 +448,14 @@
     "animated": true,
     "animation_frames": "fluid",
     "tint": "#283656",
-    "personality": "liquid_pooling",
+    "rippleTint": true,
+    "personality": "deep_water_behavior",
     "attributes": {
       "solid": false,
       "visible": true,
       "spreads": false,
       "liquid": true,
+      "deep": true,
       "nauseates": true,
       "mass_noun": true,
       "entry_sound": "step_mud"

@@ -118,11 +118,9 @@
       "cellular_transform",
       "liquid_color_mix"
     ],
-    "neighbor_type": "sewage",
     "neighbor_count": 4,
-    "transform_to": "deep_sewage",
     "check_cardinal": true,
-    "mix_chance": 1,
+    "mix_chance": 0.2,
     "mix_step": 0.15
   },
 
@@ -135,7 +133,7 @@
     ],
     "item_drop_chance": 0.3,
     "item_drift_chance": 0.3,
-    "mix_chance": 1,
+    "mix_chance": 0.2,
     "mix_step": 0.15
   },
 

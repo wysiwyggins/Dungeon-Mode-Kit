@@ -140,6 +140,16 @@ function generateColorVariation(baseColor, variation = 0x101008) {
     };
 }
 
+function generateLightnessVariation(baseColor, delta = 0x10) {
+    const r = (baseColor >> 16) & 0xFF;
+    const g = (baseColor >> 8) & 0xFF;
+    const b = baseColor & 0xFF;
+    return {
+        lighter: ((Math.min(255, r + delta) << 16) | (Math.min(255, g + delta) << 8) | Math.min(255, b + delta)),
+        darker:  ((Math.max(0, r - delta) << 16)   | (Math.max(0, g - delta) << 8)   | Math.max(0, b - delta))
+    };
+}
+
 function extractRGB(color) {
     return {
         r: (color >> 16) & 0xFF,
@@ -2115,6 +2125,7 @@ class Actor extends Entity {
         this.tint = parseTint(data.tint);
         this.originalTint = this.tint;
         this.flickerTint = data.flickerTint || false;
+        this.rippleTint = data.rippleTint || false;
         this.visionRange = data.vision_range ?? 8;
 
         this.tileIndexBase = engine.spriteLibrary.resolveTile(data.tileIndexBase) || null;
@@ -6009,13 +6020,8 @@ const BehaviorLibrary = {
     cellular_transform: (actor, data) => {
         const neighborType = data.neighbor_type || actor.type;
         const requiredCount = data.neighbor_count ?? 4;
-        const transformTo = data.transform_to;
+        const transformTo = data.transform_to || ('deep_' + actor.type);
         const checkCardinal = data.check_cardinal !== false;
-
-        if (!transformTo) {
-            console.warn('cellular_transform: no transform_to specified');
-            return false;
-        }
 
         // Don't transform if already the target type
         if (actor.type === transformTo) return false;
@@ -6030,13 +6036,9 @@ const BehaviorLibrary = {
             const checkY = actor.y + dir.dy;
 
             // Find actors at this position that match the neighbor type
-            const neighbor = entityManager.actors.find(
-                a => a.x === checkX && a.y === checkY &&
-                     !a.isDead &&
-                     (a.type === neighborType || a.type === transformTo)
-            );
+            const neighbor = entityManager._getLiquidActorAt(checkX, checkY);
 
-            if (neighbor) {
+            if (neighbor && (neighbor.type === neighborType || neighbor.type === transformTo)) {
                 matchingNeighbors++;
             }
         }
@@ -6090,9 +6092,7 @@ const BehaviorLibrary = {
             const nx = actor.x + dir.dx;
             const ny = actor.y + dir.dy;
 
-            const neighbor = entityManager.actors.find(
-                a => a.x === nx && a.y === ny && !a.isDead && a.hasAttribute('liquid')
-            );
+            const neighbor = entityManager._getLiquidActorAt(nx, ny);
 
             if (!neighbor) continue;
 
@@ -7062,8 +7062,9 @@ class EntityManager {
         this.actors = [];
         this.items = [];
         this.player = null;
+        this._liquidPosCache = null;
     }
-    
+
     async spawnEntities(entryDirection = null) {
         // Track which actor/item types are placed in the map
         const placedActorTypes = new Set();
@@ -7110,10 +7111,10 @@ class EntityManager {
                 const data = actor.personality.data || {};
                 const neighborType = data.neighbor_type || actor.type;
                 const requiredCount = data.neighbor_count ?? 4;
-                const transformTo = data.transform_to;
+                const transformTo = data.transform_to || ('deep_' + actor.type);
                 const checkCardinal = data.check_cardinal !== false;
 
-                if (!transformTo || actor.type === transformTo) continue;
+                if (actor.type === transformTo) continue;
 
                 const directions = checkCardinal ? CARDINAL_DIRS : ALL_DIRS;
 
@@ -7563,6 +7564,7 @@ class EntityManager {
     }
 
     addEntity(entity) {
+        this._liquidPosCache = null;
         this.entities.push(entity);
 
         if (entity instanceof Actor) {
@@ -7585,6 +7587,7 @@ class EntityManager {
     }
     
     removeEntity(entity) {
+        this._liquidPosCache = null;
         // Remove from arrays
         this.entities = this.entities.filter(e => e !== entity);
         this.actors = this.actors.filter(a => a !== entity);
@@ -7625,6 +7628,18 @@ class EntityManager {
 
         // Update sidebar when entities change
         this.engine.interfaceManager?.updateSidebar();
+    }
+
+    _getLiquidActorAt(x, y) {
+        if (!this._liquidPosCache) {
+            this._liquidPosCache = new Map();
+            for (const a of this.actors) {
+                if (!a.isDead && a.hasAttribute('liquid')) {
+                    this._liquidPosCache.set(a.x * 10000 + a.y, a);
+                }
+            }
+        }
+        return this._liquidPosCache.get(x * 10000 + y) || null;
     }
 
     getEntityAt(x, y) {
@@ -7994,6 +8009,10 @@ class RenderSystem {
 
         // Submersion overlay sprite
         this.submersionOverlay = null;
+
+        // Ripple tint animation
+        this._rippleSprites = [];
+        this._rippleTickerFn = null;
     }
 
     /**
@@ -8587,7 +8606,37 @@ class RenderSystem {
                         .wait(300)
                         .to({ tint: colors.darker }, 60)
                         .wait(100);
+                    tween.setPosition(Math.floor(Math.random() * 890));
                     animSprite._flickerTween = tween;
+                }
+
+                if (actor.rippleTint) {
+                    const entry = {
+                        sprite: animSprite,
+                        phase: Math.random() * Math.PI * 2,
+                        baseR: (actor.tint >> 16) & 0xFF,
+                        baseG: (actor.tint >> 8) & 0xFF,
+                        baseB: actor.tint & 0xFF
+                    };
+                    this._rippleSprites.push(entry);
+
+                    if (!this._rippleTickerFn) {
+                        this._rippleTickerFn = () => {
+                            const t = Date.now();
+                            for (const e of this._rippleSprites) {
+                                if (e.sprite.destroyed) continue;
+                                const slowSin = Math.sin(t * 0.001 + e.phase);
+                                const modSin  = Math.sin(t * 0.000314 + e.phase * 0.618);
+                                const delta   = Math.round(slowSin * (0.5 + 0.5 * modSin) * 12);
+                                e.sprite.tint = (
+                                    (Math.min(255, Math.max(0, e.baseR + delta)) << 16) |
+                                    (Math.min(255, Math.max(0, e.baseG + delta)) << 8)  |
+                                     Math.min(255, Math.max(0, e.baseB + delta))
+                                );
+                            }
+                        };
+                        this.app.ticker.add(this._rippleTickerFn);
+                    }
                 }
 
                 this.entityContainer.addChild(animSprite);
@@ -8844,6 +8893,11 @@ class RenderSystem {
         this.highlightEnabled = false;
         this.linePathSprites = [];
         this.walkPathSprites = [];
+        if (this._rippleTickerFn) {
+            this.app.ticker.remove(this._rippleTickerFn);
+            this._rippleTickerFn = null;
+        }
+        this._rippleSprites = [];
     }
 
     /**
