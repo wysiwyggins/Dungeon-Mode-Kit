@@ -6171,13 +6171,9 @@ const BehaviorLibrary = {
         const driftChance = data.item_drift_chance ?? 0.3;
         let actionTaken = false;
 
-        // Find solid actors at this position (player, enemies, etc.)
-        for (const other of entityManager.actors) {
-            if (other === actor) continue;
-            if (other.isDead) continue;
-            if (other.x !== actor.x || other.y !== actor.y) continue;
-            if (!other.hasAttribute('solid')) continue;
-
+        // Find solid actor at this position (player, enemies, etc.)
+        const other = entityManager._getSolidActorAt(actor.x, actor.y);
+        if (other && other !== actor) {
             // Check if this actor has items in inventory
             if (other.inventory && other.inventory.length > 0) {
                 if (ROT.RNG.getUniform() < dropChance) {
@@ -6201,10 +6197,7 @@ const BehaviorLibrary = {
                         if (!tile || !tile.tileId) continue;
 
                         // Check for solid actors blocking
-                        const blockingActor = entityManager.actors.find(
-                            a => a.x === newX && a.y === newY && a.hasAttribute('solid') && !a.isDead
-                        );
-                        if (blockingActor) continue;
+                        if (entityManager._getSolidActorAt(newX, newY)) continue;
 
                         validPositions.push({x: newX, y: newY});
                     }
@@ -6224,6 +6217,7 @@ const BehaviorLibrary = {
                     }
 
                     // Remove from inventory
+                    const itemIndex = other.inventory.indexOf(item);
                     other.inventory.splice(itemIndex, 1);
 
                     // Place item at drop position
@@ -6270,10 +6264,7 @@ const BehaviorLibrary = {
                     if (!tile || !tile.tileId) continue;
 
                     // Check for solid actors blocking
-                    const blockingActor = entityManager.actors.find(
-                        a => a.x === newX && a.y === newY && a.hasAttribute('solid') && !a.isDead
-                    );
-                    if (blockingActor) continue;
+                    if (entityManager._getSolidActorAt(newX, newY)) continue;
 
                     validPositions.push({x: newX, y: newY});
                 }
@@ -7063,6 +7054,7 @@ class EntityManager {
         this.items = [];
         this.player = null;
         this._liquidPosCache = null;
+        this._solidPosCache = null;
     }
 
     async spawnEntities(entryDirection = null) {
@@ -7565,6 +7557,7 @@ class EntityManager {
 
     addEntity(entity) {
         this._liquidPosCache = null;
+        this._solidPosCache = null;
         this.entities.push(entity);
 
         if (entity instanceof Actor) {
@@ -7588,6 +7581,7 @@ class EntityManager {
     
     removeEntity(entity) {
         this._liquidPosCache = null;
+        this._solidPosCache = null;
         // Remove from arrays
         this.entities = this.entities.filter(e => e !== entity);
         this.actors = this.actors.filter(a => a !== entity);
@@ -7640,6 +7634,18 @@ class EntityManager {
             }
         }
         return this._liquidPosCache.get(x * 10000 + y) || null;
+    }
+
+    _getSolidActorAt(x, y) {
+        if (!this._solidPosCache) {
+            this._solidPosCache = new Map();
+            for (const a of this.actors) {
+                if (!a.isDead && a.hasAttribute('solid')) {
+                    this._solidPosCache.set(a.x * 10000 + a.y, a);
+                }
+            }
+        }
+        return this._solidPosCache.get(x * 10000 + y) || null;
     }
 
     getEntityAt(x, y) {
