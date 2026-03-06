@@ -932,9 +932,14 @@ class InputManager {
             this.engine.interfaceManager?.updateSidebar();
         }
 
-        // Called after player takes an action - unlock the turn engine to let AI act
+        // Called after player takes an action - defer AI turns to next animation frame
+        // so PIXI renders the player's move (with updated FOV) before enemies respond
         if (this.engine.turnEngine && this.engine.turnEngine._lock) {
-            this.engine.turnEngine.unlock();
+            requestAnimationFrame(() => {
+                if (this.engine.turnEngine?._lock) {
+                    this.engine.turnEngine.unlock();
+                }
+            });
         }
     }
 

@@ -55,8 +55,8 @@ class LightingManager {
             return false;
         }
 
-        const actorAtTile = this.engine.entityManager.getActorAt(x, y);
-        if (actorAtTile && actorAtTile.hasAttribute('solid') && !actorAtTile.hasAttribute('controlled')) {
+        const actorAtTile = this._solidActorCache?.get(x * 10000 + y);
+        if (actorAtTile && !actorAtTile.hasAttribute('controlled')) {
             return false;
         }
 
@@ -78,8 +78,7 @@ class LightingManager {
             return false;
         }
 
-        const actorAtTile = this.engine.entityManager.getActorAt(x, y);
-        if (actorAtTile && actorAtTile.hasAttribute('solid')) {
+        if (this._solidActorCache?.has(x * 10000 + y)) {
             return false;
         }
 
@@ -115,6 +114,15 @@ class LightingManager {
     }
 
     computeLighting() {
+        // Build solid actor position cache for O(1) lookups in visionPasses/lightPasses callbacks.
+        // Keyed by x*10000+y; only includes live solid actors.
+        this._solidActorCache = new Map();
+        for (const actor of this.engine.entityManager.actors) {
+            if (!actor.isDead && actor.hasAttribute('solid')) {
+                this._solidActorCache.set(actor.x * 10000 + actor.y, actor);
+            }
+        }
+
         // Reset light and visibility maps
         for (let y = 0; y < this.height; y++) {
             for (let x = 0; x < this.width; x++) {
