@@ -14,8 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned
 
-- put a counter by repeated description messages rather than let them add additional messages to list
+- unrolled thread is flammable like a fuse (oops it's just an entity not an item so that requires surgery)
 - Actors noticing thread trail currently works through solid actors like walls and should be fixed
+- put a counter by repeated description messages rather than let them add additional messages to list
 
 ### In Progress
 
