@@ -273,8 +273,42 @@ class InputManager {
             return;
         }
 
+        // If target is a solid actor, route path preview to the nearest adjacent tile
+        const solidActor = this.engine.entityManager?.getSolidActorAt(tileX, tileY);
+        if (solidActor) {
+            const adj = this.findAdjacentWalkableTile(tileX, tileY);
+            if (adj) renderer.showWalkPath(player.x, player.y, adj.x, adj.y);
+            else renderer.hideWalkPath();
+            return;
+        }
+
         // Show walk path (returns null if no valid path)
         renderer.showWalkPath(player.x, player.y, tileX, tileY);
+    }
+
+    /**
+     * Find the walkable tile adjacent to (targetX, targetY) closest to the player.
+     * Used when clicking a solid actor to find a tile to walk toward before colliding.
+     * @returns {{x, y}|null}
+     */
+    findAdjacentWalkableTile(targetX, targetY) {
+        const player = this.engine.entityManager?.player;
+        if (!player) return null;
+        const candidates = [
+            { x: targetX,     y: targetY - 1 },
+            { x: targetX,     y: targetY + 1 },
+            { x: targetX - 1, y: targetY },
+            { x: targetX + 1, y: targetY },
+        ];
+        let best = null, bestDist = Infinity;
+        for (const c of candidates) {
+            const floor = this.engine.mapManager?.floorMap[c.y]?.[c.x];
+            if (!floor || !floor.tileId) continue;
+            if (this.engine.entityManager?.getSolidActorAt(c.x, c.y)) continue;
+            const dist = Math.abs(c.x - player.x) + Math.abs(c.y - player.y);
+            if (dist < bestDist) { best = c; bestDist = dist; }
+        }
+        return best;
     }
 
     /**
@@ -290,6 +324,32 @@ class InputManager {
         // Don't start if target is invalid or same as player position
         if (targetX < 0 || targetY < 0) return;
         if (targetX === player.x && targetY === player.y) return;
+
+        // Check if target tile has a solid actor → click-to-collide
+        const solidActor = this.engine.entityManager?.getSolidActorAt(targetX, targetY);
+        if (solidActor) {
+            const dx = targetX - player.x;
+            const dy = targetY - player.y;
+            if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) {
+                // Adjacent: immediately collide (same as pressing the arrow key)
+                this.clearMessageStack();
+                const result = player.moveBy(dx, dy);
+                if (result.moved) {
+                    this.engine.playSoundVaried(result.entrySound || 'feets', 0.4, 0.1, 1.0, 0.06);
+                } else if (!result.actionTaken) {
+                    this.engine.playSound('tap1');
+                }
+                if (result.actionTaken) this.onPlayerAction();
+            } else {
+                // Non-adjacent: walk to a tile adjacent to the solid actor, then collide
+                const adjTile = this.findAdjacentWalkableTile(targetX, targetY);
+                if (adjTile) {
+                    this.pendingCollisionTarget = { x: targetX, y: targetY };
+                    this.executeAutoWalk(adjTile.x, adjTile.y);
+                }
+            }
+            return;
+        }
 
         // Check if target tile has a hazardous actor
         const targetActor = this.engine.entityManager?.getActorAt(targetX, targetY);
@@ -406,7 +466,23 @@ class InputManager {
             if (this.autoWalkIndex < this.autoWalkPath.length) {
                 setTimeout(() => this.autoWalkStep(), this.autoWalkDelay);
             } else {
-                this.stopAutoWalk();
+                // Execute pending collision (arrived adjacent to a solid actor)
+                const collisionTarget = this.pendingCollisionTarget;
+                this.stopAutoWalk(); // clears pendingCollisionTarget
+                if (collisionTarget) {
+                    const { x: tx, y: ty } = collisionTarget;
+                    this.pendingCollisionTarget = null;
+                    const cdx = tx - player.x;
+                    const cdy = ty - player.y;
+                    if (Math.abs(cdx) <= 1 && Math.abs(cdy) <= 1 && (cdx !== 0 || cdy !== 0)) {
+                        this.clearMessageStack();
+                        const cResult = player.moveBy(cdx, cdy);
+                        if (cResult.moved) {
+                            this.engine.playSoundVaried(cResult.entrySound || 'feets', 0.4, 0.1, 1.0, 0.06);
+                        }
+                        if (cResult.actionTaken) this.onPlayerAction();
+                    }
+                }
             }
         } else {
             // Movement blocked - stop auto-walk
@@ -517,6 +593,7 @@ class InputManager {
         this.autoWalking = false;
         this.autoWalkPath = null;
         this.autoWalkIndex = 0;
+        this.pendingCollisionTarget = null;
 
         // Re-show walk path preview if mouse is still over a tile
         if (this.hoveredTile.x >= 0 && this.hoveredTile.y >= 0) {

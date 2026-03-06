@@ -1,7 +1,7 @@
 {
   "name": "Default Test Prototype",
   "loaded_sound": "tone3",
-  "description": "Welcome to the Dungeon of Doom. \nFind the crown and wear it to clear the way downward. \nPress 'i' for info.",
+"description": "Welcome to the Dungeon of Doom. \nFind the crown and wear it to clear the way downward. \nPress 'i' for info. Use arrow keys or mouse to move.",
   "depth": 1,
   "turn_speed": 50,
   "next_level": "labyrinth",
