@@ -1,0 +1,26 @@
+{
+  "player": {
+    "name": "Rodney",
+    "tileIndexBase": "WHITE_LEG",
+    "tileIndexTop": "OPAQUE_WHITE_SMILING_FACE",
+    "vision_range": 20,
+    "collision_effect": { "health": "-{strength}" },
+    "collision_sound": "hit",
+    "attributes": {
+      "controlled": true,
+      "solid": true,
+      "visible": true,
+      "flammable": true,
+      "sighted": true,
+      "inventory": 5,
+      "strength": 8,
+      "remains": "skull",
+      "accuracy": 50,
+      "defense": 5
+    },
+    "stats": {
+      "health": 100
+    },
+    "default_items": ["sword", "torch"]
+  }
+}

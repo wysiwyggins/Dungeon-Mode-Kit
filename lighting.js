@@ -28,6 +28,7 @@ class LightingManager {
 
         this.ambientLight = config.ambient_light ?? 0.0;
         this.playerLightRadius = config.player_light_radius ?? 6;
+        this.playerAutoLight = config.player_auto_light !== false; // default true
 
         this.lightMap = Array.from({ length: height }, () =>
             Array.from({ length: width }, () => ({ intensity: 0, r: 0, g: 0, b: 0 }))
@@ -99,13 +100,30 @@ class LightingManager {
                 });
             }
 
-            if (actor.hasAttribute('controlled')) {
+            if (actor.hasAttribute('controlled') && this.playerAutoLight) {
                 sources.push({
                     x: actor.x,
                     y: actor.y,
                     radius: this.playerLightRadius,
                     intensity: 1.0,
                     color: 0xFFFFFF
+                });
+            }
+        }
+
+        // Inventory light sources (e.g. carried torches)
+        for (const actor of this.engine.entityManager.actors) {
+            if (!actor.inventory || actor.isDead) continue;
+            for (const item of actor.inventory) {
+                if (!item.hasAttribute('light_source')) continue;
+                const burns = item.stats?.burns;
+                if (burns && burns.current <= 0) continue; // burned out
+                sources.push({
+                    x: actor.x,
+                    y: actor.y,
+                    radius: item.getAttribute('lightRadius') || 5,
+                    intensity: item.getAttribute('lightIntensity') || 1.0,
+                    color: item.tint || 0xFFFFFF
                 });
             }
         }

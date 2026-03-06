@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Planned
 
 - put a counter by repeated description messages rather than let them add additional messages to list
+- Actors noticing thread trail currently works through solid actors like walls and should be fixed
 
 ### In Progress
 
@@ -25,10 +26,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Mining (works but requires testing and refinement, Currently 3 hits always removes a breakable actor, which feels unnatural)
 - FOV epistemology (currently messages aren't filtered by vision range, make sound alternate messages for those, also some things like mining walls can still be seen out of range)
 
-## [0.9b] 2026-03-05
+## [0.9b] 2026-03-06
 
 ### Added
 
+- Torch item with burnout:
+  - Torches emit orange light (radius 6) when carried in inventory
+  - `burns` stat counts down 500 turns (`per_turn: -1`); warns "Your torch is almost out!" at 10%
+  - Burns out into an `Unlit Torch` item (gray, no light)
+  - Item stat `warnings` array: threshold-based messages when a stat crosses below `threshold * max` (downward)
+  - Item `burns_out_item` attribute: item transforms into another item type when `burns` stat depletes
+- `player_auto_light` mechanics config (default `true`): set to `false` to disable the hardcoded player white light, requiring a carried light source instead
+  - All dark levels (labyrinth, catacombs, dungeon, treasure, caverns, mine, underworld) now use `player_auto_light: false`
+  - Player starts each dark level with a torch in inventory
+- Inventory light sources: any item with `light_source: true` carried by an actor emits light at the actor's position, using the item's `tint` and `lightRadius` attribute
+- Win condition object format: `{ "actor": "player", "stat": "weight", "op": ">", "value": 10 }` checks a numeric stat or attribute on a named actor; supports `>`, `>=`, `<`, `<=`, `==`, `!=`
+- README rewritten as a designer-focused guide covering level creation, Tiled layers, actor/item definition, and win conditions
 - Viewport system for maps larger than the canvas:
   - Per-prototype `viewport_width` and `viewport_height` in mechanics config
   - Zelda-style screen snap when player crosses section boundaries

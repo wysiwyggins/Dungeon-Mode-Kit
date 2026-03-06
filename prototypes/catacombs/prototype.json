@@ -8,7 +8,8 @@
   "next_level": "dungeon",
   "mechanics": {
     "fog_of_war": true,
-    "darkness": true
+    "darkness": true,
+    "player_auto_light": false
   },
   "random_actors": {
     "skeleton": { "chance": 50, "min": 3, "max": 6 }

@@ -1212,9 +1212,31 @@ class DungeonEngine {
             }
         }
 
-        // Handle object conditions (for future expansion)
         if (typeof condition === 'object') {
-            // Could add more complex conditions here
+            const { actor: actorTarget, stat, op, value } = condition;
+            if (stat && op !== undefined && value !== undefined) {
+                let target = null;
+                if (actorTarget === 'player') {
+                    target = player;
+                } else if (actorTarget) {
+                    target = this.entityManager.actors.find(
+                        a => a.type === actorTarget && !a.isDead
+                    );
+                } else {
+                    target = player;
+                }
+                if (!target) return false;
+                const current = target.stats?.[stat]?.current ?? target.getAttribute(stat);
+                if (current === undefined || current === null) return false;
+                switch (op) {
+                    case '>':  return current > value;
+                    case '>=': return current >= value;
+                    case '<':  return current < value;
+                    case '<=': return current <= value;
+                    case '==': return current == value;
+                    case '!=': return current != value;
+                }
+            }
         }
 
         console.warn(`Unknown win condition: ${condition}`);
@@ -1869,6 +1891,16 @@ class Item extends Entity {
                 if (!wasReady && isReady && stat.ready_message && this.owner?.isPlayerControlled()) {
                     const message = stat.ready_message.replace('[item_name]', this.getDisplayName ? this.getDisplayName() : this.name);
                     this.owner.engine.inputManager?.showMessage(message);
+                }
+            }
+
+            // Check warning thresholds (fires when crossing below threshold * max)
+            if (stat.warnings && this.owner?.hasAttribute('controlled')) {
+                for (const warning of stat.warnings) {
+                    const threshold = warning.threshold * stat.max;
+                    if (oldValue > threshold && stat.current <= threshold) {
+                        this.owner.engine.inputManager?.showMessage(warning.message);
+                    }
                 }
             }
         }
@@ -3247,10 +3279,41 @@ class Actor extends Entity {
     processInventoryItemStats() {
         if (!this.inventory || this.inventory.length === 0) return;
 
+        const toRemove = [];
+
         for (const item of this.inventory) {
             if (item.processPerTurnStats) {
                 item.processPerTurnStats();
             }
+
+            // Handle items that burn out (burns stat hits 0)
+            const burns = item.stats?.burns;
+            if (burns && burns.current <= 0) {
+                const isPlayer = this.hasAttribute('controlled');
+                const msg = item.getAttribute('burnout_message') || `Your ${item.name} burns out.`;
+                if (isPlayer) this.engine.inputManager?.showMessage(msg);
+
+                const burnsOutItem = item.getAttribute('burns_out_item');
+                if (burnsOutItem) {
+                    const itemData = this.engine.currentPrototype?.getItemData(burnsOutItem);
+                    if (itemData) {
+                        const newItem = new Item(-1, -1, burnsOutItem, itemData, this.engine);
+                        newItem.owner = this;
+                        const idx = this.inventory.indexOf(item);
+                        if (idx !== -1) this.inventory[idx] = newItem;
+                    } else {
+                        toRemove.push(item);
+                    }
+                } else {
+                    toRemove.push(item);
+                }
+
+                this.engine.lightingManager?.computeLighting();
+            }
+        }
+
+        for (const item of toRemove) {
+            this.inventory = this.inventory.filter(i => i !== item);
         }
     }
 

@@ -23,7 +23,7 @@
     "stats": {
       "health": 1
     },
-    "default_items": ["mattock"]
+    "default_items": ["mattock", "torch"]
   },
   "kobold": {
     "name": "kobold",

@@ -15,6 +15,41 @@
       "collision_description": "You use the [item_name]."
     }
   },
+  "torch": {
+    "name": "Torch",
+    "tileIndex": "BOX_VERTICAL_INVERSE_TOP",
+    "tint": "#EC7505",
+    "attributes": {
+      "pickupable": true,
+      "light_source": true,
+      "lightRadius": 6,
+      "visible": true,
+      "stackable": false,
+      "flammable": true,
+      "burns_out_item": "torch_unlit",
+      "burnout_message": "Your torch burns out."
+    },
+    "stats": {
+      "burns": {
+        "max": 500,
+        "per_turn": -1,
+        "warnings": [
+          { "threshold": 0.1, "message": "Your torch is almost out!" }
+        ]
+      }
+    }
+  },
+  "torch_unlit": {
+    "name": "Unlit Torch",
+    "tileIndex": "BOX_VERTICAL_INVERSE_TOP",
+    "tint": "#555555",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": false,
+      "flammable": true
+    }
+  },
 
   "sword": {
     "name": "Sword",

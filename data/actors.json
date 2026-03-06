@@ -54,6 +54,32 @@
     }
   },
 
+  "ghast": {
+    "name": "Ghast",
+    "description": "A phantasm casts a baleful, cold light on its surroundings.",
+    "tileIndexBase": "OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE",
+    "tileIndexTop": "SKULL",
+    "tint": "#bbccff",
+    "personality": "stationed_melee",
+    "collision_effect": { "health": -5 },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
+    "attributes": {
+      "hostile": true,
+      "light_source": true,
+      "solid": true,
+      "visible": true,
+      "flammable": true,
+      "sentient": true,
+      "inventory": 0,
+      "accuracy": 70,
+      "defense": 10
+    },
+    "stats": {
+      "health": 60
+    }
+  },
+
   "turret": {
     "name": "Dart turret",
     "description": "A clockwork blowgun",

@@ -9,6 +9,7 @@
   "mechanics": {
     "fog_of_war": true,
     "darkness": true,
+    "player_auto_light": false,
     "viewport_width": 40,
     "viewport_height": 40,
     "treasure_room": 100

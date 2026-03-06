@@ -21,7 +21,8 @@
     },
     "stats": {
       "health": 100
-    }
+    },
+    "default_items": ["torch"]
   },
 
   "wall": {
