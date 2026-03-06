@@ -56,7 +56,8 @@ Create a folder under `prototypes/your_level_name/`. The only required file is `
 | `mechanics.fog_of_war` | Remember explored tiles | `true` |
 | `mechanics.darkness` | Enable dynamic lighting | `true` |
 | `mechanics.ambient_light` | Minimum light level 0–1 | `0.1` |
-| `mechanics.player_light_radius` | Player torch radius in tiles | `6` |
+| `mechanics.player_light_radius` | Radius of player's auto-light (when `player_auto_light` is true) | `6` |
+| `mechanics.player_auto_light` | Auto-illuminate the player in darkness (default `true`; set `false` to require a carried light source) | `false` |
 | `random_actors` | Randomly spawned actors on load | `{"skeleton": {"chance": 60, "min": 1, "max": 3}}` |
 | `random_items` | Randomly spawned items on load | `{"sword": {"chance": 100}}` |
 | `win_conditions` | Array of win condition strings | `["killed:minotaur", "wearing:crown"]` |
@@ -88,7 +89,7 @@ For procedural map generation (when no `map.tmj` exists), add a `map_generator` 
     "fog_of_war": true,
     "darkness": true,
     "ambient_light": 0.05,
-    "player_light_radius": 5
+    "player_auto_light": false
   },
   "random_actors": {
     "skeleton": { "chance": 80, "min": 2, "max": 4 }
@@ -182,6 +183,7 @@ Collision effect values can reference the attacker's stats/attributes: `"-{stren
 | `defense` | Reduces attacker hit chance (combat) |
 | `strength` | Multiplies weapon damage ÷ 10 (combat) |
 | `sighted: true` | AI avoids hazards like fire and lava |
+| `deep: true` | Submerges any actor that enters this tile (canvas tints, sprite swaps to show submersion); extinguishes carried torches |
 
 ### Stats format
 
