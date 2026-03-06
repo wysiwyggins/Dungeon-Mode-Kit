@@ -498,7 +498,6 @@
     "attributes": {
       "solid": false,
       "visible": true,
-      "deep": true,
       "spreads": false,
       "liquid": true,
       "nauseates": true,

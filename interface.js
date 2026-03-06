@@ -683,33 +683,39 @@ class InterfaceManager {
                     itemText += item.hasAttribute('weapon') ? ' (equipped)' : ' (worn)';
                 }
 
-                // Check if item has displayable stats (like pow for staffs)
+                // Check if item has displayable stats
+                // Display is opt-in: charge_stat attribute (staffs) OR display_label on a stat (e.g. torches)
                 let statLine = null;
                 if (item.stats && Object.keys(item.stats).length > 0) {
-                    // Find a stat to display (prefer charge_stat if defined)
                     const chargeStat = item.getAttribute('charge_stat');
-                    const statKey = chargeStat || Object.keys(item.stats)[0];
-                    const stat = item.stats[statKey];
-                    if (stat && typeof stat === 'object' && stat.max !== undefined) {
-                        const uses = item.getAttribute('uses') || 1;
-                        const readyAt = stat.ready_at || Math.floor(stat.max / uses);
-                        const availableCharges = Math.floor(stat.current / readyAt);
-                        const maxCharges = uses;
-
-                        // Thermometer shows total power as fraction of max
-                        // This way using a charge visibly reduces the bar
-                        const thermometerCurrent = stat.current;
-                        const thermometerMax = stat.max;
-
-                        // Only show charge count if item is identified
-                        const isIdentified = item.identified !== false;
-
-                        statLine = {
-                            label: `      Charges: `,
-                            chargeCount: isIdentified ? `${availableCharges}/${maxCharges}` : `?/?`,
-                            current: thermometerCurrent,
-                            max: thermometerMax
-                        };
+                    if (chargeStat) {
+                        // Charge display: "Charges: N/M" for staffs and similar usable items
+                        const stat = item.stats[chargeStat];
+                        if (stat && typeof stat === 'object' && stat.max !== undefined) {
+                            const uses = item.getAttribute('uses') || 1;
+                            const readyAt = stat.ready_at || Math.floor(stat.max / uses);
+                            const availableCharges = Math.floor(stat.current / readyAt);
+                            const isIdentified = item.identified !== false;
+                            statLine = {
+                                label: `      Charges: `,
+                                chargeCount: isIdentified ? `${availableCharges}/${uses}` : `?/?`,
+                                current: stat.current,
+                                max: stat.max
+                            };
+                        }
+                    } else {
+                        // Generic display: find first stat with a display_label
+                        for (const stat of Object.values(item.stats)) {
+                            if (stat && typeof stat === 'object' && stat.display_label && stat.max !== undefined) {
+                                statLine = {
+                                    label: `      ${stat.display_label}: `,
+                                    chargeCount: `${Math.floor(stat.current)}/${stat.max}`,
+                                    current: stat.current,
+                                    max: stat.max
+                                };
+                                break;
+                            }
+                        }
                     }
                 }
 

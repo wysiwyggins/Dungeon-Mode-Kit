@@ -4971,7 +4971,7 @@ class Actor extends Entity {
             if (this.spriteTop) {
                 const topInView = (this.y - 1) >= oy && (this.y - 1) < oy + vh &&
                                   this.x >= ox && this.x < ox + vw;
-                this.spriteTop.visible = inView || topInView;
+                this.spriteTop.visible = (inView || topInView) && !this.isSubmerged;
             }
             for (const slot of ['top', 'middle', 'lower']) {
                 if (this.spriteEquipment[slot]) this.spriteEquipment[slot].visible = inView;
@@ -5020,7 +5020,8 @@ class Actor extends Entity {
      */
     getDeepActorAt(x, y) {
         const actors = this.engine.entityManager.actors.filter(
-            a => a.x === x && a.y === y &&
+            a => a !== this &&
+                 a.x === x && a.y === y &&
                  !a.isDead &&
                  !a.hasAttribute('solid') &&
                  a.hasAttribute('deep')
@@ -5063,6 +5064,35 @@ class Actor extends Entity {
             if (this.spriteEquipment[slot]) {
                 this[`_originalEquipment${slot}Visible`] = this.spriteEquipment[slot].visible;
                 this.spriteEquipment[slot].visible = false;
+            }
+        }
+
+        // Extinguish carried light sources (torches go out in deep liquids)
+        if (this.inventory) {
+            const toExtinguish = this.inventory.filter(
+                item => item.hasAttribute('light_source') && item.stats?.burns?.current > 0
+            );
+            for (const item of toExtinguish) {
+                if (this.isPlayerControlled()) {
+                    this.engine.inputManager?.showMessage(`Your ${item.name} is extinguished.`);
+                }
+                const burnsOutItem = item.getAttribute('burns_out_item');
+                if (burnsOutItem) {
+                    const itemData = this.engine.currentPrototype?.getItemData(burnsOutItem);
+                    if (itemData) {
+                        const newItem = new Item(-1, -1, burnsOutItem, itemData, this.engine);
+                        newItem.owner = this;
+                        const idx = this.inventory.indexOf(item);
+                        if (idx !== -1) this.inventory[idx] = newItem;
+                    } else {
+                        this.inventory = this.inventory.filter(i => i !== item);
+                    }
+                } else {
+                    this.inventory = this.inventory.filter(i => i !== item);
+                }
+            }
+            if (toExtinguish.length > 0) {
+                this.engine.lightingManager?.computeLighting();
             }
         }
 
@@ -8237,11 +8267,11 @@ class RenderSystem {
             if (actor.spriteTop) {
                 const topInView = (actor.y - 1) >= originY && (actor.y - 1) < originY + vpH &&
                                   actor.x >= originX && actor.x < originX + vpW;
-                actor.spriteTop.visible = inView || topInView;
+                actor.spriteTop.visible = (inView || topInView) && !actor.isSubmerged;
             }
             if (actor.spriteEquipment) {
                 for (const slot of ['top', 'middle', 'lower']) {
-                    if (actor.spriteEquipment[slot]) actor.spriteEquipment[slot].visible = inView;
+                    if (actor.spriteEquipment[slot]) actor.spriteEquipment[slot].visible = inView && !actor.isSubmerged;
                 }
             }
         }
@@ -9089,14 +9119,14 @@ class RenderSystem {
             const vis = lightingManager.getEntityVisibility(actor.x, actor.y, fogOfWar, isStatic);
 
             if (actor.spriteBase) actor.spriteBase.visible = vis.showBase;
-            if (actor.spriteTop) actor.spriteTop.visible = vis.showTop;
+            if (actor.spriteTop) actor.spriteTop.visible = vis.showTop && !actor.isSubmerged;
 
             // Update equipment sprite visibility
             // top: uses showEquipmentTop (at y-2, above actor's head) - lit same as actor
             // middle: uses showTop (on actor's top tile)
             // lower: uses showBase (on actor's base tile)
-            if (actor.spriteEquipment.top) actor.spriteEquipment.top.visible = vis.showEquipmentTop;
-            if (actor.spriteEquipment.middle) actor.spriteEquipment.middle.visible = vis.showTop;
+            if (actor.spriteEquipment.top) actor.spriteEquipment.top.visible = vis.showEquipmentTop && !actor.isSubmerged;
+            if (actor.spriteEquipment.middle) actor.spriteEquipment.middle.visible = vis.showTop && !actor.isSubmerged;
             if (actor.spriteEquipment.lower) actor.spriteEquipment.lower.visible = vis.showBase;
 
             this.setAnimationPlaying(actor.spriteBase, vis.animateBase);

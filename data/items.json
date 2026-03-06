@@ -33,6 +33,7 @@
       "burns": {
         "max": 500,
         "per_turn": -1,
+        "display_label": "Fuel",
         "warnings": [
           { "threshold": 0.1, "message": "Your torch is almost out!" }
         ]
