@@ -14,7 +14,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned
 
-- unrolled thread is flammable like a fuse (oops it's just an entity not an item so that requires surgery)
 - Actors noticing thread trail currently works through solid actors like walls and should be fixed
 - put a counter by repeated description messages rather than let them add additional messages to list
 
@@ -24,10 +23,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Mining (works but requires testing and refinement, Currently 3 hits always removes a breakable actor, which feels unnatural)
 - FOV epistemology (currently messages aren't filtered by vision range, make sound alternate messages for those, also some things like mining walls can still be seen out of range)
 
-## [0.9b] 2026-03-06
+## [0.9b] 2026-03-07
 
 ### Added
 
+- Entities are flammable by default, allows burning thread trail as fuse etc.
 - Torch item with burnout:
   - Torches emit orange light (radius 6) when carried in inventory
   - `burns` stat counts down 500 turns (`per_turn: -1`); warns "Your torch is almost out!" at 10%
