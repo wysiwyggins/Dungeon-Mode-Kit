@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Fire explosions: items with `fire_explosion: true` now detonate into an immediate burst of `intense_fire` (center + radius 1) and `fire` (outer radius) instead of a gas cloud, play the fireball sound, and give breakable solid actors in range a 60% chance to be destroyed
+- Explosive detonation is now gated by `breakable`: items with both `explosive` and `breakable` detonate on throw (potions); items with `explosive` but no `breakable` only detonate when ignited by fire (powder kegs)
+- All throwable explosive potions given `breakable: true` to preserve existing throw-to-explode behavior
+- `powder_keg` updated: correct name, `fire_explosion: true`, `explosion_radius: 2`
 - Entities are flammable by default, allows burning thread trail as fuse etc.
 - Torch item with burnout:
   - Torches emit orange light (radius 6) when carried in inventory

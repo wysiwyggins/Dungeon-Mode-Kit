@@ -1986,7 +1986,8 @@ class InterfaceManager {
 
         // Handle explosive items - they create a cloud and are always destroyed
         // Explosive items always hit (they explode on the tile regardless of accuracy)
-        if (isExplosive) {
+        // Only breakable explosives (e.g. potions) detonate on throw; non-breakable ones (e.g. powder kegs) require fire
+        if (isExplosive && item.hasAttribute('breakable')) {
             this.createExplosiveCloud(item, landingPoint.x, landingPoint.y);
             const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
             this.engine.inputManager?.showMessage(`The ${displayName} explodes!`);
@@ -2245,6 +2246,11 @@ class InterfaceManager {
      * @param {number} y - Landing Y coordinate
      */
     createExplosiveCloud(item, x, y) {
+        if (item.getAttribute('fire_explosion')) {
+            this.createFireExplosion(item, x, y);
+            return;
+        }
+
         const entityManager = this.engine.entityManager;
         if (!entityManager) return;
 
@@ -2282,6 +2288,64 @@ class InterfaceManager {
         // Update sprite tints
         if (cloud.spriteBase) cloud.spriteBase.tint = item.tint;
         if (cloud.spriteTop) cloud.spriteTop.tint = item.tint;
+    }
+
+    /**
+     * Create a fire explosion from an item with fire_explosion attribute.
+     * Spawns intense_fire at the center and nearby tiles, regular fire at the outer
+     * radius, and gives breakable solid actors a chance to be destroyed.
+     * @param {Item} item - The explosive item
+     * @param {number} x - Center X coordinate
+     * @param {number} y - Center Y coordinate
+     */
+    createFireExplosion(item, x, y) {
+        const entityManager = this.engine.entityManager;
+        if (!entityManager) return;
+
+        this.engine.playSound?.('fireball');
+
+        const radius = item.getAttribute('explosion_radius') || 2;
+        const mapManager = this.engine.mapManager;
+
+        // Spawn fire at all tiles within radius
+        for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+                const tx = x + dx;
+                const ty = y + dy;
+
+                // Check floor exists
+                const floorTile = mapManager?.floorMap[ty]?.[tx];
+                if (!floorTile || floorTile.tileId <= 0) continue;
+
+                // Skip if fire already present
+                const existingFire = entityManager.actors.find(
+                    a => a.x === tx && a.y === ty && (a.type === 'fire' || a.type === 'intense_fire') && !a.isDead
+                );
+                if (existingFire) continue;
+
+                const dist = Math.max(Math.abs(dx), Math.abs(dy));
+                const fireType = dist <= 1 ? 'intense_fire' : 'fire';
+                entityManager.spawnActor(fireType, tx, ty);
+            }
+        }
+
+        // Destroy nearby breakable solid actors
+        for (const other of entityManager.actors) {
+            if (other.isDead) continue;
+            if (!other.hasAttribute('breakable') || !other.hasAttribute('solid')) continue;
+            if (other.hasAttribute('fireproof')) continue;
+
+            const dist = Math.max(Math.abs(other.x - x), Math.abs(other.y - y));
+            if (dist > radius) continue;
+
+            if (Math.random() < 0.6) {
+                if (other.hasAttribute('visible')) {
+                    const otherName = other.getNameWithArticle ? other.getNameWithArticle() : `the ${other.name}`;
+                    this.engine.inputManager?.showMessage(`The explosion destroys ${otherName}!`);
+                }
+                other.die();
+            }
+        }
     }
 
     /**

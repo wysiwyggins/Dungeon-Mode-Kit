@@ -23,6 +23,10 @@
       ]
     }
   },
+  "random_items": {
+    "ball_of_thread": { "chance": 100, "min": 1, "max": 1 },
+    "powder_keg": { "chance": 60, "min": 1, "max": 4 }
+  },
   "random_actors": {
     "kobold": { "chance": 50, "min": 3, "max": 6 }
   },

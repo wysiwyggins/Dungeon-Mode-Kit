@@ -116,6 +116,7 @@
       "flammable": false,
       "consumable": true,
       "explosive": true,
+      "breakable": true,
       "use_verb": "Drink",
       "description": "A mysterious potion with unknown effects."
     }
@@ -199,8 +200,27 @@
       "stackable": true,
       "flammable": true,
       "explosive": true,
+      "fire_explosion": true,
+      "breakable": true,
       "drinkable": true,
       "description": "A mysterious potion with unknown effects."
+    }
+  },
+
+
+  "powder_keg": {
+    "name": "Powder Keg",
+    "tileIndex": "EMPHASIZED_EXCLAMATION_MARK",
+    "tint": "#FF2222",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": true,
+      "flammable": true,
+      "explosive": true,
+      "fire_explosion": true,
+      "explosion_radius": 2,
+      "description": "A dusty cask of black powder stamped DANGER."
     }
   },
 
@@ -416,6 +436,7 @@
       "flammable": true,
       "consumable": true,
       "explosive": true,
+      "breakable": true,
       "use_verb": "Drink",
       "use_sound": "swallow",
       "use_effect": { "apply_state": "poisoned" }
@@ -439,6 +460,7 @@
       "flammable": true,
       "consumable": true,
       "explosive": true,
+      "breakable": true,
       "use_verb": "Drink",
       "use_sound": "swallow",
       "use_effect": { "apply_state": "confused" }
@@ -462,6 +484,7 @@
       "flammable": false,
       "consumable": true,
       "explosive": true,
+      "breakable": true,
       "use_verb": "Drink",
       "use_effect": { "apply_state": "hasted" },
       "use_sound": "swallow"
@@ -485,6 +508,7 @@
       "flammable": true,
       "consumable": true,
       "explosive": true,
+      "breakable": true,
       "use_verb": "Drink",
       "use_sound": "swallow",
       "use_effect": { "apply_state": "paralyzed" }
@@ -508,6 +532,7 @@
       "flammable": false,
       "consumable": true,
       "explosive": true,
+      "breakable": true,
       "use_verb": "Drink",
       "use_effect": { "apply_state": "regenerating" },
       "use_sound": "swallow"

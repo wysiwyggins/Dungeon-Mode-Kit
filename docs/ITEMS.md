@@ -115,6 +115,51 @@ Items with `use_verb` can be used through the UI (not yet implemented).
 | `mine_wall` | Digs walls | `durability`, `break_chance` |
 | `ranged_attack` | Fires projectile | `attack_range`, `requires` |
 
+## Explosive Items
+
+Items can detonate when thrown or when ignited by fire. Two attributes control this behavior:
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `explosive` | boolean | Item can explode (required for any explosion behavior) |
+| `breakable` | boolean | Item shatters on impact when thrown |
+| `fire_explosion` | boolean | Explosion spawns fire instead of a gas cloud |
+| `explosion_radius` | number | Radius of fire burst (default: 2). Used with `fire_explosion` |
+| `cloud_lifetime` | number | Lifetime of the resulting gas cloud in turns (default: 10) |
+
+### Detonation Rules
+
+- `explosive` + `breakable` → detonates when thrown **and** when ignited by fire (e.g. potions — fragile glass shatters on impact)
+- `explosive` without `breakable` → detonates **only** when ignited by fire (e.g. powder kegs — sturdy enough to survive a throw)
+
+### Explosion Types
+
+**Gas cloud** (default): spawns a spreading cloud that applies the item's `use_effect` to actors standing in it. Useful for potions with state effects (poison, confusion, paralysis).
+
+**Fire burst** (`fire_explosion: true`): spawns `intense_fire` at the center and adjacent tiles, regular `fire` at the outer radius. Breakable solid actors within range have a 60% chance to be destroyed.
+
+```json
+// Potion — explodes on throw or fire, spreads confusion gas
+"potion_of_confusion": {
+  "attributes": {
+    "explosive": true,
+    "breakable": true,
+    "flammable": true,
+    "use_effect": { "apply_state": "confused" }
+  }
+}
+
+// Powder keg — only explodes from fire, creates fire burst
+"powder_keg": {
+  "attributes": {
+    "explosive": true,
+    "flammable": true,
+    "fire_explosion": true,
+    "explosion_radius": 2
+  }
+}
+```
+
 ## Item Examples
 
 ```json
