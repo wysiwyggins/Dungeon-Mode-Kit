@@ -1686,6 +1686,7 @@ class Entity {
         this.sprite = null;
         this.tint = 0xFFFFFF;
         this.zIndex = 1;
+        this.setAttribute('flammable', true);
     }
     
     setAttribute(key, value) {
@@ -6566,8 +6567,25 @@ const BehaviorLibrary = {
             );
 
             if (targetItem && targetItem.hasAttribute('flammable')) {
-                // Burn the item and spawn fire
+                // Burn the item - explosive items detonate instead of just burning
+                if (targetItem.hasAttribute('explosive')) {
+                    const displayName = targetItem.getDisplayName ? targetItem.getDisplayName() : targetItem.name;
+                    actor.engine.inputManager?.showMessage(`The ${displayName} explodes!`);
+                    actor.engine.interfaceManager?.createExplosiveCloud(targetItem, targetX, targetY);
+                }
                 targetItem.die();
+                const newFire = entityManager.spawnActor('fire', targetX, targetY);
+                if (newFire) {
+                    newFire.fireLifetime = newFire.lifetime || 5;
+                }
+            }
+
+            // Check for flammable entities (e.g. thread trail segments)
+            const targetEntity = entityManager.entities.find(
+                e => e.x === targetX && e.y === targetY && !e.isDead
+            );
+            if (targetEntity && targetEntity.hasAttribute('flammable')) {
+                targetEntity.die();
                 const newFire = entityManager.spawnActor('fire', targetX, targetY);
                 if (newFire) {
                     newFire.fireLifetime = newFire.lifetime || 5;

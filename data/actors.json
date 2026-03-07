@@ -255,6 +255,7 @@
     "attributes": {
       "solid": true,
       "visible": true,
+      "flammable": false,
       "pushable": false,
       "breakable": true,
       "paint_tile": "WALL_TOP",
@@ -269,6 +270,7 @@
     "attributes": {
       "solid": true,
       "visible": true,
+      "flammable": false,
       "pushable": false,
       "breakable": false,
       "remains": "rubble"
@@ -281,6 +283,7 @@
     "attributes": {
       "solid": true,
       "visible": true,
+      "flammable": false,
       "pushable": false,
       "breakable": true,
       "remains": "rubble"
@@ -295,6 +298,7 @@
     "attributes": {
       "solid": true,
       "visible": true,
+      "flammable": false,
       "pushable": false,
       "breakable": true,
       "paint_tile": "LIGHT_SHADE_UPPER_RIGHT_TRIANGLE",
@@ -310,6 +314,7 @@
     "attributes": {
       "solid": true,
       "visible": true,
+      "flammable": false,
       "pushable": false,
       "breakable": true,
       "paint_tile": "LIGHT_SHADE_UPPER_LEFT_TRIANGLE",
@@ -327,6 +332,7 @@
     "attributes": {
       "solid": true,
       "visible": true,
+      "flammable": false,
       "pushable": false,
       "breakable": true,
       "paint_tile": "LIGHT_SHADE_LOWER_LEFT_TRIANGLE",
@@ -342,6 +348,7 @@
     "attributes": {
       "solid": true,
       "visible": true,
+      "flammable": false,
       "pushable": false,
       "breakable": true,
       "paint_tile": "LIGHT_SHADE_LOWER_RIGHT_TRIANGLE",
@@ -356,6 +363,7 @@
     "attributes": {
       "solid": true,
       "visible": true,
+      "flammable": false,
       "pushable": false,
       "lode": "gold_nugget",
       "lode_chance": 20,
@@ -372,6 +380,7 @@
     "attributes": {
       "solid": true,
       "visible": true,
+      "flammable": false,
       "pushable": false,
       "lode": "uranium_nugget",
       "lode_chance": 20,
@@ -388,13 +397,14 @@
     "attributes": {
       "solid": true,
       "visible": true,
+      "flammable": false,
       "pushable": false,
       "breakable": true,
       "light_source": true,
       "remains": "rubble"
     }
   },
-  
+
   "pushable_wall": {
     "name": "Wall",
     "tileIndexBase": "OPAQUE_MEDIUM_SHADE",
@@ -402,6 +412,7 @@
     "attributes": {
       "solid": true,
       "visible": true,
+      "flammable": false,
       "pushable": true,
       "breakable": false
     }
@@ -413,6 +424,7 @@
     "attributes": {
       "solid": true,
       "visible": true,
+      "flammable": false,
       "breakable": true
     }
   },
@@ -425,6 +437,7 @@
     "attributes": {
       "solid": true,
       "visible": true,
+      "flammable": false,
       "openable": true,
       "lockable": true,
       "open": false,
@@ -441,6 +454,7 @@
     "attributes": {
       "solid": true,
       "visible": true,
+      "flammable": false,
       "openable": true,
       "lockable": true,
       "color_locked": true,
@@ -459,6 +473,7 @@
     "attributes": {
       "solid": false,
       "visible": true,
+      "flammable": false,
       "spreads": false,
       "liquid": true,
       "nauseates": true,
@@ -479,6 +494,7 @@
     "attributes": {
       "solid": false,
       "visible": true,
+      "flammable": false,
       "spreads": false,
       "liquid": true,
       "deep": true,
@@ -498,6 +514,7 @@
     "attributes": {
       "solid": false,
       "visible": true,
+      "flammable": false,
       "spreads": false,
       "liquid": true,
       "nauseates": true,
@@ -518,6 +535,7 @@
       "solid": false,
       "deep": true,
       "visible": true,
+      "flammable": false,
       "spreads": false,
       "liquid": true,
       "nauseates": true,
@@ -536,6 +554,7 @@
     "attributes": {
       "solid": true,
       "visible": true,
+      "flammable": false,
       "spreads": false,
       "entry_sound": "step_mud"
     }
@@ -551,6 +570,7 @@
     "attributes": {
       "solid": false,
       "visible": true,
+      "flammable": false,
       "damage_type": "fire",
       "spreads": false,
       "light_source": true,
@@ -570,6 +590,7 @@
     "attributes": {
       "solid": false,
       "visible": true,
+      "flammable": false,
       "damage_type": "fire",
       "light_source": true,
       "paint_tile": "OPAQUE_INVERSE_DIAMOND_SUITE",
@@ -591,6 +612,7 @@
     "attributes": {
       "solid": false,
       "visible": true,
+      "flammable": false,
       "damage_type": "fire",
       "light_source": true,
       "mass_noun": true
@@ -609,6 +631,7 @@
     "attributes": {
       "solid": true,
       "visible": true,
+      "flammable": false,
       "light_source": true
     }
   },
@@ -622,6 +645,7 @@
     "attributes": {
       "solid": false,
       "visible": true,
+      "flammable": false,
       "stairway": "down"
     }
   },
@@ -637,6 +661,7 @@
     "attributes": {
       "solid": true,
       "visible": true,
+      "flammable": false,
       "stairway": "down",
       "openable": true,
       "collision_description": "The stairs are sealed. You must fulfill your quest first.",
@@ -655,6 +680,7 @@
     "attributes": {
       "solid": false,
       "visible": true,
+      "flammable": false,
       "stairway": "up"
     }
   },
@@ -670,6 +696,7 @@
     "attributes": {
       "solid": true,
       "visible": true,
+      "flammable": false,
       "stairway": "up",
       "openable": true,
       "collision_description": "The stairs are sealed. You must fulfill your quest first.",
@@ -721,6 +748,7 @@
     "attributes": {
       "solid": false,
       "visible": true,
+      "flammable": false,
       "mass_noun": true
     },
     "collision_effect": { "health": -3 },
@@ -735,6 +763,7 @@
     "attributes": {
       "solid": false,
       "visible": false,
+      "flammable": false,
       "trap": true,
       "trap_type": "poison_gas"
     },
@@ -752,6 +781,7 @@
     "attributes": {
       "solid": false,
       "visible": false,
+      "flammable": false,
       "trap": true,
       "trap_type": "fire"
     },
@@ -767,6 +797,7 @@
     "attributes": {
       "solid": false,
       "visible": false,
+      "flammable": false,
       "trap": true,
       "trap_type": "paralysis_gas"
     },
@@ -784,6 +815,7 @@
     "attributes": {
       "solid": false,
       "visible": false,
+      "flammable": false,
       "trap": true,
       "trap_type": "confusion_gas"
     },

@@ -20,9 +20,10 @@ Based on previous expiments— [grotto roguelike](https://github.com/wysiwyggins
 ### Core Philosophy
 
 - **Modular**: Mix authored and procedural content seamlessly
-- **Semantic**: Clear, attribute-based entity system inspired by *Baba Is You*
 - **Embeddable**: Canvas games integrated into web pages
 - **Rapid Prototyping**: Quick iteration on different game mechanics, don't bother with persistence between levels
+
+Modular reusable generalized stuff lives in the scripts. Specific design happens in the data files and maps in /prototypes/. Reusable specific design is in /data/ and /prototypes/ override same named items, actors, entities, or add new ones. New actors, items, and entities can have wholly new and different attributes on top of the established ones, and our prototype data files can use those in new ways. All our prototypes use the same character spritesheet though, for a unified visual language. Prototypes can load one another as exits but they are essentially different games without continuity between them and potentially different mechanics.
 
 ## Design Questions
 
@@ -34,8 +35,8 @@ Based on previous expiments— [grotto roguelike](https://github.com/wysiwyggins
 
 - **Technology**: PIXI.js (or performance-equivalent alternative)
 - **Resolution**: Tiles displayed at half-size for hi-DPI displays
-- **Height System**: Floor + 2-tile height (floor, base, top, ((ok and also maybe hats))
-- **Layers**: Background shadows, floor, entities (1-2 tiles), UI. Most tiles have transparent backgrounds so we need to manually hide occluded tiles on locations behind actors.
+- **Height System**: Actors are two tiles high, so maps are floor + 2-tile height walls (floor, base, top, ((ok and also maybe hats as wearable items))
+- **Layers**: in Tiled- Background, Floor, Actors, Wildcards (paint tiles that spawn actors). Most tiles have transparent backgrounds so we need to manually hide occluded tiles on locations behind actors.
 - - **Effects**: Sprite tinting, animation frames
 
 ## Entity System
