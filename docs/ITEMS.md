@@ -80,7 +80,7 @@ Effects only apply if the actor already has the target attribute.
 | Boolean | Set target's attribute |
 | `"toggle"` | Toggle target's attribute |
 
-If `health` drops to 0 or below, the target dies. Effects only apply if the target has the attribute.
+If `health` drops to 0 or below, the target dies. See [COMBAT.md](/docs/COMBAT.md) Effects only apply if the target has the attribute.
 
 ### Weapon Attributes
 
