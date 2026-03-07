@@ -26,6 +26,7 @@
       "visible": true,
       "stackable": false,
       "flammable": true,
+      "ignites": true,
       "burns_out_item": "torch_unlit",
       "burnout_message": "Your torch burns out."
     },

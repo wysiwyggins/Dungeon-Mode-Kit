@@ -128,6 +128,20 @@ class LightingManager {
             }
         }
 
+        // Ground items with light_source (e.g. thrown lit torches)
+        for (const item of this.engine.entityManager.items) {
+            if (!item.hasAttribute('light_source') || item.isDead) continue;
+            const burns = item.stats?.burns;
+            if (burns && burns.current <= 0) continue;
+            sources.push({
+                x: item.x,
+                y: item.y,
+                radius: item.getAttribute('lightRadius') || 5,
+                intensity: item.getAttribute('lightIntensity') || 1.0,
+                color: item.tint || 0xFFFFFF
+            });
+        }
+
         return sources;
     }
 

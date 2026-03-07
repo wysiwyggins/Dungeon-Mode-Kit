@@ -1702,6 +1702,11 @@ class Entity {
         return this.attributes.has(key) && this.attributes.get(key);
     }
 
+    die() {
+        this.isDead = true;
+        this.engine.entityManager?.removeEntity(this);
+    }
+
     /**
      * Get the entity's name with appropriate article ("the", or none for proper nouns/mass nouns)
      * @param {boolean} capitalize - Whether to capitalize "The" (default false)
@@ -6530,8 +6535,6 @@ const BehaviorLibrary = {
         const mapManager = actor.engine.mapManager;
 
         for (const dir of CARDINAL_DIRS) {
-            if (ROT.RNG.getUniform() > spreadChance) continue;
-
             const targetX = actor.x + dir.dx;
             const targetY = actor.y + dir.dy;
 
@@ -6547,17 +6550,28 @@ const BehaviorLibrary = {
             );
             if (existingFire) continue;
 
+            // Always spread to adjacent plain flammable entities (100% fuse effect)
+            const targetEntity = entityManager.entities.find(
+                e => e.x === targetX && e.y === targetY && !e.isDead &&
+                     !(e instanceof Actor) && !(e instanceof Item)
+            );
+            if (targetEntity && targetEntity.hasAttribute('flammable')) {
+                targetEntity.die();
+                const newFire = entityManager.spawnActor('fire', targetX, targetY);
+                if (newFire) newFire.fireLifetime = newFire.lifetime || 5;
+                continue;
+            }
+
+            // Probabilistic spread to actors and items
+            if (ROT.RNG.getUniform() > spreadChance) continue;
+
             // Check for flammable actors at target position
             const targetActor = entityManager.actors.find(
                 a => a.x === targetX && a.y === targetY && !a.isDead && a.type !== 'fire'
             );
-
             if (targetActor && targetActor.hasAttribute('flammable')) {
-                // Ignite the flammable actor - spawn fire at its position
                 const newFire = entityManager.spawnActor('fire', targetX, targetY);
-                if (newFire) {
-                    newFire.fireLifetime = newFire.lifetime || 5;
-                }
+                if (newFire) newFire.fireLifetime = newFire.lifetime || 5;
                 continue;
             }
 
@@ -6565,9 +6579,7 @@ const BehaviorLibrary = {
             const targetItem = entityManager.items.find(
                 i => i.x === targetX && i.y === targetY && !i.isDead
             );
-
             if (targetItem && targetItem.hasAttribute('flammable')) {
-                // Burn the item - explosive items detonate instead of just burning
                 if (targetItem.hasAttribute('explosive')) {
                     const displayName = targetItem.getDisplayName ? targetItem.getDisplayName() : targetItem.name;
                     actor.engine.inputManager?.showMessage(`The ${displayName} explodes!`);
@@ -6575,21 +6587,7 @@ const BehaviorLibrary = {
                 }
                 targetItem.die();
                 const newFire = entityManager.spawnActor('fire', targetX, targetY);
-                if (newFire) {
-                    newFire.fireLifetime = newFire.lifetime || 5;
-                }
-            }
-
-            // Check for flammable entities (e.g. thread trail segments)
-            const targetEntity = entityManager.entities.find(
-                e => e.x === targetX && e.y === targetY && !e.isDead
-            );
-            if (targetEntity && targetEntity.hasAttribute('flammable')) {
-                targetEntity.die();
-                const newFire = entityManager.spawnActor('fire', targetX, targetY);
-                if (newFire) {
-                    newFire.fireLifetime = newFire.lifetime || 5;
-                }
+                if (newFire) newFire.fireLifetime = newFire.lifetime || 5;
             }
         }
 

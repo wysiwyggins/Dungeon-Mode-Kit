@@ -591,6 +591,7 @@
       "solid": false,
       "visible": true,
       "flammable": false,
+      "ignites": true,
       "damage_type": "fire",
       "light_source": true,
       "paint_tile": "OPAQUE_INVERSE_DIAMOND_SUITE",
@@ -613,6 +614,7 @@
       "solid": false,
       "visible": true,
       "flammable": false,
+      "ignites": true,
       "damage_type": "fire",
       "light_source": true,
       "mass_noun": true

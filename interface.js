@@ -1174,9 +1174,9 @@ class InterfaceManager {
             console.log(`${this.currentPlayer.name} dropped ${item.name}`);
         }
 
-        // Close menus and refresh
+        // Close menus
         this.closeItemActionMenu();
-        this.showPlayerInfo(this.currentPlayer);
+        this.removeBox('player_info');
     }
 
     /**
@@ -1219,6 +1219,7 @@ class InterfaceManager {
 
         // Close menus first before executing the effect
         this.closeItemActionMenu();
+        this.removeBox('player_info');
 
         if (this.currentPlayer.useItem) {
             this.currentPlayer.useItem(item);
@@ -2094,6 +2095,29 @@ class InterfaceManager {
 
             const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
             this.engine.inputManager?.showMessage(`You throw the ${displayName}.`);
+        }
+
+        // If thrown item has 'ignites' (e.g. lit torch), start fire at landing position
+        if (item.hasAttribute('ignites')) {
+            const entityManager = this.engine.entityManager;
+            // Use item.x/y if it landed on ground; fall back to landingPoint if it shattered
+            const wasAdded = entityManager?.items?.includes(item);
+            const fx = wasAdded ? item.x : landingPoint.x;
+            const fy = wasAdded ? item.y : landingPoint.y;
+            const newFire = entityManager?.spawnActor('fire', fx, fy);
+            if (newFire) newFire.fireLifetime = newFire.lifetime || 5;
+            // Directly ignite flammable items at the same tile (fire_spread only checks adjacent)
+            const itemsHere = entityManager?.items?.filter(
+                i => i.x === fx && i.y === fy && i !== item && i.hasAttribute('flammable') && !i.isDead
+            ) ?? [];
+            for (const flammableItem of itemsHere) {
+                if (flammableItem.hasAttribute('explosive')) {
+                    const name = flammableItem.getDisplayName?.() ?? flammableItem.name;
+                    this.engine.inputManager?.showMessage(`The ${name} explodes!`);
+                    this.createExplosiveCloud(flammableItem, fx, fy);
+                }
+                flammableItem.die();
+            }
         }
 
         // Check if item landed on a trap and trigger it
