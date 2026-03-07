@@ -573,7 +573,7 @@ class DungeonEngine {
     async loadGlobalData() {
         try {
             // Load global entity definitions
-            const [actorsRes, itemsRes, personalitiesRes, entitiesRes, colorsRes, adjectivesRes, attacksRes, reagentsRes, substancesRes, statesRes] = await Promise.all([
+            const [actorsRes, itemsRes, personalitiesRes, entitiesRes, colorsRes, adjectivesRes, attacksRes, reagentsRes, substancesRes, statesRes, glyphsRes] = await Promise.all([
                 fetch(`${globalVars.BASE_PATH}/data/actors.json`),
                 fetch(`${globalVars.BASE_PATH}/data/items.json`),
                 fetch(`${globalVars.BASE_PATH}/data/personalities.json`),
@@ -583,7 +583,8 @@ class DungeonEngine {
                 fetch(`${globalVars.BASE_PATH}/data/attacks.json`),
                 fetch(`${globalVars.BASE_PATH}/data/reagents.json`),
                 fetch(`${globalVars.BASE_PATH}/data/substances.json`),
-                fetch(`${globalVars.BASE_PATH}/data/states.json`)
+                fetch(`${globalVars.BASE_PATH}/data/states.json`),
+                fetch(`${globalVars.BASE_PATH}/data/glyphs.json`)
             ]);
 
             this.globalActors = await actorsRes.json();
@@ -604,6 +605,9 @@ class DungeonEngine {
 
             // Load actor states (burning, poisoned, stunned, etc.)
             this.globalStates = await statesRes.json();
+
+            // Load glyph words for scroll name generation
+            this.globalGlyphs = await glyphsRes.json();
 
             console.log('Global data loaded:', {
                 actors: Object.keys(this.globalActors).length,
@@ -1522,6 +1526,10 @@ class Prototype {
         // This ensures all instances of the same item type get the same random color
         this.itemColorAssignments = new Map();
 
+        // Glyph name assignments: maps item type -> runic two-word string (e.g. "KZAMRN BIVUHL")
+        // Ensures all instances of the same scroll type show the same unidentified name
+        this.glyphNameAssignments = new Map();
+
         // Lock pairing system: tracks color-locked doors and their assigned colors
         // Each locked door gets a unique color, keys are assigned to match
         this.lockColors = [];           // Array of assigned lock colors (color objects)
@@ -1593,6 +1601,23 @@ class Prototype {
         }
 
         return null;
+    }
+
+    /**
+     * Get or assign a runic two-word name for a scroll item type.
+     * All instances of the same scroll type show the same greeked name within this prototype.
+     */
+    getOrAssignScrollName(itemType) {
+        if (this.glyphNameAssignments.has(itemType)) {
+            return this.glyphNameAssignments.get(itemType);
+        }
+        const words = this.engine.globalGlyphs?.words;
+        if (words && words.length > 0) {
+            const name = `${randomElement(words)} ${randomElement(words)}`;
+            this.glyphNameAssignments.set(itemType, name);
+            return name;
+        }
+        return 'ARCANE';
     }
 
     /**
@@ -1823,6 +1848,12 @@ class Item extends Entity {
             }
         } else {
             this.tint = parseTint(data.tint);
+        }
+
+        // Handle glyph name assignment for items with random_glyph_name flag (scrolls)
+        if (data.random_glyph_name && engine.currentPrototype) {
+            const glyphName = engine.currentPrototype.getOrAssignScrollName(type);
+            this.templateVars.glyph_name = glyphName;
         }
 
         // Identification status - check if this type was already identified
@@ -3609,9 +3640,10 @@ class Actor extends Entity {
             success = true;
         }
 
-        // For targeted spells, identification/consumption happens when spell is cast, not on aiming
-        if (useEffect === 'targeted_spell') {
-            return success; // Early return - spell handling continues in interface.completeSpell
+        // For targeted spells and identify picker, consumption/identification happens in the
+        // follow-up UI interaction, not immediately here.
+        if (useEffect === 'targeted_spell' || useEffect === 'identify_item') {
+            return success; // Early return - handling continues in interface
         }
 
         // Handle consumable items (remove from inventory after use)
@@ -3710,6 +3742,172 @@ class Actor extends Entity {
 
         // Handle string format: method name for complex effects
         switch (effect) {
+            case 'identify_item':
+                // Handled by interface — opens item picker
+                this.engine.interfaceManager?.enterIdentifyMode(item, this);
+                return true;
+
+            case 'teleport': {
+                const walkable = this.engine.mapManager?.walkableTiles;
+                if (!walkable || walkable.length === 0) return false;
+                // Pick a random walkable tile that isn't occupied by a solid actor
+                const candidates = walkable.filter(t => !this.engine.entityManager?.getSolidActorAt(t.x, t.y));
+                if (candidates.length === 0) return false;
+                const dest = candidates[Math.floor(ROT.RNG.getUniform() * candidates.length)];
+                this.x = dest.x;
+                this.y = dest.y;
+                this.engine.updateEntityPosition(this);
+                this.engine.lightingManager?.computeLighting();
+                if (this.isPlayerControlled()) {
+                    this.engine.renderer?.centerViewportOnPlayer?.();
+                    this.engine.inputManager?.showMessage('You are whisked away in a flash of light.');
+                }
+                return true;
+            }
+
+            case 'reveal_map': {
+                const lm = this.engine.lightingManager;
+                if (!lm || !lm.exploredMap) return false;
+                for (let y = 0; y < lm.exploredMap.length; y++) {
+                    for (let x = 0; x < lm.exploredMap[y].length; x++) {
+                        lm.exploredMap[y][x] = true;
+                    }
+                }
+                lm.computeLighting();
+                const fogOfWar = this.engine.currentPrototype?.config?.mechanics?.fog_of_war || false;
+                this.engine.renderer?.updateDarkness(lm, fogOfWar);
+                if (this.isPlayerControlled()) {
+                    this.engine.inputManager?.showMessage('The layout of this place becomes clear in your mind.');
+                }
+                return true;
+            }
+
+            case 'aggravate_monsters': {
+                const player = this.engine.entityManager?.player;
+                for (const actor of this.engine.entityManager?.actors || []) {
+                    if (actor.isDead || actor === this) continue;
+                    if (actor.hasAttribute('hostile')) {
+                        actor._alertTarget = player;
+                        actor._alerted = true;
+                    }
+                }
+                if (this.isPlayerControlled()) {
+                    this.engine.inputManager?.showMessage('Every creature stirs with sudden rage.');
+                }
+                return true;
+            }
+
+            case 'summon_monsters': {
+                const proto = this.engine.currentPrototype;
+                const randomActors = proto?.config?.random_actors;
+                if (!randomActors) return false;
+                const actorTypes = Object.keys(randomActors);
+                if (actorTypes.length === 0) return false;
+                const count = 2 + Math.floor(ROT.RNG.getUniform() * 3); // 2–4
+                let spawned = 0;
+                const dirs = [{ dx: 0, dy: -1 }, { dx: 0, dy: 1 }, { dx: -1, dy: 0 }, { dx: 1, dy: 0 },
+                              { dx: -1, dy: -1 }, { dx: 1, dy: -1 }, { dx: -1, dy: 1 }, { dx: 1, dy: 1 }];
+                for (const dir of shuffleArray([...dirs])) {
+                    if (spawned >= count) break;
+                    const tx = this.x + dir.dx, ty = this.y + dir.dy;
+                    if (!this.engine.mapManager?.floorMap[ty]?.[tx]?.tileId) continue;
+                    if (this.engine.entityManager?.getSolidActorAt(tx, ty)) continue;
+                    const actorType = actorTypes[Math.floor(ROT.RNG.getUniform() * actorTypes.length)];
+                    const actorData = proto.getActorData(actorType);
+                    if (!actorData) continue;
+                    const actor = new Actor(tx, ty, actorType, actorData, this.engine);
+                    this.engine.entityManager.addEntity(actor);
+                    actor.loadDefaultItems?.();
+                    this.engine.addActorToScheduler?.(actor);
+                    spawned++;
+                }
+                if (this.isPlayerControlled()) {
+                    this.engine.inputManager?.showMessage('Something answers the call.');
+                }
+                return spawned > 0;
+            }
+
+            case 'recharge_items': {
+                let recharged = false;
+                for (const invItem of this.inventory || []) {
+                    const chargeStat = invItem.getAttribute('charge_stat');
+                    if (!chargeStat || !invItem.stats?.[chargeStat]) continue;
+                    const stat = invItem.stats[chargeStat];
+                    if (stat.current < stat.max) {
+                        stat.current = stat.max;
+                        recharged = true;
+                    }
+                }
+                if (this.isPlayerControlled()) {
+                    this.engine.interfaceManager?.updatePlayerInfo();
+                    this.engine.inputManager?.showMessage(recharged
+                        ? 'Your magical items hum with renewed energy.'
+                        : 'You have nothing to recharge.');
+                }
+                return recharged;
+            }
+
+            case 'shatter_walls': {
+                const radius = 3;
+                let shattered = false;
+                const toRemove = [];
+                for (const actor of this.engine.entityManager?.actors || []) {
+                    if (actor.isDead) continue;
+                    if (!actor.hasAttribute('solid') || !actor.hasAttribute('breakable')) continue;
+                    const dist = Math.abs(actor.x - this.x) + Math.abs(actor.y - this.y);
+                    if (dist <= radius) toRemove.push(actor);
+                }
+                for (const actor of toRemove) {
+                    actor.die?.();
+                    shattered = true;
+                }
+                if (shattered) this.engine.lightingManager?.computeLighting();
+                if (this.isPlayerControlled()) {
+                    this.engine.inputManager?.showMessage(shattered
+                        ? 'The walls crack and crumble.'
+                        : 'Nothing breaks.');
+                }
+                return shattered;
+            }
+
+            case 'darkness_field': {
+                const radius = 5;
+                let extinguished = false;
+                // Extinguish light source items carried by actors in radius
+                for (const actor of this.engine.entityManager?.actors || []) {
+                    if (actor.isDead) continue;
+                    const dist = Math.abs(actor.x - this.x) + Math.abs(actor.y - this.y);
+                    if (dist > radius) continue;
+                    for (const invItem of actor.inventory || []) {
+                        if (!invItem.hasAttribute('light_source')) continue;
+                        const burns = invItem.stats?.burns;
+                        if (burns && burns.current > 0) {
+                            burns.current = 0;
+                            extinguished = true;
+                            if (actor.isPlayerControlled()) {
+                                this.engine.inputManager?.showMessage(`Your ${invItem.name} goes dark.`);
+                            }
+                        }
+                    }
+                }
+                // Extinguish ground light source items in radius
+                for (const groundItem of this.engine.entityManager?.items || []) {
+                    if (!groundItem.hasAttribute('light_source')) continue;
+                    const dist = Math.abs(groundItem.x - this.x) + Math.abs(groundItem.y - this.y);
+                    if (dist > radius) continue;
+                    const burns = groundItem.stats?.burns;
+                    if (burns && burns.current > 0) {
+                        burns.current = 0;
+                        extinguished = true;
+                    }
+                }
+                if (extinguished) this.engine.lightingManager?.computeLighting();
+                if (this.isPlayerControlled()) {
+                    this.engine.inputManager?.showMessage('All light fades around you.');
+                }
+                return true;
+            }
+
             case 'targeted_spell':
                 // Targeted spell enters aiming mode - handled by interface
                 // Check if item stat is ready (for charged items like staffs)

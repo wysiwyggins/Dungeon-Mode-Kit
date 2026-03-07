@@ -274,8 +274,33 @@ class InterfaceManager {
             return `LATIN_SMALL_LETTER_${char.toUpperCase()}`;
         }
 
+        // Accented Latin characters present in the spritesheet
+        const accentedMap = {
+            'č': 'LATIN_SMALL_LETTER_C_WITH_CARON',
+            'é': 'LATIN_SMALL_LETTER_E_WITH_ACUTE',
+            'ó': 'LATIN_SMALL_LETTER_O_WITH_ACUTE',
+            'í': 'LATIN_SMALL_LETTER_I_WITH_ACUTE',
+            'š': 'LATIN_SMALL_LETTER_S_WITH_CARON',
+            'Á': 'LATIN_CAPITAL_LETTER_A_WITH_ACUTE',
+            'ř': 'LATIN_SMALL_LETTER_R_WITH_CARON',
+            'ů': 'LATIN_SMALL_LETTER_U_WITH_RING_ABOVE',
+        };
+        if (accentedMap[char]) return accentedMap[char];
+
+        // Deseret characters (supplementary plane — codePointAt decodes surrogate pairs)
+        const cp = char.codePointAt(0);
+        if (cp === 0x1041D) return 'DESERET_CAPITAL_LETTER_ES';
+        if (cp === 0x10444) return 'DESERET_SMALL_LETTER_THEE';
+
         return null;
     }
+
+    /**
+     * Split a string into an array of visual characters, correctly handling
+     * Unicode supplementary-plane characters (surrogate pairs).
+     * Use this instead of str[i] index access in render loops.
+     */
+    splitChars(str) { return [...str]; }
 
     /**
      * Check if a stat should be rendered as a thermometer bar
@@ -528,8 +553,9 @@ class InterfaceManager {
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
             const line = lines[lineIndex];
-            for (let charIndex = 0; charIndex < line.length; charIndex++) {
-                const char = line[charIndex];
+            const chars = this.splitChars(line);
+            for (let charIndex = 0; charIndex < chars.length; charIndex++) {
+                const char = chars[charIndex];
                 const charX = textStartX + (charIndex * globalVars.TILE_WIDTH);
                 const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
 
@@ -815,8 +841,9 @@ class InterfaceManager {
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
             const line = lines[lineIndex];
-            for (let charIndex = 0; charIndex < line.length; charIndex++) {
-                const char = line[charIndex];
+            const chars = this.splitChars(line);
+            for (let charIndex = 0; charIndex < chars.length; charIndex++) {
+                const char = chars[charIndex];
                 const charX = textStartX + (charIndex * globalVars.TILE_WIDTH);
                 const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
 
@@ -1012,8 +1039,9 @@ class InterfaceManager {
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
             const line = lines[lineIndex];
-            for (let charIndex = 0; charIndex < line.length; charIndex++) {
-                const char = line[charIndex];
+            const chars = this.splitChars(line);
+            for (let charIndex = 0; charIndex < chars.length; charIndex++) {
+                const char = chars[charIndex];
                 const charX = textStartX + (charIndex * globalVars.TILE_WIDTH);
                 const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
 
@@ -1039,6 +1067,36 @@ class InterfaceManager {
      * @returns {boolean} True if the key was handled
      */
     handleInventoryKey(key) {
+        // Identify mode intercepts key input before the normal inventory flow
+        if (this.identifyMode) {
+            if (key === 'Escape') {
+                this.exitIdentifyMode();
+                return true;
+            }
+            const letters = 'abcdefghijklmnopqrstuvwxyz';
+            const idx = letters.indexOf(key);
+            if (idx >= 0) {
+                const caster = this.identifyCaster;
+                const scroll = this.identifyScrollItem;
+                const unidentified = (caster?.inventory || []).filter(i => i !== scroll && i.identified === false);
+                const target = unidentified[idx];
+                if (target) {
+                    target.identify();
+                    const revealed = target.getDisplayName ? target.getDisplayName() : target.name;
+                    this.engine.inputManager?.showMessage(`It's a ${revealed}!`);
+                    this.engine.playSound?.('tap1');
+                    // Remove scroll from inventory (consumable)
+                    if (caster && scroll) {
+                        caster.inventory = caster.inventory.filter(i => i !== scroll);
+                    }
+                    this.exitIdentifyMode();
+                    this.hidePlayerInfo();
+                    this.engine.inputManager?.onPlayerAction?.();
+                }
+            }
+            return true;
+        }
+
         if (!this.inventoryMode || !this.currentPlayer) return false;
 
         // If action menu is open, handle number keys for actions
@@ -1225,8 +1283,8 @@ class InterfaceManager {
             this.currentPlayer.useItem(item);
         }
 
-        // Don't consume turn if we entered spell aiming mode (turn consumed on cast)
-        if (this.spellAimingMode) {
+        // Don't consume turn if we entered spell aiming or identify mode (handled by follow-up interaction)
+        if (this.spellAimingMode || this.identifyMode) {
             return;
         }
 
@@ -1326,8 +1384,9 @@ class InterfaceManager {
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
             const line = lines[lineIndex];
-            for (let charIndex = 0; charIndex < line.length; charIndex++) {
-                const char = line[charIndex];
+            const chars = this.splitChars(line);
+            for (let charIndex = 0; charIndex < chars.length; charIndex++) {
+                const char = chars[charIndex];
                 const charX = textStartX + (charIndex * globalVars.TILE_WIDTH);
                 const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
 
@@ -1412,7 +1471,21 @@ class InterfaceManager {
             return true;
         }
 
-        // 2. Item action menu (sub-menu of inventory)
+        // 2. Identify picker (modal — highest priority after confirm)
+        if (this.identifyMode) {
+            const identBox = this.boxes.get('identify_picker');
+            if (identBox) {
+                const hit = this._hitTestBox(identBox, tileX, tileY);
+                if (hit) {
+                    this._handleIdentifyClick(hit.contentLine);
+                } else {
+                    this.exitIdentifyMode();
+                }
+            }
+            return true;
+        }
+
+        // 3. Item action menu (sub-menu of inventory)
         if (this.inventoryMode && this.selectedItemIndex !== null) {
             const actionBox = this.boxes.get('item_action_menu');
             if (actionBox) {
@@ -2407,6 +2480,94 @@ class InterfaceManager {
     }
 
     /**
+     * Open the identify item picker — player selects one unidentified item to identify.
+     * The scroll item and caster are stored; actual identification happens on item selection.
+     */
+    enterIdentifyMode(scrollItem, caster) {
+        const unidentified = (caster.inventory || []).filter(i => i !== scrollItem && i.identified === false);
+        if (unidentified.length === 0) {
+            this.engine.inputManager?.showMessage('You have nothing to identify.');
+            // Don't consume the scroll — signal failure back to executeItemEffect
+            // We do this by marking it; executeItemEffect already returned true (turn spent)
+            // so we prevent consumption by removing the consumable flag temporarily
+            scrollItem._identifyAborted = true;
+            return;
+        }
+
+        this.identifyMode = true;
+        this.identifyScrollItem = scrollItem;
+        this.identifyCaster = caster;
+        this.closeItemActionMenu();
+        this.removeBox('player_info');
+        this._showIdentifyPicker(unidentified);
+    }
+
+    /**
+     * Render the identify item picker box.
+     */
+    _showIdentifyPicker(unidentified) {
+        this.removeBox('identify_picker');
+
+        const lines = ['Identify which item?', ''];
+        const letters = 'abcdefghijklmnopqrstuvwxyz';
+        for (let i = 0; i < unidentified.length && i < letters.length; i++) {
+            const displayName = unidentified[i].getDisplayName ? unidentified[i].getDisplayName() : unidentified[i].name;
+            lines.push(`  ${letters[i]}) ${displayName}`);
+        }
+        lines.push('');
+        lines.push('  Esc) Cancel');
+
+        const padding = 1;
+        const maxLineLength = Math.max(...lines.map(l => l.length), 14);
+        const boxWidth = maxLineLength + padding * 2 + 2;
+        const boxHeight = lines.length + padding * 2 + 2;
+        const mapWidth = this.engine.mapManager?.width || 30;
+        const x = Math.max(0, Math.floor((mapWidth - boxWidth) / 2));
+        const y = 1;
+
+        const boxContainer = this.createBox('identify_picker', x, y, boxWidth, boxHeight);
+        if (!boxContainer) return;
+
+        const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
+        const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
+
+        for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+            const line = lines[lineIndex];
+            const chars = this.splitChars(line);
+            for (let charIndex = 0; charIndex < chars.length; charIndex++) {
+                const sprite = this.createCharSprite(
+                    chars[charIndex],
+                    textStartX + charIndex * globalVars.TILE_WIDTH,
+                    textStartY + lineIndex * globalVars.TILE_HEIGHT,
+                    this.defaultTextTint
+                );
+                if (sprite) boxContainer.addChild(sprite);
+            }
+        }
+    }
+
+    /**
+     * Handle a click inside the identify picker box.
+     * contentLine 0 = title, 1 = blank, 2+ = item entries (a, b, c…).
+     */
+    _handleIdentifyClick(contentLine) {
+        const itemLine = contentLine - 2; // first two lines are header + blank
+        if (itemLine < 0) return;
+        const letters = 'abcdefghijklmnopqrstuvwxyz';
+        this.handleInventoryKey(letters[itemLine]);
+    }
+
+    /**
+     * Exit identify mode without identifying anything.
+     */
+    exitIdentifyMode() {
+        this.identifyMode = false;
+        this.identifyScrollItem = null;
+        this.identifyCaster = null;
+        this.removeBox('identify_picker');
+    }
+
+    /**
      * Exit spell aiming mode without casting
      */
     exitSpellAimingMode() {
@@ -2790,8 +2951,9 @@ class InterfaceManager {
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
             const line = lines[lineIndex];
-            for (let charIndex = 0; charIndex < line.length; charIndex++) {
-                const char = line[charIndex];
+            const chars = this.splitChars(line);
+            for (let charIndex = 0; charIndex < chars.length; charIndex++) {
+                const char = chars[charIndex];
                 const charX = textStartX + (charIndex * globalVars.TILE_WIDTH);
                 const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
 
@@ -2970,8 +3132,9 @@ class InterfaceManager {
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
             const line = lines[lineIndex];
-            for (let charIndex = 0; charIndex < line.length; charIndex++) {
-                const char = line[charIndex];
+            const chars = this.splitChars(line);
+            for (let charIndex = 0; charIndex < chars.length; charIndex++) {
+                const char = chars[charIndex];
                 const charX = textStartX + (charIndex * globalVars.TILE_WIDTH);
                 const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
 

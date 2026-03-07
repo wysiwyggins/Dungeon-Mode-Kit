@@ -284,6 +284,7 @@
     "name": "gold nugget",
     "tileIndex": "INVERSE_THALER_SIGN",
     "tint": "#FFD700",
+    "ignore_darkness": true,
     "random_value": [1, 10],
     "attributes": {
       "pickupable": true,
@@ -298,6 +299,7 @@
     "name": "gold nugget",
     "tileIndex": "INVERSE_THALER_SIGN",
     "tint": "#FFD24A",
+    "ignore_darkness": true,
     "flickerTint": true,
     "random_value": [5, 10],
     "attributes": {
@@ -536,6 +538,166 @@
       "use_verb": "Drink",
       "use_effect": { "apply_state": "regenerating" },
       "use_sound": "swallow"
+    }
+  },
+
+  "scroll_of_identify": {
+    "name": "Scroll",
+    "tileIndex": "BEAMED_EIGHTH_NOTES",
+    "random_glyph_name": true,
+    "identified": false,
+    "unidentified_template": "[glyph_name] scroll",
+    "identified_template": "Scroll of Identify",
+    "effect_description": "The scroll dissolves as you read it.",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": true,
+      "consumable": true,
+      "use_verb": "Read",
+      "use_effect": "identify_item",
+      "use_sound": "page",
+      "description": "A scroll with strange runic markings."
+    }
+  },
+
+  "scroll_of_teleportation": {
+    "name": "Scroll",
+    "tileIndex": "BEAMED_EIGHTH_NOTES",
+    "random_glyph_name": true,
+    "identified": false,
+    "unidentified_template": "[glyph_name] scroll",
+    "identified_template": "Scroll of Teleportation",
+    "effect_description": "Space bends around you.",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": true,
+      "consumable": true,
+      "use_verb": "Read",
+      "use_effect": "teleport",
+      "use_sound": "page",
+      "description": "A scroll with strange runic markings."
+    }
+  },
+
+  "scroll_of_magic_mapping": {
+    "name": "Scroll",
+    "tileIndex": "BEAMED_EIGHTH_NOTES",
+    "random_glyph_name": true,
+    "identified": false,
+    "unidentified_template": "[glyph_name] scroll",
+    "identified_template": "Scroll of Magic Mapping",
+    "effect_description": "The layout of this place becomes clear in your mind.",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": true,
+      "consumable": true,
+      "use_verb": "Read",
+      "use_effect": "reveal_map",
+      "use_sound": "page",
+      "description": "A scroll with strange runic markings."
+    }
+  },
+
+  "scroll_of_aggravate_monsters": {
+    "name": "Scroll",
+    "tileIndex": "BEAMED_EIGHTH_NOTES",
+    "random_glyph_name": true,
+    "identified": false,
+    "unidentified_template": "[glyph_name] scroll",
+    "identified_template": "Scroll of Aggravate Monsters",
+    "effect_description": "Every creature stirs with sudden rage.",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": true,
+      "consumable": true,
+      "use_verb": "Read",
+      "use_effect": "aggravate_monsters",
+      "use_sound": "page",
+      "description": "A scroll with strange runic markings."
+    }
+  },
+
+  "scroll_of_summon_monsters": {
+    "name": "Scroll",
+    "tileIndex": "BEAMED_EIGHTH_NOTES",
+    "random_glyph_name": true,
+    "identified": false,
+    "unidentified_template": "[glyph_name] scroll",
+    "identified_template": "Scroll of Summon Monsters",
+    "effect_description": "Something answers the call.",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": true,
+      "consumable": true,
+      "use_verb": "Read",
+      "use_effect": "summon_monsters",
+      "use_sound": "page",
+      "description": "A scroll with strange runic markings."
+    }
+  },
+
+  "scroll_of_recharging": {
+    "name": "Scroll",
+    "tileIndex": "BEAMED_EIGHTH_NOTES",
+    "random_glyph_name": true,
+    "identified": false,
+    "unidentified_template": "[glyph_name] scroll",
+    "identified_template": "Scroll of Recharging",
+    "effect_description": "Your magical items hum with renewed energy.",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": true,
+      "consumable": true,
+      "use_verb": "Read",
+      "use_effect": "recharge_items",
+      "use_sound": "page",
+      "description": "A scroll with strange runic markings."
+    }
+  },
+
+  "scroll_of_shattering": {
+    "name": "Scroll",
+    "tileIndex": "BEAMED_EIGHTH_NOTES",
+    "random_glyph_name": true,
+    "identified": false,
+    "unidentified_template": "[glyph_name] scroll",
+    "identified_template": "Scroll of Shattering",
+    "effect_description": "The walls crack and crumble.",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": true,
+      "consumable": true,
+      "use_verb": "Read",
+      "use_effect": "shatter_walls",
+      "use_sound": "page",
+      "description": "A scroll with strange runic markings."
+    }
+  },
+
+  "scroll_of_darkness": {
+    "name": "Scroll",
+    "tileIndex": "BEAMED_EIGHTH_NOTES",
+    "random_glyph_name": true,
+    "identified": false,
+    "unidentified_template": "[glyph_name] scroll",
+    "identified_template": "Scroll of Darkness",
+    "effect_description": "All light fades around you.",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": true,
+      "consumable": true,
+      "use_verb": "Read",
+      "use_effect": "darkness_field",
+      "use_sound": "page",
+      "description": "A scroll with strange runic markings."
     }
   }
 }

@@ -20,7 +20,8 @@
     "potion_of_haste": { "chance": 50, "min": 1, "max": 2 },
     "potion_of_confusion": { "chance": 40, "min": 1, "max": 2 },
     "potion_of_paralysis": { "chance": 30, "min": 1, "max": 1 },
-    "potion_of_regeneration": { "chance": 50, "min": 1, "max": 2 }
+    "potion_of_regeneration": { "chance": 50, "min": 1, "max": 2 },
+    "scroll_of_identify": { "chance": 100, "min": 1, "max": 1 }
   },
   "win_conditions": ["wearing:crown"]
 }

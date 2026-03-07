@@ -16,7 +16,7 @@
       "flammable": true,
       "sighted": true,
       "sentient": true,
-      "inventory": 1,
+      "inventory": 2,
       "remains": "skull",
       "accuracy": 40
     },

@@ -1,6 +1,6 @@
 # Item System
 
-Items are defined in `data/items.json` or prototype-specific `items.json` files. All item behavior is driven by attributes.
+Items are defined in `data/items.json` or prototype-specific `items.json` files. Level files are merged with global data at load — only define what's new or different.
 
 ## Basic Item Structure
 
@@ -11,11 +11,12 @@ Items are defined in `data/items.json` or prototype-specific `items.json` files.
   "tint": "#HEXCOLOR",
   "attributes": {
     "pickupable": true,
-    "visible": true,
-    ...
+    "visible": true
   }
 }
 ```
+
+---
 
 ## Core Attributes
 
@@ -23,51 +24,49 @@ Items are defined in `data/items.json` or prototype-specific `items.json` files.
 |-----------|------|-------------|
 | `pickupable` | boolean | Item can be picked up by actors |
 | `visible` | boolean | Item is rendered on the map |
-| `stackable` | boolean | Multiple items combine in inventory |
-| `consumable` | boolean | Item is removed from inventory after use |
-| `flammable` | boolean | Item can be destroyed by fire |
+| `stackable` | boolean | Multiple instances combine in inventory |
+| `consumable` | boolean | Removed from inventory after successful use |
+| `flammable` | boolean | Can be destroyed by fire |
+| `pickup_sound` | string | Sound on pickup (default `"tone3"`) |
+| `use_sound` | string | Sound on use (default `"tone1"`) |
+| `description` | string | Shown in inventory action menu |
 
-## Sound Attributes
-
-| Attribute | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `pickup_sound` | string | `"tone3"` | Sound played when player picks up item |
-| `use_sound` | string | `"tone1"` | Sound played when player uses item |
+---
 
 ## Equipment (Wearable Items)
-
-Items with a `wearable` attribute are automatically equipped when picked up (until we add UI).
 
 ### Wearable Slots
 
 | Slot | Position | Use Case |
 |------|----------|----------|
-| `"top"` | Above actor's head (y-2) | Crowns, horns, halos |
-| `"middle"` | Actor's top tile (y-1) | Helmets, masks |
-| `"lower"` | Actor's base tile (y) | Armor, cloaks |
+| `"top"` | Above actor's head | Crowns, horns |
+| `"middle"` | Actor's top tile | Helmets, masks |
+| `"lower"` | Actor's base tile | Armor, cloaks |
 
 ### Wear Effects
 
-The `wear_effect` attribute modifies the wearer's attributes while equipped.
+`wear_effect` modifies the wearer's attributes while the item is equipped.
 
 ```json
 "attributes": {
-  "wearable": "top",
-  "wear_effect": { "strength": 2 }
+  "wearable": "lower",
+  "wear_effect": { "defense": 3, "strength": 1 }
 }
 ```
 
-| Value Type | On Equip | On Unequip |
+| Value type | On equip | On unequip |
 |------------|----------|------------|
 | Number | Add to attribute | Subtract from attribute |
-| Boolean | Set attribute (stores original) | Restore original value |
+| Boolean | Set attribute (stores original) | Restore original |
 | `"toggle"` | Toggle attribute | Toggle back |
 
-Effects only apply if the actor has the target attribute.
+Effects only apply if the actor already has the target attribute.
+
+---
 
 ## Collision Effects
 
-The `collision_effect` attribute modifies attributes on actors the holder walks into.
+`collision_effect` applies to actors the holder bumps into (melee weapons, keys, etc.).
 
 ```json
 "attributes": {
@@ -75,130 +74,256 @@ The `collision_effect` attribute modifies attributes on actors the holder walks 
 }
 ```
 
-| Value Type | Effect |
+| Value type | Effect |
 |------------|--------|
-| Number | Add to target's attribute (use negative for damage) |
-| Boolean | Set target's attribute to value |
+| Number | Add to target's stat/attribute (negative = damage) |
+| Boolean | Set target's attribute |
 | `"toggle"` | Toggle target's attribute |
 
-Effects only apply if the target has the attribute. If `health` drops to 0, the target dies.
+If `health` drops to 0 or below, the target dies. Effects only apply if the target has the attribute.
 
-### Examples
+### Weapon Attributes
 
-```json
-// Sword - deals 10 damage on collision
-"collision_effect": { "health": -10 }
+| Attribute | Effect |
+|-----------|--------|
+| `weapon: true` | Marks item as a weapon (affects combat calculations) |
+| `knockback: true` | Pushes target back on hit |
+| `lifesteal: true` | Attacker heals for damage dealt |
+| `critical: N` | Percentage chance to deal double damage |
 
-// Key - unlocks locked doors
-"collision_effect": { "locked": false }
-
-// Switch item - toggles a boolean
-"collision_effect": { "active": "toggle" }
-```
+---
 
 ## Use Effects (UI-Triggered)
 
-Items with `use_verb` can be used through the UI (not yet implemented).
+Items with `use_verb` appear with an action button in the inventory UI.
 
 | Attribute | Type | Description |
 |-----------|------|-------------|
-| `use_verb` | string | UI button text ("Drink", "Use", "Fire") |
-| `use_effect` | string | Effect identifier |
-| `use_sound` | string | Sound to play on use |
+| `use_verb` | string | Inventory button label (`"Drink"`, `"Read"`, `"Cast"`) |
+| `use_effect` | string or object | What happens on use |
+| `use_sound` | string | Sound played on use |
+| `use_description` | string | Message shown after use (supports `[item_name]`, `[effect_description]`, `[adjectives.yucky]` etc.) |
 
-### Built-in Use Effects
+### Object format — stat and state effects
 
-| Effect | Description | Related Attributes |
-|--------|-------------|-------------------|
-| `restore_health` | Heals the user | `restore_amount` |
-| `restore_strength` | Restores strength | `restore_amount` |
-| `mine_wall` | Digs walls | `durability`, `break_chance` |
-| `ranged_attack` | Fires projectile | `attack_range`, `requires` |
+Pass an object to modify stats, attributes, or apply states directly:
+
+```json
+"use_effect": { "health": 20 }
+"use_effect": { "apply_state": "poisoned" }
+"use_effect": { "health": 15, "apply_state": "regenerating" }
+```
+
+### String format — named effects
+
+| Effect string | Description |
+|---------------|-------------|
+| `"targeted_spell"` | Enters aiming mode; fires `spell_effect` at target tile (staffs) |
+| `"identify_item"` | Opens item picker; player selects one unidentified item to reveal |
+| `"teleport"` | Moves player to a random walkable tile |
+| `"reveal_map"` | Marks all tiles as explored (fog of war) |
+| `"aggravate_monsters"` | All hostile actors on the level become aware of the player |
+| `"summon_monsters"` | Spawns 2–4 random monsters adjacent to the player |
+| `"recharge_items"` | Restores all `charge_stat` items in inventory to full |
+| `"shatter_walls"` | Destroys breakable solid actors within radius 3 |
+| `"darkness_field"` | Extinguishes all light-source items within radius 5 |
+
+---
+
+## Light Sources
+
+An item with `light_source: true` emits light when carried in an actor's inventory, or when lying on the ground.
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `light_source` | boolean | Emits light; uses item `tint` as light color |
+| `lightRadius` | number | Light radius in tiles (default `5`) |
+| `lightIntensity` | number | Light strength 0–1 (default `1.0`) |
+| `burns_out_item` | string | Item type to replace this one when its `burns` stat hits 0 |
+| `burnout_message` | string | Message shown to player when the item burns out |
+
+```json
+"torch": {
+  "name": "Torch",
+  "tileIndex": "BOX_VERTICAL_INVERSE_TOP",
+  "tint": "#EC7505",
+  "attributes": {
+    "pickupable": true,
+    "light_source": true,
+    "lightRadius": 6,
+    "burns_out_item": "torch_unlit",
+    "burnout_message": "Your torch burns out."
+  },
+  "stats": {
+    "burns": {
+      "max": 500,
+      "per_turn": -1,
+      "display_label": "Fuel",
+      "warnings": [{ "threshold": 0.1, "message": "Your torch is almost out!" }]
+    }
+  }
+}
+```
+
+---
+
+## Item Stats
+
+Items support the same stat format as actors. Stats are defined at the top level alongside `attributes`.
+
+Simple form (expands to `{ max: N, current: N }`):
+
+```json
+"stats": { "charges": 3 }
+```
+
+Extended form:
+
+```json
+"stats": {
+  "burns": {
+    "max": 500,
+    "per_turn": -1,
+    "display_label": "Fuel",
+    "warnings": [{ "threshold": 0.1, "message": "Your torch is almost out!" }]
+  }
+}
+```
+
+| Stat field | Description |
+|------------|-------------|
+| `max` | Maximum value |
+| `per_turn` | Change each turn (negative depletes, positive recharges) |
+| `display_label` | Shows `"Label: current/max"` with a progress bar in the inventory UI |
+| `warnings` | Array of `{ threshold, message }` — message fires when stat drops below `threshold × max` |
+| `ready_at` | Used with `charge_stat` — minimum value needed to fire |
+| `ready_message` | Message shown when a recharging item reaches `ready_at` (supports `[item_name]`) |
+
+A stat with `display_label` is shown automatically in inventory. Items without `charge_stat` or `display_label` show no stat bar.
+
+### Charged Items (Staffs)
+
+Items that recharge and fire spells use `charge_stat` and `uses`:
+
+| Attribute | Description |
+|-----------|-------------|
+| `charge_stat` | Name of the stat that tracks charge |
+| `uses` | Number of casts per full charge (determines `ready_at` if not set explicitly) |
+| `spell_effect` | Object describing the AoE: `{ "center": "actor_type", "radius": N, "outer": "actor_type" }` |
+| `projectile_tile` | Tile name for the projectile animation |
+| `projectile_tint` | Hex tint for the projectile |
+| `cast_sound` | Sound played on cast |
+
+```json
+"staff_of_fireball": {
+  "name": "Staff of Fireball",
+  "tileIndex": "SOLIDUS",
+  "identified": false,
+  "unidentified_template": "[substances.substances] staff",
+  "identified_template": "Staff of Fireball",
+  "attributes": {
+    "pickupable": true,
+    "use_verb": "Cast",
+    "use_effect": "targeted_spell",
+    "charge_stat": "pow",
+    "uses": 1,
+    "spell_effect": { "center": "intense_fire", "radius": 1, "outer": "fire" },
+    "projectile_tile": "OPAQUE_INVERSE_DIAMOND_SUITE",
+    "projectile_tint": "#FF6600"
+  },
+  "stats": {
+    "pow": {
+      "max": 800,
+      "per_turn": 1,
+      "ready_message": "Your [item_name] is fully charged!"
+    }
+  }
+}
+```
+
+---
+
+## Identification System
+
+Items with `"identified": false` have two display names — an unidentified placeholder and a revealed true name. All instances of the same item type share the same placeholder within a run.
+
+| Field | Description |
+|-------|-------------|
+| `identified` | `false` = item starts unidentified |
+| `unidentified_template` | Display name before identification |
+| `identified_template` | Display name after identification |
+| `random_color` | Assigns a random consistent color per item type; use `[color]` in templates |
+| `random_glyph_name` | Assigns a random runic two-word name per item type; use `[glyph_name]` in templates |
+
+Templates support substitution tokens in `[brackets]`:
+
+| Token | Resolves to |
+|-------|-------------|
+| `[color]` | Random color name assigned to this item type (requires `random_color: true`) |
+| `[glyph_name]` | Random runic name assigned to this item type (requires `random_glyph_name: true`) |
+| `[reagents.reagents]` | Random entry from `data/reagents.json` |
+| `[substances.substances]` | Random entry from `data/substances.json` |
+| `[adjectives.yucky]` | Random entry from the `yucky` list in `data/adjectives.json` |
+| `[item_name]` | The item's current display name (identified or not) |
+
+### Potions
+
+```json
+"health_potion": {
+  "name": "Potion",
+  "tileIndex": "FEMALE_SYMBOL",
+  "random_color": true,
+  "identified": false,
+  "unidentified_template": "[color] potion",
+  "identified_template": "Potion of Healing",
+  "use_description": "The [item_name] tastes [adjectives.wine_descriptions].",
+  "attributes": {
+    "pickupable": true,
+    "stackable": true,
+    "consumable": true,
+    "use_verb": "Drink",
+    "use_effect": { "health": 20 }
+  }
+}
+```
+
+### Scrolls
+
+```json
+"scroll_of_identify": {
+  "name": "Scroll",
+  "tileIndex": "LATIN_SMALL_LETTER_S",
+  "random_glyph_name": true,
+  "identified": false,
+  "unidentified_template": "[glyph_name] scroll",
+  "identified_template": "Scroll of Identify",
+  "attributes": {
+    "pickupable": true,
+    "stackable": true,
+    "consumable": true,
+    "use_verb": "Read",
+    "use_effect": "identify_item"
+  }
+}
+```
+
+---
 
 ## Explosive Items
 
-Items can detonate when thrown or when ignited by fire. Two attributes control this behavior:
-
 | Attribute | Type | Description |
 |-----------|------|-------------|
-| `explosive` | boolean | Item can explode (required for any explosion behavior) |
+| `explosive` | boolean | Item can explode |
 | `breakable` | boolean | Item shatters on impact when thrown |
 | `fire_explosion` | boolean | Explosion spawns fire instead of a gas cloud |
-| `explosion_radius` | number | Radius of fire burst (default: 2). Used with `fire_explosion` |
-| `cloud_lifetime` | number | Lifetime of the resulting gas cloud in turns (default: 10) |
+| `explosion_radius` | number | Radius of fire burst (default `2`) |
+| `cloud_lifetime` | number | Lifetime of a gas cloud in turns (default `10`) |
 
-### Detonation Rules
+### Detonation rules
 
-- `explosive` + `breakable` → detonates when thrown **and** when ignited by fire (e.g. potions — fragile glass shatters on impact)
-- `explosive` without `breakable` → detonates **only** when ignited by fire (e.g. powder kegs — sturdy enough to survive a throw)
+- `explosive` + `breakable` → detonates on throw **and** when ignited by fire (potions)
+- `explosive` without `breakable` → detonates **only** when ignited by fire (powder kegs)
 
-### Explosion Types
+**Fire burst** (`fire_explosion: true`): spawns `intense_fire` at center and adjacent tiles, `fire` at the outer radius. Breakable solid actors in range have a 60% chance to be destroyed.
 
-**Gas cloud** (default): spawns a spreading cloud that applies the item's `use_effect` to actors standing in it. Useful for potions with state effects (poison, confusion, paralysis).
-
-**Fire burst** (`fire_explosion: true`): spawns `intense_fire` at the center and adjacent tiles, regular `fire` at the outer radius. Breakable solid actors within range have a 60% chance to be destroyed.
-
-```json
-// Potion — explodes on throw or fire, spreads confusion gas
-"potion_of_confusion": {
-  "attributes": {
-    "explosive": true,
-    "breakable": true,
-    "flammable": true,
-    "use_effect": { "apply_state": "confused" }
-  }
-}
-
-// Powder keg — only explodes from fire, creates fire burst
-"powder_keg": {
-  "attributes": {
-    "explosive": true,
-    "flammable": true,
-    "fire_explosion": true,
-    "explosion_radius": 2
-  }
-}
-```
-
-## Item Examples
-
-```json
-// Melee weapon
-"sword": {
-  "name": "Sword",
-  "tileIndex": "LATIN_CAPITAL_LETTER_T",
-  "attributes": {
-    "pickupable": true,
-    "visible": true,
-    "collision_effect": { "health": -10 }
-  }
-}
-
-// Consumable potion
-"health_potion": {
-  "name": "Health Potion",
-  "tileIndex": "EXCLAMATION_MARK",
-  "attributes": {
-    "pickupable": true,
-    "visible": true,
-    "consumable": true,
-    "use_verb": "Drink",
-    "use_effect": "restore_health",
-    "use_sound": "heal",
-    "restore_amount": 50
-  }
-}
-
-// Wearable with stat bonus
-"crown": {
-  "name": "Crown",
-  "tileIndex": "CROWN",
-  "tint": "#FFD700",
-  "attributes": {
-    "pickupable": true,
-    "visible": true,
-    "wearable": "top",
-    "wear_effect": { "strength": 2 }
-  }
-}
-```
+**Gas cloud** (default): spawns a spreading cloud that applies the item's `use_effect` to actors standing in it.

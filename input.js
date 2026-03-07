@@ -262,7 +262,7 @@ class InputManager {
 
         // Don't show path if UI is open
         const ui = this.engine.interfaceManager;
-        if (ui?.inventoryMode || ui?.confirmDialog || ui?.throwMenuMode || ui?.equipmentMenuMode) {
+        if (ui?.inventoryMode || ui?.confirmDialog || ui?.throwMenuMode || ui?.equipmentMenuMode || ui?.identifyMode) {
             renderer.hideWalkPath();
             return;
         }
