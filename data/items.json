@@ -556,7 +556,7 @@
       "consumable": true,
       "use_verb": "Read",
       "use_effect": "identify_item",
-      "use_sound": "page",
+      "use_sound": "magic",
       "description": "A scroll with strange runic markings."
     }
   },
@@ -576,7 +576,7 @@
       "consumable": true,
       "use_verb": "Read",
       "use_effect": "teleport",
-      "use_sound": "page",
+      "use_sound": "magic",
       "description": "A scroll with strange runic markings."
     }
   },
@@ -596,7 +596,7 @@
       "consumable": true,
       "use_verb": "Read",
       "use_effect": "reveal_map",
-      "use_sound": "page",
+      "use_sound": "magic",
       "description": "A scroll with strange runic markings."
     }
   },
@@ -616,7 +616,7 @@
       "consumable": true,
       "use_verb": "Read",
       "use_effect": "aggravate_monsters",
-      "use_sound": "page",
+      "use_sound": "magic",
       "description": "A scroll with strange runic markings."
     }
   },
@@ -636,7 +636,7 @@
       "consumable": true,
       "use_verb": "Read",
       "use_effect": "summon_monsters",
-      "use_sound": "page",
+      "use_sound": "magic",
       "description": "A scroll with strange runic markings."
     }
   },
@@ -656,7 +656,7 @@
       "consumable": true,
       "use_verb": "Read",
       "use_effect": "recharge_items",
-      "use_sound": "page",
+      "use_sound": "magic",
       "description": "A scroll with strange runic markings."
     }
   },
@@ -676,7 +676,7 @@
       "consumable": true,
       "use_verb": "Read",
       "use_effect": "shatter_walls",
-      "use_sound": "page",
+      "use_sound": "magic",
       "description": "A scroll with strange runic markings."
     }
   },
@@ -696,7 +696,7 @@
       "consumable": true,
       "use_verb": "Read",
       "use_effect": "darkness_field",
-      "use_sound": "page",
+      "use_sound": "magic",
       "description": "A scroll with strange runic markings."
     }
   }
