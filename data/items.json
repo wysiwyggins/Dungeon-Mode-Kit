@@ -421,7 +421,7 @@
     }
   },
 
-  "potion_of_poison": {
+  "poison_potion": {
     "name": "Potion",
     "tileIndex": "FEMALE_SYMBOL",
     "flipV": true,
@@ -445,7 +445,7 @@
     }
   },
 
-  "potion_of_confusion": {
+  "confusion_potion": {
     "name": "Potion",
     "tileIndex": "FEMALE_SYMBOL",
     "flipV": true,
@@ -469,7 +469,7 @@
     }
   },
 
-  "potion_of_haste": {
+  "haste_potion": {
     "name": "Potion",
     "tileIndex": "FEMALE_SYMBOL",
     "flipV": true,
@@ -493,7 +493,7 @@
     }
   },
 
-  "potion_of_paralysis": {
+  "paralysis_potion": {
     "name": "Potion",
     "tileIndex": "FEMALE_SYMBOL",
     "flipV": true,
@@ -517,7 +517,7 @@
     }
   },
 
-  "potion_of_regeneration": {
+  "regeneration_potion": {
     "name": "Potion",
     "tileIndex": "FEMALE_SYMBOL",
     "flipV": true,

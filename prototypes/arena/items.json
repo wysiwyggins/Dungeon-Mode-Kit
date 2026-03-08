@@ -12,6 +12,7 @@
       "visible": true,
       "stackable": true,
       "consumable": true,
+      "breakable": true,
       "use_verb": "Drink",
       "use_effect": { "defense": 5 },
       "description": "A blue potion that increases defense."
@@ -30,6 +31,7 @@
       "pickupable": true,
       "visible": true,
       "stackable": true,
+      "breakable": true,
       "consumable": true,
       "use_verb": "Drink",
       "use_effect": { "accuracy": 10 },

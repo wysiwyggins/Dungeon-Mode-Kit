@@ -15,7 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Planned
 
 - Recharge scroll case
+- Darkness scroll case
 - darker background for backgrounded ui boxes
+- check for cases where letter keys are still activating item ui instead of walking etc when UI boxes are closed
 - Actors noticing thread trail currently works through solid actors like walls and should be fixed
 - put a counter by repeated description messages rather than let them add additional messages to list
 
@@ -132,11 +134,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `confusion_gas_trap`: spawns spreading gas that confuses actors
 - State-applying potions:
   - Potions can now apply states via `use_effect: { "apply_state": "state_name" }`
-  - `potion_of_poison`: applies poisoned state (damage over time)
-  - `potion_of_confusion`: applies confused state (random movement)
-  - `potion_of_haste`: applies hasted state (extra turn)
-  - `potion_of_paralysis`: applies paralyzed state (skip turns)
-  - `potion_of_regeneration`: applies regenerating state (heal over time)
+  - `poison_potion`: applies poisoned state (damage over time)
+  - `confusion_potion`: applies confused state (random movement)
+  - `haste_potion`: applies hasted state (extra turn)
+  - `paralysis_potion`: applies paralyzed state (skip turns)
+  - `regeneration_potion`: applies regenerating state (heal over time)
   - Thrown explosive potions create clouds that apply their state to actors
 - `paralyzed` state: actors skip turns for 6 turns (similar to stunned but longer)
 - Actor `data` property: actors now store their full definition data for behavior access
