@@ -1,6 +1,7 @@
 # Item System
 
-Items are defined in `data/items.json` or prototype-specific `items.json` files. Level files are merged with global data at load — only define what's new or different.
+Items are defined in `data/items.json` or prototype-specific `items.json` files.
+Level-specific files are merged with global data at load — only define what's new or different.
 
 ## Basic Item Structure
 
@@ -8,7 +9,7 @@ Items are defined in `data/items.json` or prototype-specific `items.json` files.
 "item_id": {
   "name": "Display Name",
   "tileIndex": "TILE_NAME",
-  "tint": "#HEXCOLOR",
+  "tint": "#FFFFFF",
   "attributes": {
     "pickupable": true,
     "visible": true

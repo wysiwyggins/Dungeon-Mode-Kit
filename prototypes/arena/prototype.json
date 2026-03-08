@@ -12,12 +12,13 @@
     "type": "arena",
     "options": {
       "map_width": 40,
-      "map_height": 30
+      "map_height": 40
     }
   },
   "random_actors": {
     "minotaur": { "chance": 100, "min": 1, "max": 1 },
-    "training_dummy": { "chance": 100, "min": 2, "max": 2 }
+    "training_dummy": { "chance": 100, "min": 2, "max": 2 },
+    "skeleton": { "chance": 100, "min": 2, "max": 2 }
   },
   "random_items": {
     "strength_potion": { "chance": 100, "min": 2, "max": 3 },
@@ -27,7 +28,11 @@
     "assassin_dagger": { "chance": 100, "min": 1, "max": 1 },
     "chainmail": { "chance": 100, "min": 1, "max": 1 },
     "plate": { "chance": 100, "min": 1, "max": 1 },
-    "staff_of_fireball": { "chance": 100, "min": 1, "max": 1 }
+    "staff_of_fireball": { "chance": 100, "min": 1, "max": 1 },
+    "scroll_of_aggravate_monsters": { "chance": 100, "min": 1, "max": 1 },
+    "scroll_of_darkness": { "chance": 100, "min": 1, "max": 1 },
+    "scroll_of_recharging": { "chance": 100, "min": 1, "max": 1 },
+    "scroll_of_teleportation": { "chance": 100, "min": 1, "max": 1 }
   },
   "win_conditions": ["killed:minotaur"]
 }

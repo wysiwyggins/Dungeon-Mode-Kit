@@ -14,12 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned
 
+- Recharge scroll case
+- darker background for backgrounded ui boxes
 - Actors noticing thread trail currently works through solid actors like walls and should be fixed
 - put a counter by repeated description messages rather than let them add additional messages to list
 
 ### In Progress
 
-- Adjacent liquid actors mix colors (works but isn't super performant)
 - Mining (works but requires testing and refinement, Currently 3 hits always removes a breakable actor, which feels unnatural)
 - FOV epistemology (currently messages aren't filtered by vision range, make sound alternate messages for those, also some things like mining walls can still be seen out of range)
 
