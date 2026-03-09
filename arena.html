@@ -5,202 +5,42 @@
     <title>Combat Arena - Balance Testing</title>
     <link rel="stylesheet" href="assets/main.css" type="text/css" media="screen" charset="utf-8">
     <style>
-        * {
-            box-sizing: border-box;
-        }
         body {
-            background: #2e1a21;
-            color: #eee;
-            margin: 0;
-            padding: 20px;
+            background-color: #eaeaea;
+            * {box-sizing: border-box;}
         }
-        h1, h2, h3 {
-            color: #84DCCF;
-            margin: 0 0 10px 0;
-        }
-        h1 { font-size: 1.5em; }
-        h2 { font-size: 1.2em; color: #EC7505; }
-        h3 { font-size: 1em; color: #aaa; margin-top: 15px; }
-
-        .arena-layout {
-            display: flex;
-            gap: 20px;
-            max-width: 1400px;
-        }
-
-        .game-panel {
-            flex: 0 0 auto;
-        }
-
-        .controls-panel {
-            flex: 1;
-            max-width: 500px;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        .stat-editor {
-            background: #16213e;
-            border: 1px solid #333;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 15px;
-        }
-
-        .stat-row {
-            display: flex;
-            align-items: center;
-            margin-bottom: 8px;
-            gap: 10px;
-        }
-
-        .stat-row label {
-            flex: 0 0 100px;
-            font-size: 0.9em;
-            color: #aaa;
-        }
-
-        .stat-row input {
-            flex: 1;
-            max-width: 80px;
-            padding: 5px 8px;
-            border: 1px solid #444;
-            border-radius: 4px;
-            background: #2d2d44;
-            color: #fff;
-            font-size: 0.9em;
-        }
-
-        .stat-row input:focus {
-            outline: none;
-            border-color: #84DCCF;
-        }
-
-        .stat-row .current-value {
-            flex: 0 0 60px;
-            font-size: 0.85em;
-            color: #666;
-            text-align: right;
-        }
-
-        .button-row {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        button {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9em;
-            transition: background 0.2s;
-        }
-
-        button.primary {
-            background: #84DCCF;
-            color: #1a1a2e;
-        }
-        button.primary:hover {
-            background: #6bc4b8;
-        }
-
-        button.secondary {
-            background: #444;
-            color: #fff;
-        }
-        button.secondary:hover {
-            background: #555;
-        }
-
-        button.danger {
-            background: #c44;
-            color: #fff;
-        }
-        button.danger:hover {
-            background: #a33;
-        }
-
-        .combat-log {
-            background: #0d1117;
-            border: 1px solid #333;
-            border-radius: 4px;
-            padding: 10px;
-            font-family: monospace;
-            font-size: 0.8em;
-            max-height: 200px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            word-break: break-all;
-        }
-
-        .log-entry {
-            margin-bottom: 4px;
-            padding: 2px 0;
-            border-bottom: 1px solid #222;
-        }
-        .log-hit { color: #4a4; }
-        .log-miss { color: #a44; }
-        .log-damage { color: #ec7505; }
-        .log-proc { color: #84DCCF; }
-
-        .formula-display {
-            background: #2d2d44;
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 0.85em;
-            margin: 10px 0;
-        }
-
-        .hit-preview {
-            color: #84DCCF;
-            font-weight: bold;
-        }
-
-        .damage-preview {
-            color: #ec7505;
-            font-weight: bold;
-        }
-
-        #status {
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 0.9em;
-        }
-        #status.success { background: #1a4a1a; color: #4a4; }
-        #status.error { background: #4a1a1a; color: #f44; }
-
-        .instructions {
-            background: #16213e;
-            border-left: 3px solid #84DCCF;
-            padding: 10px 15px;
-            margin-bottom: 15px;
-            font-size: 0.9em;
-        }
-
-        .collapsible {
-            cursor: pointer;
-            user-select: none;
-        }
-        .collapsible::before {
-            content: '+ ';
-            color: #84DCCF;
-        }
-        .collapsible.open::before {
-            content: '- ';
-        }
-        .collapsible-content {
-            display: none;
-        }
-        .collapsible-content.open {
-            display: block;
-        }
-
-        /* Override game container for side-by-side layout */
+        
         .game-container {
-            flex-direction: column !important;
+            max-height: 620px;
+            margin: 10px;
+        }
+        .text {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            flex: 1;
+            gap: 10px; 
+            padding: 10px;
+        }
+        canvas {
+            padding: 10px;
+        }
+        .controls-panel {
+           display: flex;
+           font-size: smaller;
+            flex-wrap: wrap;
+            flex: 1;
+            gap: 10px; 
+            > div {
+                
+                margin: 5px;
+                padding: 10px;
+            }
+            .stat-row {
+                margin: 10px;
+                display: flex;
+                gap: 10px;
+            }
         }
     </style>
 </head>
@@ -215,17 +55,14 @@
                 <div class="text">
                     <div id="actors" class="actor-list"></div>
                     <div id="items" class="item-list"></div>
+                    <details id="description">
+                        <summary><strong>Description</strong></summary>
+                        <div id="description-content">Arena map details will appear here.</div>
+                    </details>
                 </div>
             </div>
         </div>
-
         <div class="controls-panel">
-            <div class="instructions">
-                <strong>Controls:</strong> Arrow keys or WASD to move. Bump into enemies to attack.<br>
-                <strong>Inventory:</strong> Press 'i' to open inventory, equip weapons/armor.<br>
-                <strong>Testing:</strong> Modify stats below and click "Apply" to update live actors.
-            </div>
-
             <!-- Player Stats -->
             <div class="stat-editor" id="player-editor">
                 <h2>Player Stats</h2>

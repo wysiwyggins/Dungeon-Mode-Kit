@@ -269,28 +269,62 @@
                 {
                  "height":30,
                  "id":53,
-                 "name":"",
+                 "name":"Skull",
                  "properties":[
                         {
                          "name":"walk_description",
                          "type":"string",
-                         "value":"Dried lichen crunches under your feet."
+                         "value":"The remains of a less fortunate gladiator."
                         }],
                  "rotation":0,
-                 "type":"IMPERFECT_DOTTED_LIGHT_SHADE",
+                 "type":"SKULL",
                  "visible":true,
                  "width":40,
                  "x":920,
                  "y":660
+                }, 
+                {
+                 "height":30,
+                 "id":58,
+                 "name":"Skull",
+                 "properties":[
+                        {
+                         "name":"walk_description",
+                         "type":"string",
+                         "value":"The remains of a less fortunate gladiator."
+                        }],
+                 "rotation":0,
+                 "type":"SKULL",
+                 "visible":true,
+                 "width":40,
+                 "x":1400,
+                 "y":990
+                }, 
+                {
+                 "height":30,
+                 "id":59,
+                 "name":"Skull",
+                 "properties":[
+                        {
+                         "name":"walk_description",
+                         "type":"string",
+                         "value":"The remains of a less fortunate gladiator."
+                        }],
+                 "rotation":0,
+                 "type":"SKULL",
+                 "visible":true,
+                 "width":40,
+                 "x":120,
+                 "y":150
                 }],
          "opacity":1,
          "type":"objectgroup",
-         "visible":false,
+         "visible":true,
          "x":0,
          "y":0
         }],
  "nextlayerid":9,
- "nextobjectid":57,
+ "nextobjectid":60,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",
