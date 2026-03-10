@@ -19,6 +19,45 @@ Level-specific files are merged with global data at load — only define what's 
 
 ---
 
+## Root-Level Properties vs Attributes
+
+Item JSON has two layers, and knowing which layer a property belongs to matters.
+
+**Root-level properties** are a fixed set extracted by name in the `Item` constructor. They control rendering, identification, and stats. You cannot add new root-level properties without modifying engine code — unknown root-level keys are silently ignored.
+
+**Attributes** (inside `"attributes": {}`) are an open-ended key-value store. The engine iterates all of them generically via `setAttribute()`. Designers can add any new gameplay attribute here without engine changes — the rest of the codebase reads them with `getAttribute()` and `hasAttribute()`.
+
+**Rule of thumb:** if the property affects how the item *looks* or *identifies*, it's root-level. If it affects what the item *does*, it's an attribute.
+
+### All root-level properties
+
+| Property | Type | Purpose |
+|----------|------|---------|
+| `name` | string | Display name |
+| `tileIndex` | string | Sprite tile name from the tileset |
+| `tint` | string | Hex color tint (`"#FF0000"`) |
+| `flipH` | boolean | Flip sprite horizontally |
+| `flipV` | boolean | Flip sprite vertically |
+| `ignore_darkness` | boolean | Render even in unlit tiles |
+| `flickerTint` | boolean | Tint flickers (visual effect) |
+| `identified` | boolean | `false` = starts unidentified |
+| `unidentified_template` | string | Display name before identification |
+| `identified_template` | string | Display name after identification |
+| `use_description` | string | Message template shown when item is used |
+| `effect_description` | string | Template variable for `[effect_description]` token |
+| `template_vars` | object | Additional template substitution variables |
+| `random_color` | boolean | Assign a random color per item type |
+| `random_glyph_name` | boolean | Assign a random runic name per item type |
+| `random_effect` | boolean | Generate a random potion effect |
+| `random_value` | `[min, max]` | Random numeric value on spawn (e.g. gold nuggets) |
+| `stats` | object | Item stat definitions (charges, fuel, etc.) |
+
+Everything else goes in `attributes`. If you're not sure, put it in `attributes` — that's always safe.
+
+> **Note for actors:** The `Actor` constructor has a bridge that copies `collision_sound`, `collision_effect`, `collision_description`, and `death_sound` from root-level into attributes. Items have no such bridge. For items, these properties must be inside `attributes`.
+
+---
+
 ## Core Attributes
 
 | Attribute | Type | Description |

@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Recharge scroll case
 - Darkness scroll case
-- darker background for backgrounded ui boxes
+
 - check for cases where letter keys are still activating item ui instead of walking etc when UI boxes are closed
 - Actors noticing thread trail currently works through solid actors like walls and should be fixed
 - put a counter by repeated description messages rather than let them add additional messages to list
@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- dimmed backgrounded ui boxes
 - Fire explosions: items with `fire_explosion: true` now detonate into an immediate burst of `intense_fire` (center + radius 1) and `fire` (outer radius) instead of a gas cloud, play the fireball sound, and give breakable solid actors in range a 60% chance to be destroyed
 - Explosive detonation is now gated by `breakable`: items with both `explosive` and `breakable` detonate on throw (potions); items with `explosive` but no `breakable` only detonate when ignited by fire (powder kegs)
 - All throwable explosive potions given `breakable: true` to preserve existing throw-to-explode behavior

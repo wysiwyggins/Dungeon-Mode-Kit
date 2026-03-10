@@ -770,6 +770,7 @@
       "trap_type": "poison_gas"
     },
     "trap_spawn": "cloud",
+    "collision_sound": "gas",
     "trap_spawn_tint": "#55FF55",
     "trap_collision_effect": { "health": -3 },
     "trap_message": "A hidden vent releases poisonous gas!"
@@ -788,6 +789,7 @@
       "trap_type": "fire"
     },
     "trap_effect": { "center": "intense_fire", "radius": 1, "outer": "fire" },
+    "collision_sound": "fireball",
     "trap_message": "Flames erupt from the floor!"
   },
 
@@ -806,6 +808,7 @@
     "trap_spawn": "cloud",
     "trap_spawn_tint": "#AADDFF",
     "trap_apply_state": "paralyzed",
+    "collision_sound": "gas",
     "trap_message": "A numbing gas billows forth!"
   },
 
@@ -824,6 +827,7 @@
     "trap_spawn": "cloud",
     "trap_spawn_tint": "#FFAAFF",
     "trap_apply_state": "confused",
+    "collision_sound": "gas",
     "trap_message": "A disorienting mist fills the air!"
   }
 

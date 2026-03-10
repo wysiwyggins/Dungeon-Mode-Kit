@@ -17,6 +17,8 @@ class InterfaceManager {
         this.defaultBorderTint = 0x000000;
         this.defaultTextTint = 0x000000;
         this.warningFillColor = 0xEB8A90;
+        this.inactiveTintColor = 0x999999;
+        this.inactiveTintAlpha = 0.35;
 
         // Inventory interaction state
         this.inventoryMode = false; // True when player info is showing and accepting item selection
@@ -179,6 +181,68 @@ class InterfaceManager {
             this.container.removeChild(box);
             box.destroy({ children: true });
             this.boxes.delete(id);
+        }
+    }
+
+    /**
+     * Apply a semi-transparent grey overlay to a box to indicate it is inactive/backgrounded.
+     * @param {string} id - Box identifier
+     */
+    applyInactiveOverlay(id) {
+        const box = this.boxes.get(id);
+        if (!box || box._inactiveOverlay) return; // Already has overlay or doesn't exist
+
+        const overlay = new PIXI.Graphics();
+        overlay.beginFill(this.inactiveTintColor, this.inactiveTintAlpha);
+        overlay.drawRect(0, 0, box._boxWidth * globalVars.TILE_WIDTH, box._boxHeight * globalVars.TILE_HEIGHT);
+        overlay.endFill();
+        box.addChild(overlay);
+        box._inactiveOverlay = overlay;
+    }
+
+    /**
+     * Remove the inactive overlay from a box.
+     * @param {string} id - Box identifier
+     */
+    removeInactiveOverlay(id) {
+        const box = this.boxes.get(id);
+        if (!box || !box._inactiveOverlay) return;
+
+        box.removeChild(box._inactiveOverlay);
+        box._inactiveOverlay.destroy();
+        box._inactiveOverlay = null;
+    }
+
+    /**
+     * Update overlays on all boxes so only the active (topmost interactive) box is clear,
+     * and all other visible boxes are dimmed with an inactive overlay.
+     */
+    updateBoxOverlays() {
+        // Determine the active box ID based on the current UI mode priority
+        let activeBoxId = null;
+        if (this.confirmDialog) {
+            activeBoxId = 'confirm_dialog';
+        } else if (this.identifyMode) {
+            activeBoxId = 'identify_picker';
+        } else if (this.throwMenuMode) {
+            activeBoxId = 'throw_item_menu';
+        } else if (this.equipmentMenuMode) {
+            activeBoxId = 'equipment_menu';
+        } else if (this.selectedItemIndex !== null && this.inventoryMode) {
+            activeBoxId = 'item_action_menu';
+        } else if (this.inventoryMode) {
+            activeBoxId = 'player_info';
+        }
+        // throwAimingMode and spellAimingMode are map-targeting modes with no dedicated box
+
+        for (const [id, box] of this.boxes) {
+            if (!box.visible) continue;
+            if (!activeBoxId || id === activeBoxId) {
+                // No active interactive box, or this IS the active box — show normally
+                this.removeInactiveOverlay(id);
+            } else {
+                this.applyInactiveOverlay(id);
+            }
         }
     }
 
@@ -566,6 +630,7 @@ class InterfaceManager {
             }
         }
 
+        this.updateBoxOverlays();
         return boxContainer;
     }
 
@@ -604,6 +669,7 @@ class InterfaceManager {
             // Not a stacked text box, just remove normally
             this.removeBox(id);
         }
+        this.updateBoxOverlays();
     }
 
     /**
@@ -880,6 +946,8 @@ class InterfaceManager {
         this.inventoryMode = true;
         this.currentPlayer = player;
         this.selectedItemIndex = null;
+
+        this.updateBoxOverlays();
     }
 
     /**
@@ -891,6 +959,7 @@ class InterfaceManager {
         this.inventoryMode = false;
         this.currentPlayer = null;
         this.selectedItemIndex = null;
+        this.updateBoxOverlays();
     }
 
     /**
@@ -1051,6 +1120,8 @@ class InterfaceManager {
                 }
             }
         }
+
+        this.updateBoxOverlays();
     }
 
     /**
@@ -1059,6 +1130,7 @@ class InterfaceManager {
     closeItemActionMenu() {
         this.removeBox('item_action_menu');
         this.selectedItemIndex = null;
+        this.updateBoxOverlays();
     }
 
     /**
@@ -1232,9 +1304,8 @@ class InterfaceManager {
             console.log(`${this.currentPlayer.name} dropped ${item.name}`);
         }
 
-        // Close menus
-        this.closeItemActionMenu();
-        this.removeBox('player_info');
+        // Close menus and reset inventory mode
+        this.hidePlayerInfo();
     }
 
     /**
@@ -1275,12 +1346,12 @@ class InterfaceManager {
     executeUseItem(item) {
         if (!this.currentPlayer) return;
 
-        // Close menus first before executing the effect
-        this.closeItemActionMenu();
-        this.removeBox('player_info');
+        // Close menus and reset inventory mode before executing the effect
+        const player = this.currentPlayer;
+        this.hidePlayerInfo();
 
-        if (this.currentPlayer.useItem) {
-            this.currentPlayer.useItem(item);
+        if (player.useItem) {
+            player.useItem(item);
         }
 
         // Don't consume turn if we entered spell aiming or identify mode (handled by follow-up interaction)
@@ -1289,7 +1360,7 @@ class InterfaceManager {
         }
 
         // Refresh and consume turn
-        this.showPlayerInfo(this.currentPlayer);
+        this.showPlayerInfo(player);
         this.engine.inputManager?.onPlayerAction();
     }
 
@@ -1396,6 +1467,8 @@ class InterfaceManager {
                 }
             }
         }
+
+        this.updateBoxOverlays();
     }
 
     /**
@@ -1404,6 +1477,7 @@ class InterfaceManager {
     closeConfirmDialog() {
         this.removeBox('confirm_dialog');
         this.confirmDialog = null;
+        this.updateBoxOverlays();
     }
 
     /**
@@ -2061,6 +2135,13 @@ class InterfaceManager {
         // Explosive items always hit (they explode on the tile regardless of accuracy)
         // Only breakable explosives (e.g. potions) detonate on throw; non-breakable ones (e.g. powder kegs) require fire
         if (isExplosive && item.hasAttribute('breakable')) {
+            // Play break sound (e.g. glass shattering)
+            const breakSound = item.getAttribute('break_sound');
+            if (breakSound) this.engine.playSound(breakSound);
+            // Play explode sound (e.g. gas cloud puff) — fire explosions play their own sound in createFireExplosion
+            const explodeSound = item.getAttribute('explode_sound');
+            if (explodeSound) this.engine.playSound(explodeSound);
+
             this.createExplosiveCloud(item, landingPoint.x, landingPoint.y);
             const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
             this.engine.inputManager?.showMessage(`The ${displayName} explodes!`);
@@ -2141,6 +2222,10 @@ class InterfaceManager {
                     // Items are breakable_on_throw by default (like Brogue) unless explicitly set to false
                     const breakable = item.getAttribute('breakable_on_throw') !== false;
                     if (breakable) {
+                        // Play break sound (e.g. glass shattering)
+                        const breakSound = item.getAttribute('break_sound');
+                        if (breakSound) this.engine.playSound(breakSound);
+
                         // Item is destroyed on impact
                         const displayName2 = item.getDisplayName ? item.getDisplayName() : item.name;
                         this.engine.inputManager?.showMessage(`The ${displayName2} shatters!`);
@@ -2544,6 +2629,8 @@ class InterfaceManager {
                 if (sprite) boxContainer.addChild(sprite);
             }
         }
+
+        this.updateBoxOverlays();
     }
 
     /**
@@ -2565,6 +2652,7 @@ class InterfaceManager {
         this.identifyScrollItem = null;
         this.identifyCaster = null;
         this.removeBox('identify_picker');
+        this.updateBoxOverlays();
     }
 
     /**
@@ -2972,6 +3060,8 @@ class InterfaceManager {
             const tileY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
             this.renderItemTile(boxContainer, item, tileX, tileY);
         }
+
+        this.updateBoxOverlays();
     }
 
     /**
@@ -2980,6 +3070,7 @@ class InterfaceManager {
     closeThrowItemMenu() {
         this.removeBox('throw_item_menu');
         this.throwMenuMode = false;
+        this.updateBoxOverlays();
     }
 
     /**
@@ -3153,6 +3244,8 @@ class InterfaceManager {
             const tileY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
             this.renderItemTile(boxContainer, entry.item, tileX, tileY);
         }
+
+        this.updateBoxOverlays();
     }
 
     /**
@@ -3163,6 +3256,7 @@ class InterfaceManager {
         this.equipmentMenuMode = false;
         this.equipmentMenuPlayer = null;
         this.equipmentMenuItems = [];
+        this.updateBoxOverlays();
     }
 
     /**

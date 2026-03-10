@@ -117,6 +117,8 @@
       "consumable": true,
       "explosive": true,
       "breakable": true,
+      "break_sound": "glass",
+      "explode_sound": "gas",
       "use_verb": "Drink",
       "description": "A mysterious potion with unknown effects."
     }
@@ -138,6 +140,7 @@
       "stackable": true,
       "flammable": false,
       "consumable": true,
+      "break_sound": "glass",
       "use_verb": "Drink",
       "use_effect": { "health": 20 },
       "use_sound": "heal"
@@ -158,6 +161,7 @@
       "visible": true,
       "stackable": true,
       "flammable": false,
+      "break_sound": "glass",
       "consumable": true,
       "use_verb": "Drink",
       "use_effect": { "health": -15 }
@@ -179,6 +183,7 @@
       "stackable": true,
       "flammable": false,
       "consumable": true,
+      "break_sound": "glass",
       "use_verb": "Drink",
       "use_effect": { "strength": 2 }
     }
@@ -200,6 +205,7 @@
       "stackable": true,
       "flammable": true,
       "explosive": true,
+      "break_sound": "glass",
       "fire_explosion": true,
       "breakable": true,
       "drinkable": true,
@@ -439,6 +445,8 @@
       "consumable": true,
       "explosive": true,
       "breakable": true,
+      "break_sound": "glass",
+      "explode_sound": "gas",
       "use_verb": "Drink",
       "use_sound": "swallow",
       "use_effect": { "apply_state": "poisoned" }
@@ -463,6 +471,8 @@
       "consumable": true,
       "explosive": true,
       "breakable": true,
+      "break_sound": "glass",
+      "explode_sound": "gas",
       "use_verb": "Drink",
       "use_sound": "swallow",
       "use_effect": { "apply_state": "confused" }
@@ -486,6 +496,8 @@
       "flammable": false,
       "consumable": true,
       "explosive": true,
+      "break_sound": "glass",
+      "explode_sound": "gas",
       "breakable": true,
       "use_verb": "Drink",
       "use_effect": { "apply_state": "hasted" },
@@ -511,6 +523,8 @@
       "consumable": true,
       "explosive": true,
       "breakable": true,
+      "break_sound": "glass",
+      "explode_sound": "gas",
       "use_verb": "Drink",
       "use_sound": "swallow",
       "use_effect": { "apply_state": "paralyzed" }
@@ -534,6 +548,8 @@
       "flammable": false,
       "consumable": true,
       "explosive": true,
+      "break_sound": "glass",
+      "explode_sound": "gas",
       "breakable": true,
       "use_verb": "Drink",
       "use_effect": { "apply_state": "regenerating" },
@@ -676,26 +692,6 @@
       "consumable": true,
       "use_verb": "Read",
       "use_effect": "shatter_walls",
-      "use_sound": "magic",
-      "description": "A scroll with strange runic markings."
-    }
-  },
-
-  "scroll_of_darkness": {
-    "name": "Scroll",
-    "tileIndex": "BEAMED_EIGHTH_NOTES",
-    "random_glyph_name": true,
-    "identified": false,
-    "unidentified_template": "[glyph_name] scroll",
-    "identified_template": "Scroll of Darkness",
-    "effect_description": "All light fades around you.",
-    "attributes": {
-      "pickupable": true,
-      "visible": true,
-      "stackable": true,
-      "consumable": true,
-      "use_verb": "Read",
-      "use_effect": "darkness_field",
       "use_sound": "magic",
       "description": "A scroll with strange runic markings."
     }
