@@ -1764,6 +1764,7 @@ class InterfaceManager {
         // Close the menus but keep player reference
         this.closeItemActionMenu();
         this.removeBox('player_info');
+        this.inventoryMode = false;
 
         // Show instruction message
         this.showTextBox('throw_instructions', 'Aim with mouse, click to throw. Esc to cancel.', {
@@ -2559,6 +2560,7 @@ class InterfaceManager {
         // Close any open menus
         this.closeItemActionMenu();
         this.removeBox('player_info');
+        this.inventoryMode = false;
 
         // Update the spell path based on current mouse position
         this.updateSpellPath();
