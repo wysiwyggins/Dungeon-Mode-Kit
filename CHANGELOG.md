@@ -30,6 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `break_sound` item attribute: sound played when a breakable item shatters on throw impact (e.g., `"glass"`)
+- `explode_sound` item attribute: sound played when an explosive+breakable item detonates into a gas cloud on throw (e.g., `"gas"`); fire explosions already play `"fireball"` via `createFireExplosion`
+- All potions updated with `break_sound: "glass"`; gas-cloud potions also given `explode_sound: "gas"`
+- ITEMS.md "Root-Level Properties vs Attributes" section: explains the two-layer item data structure, lists all root-level properties, and notes the actor/item difference
+- SOUNDS.md documentation for `break_sound`, `explode_sound`, sound library entries for `glass` and `gas`
 - dimmed backgrounded ui boxes
 - Fire explosions: items with `fire_explosion: true` now detonate into an immediate burst of `intense_fire` (center + radius 1) and `fire` (outer radius) instead of a gas cloud, play the fireball sound, and give breakable solid actors in range a 60% chance to be destroyed
 - Explosive detonation is now gated by `breakable`: items with both `explosive` and `breakable` detonate on throw (potions); items with `explosive` but no `breakable` only detonate when ignited by fire (powder kegs)
@@ -68,6 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Throw/spell aiming instruction box no longer appears dimmed: `inventoryMode` flag is now cleared when entering aiming modes, preventing `updateBoxOverlays` from treating a removed `player_info` box as the active box
 - Thread trail overlap: trail segments now hidden at actor's `spriteTop` position regardless of movement direction (was only hidden when walking down)
 - `getActorAt` returning non-solid actors (water/sewage) before solid ones no longer causes invisible collisions — 10 callsites migrated to `getSolidActorAt`
 
