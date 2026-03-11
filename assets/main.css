@@ -96,6 +96,15 @@
   clip: rect(0, 0, 0, 0);
   border: 0;
 }
+.text .actor-conditions {
+  padding-left: 10px;
+}
+.text .actor-condition {
+  display: inline-block;
+  font-size: 0.9em;
+  color: #e8a838;
+  margin-right: 0.5em;
+}
 .text details {
   max-width: 260px;
 }

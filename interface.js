@@ -3353,6 +3353,16 @@ class InterfaceManager {
 
             html += `</strong>`;
 
+            // Show active conditions (confused, blinded, burning, etc.)
+            if (actor.states && Object.keys(actor.states).length > 0) {
+                html += '<div class="actor-conditions">';
+                for (const [key, state] of Object.entries(actor.states)) {
+                    const displayName = state.data && state.data.name ? state.data.name : key;
+                    html += `<span class="actor-condition">${displayName} (${state.duration})</span>`;
+                }
+                html += '</div>';
+            }
+
             // Add stats as thermometer fills with ratio in an unordered list
             if (actor.stats && Object.keys(actor.stats).length > 0) {
                 html += '<ul class="actor-stats">';

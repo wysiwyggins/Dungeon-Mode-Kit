@@ -52,6 +52,17 @@
             border: 0;
         }
     }
+    .actor-conditions {
+        padding-left: $spacing-unit;
+    }
+
+    .actor-condition {
+        display: inline-block;
+        font-size: 0.9em;
+        color: #e8a838;
+        margin-right: 0.5em;
+    }
+
     details {
         max-width: 260px;
     }
