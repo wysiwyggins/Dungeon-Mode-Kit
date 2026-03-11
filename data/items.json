@@ -664,7 +664,7 @@
     "identified": false,
     "unidentified_template": "[glyph_name] scroll",
     "identified_template": "Scroll of Recharging",
-    "effect_description": "Your magical items hum with renewed energy.",
+    "effect_description": "A surge of energy recharges the items in your pack.",
     "attributes": {
       "pickupable": true,
       "visible": true,

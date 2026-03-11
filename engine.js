@@ -3841,10 +3841,10 @@ class Actor extends Entity {
                 if (this.isPlayerControlled()) {
                     this.engine.interfaceManager?.updatePlayerInfo();
                     this.engine.inputManager?.showMessage(recharged
-                        ? 'Your magical items hum with renewed energy.'
-                        : 'You have nothing to recharge.');
+                        ? 'A surge of energy recharges the items in your pack.'
+                        : 'There is a surge of energy but nothing else happens.');
                 }
-                return recharged;
+                return true;
             }
 
             case 'shatter_walls': {
