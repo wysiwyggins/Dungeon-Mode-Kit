@@ -14,6 +14,7 @@
     "duration": 10,
     "per_turn_effect": { "health": -2 },
     "immunity": "poison_immune",
+    "effect_description": "You feel ill",
     "on_apply_message": "[actor_name] is poisoned!",
     "on_remove_message": "The poison wears off."
   },
@@ -22,6 +23,7 @@
     "name": "Stunned",
     "duration": 2,
     "skip_turn": true,
+    "effect_description": "You can't think straight",
     "on_apply_message": "[actor_name] is stunned!",
     "on_remove_message": "[actor_name] recovers from being stunned."
   },
@@ -31,6 +33,7 @@
     "duration": 5,
     "skip_turn": true,
     "remove_on_damage": true,
+    "effect_description": "You feel drowsy",
     "on_apply_message": "[actor_name] falls asleep.",
     "on_remove_message": "[actor_name] wakes up!"
   },
@@ -39,6 +42,7 @@
     "name": "Confused",
     "duration": 8,
     "random_movement": true,
+    "effect_description": "Everything spins",
     "on_apply_message": "[actor_name] is confused!",
     "on_remove_message": "[actor_name] is no longer confused."
   },
@@ -47,6 +51,7 @@
     "name": "Hasted",
     "duration": 15,
     "extra_turn": true,
+    "effect_description": "You feel quick",
     "on_apply_message": "[actor_name] speeds up!",
     "on_remove_message": "[actor_name] slows back down."
   },
@@ -55,6 +60,7 @@
     "name": "Slowed",
     "duration": 10,
     "skip_every_other_turn": true,
+    "effect_description": "You feel sluggish",
     "on_apply_message": "[actor_name] slows down!",
     "on_remove_message": "[actor_name] returns to normal speed."
   },
@@ -63,6 +69,7 @@
     "name": "Regenerating",
     "duration": 20,
     "per_turn_effect": { "health": 2 },
+    "effect_description": "Your wounds begin to mend",
     "on_apply_message": "[actor_name] begins regenerating!",
     "on_remove_message": "The regeneration effect fades."
   },
@@ -72,7 +79,17 @@
     "duration": 12,
     "skip_turn": true,
     "immunity": "gas_immune",
+    "effect_description": "You can't move",
     "on_apply_message": "[actor_name] is paralyzed!",
     "on_remove_message": "[actor_name] can move again."
+  },
+
+  "blinded": {
+    "name": "Blinded",
+    "duration": 15,
+    "on_apply_effect": { "visionRange": -3 },
+    "effect_description": "Darkness closes in around you",
+    "on_apply_message": "Darkness closes in around [actor_name]!",
+    "on_remove_message": "[actor_name]'s vision clears."
   }
 }

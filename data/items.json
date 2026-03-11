@@ -131,9 +131,9 @@
     "random_color": true,
     "identified": false,
     "unidentified_template": "[color] potion",
-    "identified_template": "Potion of Healing",
-    "effect_description": "It restores Health",
-    "use_description": "The [item_name] tastes [adjectives.wine_descriptions].",
+    "identified_template": "Aqua Vita",
+    "effect_description": "It restores Health but clouds the mind",
+    "use_description": "The [item_name] tastes [adjectives.wine_descriptions]. Your mind swims.",
     "attributes": {
       "pickupable": true,
       "visible": true,
@@ -142,7 +142,7 @@
       "consumable": true,
       "break_sound": "glass",
       "use_verb": "Drink",
-      "use_effect": { "health": 20 },
+      "use_effect": { "health": 20, "apply_state": "confused" },
       "use_sound": "heal"
     }
   },
@@ -554,6 +554,54 @@
       "use_verb": "Drink",
       "use_effect": { "apply_state": "regenerating" },
       "use_sound": "swallow"
+    }
+  },
+
+  "darkness_potion": {
+    "name": "Potion",
+    "tileIndex": "FEMALE_SYMBOL",
+    "flipV": true,
+    "random_color": true,
+    "identified": false,
+    "unidentified_template": "[color] potion",
+    "identified_template": "Potion of Darkness",
+    "effect_description": "Darkness closes in around you",
+    "use_description": "The [item_name] tastes [adjectives.yucky].",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": true,
+      "flammable": true,
+      "consumable": true,
+      "explosive": true,
+      "breakable": true,
+      "break_sound": "glass",
+      "explode_sound": "gas",
+      "use_verb": "Drink",
+      "use_sound": "swallow",
+      "use_effect": { "apply_state": "blinded" }
+    }
+  },
+
+  "panacea": {
+    "name": "Potion",
+    "tileIndex": "FEMALE_SYMBOL",
+    "flipV": true,
+    "random_color": true,
+    "identified": false,
+    "unidentified_template": "[color] potion",
+    "identified_template": "Panacea",
+    "effect_description": "All conditions are purged",
+    "use_description": "The [item_name] tastes [adjectives.wine_descriptions].",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": true,
+      "flammable": false,
+      "consumable": true,
+      "use_verb": "Drink",
+      "use_sound": "heal",
+      "use_effect": "remove_all_states"
     }
   },
 

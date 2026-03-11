@@ -851,11 +851,64 @@ class DungeonEngine {
         if (!this.lightingManager) return;
 
         this.lightingManager.computeLighting();
-        const fogOfWar = this.currentPrototype?.config.mechanics?.fog_of_war || false;
+        const fogOfWar = this.currentPrototype?.config.mechanics?.fog_of_war || this._runtimeDarknessActive || false;
         this.renderer.updateDarkness(this.lightingManager, fogOfWar);
 
         // Update the sidebar with visible actors and items
         this.interfaceManager?.updateSidebar();
+    }
+
+    /**
+     * Enable the lighting/darkness system at runtime on a level that doesn't normally have it.
+     * Used by the "blinded" state to create visual darkness on bright levels.
+     */
+    enableRuntimeDarkness() {
+        if (this.lightingManager) return; // Already has darkness (dark level or already enabled)
+
+        this._runtimeDarknessActive = true;
+
+        this.lightingManager = new LightingManager(this);
+        this.lightingManager.initialize(
+            this.mapManager.width,
+            this.mapManager.height,
+            { player_auto_light: true, ambient_light: 0.0 }
+        );
+        this.renderer.initializeDarkness(this.mapManager.width, this.mapManager.height);
+        this.updateLighting();
+    }
+
+    /**
+     * Disable runtime darkness, restoring the level to its original bright state.
+     */
+    disableRuntimeDarkness() {
+        if (!this._runtimeDarknessActive) return; // Wasn't enabled by us
+
+        this._runtimeDarknessActive = false;
+        this.lightingManager = null;
+
+        // Remove darkness sprites
+        this.renderer.darknessContainer.removeChildren();
+        this.renderer.lightColorContainer.removeChildren();
+        this.renderer.darknessSprites = [];
+        this.renderer.lightColorSprites = [];
+
+        // Restore entity visibility/tinting to defaults
+        for (const actor of this.entityManager.actors) {
+            if (actor.spriteBase) {
+                actor.spriteBase.tint = actor.tint ?? 0xFFFFFF;
+                actor.spriteBase.visible = true;
+            }
+            if (actor.spriteTop) {
+                actor.spriteTop.tint = actor.tint ?? 0xFFFFFF;
+                actor.spriteTop.visible = true;
+            }
+        }
+        for (const item of this.entityManager.items) {
+            if (item.sprite) {
+                item.sprite.tint = item.tint ?? 0xFFFFFF;
+                item.sprite.visible = item.hasAttribute('visible');
+            }
+        }
     }
 
     snapViewportToTile(tileX, tileY) {
@@ -1995,49 +2048,49 @@ class Item extends Entity {
      * @param {DungeonEngine} engine - The game engine
      */
     generateRandomEffect(engine) {
-        // Get player actor data to find available stats
         const playerData = engine.currentPrototype.getActorData('player');
-        if (!playerData || !playerData.stats) {
-            // No player stats defined - potion has no effect
+        const statNames = (playerData?.stats) ? Object.keys(playerData.stats) : [];
+
+        // Build pool of applicable states (exclude those with attached_actor like burning)
+        const stateEntries = Object.entries(engine.globalStates || {})
+            .filter(([_, data]) => !data.attached_actor);
+
+        if (statNames.length === 0 && stateEntries.length === 0) {
             this.templateVars.effect_description = 'It has no effect';
             return;
         }
 
-        const statNames = Object.keys(playerData.stats);
-        if (statNames.length === 0) {
-            this.templateVars.effect_description = 'It has no effect';
-            return;
-        }
+        // Decide: state effect vs stat effect
+        // If only one pool exists, use that; otherwise 50/50
+        const useStateEffect = statNames.length === 0 ? true
+            : stateEntries.length === 0 ? false
+            : ROT.RNG.getUniform() < 0.5;
 
-        // Pick a random stat
-        const randomStat = randomElement(statNames);
-
-        // Determine effect magnitude and direction
-        // 70% chance positive, 30% chance negative
-        const isPositive = ROT.RNG.getUniform() < 0.7;
-        // Effect magnitude: 5-25 for health-like stats, 1-5 for strength-like stats
-        const statValue = playerData.stats[randomStat];
-        const maxStat = typeof statValue === 'object' ? statValue.max : statValue;
-        let magnitude;
-        if (maxStat >= 50) {
-            // Large stat (health, nutrition) - bigger effects
-            magnitude = Math.floor(ROT.RNG.getUniform() * 21) + 5; // 5-25
+        if (useStateEffect) {
+            // Pick a random state to apply
+            const [stateName, stateData] = randomElement(stateEntries);
+            this.setAttribute('use_effect', { apply_state: stateName });
+            this.templateVars.effect_description = stateData.effect_description || stateData.name;
         } else {
-            // Small stat (strength, etc.) - smaller effects
-            magnitude = Math.floor(ROT.RNG.getUniform() * 5) + 1; // 1-5
-        }
+            // Pick a random stat to modify
+            const randomStat = randomElement(statNames);
+            // 70% chance positive, 30% chance negative
+            const isPositive = ROT.RNG.getUniform() < 0.7;
+            const statValue = playerData.stats[randomStat];
+            const maxStat = typeof statValue === 'object' ? statValue.max : statValue;
+            let magnitude;
+            if (maxStat >= 50) {
+                magnitude = Math.floor(ROT.RNG.getUniform() * 21) + 5; // 5-25
+            } else {
+                magnitude = Math.floor(ROT.RNG.getUniform() * 5) + 1; // 1-5
+            }
+            const effectValue = isPositive ? magnitude : -magnitude;
+            this.setAttribute('use_effect', { [randomStat]: effectValue });
 
-        const effectValue = isPositive ? magnitude : -magnitude;
-
-        // Set the use_effect
-        this.setAttribute('use_effect', { [randomStat]: effectValue });
-
-        // Generate description based on effect
-        const statCapitalized = randomStat.charAt(0).toUpperCase() + randomStat.slice(1);
-        if (effectValue > 0) {
-            this.templateVars.effect_description = `It restores ${statCapitalized}`;
-        } else {
-            this.templateVars.effect_description = `It drains ${statCapitalized}`;
+            const statCapitalized = randomStat.charAt(0).toUpperCase() + randomStat.slice(1);
+            this.templateVars.effect_description = effectValue > 0
+                ? `It restores ${statCapitalized}`
+                : `It drains ${statCapitalized}`;
         }
     }
 
@@ -2970,6 +3023,24 @@ class Actor extends Entity {
             this.engine.playSound?.(stateData.on_apply_sound);
         }
 
+        // Apply on_apply_effect (modifies actor properties while state is active)
+        if (stateData.on_apply_effect) {
+            const savedValues = {};
+            for (const [key, amount] of Object.entries(stateData.on_apply_effect)) {
+                if (this[key] !== undefined && typeof this[key] === 'number') {
+                    savedValues[key] = this[key];
+                    this[key] = Math.max(1, this[key] + amount);
+                }
+            }
+            this.states[stateName]._savedValues = savedValues;
+
+            // If vision was modified on a player, enable runtime darkness
+            if (stateData.on_apply_effect.visionRange && this.isPlayerControlled()) {
+                this.engine.enableRuntimeDarkness?.();
+                this.engine.updateLighting?.();
+            }
+        }
+
         return true;
     }
 
@@ -2996,6 +3067,24 @@ class Actor extends Entity {
         // Play removal sound
         if (!silent && state.data.on_remove_sound) {
             this.engine.playSound?.(state.data.on_remove_sound);
+        }
+
+        // Reverse on_apply_effect (restore original values)
+        if (state._savedValues) {
+            for (const [key, originalValue] of Object.entries(state._savedValues)) {
+                this[key] = originalValue;
+            }
+        }
+
+        // If vision was modified on a player, check if runtime darkness should be disabled
+        if (state.data.on_apply_effect?.visionRange && this.isPlayerControlled()) {
+            const hasOtherVisionState = Object.entries(this.states).some(
+                ([name, s]) => name !== stateName && s.data.on_apply_effect?.visionRange
+            );
+            if (!hasOtherVisionState) {
+                this.engine.disableRuntimeDarkness?.();
+            }
+            this.engine.updateLighting?.();
         }
 
         delete this.states[stateName];
@@ -3098,6 +3187,15 @@ class Actor extends Entity {
             }
         }
         return false;
+    }
+
+    /**
+     * Check if any active state has a given property set to truthy
+     * @param {string} prop - The state data property to check (e.g. 'random_movement')
+     * @returns {boolean} True if any active state has that property
+     */
+    hasStateProperty(prop) {
+        return Object.values(this.states).some(s => s.data[prop]);
     }
 
     /**
@@ -3843,6 +3941,23 @@ class Actor extends Entity {
                     this.engine.inputManager?.showMessage(recharged
                         ? 'A surge of energy recharges the items in your pack.'
                         : 'There is a surge of energy but nothing else happens.');
+                }
+                return true;
+            }
+
+            case 'remove_all_states': {
+                const stateNames = Object.keys(this.states);
+                if (stateNames.length === 0) {
+                    if (this.isPlayerControlled()) {
+                        this.engine.inputManager?.showMessage('You feel a brief surge of warmth but nothing else happens.');
+                    }
+                    return true;
+                }
+                for (const name of stateNames) {
+                    this.removeState(name);
+                }
+                if (this.isPlayerControlled()) {
+                    this.engine.inputManager?.showMessage('A warm light floods through you, purging all conditions.');
                 }
                 return true;
             }
@@ -5512,6 +5627,12 @@ class Personality {
     }
 
     execute(actor) {
+        // Confusion overrides normal AI — move randomly instead
+        if (actor.hasStateProperty('random_movement')) {
+            BehaviorLibrary.random_walk(actor);
+            return;
+        }
+
         // Execute behaviors in order
         for (const behaviorName of this.behaviors) {
             const behavior = BehaviorLibrary[behaviorName];

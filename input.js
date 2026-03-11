@@ -911,12 +911,20 @@ class InputManager {
 
         // Handle movement actions
         if (this.directions[action]) {
-            const dir = this.directions[action];
+            let dir = this.directions[action];
+
+            // Confusion: randomize movement direction
+            if (player.hasStateProperty('random_movement')) {
+                const dirs = Object.values(this.directions);
+                dir = dirs[Math.floor(Math.random() * dirs.length)];
+            }
+
             const targetX = player.x + dir.dx;
             const targetY = player.y + dir.dy;
 
             // Check for hazards that need confirmation
-            const hazardCheck = this.checkMovementHazard(player, targetX, targetY);
+            const isConfused = player.hasStateProperty('random_movement');
+            const hazardCheck = this.checkMovementHazard(player, targetX, targetY, isConfused);
             if (hazardCheck) {
                 // Show confirmation dialog
                 this.engine.interfaceManager?.showConfirmDialog(
@@ -1025,9 +1033,10 @@ class InputManager {
      * @param {Actor} player - The player actor
      * @param {number} targetX - Target X coordinate
      * @param {number} targetY - Target Y coordinate
+     * @param {boolean} [confused=false] Whether the player is confused (uncertain direction)
      * @returns {{message: string}|null} Hazard info or null if safe
      */
-    checkMovementHazard(player, targetX, targetY) {
+    checkMovementHazard(player, targetX, targetY, confused = false) {
         const entityManager = this.engine.entityManager;
 
         // Check for solid actors at target (walls, closed doors, etc.)
@@ -1040,7 +1049,7 @@ class InputManager {
 
         // Check for void (no floor)
         if (!player.hasFloorAt(targetX, targetY)) {
-            return { message: "Dive into the depths?" };
+            return { message: confused ? "Risk diving into the depths?" : "Dive into the depths?" };
         }
 
         // Check for lava_behavior actors at target position
@@ -1051,7 +1060,7 @@ class InputManager {
 
                 // Check if actor has lava_behavior personality
                 if (actor.personality?.name === 'Lava') {
-                    return { message: `Really step into ${actor.name}?` };
+                    return { message: confused ? `Risk stepping into ${actor.name}?` : `Really step into ${actor.name}?` };
                 }
             }
         }
@@ -1068,7 +1077,7 @@ class InputManager {
                     i => i.x === targetX && i.y === targetY && !i.isDead
                 );
                 if (!itemOnTrap) {
-                    return { message: `Really step on the ${actor.name}?` };
+                    return { message: confused ? `Risk stepping on the ${actor.name}?` : `Really step on the ${actor.name}?` };
                 }
             }
         }
