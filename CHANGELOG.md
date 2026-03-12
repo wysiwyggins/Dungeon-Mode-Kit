@@ -18,8 +18,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### In Progress
 
-- Conditions (flying, confused)
-- Recharge scroll case
 - Mining (works but requires testing and refinement, Currently 3 hits always removes a breakable actor, which feels unnatural)
 - FOV epistemology (currently messages aren't filtered by vision range, make sound alternate messages for those, also some things like mining walls can still be seen out of range)
 
@@ -27,16 +25,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- States (flying, confused, blinded, hallucinating)
+  - `hasStateProperty(prop)` helper on Actor: generic check for any active state having a given data property
+  - **`on_apply_effect` state property**: modifies actor properties while a state is active and restores originals on removal (similar to equipment `wear_effect`)
+  - `enableRuntimeDarkness()` / `disableRuntimeDarkness()` engine methods for spinning up the lighting system on non-dark levels
+  - `remove_all_states` string use_effect in executeItemEffect
+  - **`random_effect` expansion**: generic potions now have a 50% chance to apply a random state (confused, hasted, poisoned, etc.) instead of always modifying a stat. States with `attached_actor` (burning) are excluded from the pool.
+  - `effect_description` field on all states in `states.json`: provides potion-style descriptions for randomly generated state-effect potions
+- Recharge scroll case
 - put an ellipses counter for repeated messages in description
 - `z` or `.` key to rest
-- **Confusion effect** (`random_movement` state property): actors with the `confused` state now move in a random direction when a movement action is taken. Works for both player-controlled actors (randomizes input direction) and NPCs (overrides AI with random walk).
-- `hasStateProperty(prop)` helper on Actor: generic check for any active state having a given data property
-- **`blinded` state**: reduces visionRange while active via generic `on_apply_effect` system; enables runtime darkness on bright levels
-- **`on_apply_effect` state property**: modifies actor properties while a state is active and restores originals on removal (similar to equipment `wear_effect`)
-- `enableRuntimeDarkness()` / `disableRuntimeDarkness()` engine methods for spinning up the lighting system on non-dark levels
-- `remove_all_states` string use_effect in executeItemEffect
-- **`random_effect` expansion**: generic potions now have a 50% chance to apply a random state (confused, hasted, poisoned, etc.) instead of always modifying a stat. States with `attached_actor` (burning) are excluded from the pool.
-- `effect_description` field on all states in `states.json`: provides potion-style descriptions for randomly generated state-effect potions
 
 ## [0.9b] 2026-03-07
 
