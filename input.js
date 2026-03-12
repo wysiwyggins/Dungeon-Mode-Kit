@@ -1050,6 +1050,13 @@ class InputManager {
             this.engine.interfaceManager?.updateSidebar();
         }
 
+        // Check for extra actions (haste) — keep engine locked for bonus action
+        if (player?._extraActions > 0) {
+            player._extraActions--;
+            this.engine.interfaceManager?.updatePlayerInfo();
+            return;
+        }
+
         // Called after player takes an action - defer AI turns to next animation frame
         // so PIXI renders the player's move (with updated FOV) before enemies respond
         if (this.engine.turnEngine && this.engine.turnEngine._lock) {

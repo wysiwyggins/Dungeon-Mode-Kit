@@ -120,7 +120,11 @@
       "accuracy": 60,
       "defense": 5,
       "strength": 15,
-      "segment_count": 4
+      "segment_count": 4,
+      "chain_head": true,
+      "chain_segment_type": "scutigera_body",
+      "chain_base_strength": 5,
+      "chain_strength_per_segment": 2.5
     },
     "stats": {
       "health": 10
@@ -572,6 +576,7 @@
       "visible": true,
       "flammable": false,
       "damage_type": "fire",
+      "fire_immune": true,
       "spreads": false,
       "light_source": true,
       "paint_tile": "DOUBLE_EXCLAMATION_MARK",
@@ -593,6 +598,7 @@
       "flammable": false,
       "ignites": true,
       "damage_type": "fire",
+      "fire_immune": true,
       "light_source": true,
       "paint_tile": "BLACK_DIAMOND_SUITE",
       "mass_noun": true
@@ -616,6 +622,7 @@
       "flammable": false,
       "ignites": true,
       "damage_type": "fire",
+      "fire_immune": true,
       "light_source": true,
       "mass_noun": true
     },

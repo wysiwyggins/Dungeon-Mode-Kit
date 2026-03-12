@@ -185,7 +185,7 @@
     "hostile": true,
     "behaviors": [
       "attack_adjacent",
-      "scutigera_head_ai"
+      "chain_head_ai"
     ]
   },
 
@@ -193,8 +193,8 @@
     "name": "Scutigera Body",
     "hostile": true,
     "behaviors": [
-      "scutigera_body_follow",
-      "scutigera_scatter"
+      "chain_body_follow",
+      "chain_scatter"
     ]
   }
 }

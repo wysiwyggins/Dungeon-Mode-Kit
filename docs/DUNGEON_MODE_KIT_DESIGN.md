@@ -216,4 +216,4 @@ Actor and item stats are defined in actor/item JSON files, not the prototype con
 
 ### Creating a Prototype
 
-Create a folder in `prototypes/` with a `prototype.json`. For authored content, add a `map.tmj` with floor, actors, items, and wildcards layers. Without a map file, the engine generates a procedural level. Add local `actors.json` or `items.json` to customize entities for this prototype.
+Create a folder in `prototypes/` with a `prototype.json`. For authored content, add a `map.tmj` with floor, actors, items, and wildcards layers. *Without a map file, the engine generates a procedural level*. Add local `actors.json` or `items.json` to customize entities for this prototype.

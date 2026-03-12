@@ -482,12 +482,14 @@ function findAdjacentWalkable(actor, entityManager) {
 }
 
 /**
- * Spawn a chain of scutigera_body segments behind a scutigera_head actor.
+ * Spawn a chain of body segments behind a chain_head actor.
  * Sets up _chainPrev/_chainNext/_chainHead links and _pathHistory on the head.
  * Uses entityManager.spawnActor() so each segment gets sprites + scheduler registration.
  */
-function spawnScutigeraChain(head, entityManager) {
+function spawnChainSegments(head, entityManager) {
     const segmentCount = head.getAttribute('segment_count') || 4;
+    const segmentType = head.getAttribute('chain_segment_type');
+    if (!segmentType) return;
 
     head._chainNext = null;
     head._chainPrev = null;
@@ -500,7 +502,7 @@ function spawnScutigeraChain(head, entityManager) {
         const spawnPos = findAdjacentWalkable(prev, entityManager);
         if (!spawnPos) break;
 
-        const segment = entityManager.spawnActor('scutigera_body', spawnPos.x, spawnPos.y);
+        const segment = entityManager.spawnActor(segmentType, spawnPos.x, spawnPos.y);
         if (!segment) break;
 
         segment._chainPrev = prev;
@@ -1085,8 +1087,8 @@ class DungeonEngine {
         // Spawn random actors after wildcard processing (walkable tiles now exist)
         this.entityManager.spawnRandomActorsFromConfig();
 
-        // Spawn body segment chains for any scutigera heads
-        this.entityManager.spawnScutigeraChains();
+        // Spawn body segment chains for any chain_head actors
+        this.entityManager.spawnChainCreatures();
 
         // Run cellular automata behaviors once to pre-calculate initial state
         this.entityManager.runCellularAutomataStep();
@@ -2502,8 +2504,23 @@ class Actor extends Entity {
             return Promise.resolve(); // Skip turn but don't lock engine
         }
 
+        // Check if slowed — skip every other turn
+        if (this.hasStateProperty('skip_every_other_turn')) {
+            this._slowedToggle = !this._slowedToggle;
+            if (this._slowedToggle) {
+                return Promise.resolve();
+            }
+        }
+
         // Player-controlled actors lock the engine and wait for input
         if (this.isPlayerControlled()) {
+            // Grant extra actions from haste (set once per act() call)
+            if (this.hasStateProperty('extra_turn')) {
+                this._extraActions = 1;
+            } else {
+                this._extraActions = 0;
+            }
+
             this.engine.turnEngine.lock();
 
             // Update player info box if visible (reflects stat changes from previous turn)
@@ -2521,6 +2538,11 @@ class Actor extends Entity {
         // AI actors execute their personality behaviors
         if (this.personality) {
             this.personality.execute(this);
+
+            // Hasted actors get a bonus action (no extra state processing)
+            if (this.hasStateProperty('extra_turn') && !this.isDead) {
+                this.personality.execute(this);
+            }
         }
 
         // In observer mode, lock after each AI turn to allow paced playback
@@ -3092,6 +3114,11 @@ class Actor extends Entity {
             this.engine.updateLighting?.();
         }
 
+        // Slowed: reset toggle when slow is removed
+        if (state.data.skip_every_other_turn) {
+            this._slowedToggle = false;
+        }
+
         // Flying: handle landing when flight ends
         if (state.data.flying && !this.isDead) {
             // Check if still flying from another source
@@ -3479,6 +3506,10 @@ class Actor extends Entity {
      */
     getWeaponType(weapon) {
         if (!weapon) return 'normal';
+        // New format: weapon_proc attribute
+        const proc = weapon.getAttribute('weapon_proc');
+        if (proc) return proc;
+        // Backward compat: old weapon: "knockback" string format
         const attr = weapon.getAttribute('weapon');
         if (attr === true) return 'normal';
         if (typeof attr === 'string') return attr;
@@ -3498,10 +3529,10 @@ class Actor extends Entity {
 
         switch (weaponType) {
             case 'knockback':
-                this._procKnockback(target);
+                this._procKnockback(target, weapon);
                 break;
             case 'lifesteal':
-                this._procLifesteal(damageDealt);
+                this._procLifesteal(damageDealt, weapon);
                 break;
             case 'critical':
                 // Critical is handled during damage calculation, not as a post-hit proc
@@ -3514,24 +3545,31 @@ class Actor extends Entity {
     }
 
     /**
-     * Knockback proc: Push target 1 tile away from attacker
+     * Knockback proc: Push target away from attacker
      * @param {Actor} target - The target to knock back
+     * @param {Item} weapon - The weapon used
      */
-    _procKnockback(target) {
+    _procKnockback(target, weapon) {
         if (!target || target.isDead) return;
+
+        const distance = weapon?.getAttribute('knockback_distance') ?? 1;
 
         // Calculate direction from attacker to target
         const dx = Math.sign(target.x - this.x);
         const dy = Math.sign(target.y - this.y);
-        const newX = target.x + dx;
-        const newY = target.y + dy;
 
-        // Check if target can be pushed there (use target's isPassableAt which checks floor and actors)
-        const canPush = target.isPassableAt(newX, newY);
-
-        if (canPush) {
+        // Push target tile by tile up to distance
+        let pushed = false;
+        for (let i = 0; i < distance; i++) {
+            const newX = target.x + dx;
+            const newY = target.y + dy;
+            if (!target.isPassableAt(newX, newY)) break;
             target.x = newX;
             target.y = newY;
+            pushed = true;
+        }
+
+        if (pushed) {
             target.updateSpritePosition();
             target._lastAttacker = null; // Prevent immediate pursuit via defend_self
             target._knockedBack = true; // Skip next turn due to knockback stagger
@@ -3543,11 +3581,13 @@ class Actor extends Entity {
     }
 
     /**
-     * Lifesteal proc: Heal attacker for 25% of damage dealt
+     * Lifesteal proc: Heal attacker for a percentage of damage dealt
      * @param {number} damageDealt - Damage dealt (negative number)
+     * @param {Item} weapon - The weapon used
      */
-    _procLifesteal(damageDealt) {
-        const healAmount = Math.max(1, Math.floor(Math.abs(damageDealt) * 0.25));
+    _procLifesteal(damageDealt, weapon) {
+        const percent = (weapon?.getAttribute('lifesteal_percent') ?? 25) / 100;
+        const healAmount = Math.max(1, Math.floor(Math.abs(damageDealt) * percent));
         this.modifyStat('health', healAmount);
         if (this.isPlayerControlled()) {
             this.engine.inputManager?.showMessage(`You drain ${healAmount} health!`);
@@ -3565,8 +3605,9 @@ class Actor extends Entity {
         const weaponType = this.getWeaponType(weapon);
         if (weaponType !== 'critical') return false;
 
+        const critChance = weapon.getAttribute('critical_chance') ?? 15;
         const roll = ROT.RNG.getPercentage();
-        return roll <= 15; // 15% critical chance
+        return roll <= critChance;
     }
 
     /**
@@ -3920,7 +3961,9 @@ class Actor extends Entity {
                 if (!randomActors) return false;
                 const actorTypes = Object.keys(randomActors);
                 if (actorTypes.length === 0) return false;
-                const count = 2 + Math.floor(ROT.RNG.getUniform() * 3); // 2–4
+                const summonMin = item?.getAttribute('summon_min') ?? 2;
+                const summonMax = item?.getAttribute('summon_max') ?? 4;
+                const count = summonMin + Math.floor(ROT.RNG.getUniform() * (summonMax - summonMin + 1));
                 let spawned = 0;
                 const dirs = [{ dx: 0, dy: -1 }, { dx: 0, dy: 1 }, { dx: -1, dy: 0 }, { dx: 1, dy: 0 },
                               { dx: -1, dy: -1 }, { dx: 1, dy: -1 }, { dx: -1, dy: 1 }, { dx: 1, dy: 1 }];
@@ -3982,7 +4025,7 @@ class Actor extends Entity {
             }
 
             case 'shatter_walls': {
-                const radius = 3;
+                const radius = item?.getAttribute('effect_radius') ?? 3;
                 let shattered = false;
                 const toRemove = [];
                 for (const actor of this.engine.entityManager?.actors || []) {
@@ -4005,7 +4048,7 @@ class Actor extends Entity {
             }
 
             case 'darkness_field': {
-                const radius = 5;
+                const radius = item?.getAttribute('effect_radius') ?? 5;
                 let extinguished = false;
                 // Extinguish light source items carried by actors in radius
                 for (const actor of this.engine.entityManager?.actors || []) {
@@ -6154,14 +6197,15 @@ const BehaviorLibrary = {
             const floorTile = actor.engine.mapManager?.floorMap[targetY]?.[targetX];
             if (!floorTile || floorTile.tileId <= 0) continue;
 
-            // Check if there's already a cloud at this position
+            // Check if there's already a cloud of this type at this position
+            const cloudSpawnType = data.spawn_type || actor.type;
             const existingCloud = entityManager.actors.find(
-                a => a.x === targetX && a.y === targetY && a.type === 'cloud' && !a.isDead
+                a => a.x === targetX && a.y === targetY && a.type === cloudSpawnType && !a.isDead
             );
             if (existingCloud) continue;
 
             // Spawn a new cloud at this position
-            const newCloud = entityManager.spawnActor('cloud', targetX, targetY);
+            const newCloud = entityManager.spawnActor(cloudSpawnType, targetX, targetY);
             if (newCloud) {
                 // Copy properties from origin cloud
                 newCloud.tint = actor.tint;
@@ -6830,11 +6874,15 @@ const BehaviorLibrary = {
             return count;
         };
 
-        // Phase 1: Find cells that should die (not 2-3 neighbors)
+        const surviveMin = data.survive_min ?? 2;
+        const surviveMax = data.survive_max ?? 3;
+        const birthCount = data.birth_count ?? 3;
+
+        // Phase 1: Find cells that should die (outside survival range)
         const cellsToDie = [];
         for (const cell of cellActors) {
             const n = countNeighbors(cell.x, cell.y);
-            if (n < 2 || n > 3) cellsToDie.push(cell);
+            if (n < surviveMin || n > surviveMax) cellsToDie.push(cell);
         }
 
         // Phase 2: Find empty tiles that should birth (exactly 3 neighbors)
@@ -6852,7 +6900,7 @@ const BehaviorLibrary = {
             if (x < 0 || x >= mapManager.width || y < 0 || y >= mapManager.height) continue;
             const floorTile = mapManager.floorMap?.[y]?.[x];
             if (!floorTile || floorTile.tileId <= 0) continue;
-            if (countNeighbors(x, y) === 3) cellsToBirth.push({x, y});
+            if (countNeighbors(x, y) === birthCount) cellsToBirth.push({x, y});
         }
 
         // Phase 3: Apply all changes simultaneously
@@ -6870,8 +6918,9 @@ const BehaviorLibrary = {
      * Fire spreading behavior - spreads to adjacent flammable actors/items
      * Uses actor's spread_chance from actor data
      */
-    fire_spread: (actor) => {
+    fire_spread: (actor, data) => {
         const spreadChance = actor.data?.spread_chance ?? 0.3;
+        const spawnType = data?.spawn_type || actor.type;
         const entityManager = actor.engine.entityManager;
         const mapManager = actor.engine.mapManager;
 
@@ -6885,9 +6934,9 @@ const BehaviorLibrary = {
             const floorTile = mapManager.floorMap?.[targetY]?.[targetX];
             if (!floorTile || floorTile.tileId <= 0) continue;
 
-            // Don't spread where fire already exists
+            // Don't spread where same fire type already exists
             const existingFire = entityManager.actors.find(
-                a => a.x === targetX && a.y === targetY && !a.isDead && a.type === 'fire'
+                a => a.x === targetX && a.y === targetY && !a.isDead && a.type === actor.type
             );
             if (existingFire) continue;
 
@@ -6898,7 +6947,7 @@ const BehaviorLibrary = {
             );
             if (targetEntity && targetEntity.hasAttribute('flammable')) {
                 targetEntity.die();
-                const newFire = entityManager.spawnActor('fire', targetX, targetY);
+                const newFire = entityManager.spawnActor(spawnType, targetX, targetY);
                 if (newFire) newFire.fireLifetime = newFire.lifetime || 5;
                 continue;
             }
@@ -6908,10 +6957,10 @@ const BehaviorLibrary = {
 
             // Check for flammable actors at target position
             const targetActor = entityManager.actors.find(
-                a => a.x === targetX && a.y === targetY && !a.isDead && a.type !== 'fire'
+                a => a.x === targetX && a.y === targetY && !a.isDead && a.type !== actor.type
             );
             if (targetActor && targetActor.hasAttribute('flammable')) {
-                const newFire = entityManager.spawnActor('fire', targetX, targetY);
+                const newFire = entityManager.spawnActor(spawnType, targetX, targetY);
                 if (newFire) newFire.fireLifetime = newFire.lifetime || 5;
                 continue;
             }
@@ -6927,7 +6976,7 @@ const BehaviorLibrary = {
                     actor.engine.interfaceManager?.createExplosiveCloud(targetItem, targetX, targetY);
                 }
                 targetItem.die();
-                const newFire = entityManager.spawnActor('fire', targetX, targetY);
+                const newFire = entityManager.spawnActor(spawnType, targetX, targetY);
                 if (newFire) newFire.fireLifetime = newFire.lifetime || 5;
             }
         }
@@ -6954,10 +7003,10 @@ const BehaviorLibrary = {
             actor.fireLifetime = actor.lifetime || 5;
         }
 
-        // Damage any actor standing in the fire (except other fire/lava, or flying actors)
+        // Damage any actor standing in the fire (except fire-immune or flying actors)
         const victim = entityManager.actors.find(
             a => a.x === actor.x && a.y === actor.y && !a.isDead && a !== actor &&
-                 a.type !== 'fire' && a.type !== 'lava' && a.type !== 'intense_fire' &&
+                 !a.hasAttribute('fire_immune') &&
                  !a.hasStateProperty('flying')
         );
 
@@ -7330,7 +7379,7 @@ const BehaviorLibrary = {
     },
 
     // ========================================================================
-    // SCUTIGERA (CENTIPEDE) BEHAVIORS
+    // CHAIN CREATURE BEHAVIORS
     // ========================================================================
 
     /**
@@ -7338,7 +7387,7 @@ const BehaviorLibrary = {
      * for body segments to follow. Avoids own body segments in both pathfinding
      * and random walk fallback, producing snake-like movement.
      */
-    scutigera_head_ai: (actor, _data) => {
+    chain_head_ai: (actor, _data) => {
         // Scale strength by number of connected living segments
         let segCount = 0;
         let node = actor._chainNext;
@@ -7347,8 +7396,10 @@ const BehaviorLibrary = {
             node = node._chainNext;
         }
         const baseSegments = actor.getAttribute('segment_count') || 4;
-        const scaledStrength = Math.round(5 + segCount * 2.5);
-        actor.setAttribute('strength', Math.min(scaledStrength, 5 + baseSegments * 2.5));
+        const baseStrength = actor.getAttribute('chain_base_strength') ?? 5;
+        const perSegment = actor.getAttribute('chain_strength_per_segment') ?? 2.5;
+        const scaledStrength = Math.round(baseStrength + segCount * perSegment);
+        actor.setAttribute('strength', Math.min(scaledStrength, baseStrength + baseSegments * perSegment));
 
         // Collect body segment positions so the head avoids them
         const bodyPositions = new Set();
@@ -7422,7 +7473,7 @@ const BehaviorLibrary = {
      * and moves to the tile the head (or preceding segment) vacated.
      * If disconnected from a living head, falls through to scatter.
      */
-    scutigera_body_follow: (actor, _data) => {
+    chain_body_follow: (actor, _data) => {
         const prev = actor._chainPrev;
 
         // If no prev link or prev is dead, we're disconnected
@@ -7479,7 +7530,7 @@ const BehaviorLibrary = {
      * Scatter: random walk for body segments disconnected from a living head.
      * Only activates when the segment has no living head reference.
      */
-    scutigera_scatter: (actor, _data) => {
+    chain_scatter: (actor, _data) => {
         // Only scatter if disconnected from a living head
         if (actor._chainHead && !actor._chainHead.isDead) return false;
 
@@ -7490,7 +7541,12 @@ const BehaviorLibrary = {
             if (result.moved) return true;
         }
         return false;
-    }
+    },
+
+    // Backward-compat aliases for renamed chain behaviors
+    scutigera_head_ai: (...args) => BehaviorLibrary.chain_head_ai(...args),
+    scutigera_body_follow: (...args) => BehaviorLibrary.chain_body_follow(...args),
+    scutigera_scatter: (...args) => BehaviorLibrary.chain_scatter(...args)
 };
 
 // ============================================================================
@@ -7849,9 +7905,9 @@ class EntityManager {
         }
 
         // 3. Spawn a random weapon or staff inside the room
-        const lootCandidates = Object.entries(prototype.items).filter(([type, data]) => {
+        const lootCandidates = Object.entries(prototype.items).filter(([_type, data]) => {
             const attrs = data.attributes || {};
-            return attrs.weapon || type.startsWith('staff_');
+            return attrs.weapon || attrs.treasure_loot;
         });
 
         if (lootCandidates.length > 0 && roomTiles.length > 0) {
@@ -7866,15 +7922,15 @@ class EntityManager {
     }
 
     /**
-     * Find all scutigera_head actors and spawn their body segment chains.
+     * Find all chain_head actors and spawn their body segment chains.
      * Called once after all actors (Tiled, unplaced, random) have been created.
      */
-    spawnScutigeraChains() {
+    spawnChainCreatures() {
         for (const actor of [...this.actors]) {
             if (actor.isDead) continue;
-            if (actor.type !== 'scutigera_head') continue;
+            if (!actor.hasAttribute('chain_head')) continue;
             if (actor._chainHead) continue;
-            spawnScutigeraChain(actor, this);
+            spawnChainSegments(actor, this);
         }
     }
 
@@ -8220,9 +8276,9 @@ class EntityManager {
             if (other.isDead) continue;
             if (other.x !== hazard.x || other.y !== hazard.y) continue;
 
-            // Skip other hazards (fire, cloud, mist, lava)
-            if (other.type === 'fire' || other.type === 'intense_fire' ||
-                other.type === 'cloud' || other.type === 'mist' || other.type === 'lava') continue;
+            // Skip other hazards (fire-immune actors, clouds, mist)
+            if (other.hasAttribute('fire_immune') ||
+                other.type === 'cloud' || other.type === 'mist') continue;
 
             // Skip flying actors (hovering above ground hazards)
             if (other.hasStateProperty?.('flying')) continue;
