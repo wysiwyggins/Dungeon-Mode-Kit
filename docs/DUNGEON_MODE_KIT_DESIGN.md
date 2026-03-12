@@ -141,6 +141,8 @@ Combat occurs when actors collide. The system uses exponential hit calculations,
 
 ## Map System
 
+See [MAPS.md](MAPS.md)
+
 ### Tiled Integration
 
 **Layers**:

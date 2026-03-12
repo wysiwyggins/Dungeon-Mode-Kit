@@ -69,6 +69,9 @@ Some existing maps include a `ui` tile layer — the engine ignores it completel
 | `walk_description` (custom property) | Message shown when the player steps on it |
 | `tint` (custom property) | Hex color string (e.g. `#FF8800`) |
 
+[What are Tiled Objects?](https://doc.mapeditor.org/en/stable/manual/objects/)
+objects are regions drawn with a shape tool with attributes like "class". We added a regular tilemap layer that let's us also paint tiles that spawn some common actors and mark off procedurally generated areas too, it's called "wildcards"—
+
 ---
 
 ## Wildcard Tiles (Generative Fills)
@@ -87,7 +90,7 @@ Paint a region on the `wildcards` layer and the engine fills it with procedural 
 | Item spawn | ![BLACK_KEY](../assets/images/BLACK_KEY.png) | 12 | Random items from `random_items` config |
 | Actor spawn | ![OPAQUE_WHITE_SMILING_FACE](../assets/images/OPAQUE_WHITE_SMILING_FACE.png) | 3 | Random actors from `random_actors` config |
 
-Tile 16 (`PRISON_WINDOW`) is the recommended dungeon wildcard. Tiles 9 (`OPAQUE_INVERSE_DIAMOND_SUITE`) and 152 (`OPAQUE_PRISON_WINDOW`) also work — all three generate the same dungeon layout. Tile 144 (`INVERTED_CHECKER_BOARD`) is an alternate room tile.
+Tile 16 (`PRISON_WINDOW`) is the recommended dungeon wildcard. Tiles 9 (`OPAQUE_INVERSE_DIAMOND_SUITE`) and 152 (`OPAQUE_PRISON_WINDOW`) also work — all three generate the same dungeon layout. Tile 144 (`INVERTED_CHECKER_BOARD`) is an alternate room tile. This stuff is all in flux while DMK is still being developed.
 
 ### Tips
 
