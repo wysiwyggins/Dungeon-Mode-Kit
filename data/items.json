@@ -605,6 +605,32 @@
     }
   },
 
+  "levitation_potion": {
+    "name": "Potion",
+    "tileIndex": "FEMALE_SYMBOL",
+    "flipV": true,
+    "random_color": true,
+    "identified": false,
+    "unidentified_template": "[color] potion",
+    "identified_template": "Potion of Levitation",
+    "effect_description": "You hover above the ground",
+    "use_description": "The [item_name] tastes [adjectives.wine_descriptions].",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": true,
+      "flammable": false,
+      "consumable": true,
+      "explosive": true,
+      "break_sound": "glass",
+      "explode_sound": "gas",
+      "breakable": true,
+      "use_verb": "Drink",
+      "use_effect": { "apply_state": "flying" },
+      "use_sound": "swallow"
+    }
+  },
+
   "scroll_of_identify": {
     "name": "Scroll",
     "tileIndex": "BEAMED_EIGHTH_NOTES",

@@ -3041,6 +3041,11 @@ class Actor extends Entity {
             }
         }
 
+        // Flying: emerge from submersion when gaining flight
+        if (stateData.flying && this.isSubmerged) {
+            this.emerge();
+        }
+
         return true;
     }
 
@@ -3085,6 +3090,20 @@ class Actor extends Entity {
                 this.engine.disableRuntimeDarkness?.();
             }
             this.engine.updateLighting?.();
+        }
+
+        // Flying: handle landing when flight ends
+        if (state.data.flying && !this.isDead) {
+            // Check if still flying from another source
+            const stillFlying = Object.entries(this.states).some(
+                ([name, s]) => name !== stateName && s.data.flying
+            );
+            if (!stillFlying) {
+                this.updateSubmersionState();
+                if (!this.hasFloorAt(this.x, this.y)) {
+                    this.fall();
+                }
+            }
         }
 
         delete this.states[stateName];
@@ -4844,8 +4863,8 @@ class Actor extends Entity {
             return { moved: false, actionTaken: collisionResult.attackAttempted };
         }
 
-        // Check for floor tile - if no floor, actor falls
-        if (!this.hasFloorAt(newX, newY)) {
+        // Check for floor tile - if no floor, actor falls (flying actors hover above)
+        if (!this.hasFloorAt(newX, newY) && !this.hasStateProperty('flying')) {
             // Move to the void tile first (so we can see them fall)
             this.x = newX;
             this.y = newY;
@@ -4910,8 +4929,10 @@ class Actor extends Entity {
             this.engine.updateLighting();
         }
 
-        // Check for submersion in deep liquids
-        this.updateSubmersionState();
+        // Check for submersion in deep liquids (flying actors hover above)
+        if (!this.hasStateProperty('flying')) {
+            this.updateSubmersionState();
+        }
 
         // Check for clouds/mist at destination and apply their effects immediately
         this.checkCloudEffects(newX, newY);
@@ -5985,8 +6006,9 @@ const BehaviorLibrary = {
             if (other.isDead) continue;
             if (other.x !== actor.x || other.y !== actor.y) continue;
 
-            // Skip fireproof actors
+            // Skip fireproof or flying actors
             if (other.hasAttribute('fireproof')) continue;
+            if (other.hasStateProperty?.('flying')) continue;
 
             const isSolid = other.hasAttribute('solid');
             const isLiquid = other.hasAttribute('liquid');
@@ -6932,10 +6954,11 @@ const BehaviorLibrary = {
             actor.fireLifetime = actor.lifetime || 5;
         }
 
-        // Damage any actor standing in the fire (except other fire/lava)
+        // Damage any actor standing in the fire (except other fire/lava, or flying actors)
         const victim = entityManager.actors.find(
             a => a.x === actor.x && a.y === actor.y && !a.isDead && a !== actor &&
-                 a.type !== 'fire' && a.type !== 'lava' && a.type !== 'intense_fire'
+                 a.type !== 'fire' && a.type !== 'lava' && a.type !== 'intense_fire' &&
+                 !a.hasStateProperty('flying')
         );
 
         if (victim && damagePerTurn > 0 && victim.stats?.health) {
@@ -6984,7 +7007,7 @@ const BehaviorLibrary = {
         );
         const solidActorOnTrap = entityManager.actors.find(
             a => a.x === actor.x && a.y === actor.y && !a.isDead && a !== actor &&
-                 !a.hasAttribute('trap') && a.hasAttribute('solid')
+                 !a.hasAttribute('trap') && a.hasAttribute('solid') && !a.hasStateProperty('flying')
         );
 
         // If trap needs reset (was triggered by item), check if tile is now empty
@@ -8200,6 +8223,9 @@ class EntityManager {
             // Skip other hazards (fire, cloud, mist, lava)
             if (other.type === 'fire' || other.type === 'intense_fire' ||
                 other.type === 'cloud' || other.type === 'mist' || other.type === 'lava') continue;
+
+            // Skip flying actors (hovering above ground hazards)
+            if (other.hasStateProperty?.('flying')) continue;
 
             // Apply fire damage
             if (behaviors.includes('fire_burn_out')) {

@@ -91,5 +91,14 @@
     "effect_description": "Darkness closes in around you",
     "on_apply_message": "Darkness closes in around [actor_name]!",
     "on_remove_message": "[actor_name]'s vision clears."
+  },
+
+  "flying": {
+    "name": "Flying",
+    "duration": 30,
+    "flying": true,
+    "effect_description": "You hover above the ground",
+    "on_apply_message": "[actor_name] rises into the air!",
+    "on_remove_message": "[actor_name] drifts back to the ground."
   }
 }
