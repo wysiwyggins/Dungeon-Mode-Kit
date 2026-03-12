@@ -66,6 +66,10 @@ class InputManager {
             'b': 'move_down_left',
             'n': 'move_down_right',
             // Other actions
+            'z': 'wait',
+            'Z': 'wait',
+            '.': 'wait',
+            'Numpad5': 'wait',
             'i': 'player_info',
             'I': 'player_info',
             't': 'throw_item',
@@ -706,6 +710,33 @@ class InputManager {
     showMessage(message) {
         if (!this.descriptionElement) return;
 
+        // Strip trailing periods to get base text for comparison
+        const baseNew = message.replace(/\.+$/, '');
+
+        // Check current turn's last message first
+        if (this.messageStack.length > 0) {
+            const lastMessage = this.messageStack[this.messageStack.length - 1];
+            const baseLast = lastMessage.replace(/\.+$/, '');
+            if (baseNew === baseLast) {
+                this.messageStack[this.messageStack.length - 1] = lastMessage + '.';
+                this.displayMessages();
+                return;
+            }
+        }
+        // Check last message from the most recent history turn
+        else if (this.turnHistory.length > 0) {
+            const lastTurn = this.turnHistory[this.turnHistory.length - 1];
+            if (lastTurn.length > 0) {
+                const lastMessage = lastTurn[lastTurn.length - 1];
+                const baseLast = lastMessage.replace(/\.+$/, '');
+                if (baseNew === baseLast) {
+                    lastTurn[lastTurn.length - 1] = lastMessage + '.';
+                    this.displayMessages();
+                    return;
+                }
+            }
+        }
+
         // Add to message stack
         this.messageStack.push(message);
 
@@ -955,6 +986,7 @@ class InputManager {
             } else if (!result.actionTaken) {
                 // Bumped into a wall or obstacle with no effect
                 this.engine.playSound('tap1');
+                this.showMessage("You bump into a wall.");
             }
             if (result.actionTaken) {
                 this.onPlayerAction();
@@ -966,6 +998,7 @@ class InputManager {
         switch (action) {
             case 'wait':
                 console.log(`${player.name} waits.`);
+                this.showMessage("You wait.");
                 this.onPlayerAction();
                 break;
 
