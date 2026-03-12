@@ -1,7 +1,6 @@
 lib/*
 .vscode
 .sass-cache
-tiled/
 .DS_Store
 assets/.DS_Store
 .DS_Store

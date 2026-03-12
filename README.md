@@ -8,7 +8,7 @@ A web-based roguelike toolkit. Build levels by editing JSON files and drawing ma
 
 ## Quick Start
 
-1. Serve the project locally (required for file loading — `python3 -m http.server` or any static server)
+1. Serve the project locally (required for file loading — `python3 -m http.server` or any static server like VSCode's "Go Live")
 2. Open `index.html` in a browser
 3. Add `?prototype=name` to the URL to load a specific level (e.g. `index.html?prototype=labyrinth`)
 4. Edit maps in Tiled: open `tiled/dungeonkit.tiled-project`
@@ -318,6 +318,7 @@ Use these exact strings in:
 
 ## Reference Docs
 
+- [MAP.md](docs/MAP.md) — Designer's guide to making maps in Tiled
 - [ITEMS.md](ITEMS.md) — Full item attribute reference, use effects, equipment
 - [COMBAT.md](COMBAT.md) — Hit/damage math, weapon types, equipment slots
 - [LIGHTING.md](LIGHTING.md) — Darkness, fog of war, light source configuration

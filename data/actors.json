@@ -594,7 +594,7 @@
       "ignites": true,
       "damage_type": "fire",
       "light_source": true,
-      "paint_tile": "OPAQUE_INVERSE_DIAMOND_SUITE",
+      "paint_tile": "BLACK_DIAMOND_SUITE",
       "mass_noun": true
     },
     "damage_per_turn": 10,

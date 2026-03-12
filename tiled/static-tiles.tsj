@@ -1,0 +1,14 @@
+{ "columns":23,
+ "image":"..\/assets\/sprites\/static-tiles.png",
+ "imageheight":330,
+ "imagewidth":920,
+ "margin":0,
+ "name":"static-tiles",
+ "spacing":0,
+ "tilecount":253,
+ "tiledversion":"1.11.2",
+ "tileheight":30,
+ "tilewidth":40,
+ "type":"tileset",
+ "version":"1.10"
+}

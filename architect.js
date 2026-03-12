@@ -523,7 +523,7 @@ class Architect {
             16: 'dungeon',   // PRISON_WINDOW [15,0] - ROT.js Digger rooms + corridors
             152: 'dungeon',  // OPAQUE_PRISON_WINDOW - ROT.js Digger rooms + corridors
             10: 'cave',      // INVERSE_BULLET [9,0] - Cellular automata cave generation
-            11: 'infernal',  // INVERSE_WHITE_CIRCLE [10,0] - Cave with lava pools
+            230: 'infernal', // OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE_AND_OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE [22,9] - Cave with lava pools
             143: 'room',
             144: 'room',
             12: 'item_spawn',
