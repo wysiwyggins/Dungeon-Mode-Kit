@@ -1359,8 +1359,10 @@ class InterfaceManager {
             return;
         }
 
-        // Refresh and consume turn
-        this.showPlayerInfo(player);
+        // If the item was consumed, keep the info box closed; otherwise refresh it
+        if (player.inventory.includes(item)) {
+            this.showPlayerInfo(player);
+        }
         this.engine.inputManager?.onPlayerAction();
     }
 

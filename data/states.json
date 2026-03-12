@@ -100,5 +100,14 @@
     "effect_description": "You hover above the ground",
     "on_apply_message": "[actor_name] rises into the air!",
     "on_remove_message": "[actor_name] drifts back to the ground."
+  },
+
+  "hallucinating": {
+    "name": "Hallucinating",
+    "duration": 20,
+    "hallucinating": true,
+    "effect_description": "Nothing looks right",
+    "on_apply_message": "The world begins to shift and melt around [actor_name]!",
+    "on_remove_message": "[actor_name]'s vision clears."
   }
 }

@@ -25,7 +25,7 @@
     "health_potion": { "chance": 100, "min": 3, "max": 3 },
     "warhammer": { "chance": 100, "min": 1, "max": 1 },
     "vampiric_blade": { "chance": 100, "min": 1, "max": 1 },
-    "assassin_dagger": { "chance": 100, "min": 1, "max": 1 },
+    "misericorde": { "chance": 100, "min": 1, "max": 1 },
     "chainmail": { "chance": 100, "min": 1, "max": 1 },
     "plate": { "chance": 100, "min": 1, "max": 1 },
     "confusion_potion": { "chance": 100, "min": 1, "max": 1 },

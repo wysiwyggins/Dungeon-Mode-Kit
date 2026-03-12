@@ -357,7 +357,7 @@
   },
 
   "assassin_dagger": {
-    "name": "Assassin's Dagger",
+    "name": "Misericorde",
     "tileIndex": "LATIN_SMALL_LETTER_T",
     "attributes": {
       "pickupable": true,
@@ -587,6 +587,31 @@
       "use_verb": "Drink",
       "use_sound": "swallow",
       "use_effect": { "apply_state": "blinded" }
+    }
+  },
+
+  "hallucination_potion": {
+    "name": "Potion",
+    "tileIndex": "FEMALE_SYMBOL",
+    "flipV": true,
+    "random_color": true,
+    "identified": false,
+    "unidentified_template": "[color] potion",
+    "identified_template": "Potion of Hallucination",
+    "effect_description": "Nothing looks right",
+    "use_description": "The [item_name] tastes [adjectives.yucky]. The world begins to melt.",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": true,
+      "flammable": true,
+      "consumable": true,
+      "explosive": false,
+      "breakable": true,
+      "break_sound": "glass",
+      "use_verb": "Drink",
+      "use_sound": "swallow",
+      "use_effect": { "apply_state": "hallucinating" }
     }
   },
 

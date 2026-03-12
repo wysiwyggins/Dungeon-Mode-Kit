@@ -21,11 +21,19 @@
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/catacombs/map.tmj": {
-            "scale": 0.36753125000000003,
+            "scale": 0.36,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 799.9319785732504,
-                "y": 599.9489839299379
+                "x": 800,
+                "y": 598.6111111111112
+            }
+        },
+        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/default/map.tmj": {
+            "scale": 1.13,
+            "selectedLayer": 5,
+            "viewCenter": {
+                "x": 756.6371681415931,
+                "y": 752.6548672566372
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/hunger_game/map.tmj": {
@@ -56,11 +64,11 @@
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/underworld/map.tmj": {
-            "scale": 0.1937,
+            "scale": 0.19,
             "selectedLayer": 3,
             "viewCenter": {
-                "x": 1027.3618998451213,
-                "y": 2903.975219411461
+                "x": 1026.3157894736842,
+                "y": 2902.631578947369
             }
         },
         "static-tiles.tsj": {
@@ -75,12 +83,13 @@
     ],
     "project": "dungeonkit.tiled-project",
     "recentFiles": [
-        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/arena/map.tmj",
+        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/default/map.tmj",
+        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/catacombs/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/underworld/map.tmj",
+        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/arena/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/morass/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/mine/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/hunger_game/map.tmj",
-        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/catacombs/map.tmj",
         "static-tiles.tsj"
     ]
 }

@@ -651,14 +651,26 @@ class InputManager {
             }
         }
 
+        // Check if the player is hallucinating (scramble non-player descriptions)
+        const player = entityManager.player;
+        const isHallucinating = player?.hasStateProperty?.('hallucinating');
+
         if (actor && !actor.isDead && actor.hasAttribute('visible')) {
-            entities.push(this.getEntityDescription(actor));
+            if (isHallucinating && !actor.isPlayerControlled()) {
+                entities.push(this._getHallucinatedName());
+            } else {
+                entities.push(this.getEntityDescription(actor));
+            }
         }
 
         // Check for items at this position
         const item = entityManager.getItemAt(tileX, tileY);
         if (item && item.hasAttribute('visible')) {
-            entities.push(this.getEntityDescription(item));
+            if (isHallucinating) {
+                entities.push(this._getHallucinatedName());
+            } else {
+                entities.push(this.getEntityDescription(item));
+            }
         }
 
         // Set hover description (or clear if nothing found)
@@ -853,6 +865,16 @@ class InputManager {
         const firstLetter = name.charAt(0).toLowerCase();
         const vowels = ['a', 'e', 'i', 'o', 'u'];
         return vowels.includes(firstLetter) ? 'an' : 'a';
+    }
+
+    /**
+     * Generate a fake entity description from a random tile name (for hallucination)
+     * @returns {string} A fake description like "a skull" or "an open door"
+     */
+    _getHallucinatedName() {
+        const rawName = this.engine.spriteLibrary?.getRandomTileName() || 'something';
+        const displayName = rawName.toLowerCase().replace(/_/g, ' ');
+        return `${this.getIndefiniteArticle(displayName)} ${displayName}`;
     }
 
     handleKeyDown(event) {

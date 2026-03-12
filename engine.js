@@ -18,6 +18,7 @@ class SpriteLibrary {
             const response = await fetch(`${globalVars.BASE_PATH}/data/static-tiles.json`);
             const data = await response.json();
             this.tiles = data.tiles;
+            this.tileNames = Object.keys(this.tiles);
             this.animations = {
                 'fire': 'fire',
                 'smoke': 'smoke',
@@ -92,11 +93,34 @@ class SpriteLibrary {
         console.warn('Invalid tile reference:', tileRef);
         return null;
     }
+
+    /**
+     * Get a random tile index from the tile set
+     * @returns {{x: number, y: number}} Random tile coordinates
+     */
+    getRandomTileIndex() {
+        if (!this.tileNames || this.tileNames.length === 0) return { x: 0, y: 0 };
+        const name = randomElement(this.tileNames);
+        const coords = this.tiles[name];
+        return { x: coords[0], y: coords[1] };
+    }
+
+    /**
+     * Get a random tile name string (for hover text scrambling)
+     * @returns {string} Random tile name
+     */
+    getRandomTileName() {
+        if (!this.tileNames || this.tileNames.length === 0) return 'something';
+        return randomElement(this.tileNames);
+    }
 }
 
 // ============================================================================
 // UTILITY FUNCTIONS
 // ============================================================================
+
+/** Tint palette for hallucination actor scrambling */
+const HALLUCINATION_TINTS = [0xFF44FF, 0x44FFCC, 0xFFCC44, 0xCC44FF, 0x44FF44];
 
 /**
  * Parse a tint value from various formats
@@ -3068,6 +3092,16 @@ class Actor extends Entity {
             this.emerge();
         }
 
+        // Confusion: apply full-canvas visual effect for player
+        if (stateData.random_movement && this.isPlayerControlled()) {
+            this.engine.renderer?.applyConfusionEffect();
+        }
+
+        // Hallucination: apply intense visual scrambling for player
+        if (stateData.hallucinating && this.isPlayerControlled()) {
+            this.engine.renderer?.applyHallucinationEffect();
+        }
+
         return true;
     }
 
@@ -3117,6 +3151,16 @@ class Actor extends Entity {
         // Slowed: reset toggle when slow is removed
         if (state.data.skip_every_other_turn) {
             this._slowedToggle = false;
+        }
+
+        // Confusion: remove full-canvas visual effect for player
+        if (state.data.random_movement && this.isPlayerControlled()) {
+            this.engine.renderer?.removeConfusionEffect();
+        }
+
+        // Hallucination: remove visual scrambling for player
+        if (state.data.hallucinating && this.isPlayerControlled()) {
+            this.engine.renderer?.removeHallucinationEffect();
         }
 
         // Flying: handle landing when flight ends
@@ -3205,6 +3249,11 @@ class Actor extends Entity {
                         }
                     }
                 }
+            }
+
+            // Hallucination: tick per-turn floor tile changes for player
+            if (stateData.hallucinating && this.isPlayerControlled()) {
+                this.engine.renderer?.tickHallucination();
             }
 
             // Decrement duration
@@ -8529,6 +8578,16 @@ class RenderSystem {
         // Ripple tint animation
         this._rippleSprites = [];
         this._rippleTickerFn = null;
+
+        // Confusion effect (full-canvas hue rotation)
+        this._confusionFilter = null;
+        this._confusionTickerFn = null;
+
+        // Hallucination effect (tile/actor scrambling + intense filter)
+        this._hallucinationActive = false;
+        this._hallTickerFn = null;
+        this._hallOriginalFloorTextures = null;
+        this._hallOriginalActorTextures = null;
     }
 
     /**
@@ -8583,6 +8642,228 @@ class RenderSystem {
         this.submersionOverlay.destroy();
         this.submersionOverlay = null;
         console.log('Removed submersion overlay');
+    }
+
+    /**
+     * Apply a full-canvas confusion effect (oscillating hue rotation + brightness pulse)
+     */
+    applyConfusionEffect() {
+        if (this._confusionFilter) return;
+
+        const filter = new PIXI.filters.ColorMatrixFilter();
+        this._confusionFilter = filter;
+
+        this.app.stage.filters = this.app.stage.filters
+            ? [...this.app.stage.filters, filter]
+            : [filter];
+
+        this._confusionTickerFn = () => {
+            const t = Date.now();
+            const hueShift = Math.sin(t * 0.002) * 40 + Math.sin(t * 0.0007) * 20;
+            const brightness = 1.0 + Math.sin(t * 0.003) * 0.05;
+            filter.reset();
+            filter.hue(hueShift);
+            filter.brightness(brightness, false);
+        };
+
+        this.app.ticker.add(this._confusionTickerFn);
+    }
+
+    /**
+     * Remove the full-canvas confusion effect
+     */
+    removeConfusionEffect() {
+        if (!this._confusionFilter) return;
+
+        if (this._confusionTickerFn) {
+            this.app.ticker.remove(this._confusionTickerFn);
+            this._confusionTickerFn = null;
+        }
+
+        if (this.app.stage.filters) {
+            this.app.stage.filters = this.app.stage.filters.filter(f => f !== this._confusionFilter);
+            if (this.app.stage.filters.length === 0) this.app.stage.filters = null;
+        }
+
+        this._confusionFilter = null;
+    }
+
+    /**
+     * Apply a hallucination effect: slow color drift + one-time actor scramble
+     * Floor tiles change gradually via tickHallucination() called each turn.
+     */
+    applyHallucinationEffect() {
+        if (this._hallucinationActive) return;
+        this._hallucinationActive = true;
+
+        const spriteLib = this.engine.spriteLibrary;
+
+        // Save original textures for floor sprites (background left alone)
+        this._hallOriginalFloorTextures = this.floorSprites.map(row =>
+            row.map(sprite => sprite ? sprite.texture : null)
+        );
+        this._hallOriginalActorTextures = new Map();
+
+        // Per-tile color fill rectangles behind each tile, each with a random phase
+        const tw = globalVars.TILE_WIDTH;
+        const th = globalVars.TILE_HEIGHT;
+        const origColor = this.engine.config.backgroundColor;
+        const origR = (origColor >> 16) & 0xFF;
+        const origG = (origColor >> 8) & 0xFF;
+        const origB = origColor & 0xFF;
+
+        this._hallTileRects = [];
+        this._hallTilePhases = [];
+        for (let y = 0; y < this.mapHeight; y++) {
+            for (let x = 0; x < this.mapWidth; x++) {
+                const rect = new PIXI.Graphics();
+                rect.beginFill(origColor);
+                rect.drawRect(0, 0, tw, th);
+                rect.endFill();
+                rect.x = x * tw;
+                rect.y = y * th;
+                rect.zIndex = -1;
+                this.backgroundContainer.addChild(rect);
+                this._hallTileRects.push(rect);
+                this._hallTilePhases.push(Math.random() * Math.PI * 2);
+            }
+        }
+
+        // Throttle color updates to every 4th frame (~15fps) for performance
+        let frameCount = 0;
+        this._hallTickerFn = () => {
+            if (++frameCount % 4 !== 0) return;
+            const t = Date.now();
+            const rects = this._hallTileRects;
+            const phases = this._hallTilePhases;
+            for (let i = 0; i < rects.length; i++) {
+                const p = phases[i];
+                const r = Math.min(255, Math.max(0, origR + Math.round(Math.sin(t * 0.0005 + p) * 60)));
+                const g = Math.min(255, Math.max(0, origG + Math.round(Math.sin(t * 0.0007 + p + 2.0) * 60)));
+                const b = Math.min(255, Math.max(0, origB + Math.round(Math.sin(t * 0.0003 + p + 4.0) * 60)));
+                rects[i].tint = (r << 16) | (g << 8) | b;
+            }
+        };
+
+        this.app.ticker.add(this._hallTickerFn);
+
+        // One-time actor scramble
+        this._scrambleActors(spriteLib);
+    }
+
+    /**
+     * Per-turn hallucination tick: swap 1-2 random floor tiles + re-scramble actors
+     * Called from Actor.processStates() each turn while hallucinating.
+     */
+    tickHallucination() {
+        if (!this._hallucinationActive) return;
+
+        const spriteLib = this.engine.spriteLibrary;
+
+        // Swap 1-2 random floor tiles
+        const tileCount = 1 + Math.floor(Math.random() * 2); // 1 or 2
+        for (let i = 0; i < tileCount; i++) {
+            if (this.floorSprites.length === 0) break;
+            const y = Math.floor(Math.random() * this.floorSprites.length);
+            const row = this.floorSprites[y];
+            if (!row || row.length === 0) continue;
+            const x = Math.floor(Math.random() * row.length);
+            const sprite = row[x];
+            if (!sprite || !sprite.visible) continue;
+            this.updateSpriteTexture(sprite, spriteLib.getRandomTileIndex());
+        }
+
+        // Re-scramble actor tiles each turn
+        this._scrambleActors(spriteLib);
+    }
+
+    /** @private Scramble all non-player actor sprites */
+    _scrambleActors(spriteLib) {
+
+        const actors = this.engine.entityManager?.actors;
+        if (!actors) return;
+
+        for (const actor of actors) {
+            if (actor.isDead || actor.isPlayerControlled()) continue;
+
+            // Save originals on first encounter
+            if (!this._hallOriginalActorTextures.has(actor)) {
+                this._hallOriginalActorTextures.set(actor, {
+                    baseTexture: actor.spriteBase ? actor.spriteBase.texture : null,
+                    topTexture: actor.spriteTop ? actor.spriteTop.texture : null,
+                    baseTint: actor.spriteBase ? actor.spriteBase.tint : 0xFFFFFF,
+                    topTint: actor.spriteTop ? actor.spriteTop.tint : 0xFFFFFF
+                });
+            }
+
+            // Swap textures (skip AnimatedSprites)
+            if (actor.spriteBase && !(actor.spriteBase instanceof PIXI.AnimatedSprite)) {
+                this.updateSpriteTexture(actor.spriteBase, spriteLib.getRandomTileIndex());
+            }
+            if (actor.spriteTop && !(actor.spriteTop instanceof PIXI.AnimatedSprite)) {
+                this.updateSpriteTexture(actor.spriteTop, spriteLib.getRandomTileIndex());
+            }
+
+            // Apply random tint
+            const tint = randomElement(HALLUCINATION_TINTS);
+            if (actor.spriteBase) actor.spriteBase.tint = tint;
+            if (actor.spriteTop) actor.spriteTop.tint = tint;
+        }
+    }
+
+    /**
+     * Remove the hallucination effect, restoring all original visuals
+     */
+    removeHallucinationEffect() {
+        if (!this._hallucinationActive) return;
+
+        // Remove ticker
+        if (this._hallTickerFn) {
+            this.app.ticker.remove(this._hallTickerFn);
+            this._hallTickerFn = null;
+        }
+
+        // Remove per-tile color rects
+        if (this._hallTileRects) {
+            for (const rect of this._hallTileRects) {
+                this.backgroundContainer.removeChild(rect);
+                rect.destroy();
+            }
+            this._hallTileRects = null;
+            this._hallTilePhases = null;
+        }
+
+        // Restore floor sprites
+        if (this._hallOriginalFloorTextures) {
+            for (let y = 0; y < this._hallOriginalFloorTextures.length; y++) {
+                for (let x = 0; x < this._hallOriginalFloorTextures[y].length; x++) {
+                    const sprite = this.floorSprites[y]?.[x];
+                    const tex = this._hallOriginalFloorTextures[y][x];
+                    if (sprite && tex) {
+                        sprite.texture = tex;
+                        sprite.tint = 0xFFFFFF;
+                    }
+                }
+            }
+        }
+
+        // Restore actor sprites
+        if (this._hallOriginalActorTextures) {
+            for (const [actor, originals] of this._hallOriginalActorTextures) {
+                if (actor.spriteBase && originals.baseTexture) {
+                    actor.spriteBase.texture = originals.baseTexture;
+                    actor.spriteBase.tint = originals.baseTint;
+                }
+                if (actor.spriteTop && originals.topTexture) {
+                    actor.spriteTop.texture = originals.topTexture;
+                    actor.spriteTop.tint = originals.topTint;
+                }
+            }
+        }
+
+        this._hallOriginalFloorTextures = null;
+        this._hallOriginalActorTextures = null;
+        this._hallucinationActive = false;
     }
 
     /**
@@ -9414,6 +9695,21 @@ class RenderSystem {
             this._rippleTickerFn = null;
         }
         this._rippleSprites = [];
+
+        // Hallucination cleanup (no texture restore needed, sprites are destroyed)
+        if (this._hallTickerFn) {
+            this.app.ticker.remove(this._hallTickerFn);
+            this._hallTickerFn = null;
+        }
+        // Destroy hallucination tile rects (removeChildren above detaches but doesn't destroy)
+        if (this._hallTileRects) {
+            for (const rect of this._hallTileRects) rect.destroy();
+        }
+        this._hallTileRects = null;
+        this._hallTilePhases = null;
+        this._hallOriginalFloorTextures = null;
+        this._hallOriginalActorTextures = null;
+        this._hallucinationActive = false;
     }
 
     /**
