@@ -3360,7 +3360,7 @@ class InterfaceManager {
                 html += '<div class="actor-conditions">';
                 for (const [key, state] of Object.entries(actor.states)) {
                     const displayName = state.data && state.data.name ? state.data.name : key;
-                    html += `<span class="actor-condition">${displayName} (${state.duration})</span>`;
+                    html += `<span class="actor-condition">${displayName} (${state.duration - 1})</span>`;
                 }
                 html += '</div>';
             }

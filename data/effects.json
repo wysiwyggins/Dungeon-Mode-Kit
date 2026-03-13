@@ -22,8 +22,7 @@
   "hallucination": {
     "target": "scene",
     "layers": [
-      { "primitive": "tile_color_drift", "params": { "amplitude": 60, "throttle_frames": 4 } },
-      { "primitive": "texture_scramble", "params": { "skip_player": true } }
+      { "primitive": "tile_color_drift", "params": { "amplitude": 60, "throttle_frames": 4 } }
     ],
     "on_tick": [
       { "primitive": "floor_swap", "params": { "count_min": 1, "count_max": 2 } },
