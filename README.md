@@ -6,6 +6,16 @@ A web-based roguelike toolkit. Build levels by editing JSON files and drawing ma
 
 ---
 
+## Setup
+
+After cloning, install the required libraries:
+
+    ./setup.sh
+
+This downloads JavaScript libraries into `lib/` (gitignored).
+
+---
+
 ## Quick Start
 
 1. Serve the project locally (required for file loading — `python3 -m http.server` or any static server like VSCode's "Go Live")
