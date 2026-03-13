@@ -118,7 +118,7 @@
       "sentient": true,
       "inventory": 0,
       "accuracy": 60,
-      "defense": 5,
+      "defense": 10,
       "strength": 15,
       "segment_count": 4,
       "chain_head": true,
@@ -127,7 +127,7 @@
       "chain_strength_per_segment": 2.5
     },
     "stats": {
-      "health": 10
+      "health": 20
     }
   },
   "scutigera_body": {
@@ -152,7 +152,7 @@
       "defense": 3
     },
     "stats": {
-      "health": 8
+      "health": 12
     }
   },
   "basilisk": {
