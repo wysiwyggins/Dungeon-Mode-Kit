@@ -14,14 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned
 
-- Actors noticing thread trail currently works through solid actors like walls and should be fixed
-
 ### In Progress
 
 - Mining (works but requires testing and refinement, Currently 3 hits always removes a breakable actor, which feels unnatural)
 - FOV epistemology (currently messages aren't filtered by vision range, make sound alternate messages for those, also some things like mining walls can still be seen out of range)
 
-## [1.0b] 2026-03-12
+## [1.0b] 2026-03-13
 
 ### Added
 
@@ -35,6 +33,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Recharge scroll case
 - put an ellipses counter for repeated messages in description
 - `z` or `.` key to rest
+
+### Changed
+
+- big refactor of behaviors and visual effects to their own files. First pass at some data-fied effects components but it's still probably confusing
+
+### Fixed
+
+- `follow_thread` behavior: monsters with `follows_thread` (e.g., Asterion) no longer detect the thread trail through walls. Added line-of-sight check using `hasLineOfSight` with solid actor blocking, so the monster must have an unobstructed view to a trail segment before reacting to it. Adjacent/on-trail detection unchanged.
 
 ## [0.9b] 2026-03-07
 

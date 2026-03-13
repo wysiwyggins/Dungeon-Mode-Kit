@@ -121,8 +121,16 @@ const BehaviorLibrary = {
                 const seg = trailData.positions[i];
                 const dist = Math.abs(seg.x - actor.x) + Math.abs(seg.y - actor.y);
                 if (dist <= visionRange && dist < nearestVisibleDist) {
-                    nearestVisibleDist = dist;
-                    nearestVisibleIdx = i;
+                    // Check line of sight — walls block thread awareness
+                    const canSee = hasLineOfSight(actor.x, actor.y, seg.x, seg.y, (x, y) => {
+                        if (!actor.hasFloorAt(x, y)) return true;
+                        const actorAt = actor.engine.entityManager.getSolidActorAt(x, y);
+                        return actorAt && actorAt !== actor;
+                    });
+                    if (canSee) {
+                        nearestVisibleDist = dist;
+                        nearestVisibleIdx = i;
+                    }
                 }
             }
             if (nearestVisibleIdx < 0) return false;
