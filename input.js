@@ -643,11 +643,13 @@ class InputManager {
         // Actor's base is at (x, y), top sprite is at (x, y-1)
         // So if hovering over y, check for actor at y (base) or y+1 (whose top is here)
         let actor = entityManager.getActorAt(tileX, tileY);
+        let hoveredTopHalf = false;
         if (!actor || actor.isDead) {
             // Check if we're hovering over an actor's top sprite (actor is at y+1)
             const actorBelow = entityManager.getActorAt(tileX, tileY + 1);
             if (actorBelow && !actorBelow.isDead && actorBelow.height === 2) {
                 actor = actorBelow;
+                hoveredTopHalf = true;
             }
         }
 
@@ -657,7 +659,20 @@ class InputManager {
 
         if (actor && !actor.isDead && actor.hasAttribute('visible')) {
             if (isHallucinating && !actor.isPlayerControlled()) {
-                entities.push(this._getHallucinatedName());
+                // Determine which sprite is visually on top at this tile.
+                // spriteTop (zIndex 11) renders above spriteBase (zIndex 10),
+                // so if another actor's spriteTop occupies this tile, it covers
+                // the base actor's spriteBase.
+                let hallucinatedName;
+                const actorBelow = !hoveredTopHalf ? entityManager.getActorAt(tileX, tileY + 1) : null;
+                if (actorBelow && !actorBelow.isDead && actorBelow.height === 2
+                    && actorBelow._hallucinatedTileNameTop && !actorBelow.isPlayerControlled()) {
+                    // Another actor's spriteTop (zIndex 11) covers this actor's spriteBase (zIndex 10)
+                    hallucinatedName = this._getHallucinatedName(actorBelow, true);
+                } else {
+                    hallucinatedName = this._getHallucinatedName(actor, hoveredTopHalf);
+                }
+                entities.push(hallucinatedName);
             } else {
                 entities.push(this.getEntityDescription(actor));
             }
@@ -871,8 +886,11 @@ class InputManager {
      * Generate a fake entity description from a random tile name (for hallucination)
      * @returns {string} A fake description like "a skull" or "an open door"
      */
-    _getHallucinatedName() {
-        const rawName = this.engine.spriteLibrary?.getRandomTileName() || 'something';
+    _getHallucinatedName(actor, hoveredTopHalf) {
+        const rawName = (hoveredTopHalf ? actor?._hallucinatedTileNameTop : null)
+            || actor?._hallucinatedTileNameBase
+            || this.engine.spriteLibrary?.getRandomTileName()
+            || 'something';
         const displayName = rawName.toLowerCase().replace(/_/g, ' ');
         return `${this.getIndefiniteArticle(displayName)} ${displayName}`;
     }

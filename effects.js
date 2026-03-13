@@ -8,7 +8,7 @@
 // CONSTANTS (moved from engine.js - only used by effect primitives)
 // ============================================================================
 
-const HALLUCINATION_TINTS = [0xFF44FF, 0x44FFCC, 0xFFCC44, 0xCC44FF, 0x44FF44];
+const HALLUCINATION_TINTS = [0xFFE24F, 0xEE4266, 0x540D6E, 0x3BCEAC, 0x0EAD69];
 
 function generateColorVariation(baseColor, variation = 0x101008) {
     const r = (baseColor >> 16) & 0xFF;
@@ -392,6 +392,7 @@ const EffectPrimitives = {
     texture_scramble(ctx, params) {
         const { skip_player = true } = params;
         let originalActorTextures = null;
+        const bgRects = [];
 
         return {
             apply() {
@@ -399,9 +400,19 @@ const EffectPrimitives = {
                 const actors = ctx.engine.entityManager?.actors;
                 if (!actors || !spriteLib) return;
 
+                const tw = globalVars.TILE_WIDTH;
+                const th = globalVars.TILE_HEIGHT;
+
                 if (!originalActorTextures) {
                     originalActorTextures = new Map();
                 }
+
+                // Remove previous tick's background rects
+                for (const rect of bgRects) {
+                    rect.parent?.removeChild(rect);
+                    rect.destroy();
+                }
+                bgRects.length = 0;
 
                 for (const actor of actors) {
                     if (actor.isDead) continue;
@@ -416,16 +427,50 @@ const EffectPrimitives = {
                         });
                     }
 
-                    if (actor.spriteBase && !(actor.spriteBase instanceof PIXI.AnimatedSprite)) {
-                        ctx.renderer.updateSpriteTexture(actor.spriteBase, spriteLib.getRandomTileIndex());
+                    if (actor.spriteBase) {
+                        const tile = spriteLib.getRandomTile();
+                        if (!(actor.spriteBase instanceof PIXI.AnimatedSprite)) {
+                            ctx.renderer.updateSpriteTexture(actor.spriteBase, tile);
+                        }
+                        actor._hallucinatedTileNameBase = tile.name;
                     }
-                    if (actor.spriteTop && !(actor.spriteTop instanceof PIXI.AnimatedSprite)) {
-                        ctx.renderer.updateSpriteTexture(actor.spriteTop, spriteLib.getRandomTileIndex());
+                    if (actor.spriteTop) {
+                        const tile = spriteLib.getRandomTile();
+                        if (!(actor.spriteTop instanceof PIXI.AnimatedSprite)) {
+                            ctx.renderer.updateSpriteTexture(actor.spriteTop, tile);
+                        }
+                        actor._hallucinatedTileNameTop = tile.name;
                     }
 
                     const tint = randomElement(HALLUCINATION_TINTS);
                     if (actor.spriteBase) actor.spriteBase.tint = tint;
                     if (actor.spriteTop) actor.spriteTop.tint = tint;
+
+                    // Add solid background fills behind scrambled sprites
+                    // so transparent tile art doesn't blend with the floor
+                    const darkTint = ((tint >> 1) & 0x7F7F7F); // darken the tint
+                    if (actor.spriteBase) {
+                        const bg = new PIXI.Graphics();
+                        bg.beginFill(darkTint);
+                        bg.drawRect(0, 0, tw, th);
+                        bg.endFill();
+                        bg.x = actor.spriteBase.x;
+                        bg.y = actor.spriteBase.y;
+                        bg.zIndex = actor.spriteBase.zIndex - 1;
+                        ctx.containers.entity.addChild(bg);
+                        bgRects.push(bg);
+                    }
+                    if (actor.spriteTop) {
+                        const bg = new PIXI.Graphics();
+                        bg.beginFill(darkTint);
+                        bg.drawRect(0, 0, tw, th);
+                        bg.endFill();
+                        bg.x = actor.spriteTop.x;
+                        bg.y = actor.spriteTop.y;
+                        bg.zIndex = actor.spriteTop.zIndex - 1;
+                        ctx.containers.entity.addChild(bg);
+                        bgRects.push(bg);
+                    }
                 }
             },
             tick() {
@@ -433,6 +478,12 @@ const EffectPrimitives = {
                 this.apply();
             },
             remove() {
+                for (const rect of bgRects) {
+                    rect.parent?.removeChild(rect);
+                    rect.destroy();
+                }
+                bgRects.length = 0;
+
                 if (originalActorTextures) {
                     for (const [actor, originals] of originalActorTextures) {
                         if (actor.spriteBase && originals.baseTexture) {
@@ -443,6 +494,8 @@ const EffectPrimitives = {
                             actor.spriteTop.texture = originals.topTexture;
                             actor.spriteTop.tint = originals.topTint;
                         }
+                        delete actor._hallucinatedTileNameBase;
+                        delete actor._hallucinatedTileNameTop;
                     }
                     originalActorTextures = null;
                 }

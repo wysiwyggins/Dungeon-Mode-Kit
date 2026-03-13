@@ -106,6 +106,17 @@ class SpriteLibrary {
     }
 
     /**
+     * Get a random tile with both name and coordinates
+     * @returns {{name: string, x: number, y: number}} Random tile name and coordinates
+     */
+    getRandomTile() {
+        if (!this.tileNames || this.tileNames.length === 0) return { name: 'something', x: 0, y: 0 };
+        const name = randomElement(this.tileNames);
+        const coords = this.tiles[name];
+        return { name, x: coords[0], y: coords[1] };
+    }
+
+    /**
      * Get a random tile name string (for hover text scrambling)
      * @returns {string} Random tile name
      */
