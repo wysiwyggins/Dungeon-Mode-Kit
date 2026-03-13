@@ -4417,6 +4417,9 @@ class Actor extends Entity {
         // Flash the target for visual feedback if any effect was applied
         if (effectApplied && target.flash) {
             target.flash();
+            if (target.isPlayerControlled?.()) {
+                this.engine.renderer?.effectRunner.apply('damage_shake');
+            }
         }
 
         // Show collision description if damage hit

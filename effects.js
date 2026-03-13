@@ -504,6 +504,184 @@ const EffectPrimitives = {
     },
 
     /**
+     * Offsets stage position with random displacement that decays over duration, then auto-removes.
+     */
+    screen_shake(ctx, params) {
+        const { intensity = 6, duration_ms = 200, decay = true } = params;
+        let tickerFn = null;
+        let timeoutId = null;
+        let startTime = 0;
+
+        return {
+            apply() {
+                startTime = Date.now();
+
+                tickerFn = () => {
+                    const elapsed = Date.now() - startTime;
+                    const decayFactor = decay ? Math.max(0, 1 - elapsed / duration_ms) : 1;
+                    ctx.stage.position.x = (Math.random() - 0.5) * 2 * intensity * decayFactor;
+                    ctx.stage.position.y = (Math.random() - 0.5) * 2 * intensity * decayFactor;
+                };
+                ctx.ticker.add(tickerFn);
+
+                timeoutId = setTimeout(() => {
+                    this.remove();
+                }, duration_ms);
+            },
+            remove() {
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                    timeoutId = null;
+                }
+                if (tickerFn) {
+                    ctx.ticker.remove(tickerFn);
+                    tickerFn = null;
+                }
+                ctx.stage.position.x = 0;
+                ctx.stage.position.y = 0;
+            }
+        };
+    },
+
+    /**
+     * Fullscreen color rectangle that fades from initial opacity to 0, then auto-removes.
+     */
+    canvas_flash(ctx, params) {
+        const { color = 0xFFFFFF, duration_ms = 150, opacity = 0.5, blend_mode = 'normal' } = params;
+        let graphics = null;
+        let tickerFn = null;
+        let startTime = 0;
+
+        return {
+            apply() {
+                const colorNum = typeof color === 'string' ? parseInt(color, 16) : color;
+
+                graphics = new PIXI.Graphics();
+                graphics.beginFill(colorNum);
+                if (ctx.engine.viewportEnabled) {
+                    graphics.drawRect(
+                        ctx.engine.sectionOriginX * globalVars.TILE_WIDTH,
+                        ctx.engine.sectionOriginY * globalVars.TILE_HEIGHT,
+                        ctx.engine.viewportWidth * globalVars.TILE_WIDTH,
+                        ctx.engine.viewportHeight * globalVars.TILE_HEIGHT
+                    );
+                } else {
+                    graphics.drawRect(0, 0, ctx.mapWidth * globalVars.TILE_WIDTH, ctx.mapHeight * globalVars.TILE_HEIGHT);
+                }
+                graphics.endFill();
+
+                const blendModes = {
+                    'multiply': PIXI.BLEND_MODES.MULTIPLY,
+                    'add': PIXI.BLEND_MODES.ADD,
+                    'screen': PIXI.BLEND_MODES.SCREEN,
+                    'normal': PIXI.BLEND_MODES.NORMAL
+                };
+                graphics.blendMode = blendModes[blend_mode] || PIXI.BLEND_MODES.NORMAL;
+                graphics.alpha = opacity;
+                graphics.zIndex = 9999;
+                ctx.containers.ui.addChild(graphics);
+
+                startTime = Date.now();
+                tickerFn = () => {
+                    const elapsed = Date.now() - startTime;
+                    const progress = Math.min(1, elapsed / duration_ms);
+                    graphics.alpha = opacity * (1 - progress);
+                    if (progress >= 1) {
+                        this.remove();
+                    }
+                };
+                ctx.ticker.add(tickerFn);
+            },
+            remove() {
+                if (tickerFn) {
+                    ctx.ticker.remove(tickerFn);
+                    tickerFn = null;
+                }
+                if (graphics) {
+                    ctx.containers.ui.removeChild(graphics);
+                    graphics.destroy();
+                    graphics = null;
+                }
+            }
+        };
+    },
+
+    /**
+     * Applies BlurFilter to stage or a container, with optional sine-wave oscillation.
+     */
+    blur_pulse(ctx, params) {
+        const { container = null, strength = 4, speed = 0.002, min_strength = 0, max_strength = 6, quality = 2 } = params;
+        let filter = null;
+        let tickerFn = null;
+        let target = null;
+
+        return {
+            apply() {
+                target = container ? ctx.containers[container] : ctx.stage;
+                if (!target) return;
+
+                filter = new PIXI.filters.BlurFilter(strength, quality);
+                target.filters = target.filters ? [...target.filters, filter] : [filter];
+
+                if (speed > 0) {
+                    tickerFn = () => {
+                        const t = Date.now();
+                        filter.blur = min_strength + (max_strength - min_strength) * (0.5 + 0.5 * Math.sin(t * speed));
+                    };
+                    ctx.ticker.add(tickerFn);
+                }
+            },
+            remove() {
+                if (tickerFn) {
+                    ctx.ticker.remove(tickerFn);
+                    tickerFn = null;
+                }
+                if (filter && target && target.filters) {
+                    target.filters = target.filters.filter(f => f !== filter);
+                    if (target.filters.length === 0) target.filters = null;
+                }
+                filter = null;
+                target = null;
+            }
+        };
+    },
+
+    /**
+     * Sine-wave alpha oscillation on a container.
+     */
+    alpha_pulse(ctx, params) {
+        const { container = null, speed = 0.003, min_alpha = 0.3, max_alpha = 1.0 } = params;
+        let tickerFn = null;
+        let target = null;
+        let originalAlpha = 1;
+
+        return {
+            apply() {
+                target = container ? ctx.containers[container] : ctx.stage;
+                if (!target) return;
+
+                originalAlpha = target.alpha;
+
+                tickerFn = () => {
+                    const t = Date.now();
+                    target.alpha = min_alpha + (max_alpha - min_alpha) * (0.5 + 0.5 * Math.sin(t * speed));
+                };
+                ctx.ticker.add(tickerFn);
+            },
+            remove() {
+                if (tickerFn) {
+                    ctx.ticker.remove(tickerFn);
+                    tickerFn = null;
+                }
+                if (target) {
+                    target.alpha = originalAlpha;
+                    target = null;
+                }
+            }
+        };
+    },
+
+    /**
      * Swap random floor tile textures per tick.
      */
     floor_swap(ctx, params) {

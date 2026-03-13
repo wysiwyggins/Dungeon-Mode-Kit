@@ -41,5 +41,31 @@
     "layers": [
       { "primitive": "tint_ripple", "params": { "slow_speed": 0.001, "mod_speed": 0.000314, "amplitude": 12, "phase_factor": 0.618 } }
     ]
+  },
+  "damage_shake": {
+    "target": "stage",
+    "layers": [
+      { "primitive": "screen_shake", "params": { "intensity": 4, "duration_ms": 150 } }
+    ]
+  },
+  "white_flash": {
+    "target": "stage",
+    "layers": [
+      { "primitive": "canvas_flash", "params": { "color": "0xFFFFFF", "duration_ms": 120, "opacity": 0.6 } }
+    ]
+  },
+  "heavy_hit": {
+    "target": "stage",
+    "layers": [
+      { "primitive": "screen_shake", "params": { "intensity": 8, "duration_ms": 300 } },
+      { "primitive": "canvas_flash", "params": { "color": "0xFF4444", "duration_ms": 100, "opacity": 0.3 } }
+    ]
+  },
+  "dazed": {
+    "target": "stage",
+    "layers": [
+      { "primitive": "blur_pulse", "params": { "speed": 0.003, "min_strength": 0, "max_strength": 4 } },
+      { "primitive": "brightness_oscillate", "params": { "speed": 0.002, "amplitude": 0.04 } }
+    ]
   }
 }
