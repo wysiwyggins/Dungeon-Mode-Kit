@@ -452,6 +452,17 @@
                  "width":40,
                  "x":770.681256618426,
                  "y":466.821390751853
+                }, 
+                {
+                 "height":30,
+                 "id":58,
+                 "name":"Hallucination Potion",
+                 "rotation":0,
+                 "type":"hallucination_potion",
+                 "visible":true,
+                 "width":40,
+                 "x":840,
+                 "y":930
                 }],
          "opacity":1,
          "type":"objectgroup",

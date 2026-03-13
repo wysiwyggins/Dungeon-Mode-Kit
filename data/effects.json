@@ -1,0 +1,45 @@
+{
+  "confusion": {
+    "target": "stage",
+    "layers": [
+      { "primitive": "hue_oscillate", "params": { "speed": 0.002, "amplitude": 40, "secondary_speed": 0.0007, "secondary_amplitude": 20 } },
+      { "primitive": "brightness_oscillate", "params": { "speed": 0.003, "amplitude": 0.05 } }
+    ]
+  },
+  "submersion": {
+    "target": "overlay",
+    "layers": [
+      { "primitive": "color_overlay", "params": { "container": "darkness", "blend_mode": "multiply", "z_index": 100 } }
+    ]
+  },
+  "flash": {
+    "target": "actor_sprites",
+    "duration_ms": 100,
+    "layers": [
+      { "primitive": "color_invert" }
+    ]
+  },
+  "hallucination": {
+    "target": "scene",
+    "layers": [
+      { "primitive": "tile_color_drift", "params": { "amplitude": 60, "throttle_frames": 4 } },
+      { "primitive": "texture_scramble", "params": { "skip_player": true } }
+    ],
+    "on_tick": [
+      { "primitive": "floor_swap", "params": { "count_min": 1, "count_max": 2 } },
+      { "primitive": "texture_scramble", "params": { "skip_player": true } }
+    ]
+  },
+  "flicker_tint": {
+    "target": "sprite",
+    "layers": [
+      { "primitive": "tint_flicker", "params": { "variation": "0x181808", "lighter_ms": 80, "wait1_ms": 150, "base_ms": 200, "wait2_ms": 300, "darker_ms": 60, "wait3_ms": 100 } }
+    ]
+  },
+  "ripple_tint": {
+    "target": "sprite",
+    "layers": [
+      { "primitive": "tint_ripple", "params": { "slow_speed": 0.001, "mod_speed": 0.000314, "amplitude": 12, "phase_factor": 0.618 } }
+    ]
+  }
+}
