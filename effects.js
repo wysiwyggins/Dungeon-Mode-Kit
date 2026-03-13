@@ -519,8 +519,8 @@ const EffectPrimitives = {
                 tickerFn = () => {
                     const elapsed = Date.now() - startTime;
                     const decayFactor = decay ? Math.max(0, 1 - elapsed / duration_ms) : 1;
-                    ctx.stage.position.x = (Math.random() - 0.5) * 2 * intensity * decayFactor;
-                    ctx.stage.position.y = (Math.random() - 0.5) * 2 * intensity * decayFactor;
+                    ctx.stage.position.x = Math.round((Math.random() - 0.5) * 2 * intensity * decayFactor);
+                    ctx.stage.position.y = Math.round((Math.random() - 0.5) * 2 * intensity * decayFactor);
                 };
                 ctx.ticker.add(tickerFn);
 
