@@ -2166,27 +2166,34 @@ class InterfaceManager {
                     // Play miss sound
                     this.engine.playSound('arrow_miss');
 
-                    // Throw missed - item lands on adjacent floor tile, unbroken
+                    // Throw missed
                     const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
                     const targetName = hitActor.getNameWithArticle ? hitActor.getNameWithArticle() : `the ${hitActor.name}`;
                     this.engine.inputManager?.showMessage(`The ${displayName} misses ${targetName}!`);
 
-                    // Find adjacent floor tile to land on
-                    const missLandingPoint = this.findAdjacentFloorTile(landingPoint.x, landingPoint.y);
-                    if (missLandingPoint) {
-                        item.x = missLandingPoint.x;
-                        item.y = missLandingPoint.y;
-                    } else if (path.length > 1) {
-                        // Fallback: land on tile before target
-                        const landBeforeHit = path[path.length - 2];
-                        item.x = landBeforeHit.x;
-                        item.y = landBeforeHit.y;
+                    if (item.hasAttribute('breakable')) {
+                        // Breakable item shatters on miss
+                        const breakSound = item.getAttribute('break_sound');
+                        if (breakSound) this.engine.playSound(breakSound);
+                        this.engine.inputManager?.showMessage(`The ${displayName} shatters! Its contents leak out harmlessly on the ground.`);
                     } else {
-                        // Last resort: land at player's feet
-                        item.x = player.x;
-                        item.y = player.y;
+                        // Non-breakable item lands on adjacent floor tile
+                        const missLandingPoint = this.findAdjacentFloorTile(landingPoint.x, landingPoint.y);
+                        if (missLandingPoint) {
+                            item.x = missLandingPoint.x;
+                            item.y = missLandingPoint.y;
+                        } else if (path.length > 1) {
+                            // Fallback: land on tile before target
+                            const landBeforeHit = path[path.length - 2];
+                            item.x = landBeforeHit.x;
+                            item.y = landBeforeHit.y;
+                        } else {
+                            // Last resort: land at player's feet
+                            item.x = player.x;
+                            item.y = player.y;
+                        }
+                        this.engine.entityManager.addEntity(item);
                     }
-                    this.engine.entityManager.addEntity(item);
                 } else {
                     // Play hit sound
                     const collisionSound = item.getAttribute('collision_sound') || 'arrow_hit';
@@ -2247,16 +2254,21 @@ class InterfaceManager {
                 }
             }
         } else {
-            // Play landing sound (no target hit)
-            this.engine.playSound('arrow_miss');
-
             // No hit - item lands at target
-            item.x = landingPoint.x;
-            item.y = landingPoint.y;
-            this.engine.entityManager.addEntity(item);
-
-            const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
-            this.engine.inputManager?.showMessage(`You throw the ${displayName}.`);
+            if (item.hasAttribute('breakable')) {
+                // Breakable item shatters on landing
+                const breakSound = item.getAttribute('break_sound');
+                if (breakSound) this.engine.playSound(breakSound);
+                const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
+                this.engine.inputManager?.showMessage(`You throw the ${displayName}. It shatters! Its contents leak out harmlessly on the ground.`);
+            } else {
+                this.engine.playSound('arrow_miss');
+                item.x = landingPoint.x;
+                item.y = landingPoint.y;
+                this.engine.entityManager.addEntity(item);
+                const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
+                this.engine.inputManager?.showMessage(`You throw the ${displayName}.`);
+            }
         }
 
         // If thrown item has 'ignites' (e.g. lit torch), start fire at landing position
