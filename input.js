@@ -15,6 +15,19 @@ class InputManager {
         this.boundMouseMove = null;
         this.boundMouseLeave = null;
 
+        // Touch state
+        this.touchStartPos = null;
+        this.touchStartTime = null;
+        this.longPressTimer = null;
+        this.longPressThreshold = 500;
+        this.tapMoveThreshold = 15;
+        this.longPressTriggered = false;
+        this.lastTouchTime = 0;
+        this.boundTouchStart = null;
+        this.boundTouchMove = null;
+        this.boundTouchEnd = null;
+        this.boundTouchCancel = null;
+
         // Message stacking for turn-based events
         this.messageStack = [];
 
@@ -116,17 +129,28 @@ class InputManager {
                     this.currentCanvas.removeEventListener('mousemove', this.boundMouseMove);
                     this.currentCanvas.removeEventListener('mouseleave', this.boundMouseLeave);
                     this.currentCanvas.removeEventListener('click', this.boundMouseClick);
+                    this.currentCanvas.removeEventListener('touchstart', this.boundTouchStart);
+                    this.currentCanvas.removeEventListener('touchmove', this.boundTouchMove);
+                    this.currentCanvas.removeEventListener('touchend', this.boundTouchEnd);
+                    this.currentCanvas.removeEventListener('touchcancel', this.boundTouchCancel);
                 }
 
                 // Store bound handlers so we can remove them later
                 this.boundMouseMove = (e) => this.handleMouseMove(e);
                 this.boundMouseLeave = () => this.handleMouseLeave();
-
                 this.boundMouseClick = (e) => this.handleMouseClick(e);
+                this.boundTouchStart = (e) => this.handleTouchStart(e);
+                this.boundTouchMove = (e) => this.handleTouchMove(e);
+                this.boundTouchEnd = (e) => this.handleTouchEnd(e);
+                this.boundTouchCancel = (e) => this.handleTouchCancel(e);
 
                 canvas.addEventListener('mousemove', this.boundMouseMove);
                 canvas.addEventListener('mouseleave', this.boundMouseLeave);
                 canvas.addEventListener('click', this.boundMouseClick);
+                canvas.addEventListener('touchstart', this.boundTouchStart, { passive: false });
+                canvas.addEventListener('touchmove', this.boundTouchMove, { passive: false });
+                canvas.addEventListener('touchend', this.boundTouchEnd, { passive: false });
+                canvas.addEventListener('touchcancel', this.boundTouchCancel);
                 this.currentCanvas = canvas;
             }
 
@@ -195,6 +219,9 @@ class InputManager {
     handleMouseClick(event) {
         if (!this.enabled) return;
 
+        // Suppress synthetic mouse events fired after touch
+        if (Date.now() - this.lastTouchTime < 500) return;
+
         // Check if in throw aiming mode
         if (this.engine.interfaceManager?.handleThrowClick()) {
             event.preventDefault();
@@ -225,6 +252,104 @@ class InputManager {
 
         // Start auto-walk if there's a valid path
         this.startAutoWalk();
+    }
+
+    // ---- Touch input handlers ----
+
+    handleTouchStart(event) {
+        if (!this.enabled) return;
+        event.preventDefault();
+
+        const touch = event.touches[0];
+        this.touchStartPos = { x: touch.clientX, y: touch.clientY };
+        this.touchStartTime = Date.now();
+        this.longPressTriggered = false;
+
+        // Start long-press timer
+        this.longPressTimer = setTimeout(() => {
+            this.longPressTriggered = true;
+            this.handleLongPress(touch);
+        }, this.longPressThreshold);
+    }
+
+    handleTouchMove(event) {
+        if (!this.enabled) return;
+        event.preventDefault();
+
+        const touch = event.touches[0];
+        if (this.touchStartPos) {
+            const dx = touch.clientX - this.touchStartPos.x;
+            const dy = touch.clientY - this.touchStartPos.y;
+            if (Math.sqrt(dx * dx + dy * dy) > this.tapMoveThreshold) {
+                clearTimeout(this.longPressTimer);
+                this.longPressTimer = null;
+            }
+        }
+    }
+
+    handleTouchEnd(event) {
+        if (!this.enabled) return;
+        event.preventDefault();
+
+        clearTimeout(this.longPressTimer);
+        this.longPressTimer = null;
+
+        // If long-press already fired, don't also tap
+        if (this.longPressTriggered) {
+            this.longPressTriggered = false;
+            this.handleMouseLeave();
+            this.touchStartPos = null;
+            this.lastTouchTime = Date.now();
+            return;
+        }
+
+        const touch = event.changedTouches[0];
+        if (!touch || !this.touchStartPos) return;
+
+        // Check if it's a tap (finger didn't move much)
+        const dx = touch.clientX - this.touchStartPos.x;
+        const dy = touch.clientY - this.touchStartPos.y;
+        if (Math.sqrt(dx * dx + dy * dy) <= this.tapMoveThreshold) {
+            this.updateTileFromTouch(touch);
+            this.handleMouseClick(event);
+        }
+
+        this.touchStartPos = null;
+        // Set after handleMouseClick so the dedup guard doesn't block our own call
+        this.lastTouchTime = Date.now();
+    }
+
+    handleTouchCancel(event) {
+        clearTimeout(this.longPressTimer);
+        this.longPressTimer = null;
+        this.touchStartPos = null;
+        this.longPressTriggered = false;
+    }
+
+    handleLongPress(touch) {
+        this.updateTileFromTouch(touch);
+        this.updateDescription(this.hoveredTile.x, this.hoveredTile.y);
+        this.updateTileHighlight(this.hoveredTile.x, this.hoveredTile.y);
+    }
+
+    updateTileFromTouch(touch) {
+        const canvas = this.engine.app?.view;
+        if (!canvas) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = touch.clientX - rect.left;
+        const mouseY = touch.clientY - rect.top;
+
+        const scaleX = this.engine.canvasWidth / rect.width;
+        const scaleY = this.engine.canvasHeight / rect.height;
+
+        const mapPixelX = (mouseX * scaleX) - (this.engine.viewportOffsetX || 0);
+        const mapPixelY = (mouseY * scaleY) - (this.engine.viewportOffsetY || 0);
+        const tileX = Math.floor(mapPixelX / this.engine.config.tileWidth);
+        const tileY = Math.floor(mapPixelY / this.engine.config.tileHeight);
+
+        this.hoveredTile.x = tileX;
+        this.hoveredTile.y = tileY;
     }
 
     /**
