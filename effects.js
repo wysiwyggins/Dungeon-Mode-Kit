@@ -8,7 +8,7 @@
 // CONSTANTS (moved from engine.js - only used by effect primitives)
 // ============================================================================
 
-const HALLUCINATION_TINTS = [0xFFE24F, 0xEE4266, 0x540D6E, 0x3BCEAC, 0x0EAD69];
+const HALLUCINATION_TINTS = [0xFFFF4F, 0xEE4266, 0x540D6E, 0x3BCEFF, 0x0EAD69];
 
 function generateColorVariation(baseColor, variation = 0x101008) {
     const r = (baseColor >> 16) & 0xFF;

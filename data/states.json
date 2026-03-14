@@ -30,7 +30,7 @@
 
   "sleeping": {
     "name": "Sleeping",
-    "duration": 5,
+    "duration": 10,
     "skip_turn": true,
     "remove_on_damage": true,
     "effect_description": "You feel drowsy",
@@ -40,7 +40,7 @@
 
   "confused": {
     "name": "Confused",
-    "duration": 8,
+    "duration": 20,
     "random_movement": true,
     "effect_description": "Everything spins",
     "on_apply_message": "[actor_name] is confused!",
@@ -58,7 +58,7 @@
 
   "slowed": {
     "name": "Slowed",
-    "duration": 10,
+    "duration": 20,
     "skip_every_other_turn": true,
     "effect_description": "You feel sluggish",
     "on_apply_message": "[actor_name] slows down!",
@@ -104,7 +104,7 @@
 
   "hallucinating": {
     "name": "Hallucinating",
-    "duration": 20,
+    "duration": 40,
     "hallucinating": true,
     "effect_description": "Nothing looks right",
     "on_apply_message": "The world begins to shift and melt around [actor_name]!",
