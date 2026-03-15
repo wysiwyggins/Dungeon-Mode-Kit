@@ -30,7 +30,8 @@
   "random_actors": {
     "kobold": { "chance": 70, "min": 5, "max": 10 },
     "skeleton": { "chance": 40, "min": 2, "max": 4 },
-    "basilisk": { "chance": 20, "min": 1, "max": 1 }
+    "basilisk": { "chance": 20, "min": 1, "max": 1 },
+    "bat": { "chance": 20, "min": 3, "max": 6 }
   },
   "random_items": {
     "torch": { "chance": 100, "min": 3, "max": 5 },

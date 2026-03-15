@@ -124,6 +124,18 @@ States only apply to actors with `sentient: true`.
 | `hasted` | Extra turn per round | — |
 | `slowed` | Skips every other turn | — |
 | `regenerating` | Heals per turn | — |
+| `flying` | Immune to voids, lava, deep water submersion | — |
+| `hallucinating` | Scrambled visuals and tile names | — |
+
+### Innate States
+
+Actors can spawn with permanent states using the `innate_states` array. These states are applied silently at creation with infinite duration — they never expire.
+
+```json
+"innate_states": ["flying"]
+```
+
+This is useful for actors that should always have a particular state (e.g., a bat that is always flying).
 
 ## Equipment
 
@@ -217,6 +229,12 @@ Effects only apply if the target has the target attribute. If `health` reaches 0
 
 // Damage + poison
 "collision_effect": { "health": -3, "apply_state": "poisoned" }
+
+// State only (no damage) — e.g., a toad that causes hallucinations
+"collision_effect": { "apply_state": "hallucinating" }
+
+// Damage + paralysis
+"collision_effect": { "health": "-{strength}", "apply_state": "paralyzed" }
 
 // Key unlocking a door
 "collision_effect": { "locked": false }

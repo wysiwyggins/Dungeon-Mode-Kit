@@ -29,7 +29,8 @@
     "poison_gas_trap": { "chance": 30, "min": 2, "max": 4 },
     "fire_trap": { "chance": 30, "min": 1, "max": 2 },
     "paralysis_gas_trap": { "chance": 30, "min": 1, "max": 2 },
-    "confusion_gas_trap": { "chance": 30, "min": 1, "max": 2 }
+    "confusion_gas_trap": { "chance": 30, "min": 1, "max": 2 },
+    "bat": { "chance": 20, "min": 1, "max": 3 }
   },
   "random_items": {
     "key": { "chance": 100 },

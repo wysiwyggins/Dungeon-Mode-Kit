@@ -1314,13 +1314,10 @@ class InterfaceManager {
     executeWearItem(item) {
         if (!this.currentPlayer) return;
 
-        // Close menus first
-        this.closeItemActionMenu();
-
         this.currentPlayer.equipItem(item);
 
-        // Refresh and consume turn
-        this.showPlayerInfo(this.currentPlayer);
+        // Close all UI and consume turn
+        this.hidePlayerInfo();
         this.engine.inputManager?.onPlayerAction();
     }
 
@@ -1330,13 +1327,10 @@ class InterfaceManager {
     executeRemoveItem(item) {
         if (!this.currentPlayer) return;
 
-        // Close menus first
-        this.closeItemActionMenu();
-
         this.currentPlayer.unequipItem(item);
 
-        // Refresh and consume turn
-        this.showPlayerInfo(this.currentPlayer);
+        // Close all UI and consume turn
+        this.hidePlayerInfo();
         this.engine.inputManager?.onPlayerAction();
     }
 

@@ -268,9 +268,9 @@ const EffectPrimitives = {
      */
     tint_ripple(ctx, params) {
         const {
-            slow_speed = 0.001,
+            slow_speed = 0.002,
             mod_speed = 0.000314,
-            amplitude = 12,
+            amplitude = 13,
             phase_factor = 0.618
         } = params;
 

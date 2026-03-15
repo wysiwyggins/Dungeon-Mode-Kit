@@ -312,6 +312,17 @@ class InputManager {
         if (Math.sqrt(dx * dx + dy * dy) <= this.tapMoveThreshold) {
             this.updateTileFromTouch(touch);
             this.handleMouseClick(event);
+        } else {
+            // Swipe gesture — single-step directional move
+            const player = this.engine.player;
+            if (player) {
+                if (this.autoWalking) {
+                    this.cancelAutoWalk();
+                } else {
+                    const action = this.getSwipeDirection(dx, dy);
+                    this.executeAction(action, player);
+                }
+            }
         }
 
         this.touchStartPos = null;
@@ -324,6 +335,17 @@ class InputManager {
         this.longPressTimer = null;
         this.touchStartPos = null;
         this.longPressTriggered = false;
+    }
+
+    getSwipeDirection(dx, dy) {
+        const angle = Math.atan2(dy, dx);
+        const normalized = angle < 0 ? angle + 2 * Math.PI : angle;
+        const sector = Math.floor((normalized + Math.PI / 8) / (Math.PI / 4)) % 8;
+        const actions = [
+            'move_right', 'move_down_right', 'move_down', 'move_down_left',
+            'move_left', 'move_up_left', 'move_up', 'move_up_right',
+        ];
+        return actions[sector];
     }
 
     handleLongPress(touch) {
@@ -480,10 +502,11 @@ class InputManager {
             return;
         }
 
-        // Check if target tile has a hazardous actor
+        // Check if target tile has a hazardous actor (skip if hallucinating — player doesn't know)
+        const isHallucinating = player.hasStateProperty?.('hallucinating');
         const targetActor = this.engine.entityManager?.getActorAt(targetX, targetY);
         const damageType = targetActor?.getAttribute('damage_type');
-        if (damageType && !player.hasAttribute(`${damageType}_immune`)) {
+        if (!isHallucinating && damageType && !player.hasAttribute(`${damageType}_immune`)) {
             // Show confirmation dialog for hazardous destination
             const hazardName = targetActor.name || 'danger';
             this.engine.interfaceManager?.showConfirmDialog(
@@ -1118,9 +1141,10 @@ class InputManager {
             const targetX = player.x + dir.dx;
             const targetY = player.y + dir.dy;
 
-            // Check for hazards that need confirmation
+            // Check for hazards that need confirmation (skip if hallucinating — player doesn't know)
             const isConfused = player.hasStateProperty('random_movement');
-            const hazardCheck = this.checkMovementHazard(player, targetX, targetY, isConfused);
+            const isHallucinating = player.hasStateProperty('hallucinating');
+            const hazardCheck = isHallucinating ? null : this.checkMovementHazard(player, targetX, targetY, isConfused);
             if (hazardCheck) {
                 // Show confirmation dialog
                 this.engine.interfaceManager?.showConfirmDialog(

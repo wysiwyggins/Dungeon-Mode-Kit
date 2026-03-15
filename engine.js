@@ -2396,6 +2396,16 @@ class Actor extends Entity {
             }
         }
 
+        // Apply innate states (permanent states defined in actor data)
+        if (data.innate_states && engine.globalStates) {
+            for (const stateName of data.innate_states) {
+                const stateData = engine.globalStates[stateName];
+                if (stateData) {
+                    this.applyState(stateName, stateData, { duration: Infinity, silent: true });
+                }
+            }
+        }
+
         this.isDead = false;
 
         // Equipping state for multi-turn armor equipping
@@ -3064,14 +3074,14 @@ class Actor extends Entity {
             }
         }
 
-        // Show apply message
-        if (stateData.on_apply_message && this.engine.inputManager) {
+        // Show apply message (skip for silent/innate states)
+        if (!options.silent && stateData.on_apply_message && this.engine.inputManager) {
             const message = stateData.on_apply_message.replace('[actor_name]', this.name);
             this.engine.inputManager.showMessage(message);
         }
 
-        // Play apply sound
-        if (stateData.on_apply_sound) {
+        // Play apply sound (skip for silent/innate states)
+        if (!options.silent && stateData.on_apply_sound) {
             this.engine.playSound?.(stateData.on_apply_sound);
         }
 

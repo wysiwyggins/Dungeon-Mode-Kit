@@ -22,5 +22,55 @@
       "health": 100
     },
     "default_items": ["sword", "torch"]
+  },
+
+  "azhdaya_head": {
+    "name": "Azhdaya",
+    "tileIndexBase": "FULL_BLOCK",
+    "tileIndexTop": "SKULL",
+    "personality": "stationed_melee",
+    "collision_effect": { "health": "-{strength}"},
+    "collision_sound": "hit",
+    "attributes": {
+      "hostile": true,
+      "solid": true,
+      "visible": true,
+      "flammable": true,
+      "proper_named": true,
+      "sentient": true,
+      "follows_thread": true,
+      "inventory": 1,
+      "segment_count": 2,
+      "chain_head": true,
+      "chain_segment_type": "azhdaya_tail",
+      "remains": "skull",
+      "strength": 15,
+      "accuracy": 80,
+      "defense": 20
+    },
+    "stats": {
+      "health": 30
+    },
+    "default_items": ["extra_skull"]
+
+  },
+  "azhdaya_tail": {
+    "name": "Azhdaya",
+    "tileIndexBase": "LEFT_HALF_BLOCK_WITH_LIGHT_SHADE_AND_MEDIUM_SHADE_RIGHT_BLOCKS",
+    "tileIndexTop": "RIGHT_ONE_HALF_BLOCK",
+    "personality": "azhdaya_tail",
+    "collision_effect": { "health": "-{strength}", "apply_state": "paralyzed" },
+    "collision_sound": "tap1",
+    "attributes": {
+      "hostile": true,
+      "solid": true,
+      "visible": true,
+      "flammable": true,
+      "proper_named": true,
+      "defense": 15
+    },
+    "stats": {
+      "health": 30
+    }
   }
 }
