@@ -3030,10 +3030,13 @@ class Actor extends Entity {
      * @returns {boolean} True if state was applied, false if immune or already has state
      */
     applyState(stateName, stateData, options = {}) {
-        // Only apply states to actors with the 'sentient' attribute
-        // This excludes walls, traps, fire, clouds, etc.
-        if (!this.hasAttribute('sentient')) {
-            return false;
+        // Hallucination is a visual effect that only applies to the player-controlled actor
+        if (stateData.hallucinating) {
+            if (!this.hasAttribute('controlled')) return false;
+        } else {
+            // All other states require the 'sentient' attribute
+            // This excludes walls, traps, fire, clouds, etc.
+            if (!this.hasAttribute('sentient')) return false;
         }
 
         // Check immunity

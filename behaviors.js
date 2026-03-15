@@ -402,7 +402,7 @@ const BehaviorLibrary = {
             // Spawn replacement actor - smoke for liquids, fire for solids
             if (isLiquid && liquidSpawnType) {
                 entityManager.spawnActor(liquidSpawnType, other.x, other.y);
-                actor.engine.playSound?.('match');
+                aactor.engine.playSound?.('gas');
             } else if (isSolid && spawnType) {
                 entityManager.spawnActor(spawnType, other.x, other.y);
                 actor.engine.playSound?.('fireball');
