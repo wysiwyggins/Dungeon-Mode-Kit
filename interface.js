@@ -1156,6 +1156,7 @@ class InterfaceManager {
                     target.identify();
                     const revealed = target.getDisplayName ? target.getDisplayName() : target.name;
                     this.engine.inputManager?.showMessage(`It's a ${revealed}!`);
+                    this.engine.inputManager?.showMessage('The scroll dissolves into ashes.');
                     this.engine.playSound?.('tap1');
                     // Remove scroll from inventory (consumable)
                     if (caster && scroll) {
@@ -2581,11 +2582,17 @@ class InterfaceManager {
     enterIdentifyMode(scrollItem, caster) {
         const unidentified = (caster.inventory || []).filter(i => i !== scrollItem && i.identified === false);
         if (unidentified.length === 0) {
+            if (scrollItem && !scrollItem.identified) {
+                scrollItem.identify();
+                const identifiedName = scrollItem.getDisplayName ? scrollItem.getDisplayName() : scrollItem.name;
+                this.engine.inputManager?.showMessage(`It's a ${identifiedName}!`);
+            }
             this.engine.inputManager?.showMessage('You have nothing to identify.');
-            // Don't consume the scroll — signal failure back to executeItemEffect
-            // We do this by marking it; executeItemEffect already returned true (turn spent)
-            // so we prevent consumption by removing the consumable flag temporarily
-            scrollItem._identifyAborted = true;
+            this.engine.inputManager?.showMessage('The scroll dissolves into ashes.');
+            this.engine.playSound?.('tone1');
+            if (caster && scrollItem) {
+                caster.inventory = caster.inventory.filter(i => i !== scrollItem);
+            }
             return;
         }
 

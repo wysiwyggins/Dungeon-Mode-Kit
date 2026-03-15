@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned
 
+- don't hide stairways (sometimes architect will put walls on top of them)
+- identify scrolls should be consumed even when nothing is available to identify
+
 ### In Progress
 
 - Mining (works but requires testing and refinement, Currently 3 hits always removes a breakable actor, which feels unnatural)
