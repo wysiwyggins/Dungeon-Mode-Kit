@@ -249,7 +249,7 @@
     "stats": {
       "health": 10
     },
-    "default_items": ["horns"]
+    "default_items": ["meat"]
   },
 
   "minotaur": {
@@ -304,6 +304,21 @@
       "pushable": false,
       "breakable": true,
       "paint_tile": "WALL_TOP",
+      "remains": "rubble"
+    }
+  },
+  "fortification": {
+    "name": "fortification",
+    "tileIndexBase": "PRISON_WINDOW",
+    "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
+    "attributes": {
+      "solid": true,
+      "visible": true,
+      "flammable": false,
+      "pushable": false,
+      "breakable": true,
+      "opaque": false,
+      "paint_tile": "BALLOT_BOX",
       "remains": "rubble"
     }
   },
@@ -689,6 +704,7 @@
     "attributes": {
       "solid": true,
       "visible": true,
+      "opaque": false,
       "flammable": false,
       "light_source": true
     }

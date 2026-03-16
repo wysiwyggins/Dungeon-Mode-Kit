@@ -30,6 +30,16 @@ class LightingManager {
         this.playerLightRadius = config.player_light_radius ?? 6;
         this.playerAutoLight = config.player_auto_light !== false; // default true
 
+        this.ambientTint = null;
+        if (config.tint) {
+            const hex = parseInt(config.tint.replace('#', ''), 16);
+            this.ambientTint = {
+                r: (hex >> 16) & 0xFF,
+                g: (hex >> 8) & 0xFF,
+                b: hex & 0xFF
+            };
+        }
+
         this.lightMap = Array.from({ length: height }, () =>
             Array.from({ length: width }, () => ({ intensity: 0, r: 0, g: 0, b: 0 }))
         );
@@ -57,7 +67,7 @@ class LightingManager {
         }
 
         const actorAtTile = this._solidActorCache?.get(x * 10000 + y);
-        if (actorAtTile && !actorAtTile.hasAttribute('controlled')) {
+        if (actorAtTile && !actorAtTile.hasAttribute('controlled') && actorAtTile.getAttribute('opaque') !== false) {
             return false;
         }
 
@@ -158,7 +168,12 @@ class LightingManager {
         // Reset light and visibility maps
         for (let y = 0; y < this.height; y++) {
             for (let x = 0; x < this.width; x++) {
-                this.lightMap[y][x] = { intensity: this.ambientLight, r: 0, g: 0, b: 0 };
+                this.lightMap[y][x] = {
+                    intensity: this.ambientLight,
+                    r: this.ambientTint ? this.ambientTint.r * this.ambientLight : 0,
+                    g: this.ambientTint ? this.ambientTint.g * this.ambientLight : 0,
+                    b: this.ambientTint ? this.ambientTint.b * this.ambientLight : 0
+                };
                 this.visibilityMap[y][x] = false;
             }
         }
@@ -518,7 +533,7 @@ class LightingManager {
 
     getLightColorOverlay(x, y) {
         // Only apply colored light overlays on dark levels
-        const darknessEnabled = this.engine.currentPrototype?.config?.mechanics?.darkness;
+        const darknessEnabled = this.engine._floorMechanics?.darkness;
         if (!darknessEnabled) {
             return { tint: 0xFFFFFF, alpha: 0 };
         }

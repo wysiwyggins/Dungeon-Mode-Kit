@@ -26,8 +26,10 @@
     {
       "win_conditions": [],
       "mechanics": {
-        "fog_of_war": false,
-        "darkness": false
+        "fog_of_war": true,
+        "darkness": true,
+        "ambient_light": 0.7,
+        "tint": "#3355AA"
       },
       "map_generator": {
         "type": "digger",
