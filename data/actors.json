@@ -278,7 +278,20 @@
     "default_items": ["horns"]
 
   },
-
+  "tree": {
+    "name": "Tree",
+    "tileIndexBase": "CANDLE_STICK",
+    "tileIndexTop": "UPWARD_POINTING_TRIANGLE",
+    "attributes": {
+      "solid": true,
+      "visible": true,
+      "flammable": true,
+      "pushable": false,
+      "breakable": true,
+      "paint_tile": "UPWARD_POINTING_TRIANGLE",
+      "remains": "log"
+    }
+  },
   "wall": {
     "name": "Wall",
     "tileIndexBase": "OPAQUE_DARK_SHADE",

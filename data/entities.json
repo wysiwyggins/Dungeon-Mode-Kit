@@ -25,6 +25,14 @@
       "walk_description": "You crunch through loose rubble."
     }
   },
+  "log": {
+    "name": "log",
+    "tileIndex": "MEDIUM_SHADE_LOWER_ONE_HALF_BLOCK",
+    "attributes": {
+      "visible": true,
+      "walk_description": "Fallen wood."
+    }
+  },
   "skull": {
     "name": "Skull",
     "tileIndex": "SKULL",
