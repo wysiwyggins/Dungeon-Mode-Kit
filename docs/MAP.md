@@ -8,7 +8,7 @@ A guide to building levels in [Tiled](https://www.mapeditor.org/) for Dungeon Mo
 
 1. Download and install [Tiled](https://www.mapeditor.org/)
 2. Open the project file: `tiled/dungeonkit.tiled-project` — the tileset loads automatically
-3. Maps must be saved as `map.tmj` (exact filename) inside `prototypes/{name}/`
+3. Floor 1 maps must be saved as `map.tmj` inside `prototypes/{name}/`. For multi-floor prototypes, floor N>1 uses `{N}.tmj` (e.g. `2.tmj`, `3.tmj`). Missing floor maps are generated procedurally.
 
 ### Copying an Existing Map
 
@@ -143,7 +143,21 @@ Example:
 
 ## Connecting Levels with Stairways
 
-Link levels together using `next_level` and `previous_level` in `prototype.json`:
+### Transition Actors
+
+| Actor | Purpose |
+|-------|---------|
+| `down_stairway` | Descent point — goes to next floor or next prototype |
+| `up_stairway` | Ascent point — goes to previous floor or previous prototype |
+| `locked_down_stairway` | Sealed until `win_conditions` are met |
+| `locked_up_stairway` | Sealed until `win_conditions` are met |
+| `gateway` | Hidden inter-prototype transition — revealed when last floor's win conditions are met |
+
+Place stairway actors on the `actors` object layer. If you don't place one, the engine auto-places it on a random walkable tile.
+
+### Single-level prototypes (legacy)
+
+Link prototypes together using `next_level` and `previous_level` in `prototype.json`:
 
 ```json
 {
@@ -152,25 +166,37 @@ Link levels together using `next_level` and `previous_level` in `prototype.json`
 }
 ```
 
-Place stairway actors on the `actors` object layer:
+Stairways transition directly between prototypes. Level A sets `"next_level": "level_b"`, Level B sets `"previous_level": "level_a"`. The player enters at the matching stairway direction.
 
-| Actor | Purpose |
-|-------|---------|
-| `down_stairway` | Where the player arrives from the level above |
-| `up_stairway` | Exit to the level above |
-| `locked_down_stairway` | Sealed until `win_conditions` are met |
-| `locked_up_stairway` | Sealed until `win_conditions` are met |
+### Multi-level prototypes
 
-Typical pattern: Level A sets `"next_level": "level_b"`, Level B sets `"previous_level": "level_a"`. The player enters at the matching stairway direction.
+Add a `levels` array to `prototype.json` to create multiple floors within one prototype:
 
-If you don't place an `up_stairway`, the engine auto-places one on a random walkable tile.
+```json
+{
+  "next_level": "caverns",
+  "levels": [
+    { "win_conditions": ["killed:skeleton"], "random_actors": { "skeleton": { "chance": 80, "min": 2, "max": 4 } } },
+    { "win_conditions": [], "random_actors": { "ghast": { "chance": 100, "min": 1, "max": 1 } } }
+  ]
+}
+```
+
+Behavior:
+
+- **Stairways** move between floors (not prototypes). The engine auto-places `down_stairway` on every floor except the last.
+- **Win conditions** are per-floor — each floor's `win_conditions` must be met to unlock that floor's stairway/gateway.
+- **Gateway** is auto-placed on the **last floor** when `next_level` is set. It starts hidden and appears when the last floor's win conditions are met. Stepping on the gateway transitions to `next_level`.
+- **Going up from floor 1** transitions to `previous_level` (if set).
+- **Map files**: floor 1 uses `map.tmj`, floor 2 uses `2.tmj`, etc. Missing maps are procedurally generated using the floor's `map_generator` (or the prototype-level default).
+- **Floor state** is saved when leaving a floor and restored when returning — entities, map, and RNG state persist.
 
 ---
 
 ## Tips
 
 - **Layer names must be exact** — the engine matches on strings
-- **Map file must be named `map.tmj`** — no other filename works
+- **Floor 1 map must be named `map.tmj`**. Additional floors use `2.tmj`, `3.tmj`, etc.
 - If both `map.tmj` and `map_generator` exist in a prototype, the .tmj takes priority
 - Serve locally with `python3 -m http.server`, then load with `?prototype=your_level`
 - If a stairway appears in an unexpected spot, you probably forgot to place one — the engine auto-places a missing `up_stairway`

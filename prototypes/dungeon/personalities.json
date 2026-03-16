@@ -1,5 +1,5 @@
 {
-    "azhdaya_head": {
+  "azhdaya_head": {
     "hostile": true,
     "behaviors": [
       "attack_adjacent",

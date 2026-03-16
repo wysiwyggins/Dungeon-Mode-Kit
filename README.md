@@ -58,7 +58,7 @@ Create a folder under `prototypes/your_level_name/`. The only required file is `
 |-------|-------------|---------|
 | `name` | Display name | `"The Mines"` |
 | `description` | Shown on level load | `"Dark tunnels ahead."` |
-| `depth` | Depth number (affects room type selection) | `2` |
+| `levels` | Array of per-floor config objects (enables multi-floor prototype) | `[{...}, {...}]` |
 | `turn_speed` | MS per AI turn (lower = faster) | `50` |
 | `loaded_sound` | Sound played on load | `"levelout"` |
 | `previous_level` | Level name to return to | `"default"` |
@@ -110,6 +110,39 @@ For procedural map generation (when no `map.tmj` exists), add a `map_generator` 
   "win_conditions": ["killed:skeleton"]
 }
 ```
+
+### Multi-level prototype.json
+
+Add a `levels` array to create a prototype with multiple floors. Each floor can override `win_conditions`, `random_actors`, `random_items`, and `map_generator`. Fields not specified on a floor fall back to the prototype-level defaults.
+
+```json
+{
+  "name": "The Depths",
+  "description": "Three floors of danger.",
+  "next_level": "caverns",
+  "previous_level": "default",
+  "mechanics": { "darkness": true, "fog_of_war": true },
+  "levels": [
+    {
+      "win_conditions": ["killed:skeleton"],
+      "random_actors": { "skeleton": { "chance": 80, "min": 2, "max": 4 } }
+    },
+    {
+      "win_conditions": ["killed:ghast"],
+      "random_actors": { "ghast": { "chance": 100, "min": 1, "max": 2 } },
+      "map_generator": { "type": "cellular", "options": {} }
+    },
+    {
+      "win_conditions": [],
+      "random_actors": { "basilisk": { "chance": 100, "min": 1, "max": 1 } }
+    }
+  ]
+}
+```
+
+Stairways move between floors within the prototype. On the last floor, a hidden **gateway** actor appears when win conditions are met and transitions to `next_level`. If `levels` is omitted, the prototype works as a single-level (legacy behavior).
+
+Floor maps: floor 1 uses `map.tmj`, floor N>1 uses `{N}.tmj` (e.g. `2.tmj`). Missing maps are generated procedurally.
 
 ---
 
@@ -194,6 +227,8 @@ Collision effect values can reference the attacker's stats/attributes: `"-{stren
 | `strength` | Multiplies weapon damage ÷ 10 (combat) |
 | `sighted: true` | AI avoids hazards like fire and lava |
 | `deep: true` | Submerges any actor that enters this tile (canvas tints, sprite swaps to show submersion); extinguishes carried torches |
+| `gateway: true` | Hidden inter-prototype transition point; revealed when last floor's win conditions are met |
+| `hidden: true` | Actor exists but is not rendered until revealed |
 
 ### Stats format
 

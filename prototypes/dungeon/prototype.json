@@ -2,39 +2,512 @@
   "name": "A Dungeon",
   "description": "A sprawling underground complex of rooms and corridors.\nPress 'i' for info.",
   "loaded_sound": "levelout",
-  "depth": 4,
   "turn_speed": 50,
-  "previous_level": "catacombs",
   "next_level": "caverns",
   "mechanics": {
     "fog_of_war": true,
     "darkness": true,
-    "player_auto_light": false
+    "player_auto_light": false,
+    "viewport_width": 40,
+    "viewport_height": 40
   },
   "map_generator": {
     "type": "digger",
     "options": {
-      "map_width": 60,
-      "map_height": 50,
+      "map_width": 80,
+      "map_height": 80,
       "roomWidth": [5, 12],
       "roomHeight": [4, 10],
       "corridorLength": [3, 8],
       "dugPercentage": 0.35
     }
   },
-  "random_actors": {
-    "ghast": { "chance": 100, "min": 1, "max": 1 },
-    "skeleton": { "chance": 80, "min": 4, "max": 8 },
-    "kobold": { "chance": 50, "min": 2, "max": 4 },
-    "poison_gas_trap": { "chance": 30, "min": 2, "max": 4 },
-    "fire_trap": { "chance": 30, "min": 1, "max": 2 },
-    "paralysis_gas_trap": { "chance": 30, "min": 1, "max": 2 },
-    "confusion_gas_trap": { "chance": 30, "min": 1, "max": 2 },
-    "bat": { "chance": 20, "min": 1, "max": 3 }
-  },
-  "random_items": {
-    "key": { "chance": 100 },
-    "potion": { "chance": 60, "min": 1, "max": 3 }
-  },
-  "win_conditions": []
+  "levels": [
+    {
+      "win_conditions": [],
+      "map_generator": {
+        "type": "digger",
+        "options": { "map_width": 50, "map_height": 40, "roomWidth": [5, 12], "roomHeight": [4, 10], "corridorLength": [3, 8], "dugPercentage": 0.35 }
+      },
+      "random_actors": {
+        "rat": { "chance": 100, "min": 2, "max": 3 },
+        "goblin": { "chance": 100, "min": 1, "max": 3 }
+      },
+      "random_items": {
+        "key": { "chance": 100 },
+        "potion": { "chance": 60, "min": 1, "max": 2 }
+      }
+    },
+    {
+      "win_conditions": [],
+      "map_generator": {
+        "type": "digger",
+        "options": { "map_width": 50, "map_height": 40, "roomWidth": [5, 12], "roomHeight": [4, 10], "corridorLength": [3, 8], "dugPercentage": 0.35 }
+      },
+      "random_actors": {
+        "rat": { "chance": 100, "min": 3, "max": 5 },
+        "bat": { "chance": 80, "min": 1, "max": 2 },
+        "goblin": { "chance": 100, "min": 1, "max": 3 },
+        "poison_gas_trap": { "chance": 50, "min": 1, "max": 1 }
+      },
+      "random_items": {
+        "key": { "chance": 100 },
+        "potion": { "chance": 60, "min": 1, "max": 2 }
+      }
+    },
+    {
+      "win_conditions": [],
+      "map_generator": {
+        "type": "digger",
+        "options": { "map_width": 55, "map_height": 45, "roomWidth": [5, 12], "roomHeight": [4, 10], "corridorLength": [3, 8], "dugPercentage": 0.35 }
+      },
+      "random_actors": {
+        "skeleton": { "chance": 100, "min": 2, "max": 4 },
+        "goblin": { "chance": 60, "min": 0, "max": 3 },
+        "bat": { "chance": 80, "min": 1, "max": 2 },
+        "poison_gas_trap": { "chance": 50, "min": 1, "max": 2 }
+      },
+      "random_items": {
+        "key": { "chance": 100 },
+        "potion": { "chance": 60, "min": 1, "max": 3 }
+      }
+    },
+    {
+      "win_conditions": [],
+      "map_generator": {
+        "type": "digger",
+        "options": { "map_width": 55, "map_height": 45, "roomWidth": [5, 12], "roomHeight": [4, 10], "corridorLength": [3, 8], "dugPercentage": 0.35 }
+      },
+      "random_actors": {
+        "skeleton": { "chance": 100, "min": 3, "max": 5 },
+        "goblin": { "chance": 60, "min": 0, "max": 3 },
+        "spider": { "chance": 80, "min": 1, "max": 2 },
+        "poison_gas_trap": { "chance": 50, "min": 1, "max": 1 },
+        "fire_trap": { "chance": 30, "min": 1, "max": 1 }
+      },
+      "random_items": {
+        "key": { "chance": 100 },
+        "potion": { "chance": 60, "min": 1, "max": 3 },
+        "dagger": { "chance": 40 }
+      }
+    },
+    {
+      "win_conditions": [],
+      "map_generator": {
+        "type": "digger",
+        "options": { "map_width": 60, "map_height": 50, "roomWidth": [5, 12], "roomHeight": [4, 10], "corridorLength": [3, 8], "dugPercentage": 0.35 }
+      },
+      "random_actors": {
+        "skeleton": { "chance": 100, "min": 4, "max": 6 },
+        "goblin": { "chance": 60, "min": 0, "max": 6 },
+        "kobold": { "chance": 80, "min": 1, "max": 1 },
+        "poison_gas_trap": { "chance": 60, "min": 1, "max": 2 },
+        "fire_trap": { "chance": 30, "min": 1, "max": 1 }
+      },
+      "random_items": {
+        "key": { "chance": 100 },
+        "potion": { "chance": 60, "min": 1, "max": 3 }
+      }
+    },
+    {
+      "win_conditions": ["killed:ghast"],
+      "map_generator": {
+        "type": "digger",
+        "options": { "map_width": 60, "map_height": 50, "roomWidth": [5, 12], "roomHeight": [4, 10], "corridorLength": [3, 8], "dugPercentage": 0.35 }
+      },
+      "random_actors": {
+        "ghast": { "chance": 100, "min": 1, "max": 1 },
+        "skeleton": { "chance": 100, "min": 3, "max": 5 },
+        "goblin": { "chance": 60, "min": 3, "max": 10 },
+        "spider": { "chance": 80, "min": 1, "max": 2 },
+        "poison_gas_trap": { "chance": 60, "min": 1, "max": 2 },
+        "confusion_gas_trap": { "chance": 30, "min": 1, "max": 1 }
+      },
+      "random_items": {
+        "key": { "chance": 100 },
+        "potion": { "chance": 60, "min": 1, "max": 3 }
+      }
+    },
+
+    {
+      "win_conditions": [],
+      "map_generator": {
+        "type": "cellular",
+        "options": { "map_width": 55, "map_height": 45 }
+      },
+      "random_actors": {
+        "spider": { "chance": 100, "min": 2, "max": 3 },
+        "skeleton": { "chance": 100, "min": 2, "max": 4 },
+        "goblin": { "chance": 60, "min": 3, "max": 10 },
+        "poison_gas_trap": { "chance": 60, "min": 1, "max": 2 },
+        "confusion_gas_trap": { "chance": 30, "min": 1, "max": 1 }
+      },
+      "random_items": {
+        "key": { "chance": 100 },
+        "potion": { "chance": 60, "min": 2, "max": 3 }
+      }
+    },
+    {
+      "win_conditions": [],
+      "map_generator": {
+        "type": "cellular",
+        "options": { "map_width": 55, "map_height": 45 }
+      },
+      "random_actors": {
+        "spider": { "chance": 100, "min": 3, "max": 5 },
+        "ghast": { "chance": 80, "min": 1, "max": 2 },
+        "toad": { "chance": 60, "min": 1, "max": 1 },
+        "poison_gas_trap": { "chance": 60, "min": 2, "max": 2 },
+        "confusion_gas_trap": { "chance": 40, "min": 1, "max": 2 }
+      },
+      "random_items": {
+        "key": { "chance": 100 },
+        "potion": { "chance": 60, "min": 2, "max": 3 },
+        "scroll": { "chance": 40 }
+      }
+    },
+    {
+      "win_conditions": [],
+      "map_generator": {
+        "type": "cellular",
+        "options": { "map_width": 60, "map_height": 50 }
+      },
+      "random_actors": {
+        "scutigera_head": { "chance": 100, "min": 1, "max": 1 },
+        "spider": { "chance": 100, "min": 3, "max": 4 },
+        "poison_gas_trap": { "chance": 60, "min": 2, "max": 2 },
+        "paralysis_gas_trap": { "chance": 40, "min": 1, "max": 2 }
+      },
+      "random_items": {
+        "key": { "chance": 100 },
+        "potion": { "chance": 60, "min": 2, "max": 3 },
+        "scroll": { "chance": 40 }
+      }
+    },
+    {
+      "win_conditions": [],
+      "map_generator": {
+        "type": "cellular",
+        "options": { "map_width": 60, "map_height": 50 }
+      },
+      "random_actors": {
+        "ghast": { "chance": 100, "min": 2, "max": 3 },
+        "wraith": { "chance": 80, "min": 1, "max": 2 },
+        "poison_gas_trap": { "chance": 60, "min": 2, "max": 2 },
+        "paralysis_gas_trap": { "chance": 40, "min": 1, "max": 2 }
+      },
+      "random_items": {
+        "key": { "chance": 100 },
+        "potion": { "chance": 60, "min": 2, "max": 3 },
+        "chainmail": { "chance": 30 }
+      }
+    },
+    {
+      "win_conditions": [],
+      "map_generator": {
+        "type": "cellular",
+        "options": { "map_width": 65, "map_height": 55 }
+      },
+      "random_actors": {
+        "wraith": { "chance": 100, "min": 2, "max": 3 },
+        "skeleton": { "chance": 100, "min": 2, "max": 4 },
+        "poison_gas_trap": { "chance": 60, "min": 2, "max": 3 },
+        "confusion_gas_trap": { "chance": 40, "min": 1, "max": 2 }
+      },
+      "random_items": {
+        "key": { "chance": 100 },
+        "potion": { "chance": 60, "min": 2, "max": 4 },
+        "scroll": { "chance": 40 }
+      }
+    },
+    {
+      "win_conditions": ["killed:scutigera_head"],
+      "map_generator": {
+        "type": "cellular",
+        "options": { "map_width": 65, "map_height": 55 }
+      },
+      "random_actors": {
+        "scutigera_head": { "chance": 100, "min": 1, "max": 1 },
+        "wraith": { "chance": 100, "min": 2, "max": 3 },
+        "ghast": { "chance": 80, "min": 1, "max": 2 },
+        "poison_gas_trap": { "chance": 60, "min": 2, "max": 3 },
+        "paralysis_gas_trap": { "chance": 40, "min": 1, "max": 2 }
+      },
+      "random_items": {
+        "key": { "chance": 100 },
+        "potion": { "chance": 60, "min": 2, "max": 4 },
+        "scroll": { "chance": 40 }
+      }
+    },
+
+    {
+      "win_conditions": [],
+      "map_generator": {
+        "type": "uniform",
+        "options": { "map_width": 60, "map_height": 50 }
+      },
+      "random_actors": {
+        "ogre": { "chance": 100, "min": 2, "max": 3 },
+        "ghast": { "chance": 100, "min": 2, "max": 3 },
+        "poison_gas_trap": { "chance": 60, "min": 2, "max": 3 },
+        "fire_trap": { "chance": 40, "min": 1, "max": 2 }
+      },
+      "random_items": {
+        "key": { "chance": 100 },
+        "potion": { "chance": 60, "min": 2, "max": 4 },
+        "scroll": { "chance": 40 }
+      }
+    },
+    {
+      "win_conditions": [],
+      "map_generator": {
+        "type": "rogue",
+        "options": { "map_width": 60, "map_height": 50 }
+      },
+      "random_actors": {
+        "basilisk": { "chance": 100, "min": 1, "max": 2 },
+        "ogre": { "chance": 100, "min": 2, "max": 3 },
+        "poison_gas_trap": { "chance": 60, "min": 2, "max": 3 },
+        "fire_trap": { "chance": 40, "min": 1, "max": 2 },
+        "paralysis_gas_trap": { "chance": 30, "min": 1, "max": 1 }
+      },
+      "random_items": {
+        "key": { "chance": 100 },
+        "potion": { "chance": 60, "min": 2, "max": 4 },
+        "warhammer": { "chance": 30 }
+      }
+    },
+    {
+      "win_conditions": [],
+      "map_generator": {
+        "type": "uniform",
+        "options": { "map_width": 65, "map_height": 55 }
+      },
+      "random_actors": {
+        "turret": { "chance": 100, "min": 1, "max": 2 },
+        "ogre": { "chance": 100, "min": 2, "max": 3 },
+        "wraith": { "chance": 80, "min": 1, "max": 1 },
+        "fire_trap": { "chance": 50, "min": 2, "max": 3 },
+        "poison_gas_trap": { "chance": 50, "min": 2, "max": 3 }
+      },
+      "random_items": {
+        "key": { "chance": 100 },
+        "potion": { "chance": 60, "min": 3, "max": 4 },
+        "scroll": { "chance": 40 }
+      }
+    },
+    {
+      "win_conditions": [],
+      "map_generator": {
+        "type": "rogue",
+        "options": { "map_width": 65, "map_height": 55 }
+      },
+      "random_actors": {
+        "basilisk": { "chance": 100, "min": 2, "max": 3 },
+        "ogre": { "chance": 80, "min": 1, "max": 2 },
+        "fire_trap": { "chance": 50, "min": 2, "max": 3 },
+        "paralysis_gas_trap": { "chance": 40, "min": 1, "max": 2 },
+        "poison_gas_trap": { "chance": 40, "min": 1, "max": 2 }
+      },
+      "random_items": {
+        "key": { "chance": 100 },
+        "potion": { "chance": 60, "min": 3, "max": 4 },
+        "plate": { "chance": 30 }
+      }
+    },
+    {
+      "win_conditions": [],
+      "map_generator": {
+        "type": "uniform",
+        "options": { "map_width": 70, "map_height": 60 }
+      },
+      "random_actors": {
+        "turret": { "chance": 100, "min": 1, "max": 2 },
+        "wraith": { "chance": 100, "min": 2, "max": 4 },
+        "fire_trap": { "chance": 50, "min": 2, "max": 3 },
+        "paralysis_gas_trap": { "chance": 40, "min": 1, "max": 2 },
+        "confusion_gas_trap": { "chance": 40, "min": 1, "max": 2 }
+      },
+      "random_items": {
+        "key": { "chance": 100 },
+        "potion": { "chance": 60, "min": 3, "max": 5 },
+        "scroll": { "chance": 40 }
+      }
+    },
+    {
+      "win_conditions": ["killed:basilisk"],
+      "map_generator": {
+        "type": "rogue",
+        "options": { "map_width": 70, "map_height": 60 }
+      },
+      "random_actors": {
+        "basilisk": { "chance": 100, "min": 2, "max": 2 },
+        "ogre": { "chance": 100, "min": 2, "max": 3 },
+        "wraith": { "chance": 100, "min": 2, "max": 3 },
+        "fire_trap": { "chance": 60, "min": 3, "max": 4 },
+        "paralysis_gas_trap": { "chance": 40, "min": 1, "max": 2 },
+        "poison_gas_trap": { "chance": 40, "min": 1, "max": 2 }
+      },
+      "random_items": {
+        "key": { "chance": 100 },
+        "potion": { "chance": 60, "min": 3, "max": 5 },
+        "scroll": { "chance": 40 }
+      }
+    },
+
+    {
+      "win_conditions": [],
+      "map_generator": {
+        "type": "cellular",
+        "options": { "map_width": 65, "map_height": 55 }
+      },
+      "random_actors": {
+        "wraith": { "chance": 100, "min": 2, "max": 3 },
+        "ogre": { "chance": 100, "min": 2, "max": 3 },
+        "fire_elemental": { "chance": 80, "min": 1, "max": 1 },
+        "fire_trap": { "chance": 60, "min": 2, "max": 3 },
+        "paralysis_gas_trap": { "chance": 40, "min": 1, "max": 2 },
+        "poison_gas_trap": { "chance": 40, "min": 1, "max": 2 }
+      },
+      "random_items": {
+        "key": { "chance": 100 },
+        "potion": { "chance": 60, "min": 3, "max": 5 },
+        "scroll": { "chance": 40 }
+      }
+    },
+    {
+      "win_conditions": [],
+      "map_generator": {
+        "type": "infernal",
+        "options": { "map_width": 65, "map_height": 55 }
+      },
+      "random_actors": {
+        "fire_elemental": { "chance": 100, "min": 2, "max": 3 },
+        "basilisk": { "chance": 80, "min": 1, "max": 2 },
+        "fire_trap": { "chance": 60, "min": 3, "max": 4 },
+        "poison_gas_trap": { "chance": 40, "min": 2, "max": 3 },
+        "paralysis_gas_trap": { "chance": 30, "min": 1, "max": 1 }
+      },
+      "random_items": {
+        "key": { "chance": 100 },
+        "potion": { "chance": 60, "min": 3, "max": 5 },
+        "scroll": { "chance": 40 }
+      }
+    },
+    {
+      "win_conditions": [],
+      "map_generator": {
+        "type": "infernal",
+        "options": { "map_width": 70, "map_height": 60 }
+      },
+      "random_actors": {
+        "fire_elemental": { "chance": 100, "min": 3, "max": 4 },
+        "demon": { "chance": 80, "min": 1, "max": 2 },
+        "fire_trap": { "chance": 60, "min": 3, "max": 4 },
+        "poison_gas_trap": { "chance": 40, "min": 2, "max": 3 },
+        "paralysis_gas_trap": { "chance": 30, "min": 1, "max": 1 }
+      },
+      "random_items": {
+        "key": { "chance": 100 },
+        "potion": { "chance": 60, "min": 3, "max": 5 },
+        "scroll": { "chance": 40 }
+      }
+    },
+    {
+      "win_conditions": [],
+      "map_generator": {
+        "type": "infernal",
+        "options": { "map_width": 70, "map_height": 60 }
+      },
+      "random_actors": {
+        "demon": { "chance": 100, "min": 2, "max": 3 },
+        "fire_elemental": { "chance": 80, "min": 1, "max": 2 },
+        "fire_trap": { "chance": 60, "min": 3, "max": 5 },
+        "confusion_gas_trap": { "chance": 40, "min": 2, "max": 2 },
+        "paralysis_gas_trap": { "chance": 40, "min": 1, "max": 2 }
+      },
+      "random_items": {
+        "key": { "chance": 100 },
+        "potion": { "chance": 60, "min": 3, "max": 5 },
+        "scroll": { "chance": 40 }
+      }
+    },
+    {
+      "win_conditions": [],
+      "map_generator": {
+        "type": "infernal",
+        "options": { "map_width": 75, "map_height": 60 }
+      },
+      "random_actors": {
+        "demon": { "chance": 100, "min": 3, "max": 4 },
+        "basilisk": { "chance": 80, "min": 1, "max": 1 },
+        "fire_trap": { "chance": 60, "min": 3, "max": 5 },
+        "paralysis_gas_trap": { "chance": 40, "min": 2, "max": 2 },
+        "confusion_gas_trap": { "chance": 40, "min": 1, "max": 2 }
+      },
+      "random_items": {
+        "key": { "chance": 100 },
+        "potion": { "chance": 60, "min": 3, "max": 5 },
+        "scroll": { "chance": 40 }
+      }
+    },
+    {
+      "win_conditions": ["killed:demon"],
+      "map_generator": {
+        "type": "infernal",
+        "options": { "map_width": 75, "map_height": 60 }
+      },
+      "random_actors": {
+        "demon": { "chance": 100, "min": 3, "max": 4 },
+        "fire_elemental": { "chance": 100, "min": 2, "max": 3 },
+        "fire_trap": { "chance": 60, "min": 4, "max": 5 },
+        "paralysis_gas_trap": { "chance": 40, "min": 2, "max": 3 },
+        "confusion_gas_trap": { "chance": 40, "min": 1, "max": 2 }
+      },
+      "random_items": {
+        "key": { "chance": 100 },
+        "potion": { "chance": 60, "min": 3, "max": 5 },
+        "scroll": { "chance": 40 }
+      }
+    },
+    {
+      "win_conditions": [],
+      "map_generator": {
+        "type": "infernal",
+        "options": { "map_width": 80, "map_height": 65 }
+      },
+      "random_actors": {
+        "demon": { "chance": 100, "min": 4, "max": 5 },
+        "fire_elemental": { "chance": 100, "min": 2, "max": 3 },
+        "fire_trap": { "chance": 60, "min": 4, "max": 5 },
+        "paralysis_gas_trap": { "chance": 40, "min": 2, "max": 3 },
+        "confusion_gas_trap": { "chance": 40, "min": 2, "max": 3 }
+      },
+      "random_items": {
+        "key": { "chance": 100 },
+        "potion": { "chance": 60, "min": 4, "max": 6 },
+        "scroll": { "chance": 40 }
+      }
+    },
+    {
+      "win_conditions": ["killed:azhdaya_head"],
+      "map_generator": {
+        "type": "infernal",
+        "options": { "map_width": 80, "map_height": 65 }
+      },
+      "random_actors": {
+        "azhdaya_head": { "chance": 100, "min": 1, "max": 1 },
+        "demon": { "chance": 100, "min": 3, "max": 4 },
+        "fire_elemental": { "chance": 100, "min": 2, "max": 2 },
+        "fire_trap": { "chance": 60, "min": 5, "max": 6 },
+        "paralysis_gas_trap": { "chance": 40, "min": 2, "max": 3 },
+        "confusion_gas_trap": { "chance": 40, "min": 2, "max": 3 }
+      },
+      "random_items": {
+        "key": { "chance": 100 },
+        "potion": { "chance": 60, "min": 4, "max": 6 },
+        "scroll": { "chance": 40 }
+      }
+    }
+  ]
 }

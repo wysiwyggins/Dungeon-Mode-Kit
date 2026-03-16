@@ -64,9 +64,9 @@ Entity names are displayed with a "the" article by default (e.g., "the sword", "
 
 ## Serialization
 
-Entity provides `serialize()` and `deserialize()` for save/load. The base serialize saves `x`, `y`, `type`, `tint`, and all attributes. Subclasses (Item, Actor) extend this to include their additional state.
+Entity provides `serialize()` and `deserialize()` for save/load. The base serialize saves `x`, `y`, `type`, `name`, `tint`, and all attributes. Subclasses extend this: Item adds `identified`, `templateVars`, `stats`, and an `isItem` flag; Actor adds `stats`, `inventory`, `isDead`, `equipment`, `states`, and an `isActor` flag. The `isItem`/`isActor` discriminators let `EntityManager.deserializeEntities()` reconstruct the correct class.
 
-You don't need to do anything special — entities are serialized automatically by the engine.
+You don't need to do anything special — entities are serialized automatically by the engine. See [SAVING.md](SAVING.md) for the full field reference.
 
 ## Subclasses
 

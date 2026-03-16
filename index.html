@@ -8,8 +8,8 @@
 </head>
 <body>
     <div id="info">
-        <h2>Dungeon Mode Kit</h2>
-        <p>Status: <span id="status">Ready</span></p>
+        <h2 id="info-name">Loading game...</h2>
+        <p id="info-floor"></p>
     </div>
     <div class="game-container">
         <div id="game">
@@ -43,21 +43,15 @@
     
 
     <script>
-        const statusEl = document.getElementById('status');
-        
-        function updateStatus(message, isError = false) {
-            statusEl.textContent = message;
-            statusEl.className = isError ? 'error' : 'success';
-            console.log(message);
-        }
-
         async function startTest() {
             try {
-                updateStatus('Initializing engine...');
                 await initializeGame();
-                updateStatus('✓ Engine loaded! You should see a tile pattern below.');
             } catch (e) {
-                updateStatus(`✗ Error: ${e.message}`, true);
+                const nameEl = document.getElementById('info-name');
+                if (nameEl) {
+                    nameEl.textContent = `Error: ${e.message}`;
+                    nameEl.className = 'error';
+                }
                 console.error(e);
             }
         }

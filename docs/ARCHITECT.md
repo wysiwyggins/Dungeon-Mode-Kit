@@ -222,7 +222,7 @@ architect.spawnPendingLava(context);
 - `getRandomWalkableTile()` - Random position from walkable tiles
 - `isWalkable(x, y)` - Check if position is walkable
 - `addBaseAndShadows()` - Add diagonal shadow effects
-- `serializeMap()` / `deserializeMap(data)` - Save/load map state
+- `serializeMap()` / `deserializeMap(data)` - Save/load full map state (width, height, floorMap, wallMap, backgroundMap, wildcardMap, walkableTiles)
 - `cleanup()` - Reset map layers
 
 ## Example: Custom Cave Generator

@@ -39,7 +39,6 @@
       "proper_named": true,
       "sentient": true,
       "follows_thread": true,
-      "inventory": 1,
       "segment_count": 2,
       "chain_head": true,
       "chain_segment_type": "azhdaya_tail",

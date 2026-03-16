@@ -553,6 +553,10 @@ class DungeonEngine {
         this.currentPrototype = null;
         this.prototypeStack = []; // For multi-level navigation
         this.gameOver = false;
+
+        // Multi-floor state
+        this.currentFloor = 1;           // 1-indexed
+        this.floorStates = new Map();    // floor# → { entities: [...], map: {...} }
         
         // Configuration
         this.config = {
@@ -1029,12 +1033,54 @@ class DungeonEngine {
         const prototypeConfig = await this.loadPrototypeConfig(prototypeName);
         this.currentPrototype = new Prototype(prototypeName, prototypeConfig, this);
         await this.currentPrototype.loadAssets();
+        this.currentFloor = 1;
+        this.floorStates.clear();
+        await this.loadFloor(this.currentFloor, entryDirection);
+    }
+
+    /**
+     * Build the Architect context object used for wildcard processing and entity spawning
+     * @returns {Object} Context with engine resource accessors
+     */
+    buildArchitectContext() {
+        return {
+            getActorData: (type) => this.currentPrototype?.getActorData(type),
+            getTileIdByName: (name) => this.spriteLibrary?.getTileIdByName(name),
+            getPrototypeActors: () => this.currentPrototype?.actors,
+            getMapGeneratorConfig: () => {
+                const floorConfig = this.getFloorConfig(this.currentFloor);
+                return floorConfig?.map_generator?.options || this.currentPrototype?.config?.map_generator?.options || {};
+            },
+            getActorAt: (x, y) => this.entityManager?.getActorAt(x, y),
+            createActor: (x, y, type, actorData) => {
+                const actor = new Actor(x, y, type, actorData, this);
+                this.entityManager.addEntity(actor);
+                actor.loadDefaultItems();
+                return actor;
+            }
+        };
+    }
+
+    /**
+     * Load a fresh floor within the current prototype
+     * @param {number} floor - 1-indexed floor number
+     * @param {string|null} entryDirection - 'from_above', 'from_below', or null
+     * @param {Object|null} playerState - Serialized player state to restore (null on first load)
+     */
+    async loadFloor(floor, entryDirection, playerState = null) {
+        const prototypeConfig = this.currentPrototype.config;
+        const floorConfig = this.getFloorConfig(floor);
+
+        // Determine map generator config: floor-specific overrides prototype-level
+        const mapGenerator = floorConfig.map_generator ?? prototypeConfig.map_generator;
+
         this.mapManager = new Architect();
-        const hasAuthoredMap = await this.checkForAuthoredMap(prototypeName);
+        const hasAuthoredMap = await this.checkForAuthoredMap(this.currentPrototype.name, floor);
         if (hasAuthoredMap) {
-            await this.mapManager.loadTiledMap(`${globalVars.BASE_PATH}/prototypes/${prototypeName}/map.tmj`);
+            const mapFile = floor === 1 ? 'map.tmj' : `${floor}.tmj`;
+            await this.mapManager.loadTiledMap(`${globalVars.BASE_PATH}/prototypes/${this.currentPrototype.name}/${mapFile}`);
         } else {
-            this.mapManager.generateProceduralMap(prototypeConfig.map_generator);
+            this.mapManager.generateProceduralMap(mapGenerator);
         }
 
         // Viewport: per-prototype viewport_width/height in tile columns/rows
@@ -1063,33 +1109,9 @@ class DungeonEngine {
 
         await this.entityManager.spawnEntities(entryDirection);
 
-        // Create context for Architect to access engine resources
-        const architectContext = {
-            getActorData: (type) => this.currentPrototype?.getActorData(type),
-            getTileIdByName: (name) => this.spriteLibrary?.getTileIdByName(name),
-            getPrototypeActors: () => this.currentPrototype?.actors,
-            getMapGeneratorConfig: () => this.currentPrototype?.config?.map_generator?.options || {},
-            getActorAt: (x, y) => this.entityManager?.getActorAt(x, y),
-            createActor: (x, y, type, actorData) => {
-                const actor = new Actor(x, y, type, actorData, this);
-                this.entityManager.addEntity(actor);
-                actor.loadDefaultItems();
-                return actor;
-            }
-        };
+        const architectContext = this.buildArchitectContext();
 
         await this.mapManager.processWildcards(architectContext);
-
-        // Skip player and stairway spawning in observer mode (pure simulations)
-        if (!prototypeConfig.mechanics?.observer_mode) {
-            this.ensureUpStairway();
-            this.spawnPlayerAtStairway(entryDirection);
-        }
-
-        // Snap viewport to player's spawn position before rendering
-        if (this.viewportEnabled && this.entityManager.player) {
-            this.snapViewportToTile(this.entityManager.player.x, this.entityManager.player.y);
-        }
 
         // Check for treasure room before pending doors are promoted to actors
         const treasureRoomChance = prototypeConfig.mechanics?.treasure_room ?? 0;
@@ -1107,8 +1129,36 @@ class DungeonEngine {
             this.entityManager.spawnTreasureRoomContents(treasureRoomData, architectContext);
         }
 
-        // Spawn random actors after wildcard processing (walkable tiles now exist)
-        this.entityManager.spawnRandomActorsFromConfig();
+        // Stairway/gateway placement — after pending doors so getActorAt sees them
+        if (!prototypeConfig.mechanics?.observer_mode) {
+            const hasLevels = !!prototypeConfig.levels;
+            const totalFloors = hasLevels ? prototypeConfig.levels.length : 1;
+
+            this.ensureUpStairway();
+
+            if (hasLevels && floor < totalFloors) {
+                this.ensureDownStairway();
+            }
+
+            if (hasLevels && floor === totalFloors && prototypeConfig.next_level) {
+                this.ensureGateway();
+            }
+
+            // Spawn or restore player
+            if (playerState) {
+                this.restorePlayerOnFloor(playerState, entryDirection);
+            } else {
+                this.spawnPlayerAtStairway(entryDirection);
+            }
+        }
+
+        // Snap viewport to player's spawn position before rendering
+        if (this.viewportEnabled && this.entityManager.player) {
+            this.snapViewportToTile(this.entityManager.player.x, this.entityManager.player.y);
+        }
+
+        // Spawn random actors/items using floor-specific config
+        this.entityManager.spawnRandomActorsFromConfig(floorConfig);
 
         // Spawn body segment chains for any chain_head actors
         this.entityManager.spawnChainCreatures();
@@ -1164,13 +1214,19 @@ class DungeonEngine {
             this.playSound(prototypeConfig.loaded_sound);
         }
 
-        // Show prototype description in the description element
-        if (prototypeConfig.description && this.inputManager) {
-            this.inputManager.clearMessageStack();
-            this.inputManager.showMessage(prototypeConfig.description);
+        // Show prototype description on first floor, floor number on subsequent floors
+        if (this.inputManager) {
+            if (floor === 1 && prototypeConfig.description) {
+                this.inputManager.clearMessageStack();
+                this.inputManager.showMessage(prototypeConfig.description);
+            } else if (floor > 1) {
+                this.inputManager.clearMessageStack();
+                this.inputManager.showMessage(`Floor ${floor}`);
+            }
         }
 
-        console.log(`Prototype ${prototypeName} loaded successfully`);
+        this.updateInfoDisplay();
+        console.log(`Floor ${floor} loaded successfully`);
         console.log(`Map size: ${this.mapManager.width}x${this.mapManager.height} tiles`);
         if (this.viewportEnabled) {
             console.log(`Viewport: ${this.viewportWidth}x${this.viewportHeight} tiles, section (${this.sectionCol},${this.sectionRow}), origin (${this.sectionOriginX},${this.sectionOriginY})`);
@@ -1179,6 +1235,157 @@ class DungeonEngine {
         console.log(`Walkable tiles: ${this.mapManager.walkableTiles.length}`);
         console.log(`Actors spawned: ${this.entityManager.actors.length}`);
         console.log(`Items spawned: ${this.entityManager.items.length}`);
+    }
+
+    /**
+     * Restore a previously visited floor from saved state
+     * @param {number} floor - 1-indexed floor number
+     * @param {Object} playerState - Serialized player state
+     * @param {string} entryDirection - 'from_above' or 'from_below'
+     */
+    async restoreFloor(floor, playerState, entryDirection) {
+        const prototypeConfig = this.currentPrototype.config;
+        const saved = this.floorStates.get(floor);
+
+        // Restore RNG state if available
+        if (saved.rngState && typeof ROT !== 'undefined') {
+            ROT.RNG.setState(saved.rngState);
+        }
+
+        this.mapManager = new Architect();
+        this.mapManager.deserializeMap(saved.map);
+
+        // Viewport setup
+        const mechanics = prototypeConfig.mechanics || {};
+        const vpW = mechanics.viewport_width || null;
+        const vpH = mechanics.viewport_height || null;
+
+        if (vpW && vpH && (vpW < this.mapManager.width || vpH < this.mapManager.height)) {
+            this.viewportWidth = vpW;
+            this.viewportHeight = vpH;
+            this.viewportEnabled = true;
+            this.aiMargin = mechanics.ai_margin ?? 5;
+        } else {
+            this.viewportWidth = this.mapManager.width;
+            this.viewportHeight = this.mapManager.height;
+            this.viewportEnabled = false;
+            this.aiMargin = Infinity;
+        }
+
+        this.canvasWidth = this.viewportWidth * this.config.tileWidth;
+        this.canvasHeight = this.viewportHeight * this.config.tileHeight;
+
+        await this.initializeRenderer();
+
+        this.entityManager = new EntityManager(this);
+
+        // Restore saved entities (non-player)
+        this.entityManager.deserializeEntities(saved.entities);
+
+        // Restore player
+        this.restorePlayerOnFloor(playerState, entryDirection);
+
+        if (!prototypeConfig.mechanics?.darkness) {
+            this.mapManager.addBaseAndShadows();
+        }
+
+        this.renderer.renderTestPattern(this.mapManager);
+        this.renderer.renderItems(this.entityManager);
+        this.renderer.renderActors(this.entityManager);
+
+        // Snap viewport to player
+        if (this.viewportEnabled && this.entityManager.player) {
+            this.snapViewportToTile(this.entityManager.player.x, this.entityManager.player.y);
+        }
+
+        if (!prototypeConfig.mechanics?.darkness) {
+            this.interfaceManager?.updateSidebar();
+        }
+
+        for (const actor of this.entityManager.actors) {
+            actor.updateSubmersionState();
+        }
+
+        if (prototypeConfig.mechanics?.darkness) {
+            this.lightingManager = new LightingManager(this);
+            this.lightingManager.initialize(
+                this.mapManager.width,
+                this.mapManager.height,
+                prototypeConfig.mechanics
+            );
+            this.renderer.initializeDarkness(this.mapManager.width, this.mapManager.height);
+            this.updateLighting();
+        }
+
+        if (this.viewportEnabled) {
+            this.applyViewportOffset();
+            this.renderer.updateTileVisibility(
+                this.sectionOriginX, this.sectionOriginY,
+                this.viewportWidth, this.viewportHeight
+            );
+            this.renderer.updateEntityVisibility(
+                this.sectionOriginX, this.sectionOriginY,
+                this.viewportWidth, this.viewportHeight
+            );
+        }
+
+        this.initializeTurnEngine();
+
+        this.inputManager?.clearMessageStack();
+        this.inputManager?.showMessage(`Floor ${floor}`);
+
+        this.updateInfoDisplay();
+        console.log(`Floor ${floor} restored from saved state`);
+    }
+
+    /**
+     * Update the info display with the current prototype name and floor
+     */
+    updateInfoDisplay() {
+        const nameEl = document.getElementById('info-name');
+        const floorEl = document.getElementById('info-floor');
+        if (!nameEl) return;
+        nameEl.textContent = this.currentPrototype?.config?.name || '';
+        if (floorEl) {
+            const hasLevels = !!this.currentPrototype?.config?.levels;
+            const totalFloors = hasLevels ? this.currentPrototype.config.levels.length : 1;
+            floorEl.textContent = totalFloors > 1 ? `Floor ${this.currentFloor}` : '';
+        }
+    }
+
+    /**
+     * Restore the player on a floor at the appropriate stairway position
+     * @param {Object} playerState - Serialized player data
+     * @param {string} entryDirection - 'from_above' or 'from_below'
+     */
+    restorePlayerOnFloor(playerState, entryDirection) {
+        // Determine spawn stairway type
+        let targetStairwayType;
+        if (entryDirection === 'from_above') {
+            targetStairwayType = 'up';
+        } else if (entryDirection === 'from_below') {
+            targetStairwayType = 'down';
+        } else {
+            targetStairwayType = 'up';
+        }
+
+        const stairway = this.entityManager.findActorByAttribute('stairway', targetStairwayType);
+        const playerData = this.currentPrototype.getActorData('player');
+        if (!playerData) {
+            console.error('No player actor data found in prototype');
+            return;
+        }
+
+        const spawnX = stairway ? stairway.x : (this.mapManager.walkableTiles[0]?.x ?? 1);
+        const spawnY = stairway ? stairway.y : (this.mapManager.walkableTiles[0]?.y ?? 1);
+
+        const player = new Actor(spawnX, spawnY, 'player', playerData, this);
+        // Restore player state (stats, inventory, equipment, etc.)
+        player.deserialize(playerState);
+        // Override position to stairway location
+        player.x = spawnX;
+        player.y = spawnY;
+        this.entityManager.addEntity(player);
     }
     
     async loadPrototypeConfig(prototypeName) {
@@ -1191,15 +1398,33 @@ class DungeonEngine {
         }
     }
 
-    async checkForAuthoredMap(prototypeName) {
+    async checkForAuthoredMap(prototypeName, floor = 1) {
+        const mapFile = floor === 1 ? 'map.tmj' : `${floor}.tmj`;
         try {
-            const response = await fetch(`${globalVars.BASE_PATH}/prototypes/${prototypeName}/map.tmj`, { method: 'HEAD' });
+            const response = await fetch(`${globalVars.BASE_PATH}/prototypes/${prototypeName}/${mapFile}`, { method: 'HEAD' });
             return response.ok;
         } catch {
             return false;
         }
     }
-    
+
+    /**
+     * Get the config for a specific floor, merging floor overrides with prototype defaults
+     * @param {number} floor - 1-indexed floor number
+     * @returns {Object} Merged floor configuration
+     */
+    getFloorConfig(floor) {
+        const config = this.currentPrototype.config;
+        if (!config.levels) return config; // legacy: prototype-level config IS the floor config
+        const floorOverride = config.levels[floor - 1] || {};
+        return {
+            win_conditions: floorOverride.win_conditions ?? config.win_conditions ?? [],
+            random_actors: floorOverride.random_actors ?? config.random_actors ?? {},
+            random_items: floorOverride.random_items ?? config.random_items ?? {},
+            map_generator: floorOverride.map_generator ?? config.map_generator,
+        };
+    }
+
     getDefaultPrototypeConfig() {
         return {
             name: "Default Prototype",
@@ -1227,6 +1452,9 @@ class DungeonEngine {
         }
 
         this.cleanup();
+        // Reset floor state when transitioning to a new prototype
+        this.currentFloor = 1;
+        this.floorStates.clear();
         await this.loadPrototype(prototypeName, entryDirection);
     }
 
@@ -1248,7 +1476,9 @@ class DungeonEngine {
      */
     checkWinConditions() {
         const config = this.currentPrototype?.config;
-        const winConditions = config?.win_conditions || [];
+        // Use floor-specific win conditions if multi-level prototype
+        const floorConfig = config?.levels ? this.getFloorConfig(this.currentFloor) : config;
+        const winConditions = floorConfig?.win_conditions || [];
 
         // No conditions = always unlocked
         if (winConditions.length === 0) return true;
@@ -1334,16 +1564,33 @@ class DungeonEngine {
             actor.hasAttribute('stairway') && actor.hasAttribute('locked')
         );
 
-        if (!stairways || stairways.length === 0) return;
+        if (stairways && stairways.length > 0) {
+            for (const stairway of stairways) {
+                stairway.setAttribute('locked', false);
+                stairway.setAttribute('collision_description', null);
+                stairway.open();
+                stairway.name = 'Stairs Down';
+            }
 
-        for (const stairway of stairways) {
-            stairway.setAttribute('locked', false);
-            stairway.setAttribute('collision_description', null);
-            stairway.open();
-            stairway.name = 'Stairs Down';
+            this.inputManager?.showMessage('The way forward is now open!');
         }
 
-        this.inputManager?.showMessage('The way forward is now open!');
+        // Reveal gateways when win conditions are met
+        const gateways = this.entityManager?.actors.filter(a => a.hasAttribute('gateway'));
+        if (gateways?.length > 0) {
+            for (const gw of gateways) {
+                gw.setAttribute('visible', true);
+                gw.setAttribute('hidden', false);
+                if (gw.spriteBase) gw.spriteBase.visible = true;
+                if (gw.spriteTop) gw.spriteTop.visible = true;
+            }
+            this.playSound?.('magic');
+            this.inputManager?.showMessage('A gateway has appeared!');
+            // Apply visual effect
+            if (this.renderer?.applyEffect) {
+                this.renderer.applyEffect('gateway_reveal');
+            }
+        }
     }
 
     /**
@@ -1380,7 +1627,32 @@ class DungeonEngine {
             }
         }
 
+        // Re-hide gateways when win conditions break
+        const gateways = this.entityManager?.actors.filter(a => a.hasAttribute('gateway'));
+        if (gateways?.length > 0) {
+            for (const gw of gateways) {
+                gw.setAttribute('visible', false);
+                gw.setAttribute('hidden', true);
+                if (gw.spriteBase) gw.spriteBase.visible = false;
+                if (gw.spriteTop) gw.spriteTop.visible = false;
+            }
+        }
+
         this.inputManager?.showMessage('The way forward is sealed once more.');
+    }
+
+    /**
+     * Use a gateway to transition to the next prototype
+     * Called when player steps on a visible gateway on the last floor
+     */
+    async useGateway() {
+        const config = this.currentPrototype.config;
+        if (config.next_level) {
+            console.log(`Using gateway to transition to ${config.next_level}`);
+            this.floorStates.clear();
+            this.currentFloor = 1;
+            await this.transitionToPrototype(config.next_level, true, 'from_above');
+        }
     }
 
     /**
@@ -1389,21 +1661,37 @@ class DungeonEngine {
      */
     async useStairway(direction) {
         const config = this.currentPrototype.config;
-        let targetLevel = null;
 
-        if (direction === 'down' && config.next_level) {
-            targetLevel = config.next_level;
-        } else if (direction === 'up' && config.previous_level) {
-            targetLevel = config.previous_level;
+        if (!config.levels) {
+            // LEGACY: stairways go between prototypes (unchanged behavior)
+            let targetLevel = null;
+
+            if (direction === 'down' && config.next_level) {
+                targetLevel = config.next_level;
+            } else if (direction === 'up' && config.previous_level) {
+                targetLevel = config.previous_level;
+            }
+
+            if (targetLevel) {
+                console.log(`Using stairway ${direction} to ${targetLevel}`);
+                const entryDirection = direction === 'down' ? 'from_above' : 'from_below';
+                await this.transitionToPrototype(targetLevel, true, entryDirection);
+            } else {
+                console.log(`No ${direction === 'down' ? 'next' : 'previous'} level configured`);
+            }
+            return;
         }
 
-        if (targetLevel) {
-            console.log(`Using stairway ${direction} to ${targetLevel}`);
-
-            const entryDirection = direction === 'down' ? 'from_above' : 'from_below';
-            await this.transitionToPrototype(targetLevel, true, entryDirection);
-        } else {
-            console.log(`No ${direction === 'down' ? 'next' : 'previous'} level configured`);
+        // NEW: stairways go between floors within the prototype
+        const totalFloors = config.levels.length;
+        if (direction === 'down' && this.currentFloor < totalFloors) {
+            await this.transitionToFloor(this.currentFloor + 1, 'from_above');
+        } else if (direction === 'up') {
+            if (this.currentFloor > 1) {
+                await this.transitionToFloor(this.currentFloor - 1, 'from_below');
+            } else if (config.previous_level) {
+                await this.transitionToPrototype(config.previous_level, true, 'from_below');
+            }
         }
     }
 
@@ -1466,7 +1754,19 @@ class DungeonEngine {
                 console.error('No player actor data found in prototype');
             }
         } else if (entryDirection === null) {
-            console.log('No up stairway found, expecting player to be placed in map');
+            // No stairway to spawn at — place player on a random walkable tile
+            const playerData = this.currentPrototype.getActorData('player');
+            if (playerData) {
+                const walkableTiles = this.mapManager.walkableTiles;
+                const available = walkableTiles.filter(t => !this.entityManager.getActorAt(t.x, t.y));
+                if (available.length > 0) {
+                    const tile = available[Math.floor(ROT.RNG.getUniform() * available.length)];
+                    console.log(`No stairway found, spawning player at random tile (${tile.x}, ${tile.y})`);
+                    const player = new Actor(tile.x, tile.y, 'player', playerData, this);
+                    this.entityManager.addEntity(player);
+                    player.loadDefaultItems();
+                }
+            }
         } else {
             console.warn(`No ${targetStairwayType} stairway found to spawn player at`);
         }
@@ -1478,6 +1778,13 @@ class DungeonEngine {
      * If the prototype has no previous_level, spawns a locked_up_stairway instead
      */
     ensureUpStairway() {
+        // Don't place an up stairway on the top floor of a prototype if there's nowhere to go
+        const hasLevels = !!this.currentPrototype.config.levels;
+        const isTopFloor = !hasLevels || this.currentFloor === 1;
+        if (isTopFloor && !this.currentPrototype.config.previous_level) {
+            return;
+        }
+
         // Check if an up_stairway already exists
         const existingStairway = this.entityManager.findActorByAttribute('stairway', 'up');
         if (existingStairway) {
@@ -1505,9 +1812,8 @@ class DungeonEngine {
         // Pick a random tile using ROT.RNG for consistency
         const tile = randomElement(availableTiles);
 
-        // Determine which stairway type to spawn based on whether there's a previous level
-        const hasPreviousLevel = !!this.currentPrototype.config.previous_level;
-        const stairwayType = hasPreviousLevel ? 'up_stairway' : 'locked_up_stairway';
+        // If we got here, there's somewhere to go up to — use a regular up stairway
+        const stairwayType = 'up_stairway';
 
         // Get the stairway actor data
         const stairwayData = this.currentPrototype.getActorData(stairwayType);
@@ -1522,6 +1828,90 @@ class DungeonEngine {
         console.log(`Spawned ${stairwayType} at (${tile.x}, ${tile.y})`);
     }
 
+    /**
+     * Ensure a down_stairway exists on the current floor
+     * Used in multi-level prototypes for non-final floors
+     */
+    ensureDownStairway() {
+        const existingStairway = this.entityManager.findActorByAttribute('stairway', 'down');
+        if (existingStairway) {
+            console.log('Down stairway already exists at', existingStairway.x, existingStairway.y);
+            return;
+        }
+
+        const walkableTiles = this.mapManager.walkableTiles;
+        if (!walkableTiles || walkableTiles.length === 0) {
+            console.warn('No walkable tiles available to place down_stairway');
+            return;
+        }
+
+        const availableTiles = walkableTiles.filter(tile => {
+            return !this.entityManager.getActorAt(tile.x, tile.y);
+        });
+
+        if (availableTiles.length === 0) {
+            console.warn('No available tiles to place down_stairway');
+            return;
+        }
+
+        const tile = randomElement(availableTiles);
+
+        // Check if this floor has win conditions — if so, use locked_down_stairway
+        const floorConfig = this.getFloorConfig(this.currentFloor);
+        const hasWinConditions = floorConfig.win_conditions && floorConfig.win_conditions.length > 0;
+        const stairwayType = hasWinConditions ? 'locked_down_stairway' : 'down_stairway';
+
+        const stairwayData = this.currentPrototype.getActorData(stairwayType);
+        if (!stairwayData) {
+            console.warn(`No ${stairwayType} actor data found`);
+            return;
+        }
+
+        const stairway = new Actor(tile.x, tile.y, stairwayType, stairwayData, this);
+        this.entityManager.addEntity(stairway);
+        console.log(`Spawned ${stairwayType} at (${tile.x}, ${tile.y})`);
+    }
+
+    /**
+     * Ensure a gateway exists on the current floor (last floor of multi-level prototype)
+     * Gateway is hidden by default, revealed when win conditions are met
+     */
+    ensureGateway() {
+        // Check if a gateway already exists
+        const existingGateway = this.entityManager.actors.find(a => a.hasAttribute('gateway'));
+        if (existingGateway) {
+            console.log('Gateway already exists at', existingGateway.x, existingGateway.y);
+            return;
+        }
+
+        const walkableTiles = this.mapManager.walkableTiles;
+        if (!walkableTiles || walkableTiles.length === 0) {
+            console.warn('No walkable tiles available to place gateway');
+            return;
+        }
+
+        const availableTiles = walkableTiles.filter(tile => {
+            return !this.entityManager.getActorAt(tile.x, tile.y);
+        });
+
+        if (availableTiles.length === 0) {
+            console.warn('No available tiles to place gateway');
+            return;
+        }
+
+        const tile = randomElement(availableTiles);
+
+        const gatewayData = this.currentPrototype.getActorData('gateway');
+        if (!gatewayData) {
+            console.warn('No gateway actor data found');
+            return;
+        }
+
+        const gateway = new Actor(tile.x, tile.y, 'gateway', gatewayData, this);
+        this.entityManager.addEntity(gateway);
+        console.log(`Spawned hidden gateway at (${tile.x}, ${tile.y})`);
+    }
+
     saveGameState() {
         return {
             player: this.entityManager.player.serialize(),
@@ -1529,11 +1919,107 @@ class DungeonEngine {
             map: this.mapManager.serializeMap()
         };
     }
-    
+
     restoreGameState(state) {
         this.entityManager.player.deserialize(state.player);
         this.entityManager.deserializeEntities(state.entities);
         this.mapManager.deserializeMap(state.map);
+    }
+
+    /**
+     * Save the current floor state (entities + map) for later restoration
+     * Excludes the player entity since player carries across floors
+     */
+    saveFloorState() {
+        const entities = this.entityManager.serializeEntities();
+        const map = this.mapManager.serializeMap();
+        // Exclude player from saved entities (player carries across floors)
+        const nonPlayerEntities = entities.filter(e => e.type !== 'player');
+        this.floorStates.set(this.currentFloor, {
+            entities: nonPlayerEntities,
+            map,
+            rngState: typeof ROT !== 'undefined' ? ROT.RNG.getState() : null
+        });
+    }
+
+    /**
+     * Transition to a different floor within the same prototype
+     * @param {number} targetFloor - 1-indexed target floor number
+     * @param {string} entryDirection - 'from_above' or 'from_below'
+     */
+    async transitionToFloor(targetFloor, entryDirection) {
+        console.log(`Transitioning from floor ${this.currentFloor} to floor ${targetFloor}`);
+
+        // Save current floor state
+        this.saveFloorState();
+
+        // Save player state before cleanup
+        const playerState = this.entityManager.player?.serialize();
+
+        // Clean up current floor (entities, map, renderer — keep Prototype, assets)
+        this.cleanupFloor();
+
+        this.currentFloor = targetFloor;
+
+        if (this.floorStates.has(targetFloor)) {
+            // Restore previously visited floor
+            await this.restoreFloor(targetFloor, playerState, entryDirection);
+        } else {
+            // Load fresh floor
+            await this.loadFloor(targetFloor, entryDirection, playerState);
+        }
+    }
+
+    /**
+     * Clean up the current floor without destroying the app/renderer framework
+     * Preserves prototype, assets, and audio — clears entities, map, and rendering
+     */
+    cleanupFloor() {
+        if (this.turnEngine) {
+            this.turnEngine.lock();
+        }
+
+        if (this.scheduler) {
+            this.scheduler.clear();
+        }
+
+        if (this.entityManager) {
+            this.entityManager.cleanup();
+        }
+
+        if (this.mapManager) {
+            this.mapManager.cleanup();
+        }
+
+        if (this.renderer) {
+            this.renderer.clear();
+        }
+
+        if (this.interfaceManager) {
+            this.interfaceManager.clear();
+        }
+
+        if (this.app) {
+            this.app.destroy(true, { children: true, texture: false, baseTexture: false });
+            this.app = null;
+            this.renderer = null;
+            this.interfaceManager = null;
+        }
+
+        if (this.lightingManager) {
+            this.lightingManager = null;
+        }
+
+        // Reset viewport state
+        this.viewportEnabled = false;
+        this.viewportWidth = null;
+        this.viewportHeight = null;
+        this.sectionCol = 0;
+        this.sectionRow = 0;
+        this.sectionOriginX = 0;
+        this.sectionOriginY = 0;
+        this.viewportOffsetX = 0;
+        this.viewportOffsetY = 0;
     }
     
     cleanup() {
@@ -1583,6 +2069,10 @@ class DungeonEngine {
         this.sectionOriginY = 0;
         this.viewportOffsetX = 0;
         this.viewportOffsetY = 0;
+
+        // Reset floor state
+        this.currentFloor = 1;
+        this.floorStates.clear();
     }
 }
 
@@ -1876,15 +2366,17 @@ class Entity {
             x: this.x,
             y: this.y,
             type: this.type,
+            name: this.name,
             attributes: Array.from(this.attributes.entries()),
             tint: this.tint
         };
     }
-    
+
     deserialize(data) {
         this.x = data.x;
         this.y = data.y;
         this.type = data.type;
+        if (data.name !== undefined) this.name = data.name;
         this.attributes = new Map(data.attributes);
         this.tint = data.tint;
     }
@@ -2268,6 +2760,23 @@ class Item extends Entity {
 
     use(actor) {
         console.log(`${actor.name} used ${this.name}`);
+    }
+
+    serialize() {
+        return {
+            ...super.serialize(),
+            identified: this.identified,
+            templateVars: { ...this.templateVars },
+            stats: this.stats ? JSON.parse(JSON.stringify(this.stats)) : {},
+            isItem: true
+        };
+    }
+
+    deserialize(data) {
+        super.deserialize(data);
+        if (data.identified !== undefined) this.identified = data.identified;
+        if (data.templateVars) this.templateVars = { ...data.templateVars };
+        if (data.stats) this.stats = JSON.parse(JSON.stringify(data.stats));
     }
 }
 
@@ -4381,14 +4890,20 @@ class Actor extends Entity {
             }
         }
 
-        // Show weapon swing visual (for equipped weapons only)
-        if (equippedWeapon?.tileIndex && this.engine.renderer) {
+        // Determine if target is a valid combat target:
+        // - Has health stats (enemy/creature), or
+        // - Is breakable (mineable wall — non-mining-tool case already returned early above)
+        const targetHasHealth = target.stats?.health !== undefined;
+        const isCombatTarget = damageSource && (targetHasHealth || target.hasAttribute('breakable'));
+
+        // Show weapon swing visual only when combat is actually attempted
+        if (isCombatTarget && equippedWeapon?.tileIndex && this.engine.renderer) {
             this.engine.interfaceManager?.showWeaponSwing(equippedWeapon, target.x, target.y);
         }
 
         // Perform hit roll for damage source
         let damageHits = true;
-        if (damageSource) {
+        if (damageSource && isCombatTarget) {
             const attackerAccuracy = this.getEffectiveAccuracy();
 
             // Only roll if attacker has accuracy attribute AND target is not incapacitated
@@ -4409,12 +4924,12 @@ class Actor extends Entity {
         }
 
         // Apply damage effects if hit succeeded
-        if (damageSource && damageHits) {
+        if (isCombatTarget && damageHits) {
             const result = this._applyEffectSource(damageSource, target, true);
             if (result.applied) effectApplied = true;
             if (result.targetPassable) targetPassable = true;
             if (result.targetShouldDie) targetShouldDie = true;
-        } else if (damageSource && !damageHits) {
+        } else if (isCombatTarget && !damageHits) {
             // Miss - show miss feedback
             this._showMissMessage(target);
         }
@@ -5023,10 +5538,13 @@ class Actor extends Entity {
             }
         }
 
-        // Check for stairway actors (only for player-controlled actors)
+        // Check for stairway and gateway actors (only for player-controlled actors)
         if (this.isPlayerControlled()) {
-            const stairway = this.engine.entityManager.getOtherActorAt(newX, newY, this);
-            if (stairway && stairway.hasAttribute('stairway')) {
+            const actorsAtNewPos = this.engine.entityManager.actors.filter(
+                a => a.x === newX && a.y === newY && a !== this
+            );
+            const stairway = actorsAtNewPos.find(a => a.hasAttribute('stairway'));
+            if (stairway) {
                 const direction = stairway.getAttribute('stairway');
 
                 // Lock the turn engine to prevent further actions during transition
@@ -5035,6 +5553,16 @@ class Actor extends Entity {
                 }
                 this.engine.useStairway(direction);
                 return { moved: true, actionTaken: true }; // Exit early, transition handles everything
+            }
+
+            // Check for gateway actors (visible gateways trigger prototype transition)
+            const gateway = actorsAtNewPos.find(a => a.hasAttribute('gateway') && a.getAttribute('visible'));
+            if (gateway) {
+                if (this.engine.turnEngine) {
+                    this.engine.turnEngine.lock();
+                }
+                this.engine.useGateway();
+                return { moved: true, actionTaken: true };
             }
         }
 
@@ -5706,16 +6234,50 @@ class Actor extends Entity {
     serialize() {
         return {
             ...super.serialize(),
-            stats: this.stats,
+            stats: JSON.parse(JSON.stringify(this.stats)),
             inventory: this.inventory.map(item => item.serialize()),
-            personality: this.personality?.name
+            personality: this.personality?.name,
+            isDead: this.isDead,
+            equipment: {
+                weapon: this.equipment.weapon?.type || null,
+                top: this.equipment.top?.type || null,
+                middle: this.equipment.middle?.type || null,
+                lower: this.equipment.lower?.type || null
+            },
+            states: JSON.parse(JSON.stringify(
+                Object.fromEntries(
+                    Object.entries(this.states || {}).map(([k, v]) => [k, { duration: v.duration, data: v.data }])
+                )
+            )),
+            isActor: true
         };
     }
-    
+
     deserialize(data) {
         super.deserialize(data);
-        this.stats = data.stats;
-        // Inventory would need to be reconstructed from IDs
+        if (data.stats) this.stats = JSON.parse(JSON.stringify(data.stats));
+        if (data.isDead !== undefined) this.isDead = data.isDead;
+        if (data.states) this.states = JSON.parse(JSON.stringify(data.states));
+        // Reconstruct inventory items
+        if (data.inventory) {
+            this.inventory = data.inventory.map(itemData => {
+                const itemDef = this.engine.currentPrototype.getItemData(itemData.type);
+                if (!itemDef) return null;
+                const item = new Item(itemData.x, itemData.y, itemData.type, itemDef, this.engine);
+                item.deserialize(itemData);
+                item.owner = this;
+                return item;
+            }).filter(Boolean);
+            // Re-link equipment slots
+            if (data.equipment) {
+                for (const [slot, itemType] of Object.entries(data.equipment)) {
+                    if (itemType) {
+                        const item = this.inventory.find(i => i.type === itemType);
+                        if (item) this.equipment[slot] = item;
+                    }
+                }
+            }
+        }
         if (data.personality) {
             this.loadPersonality(data.personality);
         }
@@ -5862,9 +6424,26 @@ class EntityManager {
         const skipActorTypes = new Set(['player', 'wall', 'door', 'stairway_up', 'stairway_down']);
 
         // Also skip actor types that are configured in random_actors (they'll be spawned separately)
-        const randomActorTypes = new Set(Object.keys(prototype.config?.random_actors || {}));
+        // For multi-level prototypes, check the current floor's random_actors
+        const floorConfig = prototype.config?.levels
+            ? this.engine.getFloorConfig(this.engine.currentFloor)
+            : prototype.config;
+        const randomActorTypes = new Set(Object.keys(floorConfig?.random_actors || {}));
 
-        // Spawn unplaced actors (only prototype-specific ones)
+        // Skip chain segment types - they're spawned by spawnChainCreatures via their head
+        for (const actorType of prototype.prototypeActorTypes || []) {
+            const actorData = prototype.getActorData(actorType);
+            if (actorData?.attributes?.chain_segment_type) {
+                // The head's segment type should be skipped
+                skipActorTypes.add(actorData.attributes.chain_segment_type);
+            }
+        }
+
+        // In multi-level prototypes, per-floor random_actors fully controls spawning —
+        // don't auto-spawn unplaced prototype actors on every floor
+        if (prototype.config?.levels) return;
+
+        // Spawn unplaced actors (only prototype-specific ones, single-level prototypes only)
         for (const actorType of prototype.prototypeActorTypes || []) {
             if (placedActorTypes.has(actorType)) continue;
             if (skipActorTypes.has(actorType)) continue;
@@ -5897,7 +6476,7 @@ class EntityManager {
      * Format: { "actor_type": { "chance": 0-100, "min": 1, "max": 3 }, ... }
      * If chance is 100, exactly one instance will spawn (guaranteed)
      */
-    spawnRandomActorsFromConfig() {
+    spawnRandomActorsFromConfig(floorConfig = null) {
         const walkableTiles = this.engine.mapManager.walkableTiles;
         if (!walkableTiles || walkableTiles.length === 0) {
             console.warn('random_actors/items: No walkable tiles available');
@@ -5913,17 +6492,17 @@ class EntityManager {
             return walkableTiles.filter(t => !occupied.has(`${t.x},${t.y}`));
         };
 
-        this.spawnRandomActors(getAvailableTiles);
-        this.spawnRandomItems(getAvailableTiles);
+        this.spawnRandomActors(getAvailableTiles, floorConfig);
+        this.spawnRandomItems(getAvailableTiles, floorConfig);
     }
 
     /**
      * Spawn random actors based on prototype's random_actors config
      * @param {Function} getAvailableTiles - Function that returns available spawn tiles
      */
-    spawnRandomActors(getAvailableTiles) {
+    spawnRandomActors(getAvailableTiles, floorConfig = null) {
         const prototype = this.engine.currentPrototype;
-        const randomActors = prototype?.config?.random_actors;
+        const randomActors = floorConfig?.random_actors ?? prototype?.config?.random_actors;
         if (!randomActors) return;
 
         for (const [actorType, spawnConfig] of Object.entries(randomActors)) {
@@ -5985,9 +6564,9 @@ class EntityManager {
      * Spawn random items based on prototype's random_items config
      * @param {Function} getAvailableTiles - Function that returns available spawn tiles
      */
-    spawnRandomItems(getAvailableTiles) {
+    spawnRandomItems(getAvailableTiles, floorConfig = null) {
         const prototype = this.engine.currentPrototype;
-        const randomItems = prototype?.config?.random_items;
+        const randomItems = floorConfig?.random_items ?? prototype?.config?.random_items;
         if (!randomItems) return;
 
         for (const [itemType, spawnConfig] of Object.entries(randomItems)) {
@@ -6595,7 +7174,21 @@ class EntityManager {
     }
     
     deserializeEntities(data) {
-        // Would need to reconstruct entities from serialized data
+        for (const entityData of data) {
+            if (entityData.isActor) {
+                const actorDef = this.engine.currentPrototype.getActorData(entityData.type);
+                if (!actorDef) continue;
+                const actor = new Actor(entityData.x, entityData.y, entityData.type, actorDef, this.engine);
+                actor.deserialize(entityData);
+                this.addEntity(actor);
+            } else if (entityData.isItem) {
+                const itemDef = this.engine.currentPrototype.getItemData(entityData.type);
+                if (!itemDef) continue;
+                const item = new Item(entityData.x, entityData.y, entityData.type, itemDef, this.engine);
+                item.deserialize(entityData);
+                this.addEntity(item);
+            }
+        }
     }
     
     cleanup() {

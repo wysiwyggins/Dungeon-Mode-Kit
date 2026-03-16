@@ -185,6 +185,8 @@ Items listed in `default_items` are added to the actor's inventory on spawn. Wea
 | Attribute | Type | Description |
 |-----------|------|-------------|
 | `stairway` | string | `"up"` or `"down"` — triggers level transition |
+| `gateway` | boolean | Inter-prototype transition point. Hidden by default; revealed when last floor's win conditions are met. |
+| `hidden` | boolean | Actor exists in the world but is not rendered. Used for gateways that appear later. |
 
 ## Environmental Actors
 
@@ -357,6 +359,20 @@ Personalities are defined in `data/personalities.json`. Each turn, the personali
     "visible": true,
     "light_source": true,
     "mass_noun": true
+  }
+}
+
+// Gateway (hidden until win conditions met on last floor)
+"gateway": {
+  "name": "Gateway",
+  "tileIndexBase": "FLOATING_LEGS_ON_WHITE_UPPER_GRADIENT",
+  "tileIndexTop": "OPAQUE_DOOR_TOP",
+  "attributes": {
+    "solid": false,
+    "visible": false,
+    "flammable": false,
+    "gateway": true,
+    "hidden": true
   }
 }
 

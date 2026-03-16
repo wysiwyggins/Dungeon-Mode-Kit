@@ -892,6 +892,40 @@ class Architect {
                     }
                 }
 
+                // Convert perimeter walls to indestructible metal_wall
+                // and add metal_wall for any perimeter tile adjacent to a floor
+                const isPerimeter = (px, py) =>
+                    px === 0 || px === this.width - 1 || py === 0 || py === this.height - 1;
+
+                // Retype existing perimeter wall spawns
+                for (const wall of this.pendingWallSpawns) {
+                    if (isPerimeter(wall.x, wall.y)) {
+                        wall.type = 'metal_wall';
+                    }
+                }
+
+                // Add metal_wall for perimeter tiles adjacent to floors that weren't queued
+                // (e.g. y=0 row is skipped by the wall loop above)
+                const pendingWallSet = new Set(this.pendingWallSpawns.map(p => `${p.x},${p.y}`));
+                for (let y = 0; y < this.height; y++) {
+                    for (let x = 0; x < this.width; x++) {
+                        if (!isPerimeter(x, y)) continue;
+                        if (diggerFloorTiles.has(`${x},${y}`)) continue;
+                        if (pendingWallSet.has(`${x},${y}`)) continue;
+
+                        const adj =
+                            hasDiggerFloor(x - 1, y) || hasDiggerFloor(x + 1, y) ||
+                            hasDiggerFloor(x, y - 1) || hasDiggerFloor(x, y + 1) ||
+                            hasDiggerFloor(x - 1, y - 1) || hasDiggerFloor(x + 1, y - 1) ||
+                            hasDiggerFloor(x - 1, y + 1) || hasDiggerFloor(x + 1, y + 1);
+
+                        if (adj) {
+                            this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                            this.pendingWallSpawns.push({ x, y, type: 'metal_wall' });
+                        }
+                    }
+                }
+
                 // Also spawn doors and torches from rooms
                 const rooms = generator.getRooms();
                 this.diggerRooms = rooms;  // saved for treasure room feature
@@ -1753,13 +1787,23 @@ class Architect {
 
     serializeMap() {
         return {
+            width: this.width,
+            height: this.height,
             floorMap: this.floorMap,
+            wallMap: this.wallMap,
+            backgroundMap: this.backgroundMap,
+            wildcardMap: this.wildcardMap,
             walkableTiles: this.walkableTiles
         };
     }
 
     deserializeMap(data) {
+        this.width = data.width;
+        this.height = data.height;
         this.floorMap = data.floorMap;
+        this.wallMap = data.wallMap;
+        this.backgroundMap = data.backgroundMap;
+        this.wildcardMap = data.wildcardMap;
         this.walkableTiles = data.walkableTiles;
     }
 

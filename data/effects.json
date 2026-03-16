@@ -66,5 +66,11 @@
       { "primitive": "blur_pulse", "params": { "speed": 0.003, "min_strength": 0, "max_strength": 4 } },
       { "primitive": "brightness_oscillate", "params": { "speed": 0.002, "amplitude": 0.04 } }
     ]
+  },
+  "gateway_reveal": {
+    "target": "stage",
+    "layers": [
+      { "primitive": "canvas_flash", "params": { "color": "0xFFFFFF", "duration_ms": 200, "opacity": 0.7 } }
+    ]
   }
 }

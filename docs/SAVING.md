@@ -3,7 +3,7 @@
 Two systems exist for preserving game state:
 
 1. **Seed URLs** — A `?seed=` parameter makes map generation deterministic. Fully implemented.
-2. **Full state snapshots** — Serialize mid-game state to JSON. Partially implemented; restore is not yet functional end-to-end.
+2. **Full state snapshots** — Serialize mid-game state to JSON for floor transitions and save/restore.
 
 ## Seed URLs
 
@@ -35,7 +35,7 @@ engine.currentSeed  // → 1708642800000
 
 ## Serialization API
 
-Entity, Item, and Actor each implement `serialize()` / `deserialize()`. These are used internally by `saveGameState()` and are available for custom prototype logic.
+Entity, Item, and Actor each implement `serialize()` / `deserialize()`. These are used internally by `saveGameState()`, floor transitions, and are available for custom prototype logic.
 
 ### Entity.serialize()
 
@@ -45,8 +45,20 @@ Returns a plain object with:
 |-------|-------------|
 | `x`, `y` | Map coordinates |
 | `type` | Entity type identifier |
+| `name` | Display name |
 | `attributes` | All attributes as an array of `[key, value]` pairs |
 | `tint` | Color tint value |
+
+### Item.serialize()
+
+Extends `Entity.serialize()` with:
+
+| Field | Description |
+|-------|-------------|
+| `identified` | Whether the item has been identified |
+| `templateVars` | Template variable values (color, glyph name, etc.) |
+| `stats` | Full stats object (charges, fuel, etc.) |
+| `isItem` | Always `true` — discriminator for deserialization |
 
 ### Actor.serialize()
 
@@ -54,13 +66,21 @@ Extends `Entity.serialize()` with:
 
 | Field | Description |
 |-------|-------------|
-| `stats` | Full stats object (health, strength, etc.) |
+| `stats` | Full stats object (health, strength, etc.) — deep copy |
 | `inventory` | Array of serialized item objects |
 | `personality` | Personality name string, if any |
+| `isDead` | Whether the actor is dead |
+| `equipment` | Equipment slot → item type mapping (`weapon`, `top`, `middle`, `lower`) |
+| `states` | Active temporary states with durations (burning, poisoned, etc.) |
+| `isActor` | Always `true` — discriminator for deserialization |
 
 ### Actor.deserialize(data)
 
-Restores stats and personality. Inventory reconstruction from serialized items is not yet implemented.
+Fully restores stats, personality, dead state, active states, and reconstructs inventory items from serialized data. Equipment slots are re-linked to matching inventory items.
+
+### EntityManager.deserializeEntities(data)
+
+Reconstructs all entities from serialized data. Uses `isActor` / `isItem` discriminator fields to determine entity type, creates instances from prototype definitions, and calls `deserialize()` on each.
 
 ## saveGameState() / restoreGameState()
 
@@ -77,12 +97,34 @@ const state = engine.saveGameState();
 engine.restoreGameState(state);
 ```
 
-**Current limitation:** Only the player entity is fully restored. Non-player entity reconstruction (`EntityManager.deserializeEntities`) is not yet implemented, so loading a mid-game snapshot restores the player but not other actors or items.
+## Floor State Serialization
+
+Multi-level prototypes save and restore floor state when transitioning between floors:
+
+```js
+engine.currentFloor    // 1-indexed current floor number
+engine.floorStates     // Map of floor# → { entities, map, rngState }
+```
+
+`saveFloorState()` serializes all non-player entities and the full map state. The player entity is serialized separately and carried across floors with inventory, stats, and equipment intact.
+
+When returning to a previously visited floor, the saved state is restored — all entities reappear in their last positions, and the map is exactly as it was left. The ROT.js RNG state is also saved per floor for deterministic regeneration if needed.
+
+### Map Serialization
+
+`Architect.serializeMap()` saves all map layers:
+
+| Field | Description |
+|-------|-------------|
+| `width`, `height` | Map dimensions |
+| `floorMap` | Walkable terrain tiles |
+| `wallMap` | Wall entity layer |
+| `backgroundMap` | Background/void tiles |
+| `wildcardMap` | Procedural generation markers |
+| `walkableTiles` | Array of walkable tile positions |
 
 ## Not Yet Implemented
 
-- Full entity reconstruction from snapshots (non-player actors and items)
-- Missing serialize fields: equipment, active states (burning/poisoned), dead flag, vision range, lifetime
 - State compression and URL export (`?state=` parameter)
 - localStorage save slots
 - Save/load UI and hotkeys
