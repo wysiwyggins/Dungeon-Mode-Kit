@@ -1217,7 +1217,7 @@ const BehaviorLibrary = {
         // Phase 2: Find empty tiles that should birth (exactly 3 neighbors)
         const birthCandidates = new Set();
         for (const cell of cellActors) {
-            for (const dir of directions) {
+            for (const dir of ALL_DIRS) {
                 const key = `${cell.x + dir.dx},${cell.y + dir.dy}`;
                 if (!aliveCells.has(key)) birthCandidates.add(key);
             }
