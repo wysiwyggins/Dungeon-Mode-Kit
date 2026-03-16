@@ -115,6 +115,7 @@
     "name": "Liquid Pooling",
     "hostile": false,
     "behaviors": [
+      "emit_sewer_gas",
       "cellular_transform",
       "liquid_color_mix"
     ],

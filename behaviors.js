@@ -195,7 +195,6 @@ const BehaviorLibrary = {
         const isHarmfulActor = (other) => {
             // Check explicit damage attributes
             if (other.hasAttribute('damage_type') ||
-                other.hasAttribute('nauseates') ||
                 other.damage_per_turn > 0) {
                 return true;
             }
@@ -1871,6 +1870,28 @@ const BehaviorLibrary = {
             if (result.moved) return true;
         }
         return false;
+    },
+
+    emit_sewer_gas: (actor) => {
+        // Only sewage emits gas, not water
+        if (actor.type !== 'sewage') return;
+        if (ROT.RNG.getPercentage() > 3) return;
+
+        const entityManager = actor.engine.entityManager;
+
+        // Don't emit if there's already a cloud here
+        const existing = entityManager.actors.find(
+            a => a.x === actor.x && a.y === actor.y && !a.isDead && a.personality?.name === 'Cloud'
+        );
+        if (existing) return;
+
+        const cloud = entityManager.spawnActor('sewer_gas', actor.x, actor.y);
+        if (cloud) {
+            cloud.isCloudOrigin = true;
+            cloud.cloudOriginX = actor.x;
+            cloud.cloudOriginY = actor.y;
+            cloud.cloudLifetime = 6;
+        }
     },
 
     // Backward-compat aliases for renamed chain behaviors

@@ -109,5 +109,15 @@
     "effect_description": "Nothing looks right",
     "on_apply_message": "The world begins to shift and melt around [actor_name]!",
     "on_remove_message": "[actor_name]'s vision clears."
+  },
+
+  "nauseated": {
+    "name": "Nauseated",
+    "duration": 8,
+    "skip_turn_chance": 0.25,
+    "immunity": "gas_immune",
+    "effect_description": "Your stomach churns",
+    "on_apply_message": "[actor_name] feels nauseated!",
+    "on_remove_message": "[actor_name]'s stomach settles."
   }
 }

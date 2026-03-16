@@ -23,6 +23,9 @@ class Architect {
         this.pendingDoorSpawns = [];
         this.pendingTorchSpawns = [];
         this.pendingLavaSpawns = [];
+        this.pendingLakeSpawns = [];
+        this.pendingSewageSpawns = [];
+        this.pendingPushableWallSpawns = [];
         this.diggerRooms = null;
 
         // Tiled map metadata
@@ -970,6 +973,76 @@ class Architect {
             }
         }
 
+        // Generate random lakes (water patches on floor tiles)
+        const lakeChance = options.lake_chance || 0;
+        if (lakeChance > 0) {
+            const lakeCave = new ROT.Map.Cellular(this.width, this.height, {
+                born: [5, 6, 7, 8],
+                survive: [4, 5, 6, 7, 8],
+                topology: 8
+            });
+
+            lakeCave.randomize(lakeChance / 100);
+            lakeCave.create();
+            lakeCave.create();
+
+            const lakePositions = [];
+            const walkableSet = new Set(this.walkableTiles.map(t => `${t.x},${t.y}`));
+
+            lakeCave.create((x, y, value) => {
+                if (value === 0) return;
+                if (!walkableSet.has(`${x},${y}`)) return;
+                lakePositions.push({ x, y });
+            });
+
+            this.pendingLakeSpawns.push(...lakePositions);
+            console.log(`Lake generation: ${lakePositions.length} water tiles`);
+        }
+
+        // Generate random sewage patches on walkable floor tiles
+        const sewageChance = options.sewage_chance || 0;
+        if (sewageChance > 0) {
+            const sewageCave = new ROT.Map.Cellular(this.width, this.height, {
+                born: [5, 6, 7, 8],
+                survive: [4, 5, 6, 7, 8],
+                topology: 8
+            });
+
+            sewageCave.randomize(sewageChance / 100);
+            sewageCave.create();
+            sewageCave.create();
+
+            const sewagePositions = [];
+            const walkableSet = new Set(this.walkableTiles.map(t => `${t.x},${t.y}`));
+
+            sewageCave.create((x, y, value) => {
+                if (value === 0) return;
+                if (!walkableSet.has(`${x},${y}`)) return;
+                sewagePositions.push({ x, y });
+            });
+
+            this.pendingSewageSpawns.push(...sewagePositions);
+            console.log(`Sewage generation: ${sewagePositions.length} sewage tiles`);
+        }
+
+        // Scatter a few pushable walls among normal walls
+        if (this.pendingWallSpawns.length > 0) {
+            const converted = [];
+            for (let i = this.pendingWallSpawns.length - 1; i >= 0; i--) {
+                const wall = this.pendingWallSpawns[i];
+                // Only convert normal walls, not metal_wall or special types
+                if (wall.type && wall.type !== 'wall') continue;
+                if (ROT.RNG.getPercentage() <= 2) {
+                    this.pendingPushableWallSpawns.push({ x: wall.x, y: wall.y });
+                    this.pendingWallSpawns.splice(i, 1);
+                    converted.push(wall);
+                }
+            }
+            if (converted.length > 0) {
+                console.log(`Pushable wall generation: ${converted.length} pushable walls`);
+            }
+        }
+
         console.log(`Procedural map generated with ${this.walkableTiles.length} walkable tiles`);
     }
 
@@ -1629,6 +1702,69 @@ class Architect {
 
         console.log(`Spawned ${this.pendingLavaSpawns.length} lava actors`);
         this.pendingLavaSpawns = [];
+    }
+
+    spawnPendingLakes(context) {
+        if (!this.pendingLakeSpawns || this.pendingLakeSpawns.length === 0) return;
+        if (!context || !context.getActorData || !context.createActor) {
+            console.warn('Cannot spawn lakes without context');
+            return;
+        }
+
+        const actorData = context.getActorData('water');
+        if (!actorData) {
+            console.warn('No water actor data found');
+            return;
+        }
+
+        for (const pos of this.pendingLakeSpawns) {
+            context.createActor(pos.x, pos.y, 'water', actorData);
+        }
+
+        console.log(`Spawned ${this.pendingLakeSpawns.length} water actors`);
+        this.pendingLakeSpawns = [];
+    }
+
+    spawnPendingSewage(context) {
+        if (!this.pendingSewageSpawns || this.pendingSewageSpawns.length === 0) return;
+        if (!context || !context.getActorData || !context.createActor) {
+            console.warn('Cannot spawn sewage without context');
+            return;
+        }
+
+        const actorData = context.getActorData('sewage');
+        if (!actorData) {
+            console.warn('No sewage actor data found');
+            return;
+        }
+
+        for (const pos of this.pendingSewageSpawns) {
+            context.createActor(pos.x, pos.y, 'sewage', actorData);
+        }
+
+        console.log(`Spawned ${this.pendingSewageSpawns.length} sewage actors`);
+        this.pendingSewageSpawns = [];
+    }
+
+    spawnPendingPushableWalls(context) {
+        if (!this.pendingPushableWallSpawns || this.pendingPushableWallSpawns.length === 0) return;
+        if (!context || !context.getActorData || !context.createActor) {
+            console.warn('Cannot spawn pushable walls without context');
+            return;
+        }
+
+        const actorData = context.getActorData('pushable_wall');
+        if (!actorData) {
+            console.warn('No pushable_wall actor data found');
+            return;
+        }
+
+        for (const pos of this.pendingPushableWallSpawns) {
+            context.createActor(pos.x, pos.y, 'pushable_wall', actorData);
+        }
+
+        console.log(`Spawned ${this.pendingPushableWallSpawns.length} pushable wall actors`);
+        this.pendingPushableWallSpawns = [];
     }
 
     // ========================================================================

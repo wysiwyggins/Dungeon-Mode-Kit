@@ -519,7 +519,6 @@
       "flammable": false,
       "spreads": false,
       "liquid": true,
-      "nauseates": true,
       "paint_tile": "IMPERFECT_DOTTED_LIGHT_SHADE",
       "mass_noun": true,
       "entry_sound": "step_mud"
@@ -541,7 +540,6 @@
       "spreads": false,
       "liquid": true,
       "deep": true,
-      "nauseates": true,
       "mass_noun": true,
       "entry_sound": "step_mud"
     }
@@ -560,7 +558,6 @@
       "flammable": false,
       "spreads": false,
       "liquid": true,
-      "nauseates": true,
       "paint_tile": "OPAQUE_DOTTED_LIGHT_SHADE",
       "mass_noun": true,
       "entry_sound": "step_mud"
@@ -581,7 +578,6 @@
       "flammable": false,
       "spreads": false,
       "liquid": true,
-      "nauseates": true,
       "mass_noun": true,
       "entry_sound": "step_mud"
     }
@@ -803,6 +799,25 @@
     "lifetime": 6
   },
 
+  "sewer_gas": {
+    "name": "sewer gas",
+    "tileIndexBase": "BLANK",
+    "tileIndexTop": "BLANK",
+    "animated": true,
+    "animation_frames": "smoke",
+    "tint": "#AACC66",
+    "personality": "cloud_behavior",
+    "attributes": {
+      "solid": false,
+      "visible": true,
+      "mass_noun": true,
+      "flammable": true,
+      "apply_state": "nauseated"
+    },
+    "collision_effect": {},
+    "lifetime": 6
+  },
+
   "poison_gas_trap": {
     "name": "Poison Gas Trap",
     "tileIndexBase": "INVERSE_BULLET",
@@ -934,7 +949,7 @@
       "sentient": true,
       "accuracy": 40
     },
-    "stats": { "health": 8 }
+    "stats": { "health": 12 }
   },
 
   "spider": {

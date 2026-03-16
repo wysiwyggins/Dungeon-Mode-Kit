@@ -475,6 +475,17 @@ function getEuclideanDistance(x0, y0, x1, y1) {
     return Math.sqrt(dx * dx + dy * dy);
 }
 
+/**
+ * Check if an actor is "important" enough that obscuring actors should go transparent.
+ */
+function isImportantActor(actor) {
+    return actor.personality ||
+           actor.hasAttribute('openable') ||
+           actor.hasAttribute('stairway') ||
+           actor.hasAttribute('gateway') ||
+           actor.hasAttribute('controlled');
+}
+
 // ============================================================================
 // SCUTIGERA CHAIN SPAWNING
 // ============================================================================
@@ -1124,6 +1135,9 @@ class DungeonEngine {
         this.mapManager.spawnPendingDoors(architectContext);
         this.mapManager.spawnPendingTorches(architectContext);
         this.mapManager.spawnPendingLava(architectContext);
+        this.mapManager.spawnPendingLakes(architectContext);
+        this.mapManager.spawnPendingSewage(architectContext);
+        this.mapManager.spawnPendingPushableWalls(architectContext);
 
         if (treasureRoomData) {
             this.entityManager.spawnTreasureRoomContents(treasureRoomData, architectContext);
@@ -3061,6 +3075,17 @@ class Actor extends Entity {
             }
         }
 
+        // Check if nauseated — random chance to skip turn
+        if (this.hasStateProperty('skip_turn_chance')) {
+            const chance = this.getStatePropertyValue('skip_turn_chance');
+            if (ROT.RNG.getUniform() < chance) {
+                const name = this.isPlayerControlled() ? 'You' : this.name;
+                const verb = this.isPlayerControlled() ? 'retch' : 'retches';
+                this.engine.inputManager?.showMessage(`${name} ${verb}!`);
+                return Promise.resolve();
+            }
+        }
+
         // Player-controlled actors lock the engine and wait for input
         if (this.isPlayerControlled()) {
             // Grant extra actions from haste (set once per act() call)
@@ -3819,6 +3844,19 @@ class Actor extends Entity {
      */
     hasStateProperty(prop) {
         return Object.values(this.states).some(s => s.data[prop]);
+    }
+
+    /**
+     * Get the max value of a numeric state property across all active states
+     * @param {string} prop - The state data property to check (e.g. 'skip_turn_chance')
+     * @returns {number} The highest value found, or 0 if none
+     */
+    getStatePropertyValue(prop) {
+        let max = 0;
+        for (const s of Object.values(this.states)) {
+            if (s.data[prop] && s.data[prop] > max) max = s.data[prop];
+        }
+        return max;
     }
 
     /**
@@ -8319,6 +8357,34 @@ class RenderSystem {
                         }
                         actor.spriteEquipment[slot].tint = this.blendTints(equippedItem.tint, tintToUse);
                     }
+                }
+            }
+        }
+
+        // Proximity transparency: fade top sprites of actors south of important actors
+        const player = this.engine.entityManager.player;
+        if (player && !player.isDead) {
+            // Reset all top sprite alphas
+            for (const actor of this.engine.entityManager.actors) {
+                if (actor.spriteTop) actor.spriteTop.alpha = 1.0;
+                if (actor.spriteEquipment.middle) actor.spriteEquipment.middle.alpha = 1.0;
+            }
+
+            // Apply transparency to southern neighbors of nearby important actors
+            for (const actor of this.engine.entityManager.actors) {
+                if (actor.isDead) continue;
+                if (!isImportantActor(actor)) continue;
+                if (getChebyshevDistance(player.x, player.y, actor.x, actor.y) > 4) continue;
+
+                const southernActor = this.engine.entityManager.getActorAt(actor.x, actor.y + 1);
+                if (!southernActor || southernActor.isDead || southernActor === actor) continue;
+                if (southernActor.hasAttribute('controlled')) continue;
+
+                if (southernActor.spriteTop?.visible) {
+                    southernActor.spriteTop.alpha = 0.35;
+                }
+                if (southernActor.spriteEquipment.middle?.visible) {
+                    southernActor.spriteEquipment.middle.alpha = 0.35;
                 }
             }
         }
