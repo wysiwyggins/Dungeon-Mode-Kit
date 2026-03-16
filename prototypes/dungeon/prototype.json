@@ -25,17 +25,21 @@
   "levels": [
     {
       "win_conditions": [],
+      "mechanics": {
+        "fog_of_war": false,
+        "darkness": false
+      },
       "map_generator": {
         "type": "digger",
         "options": { "map_width": 40, "map_height": 40, "roomWidth": [5, 12], "roomHeight": [4, 10], "corridorLength": [3, 8], "dugPercentage": 0.35 }
       },
       "random_actors": {
         "rat": { "chance": 100, "min": 2, "max": 3 },
-        "goblin": { "chance": 100, "min": 1, "max": 3 }
+        "deer": { "chance": 100, "min": 1, "max": 3 }
       },
       "random_items": {
-        "key": { "chance": 100 },
-        "potion": { "chance": 60, "min": 1, "max": 2 }
+        "torch": { "chance": 60, "min": 1, "max": 2 },
+        "apple": { "chance": 100, "min": 2, "max": 4 }
       }
     },
     {

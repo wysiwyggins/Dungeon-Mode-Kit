@@ -891,7 +891,7 @@ class DungeonEngine {
         if (!this.lightingManager) return;
 
         this.lightingManager.computeLighting();
-        const fogOfWar = this.currentPrototype?.config.mechanics?.fog_of_war || this._runtimeDarknessActive || false;
+        const fogOfWar = this._floorMechanics?.fog_of_war || this._runtimeDarknessActive || false;
         this.renderer.updateDarkness(this.lightingManager, fogOfWar);
 
         // Update the sidebar with visible actors and items
@@ -1095,7 +1095,7 @@ class DungeonEngine {
         }
 
         // Viewport: per-prototype viewport_width/height in tile columns/rows
-        const mechanics = prototypeConfig.mechanics || {};
+        const mechanics = floorConfig.mechanics || prototypeConfig.mechanics || {};
         const vpW = mechanics.viewport_width || null;
         const vpH = mechanics.viewport_height || null;
 
@@ -1189,7 +1189,7 @@ class DungeonEngine {
         this.renderer.renderActors(this.entityManager);
 
         // Update sidebar for non-darkness levels (darkness levels update via updateLighting)
-        if (!prototypeConfig.mechanics?.darkness) {
+        if (!mechanics.darkness) {
             this.interfaceManager?.updateSidebar();
         }
 
@@ -1198,12 +1198,15 @@ class DungeonEngine {
             actor.updateSubmersionState();
         }
 
-        if (prototypeConfig.mechanics?.darkness) {
+        // Store resolved floor mechanics for use in updateLighting()
+        this._floorMechanics = mechanics;
+
+        if (mechanics.darkness) {
             this.lightingManager = new LightingManager(this);
             this.lightingManager.initialize(
                 this.mapManager.width,
                 this.mapManager.height,
-                prototypeConfig.mechanics
+                mechanics
             );
             this.renderer.initializeDarkness(this.mapManager.width, this.mapManager.height);
             this.updateLighting();
@@ -1436,6 +1439,7 @@ class DungeonEngine {
             random_actors: floorOverride.random_actors ?? config.random_actors ?? {},
             random_items: floorOverride.random_items ?? config.random_items ?? {},
             map_generator: floorOverride.map_generator ?? config.map_generator,
+            mechanics: { ...(config.mechanics || {}), ...(floorOverride.mechanics || {}) },
         };
     }
 
@@ -2935,6 +2939,10 @@ class Actor extends Entity {
         this._equippingItem = null;      // Item currently being equipped
         this._equippingTurnsLeft = 0;    // Turns remaining to finish equipping
         this._equippingTurnsTotal = 0;   // Total turns needed (for progress display)
+
+        this._slowedToggle = false;      // Toggle for skip-every-other-turn (slowed state)
+        this._extraActions = 0;          // Extra actions granted by haste
+        this._knockedBack = false;       // Whether actor is staggered from knockback
 
         this.defaultItems = data.default_items || [];
     }
@@ -7350,6 +7358,7 @@ class RenderSystem {
      */
     applySubmersionTint(tint) {
         if (this.submersionOverlay) return;
+        this._submersionTint = tint;
         this._submersionHandle = this.effectRunner.apply('submersion', null, { tint });
     }
 

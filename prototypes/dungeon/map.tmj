@@ -162,25 +162,14 @@
          "objects":[
                 {
                  "height":30,
-                 "id":8,
-                 "name":"brazier2",
-                 "rotation":0,
-                 "type":"brazier",
-                 "visible":true,
-                 "width":40,
-                 "x":640,
-                 "y":570
-                }, 
-                {
-                 "height":30,
                  "id":27,
                  "name":"brazier2",
                  "rotation":0,
                  "type":"brazier",
                  "visible":true,
                  "width":40,
-                 "x":800,
-                 "y":570
+                 "x":840,
+                 "y":420
                 }, 
                 {
                  "height":30,
@@ -195,14 +184,47 @@
                 }, 
                 {
                  "height":30,
-                 "id":29,
-                 "name":"Rodney",
+                 "id":31,
+                 "name":"brazier2",
                  "rotation":0,
-                 "type":"rodney",
+                 "type":"brazier",
                  "visible":true,
                  "width":40,
-                 "x":160,
+                 "x":600,
+                 "y":420
+                }, 
+                {
+                 "height":30,
+                 "id":32,
+                 "name":"Rodney",
+                 "rotation":0,
+                 "type":"player",
+                 "visible":true,
+                 "width":40,
+                 "x":200,
                  "y":720
+                }, 
+                {
+                 "height":30,
+                 "id":34,
+                 "name":"brazier2",
+                 "rotation":0,
+                 "type":"brazier",
+                 "visible":true,
+                 "width":40,
+                 "x":600,
+                 "y":570
+                }, 
+                {
+                 "height":30,
+                 "id":35,
+                 "name":"brazier2",
+                 "rotation":0,
+                 "type":"brazier",
+                 "visible":true,
+                 "width":40,
+                 "x":840,
+                 "y":570
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -222,7 +244,7 @@
          "y":0
         }],
  "nextlayerid":7,
- "nextobjectid":30,
+ "nextobjectid":36,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",

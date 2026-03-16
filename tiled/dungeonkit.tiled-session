@@ -29,23 +29,22 @@
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/default/map.tmj": {
-            "scale": 2.3603,
-            "selectedLayer": 1,
+            "scale": 1.0789,
+            "selectedLayer": 4,
             "viewCenter": {
-                "x": 1452.3577511333306,
-                "y": 225.6069143752913
+                "x": 920.3818704235796,
+                "y": 783.6685513022524
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/dungeon/map.tmj": {
             "expandedObjectLayers": [
-                3,
-                6
+                3
             ],
-            "scale": 0.5,
+            "scale": 1.2259,
             "selectedLayer": 3,
             "viewCenter": {
-                "x": 946,
-                "y": 885
+                "x": 448.6499714495473,
+                "y": 561.6281915327514
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/hunger_game/map.tmj": {
@@ -61,10 +60,10 @@
                 3
             ],
             "scale": 1.3655,
-            "selectedLayer": 3,
+            "selectedLayer": 1,
             "viewCenter": {
                 "x": 663.4932259245699,
-                "y": 943.6103991212012
+                "y": 862.3214939582572
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/mine/map.tmj": {

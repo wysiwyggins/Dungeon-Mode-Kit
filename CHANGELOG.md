@@ -15,12 +15,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Planned
 
 - don't hide stairways (sometimes architect will put walls on top of them)
-- identify scrolls should be consumed even when nothing is available to identify
 
 ### In Progress
 
 - Mining (works but requires testing and refinement, Currently 3 hits always removes a breakable actor, which feels unnatural)
 - FOV epistemology (currently messages aren't filtered by vision range, make sound alternate messages for those, also some things like mining walls can still be seen out of range)
+
+## [1.1b] 2026-03-16
+
+### Added
+
+- Multi-level dungeons: prototypes can define a `levels` array with per-level map generators, win conditions, random actors/items, and descriptions — stairways connect levels within a single prototype
+- Level loading utilities: `listLevels()` and `loadLevel()` console helpers for navigating multi-level prototypes
+- Sewer gas environmental hazard: sewage tiles emit green gas clouds (3% chance per turn) that spread and apply nauseated state
+- `nauseated` state: 25% random chance to skip turn ("You retch!"), 8-turn duration, blocked by `gas_immune`
+- `skip_turn_chance` state property and `getStatePropertyValue()` helper for probabilistic turn-skip states
+- State collision effects: actors can apply states on contact (e.g., toad applies confused)
+- Touch input support
+- Screen shake visual effect for dark levels
+- Visual effects refactored into standalone `effects.js` module
+- `setup.sh` install script for dependencies
+- New actors: toad, sewer gas cloud
+- Per-level actor and item overrides in dungeon prototype (rats, goblins, bats, skeletons, kobolds scale by depth)
+
+### Changed
+
+- Identify scrolls now consumed even when nothing is available to identify
+- Hallucination state applies to all playable actors, not just sentient ones
+- Engine refactored: visual effects, behaviors extracted to separate modules
+
+### Fixed
+
+- Game of Life behavior: undefined `directions` variable fixed to `ALL_DIRS`
+- State duration counter fix
+- Breakable non-explosive thrown items no longer detonate
+- Follow thread behavior line-of-sight fix
+- Screen shake rendering in dark levels
 
 ## [1.0b] 2026-03-13
 

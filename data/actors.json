@@ -248,7 +248,8 @@
     },
     "stats": {
       "health": 10
-    }
+    },
+    "default_items": ["horns"]
   },
 
   "minotaur": {

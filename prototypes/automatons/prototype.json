@@ -3,7 +3,7 @@
   "description": "Conway's Game of Life. 10 Thalers on the glider!",
   "loaded_sound": "tone3",
   "depth": 0,
-  "turn_speed": 150,
+  "turn_speed": 10,
   "mechanics": {
     "fog_of_war": false,
     "darkness": false,
