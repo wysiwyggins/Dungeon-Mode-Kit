@@ -6586,6 +6586,56 @@ class EntityManager {
             // For non-guaranteed spawns, roll for count between min and max
             const count = min + Math.floor(ROT.RNG.getUniform() * (max - min + 1));
 
+            // Pack actors spawn clustered together near a single anchor point
+            const isPack = actorData.attributes?.pack === true;
+
+            if (isPack) {
+                // Roll chance once for the whole pack
+                if (ROT.RNG.getPercentage() > chance) {
+                    continue;
+                }
+
+                const availableTiles = getAvailableTiles();
+                if (availableTiles.length === 0) {
+                    console.warn(`random_actors: No tiles available for "${actorType}"`);
+                    continue;
+                }
+
+                // Pick an anchor tile for the pack
+                const anchorIndex = Math.floor(ROT.RNG.getUniform() * availableTiles.length);
+                const anchorTile = availableTiles[anchorIndex];
+
+                const anchor = new Actor(anchorTile.x, anchorTile.y, actorType, actorData, this.engine);
+                this.addEntity(anchor);
+                anchor.loadDefaultItems();
+                console.log(`random_actors: Spawned pack anchor "${actorType}" at (${anchorTile.x}, ${anchorTile.y}) (1/${count})`);
+
+                // Spawn remaining pack members nearby (Manhattan distance <= 2)
+                for (let i = 1; i < count; i++) {
+                    const refreshedTiles = getAvailableTiles();
+                    const nearbyTiles = refreshedTiles.filter(t =>
+                        Math.abs(t.x - anchorTile.x) + Math.abs(t.y - anchorTile.y) <= 2
+                    );
+
+                    let tile;
+                    if (nearbyTiles.length > 0) {
+                        tile = nearbyTiles[Math.floor(ROT.RNG.getUniform() * nearbyTiles.length)];
+                    } else if (refreshedTiles.length > 0) {
+                        // Fall back to random map-wide tile
+                        tile = refreshedTiles[Math.floor(ROT.RNG.getUniform() * refreshedTiles.length)];
+                    } else {
+                        console.warn(`random_actors: No tiles available for pack "${actorType}"`);
+                        break;
+                    }
+
+                    const packMember = new Actor(tile.x, tile.y, actorType, actorData, this.engine);
+                    this.addEntity(packMember);
+                    packMember.loadDefaultItems();
+                    console.log(`random_actors: Spawned pack "${actorType}" at (${tile.x}, ${tile.y}) (${i + 1}/${count})`);
+                }
+                continue;
+            }
+
             for (let i = 0; i < count; i++) {
                 // Roll chance for each individual spawn
                 if (ROT.RNG.getPercentage() > chance) {

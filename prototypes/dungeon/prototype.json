@@ -54,6 +54,7 @@
         "rat": { "chance": 100, "min": 3, "max": 5 },
         "bat": { "chance": 80, "min": 1, "max": 2 },
         "goblin": { "chance": 100, "min": 1, "max": 3 },
+        "jackal": { "chance": 50, "min": 3, "max": 5 },
         "poison_gas_trap": { "chance": 50, "min": 1, "max": 1 }
       },
       "random_items": {
@@ -71,6 +72,7 @@
         "skeleton": { "chance": 100, "min": 2, "max": 4 },
         "goblin": { "chance": 60, "min": 0, "max": 3 },
         "bat": { "chance": 80, "min": 1, "max": 2 },
+        "jackal": { "chance": 50, "min": 3, "max": 5 },
         "poison_gas_trap": { "chance": 50, "min": 1, "max": 2 }
       },
       "random_items": {
@@ -88,6 +90,7 @@
         "skeleton": { "chance": 100, "min": 3, "max": 5 },
         "goblin": { "chance": 60, "min": 0, "max": 3 },
         "spider": { "chance": 80, "min": 1, "max": 2 },
+        "jackal": { "chance": 40, "min": 3, "max": 4 },
         "poison_gas_trap": { "chance": 50, "min": 1, "max": 1 },
         "fire_trap": { "chance": 30, "min": 1, "max": 1 }
       },

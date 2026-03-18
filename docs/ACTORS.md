@@ -60,6 +60,7 @@ Actors are two tiles tall: `tileIndexTop` renders at head height (y-1), `tileInd
 | `flammable` | boolean | Can be set on fire via collision |
 | `mass_noun` | boolean | Suppress "the" article — use for clouds, water, etc. |
 | `proper_named` | boolean | Suppress "the" article — use for named characters |
+| `pack` | boolean | Spawn clustered together (within Manhattan distance 2) instead of scattered |
 
 ## Combat Attributes
 
