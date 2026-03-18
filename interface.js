@@ -2945,6 +2945,17 @@ class InterfaceManager {
             }
         }
 
+        // Apply state to target actor if spell has apply_state
+        if (spellEffect.apply_state) {
+            const target = entityManager.getSolidActorAt(x, y);
+            if (target && target !== caster && !target.isDead) {
+                const statesData = this.engine.globalStates;
+                if (statesData?.[spellEffect.apply_state]) {
+                    target.applyState(spellEffect.apply_state, statesData[spellEffect.apply_state]);
+                }
+            }
+        }
+
         // Identify the item after successful cast
         if (!item.identified) {
             item.identify();

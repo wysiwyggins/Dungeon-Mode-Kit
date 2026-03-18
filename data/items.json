@@ -466,8 +466,40 @@
     }
   },
 
+  "staff_of_poison": {
+    "name": "Staff of Poison",
+    "tileIndex": "SOLIDUS",
+    "tint": "#44CC44",
+    "identified": false,
+    "unidentified_template": "[substances.substances] staff",
+    "identified_template": "Staff of Poison",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": false,
+      "treasure_loot": true,
+      "use_verb": "Zap",
+      "use_effect": "targeted_spell",
+      "charge_stat": "pow",
+      "uses": 2,
+      "spell_effect": { "apply_state": "poisoned" },
+      "projectile_tile": "OPAQUE_INVERSE_DIAMOND_SUITE",
+      "projectile_tint": "#44CC44",
+      "cast_sound": "magic",
+      "description": "A [substances.substances] staff."
+    },
+    "stats": {
+      "pow": {
+        "max": 800,
+        "start": 800,
+        "per_turn": 1,
+        "ready_message": "Your [item_name] is fully charged!"
+      }
+    }
+  },
+
   "staff": {
-    "random_type": ["staff_of_fireball", "staff_of_lightning"]
+    "random_type": ["staff_of_fireball", "staff_of_lightning", "staff_of_poison"]
   },
 
   "scroll": {
