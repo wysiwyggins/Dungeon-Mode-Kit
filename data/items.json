@@ -421,6 +421,7 @@
       "spell_effect": { "center": "intense_fire", "radius": 1, "outer": "fire" },
       "projectile_tile": "OPAQUE_INVERSE_DIAMOND_SUITE",
       "projectile_tint": "#FF6600",
+      "spell_name": "Fireball",
       "cast_sound": "fireball",
       "description": "A [substances.substances] staff."
     },
@@ -453,6 +454,7 @@
       "spell_effect": { "type": "bolt", "bolt_damage": -15 },
       "projectile_tile": "SOLIDUS",
       "projectile_tint": "#FFFF44",
+      "spell_name": "Lightning",
       "cast_sound": "squarewave",
       "description": "A [substances.substances] staff."
     },
@@ -485,6 +487,7 @@
       "spell_effect": { "apply_state": "poisoned" },
       "projectile_tile": "OPAQUE_INVERSE_DIAMOND_SUITE",
       "projectile_tint": "#44CC44",
+      "spell_name": "Poison",
       "cast_sound": "magic",
       "description": "A [substances.substances] staff."
     },

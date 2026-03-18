@@ -2964,8 +2964,8 @@ class InterfaceManager {
         }
 
         // Show cast message
-        const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
-        this.engine.inputManager?.showMessage(`You cast ${displayName}!`);
+        const spellName = item.getAttribute('spell_name') || (item.getDisplayName ? item.getDisplayName() : item.name);
+        this.engine.inputManager?.showMessage(`You cast ${spellName}!`);
 
         // Update sidebar
         this.updateSidebar();
@@ -3006,8 +3006,8 @@ class InterfaceManager {
         }
 
         // Show cast message
-        const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
-        this.engine.inputManager?.showMessage(`You cast ${displayName}!`);
+        const spellName = item.getAttribute('spell_name') || (item.getDisplayName ? item.getDisplayName() : item.name);
+        this.engine.inputManager?.showMessage(`You cast ${spellName}!`);
 
         // Update sidebar
         this.updateSidebar();
