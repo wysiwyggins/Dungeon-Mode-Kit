@@ -169,7 +169,8 @@
       "random_items": {
         "key": { "chance": 100 },
         "potion": { "chance": 60, "min": 2, "max": 3 },
-        "scroll": { "chance": 40 }
+        "scroll": { "chance": 40 },
+        "staff": { "chance": 20 }
       }
     },
     {

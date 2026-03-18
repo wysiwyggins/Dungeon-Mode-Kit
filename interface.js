@@ -2727,13 +2727,19 @@ class InterfaceManager {
             pathColor = distance <= range ? 0xFF6600 : 0x666666; // Orange if in range, gray if out
         }
 
+        // Detect bolt spells for pass-through targeting
+        const spellEffect = this.spellItem?.getAttribute('spell_effect');
+        const isBolt = spellEffect?.type === 'bolt';
+
         // Show the line path from caster to target
         this.engine.renderer?.showLinePath(
             this.spellCaster.x,
             this.spellCaster.y,
             targetX,
             targetY,
-            pathColor
+            isBolt ? 0xFFFF44 : pathColor,
+            null,
+            isBolt ? { passThrough: true } : {}
         );
     }
 
@@ -2775,12 +2781,19 @@ class InterfaceManager {
             }
         }
 
+        // Get spell effect to check for bolt type
+        const spellEffect = this.spellItem?.getAttribute('spell_effect') || { center: 'fire', radius: 0 };
+        const isBolt = spellEffect.type === 'bolt';
+
         // Get the actual landing position (may be blocked by solid actor for line-of-sight spells)
         const pathResult = this.engine.renderer?.showLinePath(
             this.spellCaster.x,
             this.spellCaster.y,
             targetX,
-            targetY
+            targetY,
+            undefined,
+            null,
+            isBolt ? { passThrough: true } : {}
         );
 
         if (!pathResult || pathResult.path.length === 0) return;
@@ -2808,13 +2821,20 @@ class InterfaceManager {
         const castSound = item.getAttribute('cast_sound') || 'fire';
         this.engine.playSound(castSound);
 
-        // Get spell effect type (what actors to spawn)
-        const spellEffect = item.getAttribute('spell_effect') || { center: 'fire', radius: 0 };
-
-        // Animate projectile to target, then spawn effects
-        this.animateSpellProjectile(item, path, () => {
-            this.completeSpell(item, caster, landingPoint, spellEffect);
-        });
+        if (isBolt) {
+            // Bolt spells use tile fill effect instead of projectile animation
+            this.engine.renderer?.effectRunner.apply('lightning_bolt', caster, { path });
+            // Delay completion slightly so the visual leads the damage
+            const fillDuration = path.length * 25 + 100;
+            setTimeout(() => {
+                this.completeBoltSpell(item, caster, path, spellEffect);
+            }, fillDuration);
+        } else {
+            // Animate projectile to target, then spawn effects
+            this.animateSpellProjectile(item, path, () => {
+                this.completeSpell(item, caster, landingPoint, spellEffect);
+            });
+        }
     }
 
     /**
@@ -2922,6 +2942,48 @@ class InterfaceManager {
                         entityManager.spawnActor(outerType, x + dx, y + dy);
                     }
                 }
+            }
+        }
+
+        // Identify the item after successful cast
+        if (!item.identified) {
+            item.identify();
+            const identifiedName = item.getDisplayName ? item.getDisplayName() : item.name;
+            this.engine.inputManager?.showMessage(`You identified the ${identifiedName}!`);
+        }
+
+        // Show cast message
+        const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
+        this.engine.inputManager?.showMessage(`You cast ${displayName}!`);
+
+        // Update sidebar
+        this.updateSidebar();
+
+        // This counts as a player action
+        this.engine.inputManager?.onPlayerAction();
+    }
+
+    /**
+     * Complete a bolt spell - damage every creature along the path
+     * @param {Item} item - The spell item
+     * @param {Actor} caster - The actor who cast it
+     * @param {Array} path - Array of {x, y} points the bolt travels through
+     * @param {Object} spellEffect - Effect configuration {type, bolt_damage}
+     */
+    completeBoltSpell(item, caster, path, spellEffect) {
+        const entityManager = this.engine.entityManager;
+        if (!entityManager) return;
+
+        const damage = spellEffect.bolt_damage || -10;
+
+        for (const point of path) {
+            const actor = entityManager.getSolidActorAt(point.x, point.y);
+            if (actor && actor !== caster && !actor.isDead && actor.stats?.health) {
+                actor.modifyStat('health', damage, { source: item });
+                this.engine.inputManager?.showMessage(
+                    `The lightning bolt strikes ${actor.getNameWithArticle()}!`
+                );
+                if (actor.getStat?.('health') <= 0) actor.die();
             }
         }
 

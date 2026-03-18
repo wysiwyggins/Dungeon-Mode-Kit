@@ -279,17 +279,6 @@
                 }, 
                 {
                  "height":30,
-                 "id":33,
-                 "name":"Skeleton",
-                 "rotation":0,
-                 "type":"skeleton",
-                 "visible":true,
-                 "width":40,
-                 "x":1040,
-                 "y":480
-                }, 
-                {
-                 "height":30,
                  "id":34,
                  "name":"Wall",
                  "rotation":0,
@@ -389,28 +378,6 @@
                 }, 
                 {
                  "height":30,
-                 "id":28,
-                 "name":"Confusion Potion",
-                 "rotation":0,
-                 "type":"confusion_potion",
-                 "visible":true,
-                 "width":40,
-                 "x":800,
-                 "y":840
-                }, 
-                {
-                 "height":30,
-                 "id":30,
-                 "name":"Sword",
-                 "rotation":0,
-                 "type":"sword",
-                 "visible":true,
-                 "width":40,
-                 "x":560,
-                 "y":720
-                }, 
-                {
-                 "height":30,
                  "id":31,
                  "name":"Key",
                  "rotation":0,
@@ -422,28 +389,6 @@
                 }, 
                 {
                  "height":30,
-                 "id":36,
-                 "name":"Health Potion",
-                 "rotation":0,
-                 "type":"health_potion",
-                 "visible":true,
-                 "width":40,
-                 "x":1040,
-                 "y":540
-                }, 
-                {
-                 "height":30,
-                 "id":42,
-                 "name":"Potion",
-                 "rotation":0,
-                 "type":"potion",
-                 "visible":true,
-                 "width":40,
-                 "x":680,
-                 "y":720
-                }, 
-                {
-                 "height":30,
                  "id":56,
                  "name":"Health Potion",
                  "rotation":0,
@@ -452,17 +397,6 @@
                  "width":40,
                  "x":770.681256618426,
                  "y":466.821390751853
-                }, 
-                {
-                 "height":30,
-                 "id":58,
-                 "name":"Hallucination Potion",
-                 "rotation":0,
-                 "type":"hallucination_potion",
-                 "visible":true,
-                 "width":40,
-                 "x":840,
-                 "y":930
                 }],
          "opacity":1,
          "type":"objectgroup",

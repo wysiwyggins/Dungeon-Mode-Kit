@@ -414,7 +414,7 @@
       "visible": true,
       "stackable": false,
       "treasure_loot": true,
-      "use_verb": "Cast",
+      "use_verb": "Zap",
       "use_effect": "targeted_spell",
       "charge_stat": "pow",
       "uses": 1,
@@ -432,6 +432,46 @@
         "ready_message": "Your [item_name] is fully charged!"
       }
     }
+  },
+
+  "staff_of_lightning": {
+    "name": "Staff of Lightning",
+    "tileIndex": "SOLIDUS",
+    "tint": "#AADDFF",
+    "identified": false,
+    "unidentified_template": "[substances.substances] staff",
+    "identified_template": "Staff of Lightning",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": false,
+      "treasure_loot": true,
+      "use_verb": "Zap",
+      "use_effect": "targeted_spell",
+      "charge_stat": "pow",
+      "uses": 1,
+      "spell_effect": { "type": "bolt", "bolt_damage": -15 },
+      "projectile_tile": "SOLIDUS",
+      "projectile_tint": "#FFFF44",
+      "cast_sound": "squarewave",
+      "description": "A [substances.substances] staff."
+    },
+    "stats": {
+      "pow": {
+        "max": 800,
+        "start": 800,
+        "per_turn": 1,
+        "ready_message": "Your [item_name] is fully charged!"
+      }
+    }
+  },
+
+  "staff": {
+    "random_type": ["staff_of_fireball", "staff_of_lightning"]
+  },
+
+  "scroll": {
+    "random_type": ["scroll_of_identify", "scroll_of_teleportation", "scroll_of_magic_mapping", "scroll_of_aggravate_monsters", "scroll_of_summon_monsters", "scroll_of_recharging", "scroll_of_shattering"]
   },
 
   "poison_potion": {
@@ -798,7 +838,7 @@
       "consumable": true,
       "use_verb": "Read",
       "use_effect": "shatter_walls",
-      "use_sound": "magic",
+      "use_sound": "fireball",
       "description": "A scroll with strange runic markings."
     }
   }

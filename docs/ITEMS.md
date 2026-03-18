@@ -139,7 +139,7 @@ Items with `use_verb` appear with an action button in the inventory UI.
 
 | Attribute | Type | Description |
 |-----------|------|-------------|
-| `use_verb` | string | Inventory button label (`"Drink"`, `"Read"`, `"Cast"`) |
+| `use_verb` | string | Inventory button label (`"Drink"`, `"Read"`, `"Zap"`) |
 | `use_effect` | string or object | What happens on use |
 | `use_sound` | string | Sound played on use |
 | `use_description` | string | Message shown after use (supports `[item_name]`, `[effect_description]`, `[adjectives.yucky]` etc.) |
@@ -165,7 +165,8 @@ Pass an object to modify stats, attributes, or apply states directly:
 | `"aggravate_monsters"` | All hostile actors on the level become aware of the player |
 | `"summon_monsters"` | Spawns 2–4 random monsters adjacent to the player |
 | `"recharge_items"` | Restores all `charge_stat` items in inventory to full |
-| `"shatter_walls"` | Destroys breakable solid actors within radius 3 |
+| `"shatter_walls"` | Destroys breakable solid actors within radius 3; triggers a screen shake, amber flash, and radiating tile fill effect |
+| `"targeted_spell"` (bolt) | Bolt spells display a white-blue tile fill along the bolt path with screen shake, instead of a projectile sprite |
 | `"darkness_field"` | Extinguishes all light-source items within radius 5 |
 
 ---
@@ -263,7 +264,7 @@ Items that recharge and fire spells use `charge_stat` and `uses`:
   "identified_template": "Staff of Fireball",
   "attributes": {
     "pickupable": true,
-    "use_verb": "Cast",
+    "use_verb": "Zap",
     "use_effect": "targeted_spell",
     "charge_stat": "pow",
     "uses": 1,

@@ -547,7 +547,7 @@ const EffectPrimitives = {
      * Fullscreen color rectangle that fades from initial opacity to 0, then auto-removes.
      */
     canvas_flash(ctx, params) {
-        const { color = 0xFFFFFF, duration_ms = 150, opacity = 0.5, blend_mode = 'normal' } = params;
+        const { color = 0xFFFFFF, duration_ms = 150, opacity = 0.5, blend_mode = 'normal', z_index = 9999 } = params;
         let graphics = null;
         let tickerFn = null;
         let startTime = 0;
@@ -578,7 +578,7 @@ const EffectPrimitives = {
                 };
                 graphics.blendMode = blendModes[blend_mode] || PIXI.BLEND_MODES.NORMAL;
                 graphics.alpha = opacity;
-                graphics.zIndex = 9999;
+                graphics.zIndex = z_index;
                 ctx.containers.ui.addChild(graphics);
 
                 startTime = Date.now();
@@ -602,6 +602,171 @@ const EffectPrimitives = {
                     graphics.destroy();
                     graphics = null;
                 }
+            }
+        };
+    },
+
+    /**
+     * Radiating tile fill effect — fills tiles ring-by-ring outward from _target by Manhattan distance.
+     * Each ring appears after a staggered delay, then the whole effect fades out.
+     */
+    radial_tile_fill(ctx, params) {
+        const {
+            color = 0xCC8844, duration_ms = 600, radius = 3,
+            opacity = 0.7, ring_delay_ms = 60, fade_ms = 300,
+            blend_mode = 'multiply'
+        } = params;
+        let tileSprites = [];
+        let tickerFn = null;
+        let startTime = 0;
+
+        return {
+            apply(runtimeParams) {
+                const target = runtimeParams?._target;
+                if (!target) return;
+                const tw = globalVars.TILE_WIDTH;
+                const th = globalVars.TILE_HEIGHT;
+                const cx = target.x;
+                const cy = target.y;
+                const colorNum = typeof color === 'string' ? parseInt(color, 16) : color;
+                const blendMode = PIXI.BLEND_MODES[blend_mode?.toUpperCase()] || PIXI.BLEND_MODES.MULTIPLY;
+
+                // Build rings by Manhattan distance
+                for (let dist = 0; dist <= radius; dist++) {
+                    for (let dx = -dist; dx <= dist; dx++) {
+                        const dyAbs = dist - Math.abs(dx);
+                        const dys = dyAbs === 0 ? [0] : [-dyAbs, dyAbs];
+                        for (const dy of dys) {
+                            const g = new PIXI.Graphics();
+                            g.beginFill(colorNum, 1);
+                            g.drawRect(0, 0, tw, th);
+                            g.endFill();
+                            g.x = (cx + dx) * tw;
+                            g.y = (cy + dy) * th;
+                            g.alpha = 0;
+                            g.blendMode = blendMode;
+                            g.zIndex = 7;
+                            ctx.containers.ui.addChild(g);
+                            tileSprites.push({ graphic: g, dist });
+                        }
+                    }
+                }
+
+                startTime = Date.now();
+                const totalDuration = duration_ms + fade_ms;
+
+                tickerFn = () => {
+                    const elapsed = Date.now() - startTime;
+
+                    for (const tile of tileSprites) {
+                        const ringStart = tile.dist * ring_delay_ms;
+                        const tileElapsed = elapsed - ringStart;
+
+                        if (tileElapsed < 0) {
+                            tile.graphic.alpha = 0;
+                        } else if (elapsed < duration_ms) {
+                            // Fade in quickly
+                            const fadeIn = Math.min(1, tileElapsed / 80);
+                            tile.graphic.alpha = opacity * fadeIn;
+                        } else {
+                            // Fade out phase
+                            const fadeProgress = Math.min(1, (elapsed - duration_ms) / fade_ms);
+                            tile.graphic.alpha = opacity * (1 - fadeProgress);
+                        }
+                    }
+
+                    if (elapsed >= totalDuration) {
+                        this.remove();
+                    }
+                };
+                ctx.ticker.add(tickerFn);
+            },
+            remove() {
+                if (tickerFn) { ctx.ticker.remove(tickerFn); tickerFn = null; }
+                for (const tile of tileSprites) {
+                    ctx.containers.ui.removeChild(tile.graphic);
+                    tile.graphic.destroy();
+                }
+                tileSprites = [];
+            }
+        };
+    },
+
+    /**
+     * Fills tiles along a path sequentially with staggered timing.
+     * Reads path from runtimeParams.path (array of {x, y}).
+     */
+    line_tile_fill(ctx, params) {
+        const {
+            color = 0xAADDFF, duration_ms = 400, opacity = 0.9,
+            tile_delay_ms = 25, fade_ms = 200, blend_mode = 'add'
+        } = params;
+        let tileSprites = [];
+        let tickerFn = null;
+        let startTime = 0;
+
+        return {
+            apply(runtimeParams) {
+                const path = runtimeParams?.path;
+                if (!path || path.length === 0) return;
+                const tw = globalVars.TILE_WIDTH;
+                const th = globalVars.TILE_HEIGHT;
+                const colorNum = typeof color === 'string' ? parseInt(color, 16) : color;
+                const blendMode = PIXI.BLEND_MODES[blend_mode?.toUpperCase()] || PIXI.BLEND_MODES.ADD;
+
+                for (let i = 0; i < path.length; i++) {
+                    const point = path[i];
+                    const g = new PIXI.Graphics();
+                    g.beginFill(colorNum, 1);
+                    g.drawRect(0, 0, tw, th);
+                    g.endFill();
+                    g.x = point.x * tw;
+                    g.y = point.y * th;
+                    g.alpha = 0;
+                    g.blendMode = blendMode;
+                    g.zIndex = 7;
+                    ctx.containers.ui.addChild(g);
+                    tileSprites.push({ graphic: g, index: i });
+                }
+
+                startTime = Date.now();
+                const lastTileStart = (path.length - 1) * tile_delay_ms;
+                const totalDuration = lastTileStart + duration_ms + fade_ms;
+
+                tickerFn = () => {
+                    const elapsed = Date.now() - startTime;
+
+                    for (const tile of tileSprites) {
+                        const tileStart = tile.index * tile_delay_ms;
+                        const tileElapsed = elapsed - tileStart;
+
+                        if (tileElapsed < 0) {
+                            tile.graphic.alpha = 0;
+                        } else {
+                            const holdEnd = tileStart + duration_ms;
+                            if (elapsed < holdEnd) {
+                                const fadeIn = Math.min(1, tileElapsed / 40);
+                                tile.graphic.alpha = opacity * fadeIn;
+                            } else {
+                                const fadeProgress = Math.min(1, (elapsed - holdEnd) / fade_ms);
+                                tile.graphic.alpha = opacity * (1 - fadeProgress);
+                            }
+                        }
+                    }
+
+                    if (elapsed >= totalDuration) {
+                        this.remove();
+                    }
+                };
+                ctx.ticker.add(tickerFn);
+            },
+            remove() {
+                if (tickerFn) { ctx.ticker.remove(tickerFn); tickerFn = null; }
+                for (const tile of tileSprites) {
+                    ctx.containers.ui.removeChild(tile.graphic);
+                    tile.graphic.destroy();
+                }
+                tileSprites = [];
             }
         };
     },

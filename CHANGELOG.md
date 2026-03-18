@@ -21,6 +21,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Mining (works but requires testing and refinement, Currently 3 hits always removes a breakable actor, which feels unnatural)
 - FOV epistemology (currently messages aren't filtered by vision range, make sound alternate messages for those, also some things like mining walls can still be seen out of range)
 
+## [1.1c] 2026-03-17
+
+### Added
+
+- Scroll of Shattering visual effect: screen shake, amber canvas flash, and radiating tile fill that expands outward from the caster
+- `radial_tile_fill` effect primitive: fills tiles ring-by-ring outward by Manhattan distance with staggered timing and fade-out
+- `shatter` composite effect definition in effects.json
+- Staff of Lightning bolt visual effect: white-blue tile fill that races along the bolt path with screen shake and flash, replacing the projectile sprite animation
+- `line_tile_fill` effect primitive: fills tiles along a path sequentially with staggered timing
+- `lightning_bolt` composite effect definition in effects.json
+
+### Changed
+
+- Scroll of Shattering use sound changed from `magic` to `fireball`
+- Staff of Lightning bolt spells now use `line_tile_fill` instead of projectile sprite animation
+
 ## [1.1b] 2026-03-16
 
 ### Added

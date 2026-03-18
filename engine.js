@@ -4661,7 +4661,10 @@ class Actor extends Entity {
                     actor.die?.();
                     shattered = true;
                 }
-                if (shattered) this.engine.lightingManager?.computeLighting();
+                if (shattered) {
+                    this.engine.lightingManager?.computeLighting();
+                    this.engine.renderer?.effectRunner.apply('shatter', this);
+                }
                 if (this.isPlayerControlled()) {
                     this.engine.inputManager?.showMessage(shattered
                         ? 'The walls crack and crumble.'
@@ -6620,7 +6623,8 @@ class EntityManager {
             const min = spawnConfig.min ?? 1;
             const max = spawnConfig.max ?? 1;
 
-            const itemData = prototype.getItemData(itemType);
+            let resolvedType = itemType;
+            let itemData = prototype.getItemData(itemType);
             if (!itemData) {
                 console.warn(`random_items: No item data found for "${itemType}"`);
                 continue;
@@ -6630,16 +6634,26 @@ class EntityManager {
             if (chance >= 100) {
                 const availableTiles = getAvailableTiles();
                 if (availableTiles.length === 0) {
-                    console.warn(`random_items: No tiles available for guaranteed spawn of "${itemType}"`);
+                    console.warn(`random_items: No tiles available for guaranteed spawn of "${resolvedType}"`);
                     continue;
+                }
+
+                // Resolve random_type pool: pick a random specific type
+                if (itemData.random_type && Array.isArray(itemData.random_type)) {
+                    resolvedType = randomElement(itemData.random_type);
+                    itemData = prototype.getItemData(resolvedType);
+                    if (!itemData) {
+                        console.warn(`random_items: random_type "${resolvedType}" not found`);
+                        continue;
+                    }
                 }
 
                 const tileIndex = Math.floor(ROT.RNG.getUniform() * availableTiles.length);
                 const tile = availableTiles[tileIndex];
 
-                const item = new Item(tile.x, tile.y, itemType, itemData, this.engine);
+                const item = new Item(tile.x, tile.y, resolvedType, itemData, this.engine);
                 this.addEntity(item);
-                console.log(`random_items: Spawned guaranteed "${itemType}" at (${tile.x}, ${tile.y})`);
+                console.log(`random_items: Spawned guaranteed "${resolvedType}" at (${tile.x}, ${tile.y})`);
                 continue;
             }
 
@@ -6658,12 +6672,24 @@ class EntityManager {
                     break;
                 }
 
+                // Resolve random_type pool: pick a random specific type per spawn
+                let spawnType = itemType;
+                let spawnData = itemData;
+                if (itemData.random_type && Array.isArray(itemData.random_type)) {
+                    spawnType = randomElement(itemData.random_type);
+                    spawnData = prototype.getItemData(spawnType);
+                    if (!spawnData) {
+                        console.warn(`random_items: random_type "${spawnType}" not found`);
+                        continue;
+                    }
+                }
+
                 const tileIndex = Math.floor(ROT.RNG.getUniform() * availableTiles.length);
                 const tile = availableTiles[tileIndex];
 
-                const item = new Item(tile.x, tile.y, itemType, itemData, this.engine);
+                const item = new Item(tile.x, tile.y, spawnType, spawnData, this.engine);
                 this.addEntity(item);
-                console.log(`random_items: Spawned "${itemType}" at (${tile.x}, ${tile.y}) (${i + 1}/${count})`);
+                console.log(`random_items: Spawned "${spawnType}" at (${tile.x}, ${tile.y}) (${i + 1}/${count})`);
             }
         }
     }
@@ -7527,7 +7553,7 @@ class RenderSystem {
      * @param {number} maxRange - Optional maximum range (path truncated at this distance)
      * @returns {{path: Array, blockedAt: {x,y}|null, outOfRange: boolean}} The path, where blocked, and if target is out of range
      */
-    showLinePath(startX, startY, endX, endY, color = 0xFF0000, maxRange = null) {
+    showLinePath(startX, startY, endX, endY, color = 0xFF0000, maxRange = null, options = {}) {
         // Clear any existing path highlight
         this.hideLinePath();
 
@@ -7554,6 +7580,11 @@ class RenderSystem {
             // Check for solid actors that would block the path
             const actor = this.engine.entityManager?.getSolidActorAt(point.x, point.y);
             if (actor) {
+                if (options.passThrough && actor.getAttribute('conductive') !== false) {
+                    // Bolt passes through conductive actors
+                    displayPath.push(point);
+                    continue;
+                }
                 blockedAt = point;
                 displayPath.push(point); // Include the blocked tile
                 break;
