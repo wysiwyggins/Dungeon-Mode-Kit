@@ -3090,6 +3090,7 @@ class Actor extends Entity {
                 const name = this.isPlayerControlled() ? 'You' : this.name;
                 const verb = this.isPlayerControlled() ? 'retch' : 'retches';
                 this.engine.inputManager?.showMessage(`${name} ${verb}!`);
+                this.engine.entityManager.spawnEntity('vomit', this.x, this.y);
                 return Promise.resolve();
             }
         }

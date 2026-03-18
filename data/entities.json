@@ -17,6 +17,15 @@
       "visible": true
     }
   },
+  "vomit": {
+    "name": "vomit",
+    "tileIndex": null,
+    "fillColor": "#4A008B",
+    "attributes": {
+      "walk_description": "You step around a small pile of vomit.",
+      "visible": true
+    }
+  },
   "rubble": {
     "name": "Rubble",
     "tileIndex": "IMPERFECT_DOTTED_LIGHT_SHADE",
