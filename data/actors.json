@@ -989,6 +989,7 @@
       "solid": true,
       "visible": true,
       "flammable": true,
+      "opaque": false,
       "sentient": true,
       "accuracy": 40
     },

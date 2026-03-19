@@ -3,6 +3,11 @@
 // ============================================================================
 // Handles map generation, loading, and terrain management
 
+const TILED_FLIP_MASK = 0x1FFFFFFF; // Strips top 3 bits (flip/rotation flags)
+const TILED_FLIP_H = 0x80000000;    // Bit 31: horizontal flip
+const TILED_FLIP_V = 0x40000000;    // Bit 30: vertical flip
+const TILED_FLIP_D = 0x20000000;    // Bit 29: diagonal flip
+
 class Architect {
     constructor(options = {}) {
         // Default dimensions (will be updated when map loads)
@@ -14,6 +19,7 @@ class Architect {
         this.floorMap = this.createEmptyMap();
         this.wallMap = this.createEmptyMap();
         this.wildcardMap = this.createEmptyMap();
+        this.overlayMap = this.createEmptyMap();
 
         // Traversal data
         this.walkableTiles = [];
@@ -315,7 +321,8 @@ class Architect {
             'background': this.backgroundMap,
             'floor': this.floorMap,
             'wall': this.wallMap,
-            'wildcard': this.wildcardMap
+            'wildcard': this.wildcardMap,
+            'overlay': this.overlayMap
         };
         return layers[layerName] || null;
     }
@@ -425,6 +432,7 @@ class Architect {
             this.floorMap = this.createEmptyMap();
             this.wallMap = this.createEmptyMap();
             this.wildcardMap = this.createEmptyMap();
+            this.overlayMap = this.createEmptyMap();
 
             // Store object layers for entity spawning
             this.objectLayers = [];
@@ -442,6 +450,8 @@ class Architect {
                         // Skip wildcards too when skipping floor (labyrinth mode)
                         console.log('Found wildcards layer, processing...');
                         this.processWildcardLayer(layer);
+                    } else if (layer.name === 'overlay') {
+                        this.processOverlayLayer(layer);
                     }
                 } else if (layer.type === 'objectgroup') {
                     // Store object layers for later processing
@@ -458,15 +468,38 @@ class Architect {
         }
     }
 
+    parseTileGID(rawId) {
+        return {
+            tileId: rawId & TILED_FLIP_MASK,
+            flipH: (rawId & TILED_FLIP_H) !== 0,
+            flipV: (rawId & TILED_FLIP_V) !== 0,
+            flipD: (rawId & TILED_FLIP_D) !== 0,
+        };
+    }
+
     processBackgroundLayer(layer) {
         console.log('Processing background layer...');
         for (let y = 0; y < layer.height; y++) {
             for (let x = 0; x < layer.width; x++) {
                 const index = y * layer.width + x;
-                const tileId = layer.data[index];
+                const { tileId, flipH, flipV, flipD } = this.parseTileGID(layer.data[index]);
 
                 if (tileId > 0) {
-                    this.backgroundMap[y][x] = { tileId, layer: 'background' };
+                    this.backgroundMap[y][x] = { tileId, layer: 'background', flipH, flipV, flipD };
+                }
+            }
+        }
+    }
+
+    processOverlayLayer(layer) {
+        console.log('Processing overlay layer...');
+        for (let y = 0; y < layer.height; y++) {
+            for (let x = 0; x < layer.width; x++) {
+                const index = y * layer.width + x;
+                const { tileId, flipH, flipV, flipD } = this.parseTileGID(layer.data[index]);
+
+                if (tileId > 0) {
+                    this.overlayMap[y][x] = { tileId, layer: 'overlay', flipH, flipV, flipD };
                 }
             }
         }
@@ -477,11 +510,11 @@ class Architect {
         for (let y = 0; y < layer.height; y++) {
             for (let x = 0; x < layer.width; x++) {
                 const index = y * layer.width + x;
-                const tileId = layer.data[index];
+                const { tileId, flipH, flipV, flipD } = this.parseTileGID(layer.data[index]);
 
                 if (tileId > 0) {
                     // Floor layer takes priority - clear background behind it
-                    this.floorMap[y][x] = { tileId, layer: 'floor' };
+                    this.floorMap[y][x] = { tileId, layer: 'floor', flipH, flipV, flipD };
                     this.backgroundMap[y][x] = null;
                     // Track as walkable
                     this.walkableTiles.push({ x, y });
@@ -497,7 +530,7 @@ class Architect {
         for (let y = 0; y < layer.height; y++) {
             for (let x = 0; x < layer.width; x++) {
                 const index = y * layer.width + x;
-                const tileId = layer.data[index];
+                const tileId = layer.data[index] & TILED_FLIP_MASK;
 
                 if (tileId > 0) {
                     const type = this.getWildcardType(tileId);
@@ -632,6 +665,7 @@ class Architect {
         this.floorMap = this.createEmptyMap();
         this.wallMap = this.createEmptyMap();
         this.wildcardMap = this.createEmptyMap();
+        this.overlayMap = this.createEmptyMap();
         this.walkableTiles = [];
 
         console.log(`Generating procedural map with ${generatorType} generator (${this.width}x${this.height})`);
@@ -1929,6 +1963,7 @@ class Architect {
             wallMap: this.wallMap,
             backgroundMap: this.backgroundMap,
             wildcardMap: this.wildcardMap,
+            overlayMap: this.overlayMap,
             walkableTiles: this.walkableTiles
         };
     }
@@ -1940,6 +1975,7 @@ class Architect {
         this.wallMap = data.wallMap;
         this.backgroundMap = data.backgroundMap;
         this.wildcardMap = data.wildcardMap;
+        this.overlayMap = data.overlayMap || this.createEmptyMap();
         this.walkableTiles = data.walkableTiles;
     }
 
@@ -1948,6 +1984,7 @@ class Architect {
         this.floorMap = this.createEmptyMap();
         this.wallMap = this.createEmptyMap();
         this.wildcardMap = this.createEmptyMap();
+        this.overlayMap = this.createEmptyMap();
         this.walkableTiles = [];
         this.pendingWallSpawns = [];
         this.pendingDoorSpawns = [];

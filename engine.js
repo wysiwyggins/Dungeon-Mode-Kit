@@ -980,7 +980,8 @@ class DungeonEngine {
         if (!this.viewportEnabled || !this.renderer) return;
         for (const c of [
             this.renderer.backgroundContainer, this.renderer.floorContainer,
-            this.renderer.entityContainer, this.renderer.lightColorContainer,
+            this.renderer.entityContainer, this.renderer.overlayContainer,
+            this.renderer.lightColorContainer,
             this.renderer.darknessContainer, this.renderer.uiContainer
         ]) {
             c.x = this.viewportOffsetX;
@@ -7371,6 +7372,7 @@ class RenderSystem {
         this.backgroundContainer = new PIXI.Container();
         this.floorContainer = new PIXI.Container();
         this.entityContainer = new PIXI.Container();
+        this.overlayContainer = new PIXI.Container();
         this.lightColorContainer = new PIXI.Container();
         this.darknessContainer = new PIXI.Container();
         this.uiContainer = new PIXI.Container();
@@ -7378,6 +7380,7 @@ class RenderSystem {
         this.backgroundContainer.sortableChildren = true;
         this.floorContainer.sortableChildren = true;
         this.entityContainer.sortableChildren = true;
+        this.overlayContainer.sortableChildren = true;
         this.lightColorContainer.sortableChildren = true;
         this.darknessContainer.sortableChildren = true;
         this.uiContainer.sortableChildren = true;
@@ -7386,13 +7389,15 @@ class RenderSystem {
         this.backgroundContainer.zIndex = 0;
         this.floorContainer.zIndex = 1;
         this.entityContainer.zIndex = 2;
-        this.lightColorContainer.zIndex = 3;
-        this.darknessContainer.zIndex = 4;
-        this.uiContainer.zIndex = 5;
+        this.overlayContainer.zIndex = 3;
+        this.lightColorContainer.zIndex = 4;
+        this.darknessContainer.zIndex = 5;
+        this.uiContainer.zIndex = 6;
 
         app.stage.addChild(this.backgroundContainer);
         app.stage.addChild(this.floorContainer);
         app.stage.addChild(this.entityContainer);
+        app.stage.addChild(this.overlayContainer);
         app.stage.addChild(this.lightColorContainer);
         app.stage.addChild(this.darknessContainer);
         app.stage.addChild(this.uiContainer);
@@ -7401,6 +7406,7 @@ class RenderSystem {
         this.lightColorSprites = [];
         this.floorSprites = [];
         this.backgroundSprites = [];
+        this.overlaySprites = [];
 
         // Tile highlight for hover/aiming
         this.highlightFilter = true;
@@ -7563,6 +7569,7 @@ class RenderSystem {
                 const vis = (x >= minX && x < maxX && y >= minY && y < maxY);
                 if (this.backgroundSprites[y]?.[x]) this.backgroundSprites[y][x].visible = vis;
                 if (this.floorSprites[y]?.[x]) this.floorSprites[y][x].visible = vis;
+                if (this.overlaySprites[y]?.[x]) this.overlaySprites[y][x].visible = vis;
                 if (this.darknessSprites[y]?.[x]) this.darknessSprites[y][x].visible = vis;
                 if (this.lightColorSprites[y]?.[x]) this.lightColorSprites[y][x].visible = vis;
             }
@@ -7831,9 +7838,16 @@ class RenderSystem {
         // Render floor layer
         this.renderLayer(mapManager.floorMap, this.floorContainer, tileset, this.floorSprites);
 
+        // Render overlay layer (decorative tiles above entities)
+        this.overlaySprites = Array.from({ length: this.mapHeight }, () =>
+            Array.from({ length: this.mapWidth }, () => null)
+        );
+        this.renderLayer(mapManager.overlayMap, this.overlayContainer, tileset, this.overlaySprites);
+
         console.log(`Rendered tiles:`);
         console.log(`  Background: ${this.backgroundContainer.children.length} tiles`);
         console.log(`  Floor: ${this.floorContainer.children.length} tiles`);
+        console.log(`  Overlay: ${this.overlayContainer.children.length} tiles`);
     }
 
     /**
@@ -7845,7 +7859,7 @@ class RenderSystem {
                 const tile = layerMap[y]?.[x];
 
                 if (tile && tile.tileId > 0) {
-                    const sprite = this.createTileSprite(tile.tileId, x, y, tileset);
+                    const sprite = this.createTileSprite(tile, x, y, tileset);
                     container.addChild(sprite);
                     if (spriteArray) {
                         spriteArray[y][x] = sprite;
@@ -7858,7 +7872,8 @@ class RenderSystem {
     /**
      * Create a sprite for a tile ID at a position
      */
-    createTileSprite(tileId, x, y, tileset) {
+    createTileSprite(tile, x, y, tileset) {
+        const tileId = typeof tile === 'number' ? tile : tile.tileId;
         // Convert Tiled tile ID (1-indexed) to spritesheet coordinates
         const tileIndex = tileId - 1;
         const tileX = tileIndex % globalVars.SPRITESHEET_COLS;
@@ -7876,6 +7891,27 @@ class RenderSystem {
 
         sprite.x = x * globalVars.TILE_WIDTH;
         sprite.y = y * globalVars.TILE_HEIGHT;
+
+        // Apply Tiled flip/rotation flags
+        if (typeof tile === 'object') {
+            if (tile.flipD) {
+                // Diagonal flip = 90° rotation + horizontal flip
+                sprite.anchor.set(0.5, 0.5);
+                sprite.x += globalVars.TILE_WIDTH / 2;
+                sprite.y += globalVars.TILE_HEIGHT / 2;
+                sprite.rotation = Math.PI / 2;
+                sprite.scale.x = tile.flipH ? 1 : -1;
+                sprite.scale.y = tile.flipV ? -1 : 1;
+            } else {
+                if (tile.flipH || tile.flipV) {
+                    sprite.anchor.set(0.5, 0.5);
+                    sprite.x += globalVars.TILE_WIDTH / 2;
+                    sprite.y += globalVars.TILE_HEIGHT / 2;
+                    if (tile.flipH) sprite.scale.x = -1;
+                    if (tile.flipV) sprite.scale.y = -1;
+                }
+            }
+        }
 
         return sprite;
     }
@@ -8262,6 +8298,7 @@ class RenderSystem {
         this.backgroundContainer.removeChildren();
         this.floorContainer.removeChildren();
         this.entityContainer.removeChildren();
+        this.overlayContainer.removeChildren();
         this.lightColorContainer.removeChildren();
         this.darknessContainer.removeChildren();
         this.uiContainer.removeChildren();
@@ -8269,6 +8306,7 @@ class RenderSystem {
         this.lightColorSprites = [];
         this.floorSprites = [];
         this.backgroundSprites = [];
+        this.overlaySprites = [];
         this.highlightFilter = null;
         this.highlightedSprites = [];
         this.highlightEnabled = false;
@@ -8294,8 +8332,10 @@ class RenderSystem {
     clearMapLayers() {
         this.backgroundContainer.removeChildren();
         this.floorContainer.removeChildren();
+        this.overlayContainer.removeChildren();
         this.floorSprites = [];
         this.backgroundSprites = [];
+        this.overlaySprites = [];
     }
 
     initializeDarkness(width, height) {
