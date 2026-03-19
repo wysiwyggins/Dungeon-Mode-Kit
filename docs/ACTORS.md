@@ -105,12 +105,13 @@ Stats track numeric values that change over time or from damage. Define them in 
 | `fatal` | boolean | Actor dies if stat reaches 0 (`health` is always fatal) |
 | `death_message` | string | Message shown to player when this stat kills them |
 | `warnings` | array | Threshold messages — `threshold` is a fraction of `max` (0–1) |
+| `condition_state` | object | Apply a state when stat crosses below a threshold. `{ "state": "starving", "threshold": 0.1 }` — state is removed when stat recovers above the threshold. |
 
 ## States
 
-States are temporary conditions. They are defined in `data/states.json` and can be applied through `collision_effect`, item effects, or traps.
+States are temporary conditions. They are defined in `data/states.json` and can be applied through `collision_effect`, item effects, traps, or condition-driven stat thresholds.
 
-States only apply to actors with `sentient: true`.
+States only apply to actors with `sentient: true`, except states with `player_only: true` or `hallucinating: true`, which apply to `controlled` actors instead.
 
 **Built-in states:**
 
@@ -127,6 +128,31 @@ States only apply to actors with `sentient: true`.
 | `regenerating` | Heals per turn | — |
 | `flying` | Immune to voids, lava, deep water submersion | — |
 | `hallucinating` | Scrambled visuals and tile names | — |
+| `starving` | Randomly causes fainting (sleep 2 turns, 8%) or nausea (12%) each turn. Applied automatically when nutrition drops below 10%, removed when it recovers. | — |
+
+### State Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `duration` | number | Turns the state lasts. Use `-1` for infinite duration (converted to `Infinity` at runtime). |
+| `player_only` | boolean | State only applies to `controlled` actors (like `hallucinating`). |
+| `random_apply_states` | array | Each turn, rolls for sub-states in order; first success fires and stops. Each entry: `{ "state", "chance", "duration"?, "message"? }` |
+| `on_remove_message` | string | Message shown when the state is removed. |
+
+### Condition-Driven States
+
+Stats can automatically apply and remove states based on thresholds using `condition_state`. The state is applied when the stat drops to or below the threshold and removed when it recovers above it. Duration is infinite — the stat condition controls lifetime.
+
+```json
+"nutrition": {
+    "max": 1000,
+    "per_turn": -1,
+    "condition_state": {
+        "state": "starving",
+        "threshold": 0.1
+    }
+}
+```
 
 ### Innate States
 

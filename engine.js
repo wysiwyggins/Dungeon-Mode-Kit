@@ -3574,8 +3574,8 @@ class Actor extends Entity {
      * @returns {boolean} True if state was applied, false if immune or already has state
      */
     applyState(stateName, stateData, options = {}) {
-        // Hallucination is a visual effect that only applies to the player-controlled actor
-        if (stateData.hallucinating) {
+        // Some states only apply to the player-controlled actor
+        if (stateData.hallucinating || stateData.player_only) {
             if (!this.hasAttribute('controlled')) return false;
         } else {
             // All other states require the 'sentient' attribute
@@ -3591,12 +3591,14 @@ class Actor extends Entity {
         // Check if already has this state
         if (this.states[stateName]) {
             // Refresh duration if already present
-            const duration = options.duration ?? stateData.duration ?? 5;
+            let duration = options.duration ?? stateData.duration ?? 5;
+            if (duration === -1) duration = Infinity;
             this.states[stateName].duration = Math.max(this.states[stateName].duration, duration);
             return true;
         }
 
-        const duration = options.duration ?? stateData.duration ?? 5;
+        let duration = options.duration ?? stateData.duration ?? 5;
+        if (duration === -1) duration = Infinity;
 
         // Create state entry
         this.states[stateName] = {
@@ -3810,6 +3812,24 @@ class Actor extends Entity {
                             this.die();
                             return; // Stop processing states if dead
                         }
+                    }
+                }
+            }
+
+            // Random state application (e.g., starving can cause fainting or nausea)
+            if (stateData.random_apply_states) {
+                for (const entry of stateData.random_apply_states) {
+                    if (ROT.RNG.getUniform() < entry.chance) {
+                        const targetStateData = this.engine.globalStates[entry.state];
+                        if (targetStateData) {
+                            const opts = {};
+                            if (entry.duration !== undefined) opts.duration = entry.duration;
+                            if (entry.message && this.isPlayerControlled()) {
+                                this.engine.inputManager?.showMessage(entry.message);
+                            }
+                            this.applyState(entry.state, targetStateData, opts);
+                        }
+                        break; // Only one random state per turn
                     }
                 }
             }
@@ -4067,6 +4087,21 @@ class Actor extends Entity {
                         this.engine.inputManager.showMessage(warning.message);
                         break; // Only show one warning per turn
                     }
+                }
+            }
+
+            // Apply or remove condition-driven states (e.g., starving when nutrition is low)
+            if (stat.condition_state && this.engine.globalStates) {
+                const { state: condStateName, threshold } = stat.condition_state;
+                const percentage = newValue / stat.max;
+
+                if (percentage <= threshold && !this.states[condStateName]) {
+                    const stateData = this.engine.globalStates[condStateName];
+                    if (stateData) {
+                        this.applyState(condStateName, stateData, { duration: Infinity });
+                    }
+                } else if (percentage > threshold && this.states[condStateName]) {
+                    this.removeState(condStateName);
                 }
             }
         }

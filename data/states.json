@@ -119,5 +119,16 @@
     "effect_description": "Your stomach churns",
     "on_apply_message": "[actor_name] feels nauseated!",
     "on_remove_message": "[actor_name]'s stomach settles."
+  },
+
+  "starving": {
+    "name": "Starving",
+    "duration": -1,
+    "player_only": true,
+    "random_apply_states": [
+      { "state": "sleeping", "chance": 0.08, "duration": 2, "message": "You faint from hunger!" },
+      { "state": "nauseated", "chance": 0.12, "message": "Your empty stomach churns!" }
+    ],
+    "on_remove_message": "You no longer feel like you're starving."
   }
 }

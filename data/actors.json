@@ -717,7 +717,7 @@
     "attributes": {
       "solid": true,
       "visible": true,
-      "opaque": false,
+      "opaque": true,
       "flammable": false,
       "light_source": true
     }

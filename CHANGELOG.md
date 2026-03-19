@@ -21,6 +21,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Mining (works but requires testing and refinement, Currently 3 hits always removes a breakable actor, which feels unnatural)
 - FOV epistemology (currently messages aren't filtered by vision range, make sound alternate messages for those, also some things like mining walls can still be seen out of range)
 
+## [1.1e] 2026-03-19
+
+### Added
+
+- Starving state: applied automatically when nutrition drops below 10%, removed when it recovers
+  - Each turn while starving, 8% chance to faint (sleep 2 turns) and 12% chance of nausea
+  - `duration: -1` sentinel in state definitions for infinite-duration states
+  - `player_only` state property: restricts state application to controlled actors
+  - `random_apply_states` state property: general-purpose per-turn random sub-state rolls with configurable chance, duration, and message
+  - `condition_state` stat property: data-driven state application/removal at stat thresholds — any stat can trigger a state
+
 ## [1.1d] 2026-03-17
 
 ### Added

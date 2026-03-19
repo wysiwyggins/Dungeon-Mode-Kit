@@ -19,7 +19,25 @@
       "defense": 5
     },
     "stats": {
-      "health": 100
+      "health": {
+        "max": 50,
+        "per_turn": 1
+      },
+      "nutrition": {
+        "max": 1000,
+        "per_turn": -1,
+        "fatal": true,
+        "death_message": "You starve to death!",
+        "warnings": [
+          { "threshold": 0.5, "message": "You are getting hungry." },
+          { "threshold": 0.25, "message": "You are very hungry." },
+          { "threshold": 0.1, "message": "You are starving!" }
+        ],
+        "condition_state": {
+          "state": "starving",
+          "threshold": 0.1
+        }
+      }
     },
     "default_items": ["sword", "torch"]
   },
