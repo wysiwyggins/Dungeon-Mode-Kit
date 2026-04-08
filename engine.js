@@ -717,9 +717,6 @@ class DungeonEngine {
             container.appendChild(this.app.view);
             this.app.view.style.width = `${this.canvasWidth / 2}px`;
             this.app.view.style.height = `${this.canvasHeight / 2}px`;
-            this.app.view.style.imageRendering = 'pixelated';
-            this.app.view.style.imageRendering = '-moz-crisp-edges';
-            this.app.view.style.imageRendering = 'crisp-edges';
             
             console.log(`Renderer initialized: ${this.canvasWidth}x${this.canvasHeight}px canvas, scaled to ${this.canvasWidth/2}x${this.canvasHeight/2}px display`);
         } catch (error) {
