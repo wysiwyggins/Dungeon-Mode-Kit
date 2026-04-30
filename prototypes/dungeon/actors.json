@@ -5,7 +5,8 @@
     "tileIndexTop": "OPAQUE_WHITE_SMILING_FACE",
     "vision_range": 20,
     "collision_effect": { "health": "-{strength}" },
-    "collision_sound": "hit",
+    "collision_sound": "hit","defaultFacing": "left",
+    "facingEnabled": true,
     "attributes": {
       "controlled": true,
       "solid": true,

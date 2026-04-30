@@ -35,7 +35,7 @@ fi
 
 # Create destination directories
 echo "Creating directories..."
-mkdir -p "$DEST"/{lib,assets/sprites,assets/audio,data,prototypes/default,prototypes/labyrinth}
+mkdir -p "$DEST"/{lib,assets/sprites,assets/audio,data,prototypes/default,prototypes/test,prototypes/labyrinth}
 
 # Core JavaScript files
 echo "Copying core JS files..."
@@ -59,6 +59,8 @@ cp "$SCRIPT_DIR/lib/howler.js" "$DEST/lib/"
 # Assets
 echo "Copying assets..."
 cp "$SCRIPT_DIR/assets/main.css" "$DEST/assets/"
+echo "Rewriting font paths for Jekyll..."
+sed -i '' 's|/assets/fonts/|/fonts/|g' "$DEST/assets/main.css"
 cp "$SCRIPT_DIR/assets/audio/sounds.mp3" "$DEST/assets/audio/"
 cp "$SCRIPT_DIR/assets/sprites/"*.png "$DEST/assets/sprites/"
 
@@ -69,7 +71,9 @@ cp "$SCRIPT_DIR/data/"*.json "$DEST/data/"
 # Prototypes
 echo "Copying prototypes..."
 cp "$SCRIPT_DIR/prototypes/default/"*.json "$DEST/prototypes/default/"
-cp "$SCRIPT_DIR/prototypes/default/"*.tmj "$DEST/prototypes/default/"
+cp "$SCRIPT_DIR/prototypes/default/"*.tmj "$DEST/prototypes/default/" 2>/dev/null
+cp "$SCRIPT_DIR/prototypes/test/"*.json "$DEST/prototypes/test/"
+cp "$SCRIPT_DIR/prototypes/test/"*.tmj "$DEST/prototypes/test/"
 cp "$SCRIPT_DIR/prototypes/labyrinth/"*.json "$DEST/prototypes/labyrinth/"
 cp "$SCRIPT_DIR/prototypes/labyrinth/"*.tmj "$DEST/prototypes/labyrinth/"
 

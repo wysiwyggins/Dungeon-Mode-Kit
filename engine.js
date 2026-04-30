@@ -1043,7 +1043,11 @@ class DungeonEngine {
     
     async loadPrototype(prototypeName, entryDirection = null) {
         console.log(`Loading prototype: ${prototypeName}, entry: ${entryDirection || 'direct'}`);
-        const prototypeConfig = await this.loadPrototypeConfig(prototypeName);
+        let prototypeConfig = await this.loadPrototypeConfig(prototypeName);
+        if (!prototypeConfig) {
+            prototypeName = 'default';
+            prototypeConfig = await this.loadPrototypeConfig('default');
+        }
         this.currentPrototype = new Prototype(prototypeName, prototypeConfig, this);
         await this.currentPrototype.loadAssets();
         this.currentFloor = 1;
@@ -1410,9 +1414,13 @@ class DungeonEngine {
     async loadPrototypeConfig(prototypeName) {
         try {
             const response = await fetch(`${globalVars.BASE_PATH}/prototypes/${prototypeName}/prototype.json`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             return await response.json();
         } catch (error) {
-            console.error(`Failed to load prototype config for ${prototypeName}:`, error);
+            console.warn(`Prototype "${prototypeName}" not found, falling back to default`);
+            if (prototypeName !== 'default') {
+                return null;
+            }
             return this.getDefaultPrototypeConfig();
         }
     }
@@ -8902,7 +8910,7 @@ window.initializeGame = initializeGame;
 // Level loading utilities for developer console
 // Levels ordered by depth (index = depth number)
 const levelsByDepth = [
-    { name: 'default', description: 'Default Test Prototype' },
+    { name: 'test', description: 'Test Prototype' },
     { name: 'labyrinth', description: 'Cretan Labyrinth' }
 ];
 

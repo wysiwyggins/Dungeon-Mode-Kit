@@ -1,0 +1,26 @@
+{
+  "name": "Default Test Prototype",
+  "loaded_sound": "tone3",
+"description": "Welcome to the Dungeon of Doom. \nFind the crown and wear it to clear the way downward. \nPress 'i' for info. Use arrow keys or mouse to move.",
+  "depth": 1,
+  "turn_speed": 50,
+  "next_level": "labyrinth",
+  "mechanics": {
+    "fog_of_war": false,
+    "darkness": false
+  },
+  "random_actors": {
+    "poison_gas_trap": { "chance": 60, "min": 1, "max": 2 },
+    "fire_trap": { "chance": 40, "min": 1, "max": 2 },
+    "paralysis_gas_trap": { "chance": 50, "min": 1, "max": 2 },
+    "confusion_gas_trap": { "chance": 50, "min": 1, "max": 2 },
+    "skeleton": { "chance": 100, "min": 1, "max": 3 },
+    "monkey": { "chance": 100, "min": 1, "max": 2 }
+  },
+  "random_items": {
+    "staff": { "chance": 100, "min": 1, "max": 1 },
+    "haste": { "chance": 50, "min": 1, "max": 2 },
+    "scroll": { "chance": 100, "min": 1, "max": 1 }
+  },
+  "win_conditions": ["wearing:crown"]
+}
