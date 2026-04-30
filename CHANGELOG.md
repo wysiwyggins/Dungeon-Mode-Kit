@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - music engine
 - Alternative first-person view pane (for perspective dungeon style play, this is prob a whole different thing)
+- Vaults: interactive fiction riddles in treasure rooms
+- Dialogue: npc's with convo trees
 
 ### Planned
 
@@ -18,10 +20,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### In Progress
 
+- Actor facing horizontal flips
+- Pickpocket behavior
 - Mining (works but requires testing and refinement, Currently 3 hits always removes a breakable actor, which feels unnatural)
 - FOV epistemology (currently messages aren't filtered by vision range, make sound alternate messages for those, also some things like mining walls can still be seen out of range)
 
-## [1.1e] 2026-03-19
+## [1.5b] 2026-04-30
+
+### Added
+
+- **Side tile system**: actors can now have a third body tile at an offset from the base tile, defined via `tileIndexSide`, `animationSide`, `flipSideH`/`flipSideV`, and `sideOffset` (`{dx, dy}`). Side tiles are cosmetic (no collision footprint), support independent per-tile lighting, viewport clipping, submersion hiding, and flash effects.
+- **Facing direction system**: actors can opt into dynamic horizontal flipping with `facingEnabled: true` and `defaultFacing`. When enabled, moving or attacking left/right flips all actor sprites (base, top, side, equipment) and mirrors the side tile offset. Facing is serialized across save/load. Actors without `facingEnabled` are completely unaffected.
+- **Monkey actor**: three-tile creature (head: BULLET, base: LEG, tail: BOX_BOTTOM_RIGHT) with `facingEnabled` — tail mirrors when the monkey changes direction
+- **Pickpocket personality**: Brogue-inspired AI behavior chain (`flee_with_loot` > `pickpocket_adjacent` > `pursue_target` > `random_walk`)
+  - `pickpocket_adjacent` behavior: steals a random unequipped item from an adjacent player, transfers it to the monkey's inventory
+  - `flee_with_loot` behavior: after stealing, flees from the player while pathfinding toward the nearest deep liquid; drops the stolen item into deep liquid if it reaches one
+
+### Fixed
+
+- Scroll of Magic Mapping no longer silently fails on levels without fog of war — now consumes the scroll with "You already know this place well."
+- Scroll of Summon Monsters no longer silently fails when the prototype has no random actor config — now consumes the scroll with "Nothing answers the call."
+- Unknown item effects now show "You don't understand a word of it!" and consume the scroll instead of doing nothing
+
+## [1.4b] 2026-03-19
 
 ### Added
 
@@ -32,14 +53,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `random_apply_states` state property: general-purpose per-turn random sub-state rolls with configurable chance, duration, and message
   - `condition_state` stat property: data-driven state application/removal at stat thresholds — any stat can trigger a state
 
-## [1.1d] 2026-03-17
+## [1.3b] 2026-03-17
 
 ### Added
 
 - Jackal actor: weak (5 HP) hostile creature that spawns in packs of 3-5 using `aggressive_melee` personality
 - Pack spawn mechanic: actors with `pack: true` attribute spawn clustered within Manhattan distance 2 of each other
 
-## [1.1c] 2026-03-17
+## [1.2b] 2026-03-17
 
 ### Added
 

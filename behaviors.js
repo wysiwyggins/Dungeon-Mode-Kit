@@ -1894,6 +1894,119 @@ const BehaviorLibrary = {
         }
     },
 
+    /**
+     * Steal an unequipped item from an adjacent player-controlled actor.
+     * After stealing, sets _hasLoot flag so flee behaviors activate.
+     */
+    pickpocket_adjacent: (actor, data) => {
+        const entityManager = actor.engine.entityManager;
+
+        for (const dir of ALL_DIRS) {
+            const target = entityManager.getActorAt(actor.x + dir.dx, actor.y + dir.dy);
+            if (!target || target.isDead || !target.hasAttribute('controlled')) continue;
+
+            const stealable = target.inventory.filter(i => !target.isItemEquipped(i));
+            if (stealable.length === 0) continue;
+
+            const maxInventory = actor.getAttribute('inventory') || 1;
+            if (actor.inventory.length >= maxInventory) continue;
+
+            const stolen = randomElement(stealable);
+
+            // Transfer item
+            const idx = target.inventory.indexOf(stolen);
+            if (idx > -1) target.inventory.splice(idx, 1);
+            stolen.owner = actor;
+            actor.inventory.push(stolen);
+
+            actor._hasLoot = true;
+
+            const displayName = stolen.getDisplayName ? stolen.getDisplayName() : stolen.name;
+            actor.engine.inputManager?.showMessage(`The ${actor.name} snatches your ${displayName}!`);
+            actor.engine.playSound?.('grab');
+
+            return true;
+        }
+
+        return false;
+    },
+
+    /**
+     * Flee away from the nearest player, preferring directions toward deep liquid.
+     * If standing on deep liquid with loot, drop the item and stop fleeing.
+     */
+    flee_with_loot: (actor, data) => {
+        if (!actor._hasLoot || actor.inventory.length === 0) return false;
+
+        const entityManager = actor.engine.entityManager;
+
+        // If standing on deep liquid, drop the stolen item into it
+        const deepHere = entityManager.actors.find(
+            a => a !== actor && a.x === actor.x && a.y === actor.y &&
+                 !a.isDead && !a.hasAttribute('solid') && a.hasAttribute('deep')
+        );
+        if (deepHere) {
+            const item = actor.inventory[actor.inventory.length - 1];
+            actor.inventory.pop();
+            item.owner = null;
+            item.x = actor.x;
+            item.y = actor.y;
+            entityManager.addEntity(item);
+            actor.engine.renderer?.updateItemZIndex(item);
+
+            const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
+            actor.engine.inputManager?.showMessage(
+                `The ${actor.name} drops your ${displayName} into the ${deepHere.name}!`
+            );
+
+            actor._hasLoot = actor.inventory.length > 0;
+            return true;
+        }
+
+        const player = entityManager.findNearestPlayer(actor);
+        if (!player) return false;
+
+        // Find nearest deep liquid within search radius for a secondary goal
+        const searchRadius = data.loot_search_radius || 20;
+        let nearestDeep = null;
+        let nearestDeepDist = Infinity;
+        for (const a of entityManager.actors) {
+            if (a.isDead || a.hasAttribute('solid') || !a.hasAttribute('deep')) continue;
+            const dist = getChebyshevDistance(actor.x, actor.y, a.x, a.y);
+            if (dist < nearestDeepDist && dist <= searchRadius) {
+                nearestDeepDist = dist;
+                nearestDeep = a;
+            }
+        }
+
+        // If deep liquid is reachable and we're not too close to the player, head for it
+        if (nearestDeep) {
+            const distToPlayer = getChebyshevDistance(actor.x, actor.y, player.x, player.y);
+            if (distToPlayer > 2) {
+                return actor.moveToward(nearestDeep.x, nearestDeep.y);
+            }
+        }
+
+        // Otherwise flee away from the player
+        const dx = Math.sign(actor.x - player.x);
+        const dy = Math.sign(actor.y - player.y);
+
+        // Try fleeing in prioritized order: away, diagonals, perpendicular
+        const fleeDirs = shuffleArray([...ALL_DIRS]);
+        fleeDirs.sort((a, b) => {
+            const scoreA = a.dx * dx + a.dy * dy;
+            const scoreB = b.dx * dx + b.dy * dy;
+            return scoreB - scoreA;
+        });
+
+        for (const dir of fleeDirs) {
+            const result = actor.tryMove(actor.x + dir.dx, actor.y + dir.dy);
+            if (result.moved) return true;
+        }
+
+        return false;
+    },
+
     // Backward-compat aliases for renamed chain behaviors
     scutigera_head_ai: (...args) => BehaviorLibrary.chain_head_ai(...args),
     scutigera_body_follow: (...args) => BehaviorLibrary.chain_body_follow(...args),

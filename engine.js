@@ -939,6 +939,10 @@ class DungeonEngine {
                 actor.spriteTop.tint = actor.tint ?? 0xFFFFFF;
                 actor.spriteTop.visible = true;
             }
+            if (actor.spriteSide) {
+                actor.spriteSide.tint = actor.tint ?? 0xFFFFFF;
+                actor.spriteSide.visible = true;
+            }
         }
         for (const item of this.entityManager.items) {
             if (item.sprite) {
@@ -2823,8 +2827,19 @@ class Actor extends Entity {
         this.flipTopH = data.flipTopH || false;
         this.flipTopV = data.flipTopV || false;
 
+        this.tileIndexSide = engine.spriteLibrary.resolveTile(data.tileIndexSide) || null;
+        this.animationSide = data.animationSide || null;
+        this.flipSideH = data.flipSideH || false;
+        this.flipSideV = data.flipSideV || false;
+        this.sideOffset = data.sideOffset || { dx: 1, dy: 0 };
+
+        this.facing = data.defaultFacing || 'left';
+        this.defaultFacing = data.defaultFacing || 'left';
+        this.facingEnabled = data.facingEnabled || false;
+
         this.spriteBase = null;
         this.spriteTop = null;
+        this.spriteSide = null;
 
         this.equipment = {
             weapon: null,
@@ -3252,6 +3267,9 @@ class Actor extends Entity {
         }
         if (this.spriteTop) {
             this.spriteTop.visible = false;
+        }
+        if (this.spriteSide) {
+            this.spriteSide.visible = false;
         }
 
         // Hide equipment sprites
@@ -4582,7 +4600,12 @@ class Actor extends Entity {
 
             case 'reveal_map': {
                 const lm = this.engine.lightingManager;
-                if (!lm || !lm.exploredMap) return false;
+                if (!lm || !lm.exploredMap) {
+                    if (this.isPlayerControlled()) {
+                        this.engine.inputManager?.showMessage('You already know this place well.');
+                    }
+                    return true;
+                }
                 for (let y = 0; y < lm.exploredMap.length; y++) {
                     for (let x = 0; x < lm.exploredMap[y].length; x++) {
                         lm.exploredMap[y][x] = true;
@@ -4615,7 +4638,12 @@ class Actor extends Entity {
             case 'summon_monsters': {
                 const proto = this.engine.currentPrototype;
                 const randomActors = proto?.config?.random_actors;
-                if (!randomActors) return false;
+                if (!randomActors || Object.keys(randomActors).length === 0) {
+                    if (this.isPlayerControlled()) {
+                        this.engine.inputManager?.showMessage('Nothing answers the call.');
+                    }
+                    return true;
+                }
                 const actorTypes = Object.keys(randomActors);
                 if (actorTypes.length === 0) return false;
                 const summonMin = item?.getAttribute('summon_min') ?? 2;
@@ -4765,7 +4793,10 @@ class Actor extends Entity {
                 return true; // Returns true but turn is consumed in executeSpell
             default:
                 console.log(`Unknown item effect: ${effect}`);
-                return false;
+                if (this.isPlayerControlled()) {
+                    this.engine.inputManager?.showMessage("You don't understand a word of it!");
+                }
+                return true;
         }
     }
 
@@ -5512,6 +5543,9 @@ class Actor extends Entity {
                     }
 
                     // Now move into the vacated space
+                    const pushDx = newX - this.x;
+                    if (pushDx > 0) this.setFacing('right');
+                    else if (pushDx < 0) this.setFacing('left');
                     this.x = newX;
                     this.y = newY;
                     this.updateSpritePosition();
@@ -5532,6 +5566,11 @@ class Actor extends Entity {
                 }
                 // Can't push - fall through to normal blocking behavior
             }
+
+            // Face toward the target
+            const collisionDx = newX - this.x;
+            if (collisionDx > 0) this.setFacing('right');
+            else if (collisionDx < 0) this.setFacing('left');
 
             // Apply collision effects from held items (before door check so keys can unlock doors)
             const collisionResult = this.applyCollisionEffects(actorAtTarget);
@@ -5593,6 +5632,9 @@ class Actor extends Entity {
 
         // Move successful - track last position for notable event detection
         this._lastPosition = { x: this.x, y: this.y };
+        const moveDx = newX - this.x;
+        if (moveDx > 0) this.setFacing('right');
+        else if (moveDx < 0) this.setFacing('left');
         this.x = newX;
         this.y = newY;
         this.updateSpritePosition();
@@ -5987,12 +6029,16 @@ class Actor extends Entity {
     }
 
     updateSpritePosition() {
+        const useCenterAnchor = this.facingEnabled;
+        const hw = globalVars.TILE_WIDTH / 2;
+        const hh = globalVars.TILE_HEIGHT / 2;
+
         if (this.spriteBase) {
             let bx = this.x * globalVars.TILE_WIDTH;
             let by = this.y * globalVars.TILE_HEIGHT;
-            if (this.flipBaseH || this.flipBaseV) {
-                bx += globalVars.TILE_WIDTH / 2;
-                by += globalVars.TILE_HEIGHT / 2;
+            if (useCenterAnchor || this.flipBaseH || this.flipBaseV) {
+                bx += hw;
+                by += hh;
             }
             this.spriteBase.x = bx;
             this.spriteBase.y = by;
@@ -6000,28 +6046,48 @@ class Actor extends Entity {
         if (this.spriteTop) {
             let tx = this.x * globalVars.TILE_WIDTH;
             let ty = (this.y - 1) * globalVars.TILE_HEIGHT;
-            if (this.flipTopH || this.flipTopV) {
-                tx += globalVars.TILE_WIDTH / 2;
-                ty += globalVars.TILE_HEIGHT / 2;
+            if (useCenterAnchor || this.flipTopH || this.flipTopV) {
+                tx += hw;
+                ty += hh;
             }
             this.spriteTop.x = tx;
             this.spriteTop.y = ty;
         }
+        if (this.spriteSide) {
+            const sideOffset = this.getEffectiveSideOffset();
+            let sx = (this.x + sideOffset.dx) * globalVars.TILE_WIDTH;
+            let sy = (this.y + sideOffset.dy) * globalVars.TILE_HEIGHT;
+            if (useCenterAnchor || this.flipSideH || this.flipSideV) {
+                sx += hw;
+                sy += hh;
+            }
+            this.spriteSide.x = sx;
+            this.spriteSide.y = sy;
+        }
         // Update equipment sprite positions
         // top: above actor's top tile (y - 2)
         if (this.spriteEquipment.top) {
-            this.spriteEquipment.top.x = this.x * globalVars.TILE_WIDTH;
-            this.spriteEquipment.top.y = (this.y - 2) * globalVars.TILE_HEIGHT;
+            let ex = this.x * globalVars.TILE_WIDTH;
+            let ey = (this.y - 2) * globalVars.TILE_HEIGHT;
+            if (useCenterAnchor) { ex += hw; ey += hh; }
+            this.spriteEquipment.top.x = ex;
+            this.spriteEquipment.top.y = ey;
         }
         // middle: on actor's top tile (y - 1)
         if (this.spriteEquipment.middle) {
-            this.spriteEquipment.middle.x = this.x * globalVars.TILE_WIDTH;
-            this.spriteEquipment.middle.y = (this.y - 1) * globalVars.TILE_HEIGHT;
+            let ex = this.x * globalVars.TILE_WIDTH;
+            let ey = (this.y - 1) * globalVars.TILE_HEIGHT;
+            if (useCenterAnchor) { ex += hw; ey += hh; }
+            this.spriteEquipment.middle.x = ex;
+            this.spriteEquipment.middle.y = ey;
         }
         // lower: on actor's base tile (y)
         if (this.spriteEquipment.lower) {
-            this.spriteEquipment.lower.x = this.x * globalVars.TILE_WIDTH;
-            this.spriteEquipment.lower.y = this.y * globalVars.TILE_HEIGHT;
+            let ex = this.x * globalVars.TILE_WIDTH;
+            let ey = this.y * globalVars.TILE_HEIGHT;
+            if (useCenterAnchor) { ex += hw; ey += hh; }
+            this.spriteEquipment.lower.x = ex;
+            this.spriteEquipment.lower.y = ey;
         }
 
         // Update viewport visibility when actors move
@@ -6038,6 +6104,14 @@ class Actor extends Entity {
                                   this.x >= ox && this.x < ox + vw;
                 this.spriteTop.visible = (inView || topInView) && !this.isSubmerged;
             }
+            if (this.spriteSide) {
+                const sideOffset = this.getEffectiveSideOffset();
+                const sideX = this.x + sideOffset.dx;
+                const sideY = this.y + sideOffset.dy;
+                const sideInView = sideX >= ox && sideX < ox + vw &&
+                                   sideY >= oy && sideY < oy + vh;
+                this.spriteSide.visible = sideInView && !this.isSubmerged;
+            }
             for (const slot of ['top', 'middle', 'lower']) {
                 if (this.spriteEquipment[slot]) this.spriteEquipment[slot].visible = inView;
             }
@@ -6050,6 +6124,47 @@ class Actor extends Entity {
      */
     flash(duration = 100) {
         this.engine.renderer?.effectRunner.apply('flash', this, { duration_ms: duration });
+    }
+
+    isFacingFlipped() {
+        return this.facingEnabled && this.facing !== this.defaultFacing;
+    }
+
+    getEffectiveSideOffset() {
+        if (!this.sideOffset) return { dx: 1, dy: 0 };
+        if (this.isFacingFlipped()) {
+            return { dx: -this.sideOffset.dx, dy: this.sideOffset.dy };
+        }
+        return this.sideOffset;
+    }
+
+    setFacing(newFacing) {
+        if (!this.facingEnabled) return;
+        if (newFacing === this.facing) return;
+        this.facing = newFacing;
+        this.applyFacing();
+    }
+
+    applyFacing() {
+        if (!this.facingEnabled) return;
+        const flipped = this.isFacingFlipped();
+
+        const applyFlip = (sprite, staticFlipH) => {
+            if (!sprite) return;
+            const effectiveFlipH = staticFlipH !== flipped;
+            sprite.anchor.set(0.5, 0.5);
+            sprite.scale.x = effectiveFlipH ? -1 : 1;
+        };
+
+        applyFlip(this.spriteBase, this.flipBaseH);
+        applyFlip(this.spriteTop, this.flipTopH);
+        applyFlip(this.spriteSide, this.flipSideH);
+
+        for (const slot of ['top', 'middle', 'lower']) {
+            applyFlip(this.spriteEquipment[slot], false);
+        }
+
+        this.updateSpritePosition();
     }
 
     /**
@@ -6097,6 +6212,12 @@ class Actor extends Entity {
         // Hide top sprite
         if (this.spriteTop) {
             this.spriteTop.visible = false;
+        }
+
+        // Hide side sprite (underwater)
+        if (this.spriteSide) {
+            this._originalSideVisible = this.spriteSide.visible;
+            this.spriteSide.visible = false;
         }
 
         // Hide equipment sprites (they're underwater)
@@ -6164,6 +6285,11 @@ class Actor extends Entity {
             this.spriteTop.visible = this._originalTopVisible !== false;
         }
 
+        // Restore side sprite visibility
+        if (this.spriteSide && this._originalSideVisible !== undefined) {
+            this.spriteSide.visible = this._originalSideVisible;
+        }
+
         // Restore equipment sprite visibility
         for (const slot of ['top', 'middle', 'lower']) {
             if (this.spriteEquipment[slot] && this[`_originalEquipment${slot}Visible`] !== undefined) {
@@ -6183,6 +6309,7 @@ class Actor extends Entity {
         this._originalBaseTexture = null;
         this._originalTopTexture = null;
         this._originalTopVisible = null;
+        this._originalSideVisible = null;
     }
 
     /**
@@ -6321,6 +6448,7 @@ class Actor extends Entity {
             inventory: this.inventory.map(item => item.serialize()),
             personality: this.personality?.name,
             isDead: this.isDead,
+            facing: this.facing,
             equipment: {
                 weapon: this.equipment.weapon?.type || null,
                 top: this.equipment.top?.type || null,
@@ -6340,6 +6468,7 @@ class Actor extends Entity {
         super.deserialize(data);
         if (data.stats) this.stats = JSON.parse(JSON.stringify(data.stats));
         if (data.isDead !== undefined) this.isDead = data.isDead;
+        if (data.facing !== undefined) this.facing = data.facing;
         if (data.states) this.states = JSON.parse(JSON.stringify(data.states));
         // Reconstruct inventory items
         if (data.inventory) {
@@ -7012,6 +7141,10 @@ class EntityManager {
             entity.spriteTop.destroy();
             entity.spriteTop = null;
         }
+        if (entity.spriteSide) {
+            entity.spriteSide.destroy();
+            entity.spriteSide = null;
+        }
         // Clean up equipment sprites
         if (entity.spriteEquipment) {
             for (const slot of ['top', 'middle', 'lower']) {
@@ -7352,6 +7485,7 @@ class EntityManager {
             if (entity instanceof Actor) {
                 if (entity.spriteBase) entity.spriteBase.destroy();
                 if (entity.spriteTop) entity.spriteTop.destroy();
+                if (entity.spriteSide) entity.spriteSide.destroy();
                 // Clean up equipment sprites
                 if (entity.spriteEquipment) {
                     for (const slot of ['top', 'middle', 'lower']) {
@@ -7618,6 +7752,14 @@ class RenderSystem {
                 const topInView = (actor.y - 1) >= originY && (actor.y - 1) < originY + vpH &&
                                   actor.x >= originX && actor.x < originX + vpW;
                 actor.spriteTop.visible = (inView || topInView) && !actor.isSubmerged;
+            }
+            if (actor.spriteSide) {
+                const sideOffset = actor.getEffectiveSideOffset();
+                const sideX = actor.x + sideOffset.dx;
+                const sideY = actor.y + sideOffset.dy;
+                const sideInView = sideX >= originX && sideX < originX + vpW &&
+                                   sideY >= originY && sideY < originY + vpH;
+                actor.spriteSide.visible = sideInView && !actor.isSubmerged;
             }
             if (actor.spriteEquipment) {
                 for (const slot of ['top', 'middle', 'lower']) {
@@ -7992,6 +8134,20 @@ class RenderSystem {
                 { flipH: actor.flipTopH, flipV: actor.flipTopV }
             );
 
+            // Render side sprite if defined
+            if (actor.tileIndexSide || actor.animationSide) {
+                const sideOffset = actor.getEffectiveSideOffset();
+                actor.spriteSide = this.createActorSprite(
+                    actor,
+                    actor.tileIndexSide,
+                    actor.animationSide,
+                    (actor.x + sideOffset.dx) * globalVars.TILE_WIDTH,
+                    (actor.y + sideOffset.dy) * globalVars.TILE_HEIGHT,
+                    10,
+                    { flipH: actor.flipSideH, flipV: actor.flipSideV }
+                );
+            }
+
             // Render equipment sprites for each slot
             for (const slot of ['top', 'middle', 'lower']) {
                 const equippedItem = actor.getEquippedItem(slot);
@@ -8003,6 +8159,8 @@ class RenderSystem {
                     );
                 }
             }
+
+            if (actor.facingEnabled) actor.applyFacing();
 
             actorsRendered++;
         }
@@ -8039,6 +8197,20 @@ class RenderSystem {
             { flipH: actor.flipTopH, flipV: actor.flipTopV }
         );
 
+        // Render side sprite if defined
+        if (actor.tileIndexSide || actor.animationSide) {
+            const sideOffset = actor.getEffectiveSideOffset();
+            actor.spriteSide = this.createActorSprite(
+                actor,
+                actor.tileIndexSide,
+                actor.animationSide,
+                (actor.x + sideOffset.dx) * globalVars.TILE_WIDTH,
+                (actor.y + sideOffset.dy) * globalVars.TILE_HEIGHT,
+                10,
+                { flipH: actor.flipSideH, flipV: actor.flipSideV }
+            );
+        }
+
         // Render equipment sprites for each slot
         for (const slot of ['top', 'middle', 'lower']) {
             const equippedItem = actor.getEquippedItem(slot);
@@ -8050,6 +8222,8 @@ class RenderSystem {
                 );
             }
         }
+
+        if (actor.facingEnabled) actor.applyFacing();
     }
 
     /**
@@ -8489,8 +8663,18 @@ class RenderSystem {
             if (actor.spriteEquipment.middle) actor.spriteEquipment.middle.visible = vis.showTop && !actor.isSubmerged;
             if (actor.spriteEquipment.lower) actor.spriteEquipment.lower.visible = vis.showBase;
 
+            // Side sprite uses its own position for lighting (may be in a different tile)
+            if (actor.spriteSide) {
+                const sideOffset = actor.getEffectiveSideOffset();
+                const sideVis = lightingManager.getEntityVisibility(
+                    actor.x + sideOffset.dx, actor.y + sideOffset.dy, fogOfWar, isStatic
+                );
+                actor.spriteSide.visible = sideVis.showBase && !actor.isSubmerged;
+            }
+
             this.setAnimationPlaying(actor.spriteBase, vis.animateBase);
             this.setAnimationPlaying(actor.spriteTop, vis.animateTop);
+            this.setAnimationPlaying(actor.spriteSide, vis.animateBase);
 
             if (!vis.showBase && !vis.showTop) continue;
 
@@ -8502,6 +8686,15 @@ class RenderSystem {
             }
             if (actor.spriteTop) {
                 actor.spriteTop.tint = this.blendTints(actor.tint, vis.topTint);
+            }
+            if (actor.spriteSide) {
+                const sideOffset = actor.getEffectiveSideOffset();
+                const sideVis = lightingManager.getEntityVisibility(
+                    actor.x + sideOffset.dx, actor.y + sideOffset.dy, fogOfWar, isStatic
+                );
+                if (sideVis.showBase) {
+                    actor.spriteSide.tint = this.blendTints(actor.tint, sideVis.baseTint);
+                }
             }
 
             // Update equipment sprite tints

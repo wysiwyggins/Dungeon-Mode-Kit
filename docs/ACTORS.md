@@ -29,21 +29,35 @@ See [ENTITIES.md](ENTITIES.md) for the base fields (`tint`, `zIndex`, `attribute
 
 ## Visual Fields
 
-Actors are two tiles tall: `tileIndexTop` renders at head height (y-1), `tileIndexBase` at foot height (y).
+Actors are two tiles tall: `tileIndexTop` renders at head height (y-1), `tileIndexBase` at foot height (y). Actors can optionally have a third **side tile** at an offset from the base (e.g., a tail).
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `tileIndexBase` | string or `{x, y}` | Tile for the actor's base (lower body) |
 | `tileIndexTop` | string or `{x, y}` | Tile for the actor's top (head/upper body) |
+| `tileIndexSide` | string or `{x, y}` | Tile for a side-attached body part (e.g., tail) |
+| `sideOffset` | `{dx, dy}` | Grid offset from base for the side tile (default: `{dx: 1, dy: 0}`) |
 | `tileIndexBase_open` | string or `{x, y}` | Base tile when actor is in open state (doors) |
 | `tileIndexTop_open` | string or `{x, y}` | Top tile when actor is in open state (doors) |
 | `animationBase` | string | Animation name for base sprite |
 | `animationTop` | string | Animation name for top sprite |
+| `animationSide` | string | Animation name for side sprite |
 | `flipBaseH` / `flipBaseV` | boolean | Flip base sprite horizontally or vertically |
 | `flipTopH` / `flipTopV` | boolean | Flip top sprite horizontally or vertically |
+| `flipSideH` / `flipSideV` | boolean | Flip side sprite horizontally or vertically |
+| `facingEnabled` | boolean | Enable dynamic horizontal flipping based on movement direction |
+| `defaultFacing` | string | Canonical orientation of the tile art: `"left"` (default) or `"right"` |
 | `flickerTint` | boolean | Sprite color flickers (fire, torches) |
 | `rippleTint` | boolean | Sprite color ripples (water, liquids) |
 | `vision_range` | number | How far this actor can see (default: `8`) |
+
+### Side Tiles
+
+The side tile renders at the same vertical level as the base but offset horizontally (or in any direction via `sideOffset`). It is purely cosmetic — it does not create a collision footprint. Side tiles have their own lighting query at their actual grid position, so a tail sticking around a corner into darkness will be hidden independently.
+
+### Facing
+
+When `facingEnabled` is `true`, the actor's sprites (base, top, side, and equipment) flip horizontally when the actor moves or attacks left vs. right. The `defaultFacing` field defines which direction the tile art was drawn for — when the actor faces the opposite direction, all sprites mirror and the side tile offset flips. Vertical-only movement preserves the current facing. Actors without `facingEnabled` are completely unaffected.
 
 ## Core Attributes
 
@@ -314,6 +328,7 @@ Personalities are defined in `data/personalities.json`. Each turn, the personali
 | `fire_behavior` | Spread to adjacent flammable tiles, burn out |
 | `cloud_behavior` | Spread, disperse, affect actors in tile |
 | `lava_behavior` | Incinerate targets, generate steam on water |
+| `pickpocket` | Steal item from adjacent player, flee toward deep liquid, drop item in |
 | `liquid_pooling` | Cellular spread, color mixing |
 | `deep_water_behavior` | Water currents, drift items |
 
@@ -400,6 +415,31 @@ Personalities are defined in `data/personalities.json`. Each turn, the personali
     "flammable": false,
     "gateway": true,
     "hidden": true
+  }
+}
+
+// Three-tile actor with facing (side tile mirrors on direction change)
+"monkey": {
+  "name": "Monkey",
+  "tileIndexBase": "LEG",
+  "tileIndexTop": "BULLET",
+  "tileIndexSide": "BOX_BOTTOM_RIGHT",
+  "sideOffset": { "dx": 1, "dy": 0 },
+  "defaultFacing": "left",
+  "facingEnabled": true,
+  "tint": "#C89664",
+  "personality": "pickpocket",
+  "collision_effect": { "health": -3 },
+  "stats": { "health": 12 },
+  "attributes": {
+    "solid": true,
+    "visible": true,
+    "hostile": true,
+    "sighted": true,
+    "sentient": true,
+    "inventory": 1,
+    "accuracy": 70,
+    "defense": 5
   }
 }
 

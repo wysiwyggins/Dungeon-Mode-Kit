@@ -186,6 +186,8 @@
     "personality": "kobold_miner",
     "collision_effect": { "health": -3 },
     "collision_sound": "hit",
+    "defaultFacing": "left",
+    "facingEnabled": true,
     "collision_description": "The [actor_name] strikes back at [attacked_actor_name]!",
     "attributes": {
       "hostile": false,
@@ -211,6 +213,8 @@
     "tileIndexTop": "SKULL",
     "tint": "#8BFF55",
     "vision_range": 10,
+    "defaultFacing": "left",
+    "facingEnabled": true,
     "personality": "aggressive_melee",
     "collision_effect": { "health": -3 },
     "collision_sound": "hit",
@@ -1144,6 +1148,37 @@
     },
     "stats": {
       "health": 5
+    }
+  },
+
+  "monkey": {
+    "name": "Monkey",
+    "tileIndexBase": "LEG",
+    "tileIndexTop": "INVERSE_BULLET",
+    "tileIndexSide": "BOX_BOTTOM_RIGHT",
+    "sideOffset": { "dx": 1, "dy": 0 },
+    "defaultFacing": "left",
+    "facingEnabled": true,
+    "tint": "#C89664",
+    "personality": "pickpocket",
+    "death_sound": "thud",
+    "collision_effect": { "health": -3 },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] scratches the [attacked_actor_name]!",
+    "attributes": {
+      "solid": true,
+      "visible": true,
+      "hostile": true,
+      "sighted": true,
+      "sentient": true,
+      "vision_range": 10,
+      "inventory": 1,
+      "accuracy": 70,
+      "defense": 5,
+      "strength": 3
+    },
+    "stats": {
+      "health": 12
     }
   }
 

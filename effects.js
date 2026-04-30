@@ -187,6 +187,7 @@ const EffectPrimitives = {
                 sprites = [];
                 if (actor.spriteBase) sprites.push(actor.spriteBase);
                 if (actor.spriteTop) sprites.push(actor.spriteTop);
+                if (actor.spriteSide) sprites.push(actor.spriteSide);
                 if (actor.spriteEquipment?.top) sprites.push(actor.spriteEquipment.top);
                 if (actor.spriteEquipment?.middle) sprites.push(actor.spriteEquipment.middle);
                 if (actor.spriteEquipment?.lower) sprites.push(actor.spriteEquipment.lower);

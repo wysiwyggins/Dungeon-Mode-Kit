@@ -197,5 +197,17 @@
       "chain_body_follow",
       "chain_scatter"
     ]
+  },
+
+  "pickpocket": {
+    "name": "Pickpocket",
+    "hostile": true,
+    "loot_search_radius": 20,
+    "behaviors": [
+      "flee_with_loot",
+      "pickpocket_adjacent",
+      "pursue_target",
+      "random_walk"
+    ]
   }
 }

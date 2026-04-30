@@ -14,7 +14,8 @@
     "fire_trap": { "chance": 40, "min": 1, "max": 2 },
     "paralysis_gas_trap": { "chance": 50, "min": 1, "max": 2 },
     "confusion_gas_trap": { "chance": 50, "min": 1, "max": 2 },
-    "skeleton": { "chance": 100, "min": 1, "max": 2 }
+    "skeleton": { "chance": 100, "min": 1, "max": 3 },
+    "monkey": { "chance": 100, "min": 1, "max": 2 }
   },
   "random_items": {
     "staff": { "chance": 100, "min": 1, "max": 1 },
