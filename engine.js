@@ -1029,9 +1029,9 @@ class DungeonEngine {
         this.renderer.updateSubmersionOverlay();
     }
 
-    playSound(soundName) {
+    playSound(soundName, options) {
         if (this.audioManager) {
-            this.audioManager.play(soundName);
+            return this.audioManager.play(soundName, options);
         }
     }
     playSoundVaried(soundName, volumeBase, volumeVariance, rateBase, rateVariance) {
@@ -1039,9 +1039,9 @@ class DungeonEngine {
             this.audioManager.playVaried(soundName, volumeBase, volumeVariance, rateBase, rateVariance);
         }
     }
-    stopSound(soundName) {
-        if (this.audioManager) {
-            this.audioManager.stop(soundName);
+    stopSound(soundId) {
+        if (this.audioManager?.sound) {
+            this.audioManager.sound.stop(soundId);
         }
     }
     muteAudio() {
@@ -4490,6 +4490,41 @@ class Actor extends Entity {
             return false;
         }
 
+        const useEffect = item.getAttribute('use_effect');
+
+        // Scroll reading ceremony for player-controlled actors
+        if (this.isPlayerControlled() && useVerb === 'Read') {
+            this._scrollCeremonyActive = true;
+            this.engine.turnEngine?.lock();
+
+            const soundId = this.engine.playSound('levelout');
+            const darkenId = this.engine.renderer?.effectRunner.apply('scroll_ceremony', this);
+
+            setTimeout(() => {
+                this.engine.stopSound(soundId);
+                if (darkenId) this.engine.renderer?.effectRunner.remove(darkenId);
+
+                this.engine.playSound('magic');
+                this.engine.renderer?.effectRunner.apply('scroll_ceremony_flash', this);
+
+                let success = false;
+                if (useEffect) {
+                    success = this.executeItemEffect(item, useEffect);
+                } else {
+                    success = true;
+                }
+
+                if (useEffect !== 'targeted_spell' && useEffect !== 'identify_item') {
+                    this._completeItemUse(item, success);
+                    this.engine.inputManager?.onPlayerAction();
+                }
+
+                this._scrollCeremonyActive = false;
+            }, 1000);
+
+            return true;
+        }
+
         // Play use sound if this is the player
         if (this.isPlayerControlled()) {
             const useSound = item.getAttribute('use_sound') || 'tone1';
@@ -4497,7 +4532,6 @@ class Actor extends Entity {
         }
 
         // Get the use effect to determine what happens
-        const useEffect = item.getAttribute('use_effect');
         let success = false;
 
         if (useEffect) {
@@ -4514,13 +4548,16 @@ class Actor extends Entity {
             return success; // Early return - handling continues in interface
         }
 
-        // Handle consumable items (remove from inventory after use)
+        this._completeItemUse(item, success);
+        return success;
+    }
+
+    _completeItemUse(item, success) {
         if (success && item.hasAttribute('consumable')) {
             this.inventory = this.inventory.filter(i => i !== item);
             console.log(`${item.name} was consumed`);
         }
 
-        // Show use description to player if available (before identification changes the name)
         if (success && this.isPlayerControlled() && this.engine.inputManager) {
             const useDescription = item.getUseDescription();
             if (useDescription) {
@@ -4528,20 +4565,17 @@ class Actor extends Entity {
             }
         }
 
-        // Identify the item after successful use (reveals what it does)
         if (success && !item.identified) {
             item.identify();
             const identifiedName = item.getDisplayName();
             console.log(`${this.name} identified the ${identifiedName}!`);
 
-            // Show identification message to player (stacks with use description)
             if (this.isPlayerControlled() && this.engine.inputManager) {
                 this.engine.inputManager.showMessage(`You identified the ${identifiedName}!`);
             }
         }
-
-        return success;
     }
+
 
     /**
      * Execute an item's use effect

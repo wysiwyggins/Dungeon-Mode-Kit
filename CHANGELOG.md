@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Planned
 
 - don't hide stairways (sometimes architect will put walls on top of them)
+- falling on a prototype with mutliple levels doesn't instadeath, it takes you to the next level down with a fall injury
 
 ### In Progress
 

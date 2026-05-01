@@ -89,5 +89,17 @@
       { "primitive": "canvas_flash", "params": { "color": "0xAADDFF", "duration_ms": 100, "opacity": 0.5, "blend_mode": "add" } },
       { "primitive": "line_tile_fill", "params": { "color": "0xAADDFF", "duration_ms": 300, "opacity": 0.9, "tile_delay_ms": 25, "fade_ms": 200, "blend_mode": "add" } }
     ]
+  },
+  "scroll_ceremony": {
+    "target": "stage",
+    "layers": [
+      { "primitive": "canvas_flash", "params": { "color": "0x222233", "duration_ms": 5000, "opacity": 0.6, "blend_mode": "multiply", "z_index": 6 } }
+    ]
+  },
+  "scroll_ceremony_flash": {
+    "target": "stage",
+    "layers": [
+      { "primitive": "canvas_flash", "params": { "color": "0xFFFFFF", "duration_ms": 300, "opacity": 0.5 } }
+    ]
   }
 }

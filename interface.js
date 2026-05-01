@@ -1354,6 +1354,9 @@ class InterfaceManager {
             return;
         }
 
+        // Scroll ceremony handles its own turn unlock after the delay
+        if (player._scrollCeremonyActive) return;
+
         // If the item was consumed, keep the info box closed; otherwise refresh it
         if (player.inventory.includes(item)) {
             this.showPlayerInfo(player);

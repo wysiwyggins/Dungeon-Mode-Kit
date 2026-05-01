@@ -874,6 +874,7 @@
       "use_verb": "Read",
       "use_effect": "shatter_walls",
       "use_sound": "fireball",
+      "effect_radius": 5,
       "description": "A scroll with strange runic markings."
     }
   },

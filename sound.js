@@ -84,6 +84,8 @@ class AudioManager {
             if (options.rate !== undefined) {
                 this.sound.rate(options.rate, id);
             }
+
+            return id;
         } catch (error) {
             console.warn(`Failed to play sound '${soundName}':`, error);
         }
