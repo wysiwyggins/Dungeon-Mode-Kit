@@ -3449,7 +3449,7 @@ class InterfaceManager {
                 html += '<div class="actor-conditions">';
                 for (const [key, state] of Object.entries(actor.states)) {
                     const displayName = state.data && state.data.name ? state.data.name : key;
-                    const durationText = state.duration === Infinity ? 'always' : state.duration - 1;
+                    const durationText = state.duration === Infinity ? 'always' : state.duration;
                     html += `<span class="actor-condition">${displayName} (${durationText})</span>`;
                 }
                 html += '</div>';

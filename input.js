@@ -1100,6 +1100,9 @@ class InputManager {
         const player = this.engine.entityManager?.player;
         if (!player || player.isDead) return;
 
+        // Block input while incapacitated (paralyzed, stunned, etc.)
+        if (player.isIncapacitated()) return;
+
         const action = this.keyMap[event.key] || this.keyMap[event.code];
         if (!action) return;
 

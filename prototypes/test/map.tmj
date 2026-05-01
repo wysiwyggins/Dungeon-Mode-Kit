@@ -364,6 +364,17 @@
                  "width":40,
                  "x":960,
                  "y":420
+                }, 
+                {
+                 "height":30,
+                 "id":62,
+                 "name":"trap",
+                 "rotation":0,
+                 "type":"paralysis_gas_trap",
+                 "visible":true,
+                 "width":40,
+                 "x":720,
+                 "y":660
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -478,7 +489,7 @@
          "y":0
         }],
  "nextlayerid":9,
- "nextobjectid":62,
+ "nextobjectid":63,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",

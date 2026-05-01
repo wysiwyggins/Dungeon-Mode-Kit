@@ -1481,6 +1481,12 @@ const BehaviorLibrary = {
                     const trapApplyState = actor.data?.trap_apply_state;
                     if (trapApplyState) {
                         spawnedActor.setAttribute('apply_state', trapApplyState);
+
+                        // Apply state immediately to the victim standing on the trap
+                        const statesData = actor.engine.globalStates;
+                        if (statesData?.[trapApplyState] && actorVictim.applyState) {
+                            actorVictim.applyState(trapApplyState, statesData[trapApplyState]);
+                        }
                     }
 
                     // Mark as origin cloud so it spreads

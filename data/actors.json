@@ -491,17 +491,6 @@
       "visible": true,
       "flammable": false,
       "pushable": true,
-      "breakable": false
-    }
-  },
-  "fragile_wall": {
-    "name": "Wall",
-    "tileIndexBase": "MEDIUM_SHADE",
-    "tileIndexTop": "LIGHT_SHADE",
-    "attributes": {
-      "solid": true,
-      "visible": true,
-      "flammable": false,
       "breakable": true
     }
   },

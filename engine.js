@@ -81,15 +81,16 @@ class SpriteLibrary {
      */
     resolveTile(tileRef) {
         if (!tileRef) return null;
-        
+        if (tileRef === 'BLANK') return null;
+
         if (typeof tileRef === 'object' && tileRef.x !== undefined && tileRef.y !== undefined) {
             return tileRef;
         }
-        
+
         if (typeof tileRef === 'string') {
             return this.getTileByName(tileRef);
         }
-        
+
         console.warn('Invalid tile reference:', tileRef);
         return null;
     }
@@ -3120,7 +3121,11 @@ class Actor extends Entity {
 
         // Check if incapacitated by a state (stunned, sleeping, etc.)
         if (this.isIncapacitated()) {
-            return Promise.resolve(); // Skip turn but don't lock engine
+            if (this.isPlayerControlled()) {
+                this.engine.interfaceManager?.updateSidebar();
+                return new Promise(resolve => setTimeout(resolve, 200));
+            }
+            return Promise.resolve();
         }
 
         // Check if slowed — skip every other turn
@@ -5809,6 +5814,7 @@ class Actor extends Entity {
 
         for (const other of entityManager.actors) {
             if (other === this) continue;
+            if (other.isDead) continue;
             if (other.x !== x || other.y !== y) continue;
             if (other.type !== 'cloud' && other.type !== 'mist') continue;
 
