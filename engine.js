@@ -365,6 +365,7 @@ function getFirstBlockingPoint(x0, y0, x1, y1, isBlocked, skipStart = true) {
  */
 function findPathAStar(fromX, fromY, toX, toY, isPassable, options = {}) {
     const topology = options.topology ?? 8;
+    const hasFloor = options.hasFloor;
     const path = [];
 
     const astar = new ROT.Path.AStar(toX, toY, isPassable, { topology });
@@ -372,6 +373,22 @@ function findPathAStar(fromX, fromY, toX, toY, isPassable, options = {}) {
     astar.compute(fromX, fromY, (x, y) => {
         path.push({ x, y });
     });
+
+    if (hasFloor && path.length > 1) {
+        for (let i = path.length - 2; i >= 0; i--) {
+            if (isDiagonalBlocked(path[i + 1].x, path[i + 1].y, path[i].x, path[i].y, hasFloor)) {
+                const mid = { x: path[i].x, y: path[i + 1].y };
+                if (hasFloor(mid.x, mid.y)) {
+                    path.splice(i + 1, 0, mid);
+                } else {
+                    const alt = { x: path[i + 1].x, y: path[i].y };
+                    if (hasFloor(alt.x, alt.y)) {
+                        path.splice(i + 1, 0, alt);
+                    }
+                }
+            }
+        }
+    }
 
     return path;
 }
@@ -6418,26 +6435,11 @@ class Actor extends Entity {
             return this.isPassableAt(x, y);
         };
 
-        const nextStep = getNextPathStep(this.x, this.y, targetX, targetY, isPassable);
+        const nextStep = getNextPathStep(this.x, this.y, targetX, targetY, isPassable, { hasFloor });
 
         if (nextStep) {
-            if (!isDiagonalBlocked(this.x, this.y, nextStep.x, nextStep.y, hasFloor)) {
-                const result = this.tryMove(nextStep.x, nextStep.y);
-                if (result.moved || result.actionTaken) return true;
-            }
-            // Diagonal was blocked by corner walls — try the two cardinal components
-            const sdx = nextStep.x - this.x;
-            const sdy = nextStep.y - this.y;
-            if (sdx !== 0 && sdy !== 0) {
-                if (hasFloor(this.x + sdx, this.y)) {
-                    const result = this.tryMove(this.x + sdx, this.y);
-                    if (result.moved || result.actionTaken) return true;
-                }
-                if (hasFloor(this.x, this.y + sdy)) {
-                    const result = this.tryMove(this.x, this.y + sdy);
-                    if (result.moved || result.actionTaken) return true;
-                }
-            }
+            const result = this.tryMove(nextStep.x, nextStep.y);
+            if (result.moved || result.actionTaken) return true;
         }
 
         // No path or path step failed — fall back to simple directional movement
@@ -7960,8 +7962,13 @@ class RenderSystem {
             return floorTile && floorTile.tileId > 0;
         };
 
+        const hasFloor = (x, y) => {
+            const tile = this.engine.mapManager?.floorMap[y]?.[x];
+            return tile && tile.tileId > 0;
+        };
+
         // Find path using A*
-        const path = findPathAStar(startX, startY, endX, endY, isPassable, { topology: 8 });
+        const path = findPathAStar(startX, startY, endX, endY, isPassable, { topology: 8, hasFloor });
 
         if (path.length === 0) {
             return null; // No path found
