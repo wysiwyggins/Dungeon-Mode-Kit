@@ -216,6 +216,11 @@ const ALL_DIRS = [
     {dx: -1, dy: 1},  {dx: 0, dy: 1},  {dx: 1, dy: 1}
 ];
 
+function isDiagonalBlocked(fromX, fromY, toX, toY, hasFloor) {
+    if (fromX === toX || fromY === toY) return false;
+    return !hasFloor(toX, fromY) || !hasFloor(fromX, toY);
+}
+
 /** Fisher-Yates shuffle in-place using ROT.RNG for deterministic randomness. */
 function shuffleArray(arr) {
     for (let i = arr.length - 1; i > 0; i--) {
@@ -885,7 +890,10 @@ class DungeonEngine {
     }
 
     updateLighting() {
-        if (!this.lightingManager) return;
+        if (!this.lightingManager) {
+            this.renderer.updateProximityTransparency();
+            return;
+        }
 
         this.lightingManager.computeLighting();
         const fogOfWar = this._floorMechanics?.fog_of_war || this._runtimeDarknessActive || false;
@@ -1194,9 +1202,11 @@ class DungeonEngine {
         this.renderer.renderItems(this.entityManager);
         this.renderer.renderActors(this.entityManager);
 
-        // Update sidebar for non-darkness levels (darkness levels update via updateLighting)
+        // Update sidebar and proximity transparency for non-darkness levels
+        // (darkness levels update both via updateLighting)
         if (!mechanics.darkness) {
             this.interfaceManager?.updateSidebar();
+            this.renderer.updateProximityTransparency();
         }
 
         // Check initial submersion state for all actors (after sprites exist)
@@ -4644,8 +4654,8 @@ class Actor extends Entity {
             }
 
             case 'summon_monsters': {
-                const proto = this.engine.currentPrototype;
-                const randomActors = proto?.config?.random_actors;
+                const floorConfig = this.engine.getFloorConfig(this.engine.currentFloor);
+                const randomActors = floorConfig?.random_actors || this.engine.currentPrototype?.config?.random_actors;
                 if (!randomActors || Object.keys(randomActors).length === 0) {
                     if (this.isPlayerControlled()) {
                         this.engine.inputManager?.showMessage('Nothing answers the call.');
@@ -4653,31 +4663,30 @@ class Actor extends Entity {
                     return true;
                 }
                 const actorTypes = Object.keys(randomActors);
-                if (actorTypes.length === 0) return false;
                 const summonMin = item?.getAttribute('summon_min') ?? 2;
                 const summonMax = item?.getAttribute('summon_max') ?? 4;
                 const count = summonMin + Math.floor(ROT.RNG.getUniform() * (summonMax - summonMin + 1));
                 let spawned = 0;
-                const dirs = [{ dx: 0, dy: -1 }, { dx: 0, dy: 1 }, { dx: -1, dy: 0 }, { dx: 1, dy: 0 },
-                              { dx: -1, dy: -1 }, { dx: 1, dy: -1 }, { dx: -1, dy: 1 }, { dx: 1, dy: 1 }];
-                for (const dir of shuffleArray([...dirs])) {
+                for (const dir of shuffleArray([...ALL_DIRS])) {
                     if (spawned >= count) break;
                     const tx = this.x + dir.dx, ty = this.y + dir.dy;
                     if (!this.engine.mapManager?.floorMap[ty]?.[tx]?.tileId) continue;
                     if (this.engine.entityManager?.getSolidActorAt(tx, ty)) continue;
                     const actorType = actorTypes[Math.floor(ROT.RNG.getUniform() * actorTypes.length)];
-                    const actorData = proto.getActorData(actorType);
-                    if (!actorData) continue;
-                    const actor = new Actor(tx, ty, actorType, actorData, this.engine);
-                    this.engine.entityManager.addEntity(actor);
-                    actor.loadDefaultItems?.();
-                    this.engine.addActorToScheduler?.(actor);
+                    const actor = this.engine.entityManager.spawnActor(actorType, tx, ty);
+                    if (!actor) continue;
+                    actor.flash();
                     spawned++;
                 }
-                if (this.isPlayerControlled()) {
-                    this.engine.inputManager?.showMessage('Something answers the call.');
+                if (spawned > 0) {
+                    this.flash();
+                    if (this.isPlayerControlled()) {
+                        this.engine.inputManager?.showMessage('Something answers the call.');
+                    }
+                } else if (this.isPlayerControlled()) {
+                    this.engine.inputManager?.showMessage('Nothing answers the call.');
                 }
-                return spawned > 0;
+                return true;
             }
 
             case 'recharge_items': {
@@ -5506,6 +5515,11 @@ class Actor extends Entity {
         // Check bounds
         if (newX < 0 || newX >= this.engine.mapManager.width ||
             newY < 0 || newY >= this.engine.mapManager.height) {
+            return { moved: false, actionTaken: false };
+        }
+
+        // Block diagonal movement past wall corners (Brogue-style)
+        if (isDiagonalBlocked(this.x, this.y, newX, newY, (x, y) => this.hasFloorAt(x, y))) {
             return { moved: false, actionTaken: false };
         }
 
@@ -6395,53 +6409,64 @@ class Actor extends Entity {
      * @returns {boolean} True if movement was attempted
      */
     moveToward(targetX, targetY) {
-        // Already at target
         if (this.x === targetX && this.y === targetY) return false;
 
-        // Create passability callback for pathfinding
+        const hasFloor = (x, y) => this.hasFloorAt(x, y);
+
         const isPassable = (x, y) => {
-            // Target position is always considered passable (we want to reach it)
             if (x === targetX && y === targetY) return true;
             return this.isPassableAt(x, y);
         };
 
-        // Try A* pathfinding first
         const nextStep = getNextPathStep(this.x, this.y, targetX, targetY, isPassable);
 
         if (nextStep) {
-            // Found a path - try to move to next step
-            const result = this.tryMove(nextStep.x, nextStep.y);
-            return result.moved || result.actionTaken;
+            if (!isDiagonalBlocked(this.x, this.y, nextStep.x, nextStep.y, hasFloor)) {
+                const result = this.tryMove(nextStep.x, nextStep.y);
+                if (result.moved || result.actionTaken) return true;
+            }
+            // Diagonal was blocked by corner walls — try the two cardinal components
+            const sdx = nextStep.x - this.x;
+            const sdy = nextStep.y - this.y;
+            if (sdx !== 0 && sdy !== 0) {
+                if (hasFloor(this.x + sdx, this.y)) {
+                    const result = this.tryMove(this.x + sdx, this.y);
+                    if (result.moved || result.actionTaken) return true;
+                }
+                if (hasFloor(this.x, this.y + sdy)) {
+                    const result = this.tryMove(this.x, this.y + sdy);
+                    if (result.moved || result.actionTaken) return true;
+                }
+            }
         }
 
-        // No path found - fall back to simple directional movement
-        // This handles cases where target is unreachable but we want to get closer
+        // No path or path step failed — fall back to simple directional movement
         const dx = Math.sign(targetX - this.x);
         const dy = Math.sign(targetY - this.y);
 
-        // Try to move in both directions, prefer the larger distance
         if (Math.abs(targetX - this.x) > Math.abs(targetY - this.y)) {
-            if (dx !== 0 && this.hasFloorAt(this.x + dx, this.y)) {
+            if (dx !== 0 && hasFloor(this.x + dx, this.y)) {
                 const result = this.tryMove(this.x + dx, this.y);
                 if (result.moved || result.actionTaken) return true;
             }
-            if (dy !== 0 && this.hasFloorAt(this.x, this.y + dy)) {
+            if (dy !== 0 && hasFloor(this.x, this.y + dy)) {
                 const result = this.tryMove(this.x, this.y + dy);
                 if (result.moved || result.actionTaken) return true;
             }
         } else {
-            if (dy !== 0 && this.hasFloorAt(this.x, this.y + dy)) {
+            if (dy !== 0 && hasFloor(this.x, this.y + dy)) {
                 const result = this.tryMove(this.x, this.y + dy);
                 if (result.moved || result.actionTaken) return true;
             }
-            if (dx !== 0 && this.hasFloorAt(this.x + dx, this.y)) {
+            if (dx !== 0 && hasFloor(this.x + dx, this.y)) {
                 const result = this.tryMove(this.x + dx, this.y);
                 if (result.moved || result.actionTaken) return true;
             }
         }
 
-        // Try diagonal movement as last resort
-        if (dx !== 0 && dy !== 0 && this.hasFloorAt(this.x + dx, this.y + dy)) {
+        // Diagonal only if corner tiles are clear
+        if (dx !== 0 && dy !== 0 && hasFloor(this.x + dx, this.y + dy) &&
+            !isDiagonalBlocked(this.x, this.y, this.x + dx, this.y + dy, hasFloor)) {
             const result = this.tryMove(this.x + dx, this.y + dy);
             if (result.moved || result.actionTaken) return true;
         }
@@ -8725,33 +8750,7 @@ class RenderSystem {
             }
         }
 
-        // Proximity transparency: fade top sprites of actors south of important actors
-        const player = this.engine.entityManager.player;
-        if (player && !player.isDead) {
-            // Reset all top sprite alphas
-            for (const actor of this.engine.entityManager.actors) {
-                if (actor.spriteTop) actor.spriteTop.alpha = 1.0;
-                if (actor.spriteEquipment.middle) actor.spriteEquipment.middle.alpha = 1.0;
-            }
-
-            // Apply transparency to southern neighbors of nearby important actors
-            for (const actor of this.engine.entityManager.actors) {
-                if (actor.isDead) continue;
-                if (!isImportantActor(actor)) continue;
-                if (getChebyshevDistance(player.x, player.y, actor.x, actor.y) > 4) continue;
-
-                const southernActor = this.engine.entityManager.getActorAt(actor.x, actor.y + 1);
-                if (!southernActor || southernActor.isDead || southernActor === actor) continue;
-                if (southernActor.hasAttribute('controlled')) continue;
-
-                if (southernActor.spriteTop?.visible) {
-                    southernActor.spriteTop.alpha = 0.35;
-                }
-                if (southernActor.spriteEquipment.middle?.visible) {
-                    southernActor.spriteEquipment.middle.alpha = 0.35;
-                }
-            }
-        }
+        this.updateProximityTransparency();
 
         for (const item of this.engine.entityManager.items) {
             const vis = lightingManager.getEntityVisibility(item.x, item.y, fogOfWar);
@@ -8781,6 +8780,33 @@ class RenderSystem {
                 if (vis.showBase) {
                     entity.sprite.tint = this.blendTints(entity.tint, vis.baseTint);
                 }
+            }
+        }
+    }
+
+    updateProximityTransparency() {
+        const player = this.engine.entityManager.player;
+        if (!player || player.isDead) return;
+
+        for (const actor of this.engine.entityManager.actors) {
+            if (actor.spriteTop) actor.spriteTop.alpha = 1.0;
+            if (actor.spriteEquipment.middle) actor.spriteEquipment.middle.alpha = 1.0;
+        }
+
+        for (const actor of this.engine.entityManager.actors) {
+            if (actor.isDead) continue;
+            if (!isImportantActor(actor)) continue;
+            if (getChebyshevDistance(player.x, player.y, actor.x, actor.y) > 4) continue;
+
+            const southernActor = this.engine.entityManager.getActorAt(actor.x, actor.y + 1);
+            if (!southernActor || southernActor.isDead || southernActor === actor) continue;
+            if (southernActor.hasAttribute('controlled')) continue;
+
+            if (southernActor.spriteTop?.visible) {
+                southernActor.spriteTop.alpha = 0.35;
+            }
+            if (southernActor.spriteEquipment.middle?.visible) {
+                southernActor.spriteEquipment.middle.alpha = 0.35;
             }
         }
     }

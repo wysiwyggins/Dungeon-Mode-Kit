@@ -35,7 +35,7 @@
                 8
             ],
             "scale": 0.3942,
-            "selectedLayer": 2,
+            "selectedLayer": 1,
             "viewCenter": {
                 "x": 977.9299847792998,
                 "y": 606.2912227295787
@@ -90,6 +90,14 @@
                 "y": 706.5189647251008
             }
         },
+        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/map.tmj": {
+            "scale": 1.3358,
+            "selectedLayer": 4,
+            "viewCenter": {
+                "x": 1006.512951040575,
+                "y": 516.5443928731846
+            }
+        },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/underworld/map.tmj": {
             "scale": 0.19,
             "selectedLayer": 3,
@@ -132,6 +140,7 @@
     ],
     "project": "dungeonkit.tiled-project",
     "recentFiles": [
+        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/map.tmj",
         "static-tiles.tsj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/dungeon/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/labyrinth/map.tmj",
@@ -142,7 +151,6 @@
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/underworld/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/arena/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/morass/map.tmj",
-        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/mine/map.tmj",
-        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/hunger_game/map.tmj"
+        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/mine/map.tmj"
     ]
 }

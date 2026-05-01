@@ -20,8 +20,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### In Progress
 
-- Actor facing horizontal flips
-- Pickpocket behavior
 - Mining (works but requires testing and refinement, Currently 3 hits always removes a breakable actor, which feels unnatural)
 - FOV epistemology (currently messages aren't filtered by vision range, make sound alternate messages for those, also some things like mining walls can still be seen out of range)
 
@@ -29,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **No wall-adjacent corner movement** Decided to disallow moving around wall corners.
 - **Side tile system**: actors can now have a third body tile at an offset from the base tile, defined via `tileIndexSide`, `animationSide`, `flipSideH`/`flipSideV`, and `sideOffset` (`{dx, dy}`). Side tiles are cosmetic (no collision footprint), support independent per-tile lighting, viewport clipping, submersion hiding, and flash effects.
 - **Facing direction system**: actors can opt into dynamic horizontal flipping with `facingEnabled: true` and `defaultFacing`. When enabled, moving or attacking left/right flips all actor sprites (base, top, side, equipment) and mirrors the side tile offset. Facing is serialized across save/load. Actors without `facingEnabled` are completely unaffected.
 - **Monkey actor**: three-tile creature (head: BULLET, base: LEG, tail: BOX_BOTTOM_RIGHT) with `facingEnabled` — tail mirrors when the monkey changes direction

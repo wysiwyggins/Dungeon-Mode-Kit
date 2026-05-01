@@ -204,6 +204,7 @@
     "hostile": true,
     "loot_search_radius": 20,
     "behaviors": [
+      "flee_from_danger",
       "flee_with_loot",
       "pickpocket_adjacent",
       "pursue_target",
