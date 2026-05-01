@@ -1172,6 +1172,33 @@
     "stats": {
       "health": 12
     }
+  },
+
+  "guard": {
+    "name": "Guard",
+    "tileIndexBase": "LEG",
+    "tileIndexTop": "CYCLOPS_FACE",
+    "tint": "#c0a070",
+    "vision_range": 8,
+    "personality": "guard",
+    "facingEnabled": true,
+    "defaultFacing": "left",
+    "collision_effect": { "health": -6 },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] strikes the [attacked_actor_name]!",
+    "attributes": {
+      "hostile": true,
+      "solid": true,
+      "visible": true,
+      "flammable": true,
+      "sighted": true,
+      "sentient": true,
+      "accuracy": 65,
+      "defense": 10
+    },
+    "stats": {
+      "health": 40
+    }
   }
 
 }

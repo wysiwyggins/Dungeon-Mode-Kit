@@ -54,11 +54,119 @@ const BehaviorLibrary = {
         return false; // No valid target found
     },
 
-    /**
-     * Patrol between waypoints (placeholder)
-     */
     patrol: (actor, data) => {
-        // TODO: Implement waypoint patrol
+        if (actor._homeX === undefined) {
+            actor._homeX = actor.x;
+            actor._homeY = actor.y;
+        }
+
+        if (actor._alerted) return false;
+
+        const target = actor.engine.entityManager.findNearestPlayer(actor);
+        if (target && actor.canSeeTarget(target)) return false;
+
+        const patrolRange = data.patrol_range || 5;
+        const distFromHome = getChebyshevDistance(actor.x, actor.y, actor._homeX, actor._homeY);
+
+        if (distFromHome >= patrolRange) {
+            return actor.moveToward(actor._homeX, actor._homeY);
+        }
+
+        if (!actor._patrolSteps || actor._patrolSteps <= 0) {
+            const dirs = actor.getValidMoveDirections();
+            if (dirs.length === 0) return false;
+            actor._patrolDir = dirs[Math.floor(ROT.RNG.getUniform() * dirs.length)];
+            actor._patrolSteps = 2 + Math.floor(ROT.RNG.getUniform() * 3);
+        }
+
+        const nextX = actor.x + actor._patrolDir.dx;
+        const nextY = actor.y + actor._patrolDir.dy;
+        const nextDist = getChebyshevDistance(nextX, nextY, actor._homeX, actor._homeY);
+
+        if (nextDist > patrolRange) {
+            actor._patrolSteps = 0;
+            return actor.moveToward(actor._homeX, actor._homeY);
+        }
+
+        const result = actor.tryMove(nextX, nextY);
+        if (result.moved || result.actionTaken) {
+            actor._patrolSteps--;
+            return true;
+        }
+
+        actor._patrolSteps = 0;
+        const dirs = actor.getValidMoveDirections();
+        if (dirs.length === 0) return false;
+        const dir = dirs[Math.floor(ROT.RNG.getUniform() * dirs.length)];
+        const fallback = actor.tryMove(actor.x + dir.dx, actor.y + dir.dy);
+        return fallback.moved || fallback.actionTaken;
+    },
+
+    guard_area: (actor, data) => {
+        if (actor._homeX === undefined) {
+            actor._homeX = actor.x;
+            actor._homeY = actor.y;
+        }
+
+        const target = actor.engine.entityManager.findNearestPlayer(actor);
+        if (!target || !actor.canSeeTarget(target)) return false;
+
+        actor._lastKnownTargetX = target.x;
+        actor._lastKnownTargetY = target.y;
+        actor._alertTarget = target;
+        actor._alerted = true;
+        actor._alertTurns = data.memory_duration || 10;
+
+        if (data.alert_allies) {
+            const alertRadius = 10;
+            for (const other of actor.engine.entityManager.actors) {
+                if (other === actor || other.isDead || other._alerted) continue;
+                if (!other.personality?.data?.alert_allies) continue;
+                if (getChebyshevDistance(actor.x, actor.y, other.x, other.y) > alertRadius) continue;
+                other._alerted = true;
+                other._alertTarget = target;
+                other._alertTurns = other.personality.data.memory_duration || 10;
+                other._lastKnownTargetX = target.x;
+                other._lastKnownTargetY = target.y;
+            }
+        }
+
+        return actor.moveToward(target.x, target.y);
+    },
+
+    pursue_intruders: (actor, data) => {
+        if (!actor._alerted) return false;
+
+        if (actor._alertTarget?.isDead) {
+            actor._alerted = false;
+            actor._alertTarget = null;
+            actor._alertTurns = 0;
+            return false;
+        }
+
+        if (actor._alertTarget && actor.canSeeTarget(actor._alertTarget)) {
+            actor._lastKnownTargetX = actor._alertTarget.x;
+            actor._lastKnownTargetY = actor._alertTarget.y;
+            actor._alertTurns = data.memory_duration || 10;
+            return actor.moveToward(actor._alertTarget.x, actor._alertTarget.y);
+        }
+
+        if (actor._alertTurns > 0 && actor._lastKnownTargetX !== undefined) {
+            actor._alertTurns--;
+
+            if (actor.x === actor._lastKnownTargetX && actor.y === actor._lastKnownTargetY) {
+                actor._alerted = false;
+                actor._alertTarget = null;
+                actor._alertTurns = 0;
+                return false;
+            }
+
+            return actor.moveToward(actor._lastKnownTargetX, actor._lastKnownTargetY);
+        }
+
+        actor._alerted = false;
+        actor._alertTarget = null;
+        actor._alertTurns = 0;
         return false;
     },
 
