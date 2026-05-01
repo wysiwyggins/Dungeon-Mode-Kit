@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Dead cloud/mist actors no longer apply effects when the player walks over their tile
 - Scroll of Magic Mapping no longer silently fails on levels without fog of war — now consumes the scroll with "You already know this place well."
 - Scroll of Summon Monsters no longer silently fails when the prototype has no random actor config — now consumes the scroll with "Nothing answers the call."
 - Unknown item effects now show "You don't understand a word of it!" and consume the scroll instead of doing nothing
