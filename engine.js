@@ -6421,27 +6421,27 @@ class Actor extends Entity {
 
         // Try to move in both directions, prefer the larger distance
         if (Math.abs(targetX - this.x) > Math.abs(targetY - this.y)) {
-            if (dx !== 0) {
+            if (dx !== 0 && this.hasFloorAt(this.x + dx, this.y)) {
                 const result = this.tryMove(this.x + dx, this.y);
                 if (result.moved || result.actionTaken) return true;
             }
-            if (dy !== 0) {
+            if (dy !== 0 && this.hasFloorAt(this.x, this.y + dy)) {
                 const result = this.tryMove(this.x, this.y + dy);
                 if (result.moved || result.actionTaken) return true;
             }
         } else {
-            if (dy !== 0) {
+            if (dy !== 0 && this.hasFloorAt(this.x, this.y + dy)) {
                 const result = this.tryMove(this.x, this.y + dy);
                 if (result.moved || result.actionTaken) return true;
             }
-            if (dx !== 0) {
+            if (dx !== 0 && this.hasFloorAt(this.x + dx, this.y)) {
                 const result = this.tryMove(this.x + dx, this.y);
                 if (result.moved || result.actionTaken) return true;
             }
         }
 
         // Try diagonal movement as last resort
-        if (dx !== 0 && dy !== 0) {
+        if (dx !== 0 && dy !== 0 && this.hasFloorAt(this.x + dx, this.y + dy)) {
             const result = this.tryMove(this.x + dx, this.y + dy);
             if (result.moved || result.actionTaken) return true;
         }

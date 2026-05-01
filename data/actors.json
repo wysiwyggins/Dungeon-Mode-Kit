@@ -1177,7 +1177,8 @@
       "inventory": 1,
       "accuracy": 70,
       "defense": 5,
-      "strength": 3
+      "strength": 1,
+      "remains": "skull"
     },
     "stats": {
       "health": 12

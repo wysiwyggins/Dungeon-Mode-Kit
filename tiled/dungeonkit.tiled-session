@@ -30,13 +30,15 @@
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/default/map.tmj": {
             "expandedObjectLayers": [
-                3
+                6,
+                3,
+                8
             ],
-            "scale": 1.0789,
-            "selectedLayer": 3,
+            "scale": 0.3942,
+            "selectedLayer": 2,
             "viewCenter": {
-                "x": 904.1616461210492,
-                "y": 638.6134025396237
+                "x": 977.9299847792998,
+                "y": 606.2912227295787
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/dungeon/map.tmj": {

@@ -2000,7 +2000,10 @@ const BehaviorLibrary = {
         });
 
         for (const dir of fleeDirs) {
-            const result = actor.tryMove(actor.x + dir.dx, actor.y + dir.dy);
+            const nx = actor.x + dir.dx;
+            const ny = actor.y + dir.dy;
+            if (!actor.hasFloorAt(nx, ny)) continue;
+            const result = actor.tryMove(nx, ny);
             if (result.moved) return true;
         }
 
