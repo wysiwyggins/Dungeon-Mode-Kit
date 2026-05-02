@@ -13,9 +13,6 @@
     "death_sound": "ouch",
     "attributes": {
       "controlled": true,
-      "solid": true,
-      "visible": true,
-      "flammable": true,
       "sighted": true,
       "sentient": true,
       "inventory": 4,
@@ -42,9 +39,6 @@
     "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
     "attributes": {
       "hostile": true,
-      "solid": true,
-      "visible": true,
-      "flammable": true,
       "sentient": true,
       "inventory": 1,
       "remains": "skull",
@@ -69,9 +63,6 @@
     "attributes": {
       "hostile": true,
       "light_source": true,
-      "solid": true,
-      "visible": true,
-      "flammable": true,
       "sentient": true,
       "inventory": 0,
       "accuracy": 70,
@@ -91,8 +82,6 @@
     "personality": "stationed_ranged",
     "attributes": {
       "hostile": true,
-      "solid": true,
-      "visible": true,
       "flammable": false,
       "breakable": true,
       "inventory": 5,
@@ -114,9 +103,6 @@
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
       "hostile": true,
-      "solid": true,
-      "visible": true,
-      "flammable": true,
       "sentient": true,
       "inventory": 0,
       "accuracy": 60,
@@ -145,9 +131,6 @@
     "collision_description": "The [actor_name] lashes at the [attacked_actor_name]!",
     "attributes": {
       "hostile": true,
-      "solid": true,
-      "visible": true,
-      "flammable": true,
       "sentient": true,
       "inventory": 0,
       "accuracy": 50,
@@ -167,8 +150,6 @@
     "collision_description": "[actor_name] [attacks.melee_verbs] [attacked_actor_name]!",
     "attributes": {
       "hostile": true,
-      "solid": true,
-      "visible": true,
       "flammable": false,
       "sentient": true,
       "strength": 8
@@ -192,10 +173,6 @@
     "facingEnabled": true,
     "collision_description": "The [actor_name] strikes back at [attacked_actor_name]!",
     "attributes": {
-      "hostile": false,
-      "solid": true,
-      "visible": true,
-      "flammable": true,
       "sighted": true,
       "sentient": true,
       "inventory": 1,
@@ -222,10 +199,6 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] strikes back at [attacked_actor_name]!",
     "attributes": {
-      "hostile": false,
-      "solid": true,
-      "visible": true,
-      "flammable": true,
       "sighted": true,
       "sentient": true,
       "inventory": 1,
@@ -244,10 +217,6 @@
     "tileIndexTop": "OPAQUE_DARK_SMILING_FACE",
     "personality": "passive_wanderer",
     "attributes": {
-      "hostile": false,
-      "solid": true,
-      "visible": true,
-      "flammable": true,
       "sentient": true,
       "inventory": 1,
       "remains": "blood"
@@ -267,9 +236,6 @@
     "collision_sound": "hit",
     "attributes": {
       "hostile": true,
-      "solid": true,
-      "visible": true,
-      "flammable": true,
       "proper_named": true,
       "sentient": true,
       "follows_thread": true,
@@ -290,9 +256,6 @@
     "tileIndexBase": "CANDLE_STICK",
     "tileIndexTop": "UPWARD_POINTING_TRIANGLE",
     "attributes": {
-      "solid": true,
-      "visible": true,
-      "flammable": true,
       "pushable": false,
       "breakable": true,
       "conductive": false,
@@ -305,8 +268,6 @@
     "tileIndexBase": "OPAQUE_DARK_SHADE",
     "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
     "attributes": {
-      "solid": true,
-      "visible": true,
       "flammable": false,
       "pushable": false,
       "breakable": true,
@@ -320,8 +281,6 @@
     "tileIndexBase": "PRISON_WINDOW",
     "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
     "attributes": {
-      "solid": true,
-      "visible": true,
       "flammable": false,
       "pushable": false,
       "breakable": true,
@@ -337,8 +296,6 @@
     "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
     "tint": "#3322AA",
     "attributes": {
-      "solid": true,
-      "visible": true,
       "flammable": false,
       "pushable": false,
       "breakable": false,
@@ -351,8 +308,6 @@
     "tileIndexBase": "CANDLE_STICK",
     "tileIndexTop": "MEDIUM_SHADE_LOWER_ONE_HALF_BLOCK",
     "attributes": {
-      "solid": true,
-      "visible": true,
       "flammable": false,
       "pushable": false,
       "breakable": true,
@@ -367,8 +322,6 @@
     "flipBaseH": true,
     "flipBaseV": true,
     "attributes": {
-      "solid": true,
-      "visible": true,
       "flammable": false,
       "pushable": false,
       "breakable": true,
@@ -384,8 +337,6 @@
     "flipBaseV": true,
     "flipTopH": true,
     "attributes": {
-      "solid": true,
-      "visible": true,
       "flammable": false,
       "pushable": false,
       "breakable": true,
@@ -403,8 +354,6 @@
     "flipBaseV": true,
     "flipBaseH": true,
     "attributes": {
-      "solid": true,
-      "visible": true,
       "flammable": false,
       "pushable": false,
       "breakable": true,
@@ -420,8 +369,6 @@
     "flipTopV": true,
     "flipBaseH": true,
     "attributes": {
-      "solid": true,
-      "visible": true,
       "flammable": false,
       "pushable": false,
       "breakable": true,
@@ -436,8 +383,6 @@
     "tileIndexTop": "OPAQUE_DOTTED_LIGHT_SHADE",
     "tint": "#332211",
     "attributes": {
-      "solid": true,
-      "visible": true,
       "flammable": false,
       "pushable": false,
       "conductive": false,
@@ -454,8 +399,6 @@
     "tileIndexTop": "OPAQUE_DOTTED_LIGHT_SHADE",
     "tint": "#222200",
     "attributes": {
-      "solid": true,
-      "visible": true,
       "flammable": false,
       "pushable": false,
       "conductive": false,
@@ -472,8 +415,6 @@
     "tint": "#EC7505",
     "flickerTint": true,
     "attributes": {
-      "solid": true,
-      "visible": true,
       "flammable": false,
       "pushable": false,
       "breakable": true,
@@ -487,8 +428,6 @@
     "tileIndexBase": "OPAQUE_MEDIUM_SHADE",
     "tileIndexTop": "OPAQUE_LIGHT_SHADE",
     "attributes": {
-      "solid": true,
-      "visible": true,
       "flammable": false,
       "pushable": true,
       "breakable": true
@@ -513,8 +452,6 @@
     "tileIndexTop_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
     "tileIndexBase_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
     "attributes": {
-      "solid": true,
-      "visible": true,
       "flammable": false,
       "conductive": false,
       "openable": true,
@@ -531,8 +468,6 @@
     "tileIndexBase_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
     "random_color": true,
     "attributes": {
-      "solid": true,
-      "visible": true,
       "flammable": false,
       "conductive": false,
       "openable": true,
@@ -552,7 +487,6 @@
     "personality": "liquid_pooling",
     "attributes": {
       "solid": false,
-      "visible": true,
       "flammable": false,
       "spreads": false,
       "liquid": true,
@@ -572,7 +506,6 @@
     "personality": "deep_water_behavior",
     "attributes": {
       "solid": false,
-      "visible": true,
       "flammable": false,
       "spreads": false,
       "liquid": true,
@@ -591,7 +524,6 @@
     "personality": "liquid_pooling",
     "attributes": {
       "solid": false,
-      "visible": true,
       "flammable": false,
       "spreads": false,
       "liquid": true,
@@ -611,7 +543,6 @@
     "attributes": {
       "solid": false,
       "deep": true,
-      "visible": true,
       "flammable": false,
       "spreads": false,
       "liquid": true,
@@ -628,8 +559,6 @@
     "tint": "#CAD49D",
     "personality": "drain_behavior",
     "attributes": {
-      "solid": true,
-      "visible": true,
       "flammable": false,
       "spreads": false,
       "entry_sound": "step_mud"
@@ -645,7 +574,6 @@
     "personality": "lava_behavior",
     "attributes": {
       "solid": false,
-      "visible": true,
       "flammable": false,
       "damage_type": "fire",
       "fire_immune": true,
@@ -666,7 +594,6 @@
     "personality": "fire_behavior",
     "attributes": {
       "solid": false,
-      "visible": true,
       "flammable": false,
       "ignites": true,
       "damage_type": "fire",
@@ -690,7 +617,6 @@
     "personality": "fire_behavior",
     "attributes": {
       "solid": false,
-      "visible": true,
       "flammable": false,
       "ignites": true,
       "damage_type": "fire",
@@ -710,8 +636,6 @@
     "tint": "#EC7505",
     "flickerTint": true,
     "attributes": {
-      "solid": true,
-      "visible": true,
       "opaque": true,
       "flammable": false,
       "light_source": true
@@ -726,7 +650,6 @@
     "tint": "#84DCCF",
     "attributes": {
       "solid": false,
-      "visible": true,
       "flammable": false,
       "stairway": "down"
     }
@@ -741,8 +664,6 @@
     "flipTopV": true,
     "tint": "#84DCCF",
     "attributes": {
-      "solid": true,
-      "visible": true,
       "flammable": false,
       "stairway": "down",
       "openable": true,
@@ -761,7 +682,6 @@
     "tint": "#EC7505",
     "attributes": {
       "solid": false,
-      "visible": true,
       "flammable": false,
       "stairway": "up"
     }
@@ -776,8 +696,6 @@
     "flipTopH": true,
     "tint": "#EC7505",
     "attributes": {
-      "solid": true,
-      "visible": true,
       "flammable": false,
       "stairway": "up",
       "openable": true,
@@ -795,9 +713,7 @@
     "personality": "cloud_behavior",
     "attributes": {
       "solid": false,
-      "visible": true,
-      "mass_noun": true,
-      "flammable": true
+      "mass_noun": true
     },
     "collision_effect": {},
     "lifetime": 10
@@ -811,9 +727,7 @@
     "personality": "mist_behavior",
     "attributes": {
       "solid": false,
-      "visible": true,
-      "mass_noun": true,
-      "flammable": true
+      "mass_noun": true
     },
     "collision_effect": {},
     "lifetime": 4
@@ -829,7 +743,6 @@
     "personality": "cloud_behavior",
     "attributes": {
       "solid": false,
-      "visible": true,
       "flammable": false,
       "mass_noun": true
     },
@@ -847,9 +760,7 @@
     "personality": "cloud_behavior",
     "attributes": {
       "solid": false,
-      "visible": true,
       "mass_noun": true,
-      "flammable": true,
       "apply_state": "nauseated"
     },
     "collision_effect": {},
@@ -938,9 +849,6 @@
     "collision_description": "The [actor_name] licks the [attacked_actor_name]!",
     "attributes": {
       "hostile": true,
-      "solid": true,
-      "visible": true,
-      "flammable": true,
       "sentient": true
     },
     "stats": {
@@ -959,9 +867,6 @@
     "innate_states": ["flying"],
     "attributes": {
       "hostile": true,
-      "solid": true,
-      "visible": true,
-      "flammable": true,
       "sentient": true,
       "defense": 20
     },
@@ -972,18 +877,15 @@
 
   "rat": {
     "name": "Rat",
-    "tileIndexBase": "COMMA",
+    "tileIndexBase": "WHITE_LEFTWARDS_HARPOON_BARB_UPWARDS",
     "tileIndexTop": "BLANK",
-    "flipBaseH": true,
+    "tint": "#999999",
     "personality": "aggressive_melee",
     "collision_effect": { "health": -2 },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
       "hostile": true,
-      "solid": true,
-      "visible": true,
-      "flammable": true,
       "opaque": false,
       "sentient": true,
       "accuracy": 40
@@ -1002,9 +904,6 @@
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
       "hostile": true,
-      "solid": true,
-      "visible": true,
-      "flammable": true,
       "sentient": true,
       "accuracy": 50,
       "defense": 3
@@ -1023,8 +922,6 @@
     "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
     "attributes": {
       "hostile": true,
-      "solid": true,
-      "visible": true,
       "flammable": false,
       "sentient": true,
       "light_source": true,
@@ -1047,9 +944,6 @@
     "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
     "attributes": {
       "hostile": true,
-      "solid": true,
-      "visible": true,
-      "flammable": true,
       "sentient": true,
       "inventory": 1,
       "remains": "skull",
@@ -1074,8 +968,6 @@
     "collision_description": "The [actor_name] scorches the [attacked_actor_name]!",
     "attributes": {
       "hostile": true,
-      "solid": true,
-      "visible": true,
       "flammable": false,
       "fire_immune": true,
       "sentient": true,
@@ -1098,8 +990,6 @@
     "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
     "attributes": {
       "hostile": true,
-      "solid": true,
-      "visible": true,
       "flammable": false,
       "fire_immune": true,
       "sentient": true,
@@ -1125,8 +1015,6 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
-      "solid": true,
-      "visible": true,
       "hostile": true,
       "sighted": true,
       "sentient": true,
@@ -1145,7 +1033,7 @@
   "monkey": {
     "name": "Monkey",
     "tileIndexBase": "LEG",
-    "tileIndexTop": "INVERSE_BULLET",
+    "tileIndexTop": "ANIMAL_HEAD",
     "tileIndexSide": "BOX_BOTTOM_RIGHT",
     "sideOffset": { "dx": 1, "dy": 0 },
     "defaultFacing": "left",
@@ -1157,8 +1045,6 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] scratches the [attacked_actor_name]!",
     "attributes": {
-      "solid": true,
-      "visible": true,
       "hostile": true,
       "sighted": true,
       "sentient": true,
@@ -1188,9 +1074,6 @@
     "collision_description": "The [actor_name] strikes the [attacked_actor_name]!",
     "attributes": {
       "hostile": true,
-      "solid": true,
-      "visible": true,
-      "flammable": true,
       "sighted": true,
       "sentient": true,
       "accuracy": 65,

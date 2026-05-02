@@ -6,7 +6,7 @@
     "tileDisplayWidth": 20,
     "tileDisplayHeight": 15,
     "spritesheetCols": 23,
-    "spritesheetRows": 11,
+    "spritesheetRows": 12,
     "tiles": {
         "BLANK": [0, 0],
         "SPACE": [0, 0],
@@ -265,7 +265,10 @@
         "BOX_DRAWING_LIGHT_HORIZONTAL": [19,10],
         "BOX_DRAWING_HEAVY_LEFT_LIGHT_RIGHT": [20,10],
         "MIDDLE_DOT": [21,10],
-        "BALL_OF_THREAD": [22,10]
+        "BALL_OF_THREAD": [22,10],
+        "ANIMAL_HEAD": [0,11],
+        "WHITE_AND_BLACK_CHECKERBOARD": [1,11],
+        "WHITE_LEFTWARDS_HARPOON_BARB_UPWARDS": [2,11]
 
     }
 }

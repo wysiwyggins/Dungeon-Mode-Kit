@@ -9,9 +9,6 @@
     "facingEnabled": true,
     "attributes": {
       "controlled": true,
-      "solid": true,
-      "visible": true,
-      "flammable": true,
       "sighted": true,
       "inventory": 5,
       "strength": 8,
@@ -52,9 +49,6 @@
     "collision_sound": "hit",
     "attributes": {
       "hostile": true,
-      "solid": true,
-      "visible": true,
-      "flammable": true,
       "proper_named": true,
       "sentient": true,
       "follows_thread": true,
@@ -81,9 +75,6 @@
     "collision_sound": "tap1",
     "attributes": {
       "hostile": true,
-      "solid": true,
-      "visible": true,
-      "flammable": true,
       "proper_named": true,
       "defense": 15
     },

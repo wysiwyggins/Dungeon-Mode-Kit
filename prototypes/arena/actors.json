@@ -8,9 +8,6 @@
     "collision_sound": "hit",
     "attributes": {
       "controlled": true,
-      "solid": true,
-      "visible": true,
-      "flammable": true,
       "sighted": true,
       "inventory": 10,
       "strength": 8,
@@ -34,9 +31,6 @@
     "death_sound": "ouch",
     "attributes": {
       "hostile": true,
-      "solid": true,
-      "visible": true,
-      "flammable": true,
       "proper_named": true,
       "inventory": 1,
       "remains": "skull",
@@ -54,9 +48,6 @@
     "tileIndexBase": "CROSS",
     "tileIndexTop": "BULLET",
     "attributes": {
-      "hostile": false,
-      "solid": true,
-      "visible": true,
       "remains": "rubble"
     },
     "stats": {

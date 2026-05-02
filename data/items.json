@@ -898,7 +898,7 @@
 
   "apple": {
     "name": "Apple",
-    "tileIndex": "BULLET",
+    "tileIndex": "ANIMAL_HEAD",
     "tint": "#ff4444",
     "attributes": {
       "pickupable": true,

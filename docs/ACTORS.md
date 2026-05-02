@@ -19,13 +19,13 @@ See [ENTITIES.md](ENTITIES.md) for the base fields (`tint`, `zIndex`, `attribute
     "health": 30
   },
   "attributes": {
-    "solid": true,
-    "visible": true,
     "hostile": true,
     "sentient": true
   }
 }
 ```
+
+> **Defaults:** Actors are `solid`, `visible`, and `flammable` by default. They are **not** `hostile` or `sentient` by default. Only declare attributes that override these defaults.
 
 ## Visual Fields
 
@@ -63,15 +63,15 @@ When `facingEnabled` is `true`, the actor's sprites (base, top, side, and equipm
 
 | Attribute | Type | Description |
 |-----------|------|-------------|
-| `solid` | boolean | Blocks movement. Default `true` for actors. |
+| `solid` | boolean | Blocks movement. Default `true`. |
 | `visible` | boolean | Rendered on the map. Default `true`. |
+| `flammable` | boolean | Can be set on fire. Default `true`. |
+| `hostile` | boolean | AI will attack the player. Default `false`. |
+| `sentient` | boolean | Can have states (burning, poisoned, etc.) applied. Default `false`. |
 | `controlled` | boolean | This is the player character |
-| `hostile` | boolean | AI will attack the player |
-| `sentient` | boolean | Can have states (burning, poisoned, etc.) applied |
 | `sighted` | boolean | Uses vision range for AI line-of-sight checks |
 | `inventory` | number | Max items this actor can carry |
 | `remains` | string | Actor type spawned at this actor's position on death |
-| `flammable` | boolean | Can be set on fire via collision |
 | `mass_noun` | boolean | Suppress "the" article — use for clouds, water, etc. |
 | `proper_named` | boolean | Suppress "the" article — use for named characters |
 | `pack` | boolean | Spawn clustered together (within Manhattan distance 2) instead of scattered |
@@ -343,7 +343,7 @@ Personalities are defined in `data/personalities.json`. Each turn, the personali
 ## Actor Examples
 
 ```json
-// Basic enemy
+// Basic enemy — hostile and sentient override defaults; solid/visible/flammable are inherited
 "skeleton": {
   "name": "Skeleton",
   "tileIndexBase": "SKELETON_LEGS",
@@ -355,8 +355,6 @@ Personalities are defined in `data/personalities.json`. Each turn, the personali
   "death_sound": "ouch",
   "stats": { "health": 30 },
   "attributes": {
-    "solid": true,
-    "visible": true,
     "hostile": true,
     "sentient": true,
     "inventory": 1,
@@ -366,7 +364,7 @@ Personalities are defined in `data/personalities.json`. Each turn, the personali
   }
 }
 
-// Color-locked door
+// Color-locked door — flammable: false overrides the default
 "locked_door": {
   "name": "Door",
   "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
@@ -375,8 +373,7 @@ Personalities are defined in `data/personalities.json`. Each turn, the personali
   "tileIndexTop_open": "DOOR_OPEN_TOP",
   "random_color": true,
   "attributes": {
-    "solid": true,
-    "visible": true,
+    "flammable": false,
     "openable": true,
     "color_locked": true,
     "open": false,
@@ -384,7 +381,7 @@ Personalities are defined in `data/personalities.json`. Each turn, the personali
   }
 }
 
-// Fire (spreads and expires)
+// Fire — solid: false and flammable: false override defaults
 "fire": {
   "name": "Fire",
   "tileIndexBase": "BLANK",
@@ -398,13 +395,13 @@ Personalities are defined in `data/personalities.json`. Each turn, the personali
   "spread_chance": 0.3,
   "attributes": {
     "solid": false,
-    "visible": true,
+    "flammable": false,
     "light_source": true,
     "mass_noun": true
   }
 }
 
-// Gateway (hidden until win conditions met on last floor)
+// Gateway — overrides all three boolean defaults
 "gateway": {
   "name": "Gateway",
   "tileIndexBase": "FLOATING_LEGS_ON_WHITE_UPPER_GRADIENT",
@@ -422,7 +419,7 @@ Personalities are defined in `data/personalities.json`. Each turn, the personali
 "monkey": {
   "name": "Monkey",
   "tileIndexBase": "LEG",
-  "tileIndexTop": "BULLET",
+  "tileIndexTop": "ANIMAL_HEAD",
   "tileIndexSide": "BOX_BOTTOM_RIGHT",
   "sideOffset": { "dx": 1, "dy": 0 },
   "defaultFacing": "left",
@@ -432,8 +429,6 @@ Personalities are defined in `data/personalities.json`. Each turn, the personali
   "collision_effect": { "health": -3 },
   "stats": { "health": 12 },
   "attributes": {
-    "solid": true,
-    "visible": true,
     "hostile": true,
     "sighted": true,
     "sentient": true,
@@ -443,7 +438,7 @@ Personalities are defined in `data/personalities.json`. Each turn, the personali
   }
 }
 
-// Player character
+// Player character — controlled, not hostile (default)
 "player": {
   "name": "Player",
   "tileIndexBase": "LEGS",
@@ -465,8 +460,7 @@ Personalities are defined in `data/personalities.json`. Each turn, the personali
   },
   "attributes": {
     "controlled": true,
-    "solid": true,
-    "visible": true,
+    "sentient": true,
     "inventory": 5,
     "accuracy": 40,
     "strength": 10

@@ -4,8 +4,7 @@
     "tileIndexBase": "BULLET",
     "tint": "#00FF00",
     "attributes": {
-      "solid": false,
-      "visible": true
+      "solid": false
     }
   },
   "gol_coordinator": {

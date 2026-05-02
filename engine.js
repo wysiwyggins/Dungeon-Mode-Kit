@@ -2923,6 +2923,8 @@ class Actor extends Entity {
         // Default actor attributes
         this.setAttribute('solid', true);
         this.setAttribute('visible', true);
+        this.setAttribute('hostile', false);
+        this.setAttribute('sentient', false);
         
         // Apply data attributes
         if (data.attributes) {
