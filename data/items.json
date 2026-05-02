@@ -140,6 +140,7 @@
       "stackable": true,
       "flammable": false,
       "consumable": true,
+      "breakable": true,
       "break_sound": "glass",
       "use_verb": "Drink",
       "use_effect": { "health": 20, "apply_state": "confused" },
