@@ -50,6 +50,24 @@ class InterfaceManager {
         return this.engine.renderer?.uiContainer;
     }
 
+    getVisibleArea() {
+        const e = this.engine;
+        if (e.viewportEnabled) {
+            return {
+                width: e.viewportWidth,
+                height: e.viewportHeight,
+                originX: e.sectionOriginX,
+                originY: e.sectionOriginY
+            };
+        }
+        return {
+            width: e.mapManager?.width || 30,
+            height: e.mapManager?.height || 20,
+            originX: 0,
+            originY: 0
+        };
+    }
+
     get spriteLibrary() {
         return this.engine.spriteLibrary;
     }
@@ -530,10 +548,10 @@ class InterfaceManager {
      * @returns {PIXI.Container} The text box container
      */
     showTextBox(id, text, options = {}) {
-        const mapWidth = this.engine.mapManager?.width || 30;
+        const vis = this.getVisibleArea();
 
         const padding = options.padding ?? 1;
-        const maxContentWidth = (options.maxWidth ?? (mapWidth - 4)) - (padding * 2) - 2; // -2 for borders
+        const maxContentWidth = (options.maxWidth ?? (vis.width - 4)) - (padding * 2) - 2; // -2 for borders
         const textTint = options.textTint ?? this.defaultTextTint;
         const fillColor = options.fillColor ?? this.defaultFillColor;
         const borderTint = options.borderTint ?? this.defaultBorderTint;
@@ -573,9 +591,9 @@ class InterfaceManager {
             }
         }
 
-        // Center horizontally
-        const x = Math.floor((mapWidth - boxWidth) / 2);
-        const y = yPosition;
+        // Center horizontally within visible area
+        const x = vis.originX + Math.floor((vis.width - boxWidth) / 2);
+        const y = vis.originY + yPosition;
 
         // Create the box
         const boxContainer = this.createBox(id, x, y, boxWidth, boxHeight, {
@@ -884,13 +902,13 @@ class InterfaceManager {
         const boxHeight = contentHeight + (padding * 2) + 2;
 
         // Position box on opposite side from player to avoid covering them
-        const mapWidth = this.engine.mapManager?.width || 30;
+        const vis = this.getVisibleArea();
         const playerX = player.x || 0;
-        const mapMidpoint = mapWidth / 2;
+        const visMidpoint = vis.originX + vis.width / 2;
 
         // If player is on the right side, put box on left; otherwise put on right
-        const x = playerX >= mapMidpoint ? 1 : mapWidth - boxWidth - 1;
-        const y = 1;
+        const x = playerX >= visMidpoint ? vis.originX + 1 : vis.originX + vis.width - boxWidth - 1;
+        const y = vis.originY + 1;
 
         // Create the box
         const boxContainer = this.createBox(infoBoxId, x, y, boxWidth, boxHeight);
@@ -1066,7 +1084,7 @@ class InterfaceManager {
 
         // Position next to player info box
         const playerInfoBox = this.boxes.get('player_info');
-        const mapWidth = this.engine.mapManager?.width || 30;
+        const vis = this.getVisibleArea();
         let x;
 
         if (playerInfoBox && playerInfoBox._boxX !== undefined) {
@@ -1075,22 +1093,22 @@ class InterfaceManager {
             const playerInfoLeft = playerInfoBox._boxX;
 
             // Try to place on the opposite side from player info
-            if (playerInfoLeft > boxWidth) {
+            if (playerInfoLeft - vis.originX > boxWidth) {
                 // Place to the left of player info
                 x = playerInfoLeft - boxWidth;
-            } else if (playerInfoRight + boxWidth < mapWidth) {
+            } else if (playerInfoRight + boxWidth < vis.originX + vis.width) {
                 // Place to the right of player info
                 x = playerInfoRight;
             } else {
                 // Fallback: overlap slightly
-                x = Math.max(0, mapWidth - boxWidth - 1);
+                x = Math.max(vis.originX, vis.originX + vis.width - boxWidth - 1);
             }
         } else {
             // Fallback positioning
-            x = Math.floor((mapWidth - boxWidth) / 2);
+            x = vis.originX + Math.floor((vis.width - boxWidth) / 2);
         }
 
-        const y = 1;
+        const y = vis.originY + 1;
 
         // Create the box
         const boxContainer = this.createBox('item_action_menu', x, y, boxWidth, boxHeight);
@@ -1428,11 +1446,10 @@ class InterfaceManager {
         const boxWidth = contentWidth + (padding * 2) + 2;
         const boxHeight = contentHeight + (padding * 2) + 2;
 
-        // Center the dialog
-        const mapWidth = this.engine.mapManager?.width || 30;
-        const mapHeight = this.engine.mapManager?.height || 20;
-        const x = Math.floor((mapWidth - boxWidth) / 2);
-        const y = Math.floor((mapHeight - boxHeight) / 2);
+        // Center the dialog within visible area
+        const vis = this.getVisibleArea();
+        const x = vis.originX + Math.floor((vis.width - boxWidth) / 2);
+        const y = vis.originY + Math.floor((vis.height - boxHeight) / 2);
 
         // Create the box
         const fillColor = options.fillColor ?? this.defaultFillColor;
@@ -2626,9 +2643,9 @@ class InterfaceManager {
         const maxLineLength = Math.max(...lines.map(l => l.length), 14);
         const boxWidth = maxLineLength + padding * 2 + 2;
         const boxHeight = lines.length + padding * 2 + 2;
-        const mapWidth = this.engine.mapManager?.width || 30;
-        const x = Math.max(0, Math.floor((mapWidth - boxWidth) / 2));
-        const y = 1;
+        const vis = this.getVisibleArea();
+        const x = Math.max(vis.originX, vis.originX + Math.floor((vis.width - boxWidth) / 2));
+        const y = vis.originY + 1;
 
         const boxContainer = this.createBox('identify_picker', x, y, boxWidth, boxHeight);
         if (!boxContainer) return;
@@ -3110,11 +3127,10 @@ class InterfaceManager {
         const boxWidth = contentWidth + (padding * 2) + 2;
         const boxHeight = contentHeight + (padding * 2) + 2;
 
-        // Center the dialog
-        const mapWidth = this.engine.mapManager?.width || 30;
-        const mapHeight = this.engine.mapManager?.height || 20;
-        const x = Math.floor((mapWidth - boxWidth) / 2);
-        const y = Math.floor((mapHeight - boxHeight) / 2);
+        // Center the dialog within visible area
+        const vis = this.getVisibleArea();
+        const x = vis.originX + Math.floor((vis.width - boxWidth) / 2);
+        const y = vis.originY + Math.floor((vis.height - boxHeight) / 2);
 
         // Create the box
         const boxContainer = this.createBox(menuId, x, y, boxWidth, boxHeight);
@@ -3294,11 +3310,10 @@ class InterfaceManager {
         const boxWidth = contentWidth + (padding * 2) + 2;
         const boxHeight = contentHeight + (padding * 2) + 2;
 
-        // Center the dialog
-        const mapWidth = this.engine.mapManager?.width || 30;
-        const mapHeight = this.engine.mapManager?.height || 20;
-        const x = Math.floor((mapWidth - boxWidth) / 2);
-        const y = Math.floor((mapHeight - boxHeight) / 2);
+        // Center the dialog within visible area
+        const vis = this.getVisibleArea();
+        const x = vis.originX + Math.floor((vis.width - boxWidth) / 2);
+        const y = vis.originY + Math.floor((vis.height - boxHeight) / 2);
 
         // Create the box
         const boxContainer = this.createBox(menuId, x, y, boxWidth, boxHeight);
