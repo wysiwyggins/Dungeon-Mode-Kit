@@ -916,8 +916,8 @@
 
   "meat": {
     "name": "Meat",
-    "tileIndex": "BLACK_CLUB_SUITE",
-    "tint": "#8b4513",
+    "tileIndex": "MEAT",
+    "tint": "#FF4513",
     "attributes": {
       "pickupable": true,
       "visible": true,

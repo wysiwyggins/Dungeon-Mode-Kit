@@ -879,7 +879,7 @@
     "name": "Rat",
     "tileIndexBase": "WHITE_LEFTWARDS_HARPOON_BARB_UPWARDS",
     "tileIndexTop": "BLANK",
-    "tint": "#999999",
+    "tint": "#222233",
     "personality": "aggressive_melee",
     "collision_effect": { "health": -2 },
     "collision_sound": "hit",

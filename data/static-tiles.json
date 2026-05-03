@@ -271,7 +271,8 @@
         "WHITE_LEFTWARDS_HARPOON_BARB_UPWARDS": [2,11],
         "REPTILE_HEAD": [3,11],
         "COFFER": [4,11],
-        "EVIL_EYE": [5,11]
+        "EVIL_EYE": [5,11],
+        "MEAT": [6,11]
 
     }
 }
