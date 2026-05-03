@@ -1476,6 +1476,7 @@ class DungeonEngine {
             win_conditions: floorOverride.win_conditions ?? config.win_conditions ?? [],
             random_actors: floorOverride.random_actors ?? config.random_actors ?? {},
             random_items: floorOverride.random_items ?? config.random_items ?? {},
+            traps: floorOverride.traps ?? config.traps ?? null,
             map_generator: floorOverride.map_generator ?? config.map_generator,
             mechanics: { ...(config.mechanics || {}), ...(floorOverride.mechanics || {}) },
         };
@@ -6798,7 +6799,43 @@ class EntityManager {
         };
 
         this.spawnRandomActors(getAvailableTiles, floorConfig);
+        this.spawnRandomTraps(getAvailableTiles, floorConfig);
         this.spawnRandomItems(getAvailableTiles, floorConfig);
+    }
+
+    spawnRandomTraps(getAvailableTiles, floorConfig) {
+        const trapsConfig = floorConfig?.traps;
+        if (!trapsConfig) return;
+
+        const prototype = this.engine.currentPrototype;
+        const trapTypes = Object.entries(prototype.actors)
+            .filter(([, data]) => data.attributes?.trap)
+            .map(([type]) => type);
+
+        if (trapTypes.length === 0) {
+            console.warn('traps: No actor types with trap attribute found');
+            return;
+        }
+
+        const min = trapsConfig.min ?? 1;
+        const max = trapsConfig.max ?? min;
+        const count = min + Math.floor(ROT.RNG.getUniform() * (max - min + 1));
+
+        for (let i = 0; i < count; i++) {
+            const availableTiles = getAvailableTiles();
+            if (availableTiles.length === 0) {
+                console.warn('traps: No tiles available');
+                break;
+            }
+
+            const trapType = trapTypes[Math.floor(ROT.RNG.getUniform() * trapTypes.length)];
+            const trapData = prototype.getActorData(trapType);
+            const tile = availableTiles[Math.floor(ROT.RNG.getUniform() * availableTiles.length)];
+
+            const actor = new Actor(tile.x, tile.y, trapType, trapData, this.engine);
+            this.addEntity(actor);
+            console.log(`traps: Spawned "${trapType}" at (${tile.x}, ${tile.y}) (${i + 1}/${count})`);
+        }
     }
 
     /**

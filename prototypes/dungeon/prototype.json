@@ -50,12 +50,12 @@
         "type": "digger",
         "options": { "map_width": 80, "map_height": 80, "roomWidth": [5, 12], "roomHeight": [4, 10], "corridorLength": [3, 8], "dugPercentage": 0.35 }
       },
+      "traps": { "min": 0, "max": 1 },
       "random_actors": {
         "rat": { "chance": 100, "min": 3, "max": 5 },
         "bat": { "chance": 80, "min": 1, "max": 2 },
         "goblin": { "chance": 100, "min": 1, "max": 3 },
-        "jackal": { "chance": 50, "min": 3, "max": 5 },
-        "poison_gas_trap": { "chance": 50, "min": 1, "max": 1 }
+        "jackal": { "chance": 50, "min": 3, "max": 5 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -68,12 +68,12 @@
         "type": "digger",
         "options": { "map_width": 80, "map_height": 80, "roomWidth": [5, 12], "roomHeight": [4, 10], "corridorLength": [3, 8], "dugPercentage": 0.35 }
       },
+      "traps": { "min": 1, "max": 2 },
       "random_actors": {
         "skeleton": { "chance": 100, "min": 2, "max": 4 },
         "goblin": { "chance": 60, "min": 0, "max": 3 },
         "bat": { "chance": 80, "min": 1, "max": 2 },
-        "jackal": { "chance": 50, "min": 3, "max": 5 },
-        "poison_gas_trap": { "chance": 50, "min": 1, "max": 2 }
+        "jackal": { "chance": 50, "min": 3, "max": 5 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -86,13 +86,12 @@
         "type": "digger",
         "options": { "map_width": 80, "map_height": 80, "roomWidth": [5, 12], "roomHeight": [4, 10], "corridorLength": [3, 8], "dugPercentage": 0.35, "sewage_chance": 8 }
       },
+      "traps": { "min": 1, "max": 2 },
       "random_actors": {
         "skeleton": { "chance": 100, "min": 3, "max": 5 },
         "goblin": { "chance": 60, "min": 0, "max": 3 },
         "spider": { "chance": 80, "min": 1, "max": 2 },
-        "jackal": { "chance": 40, "min": 3, "max": 4 },
-        "poison_gas_trap": { "chance": 50, "min": 1, "max": 1 },
-        "fire_trap": { "chance": 30, "min": 1, "max": 1 }
+        "jackal": { "chance": 40, "min": 3, "max": 4 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -106,12 +105,11 @@
         "type": "digger",
         "options": { "map_width": 80, "map_height": 80, "roomWidth": [5, 12], "roomHeight": [4, 10], "corridorLength": [3, 8], "dugPercentage": 0.35, "sewage_chance": 10 }
       },
+      "traps": { "min": 1, "max": 3 },
       "random_actors": {
         "skeleton": { "chance": 100, "min": 4, "max": 6 },
         "goblin": { "chance": 60, "min": 0, "max": 6 },
-        "kobold": { "chance": 80, "min": 1, "max": 1 },
-        "poison_gas_trap": { "chance": 60, "min": 1, "max": 2 },
-        "fire_trap": { "chance": 30, "min": 1, "max": 1 }
+        "kobold": { "chance": 80, "min": 1, "max": 1 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -124,13 +122,12 @@
         "type": "digger",
         "options": { "map_width": 80, "map_height": 80, "roomWidth": [5, 12], "roomHeight": [4, 10], "corridorLength": [3, 8], "dugPercentage": 0.35, "sewage_chance": 12 }
       },
+      "traps": { "min": 2, "max": 3 },
       "random_actors": {
         "ghast": { "chance": 100, "min": 1, "max": 1 },
         "skeleton": { "chance": 100, "min": 3, "max": 5 },
         "goblin": { "chance": 60, "min": 3, "max": 10 },
-        "spider": { "chance": 80, "min": 1, "max": 2 },
-        "poison_gas_trap": { "chance": 60, "min": 1, "max": 2 },
-        "confusion_gas_trap": { "chance": 30, "min": 1, "max": 1 }
+        "spider": { "chance": 80, "min": 1, "max": 2 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -144,12 +141,11 @@
         "type": "cellular",
         "options": { "map_width": 80, "map_height": 80, "lake_chance": 10 }
       },
+      "traps": { "min": 2, "max": 3 },
       "random_actors": {
         "spider": { "chance": 100, "min": 2, "max": 3 },
         "skeleton": { "chance": 100, "min": 2, "max": 4 },
-        "goblin": { "chance": 60, "min": 3, "max": 10 },
-        "poison_gas_trap": { "chance": 60, "min": 1, "max": 2 },
-        "confusion_gas_trap": { "chance": 30, "min": 1, "max": 1 }
+        "goblin": { "chance": 60, "min": 3, "max": 10 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -162,12 +158,11 @@
         "type": "cellular",
         "options": { "map_width": 80, "map_height": 80, "lake_chance": 12, "sewage_chance": 8 }
       },
+      "traps": { "min": 2, "max": 4 },
       "random_actors": {
         "spider": { "chance": 100, "min": 3, "max": 5 },
         "ghast": { "chance": 80, "min": 1, "max": 2 },
-        "toad": { "chance": 60, "min": 1, "max": 1 },
-        "poison_gas_trap": { "chance": 60, "min": 2, "max": 2 },
-        "confusion_gas_trap": { "chance": 40, "min": 1, "max": 2 }
+        "toad": { "chance": 60, "min": 1, "max": 1 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -182,11 +177,10 @@
         "type": "cellular",
         "options": { "map_width": 80, "map_height": 80, "lake_chance": 8 }
       },
+      "traps": { "min": 2, "max": 4 },
       "random_actors": {
         "scutigera_head": { "chance": 100, "min": 1, "max": 1 },
-        "spider": { "chance": 100, "min": 3, "max": 4 },
-        "poison_gas_trap": { "chance": 60, "min": 2, "max": 2 },
-        "paralysis_gas_trap": { "chance": 40, "min": 1, "max": 2 }
+        "spider": { "chance": 100, "min": 3, "max": 4 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -200,11 +194,10 @@
         "type": "cellular",
         "options": { "map_width": 80, "map_height": 80 }
       },
+      "traps": { "min": 2, "max": 4 },
       "random_actors": {
         "ghast": { "chance": 100, "min": 2, "max": 3 },
-        "wraith": { "chance": 80, "min": 1, "max": 2 },
-        "poison_gas_trap": { "chance": 60, "min": 2, "max": 2 },
-        "paralysis_gas_trap": { "chance": 40, "min": 1, "max": 2 }
+        "wraith": { "chance": 80, "min": 1, "max": 2 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -218,11 +211,10 @@
         "type": "cellular",
         "options": { "map_width": 80, "map_height": 80, "lake_chance": 10 }
       },
+      "traps": { "min": 2, "max": 5 },
       "random_actors": {
         "wraith": { "chance": 100, "min": 2, "max": 3 },
-        "skeleton": { "chance": 100, "min": 2, "max": 4 },
-        "poison_gas_trap": { "chance": 60, "min": 2, "max": 3 },
-        "confusion_gas_trap": { "chance": 40, "min": 1, "max": 2 }
+        "skeleton": { "chance": 100, "min": 2, "max": 4 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -236,12 +228,11 @@
         "type": "cellular",
         "options": { "map_width": 80, "map_height": 80 }
       },
+      "traps": { "min": 2, "max": 5 },
       "random_actors": {
         "scutigera_head": { "chance": 100, "min": 1, "max": 1 },
         "wraith": { "chance": 100, "min": 2, "max": 3 },
-        "ghast": { "chance": 80, "min": 1, "max": 2 },
-        "poison_gas_trap": { "chance": 60, "min": 2, "max": 3 },
-        "paralysis_gas_trap": { "chance": 40, "min": 1, "max": 2 }
+        "ghast": { "chance": 80, "min": 1, "max": 2 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -256,11 +247,10 @@
         "type": "uniform",
         "options": { "map_width": 80, "map_height": 80 }
       },
+      "traps": { "min": 2, "max": 5 },
       "random_actors": {
         "ogre": { "chance": 100, "min": 2, "max": 3 },
-        "ghast": { "chance": 100, "min": 2, "max": 3 },
-        "poison_gas_trap": { "chance": 60, "min": 2, "max": 3 },
-        "fire_trap": { "chance": 40, "min": 1, "max": 2 }
+        "ghast": { "chance": 100, "min": 2, "max": 3 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -274,12 +264,10 @@
         "type": "rogue",
         "options": { "map_width": 80, "map_height": 80 }
       },
+      "traps": { "min": 3, "max": 5 },
       "random_actors": {
         "basilisk": { "chance": 100, "min": 1, "max": 2 },
-        "ogre": { "chance": 100, "min": 2, "max": 3 },
-        "poison_gas_trap": { "chance": 60, "min": 2, "max": 3 },
-        "fire_trap": { "chance": 40, "min": 1, "max": 2 },
-        "paralysis_gas_trap": { "chance": 30, "min": 1, "max": 1 }
+        "ogre": { "chance": 100, "min": 2, "max": 3 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -293,12 +281,11 @@
         "type": "uniform",
         "options": { "map_width": 80, "map_height": 80 }
       },
+      "traps": { "min": 3, "max": 6 },
       "random_actors": {
         "turret": { "chance": 100, "min": 1, "max": 2 },
         "ogre": { "chance": 100, "min": 2, "max": 3 },
-        "wraith": { "chance": 80, "min": 1, "max": 1 },
-        "fire_trap": { "chance": 50, "min": 2, "max": 3 },
-        "poison_gas_trap": { "chance": 50, "min": 2, "max": 3 }
+        "wraith": { "chance": 80, "min": 1, "max": 1 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -312,12 +299,10 @@
         "type": "rogue",
         "options": { "map_width": 80, "map_height": 80 }
       },
+      "traps": { "min": 3, "max": 6 },
       "random_actors": {
         "basilisk": { "chance": 100, "min": 2, "max": 3 },
-        "ogre": { "chance": 80, "min": 1, "max": 2 },
-        "fire_trap": { "chance": 50, "min": 2, "max": 3 },
-        "paralysis_gas_trap": { "chance": 40, "min": 1, "max": 2 },
-        "poison_gas_trap": { "chance": 40, "min": 1, "max": 2 }
+        "ogre": { "chance": 80, "min": 1, "max": 2 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -331,12 +316,10 @@
         "type": "uniform",
         "options": { "map_width": 80, "map_height": 80 }
       },
+      "traps": { "min": 3, "max": 6 },
       "random_actors": {
         "turret": { "chance": 100, "min": 1, "max": 2 },
-        "wraith": { "chance": 100, "min": 2, "max": 4 },
-        "fire_trap": { "chance": 50, "min": 2, "max": 3 },
-        "paralysis_gas_trap": { "chance": 40, "min": 1, "max": 2 },
-        "confusion_gas_trap": { "chance": 40, "min": 1, "max": 2 }
+        "wraith": { "chance": 100, "min": 2, "max": 4 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -350,13 +333,11 @@
         "type": "rogue",
         "options": { "map_width": 70, "map_height": 60 }
       },
+      "traps": { "min": 4, "max": 7 },
       "random_actors": {
         "basilisk": { "chance": 100, "min": 2, "max": 2 },
         "ogre": { "chance": 100, "min": 2, "max": 3 },
-        "wraith": { "chance": 100, "min": 2, "max": 3 },
-        "fire_trap": { "chance": 60, "min": 3, "max": 4 },
-        "paralysis_gas_trap": { "chance": 40, "min": 1, "max": 2 },
-        "poison_gas_trap": { "chance": 40, "min": 1, "max": 2 }
+        "wraith": { "chance": 100, "min": 2, "max": 3 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -371,13 +352,11 @@
         "type": "cellular",
         "options": { "map_width": 65, "map_height": 55, "lake_chance": 10 }
       },
+      "traps": { "min": 3, "max": 6 },
       "random_actors": {
         "wraith": { "chance": 100, "min": 2, "max": 3 },
         "ogre": { "chance": 100, "min": 2, "max": 3 },
-        "fire_elemental": { "chance": 80, "min": 1, "max": 1 },
-        "fire_trap": { "chance": 60, "min": 2, "max": 3 },
-        "paralysis_gas_trap": { "chance": 40, "min": 1, "max": 2 },
-        "poison_gas_trap": { "chance": 40, "min": 1, "max": 2 }
+        "fire_elemental": { "chance": 80, "min": 1, "max": 1 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -391,12 +370,10 @@
         "type": "infernal",
         "options": { "map_width": 65, "map_height": 55 }
       },
+      "traps": { "min": 3, "max": 6 },
       "random_actors": {
         "fire_elemental": { "chance": 100, "min": 2, "max": 3 },
-        "basilisk": { "chance": 80, "min": 1, "max": 2 },
-        "fire_trap": { "chance": 60, "min": 3, "max": 4 },
-        "poison_gas_trap": { "chance": 40, "min": 2, "max": 3 },
-        "paralysis_gas_trap": { "chance": 30, "min": 1, "max": 1 }
+        "basilisk": { "chance": 80, "min": 1, "max": 2 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -410,12 +387,10 @@
         "type": "infernal",
         "options": { "map_width": 70, "map_height": 60 }
       },
+      "traps": { "min": 3, "max": 6 },
       "random_actors": {
         "fire_elemental": { "chance": 100, "min": 3, "max": 4 },
-        "demon": { "chance": 80, "min": 1, "max": 2 },
-        "fire_trap": { "chance": 60, "min": 3, "max": 4 },
-        "poison_gas_trap": { "chance": 40, "min": 2, "max": 3 },
-        "paralysis_gas_trap": { "chance": 30, "min": 1, "max": 1 }
+        "demon": { "chance": 80, "min": 1, "max": 2 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -429,12 +404,10 @@
         "type": "infernal",
         "options": { "map_width": 70, "map_height": 60 }
       },
+      "traps": { "min": 4, "max": 7 },
       "random_actors": {
         "demon": { "chance": 100, "min": 2, "max": 3 },
-        "fire_elemental": { "chance": 80, "min": 1, "max": 2 },
-        "fire_trap": { "chance": 60, "min": 3, "max": 5 },
-        "confusion_gas_trap": { "chance": 40, "min": 2, "max": 2 },
-        "paralysis_gas_trap": { "chance": 40, "min": 1, "max": 2 }
+        "fire_elemental": { "chance": 80, "min": 1, "max": 2 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -448,12 +421,10 @@
         "type": "infernal",
         "options": { "map_width": 75, "map_height": 60 }
       },
+      "traps": { "min": 4, "max": 7 },
       "random_actors": {
         "demon": { "chance": 100, "min": 3, "max": 4 },
-        "basilisk": { "chance": 80, "min": 1, "max": 1 },
-        "fire_trap": { "chance": 60, "min": 3, "max": 5 },
-        "paralysis_gas_trap": { "chance": 40, "min": 2, "max": 2 },
-        "confusion_gas_trap": { "chance": 40, "min": 1, "max": 2 }
+        "basilisk": { "chance": 80, "min": 1, "max": 1 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -467,12 +438,10 @@
         "type": "infernal",
         "options": { "map_width": 75, "map_height": 60 }
       },
+      "traps": { "min": 4, "max": 8 },
       "random_actors": {
         "demon": { "chance": 100, "min": 3, "max": 4 },
-        "fire_elemental": { "chance": 100, "min": 2, "max": 3 },
-        "fire_trap": { "chance": 60, "min": 4, "max": 5 },
-        "paralysis_gas_trap": { "chance": 40, "min": 2, "max": 3 },
-        "confusion_gas_trap": { "chance": 40, "min": 1, "max": 2 }
+        "fire_elemental": { "chance": 100, "min": 2, "max": 3 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -486,12 +455,10 @@
         "type": "infernal",
         "options": { "map_width": 80, "map_height": 65 }
       },
+      "traps": { "min": 5, "max": 8 },
       "random_actors": {
         "demon": { "chance": 100, "min": 4, "max": 5 },
-        "fire_elemental": { "chance": 100, "min": 2, "max": 3 },
-        "fire_trap": { "chance": 60, "min": 4, "max": 5 },
-        "paralysis_gas_trap": { "chance": 40, "min": 2, "max": 3 },
-        "confusion_gas_trap": { "chance": 40, "min": 2, "max": 3 }
+        "fire_elemental": { "chance": 100, "min": 2, "max": 3 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -505,13 +472,11 @@
         "type": "infernal",
         "options": { "map_width": 80, "map_height": 65 }
       },
+      "traps": { "min": 5, "max": 9 },
       "random_actors": {
         "azhdaya_head": { "chance": 100, "min": 1, "max": 1 },
         "demon": { "chance": 100, "min": 3, "max": 4 },
-        "fire_elemental": { "chance": 100, "min": 2, "max": 2 },
-        "fire_trap": { "chance": 60, "min": 5, "max": 6 },
-        "paralysis_gas_trap": { "chance": 40, "min": 2, "max": 3 },
-        "confusion_gas_trap": { "chance": 40, "min": 2, "max": 3 }
+        "fire_elemental": { "chance": 100, "min": 2, "max": 2 }
       },
       "random_items": {
         "key": { "chance": 100 },

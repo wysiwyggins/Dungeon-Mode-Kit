@@ -9,11 +9,8 @@
     "fog_of_war": false,
     "darkness": false
   },
+  "traps": { "min": 2, "max": 5 },
   "random_actors": {
-    "poison_gas_trap": { "chance": 60, "min": 1, "max": 2 },
-    "fire_trap": { "chance": 40, "min": 1, "max": 2 },
-    "paralysis_gas_trap": { "chance": 50, "min": 1, "max": 2 },
-    "confusion_gas_trap": { "chance": 50, "min": 1, "max": 2 },
     "skeleton": { "chance": 100, "min": 1, "max": 3 },
     "monkey": { "chance": 100, "min": 1, "max": 2 }
   },
