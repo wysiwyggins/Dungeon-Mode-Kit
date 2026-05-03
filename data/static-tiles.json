@@ -267,8 +267,11 @@
         "MIDDLE_DOT": [21,10],
         "BALL_OF_THREAD": [22,10],
         "ANIMAL_HEAD": [0,11],
-        "WHITE_AND_BLACK_CHECKERBOARD": [1,11],
-        "WHITE_LEFTWARDS_HARPOON_BARB_UPWARDS": [2,11]
+        "BRICK_WALL": [1,11],
+        "WHITE_LEFTWARDS_HARPOON_BARB_UPWARDS": [2,11],
+        "REPTILE_HEAD": [3,11],
+        "COFFER": [4,11],
+        "EVIL_EYE": [5,11]
 
     }
 }

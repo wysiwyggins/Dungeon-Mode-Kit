@@ -56,5 +56,13 @@
       "visible": true,
       "ignore_darkness": true
     }
+  },
+  "magic_sigil":  {
+    "name": "Sigil",
+    "tileIndex": "EVIL_EYE",
+    "attributes": {
+      "visible": true,
+      "ignore_darkness": true
+    }
   }
 }

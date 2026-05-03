@@ -5622,6 +5622,22 @@ class Actor extends Entity {
                         }
                     }
 
+                    // Crush breakable items under the pushed actor
+                    const crushedItem = this.engine.entityManager.getItemAt(pushX, pushY);
+                    if (crushedItem && crushedItem.hasAttribute('breakable')) {
+                        const breakSound = crushedItem.getAttribute('break_sound');
+                        if (breakSound) this.engine.playSound(breakSound);
+                        if (crushedItem.hasAttribute('explosive')) {
+                            this.engine.interfaceManager?.createExplosiveCloud(crushedItem, pushX, pushY);
+                            const displayName = crushedItem.getDisplayName ? crushedItem.getDisplayName() : crushedItem.name;
+                            this.engine.inputManager?.showMessage(`The ${displayName} shatters!`);
+                        } else {
+                            const displayName = crushedItem.getDisplayName ? crushedItem.getDisplayName() : crushedItem.name;
+                            this.engine.inputManager?.showMessage(`The ${displayName} is crushed!`);
+                        }
+                        crushedItem.die();
+                    }
+
                     // Now move into the vacated space
                     const pushDx = newX - this.x;
                     if (pushDx > 0) this.setFacing('right');
