@@ -8,6 +8,29 @@ const TILED_FLIP_H = 0x80000000;    // Bit 31: horizontal flip
 const TILED_FLIP_V = 0x40000000;    // Bit 30: vertical flip
 const TILED_FLIP_D = 0x20000000;    // Bit 29: diagonal flip
 
+class ShapedRoom {
+    constructor(floorTiles, doorPositions = []) {
+        this._doors = doorPositions;
+        this._left = Infinity;
+        this._right = -Infinity;
+        this._top = Infinity;
+        this._bottom = -Infinity;
+        for (const t of floorTiles) {
+            if (t.x < this._left) this._left = t.x;
+            if (t.x > this._right) this._right = t.x;
+            if (t.y < this._top) this._top = t.y;
+            if (t.y > this._bottom) this._bottom = t.y;
+        }
+    }
+    getLeft() { return this._left; }
+    getRight() { return this._right; }
+    getTop() { return this._top; }
+    getBottom() { return this._bottom; }
+    getDoors(cb) {
+        for (const d of this._doors) cb(d.x, d.y);
+    }
+}
+
 class Architect {
     constructor(options = {}) {
         // Default dimensions (will be updated when map loads)
@@ -32,6 +55,8 @@ class Architect {
         this.pendingLakeSpawns = [];
         this.pendingSewageSpawns = [];
         this.pendingPushableWallSpawns = [];
+        this.pendingFungusSpawns = [];
+        this.pendingBridgeSpawns = [];
         this.diggerRooms = null;
 
         // Tiled map metadata
@@ -61,44 +86,49 @@ class Architect {
      * Register default room types including Brogue-inspired variants
      */
     registerDefaultRoomTypes() {
-        // Rectangular room (existing default)
         this.registerRoomType('rectangular', {
             generator: (x, y, w, h, opts) => this.generateRectangularRoom(x, y, w, h, opts),
             minDepth: 1,
             maxDepth: Infinity,
             weight: 100,
             minSize: { w: 3, h: 3 },
-            wildcardTileId: null  // Uses standard room wildcards (143, 144)
+            depthScale: { start: 1.5, end: 0.5 }
         });
 
-        // Cross room - two overlapping rectangles (Brogue-inspired)
         this.registerRoomType('cross', {
             generator: (x, y, w, h, opts) => this.generateCrossRoom(x, y, w, h, opts),
             minDepth: 2,
             maxDepth: Infinity,
             weight: 30,
             minSize: { w: 7, h: 7 },
-            wildcardTileId: null  // TODO: assign tile ID when added to tileset
+            depthScale: { start: 1.3, end: 0.7 }
         });
 
-        // Circular room - ellipse fitted to region (Brogue-inspired)
         this.registerRoomType('circular', {
             generator: (x, y, w, h, opts) => this.generateCircularRoom(x, y, w, h, opts),
             minDepth: 3,
             maxDepth: Infinity,
             weight: 20,
             minSize: { w: 5, h: 5 },
-            wildcardTileId: null  // TODO: assign tile ID when added to tileset
+            depthScale: { start: 1.0, end: 1.0 }
         });
 
-        // Chunky room - organic blob using overlapping circles (Brogue-inspired)
         this.registerRoomType('chunky', {
             generator: (x, y, w, h, opts) => this.generateChunkyRoom(x, y, w, h, opts),
             minDepth: 4,
             maxDepth: Infinity,
             weight: 15,
             minSize: { w: 7, h: 7 },
-            wildcardTileId: null  // TODO: assign tile ID when added to tileset
+            depthScale: { start: 0.3, end: 2.0 }
+        });
+
+        this.registerRoomType('donut', {
+            generator: (x, y, w, h, opts) => this.generateDonutRoom(x, y, w, h, opts),
+            minDepth: 3,
+            maxDepth: Infinity,
+            weight: 8,
+            minSize: { w: 11, h: 11 },
+            depthScale: { start: 0.5, end: 1.5 }
         });
     }
 
@@ -115,7 +145,8 @@ class Architect {
             maxDepth: config.maxDepth || Infinity,
             weight: config.weight || 50,
             minSize: config.minSize || { w: 3, h: 3 },
-            wildcardTileId: config.wildcardTileId || null
+            wildcardTileId: config.wildcardTileId || null,
+            depthScale: config.depthScale || null
         });
     }
 
@@ -138,27 +169,31 @@ class Architect {
     selectRoomTypeForDepth(depth, region = {}) {
         const available = [];
         let totalWeight = 0;
+        const maxScaleDepth = 25;
+        const t = Math.min(1, (depth - 1) / maxScaleDepth);
 
         for (const [name, config] of this.roomTypes) {
-            // Check depth range
             if (depth < config.minDepth || depth > config.maxDepth) continue;
-
-            // Check minimum size requirements
             if (region.width && region.width < config.minSize.w) continue;
             if (region.height && region.height < config.minSize.h) continue;
 
-            available.push({ name, config });
-            totalWeight += config.weight;
+            let effectiveWeight = config.weight;
+            if (config.depthScale) {
+                const scale = config.depthScale.start + (config.depthScale.end - config.depthScale.start) * t;
+                effectiveWeight = config.weight * scale;
+            }
+
+            available.push({ name, weight: effectiveWeight });
+            totalWeight += effectiveWeight;
         }
 
         if (available.length === 0) {
-            return 'rectangular';  // Fallback
+            return 'rectangular';
         }
 
-        // Weighted random selection
         let roll = ROT.RNG.getUniform() * totalWeight;
-        for (const { name, config } of available) {
-            roll -= config.weight;
+        for (const { name, weight } of available) {
+            roll -= weight;
             if (roll <= 0) {
                 return name;
             }
@@ -299,6 +334,210 @@ class Architect {
         }
 
         return { floorTiles, wallTiles: [] };
+    }
+
+    generateDonutRoom(startX, startY, width, height, options = {}) {
+        const floorTiles = [];
+        const wallTiles = [];
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const outerRX = (width / 2) - 1;
+        const outerRY = (height / 2) - 1;
+        const ringWidth = 3;
+        const innerRX = Math.max(1, outerRX - ringWidth);
+        const innerRY = Math.max(1, outerRY - ringWidth);
+
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const nx = (x - centerX) / outerRX;
+                const ny = (y - centerY) / outerRY;
+                if (nx * nx + ny * ny > 1) continue;
+
+                const inx = (x - centerX) / innerRX;
+                const iny = (y - centerY) / innerRY;
+                if (inx * inx + iny * iny <= 1) {
+                    wallTiles.push({ x: startX + x, y: startY + y });
+                } else {
+                    floorTiles.push({ x: startX + x, y: startY + y });
+                }
+            }
+        }
+
+        return { floorTiles, wallTiles };
+    }
+
+    // ========================================================================
+    // GENERATION UTILITIES
+    // ========================================================================
+
+    createBlob(minWidth, maxWidth, minHeight, maxHeight, percentSeeded = 55, iterations = 5) {
+        const maxRetries = 20;
+
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            const grid = Array.from({ length: maxHeight }, () =>
+                Array.from({ length: maxWidth }, () => false)
+            );
+
+            for (let y = 0; y < maxHeight; y++) {
+                for (let x = 0; x < maxWidth; x++) {
+                    grid[y][x] = ROT.RNG.getPercentage() <= percentSeeded;
+                }
+            }
+
+            // born: [5,6,7,8], survive: [4,5,6,7,8]
+            for (let i = 0; i < iterations; i++) {
+                const next = Array.from({ length: maxHeight }, () =>
+                    Array.from({ length: maxWidth }, () => false)
+                );
+                for (let y = 0; y < maxHeight; y++) {
+                    for (let x = 0; x < maxWidth; x++) {
+                        let neighbors = 0;
+                        for (let dy = -1; dy <= 1; dy++) {
+                            for (let dx = -1; dx <= 1; dx++) {
+                                if (dx === 0 && dy === 0) continue;
+                                const nx = x + dx, ny = y + dy;
+                                if (nx >= 0 && nx < maxWidth && ny >= 0 && ny < maxHeight && grid[ny][nx]) {
+                                    neighbors++;
+                                }
+                            }
+                        }
+                        if (grid[y][x]) {
+                            next[y][x] = neighbors >= 4;
+                        } else {
+                            next[y][x] = neighbors >= 5;
+                        }
+                    }
+                }
+                for (let y = 0; y < maxHeight; y++) {
+                    for (let x = 0; x < maxWidth; x++) {
+                        grid[y][x] = next[y][x];
+                    }
+                }
+            }
+
+            // Find the largest connected region via flood fill
+            const labels = Array.from({ length: maxHeight }, () =>
+                Array.from({ length: maxWidth }, () => 0)
+            );
+            let labelId = 0;
+            let bestLabel = 0;
+            let bestSize = 0;
+
+            for (let y = 0; y < maxHeight; y++) {
+                for (let x = 0; x < maxWidth; x++) {
+                    if (grid[y][x] && labels[y][x] === 0) {
+                        labelId++;
+                        let size = 0;
+                        const queue = [{ x, y }];
+                        labels[y][x] = labelId;
+                        while (queue.length > 0) {
+                            const pos = queue.shift();
+                            size++;
+                            const dirs = [[0,-1],[0,1],[-1,0],[1,0]];
+                            for (const [dx, dy] of dirs) {
+                                const nx = pos.x + dx, ny = pos.y + dy;
+                                if (nx >= 0 && nx < maxWidth && ny >= 0 && ny < maxHeight &&
+                                    grid[ny][nx] && labels[ny][nx] === 0) {
+                                    labels[ny][nx] = labelId;
+                                    queue.push({ x: nx, y: ny });
+                                }
+                            }
+                        }
+                        if (size > bestSize) {
+                            bestSize = size;
+                            bestLabel = labelId;
+                        }
+                    }
+                }
+            }
+
+            // Extract largest blob and compute bounding box
+            let blobMinX = maxWidth, blobMaxX = 0, blobMinY = maxHeight, blobMaxY = 0;
+            const blobGrid = Array.from({ length: maxHeight }, () =>
+                Array.from({ length: maxWidth }, () => false)
+            );
+
+            for (let y = 0; y < maxHeight; y++) {
+                for (let x = 0; x < maxWidth; x++) {
+                    if (labels[y][x] === bestLabel) {
+                        blobGrid[y][x] = true;
+                        if (x < blobMinX) blobMinX = x;
+                        if (x > blobMaxX) blobMaxX = x;
+                        if (y < blobMinY) blobMinY = y;
+                        if (y > blobMaxY) blobMaxY = y;
+                    }
+                }
+            }
+
+            const blobWidth = blobMaxX - blobMinX + 1;
+            const blobHeight = blobMaxY - blobMinY + 1;
+
+            if (blobWidth >= minWidth && blobHeight >= minHeight) {
+                return {
+                    grid: blobGrid,
+                    width: blobWidth,
+                    height: blobHeight,
+                    offsetX: blobMinX,
+                    offsetY: blobMinY,
+                    size: bestSize
+                };
+            }
+        }
+
+        return null;
+    }
+
+    floodFill(startX, startY, isPassable, width, height) {
+        const visited = new Set();
+        const key = `${startX},${startY}`;
+        if (!isPassable(startX, startY)) return visited;
+
+        const queue = [{ x: startX, y: startY }];
+        visited.add(key);
+
+        while (queue.length > 0) {
+            const pos = queue.shift();
+            const dirs = [[0,-1],[0,1],[-1,0],[1,0]];
+            for (const [dx, dy] of dirs) {
+                const nx = pos.x + dx, ny = pos.y + dy;
+                const nk = `${nx},${ny}`;
+                if (nx >= 0 && nx < width && ny >= 0 && ny < height &&
+                    !visited.has(nk) && isPassable(nx, ny)) {
+                    visited.add(nk);
+                    queue.push({ x: nx, y: ny });
+                }
+            }
+        }
+
+        return visited;
+    }
+
+    checkConnectivity(walkableSet, excludeSet) {
+        let startKey = null;
+        for (const key of walkableSet) {
+            if (!excludeSet.has(key)) {
+                startKey = key;
+                break;
+            }
+        }
+        if (!startKey) return true;
+
+        const [sx, sy] = startKey.split(',').map(Number);
+        const reachable = this.floodFill(
+            sx, sy,
+            (x, y) => {
+                const k = `${x},${y}`;
+                return walkableSet.has(k) && !excludeSet.has(k);
+            },
+            this.width, this.height
+        );
+
+        let expectedCount = 0;
+        for (const key of walkableSet) {
+            if (!excludeSet.has(key)) expectedCount++;
+        }
+
+        return reachable.size === expectedCount;
     }
 
     // ========================================================================
@@ -652,9 +891,10 @@ class Architect {
     // PROCEDURAL MAP GENERATION
     // ========================================================================
 
-    generateProceduralMap(generatorConfig = {}) {
+    generateProceduralMap(generatorConfig = {}, depth = 1) {
         const generatorType = generatorConfig.type || 'digger';
         const options = generatorConfig.options || {};
+        options.depth = depth;
 
         // Allow map dimensions from config
         if (options.map_width) this.width = options.map_width;
@@ -878,6 +1118,11 @@ class Architect {
                 break;
             }
 
+            case 'shaped': {
+                this.generateShapedMap(options);
+                break;
+            }
+
             case 'digger':
             default: {
                 const diggerFloorTiles = new Set();
@@ -1007,31 +1252,8 @@ class Architect {
             }
         }
 
-        // Generate random lakes (water patches on floor tiles)
-        const lakeChance = options.lake_chance || 0;
-        if (lakeChance > 0) {
-            const lakeCave = new ROT.Map.Cellular(this.width, this.height, {
-                born: [5, 6, 7, 8],
-                survive: [4, 5, 6, 7, 8],
-                topology: 8
-            });
-
-            lakeCave.randomize(lakeChance / 100);
-            lakeCave.create();
-            lakeCave.create();
-
-            const lakePositions = [];
-            const walkableSet = new Set(this.walkableTiles.map(t => `${t.x},${t.y}`));
-
-            lakeCave.create((x, y, value) => {
-                if (value === 0) return;
-                if (!walkableSet.has(`${x},${y}`)) return;
-                lakePositions.push({ x, y });
-            });
-
-            this.pendingLakeSpawns.push(...lakePositions);
-            console.log(`Lake generation: ${lakePositions.length} water tiles`);
-        }
+        // Generate blob-shaped lakes with connectivity validation
+        this.generateBlobLakes(options);
 
         // Generate random sewage patches on walkable floor tiles
         const sewageChance = options.sewage_chance || 0;
@@ -1059,6 +1281,42 @@ class Architect {
             console.log(`Sewage generation: ${sewagePositions.length} sewage tiles`);
         }
 
+        // Generate fungus patches on walkable floor tiles
+        const fungusChance = options.fungus_chance || 0;
+        if (fungusChance > 0) {
+            const fungusCave = new ROT.Map.Cellular(this.width, this.height, {
+                born: [5, 6, 7, 8],
+                survive: [4, 5, 6, 7, 8],
+                topology: 8
+            });
+
+            fungusCave.randomize(fungusChance / 100);
+            fungusCave.create();
+            fungusCave.create();
+
+            const fungusPositions = [];
+            const walkableSet = new Set(this.walkableTiles.map(t => `${t.x},${t.y}`));
+            const lakeSet = new Set(this.pendingLakeSpawns.map(p => `${p.x},${p.y}`));
+            const lavaSet = new Set(this.pendingLavaSpawns.map(p => `${p.x},${p.y}`));
+
+            fungusCave.create((x, y, value) => {
+                if (value === 0) return;
+                const key = `${x},${y}`;
+                if (!walkableSet.has(key)) return;
+                if (lakeSet.has(key) || lavaSet.has(key)) return;
+                fungusPositions.push({ x, y });
+            });
+
+            this.pendingFungusSpawns.push(...fungusPositions);
+            console.log(`Fungus generation: ${fungusPositions.length} fungus tiles`);
+        }
+
+        // Add secondary connections (loops) through walls separating distant floor regions
+        this.addSecondaryConnections(options);
+
+        // Generate rope bridges across liquid bodies
+        this.generateRopeBridges(options);
+
         // Scatter a few pushable walls among normal walls
         if (this.pendingWallSpawns.length > 0) {
             const converted = [];
@@ -1078,6 +1336,607 @@ class Architect {
         }
 
         console.log(`Procedural map generated with ${this.walkableTiles.length} walkable tiles`);
+    }
+
+    generateBlobLakes(options) {
+        const lakesConfig = options.lakes;
+        const legacyChance = options.lake_chance || 0;
+
+        if (!lakesConfig && legacyChance <= 0) return;
+
+        // Normalize config
+        let count, types, minSize, maxSize;
+        if (lakesConfig) {
+            count = lakesConfig.count || [1, 2];
+            types = lakesConfig.types || ['water'];
+            minSize = lakesConfig.minSize || 15;
+            maxSize = lakesConfig.maxSize || 100;
+        } else {
+            // Legacy: convert lake_chance to blob config
+            count = [1, Math.max(1, Math.floor(legacyChance / 5))];
+            types = ['water'];
+            minSize = 15;
+            maxSize = Math.min(150, legacyChance * 3);
+        }
+
+        const numLakes = count[0] + Math.floor(ROT.RNG.getUniform() * (count[1] - count[0] + 1));
+        const walkableSet = new Set(this.walkableTiles.map(t => `${t.x},${t.y}`));
+
+        // Decreasing blob sizes for each successive lake
+        const baseBlobW = Math.min(30, Math.floor(this.width * 0.4));
+        const baseBlobH = Math.min(15, Math.floor(this.height * 0.3));
+        const allLakeTiles = new Set();
+
+        for (let l = 0; l < numLakes; l++) {
+            const scaleFactor = Math.max(0.5, 1 - l * 0.15);
+            const blobMaxW = Math.max(8, Math.floor(baseBlobW * scaleFactor));
+            const blobMaxH = Math.max(6, Math.floor(baseBlobH * scaleFactor));
+            const blobMinW = Math.max(4, Math.floor(blobMaxW * 0.3));
+            const blobMinH = Math.max(3, Math.floor(blobMaxH * 0.3));
+
+            const blob = this.createBlob(blobMinW, blobMaxW, blobMinH, blobMaxH);
+            if (!blob) continue;
+
+            // Try up to 20 placements
+            let placed = false;
+            for (let attempt = 0; attempt < 20; attempt++) {
+                const placeX = 2 + Math.floor(ROT.RNG.getUniform() * (this.width - blob.width - 4));
+                const placeY = 2 + Math.floor(ROT.RNG.getUniform() * (this.height - blob.height - 4));
+
+                // Check all blob tiles overlap walkable and aren't already a lake
+                const lakeTiles = new Set();
+                let valid = true;
+                for (let by = 0; by < blob.height; by++) {
+                    for (let bx = 0; bx < blob.width; bx++) {
+                        if (blob.grid[blob.offsetY + by][blob.offsetX + bx]) {
+                            const wx = placeX + bx;
+                            const wy = placeY + by;
+                            const key = `${wx},${wy}`;
+                            if (!walkableSet.has(key) || allLakeTiles.has(key)) {
+                                valid = false;
+                                break;
+                            }
+                            lakeTiles.add(key);
+                        }
+                    }
+                    if (!valid) break;
+                }
+
+                if (!valid || lakeTiles.size < minSize || lakeTiles.size > maxSize) continue;
+
+                // Connectivity check
+                if (!this.checkConnectivity(walkableSet, new Set([...allLakeTiles, ...lakeTiles]))) continue;
+
+                // Place this lake
+                const lakeType = types[Math.floor(ROT.RNG.getUniform() * types.length)];
+
+                if (lakeType === 'water') {
+                    // Deep water in center, shallow water wreath
+                    for (const key of lakeTiles) {
+                        this.pendingLakeSpawns.push({ x: parseInt(key), y: parseInt(key.split(',')[1]), type: 'deep_water' });
+                        allLakeTiles.add(key);
+                    }
+
+                    // Shallow water wreath (distance ≤ 2 from deep water)
+                    const wreathTiles = new Set();
+                    for (const key of lakeTiles) {
+                        const [lx, ly] = key.split(',').map(Number);
+                        for (let dy = -2; dy <= 2; dy++) {
+                            for (let dx = -2; dx <= 2; dx++) {
+                                if (dx * dx + dy * dy > 4) continue;
+                                const wx = lx + dx, wy = ly + dy;
+                                const wk = `${wx},${wy}`;
+                                if (walkableSet.has(wk) && !lakeTiles.has(wk) && !allLakeTiles.has(wk) && !wreathTiles.has(wk)) {
+                                    wreathTiles.add(wk);
+                                }
+                            }
+                        }
+                    }
+                    for (const key of wreathTiles) {
+                        const [wx, wy] = key.split(',').map(Number);
+                        this.pendingLakeSpawns.push({ x: wx, y: wy, type: 'water' });
+                        allLakeTiles.add(key);
+                    }
+
+                    console.log(`Lake ${l + 1}: ${lakeTiles.size} deep_water + ${wreathTiles.size} shallow water wreath`);
+                } else if (lakeType === 'lava') {
+                    for (const key of lakeTiles) {
+                        const [lx, ly] = key.split(',').map(Number);
+                        this.pendingLavaSpawns.push({ x: lx, y: ly });
+                        allLakeTiles.add(key);
+                    }
+                    // Remove lava tiles from walkable
+                    this.walkableTiles = this.walkableTiles.filter(t => !lakeTiles.has(`${t.x},${t.y}`));
+                    console.log(`Lake ${l + 1}: ${lakeTiles.size} lava tiles`);
+                }
+
+                placed = true;
+                break;
+            }
+
+            if (!placed) {
+                console.log(`Lake ${l + 1}: failed to place after 20 attempts`);
+            }
+        }
+    }
+
+    addSecondaryConnections(options) {
+        const config = options.secondary_connections;
+        if (!config) return;
+
+        const maxConnections = config.max || 5;
+        const minDistance = config.min_distance || 20;
+
+        const wallSet = new Set();
+        const wallIndex = {};
+        for (let i = 0; i < this.pendingWallSpawns.length; i++) {
+            const w = this.pendingWallSpawns[i];
+            if (w.type && w.type !== 'wall') continue;
+            const key = `${w.x},${w.y}`;
+            wallSet.add(key);
+            wallIndex[key] = i;
+        }
+
+        const walkableSet = new Set(this.walkableTiles.map(t => `${t.x},${t.y}`));
+
+        // Sample random subset of walls to check
+        const wallKeys = Array.from(wallSet);
+        for (let i = wallKeys.length - 1; i > 0; i--) {
+            const j = Math.floor(ROT.RNG.getUniform() * (i + 1));
+            [wallKeys[i], wallKeys[j]] = [wallKeys[j], wallKeys[i]];
+        }
+        const sampled = wallKeys.slice(0, Math.min(200, wallKeys.length));
+
+        const candidates = [];
+        for (const key of sampled) {
+            const [wx, wy] = key.split(',').map(Number);
+
+            // Check N/S pair
+            const north = `${wx},${wy - 1}`, south = `${wx},${wy + 1}`;
+            if (walkableSet.has(north) && walkableSet.has(south)) {
+                const dist = this.bfsDistance(wx, wy - 1, wx, wy + 1, walkableSet);
+                if (dist > minDistance) {
+                    candidates.push({ key, x: wx, y: wy, distance: dist });
+                    continue;
+                }
+            }
+
+            // Check E/W pair
+            const west = `${wx - 1},${wy}`, east = `${wx + 1},${wy}`;
+            if (walkableSet.has(west) && walkableSet.has(east)) {
+                const dist = this.bfsDistance(wx - 1, wy, wx + 1, wy, walkableSet);
+                if (dist > minDistance) {
+                    candidates.push({ key, x: wx, y: wy, distance: dist });
+                }
+            }
+        }
+
+        candidates.sort((a, b) => b.distance - a.distance);
+
+        let added = 0;
+        for (const c of candidates) {
+            if (added >= maxConnections) break;
+            const idx = wallIndex[c.key];
+            if (idx === undefined) continue;
+
+            // Remove wall, add door
+            this.pendingWallSpawns.splice(idx, 1);
+            // Rebuild index for remaining walls
+            for (const [k, v] of Object.entries(wallIndex)) {
+                if (v > idx) wallIndex[k] = v - 1;
+            }
+            delete wallIndex[c.key];
+
+            this.pendingDoorSpawns.push({ x: c.x, y: c.y });
+            this.walkableTiles.push({ x: c.x, y: c.y });
+            walkableSet.add(c.key);
+            added++;
+            console.log(`Secondary connection: door at (${c.x}, ${c.y}), pathing distance was ${c.distance}`);
+        }
+
+        if (added > 0) {
+            console.log(`Added ${added} secondary connections`);
+        }
+    }
+
+    bfsDistance(x1, y1, x2, y2, walkableSet) {
+        const targetKey = `${x2},${y2}`;
+        const visited = new Set();
+        const queue = [{ x: x1, y: y1, dist: 0 }];
+        visited.add(`${x1},${y1}`);
+
+        while (queue.length > 0) {
+            const pos = queue.shift();
+            if (pos.x === x2 && pos.y === y2) return pos.dist;
+
+            const dirs = [[0,-1],[0,1],[-1,0],[1,0]];
+            for (const [dx, dy] of dirs) {
+                const nx = pos.x + dx, ny = pos.y + dy;
+                const nk = `${nx},${ny}`;
+                if (!visited.has(nk) && walkableSet.has(nk)) {
+                    visited.add(nk);
+                    queue.push({ x: nx, y: ny, dist: pos.dist + 1 });
+                }
+            }
+        }
+
+        return Infinity;
+    }
+
+    generateRopeBridges(options) {
+        const config = options.bridges;
+        if (!config) return;
+
+        const maxBridges = config.max || 3;
+        const minSpan = config.min_span || 3;
+        const maxSpan = config.max_span || 12;
+
+        const walkableSet = new Set(this.walkableTiles.map(t => `${t.x},${t.y}`));
+        const lakeSet = new Set(this.pendingLakeSpawns.map(p => `${p.x},${p.y}`));
+        const lavaSet = new Set(this.pendingLavaSpawns.map(p => `${p.x},${p.y}`));
+        const liquidSet = new Set([...lakeSet, ...lavaSet]);
+
+        if (liquidSet.size === 0) return;
+
+        // Find shore tiles (walkable tiles adjacent to liquid)
+        const shoreTiles = [];
+        for (const t of this.walkableTiles) {
+            if (liquidSet.has(`${t.x},${t.y}`)) continue;
+            const dirs = [[0,-1],[0,1],[-1,0],[1,0]];
+            for (const [dx, dy] of dirs) {
+                if (liquidSet.has(`${t.x + dx},${t.y + dy}`)) {
+                    shoreTiles.push({ x: t.x, y: t.y });
+                    break;
+                }
+            }
+        }
+
+        // Shuffle shore tiles for randomness
+        for (let i = shoreTiles.length - 1; i > 0; i--) {
+            const j = Math.floor(ROT.RNG.getUniform() * (i + 1));
+            [shoreTiles[i], shoreTiles[j]] = [shoreTiles[j], shoreTiles[i]];
+        }
+
+        const candidates = [];
+        const usedShores = new Set();
+
+        for (const shore of shoreTiles) {
+            if (usedShores.has(`${shore.x},${shore.y}`)) continue;
+
+            // Cast rays in cardinal directions across liquid
+            const dirs = [
+                { dx: 1, dy: 0, tileName: 'INVERSE_BOX_HORIZONTAL' },
+                { dx: -1, dy: 0, tileName: 'INVERSE_BOX_HORIZONTAL' },
+                { dx: 0, dy: 1, tileName: 'INVERSE_BOX_VERTICAL' },
+                { dx: 0, dy: -1, tileName: 'INVERSE_BOX_VERTICAL' }
+            ];
+
+            for (const dir of dirs) {
+                const bridgeTiles = [];
+                let cx = shore.x + dir.dx;
+                let cy = shore.y + dir.dy;
+
+                while (liquidSet.has(`${cx},${cy}`) && bridgeTiles.length < maxSpan) {
+                    bridgeTiles.push({ x: cx, y: cy, paint_tile: dir.tileName });
+                    cx += dir.dx;
+                    cy += dir.dy;
+                }
+
+                // Check if we hit walkable land on the other side
+                const farShoreKey = `${cx},${cy}`;
+                if (bridgeTiles.length >= minSpan && walkableSet.has(farShoreKey) && !liquidSet.has(farShoreKey)) {
+                    const dist = this.bfsDistance(shore.x, shore.y, cx, cy, walkableSet);
+                    if (dist > bridgeTiles.length * 3) {
+                        candidates.push({
+                            tiles: bridgeTiles,
+                            from: { x: shore.x, y: shore.y },
+                            to: { x: cx, y: cy },
+                            distance: dist,
+                            span: bridgeTiles.length
+                        });
+                    }
+                }
+            }
+        }
+
+        candidates.sort((a, b) => b.distance - a.distance);
+
+        let built = 0;
+        const bridgedTiles = new Set();
+        for (const c of candidates) {
+            if (built >= maxBridges) break;
+
+            // Don't overlap with existing bridges
+            let overlaps = false;
+            for (const t of c.tiles) {
+                if (bridgedTiles.has(`${t.x},${t.y}`)) { overlaps = true; break; }
+            }
+            if (overlaps) continue;
+
+            for (const t of c.tiles) {
+                this.pendingBridgeSpawns.push(t);
+                this.walkableTiles.push({ x: t.x, y: t.y });
+                bridgedTiles.add(`${t.x},${t.y}`);
+            }
+
+            built++;
+            usedShores.add(`${c.from.x},${c.from.y}`);
+            usedShores.add(`${c.to.x},${c.to.y}`);
+            console.log(`Rope bridge: ${c.span} tiles from (${c.from.x},${c.from.y}) to (${c.to.x},${c.to.y}), pathing distance was ${c.distance}`);
+        }
+
+        if (built > 0) {
+            console.log(`Built ${built} rope bridges`);
+        }
+    }
+
+    generateShapedMap(options) {
+        const roomWidthRange = options.roomWidth || [5, 12];
+        const roomHeightRange = options.roomHeight || [4, 10];
+        const corridorRange = options.corridorLength || [2, 8];
+        const targetPercentage = options.dugPercentage || 0.3;
+        const maxAttempts = options.maxAttempts || 200;
+        const depth = options.depth || 1;
+        const roomWeights = options.room_weights;
+
+        // Override weights if specified
+        if (roomWeights) {
+            for (const [name, weight] of Object.entries(roomWeights)) {
+                const type = this.getRoomType(name);
+                if (type) type.weight = weight;
+            }
+        }
+
+        const shapedFloorTiles = new Set();
+        const rooms = [];
+        const doorSites = [];
+        const targetTiles = Math.floor(this.width * this.height * targetPercentage);
+
+        const randRange = (min, max) => min + Math.floor(ROT.RNG.getUniform() * (max - min + 1));
+
+        const carveRoom = (roomFloorTiles) => {
+            for (const tile of roomFloorTiles) {
+                if (tile.x < 1 || tile.x >= this.width - 1 || tile.y < 1 || tile.y >= this.height - 1) continue;
+                const key = `${tile.x},${tile.y}`;
+                if (!shapedFloorTiles.has(key)) {
+                    shapedFloorTiles.add(key);
+                    this.floorMap[tile.y][tile.x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                    this.walkableTiles.push({ x: tile.x, y: tile.y });
+                }
+            }
+        };
+
+        const findDoorSites = (floorTiles, roomIndex) => {
+            const floorSet = new Set(floorTiles.map(t => `${t.x},${t.y}`));
+            const sites = [];
+            const dirs = [
+                { dx: 0, dy: -1, name: 'north' },
+                { dx: 0, dy: 1, name: 'south' },
+                { dx: -1, dy: 0, name: 'west' },
+                { dx: 1, dy: 0, name: 'east' }
+            ];
+
+            for (const tile of floorTiles) {
+                for (const dir of dirs) {
+                    const outX = tile.x + dir.dx;
+                    const outY = tile.y + dir.dy;
+                    const outKey = `${outX},${outY}`;
+                    if (!floorSet.has(outKey) && !shapedFloorTiles.has(outKey) &&
+                        outX > 1 && outX < this.width - 2 && outY > 1 && outY < this.height - 2) {
+                        sites.push({
+                            x: tile.x, y: tile.y,
+                            dirX: dir.dx, dirY: dir.dy,
+                            dirName: dir.name,
+                            roomIndex
+                        });
+                    }
+                }
+            }
+            return sites;
+        };
+
+        // First room: place near center
+        const firstW = randRange(roomWidthRange[0], roomWidthRange[1]);
+        const firstH = randRange(roomHeightRange[0], roomHeightRange[1]);
+        const firstX = Math.floor((this.width - firstW) / 2);
+        const firstY = Math.floor((this.height - firstH) / 2);
+
+        const firstType = this.selectRoomTypeForDepth(depth, { width: firstW, height: firstH });
+        const firstConfig = this.getRoomType(firstType);
+        const firstRoom = firstConfig.generator(firstX, firstY, firstW, firstH);
+
+        carveRoom(firstRoom.floorTiles);
+        rooms.push(new ShapedRoom(firstRoom.floorTiles, []));
+        doorSites.push(...findDoorSites(firstRoom.floorTiles, 0));
+
+        // Carve inner walls for rooms that have them (donut)
+        if (firstRoom.wallTiles && firstRoom.wallTiles.length > 0) {
+            for (const tile of firstRoom.wallTiles) {
+                if (tile.x >= 0 && tile.x < this.width && tile.y >= 0 && tile.y < this.height) {
+                    this.floorMap[tile.y][tile.x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                    this.pendingWallSpawns.push({ x: tile.x, y: tile.y, type: 'wall' });
+                }
+            }
+        }
+
+        // Attach rooms iteratively
+        let attempts = 0;
+        while (shapedFloorTiles.size < targetTiles && attempts < maxAttempts && doorSites.length > 0) {
+            attempts++;
+
+            // Pick a random door site
+            const siteIdx = Math.floor(ROT.RNG.getUniform() * doorSites.length);
+            const site = doorSites[siteIdx];
+
+            // Generate a corridor
+            const corridorLen = randRange(corridorRange[0], corridorRange[1]);
+            const corridorTiles = [];
+            let valid = true;
+            let cx = site.x + site.dirX;
+            let cy = site.y + site.dirY;
+
+            for (let i = 0; i < corridorLen; i++) {
+                if (cx < 2 || cx >= this.width - 2 || cy < 2 || cy >= this.height - 2) {
+                    valid = false;
+                    break;
+                }
+                const ck = `${cx},${cy}`;
+                if (shapedFloorTiles.has(ck)) {
+                    valid = false;
+                    break;
+                }
+                corridorTiles.push({ x: cx, y: cy });
+                cx += site.dirX;
+                cy += site.dirY;
+            }
+
+            if (!valid || corridorTiles.length === 0) {
+                doorSites.splice(siteIdx, 1);
+                continue;
+            }
+
+            // Generate a room at the end of the corridor
+            const newW = randRange(roomWidthRange[0], roomWidthRange[1]);
+            const newH = randRange(roomHeightRange[0], roomHeightRange[1]);
+
+            // Position room so corridor connects near its center
+            let roomX, roomY;
+            if (site.dirX !== 0) {
+                roomX = site.dirX > 0 ? cx : cx - newW + 1;
+                roomY = cy - Math.floor(newH / 2);
+            } else {
+                roomX = cx - Math.floor(newW / 2);
+                roomY = site.dirY > 0 ? cy : cy - newH + 1;
+            }
+
+            // Bounds check
+            if (roomX < 1 || roomX + newW >= this.width - 1 || roomY < 1 || roomY + newH >= this.height - 1) {
+                doorSites.splice(siteIdx, 1);
+                continue;
+            }
+
+            const newType = this.selectRoomTypeForDepth(depth, { width: newW, height: newH });
+            const newConfig = this.getRoomType(newType);
+            const newRoom = newConfig.generator(roomX, roomY, newW, newH);
+
+            // Check for overlap with existing floor
+            let overlaps = false;
+            for (const tile of newRoom.floorTiles) {
+                if (shapedFloorTiles.has(`${tile.x},${tile.y}`)) {
+                    overlaps = true;
+                    break;
+                }
+            }
+            if (overlaps) continue;
+
+            // Carve corridor
+            carveRoom(corridorTiles);
+
+            // Carve room
+            carveRoom(newRoom.floorTiles);
+
+            // Inner walls for donut-type rooms
+            if (newRoom.wallTiles && newRoom.wallTiles.length > 0) {
+                for (const tile of newRoom.wallTiles) {
+                    if (tile.x >= 0 && tile.x < this.width && tile.y >= 0 && tile.y < this.height) {
+                        this.floorMap[tile.y][tile.x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                        this.pendingWallSpawns.push({ x: tile.x, y: tile.y, type: 'wall' });
+                    }
+                }
+            }
+
+            // Record door at corridor entrance
+            const doorPositions = [{ x: site.x + site.dirX, y: site.y + site.dirY }];
+
+            const roomIdx = rooms.length;
+            rooms.push(new ShapedRoom(newRoom.floorTiles, doorPositions));
+            doorSites.splice(siteIdx, 1);
+            doorSites.push(...findDoorSites(newRoom.floorTiles, roomIdx));
+
+            // 50% chance for door at corridor entrance
+            if (ROT.RNG.getPercentage() <= 50 && corridorTiles.length > 0) {
+                this.pendingDoorSpawns.push({ x: corridorTiles[0].x, y: corridorTiles[0].y });
+            }
+        }
+
+        // Queue wall spawns for non-floor tiles adjacent to floors
+        const wallTypes = options.wall_types || [{ type: 'wall', weight: 100 }];
+        const totalWeight = wallTypes.reduce((sum, wt) => sum + wt.weight, 0);
+
+        for (let y = 0; y < this.height; y++) {
+            for (let x = 0; x < this.width; x++) {
+                if (shapedFloorTiles.has(`${x},${y}`)) continue;
+
+                let adjacentToFloor = false;
+                const dirs = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]];
+                for (const [dx, dy] of dirs) {
+                    if (shapedFloorTiles.has(`${x + dx},${y + dy}`)) {
+                        adjacentToFloor = true;
+                        break;
+                    }
+                }
+
+                if (adjacentToFloor && y > 0) {
+                    let roll = ROT.RNG.getUniform() * totalWeight;
+                    let wallType = wallTypes[0].type;
+                    for (const wt of wallTypes) {
+                        roll -= wt.weight;
+                        if (roll <= 0) { wallType = wt.type; break; }
+                    }
+                    this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                    this.pendingWallSpawns.push({ x, y, type: wallType });
+                }
+            }
+        }
+
+        // Convert perimeter walls to metal_wall
+        const isPerimeter = (px, py) =>
+            px === 0 || px === this.width - 1 || py === 0 || py === this.height - 1;
+
+        for (const wall of this.pendingWallSpawns) {
+            if (isPerimeter(wall.x, wall.y)) wall.type = 'metal_wall';
+        }
+
+        const pendingWallSet = new Set(this.pendingWallSpawns.map(p => `${p.x},${p.y}`));
+        for (let y = 0; y < this.height; y++) {
+            for (let x = 0; x < this.width; x++) {
+                if (!isPerimeter(x, y)) continue;
+                if (shapedFloorTiles.has(`${x},${y}`)) continue;
+                if (pendingWallSet.has(`${x},${y}`)) continue;
+
+                let adj = false;
+                const dirs = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]];
+                for (const [dx, dy] of dirs) {
+                    if (shapedFloorTiles.has(`${x + dx},${y + dy}`)) { adj = true; break; }
+                }
+                if (adj) {
+                    this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                    this.pendingWallSpawns.push({ x, y, type: 'metal_wall' });
+                }
+            }
+        }
+
+        // Torches in 30% of rooms
+        for (const room of rooms) {
+            if (ROT.RNG.getPercentage() <= 30) {
+                const roomWalls = [];
+                for (const wallPos of this.pendingWallSpawns) {
+                    if (wallPos.x >= room.getLeft() - 1 && wallPos.x <= room.getRight() + 1 &&
+                        wallPos.y >= room.getTop() - 1 && wallPos.y <= room.getBottom() + 1) {
+                        roomWalls.push(wallPos);
+                    }
+                }
+                if (roomWalls.length > 0) {
+                    const torchPos = roomWalls[Math.floor(ROT.RNG.getUniform() * roomWalls.length)];
+                    this.pendingTorchSpawns.push({ x: torchPos.x, y: torchPos.y });
+                    const idx = this.pendingWallSpawns.findIndex(p => p.x === torchPos.x && p.y === torchPos.y);
+                    if (idx !== -1) this.pendingWallSpawns.splice(idx, 1);
+                }
+            }
+        }
+
+        this.diggerRooms = rooms;
+        console.log(`Shaped map: ${shapedFloorTiles.size} floors, ${rooms.length} rooms, ${this.pendingWallSpawns.length} walls, ${this.pendingDoorSpawns.length} doors`);
     }
 
     // ========================================================================
@@ -1583,7 +2442,13 @@ class Architect {
         console.log(`Infernal cave generated: ${floorCells.size} floor tiles, ${wallPositions.length} walls, ${lavaPositions.length} lava`);
     }
 
-    generateRoomAt(startX, startY, width, height, context = null) {
+    generateRoomAt(startX, startY, width, height, context = null, depth = 1) {
+        const roomType = this.selectRoomTypeForDepth(depth, { width, height });
+        const roomConfig = this.getRoomType(roomType);
+        const { floorTiles, wallTiles } = roomConfig.generator(startX, startY, width, height);
+
+        const floorSet = new Set(floorTiles.map(t => `${t.x},${t.y}`));
+        const wallSet = new Set(wallTiles.map(t => `${t.x},${t.y}`));
         const wallPositions = [];
 
         const hasMazeFloor = (wx, wy) => {
@@ -1592,36 +2457,54 @@ class Architect {
             return floor && floor.tileId === this.config.defaultFloorTileId;
         };
 
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                const worldX = startX + x;
-                const worldY = startY + y;
+        // Place floor tiles from the room shape
+        for (const tile of floorTiles) {
+            if (tile.x < 0 || tile.x >= this.width || tile.y < 0 || tile.y >= this.height) continue;
+            this.backgroundMap[tile.y][tile.x] = null;
+            this.floorMap[tile.y][tile.x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
 
-                if (worldX < this.width && worldY < this.height) {
-                    this.backgroundMap[worldY][worldX] = null;
+            // Check if this is a perimeter tile (has a neighbor outside the room)
+            const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+            let isPerimeter = false;
+            let hasAdjacentMazePath = false;
+            for (const [dx, dy] of dirs) {
+                const nx = tile.x + dx, ny = tile.y + dy;
+                const nk = `${nx},${ny}`;
+                if (!floorSet.has(nk) && !wallSet.has(nk)) {
+                    isPerimeter = true;
+                    if (hasMazeFloor(nx, ny)) hasAdjacentMazePath = true;
+                }
+            }
 
-                    const isPerimeter = (x === 0 || x === width - 1 || y === 0 || y === height - 1);
+            if (isPerimeter && !hasAdjacentMazePath) {
+                // Will have a wall placed on it by the wall-adjacency system below
+            }
+            this.walkableTiles.push({ x: tile.x, y: tile.y });
+        }
 
-                    let hasAdjacentMazePath = false;
-                    if (isPerimeter) {
-                        if (x === 0 && hasMazeFloor(worldX - 1, worldY)) hasAdjacentMazePath = true;
-                        if (x === width - 1 && hasMazeFloor(worldX + 1, worldY)) hasAdjacentMazePath = true;
-                        if (y === 0 && hasMazeFloor(worldX, worldY - 1)) hasAdjacentMazePath = true;
-                        if (y === height - 1 && hasMazeFloor(worldX, worldY + 1)) hasAdjacentMazePath = true;
-                    }
+        // Place inner walls (donut rooms, etc.)
+        for (const tile of wallTiles) {
+            if (tile.x < 0 || tile.x >= this.width || tile.y < 0 || tile.y >= this.height) continue;
+            this.backgroundMap[tile.y][tile.x] = null;
+            this.floorMap[tile.y][tile.x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+            if (tile.y > 0) {
+                wallPositions.push({ x: tile.x, y: tile.y });
+            }
+        }
 
-                    if (isPerimeter && !hasAdjacentMazePath) {
-                        if (worldY > 0) {
-                            wallPositions.push({ x: worldX, y: worldY });
-                        }
-                        this.floorMap[worldY][worldX] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
-                    } else if (isPerimeter && hasAdjacentMazePath) {
-                        this.floorMap[worldY][worldX] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
-                        this.walkableTiles.push({ x: worldX, y: worldY });
-                    } else {
-                        this.floorMap[worldY][worldX] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
-                        this.walkableTiles.push({ x: worldX, y: worldY });
-                    }
+        // Add walls around the room perimeter (non-floor tiles adjacent to floor)
+        for (const tile of floorTiles) {
+            const dirs = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]];
+            for (const [dx, dy] of dirs) {
+                const nx = tile.x + dx, ny = tile.y + dy;
+                const nk = `${nx},${ny}`;
+                if (nx < 0 || nx >= this.width || ny < 0 || ny >= this.height) continue;
+                if (floorSet.has(nk) || wallSet.has(nk)) continue;
+                if (hasMazeFloor(nx, ny)) continue;
+                if (ny > 0 && !wallPositions.some(w => w.x === nx && w.y === ny)) {
+                    wallPositions.push({ x: nx, y: ny });
+                    this.floorMap[ny][nx] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                    this.backgroundMap[ny][nx] = null;
                 }
             }
         }
@@ -1745,17 +2628,22 @@ class Architect {
             return;
         }
 
-        const actorData = context.getActorData('water');
-        if (!actorData) {
-            console.warn('No water actor data found');
-            return;
-        }
+        const waterData = context.getActorData('water');
+        const deepWaterData = context.getActorData('deep_water');
 
+        let waterCount = 0, deepCount = 0;
         for (const pos of this.pendingLakeSpawns) {
-            context.createActor(pos.x, pos.y, 'water', actorData);
+            const type = pos.type || 'water';
+            if (type === 'deep_water' && deepWaterData) {
+                context.createActor(pos.x, pos.y, 'deep_water', deepWaterData);
+                deepCount++;
+            } else if (waterData) {
+                context.createActor(pos.x, pos.y, 'water', waterData);
+                waterCount++;
+            }
         }
 
-        console.log(`Spawned ${this.pendingLakeSpawns.length} water actors`);
+        console.log(`Spawned ${deepCount} deep_water + ${waterCount} water actors`);
         this.pendingLakeSpawns = [];
     }
 
@@ -1778,6 +2666,52 @@ class Architect {
 
         console.log(`Spawned ${this.pendingSewageSpawns.length} sewage actors`);
         this.pendingSewageSpawns = [];
+    }
+
+    spawnPendingFungus(context) {
+        if (!this.pendingFungusSpawns || this.pendingFungusSpawns.length === 0) return;
+        if (!context || !context.getActorData || !context.createActor) {
+            console.warn('Cannot spawn fungus without context');
+            return;
+        }
+
+        const actorData = context.getActorData('fungus');
+        if (!actorData) {
+            console.warn('No fungus actor data found');
+            return;
+        }
+
+        for (const pos of this.pendingFungusSpawns) {
+            context.createActor(pos.x, pos.y, 'fungus', actorData);
+        }
+
+        console.log(`Spawned ${this.pendingFungusSpawns.length} fungus actors`);
+        this.pendingFungusSpawns = [];
+    }
+
+    spawnPendingBridges(context) {
+        if (!this.pendingBridgeSpawns || this.pendingBridgeSpawns.length === 0) return;
+        if (!context || !context.getActorData || !context.createActor) {
+            console.warn('Cannot spawn bridges without context');
+            return;
+        }
+
+        const actorData = context.getActorData('rope_bridge');
+        if (!actorData) {
+            console.warn('No rope_bridge actor data found');
+            return;
+        }
+
+        for (const pos of this.pendingBridgeSpawns) {
+            const data = JSON.parse(JSON.stringify(actorData));
+            if (pos.paint_tile) {
+                data.tileIndexBase = pos.paint_tile;
+            }
+            context.createActor(pos.x, pos.y, 'rope_bridge', data);
+        }
+
+        console.log(`Spawned ${this.pendingBridgeSpawns.length} rope bridge segments`);
+        this.pendingBridgeSpawns = [];
     }
 
     spawnPendingPushableWalls(context) {

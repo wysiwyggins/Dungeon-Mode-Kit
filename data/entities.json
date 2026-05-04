@@ -64,13 +64,5 @@
       "visible": true,
       "ignore_darkness": true
     }
-  },
-  "fungus":  {
-    "name": "Fungus",
-    "tileIndex": "IMPERFECT_DOTTED_WHITE_SHADE",
-    "tint": "#EC7505",
-    "attributes": {
-      "visible": true
-    }
   }
 }

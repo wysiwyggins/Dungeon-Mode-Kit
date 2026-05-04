@@ -1123,7 +1123,7 @@ class DungeonEngine {
             const mapFile = floor === 1 ? 'map.tmj' : `${floor}.tmj`;
             await this.mapManager.loadTiledMap(`${globalVars.BASE_PATH}/prototypes/${this.currentPrototype.name}/${mapFile}`);
         } else {
-            this.mapManager.generateProceduralMap(mapGenerator);
+            this.mapManager.generateProceduralMap(mapGenerator, floor);
         }
 
         // Viewport: per-prototype viewport_width/height in tile columns/rows
@@ -1169,6 +1169,8 @@ class DungeonEngine {
         this.mapManager.spawnPendingLava(architectContext);
         this.mapManager.spawnPendingLakes(architectContext);
         this.mapManager.spawnPendingSewage(architectContext);
+        this.mapManager.spawnPendingFungus(architectContext);
+        this.mapManager.spawnPendingBridges(architectContext);
         this.mapManager.spawnPendingPushableWalls(architectContext);
 
         if (treasureRoomData) {

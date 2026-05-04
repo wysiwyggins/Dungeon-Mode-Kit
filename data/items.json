@@ -908,7 +908,7 @@
       "flammable": true,
       "consumable": true,
       "use_verb": "Eat",
-      "use_effect": { "nutrition": 15 },
+      "use_effect": { "nutrition": 300 },
       "use_sound": "pickup",
       "description": "A crisp red apple."
     }
@@ -925,15 +925,15 @@
       "flammable": true,
       "consumable": true,
       "use_verb": "Eat",
-      "use_effect": { "nutrition": 40 },
-      "use_sound": "pickup",
-      "description": "A hunk of dried meat."
+      "use_effect": { "nutrition": 400 },
+      "use_sound": "swallow",
+      "description": "A hunk of meat."
     }
   },
 
   "rations": {
     "name": "Rations",
-    "tileIndex": "SEMICOLON",
+    "tileIndex": "MEAT",
     "tint": "#daa520",
     "attributes": {
       "pickupable": true,
@@ -942,7 +942,7 @@
       "flammable": true,
       "consumable": true,
       "use_verb": "Eat",
-      "use_effect": { "nutrition": 60 },
+      "use_effect": { "nutrition": 500 },
       "use_sound": "pickup",
       "description": "A package of preserved travel rations. Very filling."
     }
