@@ -1335,6 +1335,18 @@ class Architect {
             }
         }
 
+        // Fill background with void tiles where there is no floor,
+        // so destroying or pushing walls reveals black instead of blank canvas
+        const VOID_TILE = 217;
+        const floorSet = new Set(this.walkableTiles.map(t => `${t.x},${t.y}`));
+        for (let y = 0; y < this.height; y++) {
+            for (let x = 0; x < this.width; x++) {
+                if (!floorSet.has(`${x},${y}`)) {
+                    this.backgroundMap[y][x] = { tileId: VOID_TILE, layer: 'background' };
+                }
+            }
+        }
+
         console.log(`Procedural map generated with ${this.walkableTiles.length} walkable tiles`);
     }
 
@@ -1572,38 +1584,37 @@ class Architect {
         const maxSpan = config.max_span || 12;
 
         const walkableSet = new Set(this.walkableTiles.map(t => `${t.x},${t.y}`));
-        const lakeSet = new Set(this.pendingLakeSpawns.map(p => `${p.x},${p.y}`));
-        const lavaSet = new Set(this.pendingLavaSpawns.map(p => `${p.x},${p.y}`));
-        const liquidSet = new Set([...lakeSet, ...lavaSet]);
+        const wallSet = new Set(this.pendingWallSpawns.map(w => `${w.x},${w.y}`));
 
-        if (liquidSet.size === 0) return;
+        const isVoid = (x, y) => {
+            if (x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
+            const key = `${x},${y}`;
+            return !walkableSet.has(key) && !wallSet.has(key);
+        };
 
-        // Find shore tiles (walkable tiles adjacent to liquid)
-        const shoreTiles = [];
+        // Find edge tiles (walkable tiles adjacent to void)
+        const edgeTiles = [];
         for (const t of this.walkableTiles) {
-            if (liquidSet.has(`${t.x},${t.y}`)) continue;
             const dirs = [[0,-1],[0,1],[-1,0],[1,0]];
             for (const [dx, dy] of dirs) {
-                if (liquidSet.has(`${t.x + dx},${t.y + dy}`)) {
-                    shoreTiles.push({ x: t.x, y: t.y });
+                if (isVoid(t.x + dx, t.y + dy)) {
+                    edgeTiles.push({ x: t.x, y: t.y });
                     break;
                 }
             }
         }
 
-        // Shuffle shore tiles for randomness
-        for (let i = shoreTiles.length - 1; i > 0; i--) {
+        for (let i = edgeTiles.length - 1; i > 0; i--) {
             const j = Math.floor(ROT.RNG.getUniform() * (i + 1));
-            [shoreTiles[i], shoreTiles[j]] = [shoreTiles[j], shoreTiles[i]];
+            [edgeTiles[i], edgeTiles[j]] = [edgeTiles[j], edgeTiles[i]];
         }
 
         const candidates = [];
-        const usedShores = new Set();
+        const usedEdges = new Set();
 
-        for (const shore of shoreTiles) {
-            if (usedShores.has(`${shore.x},${shore.y}`)) continue;
+        for (const edge of edgeTiles) {
+            if (usedEdges.has(`${edge.x},${edge.y}`)) continue;
 
-            // Cast rays in cardinal directions across liquid
             const dirs = [
                 { dx: 1, dy: 0, tileName: 'INVERSE_BOX_HORIZONTAL' },
                 { dx: -1, dy: 0, tileName: 'INVERSE_BOX_HORIZONTAL' },
@@ -1613,23 +1624,22 @@ class Architect {
 
             for (const dir of dirs) {
                 const bridgeTiles = [];
-                let cx = shore.x + dir.dx;
-                let cy = shore.y + dir.dy;
+                let cx = edge.x + dir.dx;
+                let cy = edge.y + dir.dy;
 
-                while (liquidSet.has(`${cx},${cy}`) && bridgeTiles.length < maxSpan) {
-                    bridgeTiles.push({ x: cx, y: cy, paint_tile: dir.tileName });
+                while (isVoid(cx, cy) && bridgeTiles.length < maxSpan) {
+                    bridgeTiles.push({ x: cx, y: cy, tileIndexBase: dir.tileName });
                     cx += dir.dx;
                     cy += dir.dy;
                 }
 
-                // Check if we hit walkable land on the other side
-                const farShoreKey = `${cx},${cy}`;
-                if (bridgeTiles.length >= minSpan && walkableSet.has(farShoreKey) && !liquidSet.has(farShoreKey)) {
-                    const dist = this.bfsDistance(shore.x, shore.y, cx, cy, walkableSet);
+                const farEdgeKey = `${cx},${cy}`;
+                if (bridgeTiles.length >= minSpan && walkableSet.has(farEdgeKey)) {
+                    const dist = this.bfsDistance(edge.x, edge.y, cx, cy, walkableSet);
                     if (dist > bridgeTiles.length * 3) {
                         candidates.push({
                             tiles: bridgeTiles,
-                            from: { x: shore.x, y: shore.y },
+                            from: { x: edge.x, y: edge.y },
                             to: { x: cx, y: cy },
                             distance: dist,
                             span: bridgeTiles.length
@@ -1646,7 +1656,6 @@ class Architect {
         for (const c of candidates) {
             if (built >= maxBridges) break;
 
-            // Don't overlap with existing bridges
             let overlaps = false;
             for (const t of c.tiles) {
                 if (bridgedTiles.has(`${t.x},${t.y}`)) { overlaps = true; break; }
@@ -1655,13 +1664,12 @@ class Architect {
 
             for (const t of c.tiles) {
                 this.pendingBridgeSpawns.push(t);
-                this.walkableTiles.push({ x: t.x, y: t.y });
                 bridgedTiles.add(`${t.x},${t.y}`);
             }
 
             built++;
-            usedShores.add(`${c.from.x},${c.from.y}`);
-            usedShores.add(`${c.to.x},${c.to.y}`);
+            usedEdges.add(`${c.from.x},${c.from.y}`);
+            usedEdges.add(`${c.to.x},${c.to.y}`);
             console.log(`Rope bridge: ${c.span} tiles from (${c.from.x},${c.from.y}) to (${c.to.x},${c.to.y}), pathing distance was ${c.distance}`);
         }
 
@@ -2704,8 +2712,8 @@ class Architect {
 
         for (const pos of this.pendingBridgeSpawns) {
             const data = JSON.parse(JSON.stringify(actorData));
-            if (pos.paint_tile) {
-                data.tileIndexBase = pos.paint_tile;
+            if (pos.tileIndexBase) {
+                data.tileIndexBase = pos.tileIndexBase;
             }
             context.createActor(pos.x, pos.y, 'rope_bridge', data);
         }

@@ -1365,11 +1365,18 @@ const BehaviorLibrary = {
             const targetX = actor.x + dir.dx;
             const targetY = actor.y + dir.dy;
 
-            // Check bounds and floor
+            // Check bounds
             if (targetX < 0 || targetX >= mapManager.width) continue;
             if (targetY < 0 || targetY >= mapManager.height) continue;
             const floorTile = mapManager.floorMap?.[targetY]?.[targetX];
-            if (!floorTile || floorTile.tileId <= 0) continue;
+            const hasFloor = floorTile && floorTile.tileId > 0;
+            // Allow spreading to bridge actors over voids
+            if (!hasFloor) {
+                const bridgeActor = entityManager.actors.find(
+                    a => a.x === targetX && a.y === targetY && !a.isDead && a.hasAttribute('bridge') && a.hasAttribute('flammable')
+                );
+                if (!bridgeActor) continue;
+            }
 
             // Don't spread where same fire type already exists
             const existingFire = entityManager.actors.find(

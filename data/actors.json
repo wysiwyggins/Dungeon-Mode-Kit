@@ -580,8 +580,7 @@
     "attributes": {
       "solid": false,
       "flammable": true,
-      "bridge": true,
-      "paint_tile": "INVERSE_BOX_HORIZONTAL"
+      "bridge": true
     }
   },
   "fungus": {
