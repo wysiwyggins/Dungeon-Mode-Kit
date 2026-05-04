@@ -272,7 +272,8 @@
         "REPTILE_HEAD": [3,11],
         "COFFER": [4,11],
         "EVIL_EYE": [5,11],
-        "MEAT": [6,11]
+        "MEAT": [6,11],
+        "IMPERFECT_DOTTED_WHITE_SHADE": [7,11]
 
     }
 }
