@@ -28,7 +28,9 @@
       "flammable": true,
       "ignites": true,
       "burns_out_item": "torch_unlit",
-      "burnout_message": "Your torch burns out."
+      "burnout_message": "Your torch burns out.",
+      "use_verb": "Extinguish",
+      "use_effect": "toggle_torch"
     },
     "stats": {
       "burns": {
@@ -49,7 +51,9 @@
       "pickupable": true,
       "visible": true,
       "stackable": false,
-      "flammable": true
+      "flammable": true,
+      "use_verb": "Light",
+      "use_effect": "toggle_torch"
     }
   },
 
