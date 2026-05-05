@@ -27,9 +27,10 @@
       "stackable": false,
       "flammable": true,
       "ignites": true,
+      "burns_out_item": "torch_unlit",
+      "burnout_message": "Your torch burns out.",
       "use_verb": "Extinguish",
-      "use_effect": "toggle_torch",
-      "burnout_message": "Your torch burns out."
+      "use_effect": "toggle_torch"
     },
     "stats": {
       "burns": {
@@ -911,7 +912,7 @@
       "flammable": true,
       "consumable": true,
       "use_verb": "Eat",
-      "use_effect": { "nutrition": 300 },
+      "use_effect": { "nutrition": 15 },
       "use_sound": "pickup",
       "description": "A crisp red apple."
     }
@@ -928,15 +929,15 @@
       "flammable": true,
       "consumable": true,
       "use_verb": "Eat",
-      "use_effect": { "nutrition": 400 },
-      "use_sound": "swallow",
-      "description": "A hunk of meat."
+      "use_effect": { "nutrition": 40 },
+      "use_sound": "pickup",
+      "description": "A hunk of dried meat."
     }
   },
 
   "rations": {
     "name": "Rations",
-    "tileIndex": "MEAT",
+    "tileIndex": "SEMICOLON",
     "tint": "#daa520",
     "attributes": {
       "pickupable": true,
@@ -945,7 +946,7 @@
       "flammable": true,
       "consumable": true,
       "use_verb": "Eat",
-      "use_effect": { "nutrition": 500 },
+      "use_effect": { "nutrition": 60 },
       "use_sound": "pickup",
       "description": "A package of preserved travel rations. Very filling."
     }

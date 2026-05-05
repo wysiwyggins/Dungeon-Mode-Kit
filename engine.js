@@ -1123,7 +1123,7 @@ class DungeonEngine {
             const mapFile = floor === 1 ? 'map.tmj' : `${floor}.tmj`;
             await this.mapManager.loadTiledMap(`${globalVars.BASE_PATH}/prototypes/${this.currentPrototype.name}/${mapFile}`);
         } else {
-            this.mapManager.generateProceduralMap(mapGenerator, floor);
+            this.mapManager.generateProceduralMap(mapGenerator);
         }
 
         // Viewport: per-prototype viewport_width/height in tile columns/rows
@@ -1169,8 +1169,6 @@ class DungeonEngine {
         this.mapManager.spawnPendingLava(architectContext);
         this.mapManager.spawnPendingLakes(architectContext);
         this.mapManager.spawnPendingSewage(architectContext);
-        this.mapManager.spawnPendingFungus(architectContext);
-        this.mapManager.spawnPendingBridges(architectContext);
         this.mapManager.spawnPendingPushableWalls(architectContext);
 
         if (treasureRoomData) {
@@ -1214,7 +1212,9 @@ class DungeonEngine {
         // Run cellular automata behaviors once to pre-calculate initial state
         this.entityManager.runCellularAutomataStep();
 
-        this.mapManager.addBaseAndShadows();
+        if (!prototypeConfig.mechanics?.darkness) {
+            this.mapManager.addBaseAndShadows();
+        }
 
         this.renderer.renderTestPattern(this.mapManager);
         this.renderer.renderItems(this.entityManager);
@@ -1336,7 +1336,9 @@ class DungeonEngine {
         // Restore player
         this.restorePlayerOnFloor(playerState, entryDirection);
 
-        this.mapManager.addBaseAndShadows();
+        if (!prototypeConfig.mechanics?.darkness) {
+            this.mapManager.addBaseAndShadows();
+        }
 
         this.renderer.renderTestPattern(this.mapManager);
         this.renderer.renderItems(this.entityManager);
@@ -4591,10 +4593,6 @@ class Actor extends Entity {
      */
     executeItemEffect(item, effect) {
         console.log('executeItemEffect called with effect:', effect, 'typeof:', typeof effect);
-        if (Array.isArray(effect)) {
-            console.warn('executeItemEffect: use_effect is an array (expected object):', JSON.stringify(effect));
-            return true;
-        }
         // Handle object format: { "health": 20, "strength": 2, "defense": 5, "apply_state": "poisoned" }
         // Supports stats (health, nutrition), attributes (strength, defense), and state application
         if (typeof effect === 'object') {
@@ -5465,10 +5463,7 @@ class Actor extends Entity {
             return false;
         }
         const tile = this.engine.mapManager.floorMap[y][x];
-        if (tile && tile.tileId) return true;
-        // Bridge actors act as walkable floor over voids
-        const actor = this.engine.entityManager?.getActorAt(x, y);
-        return actor && !actor.isDead && actor.hasAttribute('bridge');
+        return tile && tile.tileId;
     }
 
     /**
@@ -5634,8 +5629,8 @@ class Actor extends Entity {
             if (this._chainHead && actorAtTarget._chainHead === this._chainHead) {
                 return { moved: false, actionTaken: false };
             }
-            // Check if actor can be pushed (flying actors can't push)
-            if (actorAtTarget.hasAttribute('pushable') && !this.hasStateProperty('flying')) {
+            // Check if actor can be pushed
+            if (actorAtTarget.hasAttribute('pushable')) {
                 const dx = newX - this.x;
                 const dy = newY - this.y;
                 const pushX = newX + dx;
@@ -6379,8 +6374,7 @@ class Actor extends Entity {
                 if (this.isPlayerControlled()) {
                     this.engine.inputManager?.showMessage(`Your ${item.name} is extinguished.`);
                 }
-                const burnsOutItem = item.getAttribute('burns_out_item');
-                const unlitType = burnsOutItem || 'torch_unlit';
+                const unlitType = item.getAttribute('burns_out_item') || 'torch_unlit';
                 const itemData = this.engine.currentPrototype?.getItemData(unlitType);
                 if (itemData) {
                     const remainingFuel = item.stats?.burns?.current ?? 0;
@@ -8078,13 +8072,6 @@ class RenderSystem {
         const tileHeight = this.engine.config.tileHeight;
 
         // Create passability callback
-        const tileHasFloor = (x, y) => {
-            const tile = this.engine.mapManager?.floorMap[y]?.[x];
-            if (tile && tile.tileId > 0) return true;
-            const actor = this.engine.entityManager?.getActorAt(x, y);
-            return actor && !actor.isDead && actor.hasAttribute('bridge');
-        };
-
         const isPassable = (x, y) => {
             // Check map boundaries
             if (x < 0 || y < 0 || x >= this.mapWidth || y >= this.mapHeight) {
@@ -8092,7 +8079,9 @@ class RenderSystem {
             }
             // Allow start and end tiles even if occupied
             if ((x === startX && y === startY) || (x === endX && y === endY)) {
-                return tileHasFloor(x, y);
+                // Still need to check if there's floor
+                const floorTile = this.engine.mapManager?.floorMap[y]?.[x];
+                return floorTile && floorTile.tileId > 0;
             }
             // Check for solid actors
             const solidActor = this.engine.entityManager?.getSolidActorAt(x, y);
@@ -8108,10 +8097,15 @@ class RenderSystem {
                     return false;
                 }
             }
-            return tileHasFloor(x, y);
+            // Check if tile is walkable (has floor)
+            const floorTile = this.engine.mapManager?.floorMap[y]?.[x];
+            return floorTile && floorTile.tileId > 0;
         };
 
-        const hasFloor = (x, y) => tileHasFloor(x, y);
+        const hasFloor = (x, y) => {
+            const tile = this.engine.mapManager?.floorMap[y]?.[x];
+            return tile && tile.tileId > 0;
+        };
 
         // Find path using A*
         const path = findPathAStar(startX, startY, endX, endY, isPassable, { topology: 8, hasFloor });

@@ -920,6 +920,8 @@
     "personality": "aggressive_melee",
     "collision_effect": { "health": -2 },
     "collision_sound": "hit",
+    "defaultFacing": "left",
+    "facingEnabled": true,
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
       "hostile": true,
