@@ -4712,6 +4712,45 @@ class Actor extends Entity {
                 return true;
             }
 
+            case 'toggle_torch': {
+                const isLit = item.hasAttribute('light_source');
+                const targetType = isLit ? 'torch_unlit' : 'torch';
+                const itemData = this.engine.currentPrototype?.getItemData(targetType);
+                if (!itemData) return false;
+
+                const remainingFuel = item.stats?.burns?.current ?? 0;
+                const maxFuel = item.stats?.burns?.max ?? 500;
+
+                if (!isLit && remainingFuel <= 0) {
+                    if (this.isPlayerControlled()) {
+                        this.engine.inputManager?.showMessage('The torch has no fuel left.');
+                    }
+                    return false;
+                }
+
+                const newItem = new Item(-1, -1, targetType, itemData, this.engine);
+                newItem.owner = this;
+                newItem.stats = newItem.stats || {};
+                newItem.stats.burns = {
+                    current: remainingFuel,
+                    max: maxFuel,
+                    per_turn: isLit ? 0 : -1,
+                    display_label: 'Fuel',
+                    warnings: [{ threshold: 0.1, message: 'Your torch is almost out!' }]
+                };
+
+                const idx = this.inventory.indexOf(item);
+                if (idx !== -1) this.inventory[idx] = newItem;
+
+                this.engine.lightingManager?.computeLighting();
+                if (this.isPlayerControlled()) {
+                    const msg = isLit ? 'You extinguish the torch.' : 'You light the torch.';
+                    this.engine.inputManager?.showMessage(msg);
+                    this.engine.interfaceManager?.updatePlayerInfo();
+                }
+                return true;
+            }
+
             case 'summon_monsters': {
                 const floorConfig = this.engine.getFloorConfig(this.engine.currentFloor);
                 const randomActors = floorConfig?.random_actors || this.engine.currentPrototype?.config?.random_actors;
@@ -6335,17 +6374,23 @@ class Actor extends Entity {
                 if (this.isPlayerControlled()) {
                     this.engine.inputManager?.showMessage(`Your ${item.name} is extinguished.`);
                 }
-                const burnsOutItem = item.getAttribute('burns_out_item');
-                if (burnsOutItem) {
-                    const itemData = this.engine.currentPrototype?.getItemData(burnsOutItem);
-                    if (itemData) {
-                        const newItem = new Item(-1, -1, burnsOutItem, itemData, this.engine);
-                        newItem.owner = this;
-                        const idx = this.inventory.indexOf(item);
-                        if (idx !== -1) this.inventory[idx] = newItem;
-                    } else {
-                        this.inventory = this.inventory.filter(i => i !== item);
-                    }
+                const unlitType = item.getAttribute('burns_out_item') || 'torch_unlit';
+                const itemData = this.engine.currentPrototype?.getItemData(unlitType);
+                if (itemData) {
+                    const remainingFuel = item.stats?.burns?.current ?? 0;
+                    const maxFuel = item.stats?.burns?.max ?? 500;
+                    const newItem = new Item(-1, -1, unlitType, itemData, this.engine);
+                    newItem.owner = this;
+                    newItem.stats = newItem.stats || {};
+                    newItem.stats.burns = {
+                        current: remainingFuel,
+                        max: maxFuel,
+                        per_turn: 0,
+                        display_label: 'Fuel',
+                        warnings: [{ threshold: 0.1, message: 'Your torch is almost out!' }]
+                    };
+                    const idx = this.inventory.indexOf(item);
+                    if (idx !== -1) this.inventory[idx] = newItem;
                 } else {
                     this.inventory = this.inventory.filter(i => i !== item);
                 }
