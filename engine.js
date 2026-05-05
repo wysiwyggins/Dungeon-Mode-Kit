@@ -4732,14 +4732,14 @@ class Actor extends Entity {
 
                 const newItem = new Item(-1, -1, targetType, itemData, this.engine);
                 newItem.owner = this;
-                if (newItem.stats?.burns) {
-                    newItem.stats.burns.current = remainingFuel;
-                    newItem.stats.burns.max = maxFuel;
-                } else if (!isLit) {
-                    newItem.stats = newItem.stats || {};
-                    newItem.stats.burns = { current: remainingFuel, max: maxFuel, per_turn: -1, display_label: 'Fuel',
-                        warnings: [{ threshold: 0.1, message: 'Your torch is almost out!' }] };
-                }
+                newItem.stats = newItem.stats || {};
+                newItem.stats.burns = {
+                    current: remainingFuel,
+                    max: maxFuel,
+                    per_turn: isLit ? 0 : -1,
+                    display_label: 'Fuel',
+                    warnings: [{ threshold: 0.1, message: 'Your torch is almost out!' }]
+                };
 
                 const idx = this.inventory.indexOf(item);
                 if (idx !== -1) this.inventory[idx] = newItem;
@@ -6387,13 +6387,14 @@ class Actor extends Entity {
                     const maxFuel = item.stats?.burns?.max ?? 500;
                     const newItem = new Item(-1, -1, unlitType, itemData, this.engine);
                     newItem.owner = this;
-                    if (newItem.stats?.burns) {
-                        newItem.stats.burns.current = remainingFuel;
-                        newItem.stats.burns.max = maxFuel;
-                    } else {
-                        newItem.stats = newItem.stats || {};
-                        newItem.stats.burns = { current: remainingFuel, max: maxFuel, per_turn: 0 };
-                    }
+                    newItem.stats = newItem.stats || {};
+                    newItem.stats.burns = {
+                        current: remainingFuel,
+                        max: maxFuel,
+                        per_turn: 0,
+                        display_label: 'Fuel',
+                        warnings: [{ threshold: 0.1, message: 'Your torch is almost out!' }]
+                    };
                     const idx = this.inventory.indexOf(item);
                     if (idx !== -1) this.inventory[idx] = newItem;
                 } else {
