@@ -6992,7 +6992,7 @@ class EntityManager {
                 const actor = new Actor(tile.x, tile.y, actorType, actorData, this.engine);
                 this.addEntity(actor);
                 actor.loadDefaultItems();
-                console.log(`random_actors: Spawned "${actorType}" at (${tile.x}, ${tile.y}) (${i + 1}/${count})`);
+                //console.log(`random_actors: Spawned "${actorType}" at (${tile.x}, ${tile.y}) (${i + 1}/${count})`);
             }
         }
     }
