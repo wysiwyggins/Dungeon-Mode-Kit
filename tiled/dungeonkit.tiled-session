@@ -13,11 +13,11 @@
                 3,
                 8
             ],
-            "scale": 0.45,
-            "selectedLayer": 1,
+            "scale": 0.7952,
+            "selectedLayer": 2,
             "viewCenter": {
-                "x": 688.8888888888889,
-                "y": 410
+                "x": 630.658953722334,
+                "y": 227.61569416498995
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/catacombs/map.tmj": {
@@ -37,8 +37,8 @@
             "scale": 0.3942,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 977.9299847792998,
-                "y": 606.2912227295787
+                "x": 800.3551496702182,
+                "y": 585.9969558599695
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/dungeon/map.tmj": {
@@ -117,8 +117,8 @@
             "scale": 0.5311,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 439.6535492374317,
-                "y": 514.0274901148559
+                "x": 420.8247034456787,
+                "y": 510.2617209565054
             }
         },
         "vault.tmj": {
@@ -142,6 +142,7 @@
     ],
     "project": "dungeonkit.tiled-project",
     "recentFiles": [
+        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/arena/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/default/map.tmj",
         "tower.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/map.tmj",
@@ -151,7 +152,6 @@
         "vault.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/catacombs/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/underworld/map.tmj",
-        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/arena/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/morass/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/mine/map.tmj"
     ]
