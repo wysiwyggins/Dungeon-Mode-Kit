@@ -17,7 +17,8 @@
       "sentient": true,
       "inventory": 4,
       "remains": "skull",
-      "accuracy": 40
+      "accuracy": 40,
+      "opaque": false
     },
     "stats": {
       "health": {
@@ -43,7 +44,8 @@
       "inventory": 1,
       "remains": "skull",
       "accuracy": 60,
-      "defense": 5
+      "defense": 5,
+      "opaque": false
     },
     "stats": {
       "health": 30
@@ -66,7 +68,8 @@
       "sentient": true,
       "inventory": 0,
       "accuracy": 70,
-      "defense": 10
+      "defense": 10,
+      "opaque": false
     },
     "stats": {
       "health": 60
@@ -112,7 +115,8 @@
       "chain_head": true,
       "chain_segment_type": "scutigera_body",
       "chain_base_strength": 5,
-      "chain_strength_per_segment": 2.5
+      "chain_strength_per_segment": 2.5,
+      "opaque": false
     },
     "stats": {
       "health": 20
@@ -134,7 +138,8 @@
       "sentient": true,
       "inventory": 0,
       "accuracy": 50,
-      "defense": 3
+      "defense": 3,
+      "opaque": false
     },
     "stats": {
       "health": 12
@@ -178,7 +183,8 @@
       "inventory": 1,
       "remains": "skull",
       "accuracy": 35,
-      "defense": 5
+      "defense": 5,
+      "opaque": false
     },
     "stats": {
       "health": 20
@@ -204,7 +210,8 @@
       "inventory": 1,
       "remains": "skull",
       "accuracy": 35,
-      "defense": 5
+      "defense": 5,
+      "opaque": false
     },
     "stats": {
       "health": 15
@@ -219,7 +226,8 @@
     "attributes": {
       "sentient": true,
       "inventory": 1,
-      "remains": "blood"
+      "remains": "blood",
+      "opaque": false
     },
     "stats": {
       "health": 10
@@ -561,6 +569,35 @@
     "attributes": {
       "flammable": false,
       "spreads": false,
+      "entry_sound": "step_mud"
+    }
+  },
+  "rope_bridge": {
+    "name": "rope bridge",
+    "tileIndexBase": "INVERSE_BOX_HORIZONTAL",
+    "tileIndexTop": "BLANK",
+    "tint": "#8B6914",
+    "attributes": {
+      "solid": false,
+      "flammable": true,
+      "bridge": true
+    }
+  },
+  "fungus": {
+    "name": "fungus",
+    "tileIndexBase": "IMPERFECT_DOTTED_WHITE_SHADE",
+    "tileIndexTop": "BLANK",
+    "tint": "#33AA77",
+    "attributes": {
+      "solid": false,
+      "flammable": true,
+      "spreads": false,
+      "liquid": false,
+      "paint_tile": "IMPERFECT_DOTTED_LIGHT_SHADE",
+      "mass_noun": true,
+      "light_source": true,
+      "light_radius": 2,
+      "light_color": "#225544",
       "entry_sound": "step_mud"
     }
   },
@@ -1007,7 +1044,7 @@
   "jackal": {
     "name": "Jackal",
     "tileIndexBase": "DOOR_TOP",
-    "tileIndexTop": "SMALL_BLACK_LOWER_RIGHT_TRIANGLE",
+    "tileIndexTop": "REPTILE_HEAD",
     "tint": "#C4A035",
     "flipTopH": true,
     "personality": "aggressive_melee",
