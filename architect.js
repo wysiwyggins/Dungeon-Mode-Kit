@@ -249,7 +249,8 @@ class Architect {
             143: 'room',
             144: 'room',
             12: 'item_spawn',
-            3: 'actor_spawn'
+            3: 'actor_spawn',
+            218: 'abyss'
         };
 
         if (builtinWildcards[tileId]) {
@@ -490,27 +491,6 @@ class Architect {
                     }, 1);
                 }
 
-                const lavaChance = options.lava_chance || 15;
-                const lavaCave = new ROT.Map.Cellular(this.width, this.height, {
-                    born: [4, 5, 6, 7, 8],
-                    survive: [3, 4, 5, 6, 7, 8],
-                    topology: 8
-                });
-
-                lavaCave.randomize(lavaChance / 100);
-                lavaCave.create();
-
-                const lavaPositions = [];
-
-                lavaCave.create((x, y, value) => {
-                    if (value === 0) return;
-                    if (!infernalFloorTiles.has(`${x},${y}`)) return;
-                    lavaPositions.push({ x, y });
-                });
-
-                const lavaSet = new Set(lavaPositions.map(p => `${p.x},${p.y}`));
-                this.walkableTiles = this.walkableTiles.filter(t => !lavaSet.has(`${t.x},${t.y}`));
-
                 const infernalWallTypes = options.wall_types || [{ type: 'wall', weight: 100 }];
                 const infernalTotalWeight = infernalWallTypes.reduce((sum, wt) => sum + wt.weight, 0);
 
@@ -531,9 +511,7 @@ class Architect {
                     }
                 }
 
-                this.pendingLavaSpawns.push(...lavaPositions);
-
-                console.log(`Infernal map generated: ${infernalFloorTiles.size} floor tiles, ${lavaPositions.length} lava tiles`);
+                console.log(`Infernal map generated: ${infernalFloorTiles.size} floor tiles`);
                 break;
             }
 
@@ -653,61 +631,29 @@ class Architect {
             }
         }
 
-        const lakeChance = options.lake_chance || 0;
-        if (lakeChance > 0) {
-            const lakeCave = new ROT.Map.Cellular(this.width, this.height, {
-                born: [5, 6, 7, 8],
-                survive: [4, 5, 6, 7, 8],
-                topology: 8
-            });
-
-            lakeCave.randomize(lakeChance / 100);
-            lakeCave.create();
-            lakeCave.create();
-
-            const lakePositions = [];
-            const walkableSet = new Set(this.walkableTiles.map(t => `${t.x},${t.y}`));
-
-            lakeCave.create((x, y, value) => {
-                if (value === 0) return;
-                if (!walkableSet.has(`${x},${y}`)) return;
-                lakePositions.push({ x, y });
-            });
-
-            this.pendingLakeSpawns.push(...lakePositions);
-            console.log(`Lake generation: ${lakePositions.length} water tiles`);
+        if (options.lakes) {
+            this.generateOverlayBlobs(options.lakes);
         }
-
-        const sewageChance = options.sewage_chance || 0;
-        if (sewageChance > 0) {
-            const sewageCave = new ROT.Map.Cellular(this.width, this.height, {
-                born: [5, 6, 7, 8],
-                survive: [4, 5, 6, 7, 8],
-                topology: 8
-            });
-
-            sewageCave.randomize(sewageChance / 100);
-            sewageCave.create();
-            sewageCave.create();
-
-            const sewagePositions = [];
-            const walkableSet = new Set(this.walkableTiles.map(t => `${t.x},${t.y}`));
-
-            sewageCave.create((x, y, value) => {
-                if (value === 0) return;
-                if (!walkableSet.has(`${x},${y}`)) return;
-                sewagePositions.push({ x, y });
-            });
-
-            this.pendingSewageSpawns.push(...sewagePositions);
-            console.log(`Sewage generation: ${sewagePositions.length} sewage tiles`);
+        if (options.abyss) {
+            this.generateOverlayBlobs(options.abyss);
         }
 
         if (this.pendingWallSpawns.length > 0) {
+            const hasFloor = (x, y) => {
+                if (x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
+                return this.floorMap[y][x] !== null;
+            };
+            const wallSet = new Set(this.pendingWallSpawns.map(p => `${p.x},${p.y}`));
             const converted = [];
             for (let i = this.pendingWallSpawns.length - 1; i >= 0; i--) {
                 const wall = this.pendingWallSpawns[i];
                 if (wall.type && wall.type !== 'wall') continue;
+                const betweenFloors =
+                    (hasFloor(wall.x - 1, wall.y) && hasFloor(wall.x + 1, wall.y) &&
+                     !wallSet.has(`${wall.x - 1},${wall.y}`) && !wallSet.has(`${wall.x + 1},${wall.y}`)) ||
+                    (hasFloor(wall.x, wall.y - 1) && hasFloor(wall.x, wall.y + 1) &&
+                     !wallSet.has(`${wall.x},${wall.y - 1}`) && !wallSet.has(`${wall.x},${wall.y + 1}`));
+                if (!betweenFloors) continue;
                 if (ROT.RNG.getPercentage() <= 2) {
                     this.pendingPushableWallSpawns.push({ x: wall.x, y: wall.y });
                     this.pendingWallSpawns.splice(i, 1);
@@ -720,6 +666,103 @@ class Architect {
         }
 
         console.log(`Procedural map generated with ${this.walkableTiles.length} walkable tiles`);
+    }
+
+    generateOverlayBlobs(config) {
+        if (!config || !config.count) return;
+
+        const count = Array.isArray(config.count)
+            ? ROT.RNG.getUniformInt(config.count[0], config.count[1])
+            : config.count;
+        if (count <= 0) return;
+
+        const types = config.types || ['water'];
+        const minSize = config.minSize || 10;
+        const maxSize = config.maxSize || 60;
+
+        const walkableSet = new Set(this.walkableTiles.map(t => `${t.x},${t.y}`));
+        const allVoidCells = new Set();
+        let totalPlaced = 0;
+
+        for (let i = 0; i < count; i++) {
+            const type = types[Math.floor(ROT.RNG.getUniform() * types.length)];
+            const targetSize = ROT.RNG.getUniformInt(minSize, maxSize);
+
+            const walkableArray = [...walkableSet];
+            if (walkableArray.length === 0) break;
+            const seed = walkableArray[Math.floor(ROT.RNG.getUniform() * walkableArray.length)];
+
+            const blob = [];
+            const frontier = [seed];
+            const visited = new Set([seed]);
+
+            while (blob.length < targetSize && frontier.length > 0) {
+                const idx = Math.floor(ROT.RNG.getUniform() * frontier.length);
+                const cell = frontier.splice(idx, 1)[0];
+
+                if (!walkableSet.has(cell)) continue;
+
+                blob.push(cell);
+                walkableSet.delete(cell);
+
+                const [cx, cy] = cell.split(',').map(Number);
+                const dirs = [[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]];
+                for (const [dx, dy] of dirs) {
+                    const nx = cx + dx;
+                    const ny = cy + dy;
+                    if (nx < 0 || nx >= this.width || ny < 0 || ny >= this.height) continue;
+                    const nk = `${nx},${ny}`;
+                    if (!visited.has(nk) && walkableSet.has(nk)) {
+                        visited.add(nk);
+                        frontier.push(nk);
+                    }
+                }
+            }
+
+            if (blob.length === 0) continue;
+            totalPlaced += blob.length;
+
+            if (type === 'abyss') {
+                for (const key of blob) {
+                    allVoidCells.add(key);
+                    const [vx, vy] = key.split(',').map(Number);
+                    this.floorMap[vy][vx] = null;
+                    this.backgroundMap[vy][vx] = { tileId: 217, layer: 'background' };
+                    this.wallMap[vy][vx] = null;
+                    this.overlayMap[vy][vx] = null;
+                }
+            } else if (type === 'lava') {
+                for (const key of blob) {
+                    const [px, py] = key.split(',').map(Number);
+                    this.pendingLavaSpawns.push({ x: px, y: py });
+                }
+            } else if (type === 'sewage') {
+                for (const key of blob) {
+                    const [px, py] = key.split(',').map(Number);
+                    this.pendingSewageSpawns.push({ x: px, y: py });
+                }
+            } else {
+                for (const key of blob) {
+                    const [px, py] = key.split(',').map(Number);
+                    this.pendingLakeSpawns.push({ x: px, y: py });
+                }
+            }
+
+            console.log(`  ${type} blob: ${blob.length} tiles`);
+        }
+
+        if (allVoidCells.size > 0) {
+            this.pendingWallSpawns = this.pendingWallSpawns.filter(p => !allVoidCells.has(`${p.x},${p.y}`));
+            this.pendingDoorSpawns = this.pendingDoorSpawns.filter(p => !allVoidCells.has(`${p.x},${p.y}`));
+            this.pendingTorchSpawns = this.pendingTorchSpawns.filter(p => !allVoidCells.has(`${p.x},${p.y}`));
+            this.pendingLavaSpawns = this.pendingLavaSpawns.filter(p => !allVoidCells.has(`${p.x},${p.y}`));
+            this.pendingLakeSpawns = this.pendingLakeSpawns.filter(p => !allVoidCells.has(`${p.x},${p.y}`));
+            this.pendingSewageSpawns = this.pendingSewageSpawns.filter(p => !allVoidCells.has(`${p.x},${p.y}`));
+        }
+
+        this.walkableTiles = this.walkableTiles.filter(t => walkableSet.has(`${t.x},${t.y}`));
+
+        console.log(`Overlay generation: ${totalPlaced} total tiles in ${count} blobs`);
     }
 
     // ========================================================================
@@ -749,9 +792,10 @@ class Architect {
 
         const mazes = regions.filter(r => r.type === 'maze');
         const rooms = regions.filter(r => r.type === 'room');
-        const others = regions.filter(r => r.type !== 'maze' && r.type !== 'room');
+        const abysses = regions.filter(r => r.type === 'abyss');
+        const others = regions.filter(r => r.type !== 'maze' && r.type !== 'room' && r.type !== 'abyss');
 
-        for (const { region, type } of [...mazes, ...rooms, ...others]) {
+        for (const { region, type } of [...mazes, ...rooms, ...others, ...abysses]) {
             await this.generateWildcardContent(region, type, context);
         }
     }
@@ -805,6 +849,9 @@ class Architect {
                 break;
             case 'room':
                 this.generateRoomAt(region.x, region.y, region.width, region.height, context);
+                break;
+            case 'abyss':
+                this.generateAbyssAt(region.x, region.y, region.width, region.height, context);
                 break;
             case 'item_spawn':
                 break;
@@ -1142,36 +1189,6 @@ class Architect {
             }
         }, 1);
 
-        const lavaChance = mapGenConfig.lava_chance || 15;
-        const lavaCave = new ROT.Map.Cellular(width, height, {
-            born: [4, 5, 6, 7, 8],
-            survive: [3, 4, 5, 6, 7, 8],
-            topology: 8
-        });
-
-        lavaCave.randomize(lavaChance / 100);
-        lavaCave.create();
-
-        const lavaPositions = [];
-
-        lavaCave.create((x, y, value) => {
-            if (value === 0) return;
-
-            const worldX = startX + x;
-            const worldY = startY + y;
-
-            if (worldX >= this.width || worldY >= this.height) return;
-
-            const wildcard = this.wildcardMap[worldY][worldX];
-            if (!wildcard || wildcard.type !== 'infernal') return;
-
-            if (!floorCells.has(`${x},${y}`)) return;
-
-            lavaPositions.push({ x: worldX, y: worldY });
-        });
-
-        const lavaSet = new Set(lavaPositions.map(p => `${p.x},${p.y}`));
-
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
                 if (floorCells.has(`${x},${y}`)) continue;
@@ -1190,8 +1207,6 @@ class Architect {
             }
         }
 
-        this.walkableTiles = this.walkableTiles.filter(t => !lavaSet.has(`${t.x},${t.y}`));
-
         const wallTypes = mapGenConfig.wall_types || [{ type: 'wall', weight: 100 }];
         const totalWeight = wallTypes.reduce((sum, wt) => sum + wt.weight, 0);
 
@@ -1208,9 +1223,42 @@ class Architect {
             this.pendingWallSpawns.push({ x: pos.x, y: pos.y, type: wallType });
         }
 
-        this.pendingLavaSpawns.push(...lavaPositions);
+        console.log(`Infernal cave generated: ${floorCells.size} floor tiles, ${wallPositions.length} walls`);
+    }
 
-        console.log(`Infernal cave generated: ${floorCells.size} floor tiles, ${wallPositions.length} walls, ${lavaPositions.length} lava`);
+    generateAbyssAt(startX, startY, width, height, context = null) {
+        const regionSet = new Set();
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const wx = startX + x;
+                const wy = startY + y;
+                if (wx < this.width && wy < this.height) {
+                    const wildcard = this.wildcardMap[wy][wx];
+                    if (wildcard && wildcard.type === 'abyss' && this.floorMap[wy][wx]) {
+                        regionSet.add(`${wx},${wy}`);
+                    }
+                }
+            }
+        }
+
+        if (regionSet.size === 0) return;
+
+        const config = {
+            count: [1, Math.max(1, Math.floor(regionSet.size / 40))],
+            types: ['abyss'],
+            minSize: Math.min(10, Math.floor(regionSet.size / 4)),
+            maxSize: Math.floor(regionSet.size / 2)
+        };
+
+        const walkableBackup = this.walkableTiles;
+        this.walkableTiles = this.walkableTiles.filter(t => regionSet.has(`${t.x},${t.y}`));
+
+        this.generateOverlayBlobs(config);
+
+        const remainingSet = new Set(this.walkableTiles.map(t => `${t.x},${t.y}`));
+        this.walkableTiles = walkableBackup.filter(t =>
+            !regionSet.has(`${t.x},${t.y}`) || remainingSet.has(`${t.x},${t.y}`)
+        );
     }
 
     generateRoomAt(startX, startY, width, height, context = null) {

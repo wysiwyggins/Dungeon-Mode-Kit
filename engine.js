@@ -9232,5 +9232,27 @@ window.giveItem = (itemType, count = 1) => {
     console.log(`Gave ${count}x ${itemData.name || itemType} to ${player.name}`);
 };
 
+window.goToFloor = async (floorNumber) => {
+    if (!engine) {
+        console.error('Engine not initialized.');
+        return;
+    }
+    const config = engine.currentPrototype?.config;
+    const totalFloors = config?.levels?.length || 1;
+    if (floorNumber < 1 || floorNumber > totalFloors) {
+        console.error(`Invalid floor: ${floorNumber}. Valid range: 1-${totalFloors}`);
+        return;
+    }
+    const prototypeName = engine.currentPrototype.name;
+    engine.cleanup();
+    const prototypeConfig = await engine.loadPrototypeConfig(prototypeName);
+    engine.currentPrototype = new Prototype(prototypeName, prototypeConfig, engine);
+    await engine.currentPrototype.loadAssets();
+    engine.currentFloor = floorNumber;
+    engine.floorStates.clear();
+    await engine.loadFloor(floorNumber, 'from_above');
+    console.log(`Jumped to floor ${floorNumber}/${totalFloors}`);
+};
+
 console.log('Dungeon Mode Kit loaded. Call initializeGame() to start.');
-console.log('Level utilities: listLevels(), loadLevel("prototypeName"), giveItem("itemType", count)');
+console.log('Level utilities: listLevels(), loadLevel("prototypeName"), giveItem("itemType", count), goToFloor(n)');
