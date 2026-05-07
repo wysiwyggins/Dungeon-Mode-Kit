@@ -50,7 +50,10 @@
       },
       "random_items": {
         "key": { "chance": 100 },
-        "potion": { "chance": 60, "min": 1, "max": 2 }
+        "potion": { "chance": 60},
+        "torch": { "chance": 40},
+        "staff": { "chance": 40},
+        "ration": { "chance": 40}
       }
     },
     {

@@ -3098,6 +3098,8 @@ class Actor extends Entity {
      * @returns {Promise} Resolves when action is complete
      */
     act() {
+        this.engine.entityManager.invalidateActorPosCache();
+
         // Viewport AI margin: skip entire turn for off-screen actors
         if (this.engine.viewportEnabled && !this.isPlayerControlled()) {
             const ox = this.engine.sectionOriginX;
@@ -5814,9 +5816,7 @@ class Actor extends Entity {
 
         // Check for stairway and gateway actors (only for player-controlled actors)
         if (this.isPlayerControlled()) {
-            const actorsAtNewPos = this.engine.entityManager.actors.filter(
-                a => a.x === newX && a.y === newY && a !== this
-            );
+            const actorsAtNewPos = this.engine.entityManager.getActorsAt(newX, newY);
             const stairway = actorsAtNewPos.find(a => a.hasAttribute('stairway'));
             if (stairway) {
                 const direction = stairway.getAttribute('stairway');
@@ -5883,11 +5883,9 @@ class Actor extends Entity {
     checkCloudEffects(x, y) {
         const entityManager = this.engine.entityManager;
 
-        for (const other of entityManager.actors) {
+        for (const other of entityManager.getActorsAt(x, y)) {
             if (other === this) continue;
-            if (other.isDead) continue;
-            if (other.x !== x || other.y !== y) continue;
-            if (other.type !== 'cloud' && other.type !== 'mist') continue;
+            if (other.type !== 'cloud' && other.type !== 'mist' && other.type !== 'sewer_gas') continue;
 
             // Apply collision effect (stat damage)
             const collisionEffect = other.getAttribute('collision_effect');
@@ -6324,14 +6322,8 @@ class Actor extends Entity {
      * @returns {Actor|null} The deep actor at position, or null
      */
     getDeepActorAt(x, y) {
-        const actors = this.engine.entityManager.actors.filter(
-            a => a !== this &&
-                 a.x === x && a.y === y &&
-                 !a.isDead &&
-                 !a.hasAttribute('solid') &&
-                 a.hasAttribute('deep')
-        );
-        return actors.length > 0 ? actors[0] : null;
+        return this.engine.entityManager.getActorsAt(x, y)
+            .find(a => a !== this && !a.hasAttribute('solid') && a.hasAttribute('deep')) || null;
     }
 
     /**
@@ -6662,6 +6654,7 @@ class EntityManager {
         this.player = null;
         this._liquidPosCache = null;
         this._solidPosCache = null;
+        this._actorPosCache = null;
     }
 
     async spawnEntities(entryDirection = null) {
@@ -6723,14 +6716,12 @@ class EntityManager {
                     const checkX = actor.x + dir.dx;
                     const checkY = actor.y + dir.dy;
 
-                    const neighbor = this.actors.find(
-                        a => a.x === checkX && a.y === checkY &&
-                             !a.isDead &&
-                             (a.type === neighborType || a.type === transformTo)
-                    );
-
-                    if (neighbor) {
-                        matchingNeighbors++;
+                    const neighborsHere = this.getActorsAt(checkX, checkY);
+                    for (const a of neighborsHere) {
+                        if (a.type === neighborType || a.type === transformTo) {
+                            matchingNeighbors++;
+                            break;
+                        }
                     }
                 }
 
@@ -7291,6 +7282,7 @@ class EntityManager {
     addEntity(entity) {
         this._liquidPosCache = null;
         this._solidPosCache = null;
+        this._actorPosCache = null;
         this.entities.push(entity);
 
         if (entity instanceof Actor) {
@@ -7315,6 +7307,7 @@ class EntityManager {
     removeEntity(entity) {
         this._liquidPosCache = null;
         this._solidPosCache = null;
+        this._actorPosCache = null;
         // Remove from arrays
         this.entities = this.entities.filter(e => e !== entity);
         this.actors = this.actors.filter(a => a !== entity);
@@ -7430,20 +7423,45 @@ class EntityManager {
     }
 
     getEntityAt(x, y) {
-        // Return only base Entity objects (not Actor or Item subclasses)
         return this.entities.find(e => e.x === x && e.y === y && !(e instanceof Actor) && !(e instanceof Item));
     }
-    
+
+    _ensureActorPosCache() {
+        if (!this._actorPosCache) {
+            this._actorPosCache = new Map();
+            for (const a of this.actors) {
+                if (a.isDead) continue;
+                const key = a.x * 10000 + a.y;
+                const list = this._actorPosCache.get(key);
+                if (list) list.push(a);
+                else this._actorPosCache.set(key, [a]);
+            }
+        }
+    }
+
+    invalidateActorPosCache() {
+        this._actorPosCache = null;
+    }
+
+    getActorsAt(x, y) {
+        this._ensureActorPosCache();
+        return this._actorPosCache.get(x * 10000 + y) || [];
+    }
+
     getActorAt(x, y) {
-        return this.actors.find(a => a.x === x && a.y === y);
+        this._ensureActorPosCache();
+        const list = this._actorPosCache.get(x * 10000 + y);
+        return list ? list[0] : undefined;
     }
 
     getOtherActorAt(x, y, excludeActor) {
-        return this.actors.find(a => a.x === x && a.y === y && a !== excludeActor);
+        const list = this.getActorsAt(x, y);
+        return list.find(a => a !== excludeActor);
     }
 
     getSolidActorAt(x, y) {
-        return this.actors.find(a => a.x === x && a.y === y && !a.isDead && a.hasAttribute('solid'));
+        const list = this.getActorsAt(x, y);
+        return list.find(a => a.hasAttribute('solid'));
     }
 
     getItemAt(x, y) {
@@ -7544,15 +7562,11 @@ class EntityManager {
 
         if (!hasDamageBehavior) return;
 
-        // Find other actors at this position
-        for (const other of this.actors) {
+        for (const other of this.getActorsAt(hazard.x, hazard.y)) {
             if (other === hazard) continue;
-            if (other.isDead) continue;
-            if (other.x !== hazard.x || other.y !== hazard.y) continue;
 
-            // Skip other hazards (fire-immune actors, clouds, mist)
             if (other.hasAttribute('fire_immune') ||
-                other.type === 'cloud' || other.type === 'mist') continue;
+                other.type === 'cloud' || other.type === 'mist' || other.type === 'sewer_gas') continue;
 
             // Skip flying actors (hovering above ground hazards)
             if (other.hasStateProperty?.('flying')) continue;
@@ -7732,6 +7746,10 @@ class EntityManager {
         this.actors = [];
         this.items = [];
         this.player = null;
+        this._actorPosCache = null;
+        this._liquidPosCache = null;
+        this._solidPosCache = null;
+        this._sewerGasCount = 0;
     }
 }
 
@@ -8744,11 +8762,8 @@ class RenderSystem {
         if (!em) return 5;
 
         // Check if there's a liquid actor at this position
-        const liquidActor = em.actors.find(
-            a => a.x === item.x && a.y === item.y &&
-                 !a.isDead &&
-                 a.hasAttribute('liquid')
-        );
+        const liquidActor = em.getActorsAt(item.x, item.y)
+            .find(a => a.hasAttribute('liquid'));
 
         // Items in liquid float above actors (zIndex 11), otherwise below (zIndex 5)
         return liquidActor ? 11 : 5;

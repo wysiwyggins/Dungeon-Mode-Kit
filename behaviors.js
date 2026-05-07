@@ -327,12 +327,9 @@ const BehaviorLibrary = {
 
         // Condition 2: Standing in a harmful non-solid actor
         if (!shouldFlee) {
-            const actorsHere = entityManager.actors.filter(a =>
-                a !== actor && !a.isDead &&
-                a.x === actor.x && a.y === actor.y &&
-                !a.hasAttribute('solid')
-            );
+            const actorsHere = entityManager.getActorsAt(actor.x, actor.y);
             for (const other of actorsHere) {
+                if (other === actor || other.hasAttribute('solid')) continue;
                 if (isHarmfulActor(other)) {
                     shouldFlee = true;
                     break;
@@ -357,13 +354,8 @@ const BehaviorLibrary = {
 
         // Helper to check if a tile is safe (no harmful actors)
         const isTileSafe = (x, y) => {
-            const actorsThere = entityManager.actors.filter(a =>
-                !a.isDead && a.x === x && a.y === y && !a.hasAttribute('solid')
-            );
-            for (const other of actorsThere) {
-                if (isHarmfulActor(other)) {
-                    return false;
-                }
+            for (const a of entityManager.getActorsAt(x, y)) {
+                if (!a.hasAttribute('solid') && isHarmfulActor(a)) return false;
             }
             return true;
         };
@@ -567,9 +559,8 @@ const BehaviorLibrary = {
             const nx = actor.x + dir.dx;
             const ny = actor.y + dir.dy;
 
-            const liquid = entityManager.actors.find(
-                a => a.x === nx && a.y === ny && !a.isDead && a.hasAttribute('liquid')
-            );
+            const liquid = entityManager.getActorsAt(nx, ny)
+                .find(a => a.hasAttribute('liquid'));
 
             if (!liquid) continue;
             if (ROT.RNG.getUniform() >= steamChance) continue;
@@ -634,11 +625,9 @@ const BehaviorLibrary = {
             const floorTile = actor.engine.mapManager?.floorMap[targetY]?.[targetX];
             if (!floorTile || floorTile.tileId <= 0) continue;
 
-            // Check if there's already a cloud of this type at this position
             const cloudSpawnType = data.spawn_type || actor.type;
-            const existingCloud = entityManager.actors.find(
-                a => a.x === targetX && a.y === targetY && a.type === cloudSpawnType && !a.isDead
-            );
+            const existingCloud = entityManager.getActorsAt(targetX, targetY)
+                .find(a => a.type === cloudSpawnType);
             if (existingCloud) continue;
 
             // Spawn a new cloud at this position
@@ -662,11 +651,9 @@ const BehaviorLibrary = {
                 if (applyState) {
                     const statesData = actor.engine.globalStates;
                     if (statesData && statesData[applyState]) {
-                        for (const other of entityManager.actors) {
+                        for (const other of entityManager.getActorsAt(targetX, targetY)) {
                             if (other === newCloud) continue;
-                            if (other.isDead) continue;
-                            if (other.x !== targetX || other.y !== targetY) continue;
-                            if (other.type === 'cloud' || other.type === 'mist') continue;
+                            if (other.type === 'cloud' || other.type === 'mist' || other.type === 'sewer_gas') continue;
                             if (other.applyState) {
                                 other.applyState(applyState, statesData[applyState]);
                             }
@@ -696,12 +683,9 @@ const BehaviorLibrary = {
         // Check if this tile is visible (or darkness is disabled)
         const tileIsVisible = actor.engine.isTileVisible(actor.x, actor.y);
 
-        // Find actors at this position
-        for (const other of entityManager.actors) {
+        for (const other of entityManager.getActorsAt(actor.x, actor.y)) {
             if (other === actor) continue;
-            if (other.isDead) continue;
-            if (other.x !== actor.x || other.y !== actor.y) continue;
-            if (other.type === 'cloud' || other.type === 'mist') continue;
+            if (other.type === 'cloud' || other.type === 'mist' || other.type === 'sewer_gas') continue;
 
             // Track effects applied for messaging
             const effectsApplied = [];
@@ -782,6 +766,9 @@ const BehaviorLibrary = {
         actor.cloudLifetime--;
 
         if (actor.cloudLifetime <= 0) {
+            if (actor.isCloudOrigin && actor.engine.entityManager._sewerGasCount > 0) {
+                actor.engine.entityManager._sewerGasCount--;
+            }
             actor.die();
             return true;
         }
@@ -820,24 +807,23 @@ const BehaviorLibrary = {
             const checkX = actor.x + dir.dx;
             const checkY = actor.y + dir.dy;
 
-            // Check if tile is valid (has floor, not a wall)
             const floorTile = actor.engine.mapManager?.floorMap[checkY]?.[checkX];
             if (!floorTile || floorTile.tileId <= 0) continue;
 
-            // Find cloud or mist at this position
-            const neighbor = entityManager.actors.find(
-                a => a.x === checkX && a.y === checkY &&
-                     !a.isDead &&
-                     (a.type === actor.type || a.type === disperseTo)
-            );
-
-            if (neighbor) {
-                // Count only dense cloud neighbors, not mist
-                if (neighbor.type === actor.type) {
+            const actorsHere = entityManager.getActorsAt(checkX, checkY);
+            let foundGas = false;
+            for (const a of actorsHere) {
+                if (a.type === actor.type) {
                     cloudNeighbors++;
+                    foundGas = true;
+                    break;
                 }
-            } else {
-                // Track empty valid positions for potential mist spawning
+                if (a.type === disperseTo) {
+                    foundGas = true;
+                    break;
+                }
+            }
+            if (!foundGas) {
                 emptyNeighborPositions.push({x: checkX, y: checkY});
             }
         }
@@ -908,14 +894,11 @@ const BehaviorLibrary = {
             const checkX = actor.x + dir.dx;
             const checkY = actor.y + dir.dy;
 
-            const neighbor = entityManager.actors.find(
-                a => a.x === checkX && a.y === checkY &&
-                     !a.isDead &&
-                     (a.type === 'mist' || a.type === 'cloud')
-            );
-
-            if (neighbor) {
-                gasNeighbors++;
+            for (const a of entityManager.getActorsAt(checkX, checkY)) {
+                if (a.type === 'mist' || a.type === 'cloud' || a.type === 'sewer_gas') {
+                    gasNeighbors++;
+                    break;
+                }
             }
         }
 
@@ -1242,10 +1225,8 @@ const BehaviorLibrary = {
             if (distance === 0 || distance > range) continue;
 
             // Check if item is on a liquid tile
-            const liquidActor = entityManager.actors.find(
-                a => a.x === item.x && a.y === item.y &&
-                     !a.isDead && a.hasAttribute('liquid')
-            );
+            const liquidActor = entityManager.getActorsAt(item.x, item.y)
+                .find(a => a.hasAttribute('liquid'));
             if (!liquidActor) continue;
 
             if (distance === 1) {
@@ -1262,10 +1243,8 @@ const BehaviorLibrary = {
                 const newY = item.y + stepY;
 
                 // Only move if target tile has liquid
-                const targetLiquid = entityManager.actors.find(
-                    a => a.x === newX && a.y === newY &&
-                         !a.isDead && a.hasAttribute('liquid')
-                );
+                const targetLiquid = entityManager.getActorsAt(newX, newY)
+                    .find(a => a.hasAttribute('liquid'));
                 if (targetLiquid) {
                     item.x = newX;
                     item.y = newY;
@@ -1372,19 +1351,15 @@ const BehaviorLibrary = {
             const hasFloor = floorTile && floorTile.tileId > 0;
             // Allow spreading to bridge actors over voids
             if (!hasFloor) {
-                const bridgeActor = entityManager.actors.find(
-                    a => a.x === targetX && a.y === targetY && !a.isDead && a.hasAttribute('bridge') && a.hasAttribute('flammable')
-                );
+                const bridgeActor = entityManager.getActorsAt(targetX, targetY)
+                    .find(a => a.hasAttribute('bridge') && a.hasAttribute('flammable'));
                 if (!bridgeActor) continue;
             }
 
-            // Don't spread where same fire type already exists
-            const existingFire = entityManager.actors.find(
-                a => a.x === targetX && a.y === targetY && !a.isDead && a.type === actor.type
-            );
-            if (existingFire) continue;
+            const actorsAtTarget = entityManager.getActorsAt(targetX, targetY);
 
-            // Always spread to adjacent plain flammable entities (100% fuse effect)
+            if (actorsAtTarget.find(a => a.type === actor.type)) continue;
+
             const targetEntity = entityManager.entities.find(
                 e => e.x === targetX && e.y === targetY && !e.isDead &&
                      !(e instanceof Actor) && !(e instanceof Item)
@@ -1396,13 +1371,9 @@ const BehaviorLibrary = {
                 continue;
             }
 
-            // Probabilistic spread to actors and items
             if (ROT.RNG.getUniform() > spreadChance) continue;
 
-            // Check for flammable actors at target position
-            const targetActor = entityManager.actors.find(
-                a => a.x === targetX && a.y === targetY && !a.isDead && a.type !== actor.type
-            );
+            const targetActor = actorsAtTarget.find(a => a.type !== actor.type);
             if (targetActor && targetActor.hasAttribute('flammable')) {
                 const newFire = entityManager.spawnActor(spawnType, targetX, targetY);
                 if (newFire) newFire.fireLifetime = newFire.lifetime || 5;
@@ -1448,11 +1419,8 @@ const BehaviorLibrary = {
         }
 
         // Damage any actor standing in the fire (except fire-immune or flying actors)
-        const victim = entityManager.actors.find(
-            a => a.x === actor.x && a.y === actor.y && !a.isDead && a !== actor &&
-                 !a.hasAttribute('fire_immune') &&
-                 !a.hasStateProperty('flying')
-        );
+        const victim = entityManager.getActorsAt(actor.x, actor.y)
+            .find(a => a !== actor && !a.hasAttribute('fire_immune') && !a.hasStateProperty('flying'));
 
         if (victim && damagePerTurn > 0 && victim.stats?.health) {
             const oldHealth = victim.stats.health.current;
@@ -1498,10 +1466,8 @@ const BehaviorLibrary = {
         const itemOnTrap = entityManager.items.find(
             i => i.x === actor.x && i.y === actor.y && !i.isDead
         );
-        const solidActorOnTrap = entityManager.actors.find(
-            a => a.x === actor.x && a.y === actor.y && !a.isDead && a !== actor &&
-                 !a.hasAttribute('trap') && a.hasAttribute('solid') && !a.hasStateProperty('flying')
-        );
+        const solidActorOnTrap = entityManager.getActorsAt(actor.x, actor.y)
+            .find(a => a !== actor && !a.hasAttribute('trap') && a.hasAttribute('solid') && !a.hasStateProperty('flying'));
 
         // If trap needs reset (was triggered by item), check if tile is now empty
         if (actor._needsReset) {
@@ -1994,17 +1960,19 @@ const BehaviorLibrary = {
     },
 
     emit_sewer_gas: (actor) => {
-        // Only sewage emits gas, not water
         if (actor.type !== 'sewage') return;
         if (ROT.RNG.getPercentage() > 3) return;
 
         const entityManager = actor.engine.entityManager;
 
+        // Cap total active sewer gas clouds to prevent runaway spawning
+        if (!entityManager._sewerGasCount) entityManager._sewerGasCount = 0;
+        if (entityManager._sewerGasCount >= 12) return;
+
         // Don't emit if there's already a cloud here
-        const existing = entityManager.actors.find(
-            a => a.x === actor.x && a.y === actor.y && !a.isDead && a.personality?.name === 'Cloud'
-        );
-        if (existing) return;
+        for (const a of entityManager.getActorsAt(actor.x, actor.y)) {
+            if (a.personality?.name === 'Cloud') return;
+        }
 
         const cloud = entityManager.spawnActor('sewer_gas', actor.x, actor.y);
         if (cloud) {
@@ -2012,6 +1980,7 @@ const BehaviorLibrary = {
             cloud.cloudOriginX = actor.x;
             cloud.cloudOriginY = actor.y;
             cloud.cloudLifetime = 6;
+            entityManager._sewerGasCount++;
         }
     },
 
@@ -2062,10 +2031,8 @@ const BehaviorLibrary = {
         const entityManager = actor.engine.entityManager;
 
         // If standing on deep liquid, drop the stolen item into it
-        const deepHere = entityManager.actors.find(
-            a => a !== actor && a.x === actor.x && a.y === actor.y &&
-                 !a.isDead && !a.hasAttribute('solid') && a.hasAttribute('deep')
-        );
+        const deepHere = entityManager.getActorsAt(actor.x, actor.y)
+            .find(a => a !== actor && !a.hasAttribute('solid') && a.hasAttribute('deep'));
         if (deepHere) {
             const item = actor.inventory[actor.inventory.length - 1];
             actor.inventory.pop();

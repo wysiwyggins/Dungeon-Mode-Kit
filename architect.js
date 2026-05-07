@@ -681,7 +681,13 @@ class Architect {
         const maxSize = config.maxSize || 60;
 
         const walkableSet = new Set(this.walkableTiles.map(t => `${t.x},${t.y}`));
+        const wallPosSet = new Set(this.pendingWallSpawns
+            .filter(p => p.type !== 'metal_wall')
+            .map(p => `${p.x},${p.y}`));
+        const expandableSet = new Set([...walkableSet, ...wallPosSet]);
+
         const allVoidCells = new Set();
+        const allLiquidCells = new Set();
         let totalPlaced = 0;
 
         for (let i = 0; i < count; i++) {
@@ -700,9 +706,10 @@ class Architect {
                 const idx = Math.floor(ROT.RNG.getUniform() * frontier.length);
                 const cell = frontier.splice(idx, 1)[0];
 
-                if (!walkableSet.has(cell)) continue;
+                if (!expandableSet.has(cell)) continue;
 
                 blob.push(cell);
+                expandableSet.delete(cell);
                 walkableSet.delete(cell);
 
                 const [cx, cy] = cell.split(',').map(Number);
@@ -712,7 +719,7 @@ class Architect {
                     const ny = cy + dy;
                     if (nx < 0 || nx >= this.width || ny < 0 || ny >= this.height) continue;
                     const nk = `${nx},${ny}`;
-                    if (!visited.has(nk) && walkableSet.has(nk)) {
+                    if (!visited.has(nk) && expandableSet.has(nk)) {
                         visited.add(nk);
                         frontier.push(nk);
                     }
@@ -731,20 +738,32 @@ class Architect {
                     this.wallMap[vy][vx] = null;
                     this.overlayMap[vy][vx] = null;
                 }
-            } else if (type === 'lava') {
-                for (const key of blob) {
-                    const [px, py] = key.split(',').map(Number);
-                    this.pendingLavaSpawns.push({ x: px, y: py });
-                }
-            } else if (type === 'sewage') {
-                for (const key of blob) {
-                    const [px, py] = key.split(',').map(Number);
-                    this.pendingSewageSpawns.push({ x: px, y: py });
-                }
             } else {
                 for (const key of blob) {
-                    const [px, py] = key.split(',').map(Number);
-                    this.pendingLakeSpawns.push({ x: px, y: py });
+                    allLiquidCells.add(key);
+                    if (wallPosSet.has(key)) {
+                        const [cx, cy] = key.split(',').map(Number);
+                        if (!this.floorMap[cy][cx]) {
+                            this.floorMap[cy][cx] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                        }
+                    }
+                }
+
+                if (type === 'lava') {
+                    for (const key of blob) {
+                        const [px, py] = key.split(',').map(Number);
+                        this.pendingLavaSpawns.push({ x: px, y: py });
+                    }
+                } else if (type === 'sewage') {
+                    for (const key of blob) {
+                        const [px, py] = key.split(',').map(Number);
+                        this.pendingSewageSpawns.push({ x: px, y: py });
+                    }
+                } else {
+                    for (const key of blob) {
+                        const [px, py] = key.split(',').map(Number);
+                        this.pendingLakeSpawns.push({ x: px, y: py });
+                    }
                 }
             }
 
@@ -758,6 +777,42 @@ class Architect {
             this.pendingLavaSpawns = this.pendingLavaSpawns.filter(p => !allVoidCells.has(`${p.x},${p.y}`));
             this.pendingLakeSpawns = this.pendingLakeSpawns.filter(p => !allVoidCells.has(`${p.x},${p.y}`));
             this.pendingSewageSpawns = this.pendingSewageSpawns.filter(p => !allVoidCells.has(`${p.x},${p.y}`));
+        }
+
+        if (allLiquidCells.size > 0) {
+            this.pendingWallSpawns = this.pendingWallSpawns.filter(p => !allLiquidCells.has(`${p.x},${p.y}`));
+            this.pendingDoorSpawns = this.pendingDoorSpawns.filter(p => !allLiquidCells.has(`${p.x},${p.y}`));
+            this.pendingTorchSpawns = this.pendingTorchSpawns.filter(p => !allLiquidCells.has(`${p.x},${p.y}`));
+        }
+
+        const allBlobCells = new Set([...allLiquidCells, ...allVoidCells]);
+        if (allBlobCells.size > 0) {
+            const existingWallSet = new Set(this.pendingWallSpawns.map(p => `${p.x},${p.y}`));
+            const dirs = [[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]];
+            let boundaryWalls = 0;
+
+            for (const key of allBlobCells) {
+                const [bx, by] = key.split(',').map(Number);
+                if (!wallPosSet.has(key)) continue;
+                for (const [dx, dy] of dirs) {
+                    const nx = bx + dx;
+                    const ny = by + dy;
+                    if (nx < 0 || nx >= this.width || ny < 0 || ny >= this.height) continue;
+                    const nk = `${nx},${ny}`;
+                    if (allBlobCells.has(nk)) continue;
+                    if (existingWallSet.has(nk)) continue;
+                    if (this.floorMap[ny]?.[nx]) continue;
+
+                    this.floorMap[ny][nx] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                    this.pendingWallSpawns.push({ x: nx, y: ny });
+                    existingWallSet.add(nk);
+                    boundaryWalls++;
+                }
+            }
+
+            if (boundaryWalls > 0) {
+                console.log(`  Boundary walls added: ${boundaryWalls}`);
+            }
         }
 
         this.walkableTiles = this.walkableTiles.filter(t => walkableSet.has(`${t.x},${t.y}`));
