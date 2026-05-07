@@ -51,9 +51,7 @@
       "random_items": {
         "key": { "chance": 100 },
         "potion": { "chance": 60},
-        "torch": { "chance": 40},
-        "staff": { "chance": 40},
-        "ration": { "chance": 40}
+        "torch": { "chance": 40}
       }
     },
     {
