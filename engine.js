@@ -4839,7 +4839,15 @@ class Actor extends Entity {
                     shattered = true;
                 }
                 if (shattered) {
-                    this.engine.lightingManager?.computeLighting();
+                    const clearedPositions = [];
+                    for (let dy = -radius; dy <= radius; dy++) {
+                        for (let dx = -radius; dx <= radius; dx++) {
+                            if (Math.abs(dx) + Math.abs(dy) <= radius) {
+                                clearedPositions.push({ x: this.x + dx, y: this.y + dy });
+                            }
+                        }
+                    }
+                    this.engine.entityManager.revealDugArea(clearedPositions);
                     this.engine.renderer?.effectRunner.apply('shatter', this);
                 }
                 if (this.isPlayerControlled()) {
@@ -5189,7 +5197,12 @@ class Actor extends Entity {
 
         // Now trigger death after collision description is shown
         if (targetShouldDie) {
+            const wasBreakableWall = target.hasAttribute('breakable') && target.hasAttribute('solid');
+            const targetPos = { x: target.x, y: target.y };
             target.die();
+            if (wasBreakableWall) {
+                this.engine.entityManager.revealDugArea([targetPos]);
+            }
         }
 
         // attackAttempted is true if we had a damage source (even on miss)
@@ -7348,6 +7361,50 @@ class EntityManager {
         this.engine.interfaceManager?.updateSidebar();
     }
 
+    revealDugArea(clearedPositions) {
+        const mapManager = this.engine.mapManager;
+        if (!mapManager) return;
+
+        const wallData = this.engine.currentPrototype.getActorData('wall');
+        if (!wallData) return;
+
+        const DUG_FLOOR_TILE = 135;
+        const clearedSet = new Set(clearedPositions.map(p => `${p.x},${p.y}`));
+
+        for (const { x, y } of clearedPositions) {
+            if (x < 0 || x >= mapManager.width || y < 0 || y >= mapManager.height) continue;
+            if (!mapManager.floorMap[y][x]) {
+                mapManager.floorMap[y][x] = { tileId: DUG_FLOOR_TILE, layer: 'floor' };
+                this.engine.renderer?.renderTileAt('floor', x, y, mapManager);
+                if (!this.getEntityAt(x, y)) {
+                    this.spawnEntity('rubble', x, y);
+                }
+            }
+        }
+
+        const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]];
+        for (const { x, y } of clearedPositions) {
+            for (const [dx, dy] of dirs) {
+                const nx = x + dx;
+                const ny = y + dy;
+
+                if (nx < 0 || nx >= mapManager.width || ny < 0 || ny >= mapManager.height) continue;
+                if (clearedSet.has(`${nx},${ny}`)) continue;
+                if (mapManager.floorMap[ny]?.[nx]) continue;
+                if (this.getActorAt(nx, ny)) continue;
+
+                mapManager.floorMap[ny][nx] = { tileId: DUG_FLOOR_TILE, layer: 'floor' };
+                this.engine.renderer?.renderTileAt('floor', nx, ny, mapManager);
+
+                const actor = new Actor(nx, ny, 'wall', wallData, this.engine);
+                this.addEntity(actor);
+                this.engine.renderer?.createActorSprites(actor);
+            }
+        }
+
+        this.engine.updateLighting?.();
+    }
+
     _getLiquidActorAt(x, y) {
         if (!this._liquidPosCache) {
             this._liquidPosCache = new Map();
@@ -8220,6 +8277,34 @@ class RenderSystem {
                     }
                 }
             }
+        }
+    }
+
+    renderTileAt(layerName, x, y, mapManager) {
+        const tileset = PIXI.Loader.shared.resources.tiles;
+        if (!tileset) return;
+
+        const layers = {
+            'background': { map: 'backgroundMap', container: this.backgroundContainer, sprites: this.backgroundSprites },
+            'floor': { map: 'floorMap', container: this.floorContainer, sprites: this.floorSprites },
+            'overlay': { map: 'overlayMap', container: this.overlayContainer, sprites: this.overlaySprites }
+        };
+
+        const layer = layers[layerName];
+        if (!layer) return;
+
+        const tile = mapManager[layer.map][y]?.[x];
+        if (!tile || tile.tileId <= 0) return;
+
+        if (layer.sprites?.[y]?.[x]) {
+            layer.sprites[y][x].destroy();
+            layer.sprites[y][x] = null;
+        }
+
+        const sprite = this.createTileSprite(tile, x, y, tileset);
+        layer.container.addChild(sprite);
+        if (layer.sprites?.[y]) {
+            layer.sprites[y][x] = sprite;
         }
     }
 
@@ -9124,5 +9209,28 @@ window.listLevels = () => {
     return levels;
 };
 
+window.giveItem = (itemType, count = 1) => {
+    if (!engine) {
+        console.error('Engine not initialized.');
+        return;
+    }
+    const player = engine.entityManager.player;
+    if (!player) {
+        console.error('No player found.');
+        return;
+    }
+    const itemData = engine.currentPrototype.getItemData(itemType);
+    if (!itemData) {
+        console.error(`Item type '${itemType}' not found.`);
+        return;
+    }
+    for (let i = 0; i < count; i++) {
+        const item = new Item(-1, -1, itemType, itemData, engine);
+        item.owner = player;
+        player.inventory.push(item);
+    }
+    console.log(`Gave ${count}x ${itemData.name || itemType} to ${player.name}`);
+};
+
 console.log('Dungeon Mode Kit loaded. Call initializeGame() to start.');
-console.log('Level utilities: listLevels(), loadLevel("prototypeName")');
+console.log('Level utilities: listLevels(), loadLevel("prototypeName"), giveItem("itemType", count)');

@@ -27,6 +27,7 @@ The Architect manages four map layers, each a 2D array of tile data:
 | `floorMap` | Walkable terrain | Floor tiles (tracked in `walkableTiles`) |
 | `wallMap` | Wall entities | Reserved for future use |
 | `wildcardMap` | Generation markers | Special tiles that trigger procedural content |
+| `overlayMap` | Above everything | Decorative tiles used on authored maps |
 
 ## Tiled Map Loading
 
@@ -112,7 +113,7 @@ The `depth` parameter (dungeon floor number, starting at 1) drives depth-based r
 After any generator type finishes, the following steps run in order on all maps:
 
 ```
-[Generator] → Blob Lakes → Sewage → Fungus → Secondary Connections → Rope Bridges → Pushable Walls
+[Generator] → Blob Lakes → Sewage → Fungus → Secondary Connections → Abysses -> Rope Bridges → Pushable Walls
 ```
 
 Each step is controlled by options in the `map_generator.options` config. If an option is absent or zero, that step is skipped.
@@ -122,6 +123,7 @@ Each step is controlled by options in the `map_generator.options` config. If an 
 The `shaped` generator builds levels by attaching shaped rooms via hallways, producing more varied and organic layouts than the standard digger.
 
 Algorithm:
+
 1. Place a first room near the center of the map
 2. Iteratively pick random door sites from existing rooms
 3. Carve a corridor of random length from each door site
@@ -156,6 +158,7 @@ The optional `room_weights` object overrides default weights for room type selec
 Blob-shaped lakes replace the old uniform cellular automata lake system. They use a cellular automata blob generator with connectivity validation to ensure no walkable tiles are stranded.
 
 **Algorithm:**
+
 1. `createBlob()` generates a random organic shape using CA rules (born: [5,6,7,8], survive: [4,5,6,7,8])
 2. Flood fill extracts the largest connected region
 3. Random placement is attempted (up to 20 tries) — blob tiles must overlap walkable tiles
@@ -201,6 +204,7 @@ Value is 0-100, used as the CA seeding probability. Fungus tiles are placed only
 Rope bridges span voids (gaps between walkable areas with no floor or walls) using INVERSE_BOX directional tiles tinted brown (`#8B6914`). Bridge segments are entities with the `bridge` attribute — they provide walkability over void tiles without placing floor tiles underneath.
 
 **Algorithm:**
+
 1. Find walkable tiles adjacent to void (non-floor, non-wall tiles) — these are **edge tiles**
 2. Cast rays in cardinal directions from each edge tile across the void
 3. If a ray hits another walkable tile within `max_span` and the walking distance between edges is significantly greater than the span (shortcut ratio), mark as candidate
@@ -230,6 +234,7 @@ Bridge segments are flammable actors, not floor tiles. When a bridge segment is 
 After dungeon generation, walls separating floor regions with high walking distance can be converted to doorways, creating shortcuts and loops that make navigation more interesting.
 
 **Algorithm:**
+
 1. Sample up to 200 random walls from `pendingWallSpawns` (excluding `metal_wall`)
 2. Check if floor exists on two opposite sides (N/S or E/W)
 3. BFS from one side to measure walking distance to the other

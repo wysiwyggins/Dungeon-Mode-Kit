@@ -37,8 +37,8 @@
             "scale": 0.3942,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 800.3551496702182,
-                "y": 585.9969558599695
+                "x": 977.9299847792998,
+                "y": 606.2912227295787
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/dungeon/map.tmj": {
@@ -117,8 +117,8 @@
             "scale": 0.5311,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 420.8247034456787,
-                "y": 510.2617209565054
+                "x": 439.6535492374317,
+                "y": 514.0274901148559
             }
         },
         "vault.tmj": {
