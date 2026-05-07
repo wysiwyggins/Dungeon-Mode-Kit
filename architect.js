@@ -23,6 +23,7 @@ class Architect {
         this.pendingLakeSpawns = [];
         this.pendingSewageSpawns = [];
         this.pendingPushableWallSpawns = [];
+        this.pendingBridgeSpawns = [];
         this.diggerRooms = null;
 
         this.tileWidth = 16;
@@ -638,6 +639,10 @@ class Architect {
             this.generateOverlayBlobs(options.abyss);
         }
 
+        if (options.bridges) {
+            this.generateBridges(options.bridges);
+        }
+
         if (this.pendingWallSpawns.length > 0) {
             const hasFloor = (x, y) => {
                 if (x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
@@ -699,21 +704,39 @@ class Architect {
             const seed = walkableArray[Math.floor(ROT.RNG.getUniform() * walkableArray.length)];
 
             const blob = [];
+            const blobSet = new Set();
             const frontier = [seed];
             const visited = new Set([seed]);
+            const dirs = [[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]];
 
             while (blob.length < targetSize && frontier.length > 0) {
-                const idx = Math.floor(ROT.RNG.getUniform() * frontier.length);
-                const cell = frontier.splice(idx, 1)[0];
+                // Weight frontier cells by how many blob neighbors they have
+                // This produces compact, dense shapes instead of tendrils
+                let bestIdx = 0;
+                let bestScore = -1;
+                for (let fi = 0; fi < frontier.length; fi++) {
+                    const [fx, fy] = frontier[fi].split(',').map(Number);
+                    let neighbors = 0;
+                    for (const [dx, dy] of dirs) {
+                        if (blobSet.has(`${fx + dx},${fy + dy}`)) neighbors++;
+                    }
+                    const score = neighbors + ROT.RNG.getUniform() * 0.5;
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestIdx = fi;
+                    }
+                }
+
+                const cell = frontier.splice(bestIdx, 1)[0];
 
                 if (!expandableSet.has(cell)) continue;
 
                 blob.push(cell);
+                blobSet.add(cell);
                 expandableSet.delete(cell);
                 walkableSet.delete(cell);
 
                 const [cx, cy] = cell.split(',').map(Number);
-                const dirs = [[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]];
                 for (const [dx, dy] of dirs) {
                     const nx = cx + dx;
                     const ny = cy + dy;
@@ -818,6 +841,80 @@ class Architect {
         this.walkableTiles = this.walkableTiles.filter(t => walkableSet.has(`${t.x},${t.y}`));
 
         console.log(`Overlay generation: ${totalPlaced} total tiles in ${count} blobs`);
+    }
+
+    generateBridges(config) {
+        const maxBridges = config.max || 1;
+
+        const isAbyss = (x, y) => {
+            if (x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
+            const bg = this.backgroundMap[y][x];
+            return bg && bg.tileId === 217 && this.floorMap[y][x] === null;
+        };
+
+        const hasFloor = (x, y) => {
+            if (x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
+            return this.floorMap[y][x] !== null;
+        };
+
+        const wallSet = new Set(this.pendingWallSpawns.map(p => `${p.x},${p.y}`));
+        const isLandable = (x, y) => hasFloor(x, y) && !wallSet.has(`${x},${y}`);
+
+        const crossings = [];
+
+        for (let y = 1; y < this.height - 1; y++) {
+            let x = 0;
+            while (x < this.width) {
+                if (!isAbyss(x, y)) { x++; continue; }
+                const startX = x;
+                while (x < this.width && isAbyss(x, y)) x++;
+                const endX = x;
+                if (isLandable(startX - 1, y) && isLandable(endX, y)) {
+                    const cells = [];
+                    for (let bx = startX; bx < endX; bx++) cells.push({ x: bx, y });
+                    crossings.push({ cells, dir: 'h', length: cells.length });
+                }
+            }
+        }
+
+        for (let x = 1; x < this.width - 1; x++) {
+            let y = 0;
+            while (y < this.height) {
+                if (!isAbyss(x, y)) { y++; continue; }
+                const startY = y;
+                while (y < this.height && isAbyss(x, y)) y++;
+                const endY = y;
+                if (isLandable(x, startY - 1) && isLandable(x, endY)) {
+                    const cells = [];
+                    for (let by = startY; by < endY; by++) cells.push({ x, y: by });
+                    crossings.push({ cells, dir: 'v', length: cells.length });
+                }
+            }
+        }
+
+        if (crossings.length === 0) return;
+
+        crossings.sort((a, b) => a.length - b.length);
+
+        const usedCells = new Set();
+        let placed = 0;
+
+        for (const crossing of crossings) {
+            if (placed >= maxBridges) break;
+            if (crossing.cells.some(c => usedCells.has(`${c.x},${c.y}`))) continue;
+
+            for (const c of crossing.cells) {
+                this.floorMap[c.y][c.x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                this.pendingBridgeSpawns.push(c);
+                usedCells.add(`${c.x},${c.y}`);
+            }
+            placed++;
+            console.log(`  Bridge: ${crossing.length} tiles (${crossing.dir === 'h' ? 'horizontal' : 'vertical'})`);
+        }
+
+        if (placed > 0) {
+            console.log(`Bridge generation: ${placed} bridge(s)`);
+        }
     }
 
     // ========================================================================
@@ -1530,6 +1627,27 @@ class Architect {
         this.pendingPushableWallSpawns = [];
     }
 
+    spawnPendingBridges(context) {
+        if (!this.pendingBridgeSpawns || this.pendingBridgeSpawns.length === 0) return;
+        if (!context || !context.getActorData || !context.createActor) {
+            console.warn('Cannot spawn bridges without context');
+            return;
+        }
+
+        const actorData = context.getActorData('rope_bridge');
+        if (!actorData) {
+            console.warn('No rope_bridge actor data found');
+            return;
+        }
+
+        for (const pos of this.pendingBridgeSpawns) {
+            context.createActor(pos.x, pos.y, 'rope_bridge', actorData);
+        }
+
+        console.log(`Spawned ${this.pendingBridgeSpawns.length} rope bridge actors`);
+        this.pendingBridgeSpawns = [];
+    }
+
     // ========================================================================
     // TREASURE ROOM
     // ========================================================================
@@ -1705,6 +1823,7 @@ class Architect {
         this.pendingLakeSpawns = [];
         this.pendingSewageSpawns = [];
         this.pendingPushableWallSpawns = [];
+        this.pendingBridgeSpawns = [];
         this.diggerRooms = null;
         this.actorWildcardCache = null;
     }

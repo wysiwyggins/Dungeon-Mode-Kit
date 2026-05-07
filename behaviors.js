@@ -834,6 +834,7 @@ const BehaviorLibrary = {
             const y = actor.y;
             const tint = actor.tint;
             const collisionEffect = actor.getAttribute('collision_effect');
+            const applyState = actor.getAttribute('apply_state');
             const remainingLifetime = actor.cloudLifetime;
 
             // Remove the cloud
@@ -845,6 +846,7 @@ const BehaviorLibrary = {
                 // Inherit properties from the cloud
                 mist.tint = tint;
                 mist.setAttribute('collision_effect', collisionEffect);
+                if (applyState) mist.setAttribute('apply_state', applyState);
                 // Mist has shorter remaining lifetime
                 mist.cloudLifetime = Math.max(2, Math.floor(remainingLifetime * 0.6));
                 // Update sprites
@@ -864,6 +866,8 @@ const BehaviorLibrary = {
             if (mist) {
                 mist.tint = actor.tint;
                 mist.setAttribute('collision_effect', actor.getAttribute('collision_effect'));
+                const neighborApplyState = actor.getAttribute('apply_state');
+                if (neighborApplyState) mist.setAttribute('apply_state', neighborApplyState);
                 // New mist has short lifetime
                 mist.cloudLifetime = Math.max(2, Math.floor((actor.cloudLifetime || 3) * 0.5));
                 if (mist.spriteBase) mist.spriteBase.tint = actor.tint;

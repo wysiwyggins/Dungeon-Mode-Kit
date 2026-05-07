@@ -1170,6 +1170,7 @@ class DungeonEngine {
         this.mapManager.spawnPendingLakes(architectContext);
         this.mapManager.spawnPendingSewage(architectContext);
         this.mapManager.spawnPendingPushableWalls(architectContext);
+        this.mapManager.spawnPendingBridges(architectContext);
 
         if (treasureRoomData) {
             this.entityManager.spawnTreasureRoomContents(treasureRoomData, architectContext);
@@ -3638,9 +3639,9 @@ class Actor extends Entity {
         if (stateData.hallucinating || stateData.player_only) {
             if (!this.hasAttribute('controlled')) return false;
         } else {
-            // All other states require the 'sentient' attribute
+            // All other states require the 'sentient' or 'controlled' attribute
             // This excludes walls, traps, fire, clouds, etc.
-            if (!this.hasAttribute('sentient')) return false;
+            if (!this.hasAttribute('sentient') && !this.hasAttribute('controlled')) return false;
         }
 
         // Check immunity
@@ -5882,7 +5883,6 @@ class Actor extends Entity {
      */
     checkCloudEffects(x, y) {
         const entityManager = this.engine.entityManager;
-
         for (const other of entityManager.getActorsAt(x, y)) {
             if (other === this) continue;
             if (other.type !== 'cloud' && other.type !== 'mist' && other.type !== 'sewer_gas') continue;
