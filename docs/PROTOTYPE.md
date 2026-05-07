@@ -104,7 +104,7 @@ When no Tiled map file exists for a floor, the engine generates a procedural map
 | `digger` | Rooms connected by corridors (default) |
 | `cellular` | Cave-like organic shapes |
 | `uniform` | Evenly distributed rooms |
-| `rogue` | Classic roguelike grid rooms |
+| `rogue` | Classic roguelike grid rooms (no walls)|
 | `divided_maze` | Recursive division maze |
 | `icey_maze` | Maze with regularity control |
 | `eller_maze` | Perfect maze (Eller's algorithm) |

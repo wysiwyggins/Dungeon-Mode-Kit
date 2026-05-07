@@ -1,30 +1,21 @@
-// ============================================================================
-// ARCHITECT - Dungeon Generation System
-// ============================================================================
-// Handles map generation, loading, and terrain management
-
-const TILED_FLIP_MASK = 0x1FFFFFFF; // Strips top 3 bits (flip/rotation flags)
-const TILED_FLIP_H = 0x80000000;    // Bit 31: horizontal flip
-const TILED_FLIP_V = 0x40000000;    // Bit 30: vertical flip
-const TILED_FLIP_D = 0x20000000;    // Bit 29: diagonal flip
+const TILED_FLIP_MASK = 0x1FFFFFFF;
+const TILED_FLIP_H = 0x80000000;
+const TILED_FLIP_V = 0x40000000;
+const TILED_FLIP_D = 0x20000000;
 
 class Architect {
     constructor(options = {}) {
-        // Default dimensions (will be updated when map loads)
         this.width = options.width || 30;
         this.height = options.height || 30;
 
-        // Map layers
         this.backgroundMap = this.createEmptyMap();
         this.floorMap = this.createEmptyMap();
         this.wallMap = this.createEmptyMap();
         this.wildcardMap = this.createEmptyMap();
         this.overlayMap = this.createEmptyMap();
 
-        // Traversal data
         this.walkableTiles = [];
 
-        // Pending spawns (deferred until engine context is available)
         this.pendingWallSpawns = [];
         this.pendingDoorSpawns = [];
         this.pendingTorchSpawns = [];
@@ -34,19 +25,12 @@ class Architect {
         this.pendingPushableWallSpawns = [];
         this.diggerRooms = null;
 
-        // Tiled map metadata
         this.tileWidth = 16;
         this.tileHeight = 16;
         this.objectLayers = [];
 
-        // Actor wildcard cache (built lazily)
         this.actorWildcardCache = null;
 
-        // Room type registry (data-driven)
-        this.roomTypes = new Map();
-        this.registerDefaultRoomTypes();
-
-        // Configuration
         this.config = {
             defaultFloorTileId: 158,
             ...options.config
@@ -54,255 +38,7 @@ class Architect {
     }
 
     // ========================================================================
-    // ROOM TYPE REGISTRY
-    // ========================================================================
-
-    /**
-     * Register default room types including Brogue-inspired variants
-     */
-    registerDefaultRoomTypes() {
-        // Rectangular room (existing default)
-        this.registerRoomType('rectangular', {
-            generator: (x, y, w, h, opts) => this.generateRectangularRoom(x, y, w, h, opts),
-            minDepth: 1,
-            maxDepth: Infinity,
-            weight: 100,
-            minSize: { w: 3, h: 3 },
-            wildcardTileId: null  // Uses standard room wildcards (143, 144)
-        });
-
-        // Cross room - two overlapping rectangles (Brogue-inspired)
-        this.registerRoomType('cross', {
-            generator: (x, y, w, h, opts) => this.generateCrossRoom(x, y, w, h, opts),
-            minDepth: 2,
-            maxDepth: Infinity,
-            weight: 30,
-            minSize: { w: 7, h: 7 },
-            wildcardTileId: null  // TODO: assign tile ID when added to tileset
-        });
-
-        // Circular room - ellipse fitted to region (Brogue-inspired)
-        this.registerRoomType('circular', {
-            generator: (x, y, w, h, opts) => this.generateCircularRoom(x, y, w, h, opts),
-            minDepth: 3,
-            maxDepth: Infinity,
-            weight: 20,
-            minSize: { w: 5, h: 5 },
-            wildcardTileId: null  // TODO: assign tile ID when added to tileset
-        });
-
-        // Chunky room - organic blob using overlapping circles (Brogue-inspired)
-        this.registerRoomType('chunky', {
-            generator: (x, y, w, h, opts) => this.generateChunkyRoom(x, y, w, h, opts),
-            minDepth: 4,
-            maxDepth: Infinity,
-            weight: 15,
-            minSize: { w: 7, h: 7 },
-            wildcardTileId: null  // TODO: assign tile ID when added to tileset
-        });
-    }
-
-    /**
-     * Register a new room type
-     * @param {string} name - Unique identifier for the room type
-     * @param {Object} config - Room type configuration
-     */
-    registerRoomType(name, config) {
-        this.roomTypes.set(name, {
-            name,
-            generator: config.generator,
-            minDepth: config.minDepth || 1,
-            maxDepth: config.maxDepth || Infinity,
-            weight: config.weight || 50,
-            minSize: config.minSize || { w: 3, h: 3 },
-            wildcardTileId: config.wildcardTileId || null
-        });
-    }
-
-    /**
-     * Get a room type by name
-     * @param {string} name - Room type name
-     * @returns {Object|null} Room type config or null
-     */
-    getRoomType(name) {
-        return this.roomTypes.get(name) || null;
-    }
-
-    /**
-     * Select a room type appropriate for the given depth
-     * Uses weighted random selection from available types
-     * @param {number} depth - Current dungeon depth (1-indexed)
-     * @param {Object} region - Region size { width, height } for filtering
-     * @returns {string} Selected room type name
-     */
-    selectRoomTypeForDepth(depth, region = {}) {
-        const available = [];
-        let totalWeight = 0;
-
-        for (const [name, config] of this.roomTypes) {
-            // Check depth range
-            if (depth < config.minDepth || depth > config.maxDepth) continue;
-
-            // Check minimum size requirements
-            if (region.width && region.width < config.minSize.w) continue;
-            if (region.height && region.height < config.minSize.h) continue;
-
-            available.push({ name, config });
-            totalWeight += config.weight;
-        }
-
-        if (available.length === 0) {
-            return 'rectangular';  // Fallback
-        }
-
-        // Weighted random selection
-        let roll = ROT.RNG.getUniform() * totalWeight;
-        for (const { name, config } of available) {
-            roll -= config.weight;
-            if (roll <= 0) {
-                return name;
-            }
-        }
-
-        return 'rectangular';  // Fallback
-    }
-
-    // ========================================================================
-    // BROGUE-INSPIRED ROOM GENERATORS
-    // ========================================================================
-
-    /**
-     * Generate a rectangular room (default)
-     * Returns floor positions; wall detection happens in generateRoomAt
-     */
-    generateRectangularRoom(startX, startY, width, height, options = {}) {
-        const floorTiles = [];
-        const wallTiles = [];
-
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                const worldX = startX + x;
-                const worldY = startY + y;
-                const isPerimeter = (x === 0 || x === width - 1 || y === 0 || y === height - 1);
-
-                if (isPerimeter) {
-                    wallTiles.push({ x: worldX, y: worldY });
-                } else {
-                    floorTiles.push({ x: worldX, y: worldY });
-                }
-            }
-        }
-
-        return { floorTiles, wallTiles };
-    }
-
-    /**
-     * Generate a cross-shaped room (two overlapping rectangles)
-     *
-     */
-    generateCrossRoom(startX, startY, width, height, options = {}) {
-        const floorTiles = [];
-        const floorSet = new Set();
-
-        // Horizontal bar: full width, ~40% of height, centered
-        const hBarHeight = Math.max(3, Math.floor(height * 0.4));
-        const hBarY = Math.floor((height - hBarHeight) / 2);
-
-        // Vertical bar: ~40% of width, full height, centered
-        const vBarWidth = Math.max(3, Math.floor(width * 0.4));
-        const vBarX = Math.floor((width - vBarWidth) / 2);
-
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                const inHBar = y >= hBarY && y < hBarY + hBarHeight;
-                const inVBar = x >= vBarX && x < vBarX + vBarWidth;
-
-                if (inHBar || inVBar) {
-                    const worldX = startX + x;
-                    const worldY = startY + y;
-                    const key = `${worldX},${worldY}`;
-                    if (!floorSet.has(key)) {
-                        floorSet.add(key);
-                        floorTiles.push({ x: worldX, y: worldY });
-                    }
-                }
-            }
-        }
-
-        return { floorTiles, wallTiles: [] };
-    }
-
-    /**
-     * Generate a circular/elliptical room
-     */
-    generateCircularRoom(startX, startY, width, height, options = {}) {
-        const floorTiles = [];
-        const centerX = width / 2;
-        const centerY = height / 2;
-        const radiusX = (width / 2) - 1;
-        const radiusY = (height / 2) - 1;
-
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                // Ellipse equation: ((x-cx)/rx)^2 + ((y-cy)/ry)^2 <= 1
-                const nx = (x - centerX) / radiusX;
-                const ny = (y - centerY) / radiusY;
-
-                if (nx * nx + ny * ny <= 1) {
-                    floorTiles.push({ x: startX + x, y: startY + y });
-                }
-            }
-        }
-
-        return { floorTiles, wallTiles: [] };
-    }
-
-    /**
-     * Generate a chunky/organic room using overlapping circles
-     */
-    generateChunkyRoom(startX, startY, width, height, options = {}) {
-        const floorTiles = [];
-        const floorSet = new Set();
-
-        // Generate 3-5 overlapping circles
-        const numBlobs = 3 + Math.floor(ROT.RNG.getUniform() * 3);
-        const centerX = width / 2;
-        const centerY = height / 2;
-
-        for (let i = 0; i < numBlobs; i++) {
-            // Random center within region, biased toward center
-            const blobX = centerX + (ROT.RNG.getUniform() - 0.5) * width * 0.6;
-            const blobY = centerY + (ROT.RNG.getUniform() - 0.5) * height * 0.6;
-            const radius = 2 + Math.floor(ROT.RNG.getUniform() * Math.min(width, height) * 0.25);
-
-            // Fill circle
-            for (let dy = -radius; dy <= radius; dy++) {
-                for (let dx = -radius; dx <= radius; dx++) {
-                    if (dx * dx + dy * dy <= radius * radius) {
-                        const tx = Math.floor(blobX + dx);
-                        const ty = Math.floor(blobY + dy);
-
-                        // Check bounds
-                        if (tx >= 0 && tx < width && ty >= 0 && ty < height) {
-                            const worldX = startX + tx;
-                            const worldY = startY + ty;
-                            const key = `${worldX},${worldY}`;
-
-                            if (!floorSet.has(key)) {
-                                floorSet.add(key);
-                                floorTiles.push({ x: worldX, y: worldY });
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return { floorTiles, wallTiles: [] };
-    }
-
-    // ========================================================================
-    // MAP LAYER MANAGEMENT
+    // INFRASTRUCTURE
     // ========================================================================
 
     createEmptyMap() {
@@ -311,11 +47,6 @@ class Architect {
         );
     }
 
-    /**
-     * Get a map layer by name
-     * @param {string} layerName - 'background', 'floor', 'wall', or 'wildcard'
-     * @returns {Array|null} The 2D map array or null if invalid
-     */
     getLayer(layerName) {
         const layers = {
             'background': this.backgroundMap,
@@ -327,13 +58,6 @@ class Architect {
         return layers[layerName] || null;
     }
 
-    /**
-     * Get tile ID at position on a layer
-     * @param {string} layerName - Layer to query
-     * @param {number} x - X coordinate
-     * @param {number} y - Y coordinate
-     * @returns {number|null} Tile ID or null if empty/out of bounds
-     */
     getTile(layerName, x, y) {
         if (x < 0 || x >= this.width || y < 0 || y >= this.height) {
             return null;
@@ -345,13 +69,6 @@ class Architect {
         return tile ? tile.tileId : null;
     }
 
-    /**
-     * Set tile ID at position on a layer
-     * @param {string} layerName - Layer to modify
-     * @param {number} x - X coordinate
-     * @param {number} y - Y coordinate
-     * @param {number|null} tileId - Tile ID to set, or null to clear
-     */
     setTile(layerName, x, y, tileId) {
         if (x < 0 || x >= this.width || y < 0 || y >= this.height) {
             return;
@@ -366,13 +83,6 @@ class Architect {
         }
     }
 
-    /**
-     * Get neighboring tile IDs (8-directional)
-     * @param {string} layerName - Layer to query
-     * @param {number} x - X coordinate
-     * @param {number} y - Y coordinate
-     * @returns {Object} Object with n, s, e, w, ne, nw, se, sw tile IDs (null if empty/OOB)
-     */
     getNeighbors(layerName, x, y) {
         return {
             n:  this.getTile(layerName, x, y - 1),
@@ -386,12 +96,6 @@ class Architect {
         };
     }
 
-    /**
-     * Iterate over all tiles in a layer
-     * @param {string} layerName - Layer to iterate
-     * @param {Function} callback - Called with (x, y, tileId) for each tile
-     * @param {boolean} includeEmpty - If true, calls callback for empty tiles too (default false)
-     */
     forEach(layerName, callback, includeEmpty = false) {
         const layer = this.getLayer(layerName);
         if (!layer) return;
@@ -419,27 +123,21 @@ class Architect {
             const response = await fetch(mapPath);
             const tiledData = await response.json();
 
-            // Store map dimensions
             this.width = tiledData.width;
             this.height = tiledData.height;
-
-            // Store tileset info for converting IDs
             this.tileWidth = tiledData.tilewidth;
             this.tileHeight = tiledData.tileheight;
 
-            // Recreate maps with correct dimensions
             this.backgroundMap = this.createEmptyMap();
             this.floorMap = this.createEmptyMap();
             this.wallMap = this.createEmptyMap();
             this.wildcardMap = this.createEmptyMap();
             this.overlayMap = this.createEmptyMap();
 
-            // Store object layers for entity spawning
             this.objectLayers = [];
 
             console.log(`Map dimensions: ${this.width}x${this.height}`);
 
-            // Process layers
             for (const layer of tiledData.layers) {
                 if (layer.type === 'tilelayer') {
                     if (layer.name === 'floor' && !options.skipFloorLayer) {
@@ -447,14 +145,12 @@ class Architect {
                     } else if (layer.name === 'background') {
                         this.processBackgroundLayer(layer);
                     } else if (layer.name === 'wildcards' && !options.skipFloorLayer) {
-                        // Skip wildcards too when skipping floor (labyrinth mode)
                         console.log('Found wildcards layer, processing...');
                         this.processWildcardLayer(layer);
                     } else if (layer.name === 'overlay') {
                         this.processOverlayLayer(layer);
                     }
                 } else if (layer.type === 'objectgroup') {
-                    // Store object layers for later processing
                     this.objectLayers.push(layer);
                 }
             }
@@ -513,10 +209,8 @@ class Architect {
                 const { tileId, flipH, flipV, flipD } = this.parseTileGID(layer.data[index]);
 
                 if (tileId > 0) {
-                    // Floor layer takes priority - clear background behind it
                     this.floorMap[y][x] = { tileId, layer: 'floor', flipH, flipV, flipD };
                     this.backgroundMap[y][x] = null;
-                    // Track as walkable
                     this.walkableTiles.push({ x, y });
                 }
             }
@@ -544,56 +238,38 @@ class Architect {
         console.log(`Processed ${wildcardCount} wildcard tiles:`, typeCounts);
     }
 
-    /**
-     * Map tile IDs to wildcard types
-     * @param {number} tileId - Tile ID from Tiled
-     * @param {Object} context - Optional context for actor wildcard lookup
-     * @returns {string} Wildcard type
-     */
     getWildcardType(tileId, context = null) {
-        // Map tile IDs to wildcard types (built-in procedural types)
-        // Tile IDs are 1-indexed (Tiled format): y * 23 + x + 1
         const builtinWildcards = {
             210: 'maze',
-            9: 'dungeon',    // OPAQUE_INVERSE_DIAMOND_SUITE [8,0] - ROT.js Digger dungeon with walls and doors
-            16: 'dungeon',   // PRISON_WINDOW [15,0] - ROT.js Digger rooms + corridors
-            152: 'dungeon',  // OPAQUE_PRISON_WINDOW - ROT.js Digger rooms + corridors
-            10: 'cave',      // INVERSE_BULLET [9,0] - Cellular automata cave generation
-            230: 'infernal', // OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE_AND_OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE [22,9] - Cave with lava pools
+            9: 'dungeon',
+            16: 'dungeon',
+            152: 'dungeon',
+            10: 'cave',
+            230: 'infernal',
             143: 'room',
             144: 'room',
             12: 'item_spawn',
-            3: 'actor_spawn'
+            3: 'actor_spawn',
+            218: 'abyss'
         };
 
         if (builtinWildcards[tileId]) {
             return builtinWildcards[tileId];
         }
 
-        // Check actor wildcard_tile attributes (requires context)
         if (context) {
             const actorType = this.getActorWildcardType(tileId, context);
-            if (actorType) {
-                return actorType;
-            }
+            if (actorType) return actorType;
         }
 
         return 'unknown';
     }
 
-    /**
-     * Build lookup of tileId -> actorType from wildcard_tile attributes
-     * Cached for performance
-     * @param {number} tileId - Tile ID to look up
-     * @param {Object} context - Context with getActorData and getTileIdByName
-     * @returns {string|null} Actor type or null
-     */
     getActorWildcardType(tileId, context) {
         if (!context || !context.getPrototypeActors || !context.getTileIdByName) {
             return null;
         }
 
-        // Build cache if not exists
         if (!this.actorWildcardCache) {
             this.actorWildcardCache = {};
             const actors = context.getPrototypeActors();
@@ -612,18 +288,10 @@ class Architect {
         return this.actorWildcardCache[tileId] || null;
     }
 
-    /**
-     * Clear the actor wildcard cache (call when prototype changes)
-     */
     clearWildcardCache() {
         this.actorWildcardCache = null;
     }
 
-    /**
-     * Re-resolve wildcards that were marked 'unknown' during loadTiledMap
-     * Called when context becomes available during processWildcards
-     * @param {Object} context - Context with actor data access
-     */
     resolveUnknownWildcards(context) {
         let resolvedCount = 0;
         const typeCounts = {};
@@ -632,7 +300,6 @@ class Architect {
             for (let x = 0; x < this.width; x++) {
                 const wildcard = this.wildcardMap[y][x];
                 if (wildcard && wildcard.type === 'unknown') {
-                    // Try to resolve with context
                     const resolvedType = this.getWildcardType(wildcard.tileId, context);
                     if (resolvedType !== 'unknown') {
                         wildcard.type = resolvedType;
@@ -649,18 +316,16 @@ class Architect {
     }
 
     // ========================================================================
-    // PROCEDURAL MAP GENERATION
+    // PROCEDURAL GENERATION (stub)
     // ========================================================================
 
     generateProceduralMap(generatorConfig = {}) {
         const generatorType = generatorConfig.type || 'digger';
         const options = generatorConfig.options || {};
 
-        // Allow map dimensions from config
         if (options.map_width) this.width = options.map_width;
         if (options.map_height) this.height = options.map_height;
 
-        // Recreate maps with new dimensions
         this.backgroundMap = this.createEmptyMap();
         this.floorMap = this.createEmptyMap();
         this.wallMap = this.createEmptyMap();
@@ -674,7 +339,6 @@ class Architect {
 
         switch (generatorType) {
             case 'cellular': {
-                // Cave-like maps using cellular automata
                 generator = new ROT.Map.Cellular(this.width, this.height, {
                     born: options.born || [5, 6, 7, 8],
                     survive: options.survive || [4, 5, 6, 7, 8],
@@ -702,7 +366,6 @@ class Architect {
                         }
                     }, 1);
                 }
-                // Queue wall spawns
                 const wallTypes = options.wall_types || [{ type: 'wall', weight: 100 }];
                 const totalWeight = wallTypes.reduce((sum, wt) => sum + wt.weight, 0);
 
@@ -795,7 +458,6 @@ class Architect {
                 break;
 
             case 'infernal': {
-                // Infernal caves: cellular automata with lava pools
                 const infernalCave = new ROT.Map.Cellular(this.width, this.height, {
                     born: options.born || [5, 6, 7, 8],
                     survive: options.survive || [4, 5, 6, 7, 8],
@@ -829,29 +491,6 @@ class Architect {
                     }, 1);
                 }
 
-                // Generate lava pools
-                const lavaChance = options.lava_chance || 15;
-                const lavaCave = new ROT.Map.Cellular(this.width, this.height, {
-                    born: [4, 5, 6, 7, 8],
-                    survive: [3, 4, 5, 6, 7, 8],
-                    topology: 8
-                });
-
-                lavaCave.randomize(lavaChance / 100);
-                lavaCave.create();
-
-                const lavaPositions = [];
-
-                lavaCave.create((x, y, value) => {
-                    if (value === 0) return;
-                    if (!infernalFloorTiles.has(`${x},${y}`)) return;
-                    lavaPositions.push({ x, y });
-                });
-
-                const lavaSet = new Set(lavaPositions.map(p => `${p.x},${p.y}`));
-                this.walkableTiles = this.walkableTiles.filter(t => !lavaSet.has(`${t.x},${t.y}`));
-
-                // Queue wall spawns
                 const infernalWallTypes = options.wall_types || [{ type: 'wall', weight: 100 }];
                 const infernalTotalWeight = infernalWallTypes.reduce((sum, wt) => sum + wt.weight, 0);
 
@@ -872,9 +511,7 @@ class Architect {
                     }
                 }
 
-                this.pendingLavaSpawns.push(...lavaPositions);
-
-                console.log(`Infernal map generated: ${infernalFloorTiles.size} floor tiles, ${lavaPositions.length} lava tiles`);
+                console.log(`Infernal map generated: ${infernalFloorTiles.size} floor tiles`);
                 break;
             }
 
@@ -895,7 +532,6 @@ class Architect {
                     }
                 });
 
-                // Queue wall spawns for non-floor tiles adjacent to floors
                 const diggerWallTypes = options.wall_types || [{ type: 'wall', weight: 100 }];
                 const diggerTotalWeight = diggerWallTypes.reduce((sum, wt) => sum + wt.weight, 0);
 
@@ -905,7 +541,6 @@ class Architect {
                     for (let x = 0; x < this.width; x++) {
                         if (diggerFloorTiles.has(`${x},${y}`)) continue;
 
-                        // Check if adjacent to any floor (8-directional)
                         const adjacentToFloor =
                             hasDiggerFloor(x - 1, y) || hasDiggerFloor(x + 1, y) ||
                             hasDiggerFloor(x, y - 1) || hasDiggerFloor(x, y + 1) ||
@@ -922,27 +557,21 @@ class Architect {
                                     break;
                                 }
                             }
-                            // Place floor under wall
                             this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
                             this.pendingWallSpawns.push({ x, y, type: wallType });
                         }
                     }
                 }
 
-                // Convert perimeter walls to indestructible metal_wall
-                // and add metal_wall for any perimeter tile adjacent to a floor
                 const isPerimeter = (px, py) =>
                     px === 0 || px === this.width - 1 || py === 0 || py === this.height - 1;
 
-                // Retype existing perimeter wall spawns
                 for (const wall of this.pendingWallSpawns) {
                     if (isPerimeter(wall.x, wall.y)) {
                         wall.type = 'metal_wall';
                     }
                 }
 
-                // Add metal_wall for perimeter tiles adjacent to floors that weren't queued
-                // (e.g. y=0 row is skipped by the wall loop above)
                 const pendingWallSet = new Set(this.pendingWallSpawns.map(p => `${p.x},${p.y}`));
                 for (let y = 0; y < this.height; y++) {
                     for (let x = 0; x < this.width; x++) {
@@ -963,20 +592,17 @@ class Architect {
                     }
                 }
 
-                // Also spawn doors and torches from rooms
                 const rooms = generator.getRooms();
-                this.diggerRooms = rooms;  // saved for treasure room feature
+                this.diggerRooms = rooms;
                 const wallPositions = new Set(this.pendingWallSpawns.map(p => `${p.x},${p.y}`));
 
                 for (const room of rooms) {
-                    // Doors at room connections
                     room.getDoors((x, y) => {
                         if (y > 0 && ROT.RNG.getPercentage() <= 50) {
                             this.pendingDoorSpawns.push({ x, y });
                         }
                     });
 
-                    // 30% chance for brazier in room
                     if (ROT.RNG.getPercentage() <= 30) {
                         const roomWalls = [];
                         const left = room.getLeft();
@@ -984,7 +610,6 @@ class Architect {
                         const top = room.getTop();
                         const bottom = room.getBottom();
 
-                        // Find walls on room perimeter
                         for (const wallPos of this.pendingWallSpawns) {
                             if (wallPos.x >= left - 1 && wallPos.x <= right + 1 &&
                                 wallPos.y >= top - 1 && wallPos.y <= bottom + 1) {
@@ -995,7 +620,6 @@ class Architect {
                         if (roomWalls.length > 0) {
                             const torchPos = roomWalls[Math.floor(ROT.RNG.getUniform() * roomWalls.length)];
                             this.pendingTorchSpawns.push({ x: torchPos.x, y: torchPos.y });
-                            // Remove from wall spawns
                             const idx = this.pendingWallSpawns.findIndex(p => p.x === torchPos.x && p.y === torchPos.y);
                             if (idx !== -1) this.pendingWallSpawns.splice(idx, 1);
                         }
@@ -1007,65 +631,29 @@ class Architect {
             }
         }
 
-        // Generate random lakes (water patches on floor tiles)
-        const lakeChance = options.lake_chance || 0;
-        if (lakeChance > 0) {
-            const lakeCave = new ROT.Map.Cellular(this.width, this.height, {
-                born: [5, 6, 7, 8],
-                survive: [4, 5, 6, 7, 8],
-                topology: 8
-            });
-
-            lakeCave.randomize(lakeChance / 100);
-            lakeCave.create();
-            lakeCave.create();
-
-            const lakePositions = [];
-            const walkableSet = new Set(this.walkableTiles.map(t => `${t.x},${t.y}`));
-
-            lakeCave.create((x, y, value) => {
-                if (value === 0) return;
-                if (!walkableSet.has(`${x},${y}`)) return;
-                lakePositions.push({ x, y });
-            });
-
-            this.pendingLakeSpawns.push(...lakePositions);
-            console.log(`Lake generation: ${lakePositions.length} water tiles`);
+        if (options.lakes) {
+            this.generateOverlayBlobs(options.lakes);
+        }
+        if (options.abyss) {
+            this.generateOverlayBlobs(options.abyss);
         }
 
-        // Generate random sewage patches on walkable floor tiles
-        const sewageChance = options.sewage_chance || 0;
-        if (sewageChance > 0) {
-            const sewageCave = new ROT.Map.Cellular(this.width, this.height, {
-                born: [5, 6, 7, 8],
-                survive: [4, 5, 6, 7, 8],
-                topology: 8
-            });
-
-            sewageCave.randomize(sewageChance / 100);
-            sewageCave.create();
-            sewageCave.create();
-
-            const sewagePositions = [];
-            const walkableSet = new Set(this.walkableTiles.map(t => `${t.x},${t.y}`));
-
-            sewageCave.create((x, y, value) => {
-                if (value === 0) return;
-                if (!walkableSet.has(`${x},${y}`)) return;
-                sewagePositions.push({ x, y });
-            });
-
-            this.pendingSewageSpawns.push(...sewagePositions);
-            console.log(`Sewage generation: ${sewagePositions.length} sewage tiles`);
-        }
-
-        // Scatter a few pushable walls among normal walls
         if (this.pendingWallSpawns.length > 0) {
+            const hasFloor = (x, y) => {
+                if (x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
+                return this.floorMap[y][x] !== null;
+            };
+            const wallSet = new Set(this.pendingWallSpawns.map(p => `${p.x},${p.y}`));
             const converted = [];
             for (let i = this.pendingWallSpawns.length - 1; i >= 0; i--) {
                 const wall = this.pendingWallSpawns[i];
-                // Only convert normal walls, not metal_wall or special types
                 if (wall.type && wall.type !== 'wall') continue;
+                const betweenFloors =
+                    (hasFloor(wall.x - 1, wall.y) && hasFloor(wall.x + 1, wall.y) &&
+                     !wallSet.has(`${wall.x - 1},${wall.y}`) && !wallSet.has(`${wall.x + 1},${wall.y}`)) ||
+                    (hasFloor(wall.x, wall.y - 1) && hasFloor(wall.x, wall.y + 1) &&
+                     !wallSet.has(`${wall.x},${wall.y - 1}`) && !wallSet.has(`${wall.x},${wall.y + 1}`));
+                if (!betweenFloors) continue;
                 if (ROT.RNG.getPercentage() <= 2) {
                     this.pendingPushableWallSpawns.push({ x: wall.x, y: wall.y });
                     this.pendingWallSpawns.splice(i, 1);
@@ -1080,18 +668,167 @@ class Architect {
         console.log(`Procedural map generated with ${this.walkableTiles.length} walkable tiles`);
     }
 
+    generateOverlayBlobs(config) {
+        if (!config || !config.count) return;
+
+        const count = Array.isArray(config.count)
+            ? ROT.RNG.getUniformInt(config.count[0], config.count[1])
+            : config.count;
+        if (count <= 0) return;
+
+        const types = config.types || ['water'];
+        const minSize = config.minSize || 10;
+        const maxSize = config.maxSize || 60;
+
+        const walkableSet = new Set(this.walkableTiles.map(t => `${t.x},${t.y}`));
+        const wallPosSet = new Set(this.pendingWallSpawns
+            .filter(p => p.type !== 'metal_wall')
+            .map(p => `${p.x},${p.y}`));
+        const expandableSet = new Set([...walkableSet, ...wallPosSet]);
+
+        const allVoidCells = new Set();
+        const allLiquidCells = new Set();
+        let totalPlaced = 0;
+
+        for (let i = 0; i < count; i++) {
+            const type = types[Math.floor(ROT.RNG.getUniform() * types.length)];
+            const targetSize = ROT.RNG.getUniformInt(minSize, maxSize);
+
+            const walkableArray = [...walkableSet];
+            if (walkableArray.length === 0) break;
+            const seed = walkableArray[Math.floor(ROT.RNG.getUniform() * walkableArray.length)];
+
+            const blob = [];
+            const frontier = [seed];
+            const visited = new Set([seed]);
+
+            while (blob.length < targetSize && frontier.length > 0) {
+                const idx = Math.floor(ROT.RNG.getUniform() * frontier.length);
+                const cell = frontier.splice(idx, 1)[0];
+
+                if (!expandableSet.has(cell)) continue;
+
+                blob.push(cell);
+                expandableSet.delete(cell);
+                walkableSet.delete(cell);
+
+                const [cx, cy] = cell.split(',').map(Number);
+                const dirs = [[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]];
+                for (const [dx, dy] of dirs) {
+                    const nx = cx + dx;
+                    const ny = cy + dy;
+                    if (nx < 0 || nx >= this.width || ny < 0 || ny >= this.height) continue;
+                    const nk = `${nx},${ny}`;
+                    if (!visited.has(nk) && expandableSet.has(nk)) {
+                        visited.add(nk);
+                        frontier.push(nk);
+                    }
+                }
+            }
+
+            if (blob.length === 0) continue;
+            totalPlaced += blob.length;
+
+            if (type === 'abyss') {
+                for (const key of blob) {
+                    allVoidCells.add(key);
+                    const [vx, vy] = key.split(',').map(Number);
+                    this.floorMap[vy][vx] = null;
+                    this.backgroundMap[vy][vx] = { tileId: 217, layer: 'background' };
+                    this.wallMap[vy][vx] = null;
+                    this.overlayMap[vy][vx] = null;
+                }
+            } else {
+                for (const key of blob) {
+                    allLiquidCells.add(key);
+                    if (wallPosSet.has(key)) {
+                        const [cx, cy] = key.split(',').map(Number);
+                        if (!this.floorMap[cy][cx]) {
+                            this.floorMap[cy][cx] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                        }
+                    }
+                }
+
+                if (type === 'lava') {
+                    for (const key of blob) {
+                        const [px, py] = key.split(',').map(Number);
+                        this.pendingLavaSpawns.push({ x: px, y: py });
+                    }
+                } else if (type === 'sewage') {
+                    for (const key of blob) {
+                        const [px, py] = key.split(',').map(Number);
+                        this.pendingSewageSpawns.push({ x: px, y: py });
+                    }
+                } else {
+                    for (const key of blob) {
+                        const [px, py] = key.split(',').map(Number);
+                        this.pendingLakeSpawns.push({ x: px, y: py });
+                    }
+                }
+            }
+
+            console.log(`  ${type} blob: ${blob.length} tiles`);
+        }
+
+        if (allVoidCells.size > 0) {
+            this.pendingWallSpawns = this.pendingWallSpawns.filter(p => !allVoidCells.has(`${p.x},${p.y}`));
+            this.pendingDoorSpawns = this.pendingDoorSpawns.filter(p => !allVoidCells.has(`${p.x},${p.y}`));
+            this.pendingTorchSpawns = this.pendingTorchSpawns.filter(p => !allVoidCells.has(`${p.x},${p.y}`));
+            this.pendingLavaSpawns = this.pendingLavaSpawns.filter(p => !allVoidCells.has(`${p.x},${p.y}`));
+            this.pendingLakeSpawns = this.pendingLakeSpawns.filter(p => !allVoidCells.has(`${p.x},${p.y}`));
+            this.pendingSewageSpawns = this.pendingSewageSpawns.filter(p => !allVoidCells.has(`${p.x},${p.y}`));
+        }
+
+        if (allLiquidCells.size > 0) {
+            this.pendingWallSpawns = this.pendingWallSpawns.filter(p => !allLiquidCells.has(`${p.x},${p.y}`));
+            this.pendingDoorSpawns = this.pendingDoorSpawns.filter(p => !allLiquidCells.has(`${p.x},${p.y}`));
+            this.pendingTorchSpawns = this.pendingTorchSpawns.filter(p => !allLiquidCells.has(`${p.x},${p.y}`));
+        }
+
+        const allBlobCells = new Set([...allLiquidCells, ...allVoidCells]);
+        if (allBlobCells.size > 0) {
+            const existingWallSet = new Set(this.pendingWallSpawns.map(p => `${p.x},${p.y}`));
+            const dirs = [[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]];
+            let boundaryWalls = 0;
+
+            for (const key of allBlobCells) {
+                const [bx, by] = key.split(',').map(Number);
+                if (!wallPosSet.has(key)) continue;
+                for (const [dx, dy] of dirs) {
+                    const nx = bx + dx;
+                    const ny = by + dy;
+                    if (nx < 0 || nx >= this.width || ny < 0 || ny >= this.height) continue;
+                    const nk = `${nx},${ny}`;
+                    if (allBlobCells.has(nk)) continue;
+                    if (existingWallSet.has(nk)) continue;
+                    if (this.floorMap[ny]?.[nx]) continue;
+
+                    this.floorMap[ny][nx] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                    this.pendingWallSpawns.push({ x: nx, y: ny });
+                    existingWallSet.add(nk);
+                    boundaryWalls++;
+                }
+            }
+
+            if (boundaryWalls > 0) {
+                console.log(`  Boundary walls added: ${boundaryWalls}`);
+            }
+        }
+
+        this.walkableTiles = this.walkableTiles.filter(t => walkableSet.has(`${t.x},${t.y}`));
+
+        console.log(`Overlay generation: ${totalPlaced} total tiles in ${count} blobs`);
+    }
+
     // ========================================================================
     // WILDCARD PROCESSING
     // ========================================================================
 
     async processWildcards(context = null) {
-        // Re-resolve 'unknown' wildcards now that we have context
-        // This handles actor wildcards that couldn't be resolved during loadTiledMap
         if (context) {
             this.resolveUnknownWildcards(context);
         }
 
-        // Find all wildcard regions first
         const regions = [];
         const processed = new Set();
 
@@ -1108,18 +845,17 @@ class Architect {
             }
         }
 
-        // Process mazes first, then rooms (so rooms can detect maze intersections)
         const mazes = regions.filter(r => r.type === 'maze');
         const rooms = regions.filter(r => r.type === 'room');
-        const others = regions.filter(r => r.type !== 'maze' && r.type !== 'room');
+        const abysses = regions.filter(r => r.type === 'abyss');
+        const others = regions.filter(r => r.type !== 'maze' && r.type !== 'room' && r.type !== 'abyss');
 
-        for (const { region, type } of [...mazes, ...rooms, ...others]) {
+        for (const { region, type } of [...mazes, ...rooms, ...others, ...abysses]) {
             await this.generateWildcardContent(region, type, context);
         }
     }
 
     findWildcardRegion(startX, startY, type, processed) {
-        // Find bounding box of contiguous wildcard tiles of the same type
         let minX = startX, maxX = startX, minY = startY, maxY = startY;
         const stack = [{ x: startX, y: startY }];
 
@@ -1139,7 +875,6 @@ class Architect {
             minY = Math.min(minY, y);
             maxY = Math.max(maxY, y);
 
-            // Check 4-connected neighbors
             stack.push({ x: x + 1, y }, { x: x - 1, y }, { x, y: y + 1 }, { x, y: y - 1 });
         }
 
@@ -1170,14 +905,14 @@ class Architect {
             case 'room':
                 this.generateRoomAt(region.x, region.y, region.width, region.height, context);
                 break;
+            case 'abyss':
+                this.generateAbyssAt(region.x, region.y, region.width, region.height, context);
+                break;
             case 'item_spawn':
-                // Spawn random item - handled by engine
                 break;
             case 'actor_spawn':
-                // Spawn random actor - handled by engine
                 break;
             default:
-                // Check if this is an actor type from wildcard_tile attribute
                 if (context && context.getActorData) {
                     const actorData = context.getActorData(type);
                     if (actorData) {
@@ -1278,7 +1013,6 @@ class Architect {
         const hasFloor = (lx, ly) => floorCells.has(`${lx},${ly}`);
         const inBounds = (lx, ly) => lx >= 0 && lx < width && ly >= 0 && ly < height;
 
-        // Find wall positions
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
                 if (hasFloor(x, y)) continue;
@@ -1309,7 +1043,6 @@ class Architect {
             }
         }
 
-        // Get doors and torches from rooms
         const rooms = dungeon.getRooms();
         const torchPositions = [];
 
@@ -1511,37 +1244,6 @@ class Architect {
             }
         }, 1);
 
-        // Generate lava pools
-        const lavaChance = mapGenConfig.lava_chance || 15;
-        const lavaCave = new ROT.Map.Cellular(width, height, {
-            born: [4, 5, 6, 7, 8],
-            survive: [3, 4, 5, 6, 7, 8],
-            topology: 8
-        });
-
-        lavaCave.randomize(lavaChance / 100);
-        lavaCave.create();
-
-        const lavaPositions = [];
-
-        lavaCave.create((x, y, value) => {
-            if (value === 0) return;
-
-            const worldX = startX + x;
-            const worldY = startY + y;
-
-            if (worldX >= this.width || worldY >= this.height) return;
-
-            const wildcard = this.wildcardMap[worldY][worldX];
-            if (!wildcard || wildcard.type !== 'infernal') return;
-
-            if (!floorCells.has(`${x},${y}`)) return;
-
-            lavaPositions.push({ x: worldX, y: worldY });
-        });
-
-        const lavaSet = new Set(lavaPositions.map(p => `${p.x},${p.y}`));
-
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
                 if (floorCells.has(`${x},${y}`)) continue;
@@ -1560,8 +1262,6 @@ class Architect {
             }
         }
 
-        this.walkableTiles = this.walkableTiles.filter(t => !lavaSet.has(`${t.x},${t.y}`));
-
         const wallTypes = mapGenConfig.wall_types || [{ type: 'wall', weight: 100 }];
         const totalWeight = wallTypes.reduce((sum, wt) => sum + wt.weight, 0);
 
@@ -1578,9 +1278,42 @@ class Architect {
             this.pendingWallSpawns.push({ x: pos.x, y: pos.y, type: wallType });
         }
 
-        this.pendingLavaSpawns.push(...lavaPositions);
+        console.log(`Infernal cave generated: ${floorCells.size} floor tiles, ${wallPositions.length} walls`);
+    }
 
-        console.log(`Infernal cave generated: ${floorCells.size} floor tiles, ${wallPositions.length} walls, ${lavaPositions.length} lava`);
+    generateAbyssAt(startX, startY, width, height, context = null) {
+        const regionSet = new Set();
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const wx = startX + x;
+                const wy = startY + y;
+                if (wx < this.width && wy < this.height) {
+                    const wildcard = this.wildcardMap[wy][wx];
+                    if (wildcard && wildcard.type === 'abyss' && this.floorMap[wy][wx]) {
+                        regionSet.add(`${wx},${wy}`);
+                    }
+                }
+            }
+        }
+
+        if (regionSet.size === 0) return;
+
+        const config = {
+            count: [1, Math.max(1, Math.floor(regionSet.size / 40))],
+            types: ['abyss'],
+            minSize: Math.min(10, Math.floor(regionSet.size / 4)),
+            maxSize: Math.floor(regionSet.size / 2)
+        };
+
+        const walkableBackup = this.walkableTiles;
+        this.walkableTiles = this.walkableTiles.filter(t => regionSet.has(`${t.x},${t.y}`));
+
+        this.generateOverlayBlobs(config);
+
+        const remainingSet = new Set(this.walkableTiles.map(t => `${t.x},${t.y}`));
+        this.walkableTiles = walkableBackup.filter(t =>
+            !regionSet.has(`${t.x},${t.y}`) || remainingSet.has(`${t.x},${t.y}`)
+        );
     }
 
     generateRoomAt(startX, startY, width, height, context = null) {
@@ -1615,9 +1348,6 @@ class Architect {
                             wallPositions.push({ x: worldX, y: worldY });
                         }
                         this.floorMap[worldY][worldX] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
-                    } else if (isPerimeter && hasAdjacentMazePath) {
-                        this.floorMap[worldY][worldX] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
-                        this.walkableTiles.push({ x: worldX, y: worldY });
                     } else {
                         this.floorMap[worldY][worldX] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
                         this.walkableTiles.push({ x: worldX, y: worldY });
@@ -1630,7 +1360,7 @@ class Architect {
     }
 
     // ========================================================================
-    // ENTITY SPAWNING (Context-Dependent)
+    // ENTITY SPAWNING
     // ========================================================================
 
     spawnPendingWalls(context) {
@@ -1644,7 +1374,6 @@ class Architect {
         const typeCounts = {};
 
         for (const pos of this.pendingWallSpawns) {
-            // Skip if there's a stairway at this position (keep stairways visible)
             if (context.getActorAt) {
                 const existingActor = context.getActorAt(pos.x, pos.y);
                 if (existingActor && existingActor.hasAttribute('stairway')) {
@@ -1805,21 +1534,11 @@ class Architect {
     // TREASURE ROOM
     // ========================================================================
 
-    /**
-     * Designate one digger-generated room as the treasure room.
-     * Removes one of its pending door spawns and returns the room's floor tiles
-     * and chosen door position so the engine can place a locked door + loot.
-     * Must be called after generateProceduralMap() and before spawnPendingDoors().
-     * @returns {{ roomTiles: Array<{x,y}>, doorPos: {x,y} }|null}
-     */
     spawnTreasureRoom() {
         if (!this.diggerRooms || this.diggerRooms.length === 0) {
-            console.warn('Treasure room: no digger rooms available');
             return null;
         }
 
-        // Find rooms that have at least one corridor entrance (getDoors() returns all connections,
-        // regardless of the 50% chance that gave them a pending door spawn)
         const eligibleRooms = this.diggerRooms.filter(room => {
             let count = 0;
             room.getDoors(() => count++);
@@ -1827,13 +1546,11 @@ class Architect {
         });
 
         if (eligibleRooms.length === 0) {
-            console.warn('Treasure room: no eligible rooms with entrances');
             return null;
         }
 
         const treasureRoom = eligibleRooms[Math.floor(ROT.RNG.getUniform() * eligibleRooms.length)];
 
-        // Collect interior floor tiles
         const roomTiles = [];
         for (let y = treasureRoom.getTop(); y <= treasureRoom.getBottom(); y++) {
             for (let x = treasureRoom.getLeft(); x <= treasureRoom.getRight(); x++) {
@@ -1843,24 +1560,20 @@ class Architect {
             }
         }
 
-        // Collect ALL corridor connection points for this room (not just the 50% that got door spawns)
         const allEntrances = [];
         treasureRoom.getDoors((x, y) => allEntrances.push({ x, y }));
 
         if (allEntrances.length === 0) return null;
 
-        // Use the first entrance as the locked door; wall off every other corridor connection
         const chosenDoor = allEntrances[0];
         const doorSet = new Set(this.pendingDoorSpawns.map(p => `${p.x},${p.y}`));
 
         for (const entrance of allEntrances) {
-            // Remove any pending plain door at this position
             if (doorSet.has(`${entrance.x},${entrance.y}`)) {
                 this.pendingDoorSpawns = this.pendingDoorSpawns.filter(
                     p => !(p.x === entrance.x && p.y === entrance.y)
                 );
             }
-            // Wall off every entrance that isn't the chosen locked door
             if (entrance !== chosenDoor) {
                 this.pendingWallSpawns.push({ x: entrance.x, y: entrance.y, type: 'metal_wall' });
                 this.walkableTiles = this.walkableTiles.filter(
@@ -1869,7 +1582,6 @@ class Architect {
             }
         }
 
-        // Retype all existing perimeter wall spawns to metal_wall
         const left = treasureRoom.getLeft() - 1;
         const right = treasureRoom.getRight() + 1;
         const top = treasureRoom.getTop() - 1;
@@ -1898,10 +1610,6 @@ class Architect {
         return this.floorMap[y][x]?.tileId === this.config.defaultFloorTileId;
     }
 
-    /**
-     * Add diagonal shadow beneath floor tiles
-     * Creates the appearance of a base with hard diagonal shadow
-     */
     addBaseAndShadows() {
         const BLACK_TILE = 217;
         const DARK_SHADE = 178;
@@ -1955,6 +1663,10 @@ class Architect {
         }
     }
 
+    // ========================================================================
+    // SERIALIZATION
+    // ========================================================================
+
     serializeMap() {
         return {
             width: this.width,
@@ -1990,6 +1702,9 @@ class Architect {
         this.pendingDoorSpawns = [];
         this.pendingTorchSpawns = [];
         this.pendingLavaSpawns = [];
+        this.pendingLakeSpawns = [];
+        this.pendingSewageSpawns = [];
+        this.pendingPushableWallSpawns = [];
         this.diggerRooms = null;
         this.actorWildcardCache = null;
     }

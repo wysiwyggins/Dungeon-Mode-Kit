@@ -3098,6 +3098,8 @@ class Actor extends Entity {
      * @returns {Promise} Resolves when action is complete
      */
     act() {
+        this.engine.entityManager.invalidateActorPosCache();
+
         // Viewport AI margin: skip entire turn for off-screen actors
         if (this.engine.viewportEnabled && !this.isPlayerControlled()) {
             const ox = this.engine.sectionOriginX;
@@ -4839,7 +4841,15 @@ class Actor extends Entity {
                     shattered = true;
                 }
                 if (shattered) {
-                    this.engine.lightingManager?.computeLighting();
+                    const clearedPositions = [];
+                    for (let dy = -radius; dy <= radius; dy++) {
+                        for (let dx = -radius; dx <= radius; dx++) {
+                            if (Math.abs(dx) + Math.abs(dy) <= radius) {
+                                clearedPositions.push({ x: this.x + dx, y: this.y + dy });
+                            }
+                        }
+                    }
+                    this.engine.entityManager.revealDugArea(clearedPositions);
                     this.engine.renderer?.effectRunner.apply('shatter', this);
                 }
                 if (this.isPlayerControlled()) {
@@ -5189,7 +5199,12 @@ class Actor extends Entity {
 
         // Now trigger death after collision description is shown
         if (targetShouldDie) {
+            const wasBreakableWall = target.hasAttribute('breakable') && target.hasAttribute('solid');
+            const targetPos = { x: target.x, y: target.y };
             target.die();
+            if (wasBreakableWall) {
+                this.engine.entityManager.revealDugArea([targetPos]);
+            }
         }
 
         // attackAttempted is true if we had a damage source (even on miss)
@@ -5801,9 +5816,7 @@ class Actor extends Entity {
 
         // Check for stairway and gateway actors (only for player-controlled actors)
         if (this.isPlayerControlled()) {
-            const actorsAtNewPos = this.engine.entityManager.actors.filter(
-                a => a.x === newX && a.y === newY && a !== this
-            );
+            const actorsAtNewPos = this.engine.entityManager.getActorsAt(newX, newY);
             const stairway = actorsAtNewPos.find(a => a.hasAttribute('stairway'));
             if (stairway) {
                 const direction = stairway.getAttribute('stairway');
@@ -5870,11 +5883,9 @@ class Actor extends Entity {
     checkCloudEffects(x, y) {
         const entityManager = this.engine.entityManager;
 
-        for (const other of entityManager.actors) {
+        for (const other of entityManager.getActorsAt(x, y)) {
             if (other === this) continue;
-            if (other.isDead) continue;
-            if (other.x !== x || other.y !== y) continue;
-            if (other.type !== 'cloud' && other.type !== 'mist') continue;
+            if (other.type !== 'cloud' && other.type !== 'mist' && other.type !== 'sewer_gas') continue;
 
             // Apply collision effect (stat damage)
             const collisionEffect = other.getAttribute('collision_effect');
@@ -6311,14 +6322,8 @@ class Actor extends Entity {
      * @returns {Actor|null} The deep actor at position, or null
      */
     getDeepActorAt(x, y) {
-        const actors = this.engine.entityManager.actors.filter(
-            a => a !== this &&
-                 a.x === x && a.y === y &&
-                 !a.isDead &&
-                 !a.hasAttribute('solid') &&
-                 a.hasAttribute('deep')
-        );
-        return actors.length > 0 ? actors[0] : null;
+        return this.engine.entityManager.getActorsAt(x, y)
+            .find(a => a !== this && !a.hasAttribute('solid') && a.hasAttribute('deep')) || null;
     }
 
     /**
@@ -6649,6 +6654,7 @@ class EntityManager {
         this.player = null;
         this._liquidPosCache = null;
         this._solidPosCache = null;
+        this._actorPosCache = null;
     }
 
     async spawnEntities(entryDirection = null) {
@@ -6710,14 +6716,12 @@ class EntityManager {
                     const checkX = actor.x + dir.dx;
                     const checkY = actor.y + dir.dy;
 
-                    const neighbor = this.actors.find(
-                        a => a.x === checkX && a.y === checkY &&
-                             !a.isDead &&
-                             (a.type === neighborType || a.type === transformTo)
-                    );
-
-                    if (neighbor) {
-                        matchingNeighbors++;
+                    const neighborsHere = this.getActorsAt(checkX, checkY);
+                    for (const a of neighborsHere) {
+                        if (a.type === neighborType || a.type === transformTo) {
+                            matchingNeighbors++;
+                            break;
+                        }
                     }
                 }
 
@@ -7278,6 +7282,7 @@ class EntityManager {
     addEntity(entity) {
         this._liquidPosCache = null;
         this._solidPosCache = null;
+        this._actorPosCache = null;
         this.entities.push(entity);
 
         if (entity instanceof Actor) {
@@ -7302,6 +7307,7 @@ class EntityManager {
     removeEntity(entity) {
         this._liquidPosCache = null;
         this._solidPosCache = null;
+        this._actorPosCache = null;
         // Remove from arrays
         this.entities = this.entities.filter(e => e !== entity);
         this.actors = this.actors.filter(a => a !== entity);
@@ -7348,6 +7354,50 @@ class EntityManager {
         this.engine.interfaceManager?.updateSidebar();
     }
 
+    revealDugArea(clearedPositions) {
+        const mapManager = this.engine.mapManager;
+        if (!mapManager) return;
+
+        const wallData = this.engine.currentPrototype.getActorData('wall');
+        if (!wallData) return;
+
+        const DUG_FLOOR_TILE = 135;
+        const clearedSet = new Set(clearedPositions.map(p => `${p.x},${p.y}`));
+
+        for (const { x, y } of clearedPositions) {
+            if (x < 0 || x >= mapManager.width || y < 0 || y >= mapManager.height) continue;
+            if (!mapManager.floorMap[y][x]) {
+                mapManager.floorMap[y][x] = { tileId: DUG_FLOOR_TILE, layer: 'floor' };
+                this.engine.renderer?.renderTileAt('floor', x, y, mapManager);
+                if (!this.getEntityAt(x, y)) {
+                    this.spawnEntity('rubble', x, y);
+                }
+            }
+        }
+
+        const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]];
+        for (const { x, y } of clearedPositions) {
+            for (const [dx, dy] of dirs) {
+                const nx = x + dx;
+                const ny = y + dy;
+
+                if (nx < 0 || nx >= mapManager.width || ny < 0 || ny >= mapManager.height) continue;
+                if (clearedSet.has(`${nx},${ny}`)) continue;
+                if (mapManager.floorMap[ny]?.[nx]) continue;
+                if (this.getActorAt(nx, ny)) continue;
+
+                mapManager.floorMap[ny][nx] = { tileId: DUG_FLOOR_TILE, layer: 'floor' };
+                this.engine.renderer?.renderTileAt('floor', nx, ny, mapManager);
+
+                const actor = new Actor(nx, ny, 'wall', wallData, this.engine);
+                this.addEntity(actor);
+                this.engine.renderer?.createActorSprites(actor);
+            }
+        }
+
+        this.engine.updateLighting?.();
+    }
+
     _getLiquidActorAt(x, y) {
         if (!this._liquidPosCache) {
             this._liquidPosCache = new Map();
@@ -7373,20 +7423,45 @@ class EntityManager {
     }
 
     getEntityAt(x, y) {
-        // Return only base Entity objects (not Actor or Item subclasses)
         return this.entities.find(e => e.x === x && e.y === y && !(e instanceof Actor) && !(e instanceof Item));
     }
-    
+
+    _ensureActorPosCache() {
+        if (!this._actorPosCache) {
+            this._actorPosCache = new Map();
+            for (const a of this.actors) {
+                if (a.isDead) continue;
+                const key = a.x * 10000 + a.y;
+                const list = this._actorPosCache.get(key);
+                if (list) list.push(a);
+                else this._actorPosCache.set(key, [a]);
+            }
+        }
+    }
+
+    invalidateActorPosCache() {
+        this._actorPosCache = null;
+    }
+
+    getActorsAt(x, y) {
+        this._ensureActorPosCache();
+        return this._actorPosCache.get(x * 10000 + y) || [];
+    }
+
     getActorAt(x, y) {
-        return this.actors.find(a => a.x === x && a.y === y);
+        this._ensureActorPosCache();
+        const list = this._actorPosCache.get(x * 10000 + y);
+        return list ? list[0] : undefined;
     }
 
     getOtherActorAt(x, y, excludeActor) {
-        return this.actors.find(a => a.x === x && a.y === y && a !== excludeActor);
+        const list = this.getActorsAt(x, y);
+        return list.find(a => a !== excludeActor);
     }
 
     getSolidActorAt(x, y) {
-        return this.actors.find(a => a.x === x && a.y === y && !a.isDead && a.hasAttribute('solid'));
+        const list = this.getActorsAt(x, y);
+        return list.find(a => a.hasAttribute('solid'));
     }
 
     getItemAt(x, y) {
@@ -7487,15 +7562,11 @@ class EntityManager {
 
         if (!hasDamageBehavior) return;
 
-        // Find other actors at this position
-        for (const other of this.actors) {
+        for (const other of this.getActorsAt(hazard.x, hazard.y)) {
             if (other === hazard) continue;
-            if (other.isDead) continue;
-            if (other.x !== hazard.x || other.y !== hazard.y) continue;
 
-            // Skip other hazards (fire-immune actors, clouds, mist)
             if (other.hasAttribute('fire_immune') ||
-                other.type === 'cloud' || other.type === 'mist') continue;
+                other.type === 'cloud' || other.type === 'mist' || other.type === 'sewer_gas') continue;
 
             // Skip flying actors (hovering above ground hazards)
             if (other.hasStateProperty?.('flying')) continue;
@@ -7675,6 +7746,10 @@ class EntityManager {
         this.actors = [];
         this.items = [];
         this.player = null;
+        this._actorPosCache = null;
+        this._liquidPosCache = null;
+        this._solidPosCache = null;
+        this._sewerGasCount = 0;
     }
 }
 
@@ -8223,6 +8298,34 @@ class RenderSystem {
         }
     }
 
+    renderTileAt(layerName, x, y, mapManager) {
+        const tileset = PIXI.Loader.shared.resources.tiles;
+        if (!tileset) return;
+
+        const layers = {
+            'background': { map: 'backgroundMap', container: this.backgroundContainer, sprites: this.backgroundSprites },
+            'floor': { map: 'floorMap', container: this.floorContainer, sprites: this.floorSprites },
+            'overlay': { map: 'overlayMap', container: this.overlayContainer, sprites: this.overlaySprites }
+        };
+
+        const layer = layers[layerName];
+        if (!layer) return;
+
+        const tile = mapManager[layer.map][y]?.[x];
+        if (!tile || tile.tileId <= 0) return;
+
+        if (layer.sprites?.[y]?.[x]) {
+            layer.sprites[y][x].destroy();
+            layer.sprites[y][x] = null;
+        }
+
+        const sprite = this.createTileSprite(tile, x, y, tileset);
+        layer.container.addChild(sprite);
+        if (layer.sprites?.[y]) {
+            layer.sprites[y][x] = sprite;
+        }
+    }
+
     /**
      * Create a sprite for a tile ID at a position
      */
@@ -8659,11 +8762,8 @@ class RenderSystem {
         if (!em) return 5;
 
         // Check if there's a liquid actor at this position
-        const liquidActor = em.actors.find(
-            a => a.x === item.x && a.y === item.y &&
-                 !a.isDead &&
-                 a.hasAttribute('liquid')
-        );
+        const liquidActor = em.getActorsAt(item.x, item.y)
+            .find(a => a.hasAttribute('liquid'));
 
         // Items in liquid float above actors (zIndex 11), otherwise below (zIndex 5)
         return liquidActor ? 11 : 5;
@@ -9124,5 +9224,50 @@ window.listLevels = () => {
     return levels;
 };
 
+window.giveItem = (itemType, count = 1) => {
+    if (!engine) {
+        console.error('Engine not initialized.');
+        return;
+    }
+    const player = engine.entityManager.player;
+    if (!player) {
+        console.error('No player found.');
+        return;
+    }
+    const itemData = engine.currentPrototype.getItemData(itemType);
+    if (!itemData) {
+        console.error(`Item type '${itemType}' not found.`);
+        return;
+    }
+    for (let i = 0; i < count; i++) {
+        const item = new Item(-1, -1, itemType, itemData, engine);
+        item.owner = player;
+        player.inventory.push(item);
+    }
+    console.log(`Gave ${count}x ${itemData.name || itemType} to ${player.name}`);
+};
+
+window.goToFloor = async (floorNumber) => {
+    if (!engine) {
+        console.error('Engine not initialized.');
+        return;
+    }
+    const config = engine.currentPrototype?.config;
+    const totalFloors = config?.levels?.length || 1;
+    if (floorNumber < 1 || floorNumber > totalFloors) {
+        console.error(`Invalid floor: ${floorNumber}. Valid range: 1-${totalFloors}`);
+        return;
+    }
+    const prototypeName = engine.currentPrototype.name;
+    engine.cleanup();
+    const prototypeConfig = await engine.loadPrototypeConfig(prototypeName);
+    engine.currentPrototype = new Prototype(prototypeName, prototypeConfig, engine);
+    await engine.currentPrototype.loadAssets();
+    engine.currentFloor = floorNumber;
+    engine.floorStates.clear();
+    await engine.loadFloor(floorNumber, 'from_above');
+    console.log(`Jumped to floor ${floorNumber}/${totalFloors}`);
+};
+
 console.log('Dungeon Mode Kit loaded. Call initializeGame() to start.');
-console.log('Level utilities: listLevels(), loadLevel("prototypeName")');
+console.log('Level utilities: listLevels(), loadLevel("prototypeName"), giveItem("itemType", count), goToFloor(n)');

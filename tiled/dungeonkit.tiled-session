@@ -13,11 +13,11 @@
                 3,
                 8
             ],
-            "scale": 0.45,
-            "selectedLayer": 1,
+            "scale": 0.7952,
+            "selectedLayer": 2,
             "viewCenter": {
-                "x": 688.8888888888889,
-                "y": 410
+                "x": 630.658953722334,
+                "y": 227.61569416498995
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/catacombs/map.tmj": {
@@ -94,11 +94,11 @@
             "expandedObjectLayers": [
                 3
             ],
-            "scale": 0.9836,
+            "scale": 0.5493,
             "selectedLayer": 3,
             "viewCenter": {
-                "x": 259.7600650671004,
-                "y": 720.8214721431475
+                "x": 709.0842890952121,
+                "y": 693.6100491534681
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/underworld/map.tmj": {
@@ -142,6 +142,7 @@
     ],
     "project": "dungeonkit.tiled-project",
     "recentFiles": [
+        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/arena/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/default/map.tmj",
         "tower.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/map.tmj",
@@ -151,7 +152,6 @@
         "vault.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/catacombs/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/underworld/map.tmj",
-        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/arena/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/morass/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/mine/map.tmj"
     ]

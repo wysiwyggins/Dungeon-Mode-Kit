@@ -16,11 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned
 
+- change "bridge" actor attribute to "platform," could be reused for collaping floors.
+- add voids and lakes to the regular map generators
 - don't hide stairways (sometimes architect will put walls on top of them)
 - falling on a prototype with mutliple levels doesn't instadeath, it takes you to the next level down with a fall injury
 
 ### In Progress
 
+- Rope bridges
+- Toggle lit/unlit state on torches (currently extinguishing a torch incorrectly marks it as having no more fuel)
 - Mining (works but requires testing and refinement, Currently 3 hits always removes a breakable actor, which feels unnatural)
 - FOV epistemology (currently messages aren't filtered by vision range, make sound alternate messages for those, also some things like mining walls can still be seen out of range)
 
