@@ -580,7 +580,7 @@
     "attributes": {
       "solid": false,
       "flammable": true,
-      "bridge": true
+      "platform": true
     }
   },
   "fungus": {

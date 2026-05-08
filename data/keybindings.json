@@ -1,0 +1,28 @@
+{
+  "actions": {
+    "z": "wait",
+    ".": "wait",
+    "Numpad5": "wait",
+    "i": "player_info",
+    "t": "throw_item",
+    "e": "equipment_menu",
+    "q": "quaff",
+    "r": "read_scroll"
+  },
+
+  "global": {
+    " ": "toggle_pause",
+    "R": "reload"
+  },
+
+  "descriptions": {
+    "wait":           "Wait one turn",
+    "player_info":    "Inventory / info",
+    "throw_item":     "Throw an item",
+    "equipment_menu": "Equipment menu",
+    "quaff":          "Quaff a potion",
+    "read_scroll":    "Read a scroll",
+    "toggle_pause":   "Toggle pause",
+    "reload":         "Reload / restart"
+  }
+}

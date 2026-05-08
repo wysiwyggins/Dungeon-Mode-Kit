@@ -44,6 +44,14 @@ class InterfaceManager {
         this.equipmentMenuMode = false;
         this.equipmentMenuPlayer = null;
         this.equipmentMenuItems = []; // List of equippable/wearable items with their indices
+
+        // Use item menu state (quaff, read, etc.)
+        this.useMenuMode = false;
+        this.useMenuPlayer = null;
+        this.useMenuItems = [];
+
+        // Help window state
+        this.helpWindowMode = false;
     }
 
     get container() {
@@ -238,12 +246,16 @@ class InterfaceManager {
     updateBoxOverlays() {
         // Determine the active box ID based on the current UI mode priority
         let activeBoxId = null;
-        if (this.confirmDialog) {
+        if (this.helpWindowMode) {
+            activeBoxId = 'help_window';
+        } else if (this.confirmDialog) {
             activeBoxId = 'confirm_dialog';
         } else if (this.identifyMode) {
             activeBoxId = 'identify_picker';
         } else if (this.throwMenuMode) {
             activeBoxId = 'throw_item_menu';
+        } else if (this.useMenuMode) {
+            activeBoxId = 'use_item_menu';
         } else if (this.equipmentMenuMode) {
             activeBoxId = 'equipment_menu';
         } else if (this.selectedItemIndex !== null && this.inventoryMode) {
@@ -3571,5 +3583,273 @@ class InterfaceManager {
     updateSidebar() {
         this.updateActorsDiv();
         this.updateItemsDiv();
+    }
+
+    // ========================================================================
+    // USE ITEM MENU (quaff, read, etc.)
+    // ========================================================================
+
+    showUseMenu(player, verb, prompt) {
+        if (!player || !player.inventory) return;
+
+        this.hidePlayerInfo();
+        this.closeThrowItemMenu();
+        this.closeEquipmentMenu();
+
+        this.useMenuPlayer = player;
+
+        this.useMenuItems = [];
+        for (let i = 0; i < player.inventory.length; i++) {
+            const item = player.inventory[i];
+            if (item.getAttribute('use_verb') === verb) {
+                this.useMenuItems.push(item);
+            }
+        }
+
+        if (this.useMenuItems.length === 0) {
+            this.engine.inputManager?.showMessage(`You have nothing to ${verb.toLowerCase()}.`);
+            return;
+        }
+
+        this.useMenuMode = true;
+
+        const menuId = 'use_item_menu';
+        if (this.boxes.has(menuId)) {
+            this.removeBox(menuId);
+        }
+
+        const lines = [];
+        lines.push(prompt);
+        lines.push('');
+
+        for (let i = 0; i < this.useMenuItems.length; i++) {
+            const item = this.useMenuItems[i];
+            const letter = String.fromCharCode(97 + i);
+            let displayName = item.getDisplayName ? item.getDisplayName() : item.name;
+            displayName = this.truncateText(displayName, 22);
+            lines.push(` ${letter}) ${displayName}`);
+        }
+
+        lines.push('');
+        lines.push('Esc to cancel');
+
+        const padding = 1;
+        const maxLineLength = Math.max(...lines.map(l => l.length), 16);
+        const contentWidth = maxLineLength;
+        const contentHeight = lines.length;
+        const boxWidth = contentWidth + (padding * 2) + 2;
+        const boxHeight = contentHeight + (padding * 2) + 2;
+
+        const vis = this.getVisibleArea();
+        const x = vis.originX + Math.floor((vis.width - boxWidth) / 2);
+        const y = vis.originY + Math.floor((vis.height - boxHeight) / 2);
+
+        const boxContainer = this.createBox(menuId, x, y, boxWidth, boxHeight);
+        if (!boxContainer) return;
+
+        const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
+        const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
+
+        for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+            const line = lines[lineIndex];
+            const chars = this.splitChars(line);
+            for (let charIndex = 0; charIndex < chars.length; charIndex++) {
+                const char = chars[charIndex];
+                const charX = textStartX + (charIndex * globalVars.TILE_WIDTH);
+                const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+
+                const sprite = this.createCharSprite(char, charX, charY, this.defaultTextTint);
+                if (sprite) {
+                    boxContainer.addChild(sprite);
+                }
+            }
+        }
+
+        for (let i = 0; i < this.useMenuItems.length; i++) {
+            const item = this.useMenuItems[i];
+            const lineIndex = i + 2;
+            const tileX = textStartX + (4 * globalVars.TILE_WIDTH);
+            const tileY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+            this.renderItemTile(boxContainer, item, tileX, tileY);
+        }
+
+        this.updateBoxOverlays();
+    }
+
+    closeUseMenu() {
+        this.removeBox('use_item_menu');
+        this.useMenuMode = false;
+        this.useMenuPlayer = null;
+        this.useMenuItems = [];
+        this.updateBoxOverlays();
+    }
+
+    handleUseMenuKey(key) {
+        if (!this.useMenuMode || !this.useMenuPlayer) return false;
+
+        if (key === 'Escape') {
+            this.closeUseMenu();
+            return true;
+        }
+
+        if (key.length === 1 && key >= 'a' && key <= 'z') {
+            const idx = key.charCodeAt(0) - 97;
+            if (idx < this.useMenuItems.length) {
+                const item = this.useMenuItems[idx];
+                const player = this.useMenuPlayer;
+                this.closeUseMenu();
+                this.currentPlayer = player;
+                this.executeUseItem(item);
+                return true;
+            }
+        }
+
+        return true;
+    }
+
+    // ========================================================================
+    // HELP WINDOW
+    // ========================================================================
+
+    handleHelpKey(key) {
+        if (this.helpWindowMode) {
+            if (key === '?' || key === 'Escape') {
+                this.closeHelpWindow();
+            }
+            return true;
+        }
+        if (key === '?') {
+            this.showHelpWindow();
+            return true;
+        }
+        return false;
+    }
+
+    showHelpWindow() {
+        this.hidePlayerInfo();
+        this.closeThrowItemMenu();
+        this.closeEquipmentMenu();
+
+        this.helpWindowMode = true;
+
+        const menuId = 'help_window';
+        if (this.boxes.has(menuId)) {
+            this.removeBox(menuId);
+        }
+
+        const bindings = this.engine.globalKeybindings || {};
+        const actionDescriptions = bindings.descriptions || {};
+
+        const formatKey = (key) => {
+            if (key === ' ') return 'Space';
+            if (key === 'Escape') return 'Esc';
+            if (key.startsWith('Arrow')) return key.slice(5);
+            if (key.startsWith('Numpad')) return 'Num' + key.slice(6);
+            return key;
+        };
+
+        const inputMgr = this.engine.inputManager;
+        const actionKeys = {};
+
+        for (const [key, action] of Object.entries(inputMgr.keyMap)) {
+            if (action.startsWith('move_')) continue;
+            if (!actionKeys[action]) actionKeys[action] = [];
+            const formatted = formatKey(key);
+            if (!actionKeys[action].includes(formatted) &&
+                !actionKeys[action].includes(formatted.toLowerCase())) {
+                actionKeys[action].push(formatted);
+            }
+        }
+
+        for (const [key, action] of Object.entries(inputMgr.globalKeyMap)) {
+            if (!actionKeys[action]) actionKeys[action] = [];
+            const formatted = formatKey(key);
+            if (!actionKeys[action].includes(formatted)) {
+                actionKeys[action].push(formatted);
+            }
+        }
+
+        const pickKeys = (action) => {
+            const keys = actionKeys[action];
+            if (!keys || keys.length === 0) return '';
+            const lower = keys.filter(k => k.length === 1 && k >= 'a' && k <= 'z');
+            const upper = keys.filter(k => k.length === 1 && k >= 'A' && k <= 'Z');
+            const symbols = keys.filter(k => k.length === 1 && !(k >= 'a' && k <= 'z') && !(k >= 'A' && k <= 'Z'));
+            const special = keys.filter(k => k.length > 1);
+            const best = [...lower, ...upper, ...symbols, ...special];
+            return best.slice(0, 2).join('/');
+        };
+
+        const pad = (str, len) => str + ' '.repeat(Math.max(0, len - str.length));
+        const kw = 6;
+
+        const lines = [];
+        lines.push('Help');
+        lines.push('');
+        lines.push('Move: Arrows/WASD/hjkl');
+        lines.push('Diag: Numpad/yubn');
+        lines.push('');
+
+        const actionActions = bindings.actions ? Object.values(bindings.actions) : [];
+        const seen = new Set();
+        for (const action of actionActions) {
+            if (seen.has(action)) continue;
+            seen.add(action);
+            const desc = actionDescriptions[action] || action;
+            lines.push(` ${pad(pickKeys(action), kw)}${desc}`);
+        }
+        lines.push('');
+
+        const globalActions = bindings.global ? Object.values(bindings.global) : [];
+        const globalSeen = new Set();
+        for (const action of globalActions) {
+            if (globalSeen.has(action)) continue;
+            globalSeen.add(action);
+            const desc = actionDescriptions[action] || action;
+            lines.push(` ${pad(pickKeys(action), kw)}${desc}`);
+        }
+        lines.push(` ${pad('?', kw)}Help`);
+        lines.push('');
+        lines.push('?/Esc to close');
+
+        const padding = 1;
+        const maxLineLength = Math.max(...lines.map(l => l.length));
+        const contentWidth = maxLineLength;
+        const contentHeight = lines.length;
+        const boxWidth = contentWidth + (padding * 2) + 2;
+        const boxHeight = contentHeight + (padding * 2) + 2;
+
+        const vis = this.getVisibleArea();
+        const x = vis.originX + Math.floor((vis.width - boxWidth) / 2);
+        const y = vis.originY + Math.floor((vis.height - boxHeight) / 2);
+
+        const boxContainer = this.createBox(menuId, x, y, boxWidth, boxHeight);
+        if (!boxContainer) return;
+
+        const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
+        const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
+
+        for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+            const line = lines[lineIndex];
+            const chars = this.splitChars(line);
+            for (let charIndex = 0; charIndex < chars.length; charIndex++) {
+                const char = chars[charIndex];
+                const charX = textStartX + (charIndex * globalVars.TILE_WIDTH);
+                const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+
+                const sprite = this.createCharSprite(char, charX, charY, this.defaultTextTint);
+                if (sprite) {
+                    boxContainer.addChild(sprite);
+                }
+            }
+        }
+
+        this.updateBoxOverlays();
+    }
+
+    closeHelpWindow() {
+        this.removeBox('help_window');
+        this.helpWindowMode = false;
+        this.updateBoxOverlays();
     }
 }

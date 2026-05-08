@@ -45,9 +45,8 @@ class InputManager {
         // Temporary hover description (doesn't affect turn history)
         this.hoverDescription = null;
 
-        // Key mappings (supports multiple keys per action)
+        // Movement keys (hardcoded — these are universal roguelike conventions)
         this.keyMap = {
-            // Arrow keys and WASD for movement
             'ArrowUp': 'move_up',
             'ArrowDown': 'move_down',
             'ArrowLeft': 'move_left',
@@ -60,7 +59,6 @@ class InputManager {
             'A': 'move_left',
             'd': 'move_right',
             'D': 'move_right',
-            // Numpad for 8-directional movement
             'Numpad8': 'move_up',
             'Numpad2': 'move_down',
             'Numpad4': 'move_left',
@@ -69,7 +67,6 @@ class InputManager {
             'Numpad9': 'move_up_right',
             'Numpad1': 'move_down_left',
             'Numpad3': 'move_down_right',
-            // Vi keys
             'k': 'move_up',
             'j': 'move_down',
             'h': 'move_left',
@@ -77,25 +74,26 @@ class InputManager {
             'y': 'move_up_left',
             'u': 'move_up_right',
             'b': 'move_down_left',
-            'n': 'move_down_right',
-            // Other actions
-            'z': 'wait',
-            'Z': 'wait',
-            '.': 'wait',
-            'Numpad5': 'wait',
-            'i': 'player_info',
-            'I': 'player_info',
-            't': 'throw_item',
-            'T': 'throw_item',
-            'e': 'equipment_menu',
-            'E': 'equipment_menu'
+            'n': 'move_down_right'
         };
 
-        // Global keys (work regardless of player state)
-        this.globalKeyMap = {
-            ' ': 'toggle_pause',
-            'Escape': 'reload'
-        };
+        // Action and global keys loaded from data/keybindings.json
+        const bindings = engine.globalKeybindings || {};
+        if (bindings.actions) {
+            for (const [key, action] of Object.entries(bindings.actions)) {
+                this.keyMap[key] = action;
+                if (key.length === 1 && key >= 'a' && key <= 'z') {
+                    this.keyMap[key.toUpperCase()] = action;
+                }
+            }
+        }
+
+        this.globalKeyMap = {};
+        if (bindings.global) {
+            for (const [key, action] of Object.entries(bindings.global)) {
+                this.globalKeyMap[key] = action;
+            }
+        }
 
         // Direction vectors for movement actions
         this.directions = {
@@ -1068,8 +1066,20 @@ class InputManager {
             return;
         }
 
+        // Check if help window wants to handle this key
+        if (this.engine.interfaceManager?.handleHelpKey(event.key)) {
+            event.preventDefault();
+            return;
+        }
+
         // Check if throw menu wants to handle this key
         if (this.engine.interfaceManager?.handleThrowMenuKey(event.key)) {
+            event.preventDefault();
+            return;
+        }
+
+        // Check if use item menu wants to handle this key
+        if (this.engine.interfaceManager?.handleUseMenuKey(event.key)) {
             event.preventDefault();
             return;
         }
@@ -1233,6 +1243,18 @@ class InputManager {
             case 'equipment_menu':
                 if (this.engine.interfaceManager) {
                     this.engine.interfaceManager.toggleEquipmentMenu(player);
+                }
+                break;
+
+            case 'quaff':
+                if (this.engine.interfaceManager) {
+                    this.engine.interfaceManager.showUseMenu(player, 'Drink', 'Quaff which?');
+                }
+                break;
+
+            case 'read_scroll':
+                if (this.engine.interfaceManager) {
+                    this.engine.interfaceManager.showUseMenu(player, 'Read', 'Read which?');
                 }
                 break;
         }

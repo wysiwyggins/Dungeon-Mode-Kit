@@ -630,7 +630,7 @@ class DungeonEngine {
     async loadGlobalData() {
         try {
             // Load global entity definitions
-            const [actorsRes, itemsRes, personalitiesRes, entitiesRes, colorsRes, adjectivesRes, attacksRes, reagentsRes, substancesRes, statesRes, glyphsRes, effectsRes] = await Promise.all([
+            const [actorsRes, itemsRes, personalitiesRes, entitiesRes, colorsRes, adjectivesRes, attacksRes, reagentsRes, substancesRes, statesRes, glyphsRes, effectsRes, keybindingsRes] = await Promise.all([
                 fetch(`${globalVars.BASE_PATH}/data/actors.json`),
                 fetch(`${globalVars.BASE_PATH}/data/items.json`),
                 fetch(`${globalVars.BASE_PATH}/data/personalities.json`),
@@ -642,7 +642,8 @@ class DungeonEngine {
                 fetch(`${globalVars.BASE_PATH}/data/substances.json`),
                 fetch(`${globalVars.BASE_PATH}/data/states.json`),
                 fetch(`${globalVars.BASE_PATH}/data/glyphs.json`),
-                fetch(`${globalVars.BASE_PATH}/data/effects.json`)
+                fetch(`${globalVars.BASE_PATH}/data/effects.json`),
+                fetch(`${globalVars.BASE_PATH}/data/keybindings.json`)
             ]);
 
             this.globalActors = await actorsRes.json();
@@ -669,6 +670,9 @@ class DungeonEngine {
 
             // Load visual effects definitions
             this.globalEffects = await effectsRes.json();
+
+            // Load keybindings
+            this.globalKeybindings = await keybindingsRes.json();
 
             console.log('Global data loaded:', {
                 actors: Object.keys(this.globalActors).length,

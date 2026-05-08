@@ -17,16 +17,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Planned
 
 - change "bridge" actor attribute to "platform," could be reused for collaping floors.
-- add voids and lakes to the regular map generators
 - don't hide stairways (sometimes architect will put walls on top of them)
 - falling on a prototype with mutliple levels doesn't instadeath, it takes you to the next level down with a fall injury
 
 ### In Progress
 
-- Rope bridges
-- Toggle lit/unlit state on torches (currently extinguishing a torch incorrectly marks it as having no more fuel)
+- Abysses/ Rope bridges (needs testing)
 - Mining (works but requires testing and refinement, Currently 3 hits always removes a breakable actor, which feels unnatural)
-- FOV epistemology (currently messages aren't filtered by vision range, make sound alternate messages for those, also some things like mining walls can still be seen out of range)
+
+## [1.6b] 2026-05-08
+
+### Added
+
+- **Dungeon generator improvements**: lakes and abysses now appear in procedurally generated levels
+- **Wall digging**: generated levels allow better digging into walls
+- **Better FOV epistemology**: sidebar messages for NPC combat, state changes, traps, and environmental effects are now filtered by player field of vision — events in remembered (dark) areas are no longer reported
+- **Help window**: press `?` to open an in-game help screen that dynamically lists all key bindings; dismiss with `?` or `Esc`
+- **Keybindings data file**: non-movement key bindings moved to `data/keybindings.json` for designer editing; action descriptions used by the help screen are also defined there
+- **Bolt attack behavior**: `bolt_attack` NPC behavior reproducing the Staff of Lightning effect — configurable range, cooldown, and damage via personality data
+- **Custom actor light radius**: actors can now define `lightRadius` at the data level (previously all light sources defaulted to radius 5)
+- **Torch toggle behavior** light/extenguish
 
 ## [1.5b] 2026-04-30
 

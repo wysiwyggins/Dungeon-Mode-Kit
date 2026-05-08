@@ -1353,10 +1353,10 @@ const BehaviorLibrary = {
             if (targetY < 0 || targetY >= mapManager.height) continue;
             const floorTile = mapManager.floorMap?.[targetY]?.[targetX];
             const hasFloor = floorTile && floorTile.tileId > 0;
-            // Allow spreading to bridge actors over voids
+            // Allow spreading to platform actors over voids
             if (!hasFloor) {
                 const bridgeActor = entityManager.getActorsAt(targetX, targetY)
-                    .find(a => a.hasAttribute('bridge') && a.hasAttribute('flammable'));
+                    .find(a => a.hasAttribute('platform') && a.hasAttribute('flammable'));
                 if (!bridgeActor) continue;
             }
 
