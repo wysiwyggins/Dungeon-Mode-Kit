@@ -42,11 +42,8 @@
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/dungeon/map.tmj": {
-            "expandedObjectLayers": [
-                3
-            ],
             "scale": 0.75,
-            "selectedLayer": 3,
+            "selectedLayer": 2,
             "viewCenter": {
                 "x": 734,
                 "y": 512
@@ -95,7 +92,7 @@
                 3
             ],
             "scale": 0.5493,
-            "selectedLayer": 3,
+            "selectedLayer": 4,
             "viewCenter": {
                 "x": 709.0842890952121,
                 "y": 693.6100491534681

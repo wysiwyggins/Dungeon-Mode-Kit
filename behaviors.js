@@ -2104,6 +2104,74 @@ const BehaviorLibrary = {
         return false;
     },
 
+    bolt_attack: (actor, data) => {
+        const entityManager = actor.engine.entityManager;
+
+        const attackRange = data?.attack_range || actor.getAttribute('attack_range') || 8;
+        const cooldown = data?.bolt_cooldown || actor.getAttribute('bolt_cooldown') || 4;
+        const boltDamage = data?.bolt_damage || actor.getAttribute('bolt_damage') || -15;
+
+        if (!actor._boltCooldownCounter) actor._boltCooldownCounter = 0;
+        actor._boltCooldownCounter++;
+
+        if (actor._boltCooldownCounter < cooldown) return false;
+
+        let target = null;
+        let nearestDist = Infinity;
+
+        for (const other of entityManager.actors) {
+            if (other === actor) continue;
+            if (other.isDead) continue;
+            if (!other.hasAttribute('controlled')) continue;
+
+            const dx = other.x - actor.x;
+            const dy = other.y - actor.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist <= attackRange && dist < nearestDist) {
+                const isBlocked = (x, y) => {
+                    const tile = actor.engine.mapManager?.wallMap?.[y]?.[x];
+                    return tile && tile.tileId > 0;
+                };
+                if (hasLineOfSight(actor.x, actor.y, other.x, other.y, isBlocked)) {
+                    target = other;
+                    nearestDist = dist;
+                }
+            }
+        }
+
+        if (!target) return false;
+
+        actor._boltCooldownCounter = 0;
+
+        const path = getLinePath(actor.x, actor.y, target.x, target.y);
+        const boltPath = path.slice(1);
+
+        if (boltPath.length === 0) return false;
+
+        actor.engine.playSound?.('squarewave');
+        actor.engine.renderer?.effectRunner.apply('lightning_bolt', actor, { path: boltPath });
+
+        const fillDuration = boltPath.length * 25 + 100;
+        setTimeout(() => {
+            for (const point of boltPath) {
+                const victim = entityManager.getSolidActorAt(point.x, point.y);
+                if (victim && victim !== actor && !victim.isDead && victim.stats?.health) {
+                    victim.modifyStat('health', boltDamage, { source: actor });
+                    const victimName = victim.getNameWithArticle ? victim.getNameWithArticle() : `the ${victim.name}`;
+                    const actorName = actor.getNameWithArticle ? actor.getNameWithArticle() : `The ${actor.name}`;
+                    const pos = victim.hasAttribute('controlled') ? null : { x: victim.x, y: victim.y };
+                    actor.engine.inputManager?.showMessage(`${actorName}'s lightning bolt strikes ${victimName}!`, pos);
+                    victim.flash?.();
+                    if (victim.getStat?.('health') <= 0) victim.die();
+                }
+            }
+            actor.engine.interfaceManager?.updateSidebar();
+        }, fillDuration);
+
+        return true;
+    },
+
     // Backward-compat aliases for renamed chain behaviors
     scutigera_head_ai: (...args) => BehaviorLibrary.chain_head_ai(...args),
     scutigera_body_follow: (...args) => BehaviorLibrary.chain_body_follow(...args),

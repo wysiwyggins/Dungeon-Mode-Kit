@@ -2952,6 +2952,11 @@ class Actor extends Entity {
         // Copy lifetime for actors that expire (clouds, fire, etc.)
         this.lifetime = data.lifetime || null;
 
+        // Copy light radius for actors with custom light range
+        if (data.lightRadius !== undefined) {
+            this.lightRadius = data.lightRadius;
+        }
+
         // Store original data for behaviors that need custom properties (traps, fire, etc.)
         this.data = data;
 

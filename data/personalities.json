@@ -210,5 +210,21 @@
       "pursue_target",
       "random_walk"
     ]
+  },
+
+  "lightning_mage": {
+    "name": "Lightning Mage",
+    "hostile": true,
+    "preferred_distance": 5,
+    "attack_range": 8,
+    "bolt_cooldown": 4,
+    "bolt_damage": -12,
+    "behaviors": [
+      "bolt_attack",
+      "flee_from_danger",
+      "attack_adjacent",
+      "pursue_target",
+      "random_walk"
+    ]
   }
 }
