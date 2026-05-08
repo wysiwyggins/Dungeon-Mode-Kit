@@ -3053,7 +3053,7 @@ class Actor extends Entity {
 
         this.playSound('plunk3');
         console.log(`${this.name} opened`);
-        this.engine.inputManager?.showMessage(`The ${this.name} opens.`);
+        this.engine.inputManager?.showMessage(`The ${this.name} opens.`, { x: this.x, y: this.y });
     }
 
     close() {
@@ -3066,7 +3066,7 @@ class Actor extends Entity {
         this.engine.renderer?.updateSpriteTexture(this.spriteTop, this.tileIndexTop);
 
         console.log(`${this.name} closed`);
-        this.engine.inputManager?.showMessage(`The ${this.name} closes.`);
+        this.engine.inputManager?.showMessage(`The ${this.name} closes.`, { x: this.x, y: this.y });
     }
 
     /**
@@ -3148,7 +3148,8 @@ class Actor extends Entity {
             if (ROT.RNG.getUniform() < chance) {
                 const name = this.isPlayerControlled() ? 'You' : this.name;
                 const verb = this.isPlayerControlled() ? 'retch' : 'retches';
-                this.engine.inputManager?.showMessage(`${name} ${verb}!`);
+                const pos = this.isPlayerControlled() ? null : { x: this.x, y: this.y };
+                this.engine.inputManager?.showMessage(`${name} ${verb}!`, pos);
                 this.engine.entityManager.spawnEntity('vomit', this.x, this.y);
                 return Promise.resolve();
             }
@@ -3266,9 +3267,9 @@ class Actor extends Entity {
                 this.engine.inputManager?.showMessage(`You die... \n Press esc to restart`);
             } else if (!this.stats || this.stats.health === undefined) {
                 // Actors without health (breakable objects like walls)
-                this.engine.inputManager?.showMessage(`The ${this.name} crumbles.`);
+                this.engine.inputManager?.showMessage(`The ${this.name} crumbles.`, { x: this.x, y: this.y });
             } else {
-                this.engine.inputManager?.showMessage(`The ${this.name} dies.`);
+                this.engine.inputManager?.showMessage(`The ${this.name} dies.`, { x: this.x, y: this.y });
             }
         }
 
@@ -3301,7 +3302,7 @@ class Actor extends Entity {
                         console.log(`${this.name} dropped ${droppedItem.name}!`);
                         if (this.engine.inputManager) {
                             const displayName = droppedItem.getDisplayName ? droppedItem.getDisplayName() : droppedItem.name;
-                            this.engine.inputManager.showMessage(`A ${displayName} falls from the rubble!`);
+                            this.engine.inputManager.showMessage(`A ${displayName} falls from the rubble!`, { x: this.x, y: this.y });
                         }
                     }
                 }
@@ -3687,7 +3688,8 @@ class Actor extends Entity {
         // Show apply message (skip for silent/innate states)
         if (!options.silent && stateData.on_apply_message && this.engine.inputManager) {
             const message = stateData.on_apply_message.replace('[actor_name]', this.name);
-            this.engine.inputManager.showMessage(message);
+            const pos = this.isPlayerControlled() ? null : { x: this.x, y: this.y };
+            this.engine.inputManager.showMessage(message, pos);
         }
 
         // Play apply sound (skip for silent/innate states)
@@ -3748,7 +3750,8 @@ class Actor extends Entity {
         // Show removal message
         if (!silent && state.data.on_remove_message && this.engine.inputManager) {
             const message = state.data.on_remove_message.replace('[actor_name]', this.name);
-            this.engine.inputManager.showMessage(message);
+            const pos = this.isPlayerControlled() ? null : { x: this.x, y: this.y };
+            this.engine.inputManager.showMessage(message, pos);
         }
 
         // Play removal sound
@@ -3862,8 +3865,9 @@ class Actor extends Entity {
                         // Show damage message for health effects
                         if (statKey === 'health' && value < 0 && this.hasAttribute('visible')) {
                             const stateName_display = stateData.name || stateName;
+                            const pos = this.isPlayerControlled() ? null : { x: this.x, y: this.y };
                             this.engine.inputManager?.showMessage(
-                                `${this.name} takes ${Math.abs(value)} damage from ${stateName_display}!`
+                                `${this.name} takes ${Math.abs(value)} damage from ${stateName_display}!`, pos
                             );
                             this.flash?.();
                         }
@@ -5194,7 +5198,8 @@ class Actor extends Entity {
         if (damageHits && damageSource && effectApplied) {
             const description = this.getCollisionDescription(target);
             if (description) {
-                this.engine.inputManager?.showMessage(description);
+                const pos = (this.isPlayerControlled() || target.isPlayerControlled?.()) ? null : { x: target.x, y: target.y };
+                this.engine.inputManager?.showMessage(description, pos);
             }
         }
 
@@ -5430,7 +5435,8 @@ class Actor extends Entity {
             // Use template: "The [actor_name] [attacks.miss_verbs] the [attacked_actor_name]!"
             const template = "The [actor_name] [attacks.miss_verbs] the [attacked_actor_name]!";
             const message = this._processMessageTemplate(template, target);
-            this.engine.inputManager?.showMessage(message);
+            const pos = target.isPlayerControlled?.() ? null : { x: this.x, y: this.y };
+            this.engine.inputManager?.showMessage(message, pos);
         }
 
         console.log(`Miss: ${this.name} -> ${target.name}`);
@@ -5552,7 +5558,7 @@ class Actor extends Entity {
         if (this.isPlayerControlled()) {
             this.engine.inputManager?.showMessage(`You plunge into the depths!`);
         } else if (this.hasAttribute('visible')) {
-            this.engine.inputManager?.showMessage(`The ${this.name} falls into the void.`);
+            this.engine.inputManager?.showMessage(`The ${this.name} falls into the void.`, { x: this.x, y: this.y });
         }
 
         this.dropItems(true); // Items lost to void
@@ -7584,7 +7590,7 @@ class EntityManager {
 
                     // Show damage message
                     if (other.hasAttribute('visible')) {
-                        this.engine.inputManager?.showMessage(`The fire burns ${other.name} for ${damagePerTurn} damage!`);
+                        this.engine.inputManager?.showMessage(`The fire burns ${other.name} for ${damagePerTurn} damage!`, { x: other.x, y: other.y });
                     }
 
                     // Flash the victim
@@ -7610,7 +7616,7 @@ class EntityManager {
                                 // Show effect message
                                 if (other.hasAttribute('visible') && value < 0) {
                                     const statCapitalized = key.charAt(0).toUpperCase() + key.slice(1);
-                                    this.engine.inputManager?.showMessage(`${other.name} takes ${Math.abs(value)} ${statCapitalized} damage from the ${hazard.name}!`);
+                                    this.engine.inputManager?.showMessage(`${other.name} takes ${Math.abs(value)} ${statCapitalized} damage from the ${hazard.name}!`, { x: other.x, y: other.y });
                                 }
 
                                 // Check for death from health damage

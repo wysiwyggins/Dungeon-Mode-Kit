@@ -493,7 +493,7 @@ const BehaviorLibrary = {
             // Show incineration message for visible actors
             if (other.hasAttribute('visible')) {
                 const otherName = other.getNameWithArticle();
-                actor.engine.inputManager?.showMessage(`The ${actor.name} incinerates ${otherName}!`);
+                actor.engine.inputManager?.showMessage(`The ${actor.name} incinerates ${otherName}!`, { x: actor.x, y: actor.y });
             }
 
             other.die();
@@ -525,7 +525,7 @@ const BehaviorLibrary = {
             if (item.hasAttribute('visible')) {
                 const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
                 const article = actor.engine.inputManager?.getIndefiniteArticle(displayName) || 'a';
-                actor.engine.inputManager?.showMessage(`The ${actor.name} incinerates ${article} ${displayName}!`);
+                actor.engine.inputManager?.showMessage(`The ${actor.name} incinerates ${article} ${displayName}!`, { x: actor.x, y: actor.y });
             }
 
             // Spawn fire where the item was destroyed
@@ -1236,7 +1236,7 @@ const BehaviorLibrary = {
             if (distance === 1) {
                 // Item is adjacent - suck it down the drain
                 const itemName = item.getDisplayName ? item.getDisplayName() : item.name;
-                actor.engine.inputManager?.showMessage(`The ${itemName} is sucked down the drain!`);
+                actor.engine.inputManager?.showMessage(`The ${itemName} is sucked down the drain!`, { x: actor.x, y: actor.y });
                 entityManager.removeEntity(item);
             } else {
                 // Item is further away - move it one step toward drain
@@ -1391,7 +1391,7 @@ const BehaviorLibrary = {
             if (targetItem && targetItem.hasAttribute('flammable')) {
                 if (targetItem.hasAttribute('explosive')) {
                     const displayName = targetItem.getDisplayName ? targetItem.getDisplayName() : targetItem.name;
-                    actor.engine.inputManager?.showMessage(`The ${displayName} explodes!`);
+                    actor.engine.inputManager?.showMessage(`The ${displayName} explodes!`, { x: targetX, y: targetY });
                     actor.engine.interfaceManager?.createExplosiveCloud(targetItem, targetX, targetY);
                 }
                 targetItem.die();
@@ -1432,7 +1432,7 @@ const BehaviorLibrary = {
 
             // Show damage message
             if (victim.hasAttribute('visible')) {
-                actor.engine.inputManager?.showMessage(`The fire burns ${victim.name} for ${damagePerTurn} damage!`);
+                actor.engine.inputManager?.showMessage(`The fire burns ${victim.name} for ${damagePerTurn} damage!`, { x: actor.x, y: actor.y });
             }
 
             // Flash the victim
@@ -1509,7 +1509,7 @@ const BehaviorLibrary = {
 
         // Show trap message
         const trapMessage = actor.data?.trap_message || `A trap is sprung!`;
-        actor.engine.inputManager?.showMessage(trapMessage);
+        actor.engine.inputManager?.showMessage(trapMessage, { x: actor.x, y: actor.y });
 
         // Play trap sound
         actor.engine.playSound?.('tap2');
@@ -1683,7 +1683,8 @@ const BehaviorLibrary = {
                 const displayName = ammo.getDisplayName ? ammo.getDisplayName() : ammo.name;
                 const targetName = target.getNameWithArticle ? target.getNameWithArticle() : `the ${target.name}`;
                 const actorName = actor.getNameWithArticle ? actor.getNameWithArticle() : `The ${actor.name}`;
-                actor.engine.inputManager?.showMessage(`${actorName} shoots ${targetName} with ${displayName}!`);
+                const hitPos = (actor.hasAttribute('controlled') || target.hasAttribute('controlled')) ? null : { x: target.x, y: target.y };
+                actor.engine.inputManager?.showMessage(`${actorName} shoots ${targetName} with ${displayName}!`, hitPos);
 
                 // Play hit sound
                 const collisionSound = ammo.getAttribute('collision_sound') || 'arrow_hit';
@@ -1693,7 +1694,8 @@ const BehaviorLibrary = {
                 const displayName = ammo.getDisplayName ? ammo.getDisplayName() : ammo.name;
                 const targetName = target.getNameWithArticle ? target.getNameWithArticle() : `the ${target.name}`;
                 const actorName = actor.getNameWithArticle ? actor.getNameWithArticle() : `The ${actor.name}`;
-                actor.engine.inputManager?.showMessage(`${actorName}'s ${displayName} misses ${targetName}!`);
+                const missPos = (actor.hasAttribute('controlled') || target.hasAttribute('controlled')) ? null : { x: target.x, y: target.y };
+                actor.engine.inputManager?.showMessage(`${actorName}'s ${displayName} misses ${targetName}!`, missPos);
 
                 // Play miss sound
                 actor.engine.playSound?.('arrow_miss');

@@ -882,8 +882,12 @@ class InputManager {
      * Add a message to the stack (will be displayed together with other messages from the same turn)
      * @param {string} message - The message to display
      */
-    showMessage(message) {
+    showMessage(message, position = null) {
         if (!this.descriptionElement) return;
+
+        if (position && this.engine?.isTileVisible) {
+            if (!this.engine.isTileVisible(position.x, position.y)) return;
+        }
 
         // Strip trailing periods to get base text for comparison
         const baseNew = message.replace(/\.+$/, '');
