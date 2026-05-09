@@ -800,6 +800,9 @@ class InterfaceManager {
                 let displayName = item.getDisplayName ? item.getDisplayName() : item.name;
                 displayName = this.truncateText(displayName, 26);
                 let itemText = `${letter})  ${displayName}`; // Extra space for tile
+                if (item.count > 1) {
+                    itemText += ` (×${item.count})`;
+                }
                 // Mark equipped items
                 if (player.isItemEquipped(item)) {
                     itemText += item.hasAttribute('weapon') ? ' (equipped)' : ' (worn)';
@@ -1321,18 +1324,33 @@ class InterfaceManager {
             }
         }
 
-        // Remove from inventory
-        const index = this.currentPlayer.inventory.indexOf(item);
-        if (index > -1) {
-            this.currentPlayer.inventory.splice(index, 1);
+        if (item.count > 1) {
+            // Drop one from the stack
+            item.count--;
+            const itemData = this.engine.currentPrototype?.getItemData(item.type);
+            if (itemData) {
+                const dropped = new Item(
+                    this.currentPlayer.x, this.currentPlayer.y,
+                    item.type, itemData, this.engine
+                );
+                dropped.owner = null;
+                this.engine.entityManager.addEntity(dropped);
+            }
+            console.log(`${this.currentPlayer.name} dropped 1 ${item.name} (${item.count} remaining)`);
+        } else {
+            // Remove from inventory
+            const index = this.currentPlayer.inventory.indexOf(item);
+            if (index > -1) {
+                this.currentPlayer.inventory.splice(index, 1);
 
-            // Place item at player's position
-            item.x = this.currentPlayer.x;
-            item.y = this.currentPlayer.y;
-            item.owner = null; // Clear owner reference
-            this.engine.entityManager.addEntity(item);
+                // Place item at player's position
+                item.x = this.currentPlayer.x;
+                item.y = this.currentPlayer.y;
+                item.owner = null;
+                this.engine.entityManager.addEntity(item);
 
-            console.log(`${this.currentPlayer.name} dropped ${item.name}`);
+                console.log(`${this.currentPlayer.name} dropped ${item.name}`);
+            }
         }
 
         // Close menus and reset inventory mode
@@ -1987,7 +2005,7 @@ class InterfaceManager {
         }
 
         // Store references before exiting aiming mode
-        const item = this.throwItem;
+        let item = this.throwItem;
         const player = this.currentPlayer;
         const path = pathResult.path;
 
@@ -1996,10 +2014,18 @@ class InterfaceManager {
             player.unequipItem(item);
         }
 
-        // Remove item from inventory
-        const index = player.inventory.indexOf(item);
-        if (index > -1) {
-            player.inventory.splice(index, 1);
+        // Remove item from inventory (stack-aware)
+        if (item.count > 1) {
+            item.count--;
+            const itemData = this.engine.currentPrototype?.getItemData(item.type);
+            if (itemData) {
+                item = new Item(-1, -1, item.type, itemData, this.engine);
+            }
+        } else {
+            const index = player.inventory.indexOf(item);
+            if (index > -1) {
+                player.inventory.splice(index, 1);
+            }
         }
 
         // Exit aiming mode (hides line path)

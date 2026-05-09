@@ -7,6 +7,7 @@
     "collision_effect": { "health": "-{strength}" },
     "collision_sound": "hit","defaultFacing": "left",
     "facingEnabled": true,
+    "death_sound": "ouch",
     "attributes": {
       "controlled": true,
       "sighted": true,

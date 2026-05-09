@@ -27,7 +27,7 @@
       "stackable": false,
       "flammable": true,
       "ignites": true,
-      "burns_out_item": "torch_unlit",
+      "burns_out_item": "torch_spent",
       "burnout_message": "Your torch burns out.",
       "use_verb": "Extinguish",
       "use_effect": "toggle_torch"
@@ -50,10 +50,21 @@
     "attributes": {
       "pickupable": true,
       "visible": true,
-      "stackable": false,
+      "stackable": true,
       "flammable": true,
       "use_verb": "Light",
       "use_effect": "toggle_torch"
+    }
+  },
+  "torch_spent": {
+    "name": "Spent Torch",
+    "tileIndex": "BOX_VERTICAL_INVERSE_TOP",
+    "tint": "#333333",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": false,
+      "flammable": false
     }
   },
 

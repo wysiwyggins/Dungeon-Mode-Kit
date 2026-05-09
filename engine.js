@@ -2540,6 +2540,8 @@ class Item extends Entity {
                 }
             }
         }
+
+        this.count = 1;
     }
 
     /**
@@ -2830,6 +2832,7 @@ class Item extends Entity {
             identified: this.identified,
             templateVars: { ...this.templateVars },
             stats: this.stats ? JSON.parse(JSON.stringify(this.stats)) : {},
+            count: this.count,
             isItem: true
         };
     }
@@ -2839,6 +2842,7 @@ class Item extends Entity {
         if (data.identified !== undefined) this.identified = data.identified;
         if (data.templateVars) this.templateVars = { ...data.templateVars };
         if (data.stats) this.stats = JSON.parse(JSON.stringify(data.stats));
+        if (data.count !== undefined) this.count = data.count;
     }
 }
 
@@ -3359,6 +3363,28 @@ class Actor extends Entity {
         if (maxInventory === undefined || maxInventory <= 0) {
             // Actor cannot carry items
             return false;
+        }
+
+        // Merge stackable items with no stats into existing stacks
+        if (item.getAttribute('stackable') && Object.keys(item.stats).length === 0) {
+            const existing = this.inventory.find(inv =>
+                inv.type === item.type &&
+                inv.getAttribute('stackable') &&
+                Object.keys(inv.stats).length === 0
+            );
+            if (existing) {
+                existing.count = (existing.count || 1) + (item.count || 1);
+                this.engine.entityManager.removeEntity(item);
+                if (this.isPlayerControlled()) {
+                    this.engine.playSound(item.getAttribute('pickup_sound') || 'tone3');
+                    const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
+                    const article = this.engine.inputManager?.getIndefiniteArticle(displayName) || 'a';
+                    this.engine.inputManager?.showMessage(
+                        `You pick up ${article} ${displayName}. (${existing.count} total)`
+                    );
+                }
+                return true;
+            }
         }
 
         if (this.inventory.length >= maxInventory) {
@@ -4612,7 +4638,11 @@ class Actor extends Entity {
 
     _completeItemUse(item, success) {
         if (success && item.hasAttribute('consumable')) {
-            this.inventory = this.inventory.filter(i => i !== item);
+            if (item.count > 1) {
+                item.count--;
+            } else {
+                this.inventory = this.inventory.filter(i => i !== item);
+            }
             console.log(`${item.name} was consumed`);
         }
 
@@ -4768,14 +4798,26 @@ class Actor extends Entity {
                 const itemData = this.engine.currentPrototype?.getItemData(targetType);
                 if (!itemData) return false;
 
-                const remainingFuel = item.stats?.burns?.current ?? 0;
                 const maxFuel = item.stats?.burns?.max ?? 500;
+                const hasBurnsStat = item.stats?.burns !== undefined;
+                const remainingFuel = hasBurnsStat ? (item.stats.burns.current ?? 0) : maxFuel;
 
                 if (!isLit && remainingFuel <= 0) {
                     if (this.isPlayerControlled()) {
                         this.engine.inputManager?.showMessage('The torch has no fuel left.');
                     }
                     return false;
+                }
+
+                // Lighting from a stack requires a free inventory slot
+                if (!isLit && item.count > 1) {
+                    const maxInventory = this.getAttribute('inventory');
+                    if (maxInventory && this.inventory.length >= maxInventory) {
+                        if (this.isPlayerControlled()) {
+                            this.engine.inputManager?.showMessage('Your inventory is too full to light a torch from the stack.');
+                        }
+                        return false;
+                    }
                 }
 
                 const newItem = new Item(-1, -1, targetType, itemData, this.engine);
@@ -4789,8 +4831,13 @@ class Actor extends Entity {
                     warnings: [{ threshold: 0.1, message: 'Your torch is almost out!' }]
                 };
 
-                const idx = this.inventory.indexOf(item);
-                if (idx !== -1) this.inventory[idx] = newItem;
+                if (!isLit && item.count > 1) {
+                    item.count--;
+                    this.inventory.push(newItem);
+                } else {
+                    const idx = this.inventory.indexOf(item);
+                    if (idx !== -1) this.inventory[idx] = newItem;
+                }
 
                 this.engine.lightingManager?.computeLighting();
                 if (this.isPlayerControlled()) {
