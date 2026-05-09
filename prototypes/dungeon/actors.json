@@ -40,7 +40,7 @@
         }
       }
     },
-    "default_items": ["sword", "torch"]
+    "default_items": ["sword", "torch", "spike", "spike", "spike", "spike", "spike"]
   },
 
   "azhdaya_head": {

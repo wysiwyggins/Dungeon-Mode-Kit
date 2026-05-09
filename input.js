@@ -232,6 +232,12 @@ class InputManager {
             return;
         }
 
+        // Check if in spike direction mode
+        if (this.engine.interfaceManager?.handleSpikeDirectionClick()) {
+            event.preventDefault();
+            return;
+        }
+
         // Check if any dialog wants to handle this click
         if (this.engine.interfaceManager?.handleDialogClick(this.hoveredTile.x, this.hoveredTile.y)) {
             return;
@@ -411,7 +417,7 @@ class InputManager {
 
         // Don't show path if UI is open
         const ui = this.engine.interfaceManager;
-        if (ui?.inventoryMode || ui?.confirmDialog || ui?.throwMenuMode || ui?.equipmentMenuMode || ui?.identifyMode) {
+        if (ui?.inventoryMode || ui?.confirmDialog || ui?.throwMenuMode || ui?.equipmentMenuMode || ui?.identifyMode || ui?.spikeDirectionMode) {
             renderer.hideWalkPath();
             return;
         }
@@ -1066,6 +1072,12 @@ class InputManager {
             return;
         }
 
+        // Check if spike direction mode wants to handle this key
+        if (this.engine.interfaceManager?.handleSpikeDirectionKey(event.key)) {
+            event.preventDefault();
+            return;
+        }
+
         // Check if help window wants to handle this key
         if (this.engine.interfaceManager?.handleHelpKey(event.key)) {
             event.preventDefault();
@@ -1255,6 +1267,12 @@ class InputManager {
             case 'read_scroll':
                 if (this.engine.interfaceManager) {
                     this.engine.interfaceManager.showUseMenu(player, 'Read', 'Read which?');
+                }
+                break;
+
+            case 'jam_spike':
+                if (this.engine.interfaceManager) {
+                    this.engine.interfaceManager.showUseMenu(player, 'Jam', 'Spike which door?');
                 }
                 break;
         }

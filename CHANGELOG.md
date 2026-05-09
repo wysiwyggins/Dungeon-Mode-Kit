@@ -30,7 +30,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Stat dependencies**: stats can now depend on other stats and attributes via two new JSON sub-fields. `restore_from` makes a stat's regeneration cost another stat (e.g., health regen debits nutrition). `rate_scaled_by` scales a stat's per-turn rate by an attribute (e.g., nutrition drain increases with strength). See [ACTORS.md](docs/ACTORS.md#stat-dependencies).
-
 - **Dungeon generator improvements**: lakes and abysses now appear in procedurally generated levels
 - **Wall digging**: generated levels allow better digging into walls
 - **Better FOV epistemology**: sidebar messages for NPC combat, state changes, traps, and environmental effects are now filtered by player field of vision — events in remembered (dark) areas are no longer reported
@@ -39,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Bolt attack behavior**: `bolt_attack` NPC behavior reproducing the Staff of Lightning effect — configurable range, cooldown, and damage via personality data
 - **Custom actor light radius**: actors can now define `lightRadius` at the data level (previously all light sources defaulted to radius 5)
 - **Torch toggle behavior** light/extenguish
+- **Inventory item stacking** exact same items stack with a number in inventory
 
 ## [1.5b] 2026-04-30
 

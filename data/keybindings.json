@@ -7,7 +7,8 @@
     "t": "throw_item",
     "e": "equipment_menu",
     "q": "quaff",
-    "r": "read_scroll"
+    "r": "read_scroll",
+    "j": "jam_spike"
   },
 
   "global": {
@@ -22,6 +23,7 @@
     "equipment_menu": "Equipment menu",
     "quaff":          "Quaff a potion",
     "read_scroll":    "Read a scroll",
+    "jam_spike":      "Jam a spike into a door",
     "toggle_pause":   "Toggle pause",
     "reload":         "Reload / restart"
   }

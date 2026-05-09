@@ -3049,6 +3049,21 @@ class Actor extends Entity {
                 this.equipToSlot(item, slot);
             }
         }
+
+        // Merge stackable items (loadDefaultItems pushes directly, skipping pickUpItem merge)
+        for (let i = this.inventory.length - 1; i >= 0; i--) {
+            const item = this.inventory[i];
+            if (!item.getAttribute('stackable') || Object.keys(item.stats).length > 0) continue;
+            for (let j = 0; j < i; j++) {
+                const existing = this.inventory[j];
+                if (existing.type === item.type && existing.getAttribute('stackable') &&
+                    Object.keys(existing.stats).length === 0) {
+                    existing.count = (existing.count || 1) + (item.count || 1);
+                    this.inventory.splice(i, 1);
+                    break;
+                }
+            }
+        }
     }
 
     open() {
@@ -3069,7 +3084,7 @@ class Actor extends Entity {
         this.engine.inputManager?.showMessage(`The ${this.name} opens.`, { x: this.x, y: this.y });
     }
 
-    close() {
+    close(silent = false) {
         if (!this.hasAttribute('openable')) return;
 
         this.setAttribute('open', false);
@@ -3079,7 +3094,26 @@ class Actor extends Entity {
         this.engine.renderer?.updateSpriteTexture(this.spriteTop, this.tileIndexTop);
 
         console.log(`${this.name} closed`);
-        this.engine.inputManager?.showMessage(`The ${this.name} closes.`, { x: this.x, y: this.y });
+        if (!silent) {
+            this.engine.inputManager?.showMessage(`The ${this.name} closes.`, { x: this.x, y: this.y });
+        }
+    }
+
+    spike() {
+        if (!this.hasAttribute('openable')) return false;
+        if (this.hasAttribute('open')) return false;
+        if (this.hasAttribute('locked')) return false;
+        if (this.hasAttribute('spiked')) return false;
+
+        this.setAttribute('spiked', true);
+        if (!this.stats) this.stats = {};
+        this.stats.health = { current: 30, max: 30 };
+
+        this.engine.playSound?.('tap2');
+        this.engine.inputManager?.showMessage(
+            `You jam a spike into the ${this.name}.`, { x: this.x, y: this.y }
+        );
+        return true;
     }
 
     /**
@@ -3276,7 +3310,9 @@ class Actor extends Entity {
 
         // Show death message for visible actors (skip for mass nouns like clouds)
         if (this.hasAttribute('visible') && !this.hasAttribute('mass_noun')) {
-            if (this.isPlayerControlled()) {
+            if (this.hasAttribute('spiked') && this.hasAttribute('openable')) {
+                this.engine.inputManager?.showMessage(`The ${this.name} splinters open!`, { x: this.x, y: this.y });
+            } else if (this.isPlayerControlled()) {
                 this.engine.inputManager?.showMessage(`You die... \n Press esc to restart`);
             } else if (!this.stats || this.stats.health === undefined) {
                 // Actors without health (breakable objects like walls)
@@ -4628,7 +4664,7 @@ class Actor extends Entity {
 
         // For targeted spells and identify picker, consumption/identification happens in the
         // follow-up UI interaction, not immediately here.
-        if (useEffect === 'targeted_spell' || useEffect === 'identify_item') {
+        if (useEffect === 'targeted_spell' || useEffect === 'identify_item' || useEffect === 'spike_door') {
             return success; // Early return - handling continues in interface
         }
 
@@ -4953,6 +4989,11 @@ class Actor extends Entity {
                         : 'Nothing breaks.');
                 }
                 return shattered;
+            }
+
+            case 'spike_door': {
+                this.engine.interfaceManager?.enterSpikeDirectionMode(item, this);
+                return true;
             }
 
             case 'darkness_field': {
@@ -5832,6 +5873,16 @@ class Actor extends Entity {
 
             // Check if actor can be opened (doors, chests, etc.)
             if (actorAtTarget.hasAttribute('openable') && !actorAtTarget.hasAttribute('open')) {
+                // Spiked doors cannot be opened — must be attacked and destroyed
+                if (actorAtTarget.hasAttribute('spiked')) {
+                    this.engine.playSound?.('tap1');
+                    if (this.isPlayerControlled()) {
+                        this.engine.inputManager?.showMessage(
+                            `The ${actorAtTarget.name} is jammed shut with a spike.`
+                        );
+                    }
+                    return { moved: false, actionTaken: false };
+                }
                 // Check if locked - play tap sound and block
                 if (actorAtTarget.hasAttribute('locked')) {
                     console.log(`${actorAtTarget.name} is locked`);
@@ -5896,6 +5947,19 @@ class Actor extends Entity {
 
         // Process passive effects from inventory items (e.g., thread trail)
         this.processPassiveEffects(this._lastPosition, { x: newX, y: newY });
+
+        // Auto-close doors behind player-controlled actors
+        if (this.isPlayerControlled() && this._lastPosition) {
+            this.engine.entityManager.invalidateActorPosCache();
+            const actorsAtOldPos = this.engine.entityManager.getActorsAt(
+                this._lastPosition.x, this._lastPosition.y
+            );
+            for (const actor of actorsAtOldPos) {
+                if (actor.hasAttribute('openable') && actor.getAttribute('open') && !actor.hasAttribute('spiked')) {
+                    actor.close(true);
+                }
+            }
+        }
 
         // Check for items to pick up
         const itemAtTarget = this.engine.entityManager.getItemAt(newX, newY);

@@ -37,6 +37,12 @@ class InterfaceManager {
         this.spellItem = null; // Item casting the spell
         this.spellCaster = null; // Actor casting the spell
 
+        // Spike direction picker state
+        this.spikeDirectionMode = false;
+        this.spikeItem = null;
+        this.spikeCaster = null;
+        this.spikeAdjacentDoors = null;
+
         // Throw menu mode state (T key menu)
         this.throwMenuMode = false;
 
@@ -1398,7 +1404,7 @@ class InterfaceManager {
         }
 
         // Don't consume turn if we entered spell aiming or identify mode (handled by follow-up interaction)
-        if (this.spellAimingMode || this.identifyMode) {
+        if (this.spellAimingMode || this.identifyMode || this.spikeDirectionMode) {
             return;
         }
 
@@ -3104,6 +3110,135 @@ class InterfaceManager {
      */
     isSpellAiming() {
         return this.spellAimingMode;
+    }
+
+    // ========================================================================
+    // SPIKE DIRECTION PICKER (J key / Jam use_verb)
+    // ========================================================================
+
+    enterSpikeDirectionMode(item, caster) {
+        const dirs = [
+            { dx: 0, dy: -1, name: 'north' },
+            { dx: 0, dy: 1, name: 'south' },
+            { dx: -1, dy: 0, name: 'west' },
+            { dx: 1, dy: 0, name: 'east' }
+        ];
+
+        const adjacentDoors = [];
+        for (const dir of dirs) {
+            const tx = caster.x + dir.dx;
+            const ty = caster.y + dir.dy;
+            const actors = this.engine.entityManager.getActorsAt(tx, ty);
+            for (const actor of actors) {
+                if (actor.hasAttribute('openable') &&
+                    !actor.hasAttribute('open') &&
+                    !actor.hasAttribute('locked') &&
+                    !actor.hasAttribute('spiked')) {
+                    adjacentDoors.push({ actor, dir });
+                }
+            }
+        }
+
+        if (adjacentDoors.length === 0) {
+            this.engine.inputManager?.showMessage('There are no doors here to spike.');
+            return;
+        }
+
+        if (adjacentDoors.length === 1) {
+            this.applySpikeToDirection(item, caster, adjacentDoors[0]);
+            return;
+        }
+
+        this.spikeDirectionMode = true;
+        this.spikeItem = item;
+        this.spikeCaster = caster;
+        this.spikeAdjacentDoors = adjacentDoors;
+
+        this.closeItemActionMenu();
+        this.removeBox('player_info');
+        this.inventoryMode = false;
+
+        this.showTextBox('spike_instructions',
+            'Spike which door? (arrow keys or WASD, Esc to cancel)',
+            { dismissOnMove: false }
+        );
+    }
+
+    applySpikeToDirection(item, caster, doorInfo) {
+        this.exitSpikeDirectionMode();
+
+        const success = doorInfo.actor.spike();
+        if (success) {
+            if (item.count > 1) {
+                item.count--;
+            } else {
+                caster.inventory = caster.inventory.filter(i => i !== item);
+            }
+            this.engine.inputManager?.onPlayerAction();
+        }
+    }
+
+    exitSpikeDirectionMode() {
+        this.spikeDirectionMode = false;
+        this.spikeItem = null;
+        this.spikeCaster = null;
+        this.spikeAdjacentDoors = null;
+        this.removeTextBox('spike_instructions');
+    }
+
+    handleSpikeDirectionKey(key) {
+        if (!this.spikeDirectionMode) return false;
+
+        if (key === 'Escape') {
+            this.exitSpikeDirectionMode();
+            return true;
+        }
+
+        const keyToDir = {
+            'ArrowUp': { dx: 0, dy: -1 },
+            'ArrowDown': { dx: 0, dy: 1 },
+            'ArrowLeft': { dx: -1, dy: 0 },
+            'ArrowRight': { dx: 1, dy: 0 },
+            'w': { dx: 0, dy: -1 }, 'W': { dx: 0, dy: -1 },
+            'a': { dx: -1, dy: 0 }, 'A': { dx: -1, dy: 0 },
+            's': { dx: 0, dy: 1 }, 'S': { dx: 0, dy: 1 },
+            'd': { dx: 1, dy: 0 }, 'D': { dx: 1, dy: 0 }
+        };
+
+        const dir = keyToDir[key];
+        if (!dir) return true;
+
+        const match = this.spikeAdjacentDoors?.find(
+            d => d.dir.dx === dir.dx && d.dir.dy === dir.dy
+        );
+
+        if (match) {
+            this.applySpikeToDirection(this.spikeItem, this.spikeCaster, match);
+        } else {
+            this.engine.inputManager?.showMessage("There's no door in that direction.");
+        }
+
+        return true;
+    }
+
+    handleSpikeDirectionClick() {
+        if (!this.spikeDirectionMode || !this.spikeCaster) return false;
+
+        const inputManager = this.engine.inputManager;
+        if (!inputManager) return false;
+
+        const tx = inputManager.hoveredTile.x;
+        const ty = inputManager.hoveredTile.y;
+
+        const match = this.spikeAdjacentDoors?.find(
+            d => d.actor.x === tx && d.actor.y === ty
+        );
+
+        if (match) {
+            this.applySpikeToDirection(this.spikeItem, this.spikeCaster, match);
+        }
+
+        return true;
     }
 
     // ========================================================================
