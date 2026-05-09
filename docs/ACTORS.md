@@ -120,6 +120,82 @@ Stats track numeric values that change over time or from damage. Define them in 
 | `death_message` | string | Message shown to player when this stat kills them |
 | `warnings` | array | Threshold messages — `threshold` is a fraction of `max` (0–1) |
 | `condition_state` | object | Apply a state when stat crosses below a threshold. `{ "state": "starving", "threshold": 0.1 }` — state is removed when stat recovers above the threshold. |
+| `restore_from` | string | Name of another stat to debit when this stat gains per-turn. Only applies to gains, not drains. See [Stat Dependencies](#stat-dependencies). |
+| `rate_scaled_by` | string | Name of an attribute that scales `per_turn`. Rate is multiplied by `attribute / 10`. See [Stat Dependencies](#stat-dependencies). |
+
+### Stat Dependencies
+
+Stats can depend on other stats or on attributes. These two sub-fields let you create relationships between stats without writing code.
+
+#### `restore_from` — Stat Transfer
+
+Makes a stat's per-turn regeneration cost another stat. Each point gained is subtracted from the source stat.
+
+```json
+"health": {
+    "max": 50,
+    "per_turn": 1,
+    "restore_from": "nutrition"
+}
+```
+
+Every turn that health regenerates, the same amount is deducted from nutrition. If nutrition is empty, health does not regenerate. If nutrition has less than the full amount, health only gains what nutrition can afford.
+
+Only per-turn **gains** trigger the transfer. If health is already full or the effective per-turn is negative (e.g., from a cursed item), no nutrition is spent.
+
+#### `rate_scaled_by` — Attribute-Scaled Rate
+
+Scales a stat's `per_turn` rate by an attribute value. The multiplier is `attribute / 10`, so an attribute of 10 means 1x (no change), 15 means 1.5x, and 5 means 0.5x.
+
+```json
+"nutrition": {
+    "max": 1000,
+    "per_turn": -1,
+    "rate_scaled_by": "strength"
+}
+```
+
+With strength 8, the effective drain is `-1 * (8 / 10) = -0.8` per turn. With strength 15, it becomes `-1.5` per turn. Equipment bonuses to the attribute (from `wear_effect`) are included in the calculation.
+
+Works with any attribute — not just the three combat attributes. For custom attributes, the same `value / 10` formula applies.
+
+#### Combining Both
+
+The two fields compose naturally. Rodney's stat block in the dungeon prototype uses both:
+
+```json
+"stats": {
+    "health": {
+        "max": 50,
+        "per_turn": 1,
+        "restore_from": "nutrition"
+    },
+    "nutrition": {
+        "max": 1000,
+        "per_turn": -1,
+        "rate_scaled_by": "strength",
+        "fatal": true,
+        "death_message": "You starve to death!",
+        "warnings": [
+            { "threshold": 0.5, "message": "You are getting hungry." },
+            { "threshold": 0.25, "message": "You are very hungry." },
+            { "threshold": 0.1, "message": "You are starving!" }
+        ],
+        "condition_state": { "state": "starving", "threshold": 0.1 }
+    }
+}
+```
+
+Each turn with strength 8:
+1. Health gains 1 (if not full), debiting 1 from nutrition
+2. Nutrition drains at `1 * (8 / 10) = 0.8` from its own `per_turn`
+3. Total nutrition cost: ~1.8 per turn (healing + hunger)
+
+Equipping a Ring of Strength (+2, total 10) increases the drain to `1 * (10 / 10) = 1.0`, making total cost ~2.0 per turn. A stronger character heals at the same rate but gets hungrier faster.
+
+#### Processing Order
+
+Stats are processed in the order they appear in the JSON definition. When using `restore_from`, the source stat's own per-turn change is applied when it is reached in that order. Both orderings produce correct results — the source stat is debited immediately when the dependent stat gains, regardless of whether the source has been processed yet.
 
 ## States
 
@@ -439,16 +515,18 @@ Personalities are defined in `data/personalities.json`. Each turn, the personali
 }
 
 // Player character — controlled, not hostile (default)
+// Health regeneration costs nutrition; hunger scales with strength
 "player": {
   "name": "Player",
   "tileIndexBase": "LEGS",
   "tileIndexTop": "SMILING_FACE",
   "default_items": ["torch"],
   "stats": {
-    "health": { "max": 100, "fatal": true },
+    "health": { "max": 100, "per_turn": 1, "restore_from": "nutrition" },
     "nutrition": {
-      "max": 100,
+      "max": 1000,
       "per_turn": -1,
+      "rate_scaled_by": "strength",
       "fatal": true,
       "death_message": "You starve to death!",
       "warnings": [

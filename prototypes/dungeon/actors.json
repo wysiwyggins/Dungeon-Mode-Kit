@@ -19,11 +19,13 @@
     "stats": {
       "health": {
         "max": 50,
-        "per_turn": 1
+        "per_turn": 1,
+        "restore_from": "nutrition"
       },
       "nutrition": {
         "max": 1000,
         "per_turn": -1,
+        "rate_scaled_by": "strength",
         "fatal": true,
         "death_message": "You starve to death!",
         "warnings": [

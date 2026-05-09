@@ -4096,6 +4096,23 @@ class Actor extends Entity {
             }
         }
 
+        // Scale rate by an attribute (e.g., nutrition drain scales with strength)
+        // Multiplier is attribute / 10, so strength 10 = 1x (baseline), 15 = 1.5x
+        if (stat.rate_scaled_by) {
+            let attrValue;
+            const attrName = stat.rate_scaled_by;
+            if (attrName === 'strength') {
+                attrValue = this.getEffectiveStrength();
+            } else if (attrName === 'accuracy') {
+                attrValue = this.getEffectiveAccuracy() ?? 10;
+            } else if (attrName === 'defense') {
+                attrValue = this.getEffectiveDefense() ?? 10;
+            } else {
+                attrValue = this.getAttribute(attrName) ?? 10;
+            }
+            perTurn = perTurn * (attrValue / 10);
+        }
+
         return perTurn;
     }
 
@@ -4132,7 +4149,24 @@ class Actor extends Entity {
             // Apply the per-turn change
             const oldValue = stat.current;
             stat.current = Math.max(0, Math.min(stat.max, stat.current + perTurn));
-            const newValue = stat.current;
+            let newValue = stat.current;
+
+            // restore_from: debit another stat for any per-turn gains
+            if (stat.restore_from && newValue > oldValue) {
+                const sourceStat = this.stats[stat.restore_from];
+                if (sourceStat) {
+                    const gained = newValue - oldValue;
+                    if (sourceStat.current <= 0) {
+                        stat.current = oldValue;
+                    } else if (sourceStat.current < gained) {
+                        stat.current = oldValue + sourceStat.current;
+                        sourceStat.current = 0;
+                    } else {
+                        sourceStat.current -= gained;
+                    }
+                    newValue = stat.current;
+                }
+            }
 
             // Only process if value actually changed
             if (oldValue === newValue) continue;

@@ -284,6 +284,20 @@
       "remains": "rubble"
     }
   },
+  "brick_wall": {
+    "name": "Brick Wall",
+    "tileIndexBase": "BRICK_WALL",
+    "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
+    "tint": "#884444",
+    "attributes": {
+      "flammable": false,
+      "pushable": false,
+      "breakable": true,
+      "conductive": false,
+      "paint_tile": "BRICK_WALL",
+      "remains": "rubble"
+    }
+  },
   "fortification": {
     "name": "fortification",
     "tileIndexBase": "PRISON_WINDOW",
