@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Custom actor light radius**: actors can now define `lightRadius` at the data level (previously all light sources defaulted to radius 5)
 - **Torch toggle behavior** light/extenguish
 - **Inventory item stacking** exact same items stack with a number in inventory
+- **Spike item** spike doors like in Moria or throw like darts in Brogue
 
 ## [1.5b] 2026-04-30
 
