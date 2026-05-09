@@ -262,7 +262,8 @@
   "tree": {
     "name": "Tree",
     "tileIndexBase": "CANDLE_STICK",
-    "tileIndexTop": "UPWARD_POINTING_TRIANGLE",
+    "tileIndexTop": "WHITE_UPWARD_POINTING_TRIANGLE",
+    "tint": "#006610",
     "attributes": {
       "pushable": false,
       "breakable": true,
