@@ -500,6 +500,18 @@
       "locked": true
     }
   },
+  "lever_up": {
+    "name": "lever",
+    "tileIndexBase": "LEVER_BASE",
+    "tileIndexTop": "LEVER_HANDLE"
+  },
+  "lever_down": {
+    "name": "lever",
+    "flipTopV": true,
+    "flipBaseV": true,
+    "tileIndexBase": "LEVER_HANDLE",
+    "tileIndexTop": "LEVER_BASE"
+  },
   "water": {
     "name": "water",
     "tileIndexBase": "BLANK",

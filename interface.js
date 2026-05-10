@@ -258,6 +258,8 @@ class InterfaceManager {
             activeBoxId = 'confirm_dialog';
         } else if (this.identifyMode) {
             activeBoxId = 'identify_picker';
+        } else if (this.enchantMode) {
+            activeBoxId = 'enchant_picker';
         } else if (this.throwMenuMode) {
             activeBoxId = 'throw_item_menu';
         } else if (this.useMenuMode) {
@@ -1209,6 +1211,37 @@ class InterfaceManager {
             return true;
         }
 
+        if (this.enchantMode) {
+            if (key === 'Escape') {
+                this.exitEnchantMode();
+                return true;
+            }
+            const letters = 'abcdefghijklmnopqrstuvwxyz';
+            const idx = letters.indexOf(key);
+            if (idx >= 0) {
+                const caster = this.enchantCaster;
+                const scroll = this.enchantScrollItem;
+                const enchantable = (caster?.inventory || []).filter(i =>
+                    i !== scroll && i.getAttribute('enchantable')
+                );
+                const target = enchantable[idx];
+                if (target) {
+                    target.enchantment = (target.enchantment || 0) + 1;
+                    const revealed = target.getDisplayName ? target.getDisplayName() : target.name;
+                    this.engine.inputManager?.showMessage(`Your ${revealed} glows brightly!`);
+                    this.engine.inputManager?.showMessage('The scroll dissolves into ashes.');
+                    this.engine.playSound?.('tap1');
+                    if (caster && scroll) {
+                        caster.inventory = caster.inventory.filter(i => i !== scroll);
+                    }
+                    this.exitEnchantMode();
+                    this.hidePlayerInfo();
+                    this.engine.inputManager?.onPlayerAction?.();
+                }
+            }
+            return true;
+        }
+
         if (!this.inventoryMode || !this.currentPlayer) return false;
 
         // If action menu is open, handle number keys for actions
@@ -1404,7 +1437,7 @@ class InterfaceManager {
         }
 
         // Don't consume turn if we entered spell aiming or identify mode (handled by follow-up interaction)
-        if (this.spellAimingMode || this.identifyMode || this.spikeDirectionMode) {
+        if (this.spellAimingMode || this.identifyMode || this.enchantMode || this.spikeDirectionMode) {
             return;
         }
 
@@ -1607,6 +1640,24 @@ class InterfaceManager {
                     this._handleIdentifyClick(hit.contentLine);
                 } else {
                     this.exitIdentifyMode();
+                }
+            }
+            return true;
+        }
+
+        // 2b. Enchant picker
+        if (this.enchantMode) {
+            const enchantBox = this.boxes.get('enchant_picker');
+            if (enchantBox) {
+                const hit = this._hitTestBox(enchantBox, tileX, tileY);
+                if (hit) {
+                    const itemLine = hit.contentLine - 2;
+                    if (itemLine >= 0) {
+                        const letters = 'abcdefghijklmnopqrstuvwxyz';
+                        this.handleInventoryKey(letters[itemLine]);
+                    }
+                } else {
+                    this.exitEnchantMode();
                 }
             }
             return true;
@@ -2733,6 +2784,80 @@ class InterfaceManager {
         this.identifyScrollItem = null;
         this.identifyCaster = null;
         this.removeBox('identify_picker');
+        this.updateBoxOverlays();
+    }
+
+    enterEnchantMode(scrollItem, caster) {
+        const enchantable = (caster.inventory || []).filter(i =>
+            i !== scrollItem && i.getAttribute('enchantable')
+        );
+        if (enchantable.length === 0) {
+            this.engine.inputManager?.showMessage('You have nothing to enchant.');
+            this.engine.inputManager?.showMessage('The scroll dissolves into ashes.');
+            this.engine.playSound?.('tone1');
+            if (caster && scrollItem) {
+                caster.inventory = caster.inventory.filter(i => i !== scrollItem);
+            }
+            return;
+        }
+
+        this.enchantMode = true;
+        this.enchantScrollItem = scrollItem;
+        this.enchantCaster = caster;
+        this.closeItemActionMenu();
+        this.removeBox('player_info');
+        this._showEnchantPicker(enchantable);
+    }
+
+    _showEnchantPicker(enchantable) {
+        this.removeBox('enchant_picker');
+
+        const lines = ['Enchant which item?', ''];
+        const letters = 'abcdefghijklmnopqrstuvwxyz';
+        for (let i = 0; i < enchantable.length && i < letters.length; i++) {
+            const item = enchantable[i];
+            const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
+            lines.push(`  ${letters[i]}) ${displayName}`);
+        }
+        lines.push('');
+        lines.push('  Esc) Cancel');
+
+        const padding = 1;
+        const maxLineLength = Math.max(...lines.map(l => l.length), 14);
+        const boxWidth = maxLineLength + padding * 2 + 2;
+        const boxHeight = lines.length + padding * 2 + 2;
+        const vis = this.getVisibleArea();
+        const x = Math.max(vis.originX, vis.originX + Math.floor((vis.width - boxWidth) / 2));
+        const y = vis.originY + 1;
+
+        const boxContainer = this.createBox('enchant_picker', x, y, boxWidth, boxHeight);
+        if (!boxContainer) return;
+
+        const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
+        const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
+
+        for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+            const line = lines[lineIndex];
+            const chars = this.splitChars(line);
+            for (let charIndex = 0; charIndex < chars.length; charIndex++) {
+                const sprite = this.createCharSprite(
+                    chars[charIndex],
+                    textStartX + charIndex * globalVars.TILE_WIDTH,
+                    textStartY + lineIndex * globalVars.TILE_HEIGHT,
+                    this.defaultTextTint
+                );
+                if (sprite) boxContainer.addChild(sprite);
+            }
+        }
+
+        this.updateBoxOverlays();
+    }
+
+    exitEnchantMode() {
+        this.enchantMode = false;
+        this.enchantScrollItem = null;
+        this.enchantCaster = null;
+        this.removeBox('enchant_picker');
         this.updateBoxOverlays();
     }
 

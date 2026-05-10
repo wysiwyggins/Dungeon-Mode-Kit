@@ -2549,6 +2549,7 @@ class Item extends Entity {
         }
 
         this.count = 1;
+        this.enchantment = data.enchantment ?? 0;
     }
 
     /**
@@ -2698,9 +2699,14 @@ class Item extends Entity {
     getDisplayName() {
         const template = this.identified ? this.identifiedTemplate : this.unidentifiedTemplate;
 
-        // If no template, return base name
+        // If no template, return base name with enchantment suffix
         if (!template) {
-            return this.name;
+            let name = this.name;
+            if (this.enchantment && this.enchantment !== 0) {
+                const sign = this.enchantment > 0 ? '+' : '';
+                name += ` ${sign}${this.enchantment}`;
+            }
+            return name;
         }
 
         // Process template by replacing [key] or [file.key] with values
@@ -2840,6 +2846,7 @@ class Item extends Entity {
             templateVars: { ...this.templateVars },
             stats: this.stats ? JSON.parse(JSON.stringify(this.stats)) : {},
             count: this.count,
+            enchantment: this.enchantment,
             isItem: true
         };
     }
@@ -2850,6 +2857,7 @@ class Item extends Entity {
         if (data.templateVars) this.templateVars = { ...data.templateVars };
         if (data.stats) this.stats = JSON.parse(JSON.stringify(data.stats));
         if (data.count !== undefined) this.count = data.count;
+        if (data.enchantment !== undefined) this.enchantment = data.enchantment;
     }
 }
 
@@ -3018,6 +3026,14 @@ class Actor extends Entity {
         this._knockedBack = false;       // Whether actor is staggered from knockback
 
         this.defaultItems = data.default_items || [];
+    }
+
+    hasAttribute(key) {
+        if (super.hasAttribute(key)) return true;
+        for (const state of Object.values(this.states)) {
+            if (state.data?.grants_immunity === key) return true;
+        }
+        return false;
     }
 
     /**
@@ -4068,13 +4084,16 @@ class Actor extends Entity {
     getEffectiveDefense() {
         let base = this.getAttribute('defense') || 0;
 
-        // Add bonuses from equipped items' wear_effects
+        // Add bonuses from equipped items' wear_effects and enchantments
         for (const slot of ['weapon', 'top', 'middle', 'lower']) {
             const item = this.equipment[slot];
             if (item) {
                 const wearEffect = item.getAttribute('wear_effect');
                 if (wearEffect && typeof wearEffect.defense === 'number') {
                     base += wearEffect.defense;
+                }
+                if (item.enchantment && wearEffect?.defense !== undefined) {
+                    base += item.enchantment;
                 }
             }
         }
@@ -4641,7 +4660,7 @@ class Actor extends Entity {
                     success = true;
                 }
 
-                if (useEffect !== 'targeted_spell' && useEffect !== 'identify_item') {
+                if (useEffect !== 'targeted_spell' && useEffect !== 'identify_item' && useEffect !== 'enchant_item') {
                     this._completeItemUse(item, success);
                     this.engine.inputManager?.onPlayerAction();
                 }
@@ -4671,7 +4690,7 @@ class Actor extends Entity {
 
         // For targeted spells and identify picker, consumption/identification happens in the
         // follow-up UI interaction, not immediately here.
-        if (useEffect === 'targeted_spell' || useEffect === 'identify_item' || useEffect === 'spike_door') {
+        if (useEffect === 'targeted_spell' || useEffect === 'identify_item' || useEffect === 'enchant_item' || useEffect === 'spike_door') {
             return success; // Early return - handling continues in interface
         }
 
@@ -4780,6 +4799,10 @@ class Actor extends Entity {
                 this.engine.interfaceManager?.enterIdentifyMode(item, this);
                 return true;
 
+            case 'enchant_item':
+                this.engine.interfaceManager?.enterEnchantMode(item, this);
+                return true;
+
             case 'teleport': {
                 const walkable = this.engine.mapManager?.walkableTiles;
                 if (!walkable || walkable.length === 0) return false;
@@ -4831,6 +4854,49 @@ class Actor extends Entity {
                 }
                 if (this.isPlayerControlled()) {
                     this.engine.inputManager?.showMessage('Every creature stirs with sudden rage.');
+                }
+                return true;
+            }
+
+            case 'discord': {
+                const radius = item?.getAttribute('effect_radius') ?? 5;
+                const statesData = this.engine.globalStates;
+                let affected = 0;
+                for (const actor of this.engine.entityManager?.actors || []) {
+                    if (actor.isDead || actor === this) continue;
+                    if (!actor.hasAttribute('hostile')) continue;
+                    const dist = getChebyshevDistance(this.x, this.y, actor.x, actor.y);
+                    if (dist <= radius && statesData?.confused) {
+                        actor.applyState('confused', statesData.confused);
+                        affected++;
+                    }
+                }
+                if (this.isPlayerControlled()) {
+                    this.engine.inputManager?.showMessage(affected > 0
+                        ? 'A wave of discord washes over nearby creatures!'
+                        : 'The scroll crumbles, but nothing happens.');
+                }
+                return true;
+            }
+
+            case 'negate_nearby': {
+                const radius = item?.getAttribute('effect_radius') ?? 5;
+                let affected = 0;
+                for (const actor of this.engine.entityManager?.actors || []) {
+                    if (actor.isDead || actor === this) continue;
+                    const dist = getChebyshevDistance(this.x, this.y, actor.x, actor.y);
+                    if (dist <= radius) {
+                        const stateNames = Object.keys(actor.states);
+                        for (const stateName of stateNames) {
+                            actor.removeState(stateName, true);
+                            affected++;
+                        }
+                    }
+                }
+                if (this.isPlayerControlled()) {
+                    this.engine.inputManager?.showMessage(affected > 0
+                        ? 'A nullifying wave strips away all magical effects!'
+                        : 'The scroll crumbles, but nothing happens.');
                 }
                 return true;
             }
@@ -5283,6 +5349,15 @@ class Actor extends Entity {
             this.engine.interfaceManager?.showWeaponSwing(equippedWeapon, target.x, target.y);
         }
 
+        // Play attack/swing sound on every combat attempt (hit or miss)
+        if (isCombatTarget && damageSource) {
+            const attackSound = damageSource.item?.getAttribute('attack_sound') ||
+                                damageSource.sourceActor?.getAttribute('attack_sound');
+            if (attackSound) {
+                this.engine.playSound(attackSound);
+            }
+        }
+
         // Perform hit roll for damage source
         let damageHits = true;
         if (damageSource && isCombatTarget) {
@@ -5408,6 +5483,11 @@ class Actor extends Entity {
                             console.log(`Strength scaling: ${finalValue} * ${multiplier.toFixed(2)} (str ${strength}) = ${strengthScaledDamage}`);
                         }
                         finalValue = strengthScaledDamage;
+                    }
+
+                    // Apply weapon enchantment bonus
+                    if (source.item?.enchantment) {
+                        finalValue -= source.item.enchantment;
                     }
                 }
 
@@ -6546,7 +6626,7 @@ class Actor extends Entity {
                 if (this.isPlayerControlled()) {
                     this.engine.inputManager?.showMessage(`Your ${item.name} is extinguished.`);
                 }
-                const unlitType = item.getAttribute('burns_out_item') || 'torch_unlit';
+                const unlitType = 'torch_unlit';
                 const itemData = this.engine.currentPrototype?.getItemData(unlitType);
                 if (itemData) {
                     const remainingFuel = item.stats?.burns?.current ?? 0;
@@ -6647,6 +6727,8 @@ class Actor extends Entity {
      */
     canSeeTarget(target) {
         if (!target) return false;
+
+        if (target.hasStateProperty?.('invisible')) return false;
 
         // First check distance
         const distance = getEuclideanDistance(this.x, this.y, target.x, target.y);
@@ -9099,8 +9181,11 @@ class RenderSystem {
             const isStatic = !actor.personality && !actor.hasAttribute('controlled');
             const vis = lightingManager.getEntityVisibility(actor.x, actor.y, fogOfWar, isStatic);
 
-            if (actor.spriteBase) actor.spriteBase.visible = vis.showBase;
-            if (actor.spriteTop) actor.spriteTop.visible = vis.showTop && !actor.isSubmerged;
+            const playerTelepathic = this.engine.entityManager?.player?.hasStateProperty?.('telepathic');
+            const revealedByTelepathy = playerTelepathic && actor.personality && !actor.hasAttribute('controlled');
+
+            if (actor.spriteBase) actor.spriteBase.visible = vis.showBase || revealedByTelepathy;
+            if (actor.spriteTop) actor.spriteTop.visible = (vis.showTop || revealedByTelepathy) && !actor.isSubmerged;
 
             // Update equipment sprite visibility
             // top: uses showEquipmentTop (at y-2, above actor's head) - lit same as actor

@@ -11,7 +11,7 @@
     "attributes": {
       "controlled": true,
       "sighted": true,
-      "inventory": 5,
+      "inventory": 10,
       "strength": 8,
       "remains": "skull",
       "accuracy": 50,
