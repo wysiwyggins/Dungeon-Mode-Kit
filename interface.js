@@ -3582,6 +3582,75 @@ class InterfaceManager {
         }
     }
 
+    handleDiscoveryKey(key) {
+        if (!this.boxes.has('discovery_panel')) return false;
+        if (key === 'Escape' || key === 'd' || key === 'D') {
+            this.removeBox('discovery_panel');
+            return true;
+        }
+        return true;
+    }
+
+    toggleDiscoveryPanel() {
+        const boxId = 'discovery_panel';
+        if (this.boxes.has(boxId)) {
+            this.removeBox(boxId);
+            return;
+        }
+
+        const prototype = this.engine.currentPrototype;
+        if (!prototype || prototype.activeCatalog.size === 0) {
+            this.engine.inputManager?.showMessage('No item catalog active.');
+            return;
+        }
+
+        const lines = ['Item Discovery', ''];
+        const barWidth = 16;
+
+        for (const [category, types] of prototype.activeCatalog) {
+            const stats = prototype.getCatalogStats(category);
+            if (!stats) continue;
+            const label = category.charAt(0).toUpperCase() + category.slice(1);
+            const filled = Math.round((stats.discovered / stats.total) * barWidth);
+            const bar = '█'.repeat(filled) + '░'.repeat(barWidth - filled);
+            lines.push(`  ${label.padEnd(10)} ${bar} ${stats.discovered}/${stats.total}`);
+        }
+
+        lines.push('');
+        lines.push('  Esc/d) Close');
+
+        const padding = 1;
+        const maxLineLength = Math.max(...lines.map(l => l.length), 14);
+        const boxWidth = maxLineLength + padding * 2 + 2;
+        const boxHeight = lines.length + padding * 2 + 2;
+        const vis = this.getVisibleArea();
+        const x = Math.max(vis.originX, vis.originX + Math.floor((vis.width - boxWidth) / 2));
+        const y = vis.originY + 1;
+
+        const boxContainer = this.createBox(boxId, x, y, boxWidth, boxHeight);
+        if (!boxContainer) return;
+
+        const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
+        const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
+
+        for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+            const line = lines[lineIndex];
+            const chars = this.splitChars(line);
+            for (let charIndex = 0; charIndex < chars.length; charIndex++) {
+                const tint = lineIndex === 0 ? 0xFFFFFF : this.defaultTextTint;
+                const sprite = this.createCharSprite(
+                    chars[charIndex],
+                    textStartX + charIndex * globalVars.TILE_WIDTH,
+                    textStartY + lineIndex * globalVars.TILE_HEIGHT,
+                    tint
+                );
+                if (sprite) boxContainer.addChild(sprite);
+            }
+        }
+
+        this.updateBoxOverlays();
+    }
+
     /**
      * Show the equipment menu listing all wearable and equippable items
      * @param {Actor} player - The player actor
@@ -4060,8 +4129,9 @@ class InterfaceManager {
         if (this.helpWindowMode) {
             if (key === '?' || key === 'Escape') {
                 this.closeHelpWindow();
+                return true;
             }
-            return true;
+            return false;
         }
         if (key === '?') {
             this.showHelpWindow();

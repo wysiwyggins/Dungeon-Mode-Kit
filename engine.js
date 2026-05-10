@@ -2612,6 +2612,10 @@ class Item extends Entity {
             const [min, max] = data.attributes.enchant_range;
             this.enchantment = min + Math.floor(ROT.RNG.getUniform() * (max - min + 1));
         }
+
+        if (this.enchantment < 0 && this.hasAttribute('enchantable')) {
+            this.setAttribute('cursed', true);
+        }
     }
 
     /**
@@ -3399,7 +3403,9 @@ class Actor extends Entity {
             if (this.hasAttribute('spiked') && this.hasAttribute('openable')) {
                 this.engine.inputManager?.showMessage(`The ${this.name} splinters open!`, { x: this.x, y: this.y });
             } else if (this.isPlayerControlled()) {
-                this.engine.inputManager?.showMessage(`You die... \n Press esc to restart`);
+                const restartKey = Object.entries(this.engine.inputManager?.globalKeyMap || {})
+                    .find(([, action]) => action === 'reload')?.[0] || 'R';
+                this.engine.inputManager?.showMessage(`You die... \n Press ${restartKey} to restart`);
             } else if (!this.stats || this.stats.health === undefined) {
                 // Actors without health (breakable objects like walls)
                 this.engine.inputManager?.showMessage(`The ${this.name} crumbles.`, { x: this.x, y: this.y });
@@ -3604,6 +3610,11 @@ class Actor extends Entity {
         }
 
         console.log(`${this.name} equipped ${item.name} (${slot})`);
+
+        if (item.hasAttribute('cursed') && this.isPlayerControlled()) {
+            this.engine.inputManager?.showMessage(`You feel a malevolent force bind the ${item.getDisplayName?.()} to you!`);
+            this.engine.playSound?.('tone1');
+        }
 
         // Check if this triggers win conditions (for player only)
         if (this.isPlayerControlled() && this.engine.checkWinConditions()) {
@@ -4670,6 +4681,13 @@ class Actor extends Entity {
      * @returns {boolean} True if successfully unequipped
      */
     unequipItem(item) {
+        if (item.hasAttribute('cursed')) {
+            if (this.isPlayerControlled()) {
+                this.engine.inputManager?.showMessage(`The ${item.getDisplayName?.()} is cursed! You can't remove it.`);
+            }
+            return false;
+        }
+
         // Check if it's an equipped weapon
         if (item.hasAttribute('weapon')) {
             if (this.equipment.weapon !== item) {
@@ -4936,6 +4954,25 @@ class Actor extends Entity {
             case 'enchant_item':
                 this.engine.interfaceManager?.enterEnchantMode(item, this);
                 return true;
+
+            case 'remove_curse': {
+                let uncursed = 0;
+                for (const slot of Object.keys(this.equipment)) {
+                    const equipped = this.equipment[slot];
+                    if (equipped?.hasAttribute('cursed')) {
+                        equipped.setAttribute('cursed', false);
+                        uncursed++;
+                    }
+                }
+                if (this.isPlayerControlled()) {
+                    if (uncursed > 0) {
+                        this.engine.inputManager?.showMessage('A cleansing light lifts the curse from your equipment!');
+                    } else {
+                        this.engine.inputManager?.showMessage('You feel a momentary warmth, but nothing happens.');
+                    }
+                }
+                return true;
+            }
 
             case 'teleport': {
                 const walkable = this.engine.mapManager?.walkableTiles;

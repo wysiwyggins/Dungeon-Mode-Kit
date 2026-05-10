@@ -8,7 +8,8 @@
     "e": "equipment_menu",
     "q": "quaff",
     "r": "read_scroll",
-    "j": "jam_spike"
+    "j": "jam_spike",
+    "d": "discovery"
   },
 
   "global": {
@@ -24,6 +25,7 @@
     "quaff":          "Quaff a potion",
     "read_scroll":    "Read a scroll",
     "jam_spike":      "Jam a spike into a door",
+    "discovery":      "Discovery progress",
     "toggle_pause":   "Toggle pause",
     "reload":         "Reload / restart"
   }

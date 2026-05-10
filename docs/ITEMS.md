@@ -176,6 +176,7 @@ Pass an object to modify stats, attributes, or apply states directly:
 | `"targeted_spell"` (bolt) | Bolt spells display a white-blue tile fill along the bolt path with screen shake, instead of a projectile sprite |
 | `"darkness_field"` | Extinguishes all light-source items within radius 5 |
 | `"enchant_item"` | Opens item picker; player selects an `enchantable` item to increase its enchantment by +1 |
+| `"remove_curse"` | Clears `cursed` attribute from all currently equipped items |
 
 ### Object format — area effects
 
@@ -423,6 +424,26 @@ The roll is inclusive: `[-1, 3]` can produce -1, 0, 1, 2, or 3. Items with an ex
 ### Scroll of Enchantment
 
 The `"enchant_item"` use effect opens a picker showing all `enchantable` items in inventory. Selecting one increases its enchantment by +1 and recalculates combat bonuses if the item is equipped.
+
+### Cursed Items
+
+Items with negative enchantment are automatically marked `cursed: true` on spawn. Cursed equipment cannot be unequipped — the player sees "The [item] is cursed! You can't remove it." when they try.
+
+The curse is revealed when the item is equipped: "You feel a malevolent force bind the [item] to you!"
+
+**Removing curses**: The `"remove_curse"` use effect (Scroll of Remove Curse) clears the `cursed` attribute from all currently equipped items.
+
+Cursed items can also be defined directly in data:
+
+```json
+"cursed_ring": {
+  "attributes": {
+    "cursed": true,
+    "enchantable": true
+  },
+  "enchantment": -2
+}
+```
 
 ---
 

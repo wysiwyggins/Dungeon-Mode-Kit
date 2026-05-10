@@ -1087,6 +1087,12 @@ class InputManager {
             return;
         }
 
+        // Check if discovery panel wants to handle this key
+        if (this.engine.interfaceManager?.handleDiscoveryKey(event.key)) {
+            event.preventDefault();
+            return;
+        }
+
         // Check if help window wants to handle this key
         if (this.engine.interfaceManager?.handleHelpKey(event.key)) {
             event.preventDefault();
@@ -1282,6 +1288,12 @@ class InputManager {
             case 'jam_spike':
                 if (this.engine.interfaceManager) {
                     this.engine.interfaceManager.showUseMenu(player, 'Jam', 'Spike which door?');
+                }
+                break;
+
+            case 'discovery':
+                if (this.engine.interfaceManager) {
+                    this.engine.interfaceManager.toggleDiscoveryPanel();
                 }
                 break;
         }

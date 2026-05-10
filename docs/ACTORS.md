@@ -91,11 +91,13 @@ These attributes factor into the combat formula. Hit probability is `accuracy * 
 Stats track numeric values that change over time or from damage. Define them in the `stats` object.
 
 **Simple format** — just a number:
+
 ```json
 "stats": { "health": 30 }
 ```
 
 **Full format** — object with configuration:
+
 ```json
 "stats": {
   "health": {
@@ -187,6 +189,7 @@ The two fields compose naturally. Rodney's stat block in the dungeon prototype u
 ```
 
 Each turn with strength 8:
+
 1. Health gains 1 (if not full), debiting 1 from nutrition
 2. Nutrition drains at `1 * (8 / 10) = 0.8` from its own `per_turn`
 3. Total nutrition cost: ~1.8 per turn (healing + hunger)
@@ -500,7 +503,7 @@ Personalities are defined in `data/personalities.json`. Each turn, the personali
   "sideOffset": { "dx": 1, "dy": 0 },
   "defaultFacing": "left",
   "facingEnabled": true,
-  "tint": "#C89664",
+  "tint": "#a85b27",
   "personality": "pickpocket",
   "collision_effect": { "health": -3 },
   "stats": { "health": 12 },

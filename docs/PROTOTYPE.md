@@ -207,9 +207,11 @@ The `item_catalog` defines which item categories are active for the prototype, h
 | `weight` | number | Relative probability when drawing from the budget system. Higher = more common. |
 | `pool` | array | (Optional) Explicit list of item type IDs. If omitted, uses the `random_type` pool from items.json. |
 
-**How `count` works:** If the potion pool has 16 types and `count` is 10, the engine shuffles the pool and picks 10 at random when the prototype loads. Only those 10 potion types will appear for the entire run. This enables a future discovery UI ("5/10 potions discovered").
+**How `count` works:** If the potion pool has 16 types and `count` is 10, the engine shuffles the pool and picks 10 at random when the prototype loads. Only those 10 potion types will appear for the entire run.
 
 When an item catalog is active, `random_items` pool references (like `"potion"`) draw from the catalog's subset instead of the full pool. Specific item IDs (like `"health_potion"`) bypass the catalog and always spawn.
+
+**Discovery UI**: Press `d` to show discovery progress for each catalog category. Identifying an item marks its type as discovered. The panel shows a progress bar per category (e.g., `Potions ████░░░░ 4/10`).
 
 ---
 

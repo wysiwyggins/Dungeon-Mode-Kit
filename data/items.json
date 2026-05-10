@@ -860,7 +860,8 @@
       "scroll_of_shattering",
       "scroll_of_discord",
       "scroll_of_negation",
-      "scroll_of_enchantment"
+      "scroll_of_enchantment",
+      "scroll_of_remove_curse"
     ]
   },
   "poison_potion": {
@@ -1415,6 +1416,26 @@
       "use_verb": "Read",
       "use_effect": "enchant_item",
       "deferred": true,
+      "use_sound": "magic",
+      "description": "A scroll with strange runic markings.",
+      "use_ceremony": true
+    }
+  },
+  "scroll_of_remove_curse": {
+    "name": "Scroll",
+    "tileIndex": "BEAMED_EIGHTH_NOTES",
+    "random_glyph_name": true,
+    "identified": false,
+    "unidentified_template": "[glyph_name] scroll",
+    "identified_template": "Scroll of Remove Curse",
+    "effect_description": "A cleansing light washes over your equipment.",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": true,
+      "consumable": true,
+      "use_verb": "Read",
+      "use_effect": "remove_curse",
       "use_sound": "magic",
       "description": "A scroll with strange runic markings.",
       "use_ceremony": true
