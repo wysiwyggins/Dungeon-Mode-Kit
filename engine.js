@@ -8915,32 +8915,40 @@ class RenderSystem {
         const texture = new PIXI.Texture(tileset.texture.baseTexture, rect);
         const sprite = new PIXI.Sprite(texture);
 
-        // Position based on slot type
-        // top: above actor's top tile (y - 2), for crowns, horns, halos
-        // middle: on actor's top tile (y - 1), for helmets, masks
-        // lower: on actor's base tile (y), for armor, cloaks
-        const baseX = actor.x * globalVars.TILE_WIDTH;
+        const useCenterAnchor = actor.facingEnabled;
+        const hw = globalVars.TILE_WIDTH / 2;
+        const hh = globalVars.TILE_HEIGHT / 2;
+
+        let x = actor.x * globalVars.TILE_WIDTH;
         let y, zIndex;
 
         switch (slot) {
             case 'top':
                 y = (actor.y - 2) * globalVars.TILE_HEIGHT;
-                zIndex = 13; // Above everything
+                zIndex = 13;
                 break;
             case 'middle':
                 y = (actor.y - 1) * globalVars.TILE_HEIGHT;
-                zIndex = 12; // Above actor top sprite
+                zIndex = 12;
                 break;
             case 'lower':
                 y = actor.y * globalVars.TILE_HEIGHT;
-                zIndex = 12; // Above actor base sprite
+                zIndex = 12;
                 break;
             default:
                 y = actor.y * globalVars.TILE_HEIGHT;
                 zIndex = 12;
         }
 
-        sprite.x = baseX;
+        if (useCenterAnchor) {
+            sprite.anchor.set(0.5, 0.5);
+            x += hw;
+            y += hh;
+            const flipped = actor.isFacingFlipped();
+            sprite.scale.x = flipped ? -1 : 1;
+        }
+
+        sprite.x = x;
         sprite.y = y;
         sprite.zIndex = zIndex;
         sprite.tint = item.tint;
