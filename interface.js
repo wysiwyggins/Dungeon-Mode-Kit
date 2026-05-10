@@ -3898,7 +3898,7 @@ class InterfaceManager {
             this.removeBox(menuId);
         }
 
-        const bindings = this.engine.globalKeybindings || {};
+        const bindings = this.engine.currentPrototype?.keybindings || this.engine.globalKeybindings || {};
         const actionDescriptions = bindings.descriptions || {};
 
         const formatKey = (key) => {

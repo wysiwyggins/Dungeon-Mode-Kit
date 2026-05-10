@@ -78,7 +78,30 @@ class InputManager {
         };
 
         // Action and global keys loaded from data/keybindings.json
-        const bindings = engine.globalKeybindings || {};
+        this.loadKeybindings(engine.globalKeybindings || {});
+
+        // Direction vectors for movement actions
+        this.directions = {
+            'move_up': { dx: 0, dy: -1 },
+            'move_down': { dx: 0, dy: 1 },
+            'move_left': { dx: -1, dy: 0 },
+            'move_right': { dx: 1, dy: 0 },
+            'move_up_left': { dx: -1, dy: -1 },
+            'move_up_right': { dx: 1, dy: -1 },
+            'move_down_left': { dx: -1, dy: 1 },
+            'move_down_right': { dx: 1, dy: 1 }
+        };
+
+        this.setupListeners();
+    }
+
+    loadKeybindings(bindings) {
+        const movementKeys = {};
+        for (const [key, action] of Object.entries(this.keyMap)) {
+            if (action.startsWith('move_')) movementKeys[key] = action;
+        }
+        this.keyMap = movementKeys;
+
         if (bindings.actions) {
             for (const [key, action] of Object.entries(bindings.actions)) {
                 this.keyMap[key] = action;
@@ -94,20 +117,6 @@ class InputManager {
                 this.globalKeyMap[key] = action;
             }
         }
-
-        // Direction vectors for movement actions
-        this.directions = {
-            'move_up': { dx: 0, dy: -1 },
-            'move_down': { dx: 0, dy: 1 },
-            'move_left': { dx: -1, dy: 0 },
-            'move_right': { dx: 1, dy: 0 },
-            'move_up_left': { dx: -1, dy: -1 },
-            'move_up_right': { dx: 1, dy: -1 },
-            'move_down_left': { dx: -1, dy: 1 },
-            'move_down_right': { dx: 1, dy: 1 }
-        };
-
-        this.setupListeners();
     }
 
     setupListeners() {

@@ -2173,10 +2173,17 @@ class Prototype {
         const prototypeItems = await this.loadJSON('items.json', {});
         const prototypePersonalities = await this.loadJSON('personalities.json', {});
         const prototypeEffects = await this.loadJSON('effects.json', {});
+        const prototypeKeybindings = await this.loadJSON('keybindings.json', {});
         this.actors = { ...this.engine.globalActors, ...prototypeActors };
         this.items = { ...this.engine.globalItems, ...prototypeItems };
         this.personalities = { ...this.engine.globalPersonalities, ...prototypePersonalities };
         this.effects = { ...this.engine.globalEffects, ...prototypeEffects };
+        this.keybindings = {
+            actions: { ...this.engine.globalKeybindings?.actions, ...prototypeKeybindings.actions },
+            global: { ...this.engine.globalKeybindings?.global, ...prototypeKeybindings.global },
+            descriptions: { ...this.engine.globalKeybindings?.descriptions, ...prototypeKeybindings.descriptions }
+        };
+        this.engine.inputManager?.loadKeybindings(this.keybindings);
 
         // Load effects into the renderer's EffectRunner if available
         if (this.engine.renderer?.effectRunner) {

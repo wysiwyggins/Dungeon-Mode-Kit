@@ -920,7 +920,8 @@
     "attributes": {
       "hostile": true,
       "sentient": true,
-      "defense": 20
+      "defense": 20,
+      "opaque": false
     },
     "stats": {
       "health": 5
