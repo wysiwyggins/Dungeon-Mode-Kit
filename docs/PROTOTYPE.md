@@ -157,6 +157,86 @@ Each entity type rolls independently. If the roll succeeds, a random count betwe
 
 Actor and item IDs reference definitions in `data/actors.json`, `data/items.json`, or the prototype's own `actors.json` / `items.json`.
 
+### Item Pools (random_type)
+
+Some item IDs in `items.json` are **pool entries** rather than real items. They contain a `random_type` array — when spawned, the engine picks a random member from the pool.
+
+```json
+"potion": {
+  "random_type": ["health_potion", "poison_potion", "strength_potion", ...]
+},
+"weapon": {
+  "random_type": ["sword", "dagger", "club", "warhammer", "axe", "rapier", "spear", "mace"]
+},
+"armor": {
+  "random_type": ["leather_armor", "chainmail", "scale_mail", "plate", "helmet"]
+}
+```
+
+Use pool IDs in `random_items` to spawn a random item from a category:
+
+```json
+"random_items": {
+  "potion": { "chance": 60 },
+  "weapon": { "chance": 30 },
+  "armor": { "chance": 20 }
+}
+```
+
+Built-in pools: `potion`, `scroll`, `staff`, `weapon`, `armor`. Prototypes can define their own pools in their `items.json`.
+
+---
+
+## Item Catalog
+
+The `item_catalog` defines which item categories are active for the prototype, how many types per category are available per run, and how frequently each category appears when using the budget system.
+
+```json
+"item_catalog": {
+  "potion":  { "count": 10, "weight": 50 },
+  "scroll":  { "count": 7,  "weight": 40 },
+  "staff":   { "weight": 15 },
+  "weapon":  { "weight": 10 },
+  "armor":   { "weight": 8 }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `count` | number | (Optional) Randomly select this many types from the pool at the start of a run. Omit to use all types. |
+| `weight` | number | Relative probability when drawing from the budget system. Higher = more common. |
+| `pool` | array | (Optional) Explicit list of item type IDs. If omitted, uses the `random_type` pool from items.json. |
+
+**How `count` works:** If the potion pool has 16 types and `count` is 10, the engine shuffles the pool and picks 10 at random when the prototype loads. Only those 10 potion types will appear for the entire run. This enables a future discovery UI ("5/10 potions discovered").
+
+When an item catalog is active, `random_items` pool references (like `"potion"`) draw from the catalog's subset instead of the full pool. Specific item IDs (like `"health_potion"`) bypass the catalog and always spawn.
+
+---
+
+## Item Budget
+
+The `item_budget` supplements `random_items` by spawning additional items drawn from catalog categories using weighted random selection.
+
+```json
+"item_budget": {
+  "base": 2,
+  "extra_chance": 40,
+  "max_extra": 3
+}
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `base` | number | `3` | Guaranteed number of items spawned per floor |
+| `extra_chance` | number | `50` | Percent chance for each bonus item |
+| `max_extra` | number | `3` | Maximum bonus items to roll for |
+
+Each floor spawns `base` items guaranteed, then rolls up to `max_extra` additional items at `extra_chance`% each. Items are drawn from categories using `weight` from `item_catalog`.
+
+`item_budget` can be set at the prototype level (applies to all floors) or per-floor (overrides the prototype default). It runs after `random_items`, so both systems stack.
+
+**Requires `item_catalog`** — the budget system does nothing without a catalog definition.
+
 ---
 
 ## Win Conditions
@@ -233,6 +313,7 @@ Each floor object can override these fields from the prototype root:
 | `map_generator` | Map generator config for this floor |
 | `random_actors` | Actor spawns for this floor |
 | `random_items` | Item spawns for this floor |
+| `item_budget` | Override the prototype-level item budget for this floor |
 
 Fields not specified in a floor object fall back to the prototype-level defaults.
 

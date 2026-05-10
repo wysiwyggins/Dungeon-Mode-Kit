@@ -72,6 +72,18 @@ Effective strength includes:
 - Bonuses from equipped item `wear_effect`
 - Passive bonuses from inventory items
 
+### 4. Enchantment Bonus
+
+If the weapon has a non-zero `enchantment`, it is added as flat bonus damage after strength scaling:
+
+```
+damage = strength_scaled_damage + enchantment
+```
+
+A Sword +2 deals 2 extra damage per hit. A Sword -1 deals 1 less.
+
+Armor enchantment adds to defense: a Chainmail +1 with `wear_effect.defense: 8` provides 9 total defense.
+
 ## Damage Sources
 
 The system determines damage from sources in priority order:
@@ -132,11 +144,15 @@ The `weapon` attribute can be a boolean (`true`) or a string specifying a weapon
 
 | Attribute | Description |
 |-----------|-------------|
-| `weapon` | `true` or weapon type string (`"knockback"`, `"lifesteal"`, `"critical"`) |
+| `weapon` | `true` — marks item as a weapon |
+| `weapon_proc` | Proc type: `"knockback"`, `"lifesteal"`, or `"critical"` |
 | `collision_effect` | Damage dealt when weapon hits |
-| `collision_sound` | Sound played on weapon hit |
+| `attack_sound` | Sound played on every swing (hit or miss) |
+| `collision_sound` | Sound played on successful hit |
 | `collision_description` | Template for weapon attack messages |
 | `wear_effect` | Stat bonuses when equipped (e.g., `{ "accuracy": 5 }`) |
+| `enchantable` | `true` — item can be enchanted |
+| `enchant_range` | `[min, max]` — random enchantment on spawn |
 
 ### Item Attributes (Armor)
 
@@ -200,6 +216,7 @@ base accuracy attribute
 ```
 base defense attribute (or 0)
 + wear_effect bonuses from all equipped items
++ enchantment bonus from equipped armor
 + passive_effect bonuses from inventory items
 ```
 
@@ -315,26 +332,32 @@ Miss messages are shown when attacks fail the hit roll.
    ├─> Equipped weapon collision_effect (priority)
    └─> Actor's own collision_effect (fallback)
 
-3. Hit roll (if attacker has accuracy)
+3. Weapon swing visual + attack sound
+   ├─> Show weapon swing sprite at target position
+   └─> Play attack_sound (on every swing, hit or miss)
+
+4. Hit roll (if attacker has accuracy)
    ├─> Calculate: accuracy × 0.987^defense (clamped 5-95%)
    ├─> Roll 1-100
    └─> Hit if roll ≤ hit_chance
 
-4. Calculate damage (if hit)
-   ├─> Check critical hit (15% for "critical" weapons)
-   └─> Apply strength multiplier: damage × (strength / 10)
+5. Calculate damage (if hit)
+   ├─> Check critical hit (weapon_proc "critical")
+   ├─> Apply strength multiplier: damage × (strength / 10)
+   └─> Apply weapon enchantment bonus
 
-5. Apply damage
+6. Apply damage
    ├─> Modify target's health stat
+   ├─> Play collision_sound (hit sound)
    ├─> Trigger weapon proc (knockback, lifesteal)
    │   └─> Knockback: push target 1 tile, set stagger flag
    ├─> Update UI immediately
    └─> Check for death (attacker stays on current tile)
 
-6. Target's next turn (if knocked back)
-   └─> Stagger: skip turn, clear flag
+7. On miss
+   └─> Show miss message (no collision_sound)
 
-7. Show combat message
+8. Show combat message
    └─> Template substitution for hit/miss message
 ```
 

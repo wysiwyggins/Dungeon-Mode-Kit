@@ -11,7 +11,9 @@
       "flammable": false,
       "consumable": true,
       "key": true,
-      "collision_effect": { "locked": false },
+      "collision_effect": {
+        "locked": false
+      },
       "collision_description": "You use the [item_name]."
     }
   },
@@ -38,7 +40,10 @@
         "per_turn": -1,
         "display_label": "Fuel",
         "warnings": [
-          { "threshold": 0.1, "message": "Your torch is almost out!" }
+          {
+            "threshold": 0.1,
+            "message": "Your torch is almost out!"
+          }
         ]
       }
     }
@@ -67,7 +72,6 @@
       "flammable": false
     }
   },
-
   "sword": {
     "name": "Sword",
     "tileIndex": "CROSS",
@@ -79,11 +83,19 @@
       "flammable": false,
       "weapon": true,
       "enchantable": true,
-      "collision_effect": { "health": -10 },
+      "collision_effect": {
+        "health": -10
+      },
       "attack_sound": "bow",
       "collision_sound": "hit",
       "collision_description": "[actor_name] [attacks.melee_verbs] the [attacked_actor_name] with [a-an] [weapon_name]!",
-      "wear_effect": { "accuracy": "{strength}" }
+      "wear_effect": {
+        "accuracy": "{strength}"
+      },
+      "enchant_range": [
+        -1,
+        3
+      ]
     }
   },
   "dagger": {
@@ -97,14 +109,21 @@
       "flammable": false,
       "weapon": true,
       "enchantable": true,
-      "collision_effect": { "health": -5 },
+      "collision_effect": {
+        "health": -5
+      },
       "attack_sound": "bow",
       "collision_sound": "hit",
       "collision_description": "[actor_name] stabs the [attacked_actor_name] with [a-an] [weapon_name]!",
-      "wear_effect": { "accuracy": "{strength}" }
+      "wear_effect": {
+        "accuracy": "{strength}"
+      },
+      "enchant_range": [
+        -1,
+        3
+      ]
     }
   },
-
   "arrow": {
     "name": "Arrow",
     "tileIndex": "RIGHTWARDS_ARROW",
@@ -113,11 +132,12 @@
       "visible": true,
       "stackable": true,
       "flammable": true,
-      "collision_effect": { "health": -10 },
+      "collision_effect": {
+        "health": -10
+      },
       "collision_sound": "tap2"
     }
   },
-
   "spike": {
     "name": "Spike",
     "tileIndex": "UPWARDS_ARROW",
@@ -129,21 +149,33 @@
       "flammable": false,
       "use_verb": "Jam",
       "use_effect": "spike_door",
-      "collision_effect": { "health": -5 },
+      "deferred": true,
+      "collision_effect": {
+        "health": -5
+      },
       "collision_sound": "tap2"
     }
   },
-
   "potion": {
     "random_type": [
-      "health_potion", "poison_potion", "strength_potion", "haste_potion",
-      "paralysis_potion", "regeneration_potion", "confusion_potion",
-      "darkness_potion", "hallucination_potion", "levitation_potion",
-      "panacea", "incinertion_potion",
-      "invisibility_potion", "fire_immunity_potion", "slowness_potion", "telepathy_potion"
+      "health_potion",
+      "poison_potion",
+      "strength_potion",
+      "haste_potion",
+      "paralysis_potion",
+      "regeneration_potion",
+      "confusion_potion",
+      "darkness_potion",
+      "hallucination_potion",
+      "levitation_potion",
+      "panacea",
+      "incinertion_potion",
+      "invisibility_potion",
+      "fire_immunity_potion",
+      "slowness_potion",
+      "telepathy_potion"
     ]
   },
-
   "mystery_potion": {
     "name": "Potion",
     "tileIndex": "FEMALE_SYMBOL",
@@ -168,7 +200,6 @@
       "description": "A mysterious potion with unknown effects."
     }
   },
-
   "health_potion": {
     "name": "Potion",
     "tileIndex": "FEMALE_SYMBOL",
@@ -188,11 +219,13 @@
       "breakable": true,
       "break_sound": "glass",
       "use_verb": "Drink",
-      "use_effect": { "health": 20, "apply_state": "confused" },
+      "use_effect": {
+        "health": 20,
+        "apply_state": "confused"
+      },
       "use_sound": "heal"
     }
   },
-
   "strength_potion": {
     "name": "Potion",
     "tileIndex": "FEMALE_SYMBOL",
@@ -210,11 +243,11 @@
       "consumable": true,
       "break_sound": "glass",
       "use_verb": "Drink",
-      "use_effect": { "strength": 2 }
+      "use_effect": {
+        "strength": 2
+      }
     }
   },
-
-
   "incinertion_potion": {
     "name": "Potion",
     "tileIndex": "FEMALE_SYMBOL",
@@ -237,8 +270,6 @@
       "description": "A mysterious potion with unknown effects."
     }
   },
-
-
   "powder_keg": {
     "name": "Powder Keg",
     "tileIndex": "EMPHASIZED_EXCLAMATION_MARK",
@@ -254,7 +285,6 @@
       "description": "A dusty cask of black powder stamped DANGER."
     }
   },
-
   "flower": {
     "name": "Flower",
     "tileIndex": "WHITE_FLORETTE",
@@ -266,7 +296,6 @@
       "tint_variation": true
     }
   },
-
   "mattock": {
     "name": "Mattock",
     "tileIndex": "MATTOCK",
@@ -279,13 +308,18 @@
       "enchantable": true,
       "mining": true,
       "mining_power": 35,
-      "collision_effect": { "health": -5 },
+      "collision_effect": {
+        "health": -5
+      },
       "attack_sound": "bow",
       "collision_sound": "tap2",
-      "collision_description": "[actor_name] swings [a-an] [weapon_name] at the [attacked_actor_name]!"
+      "collision_description": "[actor_name] swings [a-an] [weapon_name] at the [attacked_actor_name]!",
+      "enchant_range": [
+        -1,
+        3
+      ]
     }
   },
-
   "crown": {
     "name": "Crown",
     "tileIndex": "CROWN",
@@ -297,7 +331,13 @@
       "wearable": "top",
       "enchantable": true,
       "pickup_sound": "pickup",
-      "wear_effect": { "strength": 2 }
+      "wear_effect": {
+        "strength": 2
+      },
+      "enchant_range": [
+        -1,
+        2
+      ]
     }
   },
   "horns": {
@@ -309,23 +349,29 @@
       "visible": true,
       "stackable": false,
       "wearable": "top",
-      "wear_effect": { "strength": 5 },
+      "wear_effect": {
+        "strength": 5
+      },
       "description": "A long pair of pale horns."
     }
   },
-
   "gold_nugget": {
     "name": "gold nugget",
     "tileIndex": "INVERSE_THALER_SIGN",
     "tint": "#FFD700",
     "ignore_darkness": true,
-    "random_value": [1, 10],
+    "random_value": [
+      1,
+      10
+    ],
     "attributes": {
       "pickupable": true,
       "visible": true,
       "stackable": false,
       "flammable": false,
-      "pickup_effect": { "wealth": "{value}" },
+      "pickup_effect": {
+        "wealth": "{value}"
+      },
       "description": "A heavy lump of gold."
     }
   },
@@ -335,17 +381,21 @@
     "tint": "#FFD24A",
     "ignore_darkness": true,
     "flickerTint": true,
-    "random_value": [5, 10],
+    "random_value": [
+      5,
+      10
+    ],
     "attributes": {
       "pickupable": true,
       "visible": true,
       "stackable": false,
       "flammable": false,
-      "pickup_effect": { "wealth": "{value}" },
+      "pickup_effect": {
+        "wealth": "{value}"
+      },
       "description": "A heavy lump of gold."
     }
   },
-
   "warhammer": {
     "name": "Warhammer",
     "tileIndex": "LATIN_SMALL_LETTER_R",
@@ -358,14 +408,19 @@
       "enchantable": true,
       "weapon_proc": "knockback",
       "knockback_distance": 1,
-      "collision_effect": { "health": -8 },
+      "collision_effect": {
+        "health": -8
+      },
       "attack_sound": "bow",
       "collision_sound": "hit",
       "collision_description": "[actor_name] smashes [attacked_actor_name] with [a-an] [weapon_name]!",
-      "description": "A heavy hammer that knocks enemies back on hit."
+      "description": "A heavy hammer that knocks enemies back on hit.",
+      "enchant_range": [
+        -1,
+        3
+      ]
     }
   },
-
   "club": {
     "name": "Club",
     "tileIndex": "EXCLAMATION_MARK",
@@ -379,13 +434,18 @@
       "enchantable": true,
       "weapon_proc": "knockback",
       "knockback_distance": 1,
-      "collision_effect": { "health": -10 },
+      "collision_effect": {
+        "health": -10
+      },
       "attack_sound": "bow",
       "collision_sound": "hit",
-      "collision_description": "[actor_name] bashes [attacked_actor_name] with [a-an] [weapon_name]!"
+      "collision_description": "[actor_name] bashes [attacked_actor_name] with [a-an] [weapon_name]!",
+      "enchant_range": [
+        -1,
+        3
+      ]
     }
   },
-
   "vampiric_blade": {
     "name": "Blooddrinker",
     "tileIndex": "CROSS",
@@ -400,14 +460,19 @@
       "enchantable": true,
       "weapon_proc": "lifesteal",
       "lifesteal_percent": 25,
-      "collision_effect": { "health": -6 },
+      "collision_effect": {
+        "health": -6
+      },
       "attack_sound": "bow",
       "collision_sound": "hit",
       "collision_description": "[actor_name] slashes [attacked_actor_name] with [a-an] [weapon_name]!",
-      "description": "A dark blade that drains life from enemies."
+      "description": "A dark blade that drains life from enemies.",
+      "enchant_range": [
+        -1,
+        3
+      ]
     }
   },
-
   "assassin_dagger": {
     "name": "Misericorde",
     "tileIndex": "LATIN_SMALL_LETTER_T",
@@ -420,14 +485,19 @@
       "enchantable": true,
       "weapon_proc": "critical",
       "critical_chance": 15,
-      "collision_effect": { "health": -4 },
+      "collision_effect": {
+        "health": -4
+      },
       "attack_sound": "bow",
       "collision_sound": "hit",
       "collision_description": "[actor_name] stabs [attacked_actor_name] with [a-an] [weapon_name]!",
-      "description": "A lightweight dagger with a 15% chance for critical hits (double damage)."
+      "description": "A lightweight dagger with a 15% chance for critical hits (double damage).",
+      "enchant_range": [
+        -1,
+        3
+      ]
     }
   },
-
   "chainmail": {
     "name": "Chainmail",
     "tileIndex": "WHITE_LEG",
@@ -438,11 +508,16 @@
       "stackable": false,
       "wearable": "lower",
       "enchantable": true,
-      "wear_effect": { "defense": 8 },
-      "description": "Interlocking metal rings that make you harder to hit."
+      "wear_effect": {
+        "defense": 8
+      },
+      "description": "Interlocking metal rings that make you harder to hit.",
+      "enchant_range": [
+        -1,
+        2
+      ]
     }
   },
-
   "plate": {
     "name": "Plate Armor",
     "tileIndex": "WHITE_LEG",
@@ -453,12 +528,19 @@
       "stackable": false,
       "wearable": "lower",
       "enchantable": true,
-      "requires_stat": { "strength": 8 },
-      "wear_effect": { "defense": 10 },
-      "description": "A suit of heavy iron plate. Requires strength 8 to wear."
+      "requires_stat": {
+        "strength": 8
+      },
+      "wear_effect": {
+        "defense": 10
+      },
+      "description": "A suit of heavy iron plate. Requires strength 8 to wear.",
+      "enchant_range": [
+        -1,
+        2
+      ]
     }
   },
-
   "leather_armor": {
     "name": "Leather Armor",
     "tileIndex": "WHITE_LEG",
@@ -469,11 +551,16 @@
       "stackable": false,
       "wearable": "lower",
       "enchantable": true,
-      "wear_effect": { "defense": 4 },
-      "description": "Tough hide armor. Light enough for anyone."
+      "wear_effect": {
+        "defense": 4
+      },
+      "description": "Tough hide armor. Light enough for anyone.",
+      "enchant_range": [
+        -1,
+        2
+      ]
     }
   },
-
   "scale_mail": {
     "name": "Scale Mail",
     "tileIndex": "WHITE_LEG",
@@ -484,12 +571,19 @@
       "stackable": false,
       "wearable": "lower",
       "enchantable": true,
-      "requires_stat": { "strength": 5 },
-      "wear_effect": { "defense": 6 },
-      "description": "Overlapping metal scales riveted to leather. Requires strength 5."
+      "requires_stat": {
+        "strength": 5
+      },
+      "wear_effect": {
+        "defense": 6
+      },
+      "description": "Overlapping metal scales riveted to leather. Requires strength 5.",
+      "enchant_range": [
+        -1,
+        2
+      ]
     }
   },
-
   "helmet": {
     "name": "Helmet",
     "tileIndex": "PARTIAL_WHITE_UNDERSCORE",
@@ -500,11 +594,16 @@
       "stackable": false,
       "wearable": "top",
       "enchantable": true,
-      "wear_effect": { "defense": 3 },
-      "description": "A sturdy iron helm."
+      "wear_effect": {
+        "defense": 3
+      },
+      "description": "A sturdy iron helm.",
+      "enchant_range": [
+        -1,
+        2
+      ]
     }
   },
-
   "rapier": {
     "name": "Rapier",
     "tileIndex": "LATIN_SMALL_LETTER_T",
@@ -518,15 +617,22 @@
       "enchantable": true,
       "weapon_proc": "critical",
       "critical_chance": 20,
-      "collision_effect": { "health": -7 },
+      "collision_effect": {
+        "health": -7
+      },
       "attack_sound": "bow",
       "collision_sound": "hit",
       "collision_description": "[actor_name] thrusts at [attacked_actor_name] with [a-an] [weapon_name]!",
-      "wear_effect": { "accuracy": "{strength}" },
-      "description": "A slender blade with a 20% chance for critical hits."
+      "wear_effect": {
+        "accuracy": "{strength}"
+      },
+      "description": "A slender blade with a 20% chance for critical hits.",
+      "enchant_range": [
+        -1,
+        3
+      ]
     }
   },
-
   "axe": {
     "name": "Axe",
     "tileIndex": "CROSS",
@@ -538,15 +644,22 @@
       "stackable": false,
       "weapon": true,
       "enchantable": true,
-      "collision_effect": { "health": -12 },
+      "collision_effect": {
+        "health": -12
+      },
       "attack_sound": "bow",
       "collision_sound": "hit",
       "collision_description": "[actor_name] cleaves [attacked_actor_name] with [a-an] [weapon_name]!",
-      "wear_effect": { "accuracy": "{strength}" },
-      "description": "A heavy axe that hits hard."
+      "wear_effect": {
+        "accuracy": "{strength}"
+      },
+      "description": "A heavy axe that hits hard.",
+      "enchant_range": [
+        -1,
+        3
+      ]
     }
   },
-
   "spear": {
     "name": "Spear",
     "tileIndex": "SOLIDUS",
@@ -557,15 +670,22 @@
       "stackable": false,
       "weapon": true,
       "enchantable": true,
-      "collision_effect": { "health": -8 },
+      "collision_effect": {
+        "health": -8
+      },
       "attack_sound": "bow",
       "collision_sound": "hit",
       "collision_description": "[actor_name] jabs [attacked_actor_name] with [a-an] [weapon_name]!",
-      "wear_effect": { "accuracy": "{strength}" },
-      "description": "A long spear with decent reach."
+      "wear_effect": {
+        "accuracy": "{strength}"
+      },
+      "description": "A long spear with decent reach.",
+      "enchant_range": [
+        -1,
+        3
+      ]
     }
   },
-
   "mace": {
     "name": "Mace",
     "tileIndex": "EXCLAMATION_MARK",
@@ -578,23 +698,43 @@
       "enchantable": true,
       "weapon_proc": "knockback",
       "knockback_distance": 1,
-      "collision_effect": { "health": -9 },
+      "collision_effect": {
+        "health": -9
+      },
       "attack_sound": "bow",
       "collision_sound": "hit",
       "collision_description": "[actor_name] bashes [attacked_actor_name] with [a-an] [weapon_name]!",
-      "wear_effect": { "accuracy": "{strength}" },
-      "description": "A heavy mace that knocks enemies back on hit."
+      "wear_effect": {
+        "accuracy": "{strength}"
+      },
+      "description": "A heavy mace that knocks enemies back on hit.",
+      "enchant_range": [
+        -1,
+        3
+      ]
     }
   },
-
   "weapon": {
-    "random_type": ["sword", "dagger", "club", "warhammer", "axe", "rapier", "spear", "mace"]
+    "random_type": [
+      "sword",
+      "dagger",
+      "club",
+      "warhammer",
+      "axe",
+      "rapier",
+      "spear",
+      "mace"
+    ]
   },
-
   "armor": {
-    "random_type": ["leather_armor", "chainmail", "scale_mail", "plate", "helmet"]
+    "random_type": [
+      "leather_armor",
+      "chainmail",
+      "scale_mail",
+      "plate",
+      "helmet"
+    ]
   },
-
   "staff_of_fireball": {
     "name": "Staff of Fireball",
     "tileIndex": "SOLIDUS",
@@ -608,9 +748,14 @@
       "treasure_loot": true,
       "use_verb": "Zap",
       "use_effect": "targeted_spell",
+      "deferred": true,
       "charge_stat": "pow",
       "uses": 1,
-      "spell_effect": { "center": "intense_fire", "radius": 1, "outer": "fire" },
+      "spell_effect": {
+        "center": "intense_fire",
+        "radius": 1,
+        "outer": "fire"
+      },
       "projectile_tile": "OPAQUE_INVERSE_DIAMOND_SUITE",
       "projectile_tint": "#FF6600",
       "spell_name": "Fireball",
@@ -626,7 +771,6 @@
       }
     }
   },
-
   "staff_of_lightning": {
     "name": "Staff of Lightning",
     "tileIndex": "SOLIDUS",
@@ -641,9 +785,13 @@
       "treasure_loot": true,
       "use_verb": "Zap",
       "use_effect": "targeted_spell",
+      "deferred": true,
       "charge_stat": "pow",
       "uses": 1,
-      "spell_effect": { "type": "bolt", "bolt_damage": -15 },
+      "spell_effect": {
+        "type": "bolt",
+        "bolt_damage": -15
+      },
       "projectile_tile": "SOLIDUS",
       "projectile_tint": "#FFFF44",
       "spell_name": "Lightning",
@@ -659,7 +807,6 @@
       }
     }
   },
-
   "staff_of_poison": {
     "name": "Staff of Poison",
     "tileIndex": "SOLIDUS",
@@ -674,9 +821,12 @@
       "treasure_loot": true,
       "use_verb": "Zap",
       "use_effect": "targeted_spell",
+      "deferred": true,
       "charge_stat": "pow",
       "uses": 2,
-      "spell_effect": { "apply_state": "poisoned" },
+      "spell_effect": {
+        "apply_state": "poisoned"
+      },
       "projectile_tile": "OPAQUE_INVERSE_DIAMOND_SUITE",
       "projectile_tint": "#44CC44",
       "spell_name": "Poison",
@@ -692,15 +842,27 @@
       }
     }
   },
-
   "staff": {
-    "random_type": ["staff_of_fireball", "staff_of_lightning", "staff_of_poison"]
+    "random_type": [
+      "staff_of_fireball",
+      "staff_of_lightning",
+      "staff_of_poison"
+    ]
   },
-
   "scroll": {
-    "random_type": ["scroll_of_identify", "scroll_of_teleportation", "scroll_of_magic_mapping", "scroll_of_aggravate_monsters", "scroll_of_summon_monsters", "scroll_of_recharging", "scroll_of_shattering", "scroll_of_discord", "scroll_of_negation", "scroll_of_enchantment"]
+    "random_type": [
+      "scroll_of_identify",
+      "scroll_of_teleportation",
+      "scroll_of_magic_mapping",
+      "scroll_of_aggravate_monsters",
+      "scroll_of_summon_monsters",
+      "scroll_of_recharging",
+      "scroll_of_shattering",
+      "scroll_of_discord",
+      "scroll_of_negation",
+      "scroll_of_enchantment"
+    ]
   },
-
   "poison_potion": {
     "name": "Potion",
     "tileIndex": "FEMALE_SYMBOL",
@@ -723,10 +885,11 @@
       "explode_sound": "gas",
       "use_verb": "Drink",
       "use_sound": "swallow",
-      "use_effect": { "apply_state": "poisoned" }
+      "use_effect": {
+        "apply_state": "poisoned"
+      }
     }
   },
-
   "confusion_potion": {
     "name": "Potion",
     "tileIndex": "FEMALE_SYMBOL",
@@ -749,10 +912,11 @@
       "explode_sound": "gas",
       "use_verb": "Drink",
       "use_sound": "swallow",
-      "use_effect": { "apply_state": "confused" }
+      "use_effect": {
+        "apply_state": "confused"
+      }
     }
   },
-
   "haste_potion": {
     "name": "Potion",
     "tileIndex": "FEMALE_SYMBOL",
@@ -774,11 +938,12 @@
       "explode_sound": "gas",
       "breakable": true,
       "use_verb": "Drink",
-      "use_effect": { "apply_state": "hasted" },
+      "use_effect": {
+        "apply_state": "hasted"
+      },
       "use_sound": "swallow"
     }
   },
-
   "paralysis_potion": {
     "name": "Potion",
     "tileIndex": "FEMALE_SYMBOL",
@@ -801,10 +966,11 @@
       "explode_sound": "gas",
       "use_verb": "Drink",
       "use_sound": "swallow",
-      "use_effect": { "apply_state": "paralyzed" }
+      "use_effect": {
+        "apply_state": "paralyzed"
+      }
     }
   },
-
   "regeneration_potion": {
     "name": "Potion",
     "tileIndex": "FEMALE_SYMBOL",
@@ -826,11 +992,12 @@
       "explode_sound": "gas",
       "breakable": true,
       "use_verb": "Drink",
-      "use_effect": { "apply_state": "regenerating" },
+      "use_effect": {
+        "apply_state": "regenerating"
+      },
       "use_sound": "swallow"
     }
   },
-
   "darkness_potion": {
     "name": "Potion",
     "tileIndex": "FEMALE_SYMBOL",
@@ -853,10 +1020,11 @@
       "explode_sound": "gas",
       "use_verb": "Drink",
       "use_sound": "swallow",
-      "use_effect": { "apply_state": "blinded" }
+      "use_effect": {
+        "apply_state": "blinded"
+      }
     }
   },
-
   "hallucination_potion": {
     "name": "Potion",
     "tileIndex": "FEMALE_SYMBOL",
@@ -878,10 +1046,11 @@
       "break_sound": "glass",
       "use_verb": "Drink",
       "use_sound": "swallow",
-      "use_effect": { "apply_state": "hallucinating" }
+      "use_effect": {
+        "apply_state": "hallucinating"
+      }
     }
   },
-
   "panacea": {
     "name": "Potion",
     "tileIndex": "FEMALE_SYMBOL",
@@ -903,7 +1072,6 @@
       "use_effect": "remove_all_states"
     }
   },
-
   "levitation_potion": {
     "name": "Potion",
     "tileIndex": "FEMALE_SYMBOL",
@@ -925,11 +1093,12 @@
       "explode_sound": "gas",
       "breakable": true,
       "use_verb": "Drink",
-      "use_effect": { "apply_state": "flying" },
+      "use_effect": {
+        "apply_state": "flying"
+      },
       "use_sound": "swallow"
     }
   },
-
   "invisibility_potion": {
     "name": "Potion",
     "tileIndex": "FEMALE_SYMBOL",
@@ -949,11 +1118,12 @@
       "breakable": true,
       "break_sound": "glass",
       "use_verb": "Drink",
-      "use_effect": { "apply_state": "invisible" },
+      "use_effect": {
+        "apply_state": "invisible"
+      },
       "use_sound": "swallow"
     }
   },
-
   "fire_immunity_potion": {
     "name": "Potion",
     "tileIndex": "FEMALE_SYMBOL",
@@ -973,11 +1143,12 @@
       "breakable": true,
       "break_sound": "glass",
       "use_verb": "Drink",
-      "use_effect": { "apply_state": "fireproof_temp" },
+      "use_effect": {
+        "apply_state": "fireproof_temp"
+      },
       "use_sound": "swallow"
     }
   },
-
   "slowness_potion": {
     "name": "Potion",
     "tileIndex": "FEMALE_SYMBOL",
@@ -999,11 +1170,12 @@
       "break_sound": "glass",
       "explode_sound": "gas",
       "use_verb": "Drink",
-      "use_effect": { "apply_state": "slowed" },
+      "use_effect": {
+        "apply_state": "slowed"
+      },
       "use_sound": "swallow"
     }
   },
-
   "telepathy_potion": {
     "name": "Potion",
     "tileIndex": "FEMALE_SYMBOL",
@@ -1023,11 +1195,12 @@
       "breakable": true,
       "break_sound": "glass",
       "use_verb": "Drink",
-      "use_effect": { "apply_state": "telepathic" },
+      "use_effect": {
+        "apply_state": "telepathic"
+      },
       "use_sound": "swallow"
     }
   },
-
   "scroll_of_identify": {
     "name": "Scroll",
     "tileIndex": "BEAMED_EIGHTH_NOTES",
@@ -1043,11 +1216,12 @@
       "consumable": true,
       "use_verb": "Read",
       "use_effect": "identify_item",
+      "deferred": true,
       "use_sound": "magic",
-      "description": "A scroll with strange runic markings."
+      "description": "A scroll with strange runic markings.",
+      "use_ceremony": true
     }
   },
-
   "scroll_of_teleportation": {
     "name": "Scroll",
     "tileIndex": "BEAMED_EIGHTH_NOTES",
@@ -1064,10 +1238,10 @@
       "use_verb": "Read",
       "use_effect": "teleport",
       "use_sound": "magic",
-      "description": "A scroll with strange runic markings."
+      "description": "A scroll with strange runic markings.",
+      "use_ceremony": true
     }
   },
-
   "scroll_of_magic_mapping": {
     "name": "Scroll",
     "tileIndex": "BEAMED_EIGHTH_NOTES",
@@ -1084,10 +1258,10 @@
       "use_verb": "Read",
       "use_effect": "reveal_map",
       "use_sound": "magic",
-      "description": "A scroll with strange runic markings."
+      "description": "A scroll with strange runic markings.",
+      "use_ceremony": true
     }
   },
-
   "scroll_of_aggravate_monsters": {
     "name": "Scroll",
     "tileIndex": "BEAMED_EIGHTH_NOTES",
@@ -1104,10 +1278,10 @@
       "use_verb": "Read",
       "use_effect": "aggravate_monsters",
       "use_sound": "magic",
-      "description": "A scroll with strange runic markings."
+      "description": "A scroll with strange runic markings.",
+      "use_ceremony": true
     }
   },
-
   "scroll_of_summon_monsters": {
     "name": "Scroll",
     "tileIndex": "BEAMED_EIGHTH_NOTES",
@@ -1124,10 +1298,10 @@
       "use_verb": "Read",
       "use_effect": "summon_monsters",
       "use_sound": "magic",
-      "description": "A scroll with strange runic markings."
+      "description": "A scroll with strange runic markings.",
+      "use_ceremony": true
     }
   },
-
   "scroll_of_recharging": {
     "name": "Scroll",
     "tileIndex": "BEAMED_EIGHTH_NOTES",
@@ -1144,10 +1318,10 @@
       "use_verb": "Read",
       "use_effect": "recharge_items",
       "use_sound": "magic",
-      "description": "A scroll with strange runic markings."
+      "description": "A scroll with strange runic markings.",
+      "use_ceremony": true
     }
   },
-
   "scroll_of_shattering": {
     "name": "Scroll",
     "tileIndex": "BEAMED_EIGHTH_NOTES",
@@ -1165,10 +1339,10 @@
       "use_effect": "shatter_walls",
       "use_sound": "fireball",
       "effect_radius": 5,
-      "description": "A scroll with strange runic markings."
+      "description": "A scroll with strange runic markings.",
+      "use_ceremony": true
     }
   },
-
   "scroll_of_discord": {
     "name": "Scroll",
     "tileIndex": "BEAMED_EIGHTH_NOTES",
@@ -1183,13 +1357,21 @@
       "stackable": true,
       "consumable": true,
       "use_verb": "Read",
-      "use_effect": "discord",
+      "use_effect": {
+        "apply_state_radius": {
+          "state": "confused",
+          "radius": 5,
+          "filter": "hostile",
+          "message": "A wave of discord washes over nearby creatures!",
+          "empty_message": "The scroll crumbles, but nothing happens."
+        }
+      },
       "use_sound": "magic",
       "effect_radius": 5,
-      "description": "A scroll with strange runic markings."
+      "description": "A scroll with strange runic markings.",
+      "use_ceremony": true
     }
   },
-
   "scroll_of_negation": {
     "name": "Scroll",
     "tileIndex": "BEAMED_EIGHTH_NOTES",
@@ -1204,13 +1386,19 @@
       "stackable": true,
       "consumable": true,
       "use_verb": "Read",
-      "use_effect": "negate_nearby",
+      "use_effect": {
+        "remove_states_radius": {
+          "radius": 5,
+          "message": "A nullifying wave strips away all magical effects!",
+          "empty_message": "The scroll crumbles, but nothing happens."
+        }
+      },
       "use_sound": "magic",
       "effect_radius": 5,
-      "description": "A scroll with strange runic markings."
+      "description": "A scroll with strange runic markings.",
+      "use_ceremony": true
     }
   },
-
   "scroll_of_enchantment": {
     "name": "Scroll",
     "tileIndex": "BEAMED_EIGHTH_NOTES",
@@ -1226,11 +1414,12 @@
       "consumable": true,
       "use_verb": "Read",
       "use_effect": "enchant_item",
+      "deferred": true,
       "use_sound": "magic",
-      "description": "A scroll with strange runic markings."
+      "description": "A scroll with strange runic markings.",
+      "use_ceremony": true
     }
   },
-
   "bread": {
     "name": "Bread",
     "tileIndex": "INVERSE_BULLET",
@@ -1242,12 +1431,13 @@
       "flammable": true,
       "consumable": true,
       "use_verb": "Eat",
-      "use_effect": { "nutrition": 25 },
+      "use_effect": {
+        "nutrition": 25
+      },
       "use_sound": "pickup",
       "description": "A crusty loaf of bread."
     }
   },
-
   "apple": {
     "name": "Apple",
     "tileIndex": "ANIMAL_HEAD",
@@ -1259,12 +1449,13 @@
       "flammable": true,
       "consumable": true,
       "use_verb": "Eat",
-      "use_effect": { "nutrition": 15 },
+      "use_effect": {
+        "nutrition": 15
+      },
       "use_sound": "pickup",
       "description": "A crisp red apple."
     }
   },
-
   "meat": {
     "name": "Meat",
     "tileIndex": "MEAT",
@@ -1276,12 +1467,13 @@
       "flammable": true,
       "consumable": true,
       "use_verb": "Eat",
-      "use_effect": { "nutrition": 40 },
+      "use_effect": {
+        "nutrition": 40
+      },
       "use_sound": "pickup",
       "description": "A hunk of dried meat."
     }
   },
-
   "rations": {
     "name": "Rations",
     "tileIndex": "SEMICOLON",
@@ -1293,9 +1485,289 @@
       "flammable": true,
       "consumable": true,
       "use_verb": "Eat",
-      "use_effect": { "nutrition": 60 },
+      "use_effect": {
+        "nutrition": 60
+      },
       "use_sound": "pickup",
       "description": "A package of preserved travel rations. Very filling."
     }
-  }  
+  },
+  "ring_of_regeneration": {
+    "name": "Ring",
+    "tileIndex": "WHITE_RING",
+    "random_color": true,
+    "identified": false,
+    "unidentified_template": "[color] ring",
+    "identified_template": "Ring of Regeneration",
+    "effect_description": "Your wounds mend slowly",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": false,
+      "passive_effect": {
+        "type": "stat_bonus",
+        "health_per_turn": 1
+      },
+      "description": "Slowly regenerates health while carried."
+    }
+  },
+  "ring_of_protection": {
+    "name": "Ring",
+    "tileIndex": "WHITE_RING",
+    "random_color": true,
+    "identified": false,
+    "unidentified_template": "[color] ring",
+    "identified_template": "Ring of Protection",
+    "effect_description": "You feel shielded",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": false,
+      "passive_effect": {
+        "type": "stat_bonus",
+        "defense": 3
+      },
+      "description": "Provides +3 defense while carried."
+    }
+  },
+  "ring_of_strength": {
+    "name": "Ring",
+    "tileIndex": "WHITE_RING",
+    "random_color": true,
+    "identified": false,
+    "unidentified_template": "[color] ring",
+    "identified_template": "Ring of Strength",
+    "effect_description": "Power courses through you",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": false,
+      "passive_effect": {
+        "type": "stat_bonus",
+        "strength": 2
+      },
+      "description": "Provides +2 strength while carried."
+    }
+  },
+  "ring_of_awareness": {
+    "name": "Ring",
+    "tileIndex": "WHITE_RING",
+    "random_color": true,
+    "identified": false,
+    "unidentified_template": "[color] ring",
+    "identified_template": "Ring of Awareness",
+    "effect_description": "Your senses sharpen",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": false,
+      "passive_effect": {
+        "type": "stat_bonus",
+        "visionRange": 3
+      },
+      "description": "Extends vision range by 3 tiles while carried."
+    }
+  },
+  "ring_of_sustenance": {
+    "name": "Ring",
+    "tileIndex": "WHITE_RING",
+    "random_color": true,
+    "identified": false,
+    "unidentified_template": "[color] ring",
+    "identified_template": "Ring of Sustenance",
+    "effect_description": "Hunger fades",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": false,
+      "passive_effect": {
+        "type": "stat_bonus",
+        "nutrition_per_turn": 0.5
+      },
+      "description": "Slows hunger drain while carried."
+    }
+  },
+  "ring_of_light": {
+    "name": "Ring",
+    "tileIndex": "WHITE_RING",
+    "random_color": true,
+    "identified": false,
+    "unidentified_template": "[color] ring",
+    "identified_template": "Ring of Light",
+    "effect_description": "A warm glow surrounds you",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": false,
+      "light_source": true,
+      "lightRadius": 5,
+      "description": "Emits a soft glow while carried."
+    }
+  },
+  "ring": {
+    "random_type": [
+      "ring_of_regeneration",
+      "ring_of_protection",
+      "ring_of_strength",
+      "ring_of_awareness",
+      "ring_of_sustenance",
+      "ring_of_light"
+    ]
+  },
+  "wand_of_slowness": {
+    "name": "Wand of Slowness",
+    "tileIndex": "EXCLAMATION_MARK",
+    "tint": "#8888FF",
+    "random_color": true,
+    "identified": false,
+    "unidentified_template": "[color_name] wand",
+    "identified_template": "Wand of Slowness",
+    "effect_description": "A beam of lethargy strikes the target.",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": false,
+      "use_verb": "Zap",
+      "use_effect": "targeted_spell",
+      "deferred": true,
+      "charge_stat": "pow",
+      "uses": 3,
+      "spell_range": 8,
+      "spell_effect": {
+        "apply_state": "slowed"
+      },
+      "projectile_tile": "OPAQUE_INVERSE_DIAMOND_SUITE",
+      "projectile_tint": "#8888FF",
+      "spell_name": "Slowness",
+      "cast_sound": "magic",
+      "description": "A slender wand."
+    },
+    "stats": {
+      "pow": {
+        "max": 300,
+        "start": 300,
+        "per_turn": 1,
+        "ready_message": "Your [item_name] is ready."
+      }
+    }
+  },
+  "wand_of_negation": {
+    "name": "Wand of Negation",
+    "tileIndex": "EXCLAMATION_MARK",
+    "tint": "#CCCCCC",
+    "random_color": true,
+    "identified": false,
+    "unidentified_template": "[color_name] wand",
+    "identified_template": "Wand of Negation",
+    "effect_description": "A pulse of null energy strips away enchantments.",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": false,
+      "use_verb": "Zap",
+      "use_effect": "targeted_spell",
+      "deferred": true,
+      "charge_stat": "pow",
+      "uses": 3,
+      "spell_range": 8,
+      "spell_effect": {
+        "remove_states": true
+      },
+      "projectile_tile": "OPAQUE_INVERSE_DIAMOND_SUITE",
+      "projectile_tint": "#CCCCCC",
+      "spell_name": "Negation",
+      "cast_sound": "magic",
+      "description": "A slender wand."
+    },
+    "stats": {
+      "pow": {
+        "max": 300,
+        "start": 300,
+        "per_turn": 1,
+        "ready_message": "Your [item_name] is ready."
+      }
+    }
+  },
+  "wand_of_teleportation": {
+    "name": "Wand of Teleportation",
+    "tileIndex": "EXCLAMATION_MARK",
+    "tint": "#FF44FF",
+    "random_color": true,
+    "identified": false,
+    "unidentified_template": "[color_name] wand",
+    "identified_template": "Wand of Teleportation",
+    "effect_description": "The target vanishes in a flash.",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": false,
+      "use_verb": "Zap",
+      "use_effect": "targeted_spell",
+      "deferred": true,
+      "charge_stat": "pow",
+      "uses": 3,
+      "spell_range": 8,
+      "spell_effect": {
+        "teleport_target": true
+      },
+      "projectile_tile": "OPAQUE_INVERSE_DIAMOND_SUITE",
+      "projectile_tint": "#FF44FF",
+      "spell_name": "Teleportation",
+      "cast_sound": "magic",
+      "description": "A slender wand."
+    },
+    "stats": {
+      "pow": {
+        "max": 300,
+        "start": 300,
+        "per_turn": 1,
+        "ready_message": "Your [item_name] is ready."
+      }
+    }
+  },
+  "wand_of_beckoning": {
+    "name": "Wand of Beckoning",
+    "tileIndex": "EXCLAMATION_MARK",
+    "tint": "#FFAA00",
+    "random_color": true,
+    "identified": false,
+    "unidentified_template": "[color_name] wand",
+    "identified_template": "Wand of Beckoning",
+    "effect_description": "An invisible force drags the target closer.",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": false,
+      "use_verb": "Zap",
+      "use_effect": "targeted_spell",
+      "deferred": true,
+      "charge_stat": "pow",
+      "uses": 3,
+      "spell_range": 10,
+      "spell_effect": {
+        "beckon_target": true
+      },
+      "projectile_tile": "OPAQUE_INVERSE_DIAMOND_SUITE",
+      "projectile_tint": "#FFAA00",
+      "spell_name": "Beckoning",
+      "cast_sound": "magic",
+      "description": "A slender wand."
+    },
+    "stats": {
+      "pow": {
+        "max": 300,
+        "start": 300,
+        "per_turn": 1,
+        "ready_message": "Your [item_name] is ready."
+      }
+    }
+  },
+  "wand": {
+    "random_type": [
+      "wand_of_slowness",
+      "wand_of_negation",
+      "wand_of_teleportation",
+      "wand_of_beckoning"
+    ]
+  }
 }

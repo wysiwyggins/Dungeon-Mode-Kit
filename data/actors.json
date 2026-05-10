@@ -5,7 +5,9 @@
     "tileIndexBase": "LEG",
     "tileIndexTop": "OPAQUE_DARK_SMILING_FACE",
     "vision_range": 20,
-    "collision_effect": { "health": -2 },
+    "collision_effect": {
+      "health": -2
+    },
     "collision_sound": "hit",
     "defaultFacing": "left",
     "facingEnabled": true,
@@ -27,7 +29,6 @@
       }
     }
   },
-
   "skeleton": {
     "name": "Skeleton",
     "description": "Brittle bones stripped of their flesh and animated by some dark magic.",
@@ -35,7 +36,9 @@
     "tileIndexTop": "SKULL",
     "tint": "#fffece",
     "personality": "stationed_melee",
-    "collision_effect": { "health": -5 },
+    "collision_effect": {
+      "health": -5
+    },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
     "attributes": {
@@ -51,7 +54,6 @@
       "health": 30
     }
   },
-
   "ghast": {
     "name": "Ghast",
     "description": "A phantasm casts a baleful, cold light on its surroundings.",
@@ -59,7 +61,9 @@
     "tileIndexTop": "SKULL",
     "tint": "#bbccff",
     "personality": "stationed_melee",
-    "collision_effect": { "health": -5 },
+    "collision_effect": {
+      "health": -5
+    },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
     "attributes": {
@@ -75,7 +79,6 @@
       "health": 60
     }
   },
-
   "turret": {
     "name": "Dart turret",
     "description": "A clockwork blowgun",
@@ -91,7 +94,13 @@
       "remains": "rubble",
       "accuracy": 70
     },
-    "default_items": ["arrow", "arrow", "arrow", "arrow", "arrow"]
+    "default_items": [
+      "arrow",
+      "arrow",
+      "arrow",
+      "arrow",
+      "arrow"
+    ]
   },
   "scutigera_head": {
     "name": "Scutigera",
@@ -101,7 +110,10 @@
     "flipBaseV": true,
     "tint": "#ececec",
     "personality": "scutigera_head",
-    "collision_effect": { "health": -5, "apply_state": "poisoned" },
+    "collision_effect": {
+      "health": -5,
+      "apply_state": "poisoned"
+    },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
@@ -130,7 +142,9 @@
     "flipBaseV": true,
     "tint": "#ececec",
     "personality": "scutigera_body",
-    "collision_effect": { "health": -3 },
+    "collision_effect": {
+      "health": -3
+    },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] lashes at the [attacked_actor_name]!",
     "attributes": {
@@ -147,10 +161,15 @@
   },
   "basilisk": {
     "name": "Basilisk",
-    "tileIndexBase": {"x": 10, "y": 7},
+    "tileIndexBase": {
+      "x": 10,
+      "y": 7
+    },
     "tileIndexTop": "CYCLOPS_FACE",
     "personality": "ranged_attacker",
-    "collision_effect": { "health": -8 },
+    "collision_effect": {
+      "health": -8
+    },
     "collision_sound": "hit",
     "collision_description": "[actor_name] [attacks.melee_verbs] [attacked_actor_name]!",
     "attributes": {
@@ -161,7 +180,6 @@
     },
     "stats": {
       "health": 50
-
     }
   },
   "kobold": {
@@ -172,7 +190,9 @@
     "tint": "#FFBB55",
     "vision_range": 10,
     "personality": "kobold_miner",
-    "collision_effect": { "health": -3 },
+    "collision_effect": {
+      "health": -3
+    },
     "collision_sound": "hit",
     "defaultFacing": "left",
     "facingEnabled": true,
@@ -189,7 +209,9 @@
     "stats": {
       "health": 20
     },
-    "default_items": ["mattock"]
+    "default_items": [
+      "mattock"
+    ]
   },
   "goblin": {
     "name": "goblin",
@@ -201,7 +223,9 @@
     "defaultFacing": "left",
     "facingEnabled": true,
     "personality": "aggressive_melee",
-    "collision_effect": { "health": -3 },
+    "collision_effect": {
+      "health": -3
+    },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] strikes back at [attacked_actor_name]!",
     "attributes": {
@@ -217,8 +241,7 @@
       "health": 15
     }
   },
-
-   "deer": {
+  "deer": {
     "name": "Deer",
     "tileIndexBase": "DOOR_TOP",
     "tileIndexTop": "OPAQUE_DARK_SMILING_FACE",
@@ -232,15 +255,18 @@
     "stats": {
       "health": 10
     },
-    "default_items": ["meat"]
+    "default_items": [
+      "meat"
+    ]
   },
-
   "minotaur": {
     "name": "Asterion",
     "tileIndexBase": "DOOR_TOP",
     "tileIndexTop": "CABESA_DE_VACA",
     "personality": "stationed_melee",
-    "collision_effect": { "health": "-{strength}"},
+    "collision_effect": {
+      "health": "-{strength}"
+    },
     "collision_sound": "hit",
     "attributes": {
       "hostile": true,
@@ -256,8 +282,9 @@
     "stats": {
       "health": 30
     },
-    "default_items": ["horns"]
-
+    "default_items": [
+      "horns"
+    ]
   },
   "tree": {
     "name": "Tree",
@@ -445,7 +472,6 @@
       "remains": "rubble"
     }
   },
-
   "pushable_wall": {
     "name": "Wall",
     "tileIndexBase": "OPAQUE_MEDIUM_SHADE",
@@ -530,7 +556,7 @@
       "entry_sound": "step_mud"
     }
   },
-   "deep_water": {
+  "deep_water": {
     "name": "water",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
@@ -692,7 +718,6 @@
     "spread_chance": 0.3,
     "lifetime": 7
   },
-
   "brazier": {
     "name": "Brazier",
     "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
@@ -705,7 +730,6 @@
       "light_source": true
     }
   },
-
   "down_stairway": {
     "name": "Stairs Down",
     "tileIndexBase": "DOWNWARDS_ARROW_ON_LIGHT_SHADE",
@@ -718,7 +742,6 @@
       "stairway": "down"
     }
   },
-
   "locked_down_stairway": {
     "name": "Sealed Stairs",
     "tileIndexBase": "EMPHASIZED_LATIN_CAPITAL_LETTER_X",
@@ -736,7 +759,6 @@
       "locked": true
     }
   },
-
   "up_stairway": {
     "name": "Stairs Up",
     "tileIndexBase": "UPWARDS_ARROW_ON_LIGHT_SHADE",
@@ -777,7 +799,8 @@
     "personality": "cloud_behavior",
     "attributes": {
       "solid": false,
-      "mass_noun": true
+      "mass_noun": true,
+      "hazard_immune": true
     },
     "collision_effect": {},
     "lifetime": 10
@@ -791,12 +814,12 @@
     "personality": "mist_behavior",
     "attributes": {
       "solid": false,
-      "mass_noun": true
+      "mass_noun": true,
+      "hazard_immune": true
     },
     "collision_effect": {},
     "lifetime": 4
   },
-
   "steam": {
     "name": "steam",
     "tileIndexBase": "BLANK",
@@ -810,10 +833,11 @@
       "flammable": false,
       "mass_noun": true
     },
-    "collision_effect": { "health": -3 },
+    "collision_effect": {
+      "health": -3
+    },
     "lifetime": 6
   },
-
   "sewer_gas": {
     "name": "sewer gas",
     "tileIndexBase": "BLANK",
@@ -825,12 +849,12 @@
     "attributes": {
       "solid": false,
       "mass_noun": true,
-      "apply_state": "nauseated"
+      "apply_state": "nauseated",
+      "hazard_immune": true
     },
     "collision_effect": {},
     "lifetime": 6
   },
-
   "poison_gas_trap": {
     "name": "Poison Gas Trap",
     "tileIndexBase": "INVERSE_BULLET",
@@ -845,10 +869,11 @@
     },
     "trap_spawn": "cloud",
     "trap_spawn_tint": "#55FF55",
-    "trap_collision_effect": { "health": -3 },
+    "trap_collision_effect": {
+      "health": -3
+    },
     "trap_message": "A hidden vent releases poisonous gas!"
   },
-
   "fire_trap": {
     "name": "Fire Trap",
     "tileIndexBase": "INVERSE_BULLET",
@@ -861,11 +886,14 @@
       "trap": true,
       "trap_type": "fire"
     },
-    "trap_effect": { "center": "intense_fire", "radius": 1, "outer": "fire" },
+    "trap_effect": {
+      "center": "intense_fire",
+      "radius": 1,
+      "outer": "fire"
+    },
     "collision_sound": "fireball",
     "trap_message": "Flames erupt from the floor!"
   },
-
   "paralysis_gas_trap": {
     "name": "Paralysis Gas Trap",
     "tileIndexBase": "INVERSE_BULLET",
@@ -883,7 +911,6 @@
     "trap_apply_state": "paralyzed",
     "trap_message": "A numbing gas billows forth!"
   },
-
   "confusion_gas_trap": {
     "name": "Confusion Gas Trap",
     "tileIndexBase": "INVERSE_BULLET",
@@ -901,14 +928,15 @@
     "trap_apply_state": "confused",
     "trap_message": "A disorienting mist fills the air!"
   },
-
   "toad": {
     "name": "Toad",
     "tileIndexBase": "DOOR_TOP",
     "tileIndexTop": "QUOTATION_MARK",
     "flipTopV": true,
     "personality": "stationed_melee",
-    "collision_effect": { "apply_state": "hallucinating" },
+    "collision_effect": {
+      "apply_state": "hallucinating"
+    },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] licks the [attacked_actor_name]!",
     "attributes": {
@@ -919,16 +947,19 @@
       "health": 10
     }
   },
-
   "bat": {
     "name": "Bat",
     "tileIndexBase": "LIGHT_SHADE",
     "tileIndexTop": "CARON",
     "personality": "aggressive_melee",
-    "collision_effect": { "health": -2 },
+    "collision_effect": {
+      "health": -2
+    },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
-    "innate_states": ["flying"],
+    "innate_states": [
+      "flying"
+    ],
     "attributes": {
       "hostile": true,
       "sentient": true,
@@ -939,14 +970,15 @@
       "health": 5
     }
   },
-
   "rat": {
     "name": "Rat",
     "tileIndexBase": "WHITE_LEFTWARDS_HARPOON_BARB_UPWARDS",
     "tileIndexTop": "BLANK",
     "tint": "#222233",
     "personality": "aggressive_melee",
-    "collision_effect": { "health": -2 },
+    "collision_effect": {
+      "health": -2
+    },
     "collision_sound": "hit",
     "defaultFacing": "left",
     "facingEnabled": true,
@@ -957,16 +989,20 @@
       "sentient": true,
       "accuracy": 40
     },
-    "stats": { "health": 12 }
+    "stats": {
+      "health": 12
+    }
   },
-
   "spider": {
     "name": "Spider",
     "tileIndexBase": "ASTERISK",
     "tileIndexTop": "BLANK",
     "tint": "#665544",
     "personality": "stationed_melee",
-    "collision_effect": { "health": -3, "apply_state": "poisoned" },
+    "collision_effect": {
+      "health": -3,
+      "apply_state": "poisoned"
+    },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
@@ -975,16 +1011,19 @@
       "accuracy": 50,
       "defense": 3
     },
-    "stats": { "health": 12 }
+    "stats": {
+      "health": 12
+    }
   },
-
   "wraith": {
     "name": "Wraith",
     "tileIndexBase": "OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE",
     "tileIndexTop": "SKULL",
     "tint": "#6666CC",
     "personality": "aggressive_melee",
-    "collision_effect": { "health": -8 },
+    "collision_effect": {
+      "health": -8
+    },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
     "attributes": {
@@ -997,16 +1036,19 @@
       "strength": 12,
       "remains": "mist"
     },
-    "stats": { "health": 40 }
+    "stats": {
+      "health": 40
+    }
   },
-
   "ogre": {
     "name": "Ogre",
     "tileIndexBase": "DOOR_TOP",
     "tileIndexTop": "OPAQUE_DARK_SMILING_FACE",
     "tint": "#887755",
     "personality": "stationed_melee",
-    "collision_effect": { "health": "-{strength}" },
+    "collision_effect": {
+      "health": "-{strength}"
+    },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
     "attributes": {
@@ -1018,10 +1060,13 @@
       "defense": 8,
       "strength": 15
     },
-    "stats": { "health": 80 },
-    "default_items": ["club"]
+    "stats": {
+      "health": 80
+    },
+    "default_items": [
+      "club"
+    ]
   },
-
   "fire_elemental": {
     "name": "Fire Elemental",
     "tileIndexBase": "BLANK",
@@ -1031,7 +1076,10 @@
     "tint": "#FF6600",
     "flickerTint": true,
     "personality": "aggressive_melee",
-    "collision_effect": { "health": -10, "apply_state": "burning" },
+    "collision_effect": {
+      "health": -10,
+      "apply_state": "burning"
+    },
     "collision_sound": "fireball",
     "collision_description": "The [actor_name] scorches the [attacked_actor_name]!",
     "attributes": {
@@ -1044,16 +1092,19 @@
       "defense": 15,
       "strength": 12
     },
-    "stats": { "health": 50 }
+    "stats": {
+      "health": 50
+    }
   },
-
   "demon": {
     "name": "Demon",
     "tileIndexBase": "LEG",
     "tileIndexTop": "CABESA_DE_VACA",
     "tint": "#CC2200",
     "personality": "aggressive_melee",
-    "collision_effect": { "health": "-{strength}" },
+    "collision_effect": {
+      "health": "-{strength}"
+    },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
     "attributes": {
@@ -1067,9 +1118,10 @@
       "defense": 18,
       "strength": 18
     },
-    "stats": { "health": 70 }
+    "stats": {
+      "health": 70
+    }
   },
-
   "jackal": {
     "name": "Jackal",
     "tileIndexBase": "DOOR_TOP",
@@ -1079,7 +1131,9 @@
     "personality": "aggressive_melee",
     "remains": "meat",
     "death_sound": "hit",
-    "collision_effect": { "health": -2 },
+    "collision_effect": {
+      "health": -2
+    },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
@@ -1097,19 +1151,23 @@
       "health": 5
     }
   },
-
   "monkey": {
     "name": "Monkey",
     "tileIndexBase": "LEG",
     "tileIndexTop": "ANIMAL_HEAD",
     "tileIndexSide": "BOX_BOTTOM_RIGHT",
-    "sideOffset": { "dx": 1, "dy": 0 },
+    "sideOffset": {
+      "dx": 1,
+      "dy": 0
+    },
     "defaultFacing": "left",
     "facingEnabled": true,
     "tint": "#C89664",
     "personality": "pickpocket",
     "death_sound": "hit",
-    "collision_effect": { "health": -3 },
+    "collision_effect": {
+      "health": -3
+    },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] scratches the [attacked_actor_name]!",
     "attributes": {
@@ -1127,7 +1185,6 @@
       "health": 12
     }
   },
-
   "guard": {
     "name": "Guard",
     "tileIndexBase": "LEG",
@@ -1137,7 +1194,9 @@
     "personality": "guard",
     "facingEnabled": true,
     "defaultFacing": "left",
-    "collision_effect": { "health": -6 },
+    "collision_effect": {
+      "health": -6
+    },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] strikes the [attacked_actor_name]!",
     "attributes": {
@@ -1151,7 +1210,6 @@
       "health": 40
     }
   },
-
   "lightning_mage": {
     "name": "Lightning Mage",
     "description": "A robed figure crackling with static charge.",
@@ -1165,7 +1223,9 @@
     "personality": "lightning_mage",
     "facingEnabled": true,
     "defaultFacing": "left",
-    "collision_effect": { "health": -5 },
+    "collision_effect": {
+      "health": -5
+    },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] strikes [attacked_actor_name] with a crackling fist!",
     "attributes": {
@@ -1183,5 +1243,4 @@
       "health": 30
     }
   }
-
 }

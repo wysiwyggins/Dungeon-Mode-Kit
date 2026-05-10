@@ -3141,6 +3141,65 @@ class InterfaceManager {
                 const statesData = this.engine.globalStates;
                 if (statesData?.[spellEffect.apply_state]) {
                     target.applyState(spellEffect.apply_state, statesData[spellEffect.apply_state]);
+                    this.engine.inputManager?.showMessage(`${target.name} is affected!`);
+                }
+            }
+        }
+
+        // Remove all states from target
+        if (spellEffect.remove_states) {
+            const target = entityManager.getSolidActorAt(x, y);
+            if (target && target !== caster && !target.isDead) {
+                const stateNames = Object.keys(target.states || {});
+                for (const sn of stateNames) {
+                    target.removeState(sn, true);
+                }
+                if (stateNames.length > 0) {
+                    this.engine.inputManager?.showMessage(`${target.name}'s enchantments are stripped away!`);
+                }
+            }
+        }
+
+        // Teleport target to random walkable tile
+        if (spellEffect.teleport_target) {
+            const target = entityManager.getSolidActorAt(x, y);
+            if (target && target !== caster && !target.isDead) {
+                const walkable = this.engine.mapManager?.walkableTiles;
+                if (walkable?.length) {
+                    const candidates = walkable.filter(t => !entityManager.getSolidActorAt(t.x, t.y));
+                    if (candidates.length > 0) {
+                        const dest = candidates[Math.floor(ROT.RNG.getUniform() * candidates.length)];
+                        target.x = dest.x;
+                        target.y = dest.y;
+                        target.updateSpritePosition();
+                        this.engine.lightingManager?.computeLighting();
+                        this.engine.inputManager?.showMessage(`${target.name} vanishes!`);
+                    }
+                }
+            }
+        }
+
+        // Pull target toward caster
+        if (spellEffect.beckon_target) {
+            const target = entityManager.getSolidActorAt(x, y);
+            if (target && target !== caster && !target.isDead) {
+                const dx = Math.sign(caster.x - target.x);
+                const dy = Math.sign(caster.y - target.y);
+                let moved = false;
+                // Pull target tile by tile toward caster
+                for (let i = 0; i < 20; i++) {
+                    const nx = target.x + dx;
+                    const ny = target.y + dy;
+                    if (nx === caster.x && ny === caster.y) break;
+                    if (!target.isPassableAt(nx, ny)) break;
+                    target.x = nx;
+                    target.y = ny;
+                    moved = true;
+                }
+                if (moved) {
+                    target.updateSpritePosition();
+                    this.engine.playSound?.('push1');
+                    this.engine.inputManager?.showMessage(`${target.name} is pulled toward you!`);
                 }
             }
         }

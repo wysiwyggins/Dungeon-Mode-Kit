@@ -127,9 +127,14 @@ If `health` drops to 0 or below, the target dies. See [COMBAT.md](/docs/COMBAT.m
 | Attribute | Effect |
 |-----------|--------|
 | `weapon: true` | Marks item as a weapon (affects combat calculations) |
-| `knockback: true` | Pushes target back on hit |
-| `lifesteal: true` | Attacker heals for damage dealt |
-| `critical: N` | Percentage chance to deal double damage |
+| `weapon_proc` | Proc type: `"knockback"`, `"lifesteal"`, or `"critical"` |
+| `knockback_distance` | Tiles to push target on knockback hit (default `1`) |
+| `lifesteal_percent` | Percent of damage healed on lifesteal hit (default `25`) |
+| `critical_chance` | Percent chance for double damage on critical (default `15`) |
+| `attack_sound` | Sound played on every swing (hit or miss). Typically `"bow"` (swish). |
+| `collision_sound` | Sound played on successful hit. Typically `"hit"`. |
+| `enchantable` | Item can receive enchantment bonuses (from scrolls or on spawn) |
+| `enchant_range` | `[min, max]` — random enchantment rolled on spawn. E.g. `[-1, 3]`. |
 
 ---
 
@@ -143,6 +148,8 @@ Items with `use_verb` appear with an action button in the inventory UI.
 | `use_effect` | string or object | What happens on use |
 | `use_sound` | string | Sound played on use |
 | `use_description` | string | Message shown after use (supports `[item_name]`, `[effect_description]`, `[adjectives.yucky]` etc.) |
+| `use_ceremony` | boolean or object | Play a dramatic build-up effect before activation. `true` uses defaults (build sound, darken, flash). Object overrides: `build_sound`, `build_effect`, `release_sound`, `release_effect`, `duration`. |
+| `deferred` | boolean | Item effect requires a follow-up UI interaction (picker, aiming); consumption handled after completion |
 
 ### Object format — stat and state effects
 
@@ -168,6 +175,41 @@ Pass an object to modify stats, attributes, or apply states directly:
 | `"shatter_walls"` | Destroys breakable solid actors within radius 3; triggers a screen shake, amber flash, and radiating tile fill effect |
 | `"targeted_spell"` (bolt) | Bolt spells display a white-blue tile fill along the bolt path with screen shake, instead of a projectile sprite |
 | `"darkness_field"` | Extinguishes all light-source items within radius 5 |
+| `"enchant_item"` | Opens item picker; player selects an `enchantable` item to increase its enchantment by +1 |
+
+### Object format — area effects
+
+Use an object `use_effect` with `apply_state_radius` or `remove_states_radius` for data-driven radius-based effects:
+
+```json
+"use_effect": {
+  "apply_state_radius": {
+    "state": "confused",
+    "radius": 5,
+    "filter": "hostile",
+    "message": "A wave of discord washes over nearby creatures!",
+    "empty_message": "The scroll crumbles, but nothing happens."
+  }
+}
+```
+
+```json
+"use_effect": {
+  "remove_states_radius": {
+    "radius": 5,
+    "message": "A nullifying wave strips away all magical effects!",
+    "empty_message": "The scroll crumbles, but nothing happens."
+  }
+}
+```
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `state` | string | State to apply (for `apply_state_radius`) |
+| `radius` | number | Effect radius in tiles |
+| `filter` | string | `"hostile"`, `"friendly"`, or omit for all actors |
+| `message` | string | Shown when at least one actor is affected |
+| `empty_message` | string | Shown when no actors are in range |
 
 ---
 
@@ -347,6 +389,150 @@ Templates support substitution tokens in `[brackets]`:
   }
 }
 ```
+
+---
+
+## Enchantment
+
+Weapons and armor with `enchantable: true` can have an `enchantment` bonus (positive or negative) that modifies their effectiveness.
+
+### Display
+
+Enchanted items show their bonus as a suffix: **Sword +2**, **Chainmail -1**. Items with enchantment 0 show no suffix.
+
+### Effects
+
+- **Weapons**: Each point of enchantment adds 1 extra damage (applied after strength scaling)
+- **Armor**: Each point of enchantment adds 1 defense (added to `wear_effect.defense`)
+
+### Spawning with Enchantment
+
+Add `enchant_range` to an item's attributes to roll a random enchantment on spawn:
+
+```json
+"sword": {
+  "attributes": {
+    "enchantable": true,
+    "enchant_range": [-1, 3]
+  }
+}
+```
+
+The roll is inclusive: `[-1, 3]` can produce -1, 0, 1, 2, or 3. Items with an explicit `enchantment` value in their data skip the roll.
+
+### Scroll of Enchantment
+
+The `"enchant_item"` use effect opens a picker showing all `enchantable` items in inventory. Selecting one increases its enchantment by +1 and recalculates combat bonuses if the item is equipped.
+
+---
+
+## States (apply_state)
+
+Use effects can apply states from `data/states.json` to the user:
+
+```json
+"use_effect": { "apply_state": "hasted" }
+"use_effect": { "health": 20, "apply_state": "confused" }
+```
+
+States have a `duration` in turns and can grant various properties:
+
+| State property | Effect |
+|---------------|--------|
+| `skip_turn` | Actor loses their turn each round |
+| `extra_turn` | Actor gets a bonus action each round |
+| `skip_every_other_turn` | Actor skips every other turn |
+| `random_movement` | Movement direction is randomized |
+| `per_turn_effect` | Stat change each turn (e.g. `{ "health": -2 }` for poison) |
+| `on_apply_effect` | Stat change applied once when state starts (e.g. `{ "visionRange": -3 }`) |
+| `grants_immunity` | Temporarily grants an immunity attribute (e.g. `"fireproof"`) |
+| `invisible` | Actor cannot be seen by enemies |
+| `telepathic` | Player can see all actors on the map |
+| `flying` | Actor can cross pits and water |
+| `hallucinating` | Visual distortion effect |
+| `remove_on_damage` | State ends when the actor takes damage |
+| `immunity` | Actors with this attribute are immune to the state |
+
+See `data/states.json` for the full list of defined states.
+
+---
+
+## Rings (Passive Items)
+
+Rings provide bonuses while carried in inventory — they don't need to be equipped.
+
+```json
+"ring_of_protection": {
+  "name": "Ring",
+  "tileIndex": "WHITE_RING",
+  "random_color": true,
+  "identified": false,
+  "unidentified_template": "[color] ring",
+  "identified_template": "Ring of Protection",
+  "attributes": {
+    "pickupable": true,
+    "passive_effect": { "type": "stat_bonus", "defense": 3 }
+  }
+}
+```
+
+### Passive Effect Types
+
+| Passive key | Effect |
+|-------------|--------|
+| `defense` | Adds to effective defense |
+| `strength` | Adds to effective strength |
+| `visionRange` | Extends AI detection/vision range |
+| `health_per_turn` | Adds to health regeneration rate |
+| `nutrition_per_turn` | Modifies nutrition drain rate (positive = slower drain) |
+
+Rings can also use `light_source: true` to emit light while carried (no fuel stat needed — glows permanently).
+
+The `ring` pool entry spawns a random ring type. Add `"ring"` to `item_catalog` or `random_items` to include rings in a prototype.
+
+---
+
+## Wands (Targeted Charged Items)
+
+Wands are single-target charged items that apply effects at range. Like staves, they use the `targeted_spell` system with `charge_stat` for charge management. Wands recharge over time and use `random_color` for the identification system.
+
+```json
+"wand_of_slowness": {
+  "name": "Wand of Slowness",
+  "tileIndex": "EXCLAMATION_MARK",
+  "random_color": true,
+  "identified": false,
+  "unidentified_template": "[color_name] wand",
+  "identified_template": "Wand of Slowness",
+  "attributes": {
+    "use_verb": "Zap",
+    "use_effect": "targeted_spell",
+    "deferred": true,
+    "charge_stat": "pow",
+    "uses": 3,
+    "spell_range": 8,
+    "spell_effect": {
+      "apply_state": "slowed"
+    }
+  },
+  "stats": {
+    "pow": { "max": 300, "start": 300, "per_turn": 1 }
+  }
+}
+```
+
+### Spell Effect Properties (Single-Target)
+
+| Property | Type | Effect |
+|----------|------|--------|
+| `apply_state` | string | Apply named state to target actor |
+| `remove_states` | boolean | Strip all states from target actor |
+| `teleport_target` | boolean | Teleport target to a random walkable tile |
+| `beckon_target` | boolean | Pull target toward the caster |
+
+These can be combined with the area-effect properties (`center`, `radius`, `outer`) used by staves. A spell with only single-target properties fires a projectile but spawns no area actors.
+
+The `wand` pool entry spawns a random wand type. Add `"wand"` to `item_catalog` or `random_items` to include wands in a prototype.
 
 ---
 

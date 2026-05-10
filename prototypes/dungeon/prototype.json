@@ -11,6 +11,20 @@
     "viewport_width": 40,
     "viewport_height": 40
   },
+  "item_catalog": {
+    "potion":  { "count": 10, "weight": 50 },
+    "scroll":  { "count": 7,  "weight": 40 },
+    "staff":   { "weight": 15 },
+    "weapon":  { "weight": 10 },
+    "armor":   { "weight": 8 },
+    "ring":    { "weight": 12 },
+    "wand":    { "weight": 10 }
+  },
+  "item_budget": {
+    "base": 2,
+    "extra_chance": 40,
+    "max_extra": 3
+  },
   "map_generator": {
     "type": "digger",
     "options": {

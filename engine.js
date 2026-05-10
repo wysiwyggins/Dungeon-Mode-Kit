@@ -2165,6 +2165,9 @@ class Prototype {
         this.lockColors = [];           // Array of assigned lock colors (color objects)
         this.usedLockColors = new Set(); // Track which colors have been used
         this.unpairedLockColors = [];    // Colors assigned to doors but not yet to keys
+
+        // Item catalog: category -> array of active item types for this run
+        this.activeCatalog = new Map();
     }
 
     async loadAssets() {
@@ -2198,6 +2201,8 @@ class Prototype {
         console.log(`  Actors: ${Object.keys(this.actors).length} (${this.prototypeActorTypes.length} prototype-specific)`);
         console.log(`  Items: ${Object.keys(this.items).length} (${this.prototypeItemTypes.length} prototype-specific)`);
         console.log(`  Personalities: ${Object.keys(this.personalities).length} (${Object.keys(prototypePersonalities).length} prototype-specific)`);
+
+        this.initItemCatalog();
     }
 
     /**
@@ -2224,6 +2229,57 @@ class Prototype {
                 }
             }
         }
+    }
+
+    initItemCatalog() {
+        const catalogConfig = this.config.item_catalog;
+        if (!catalogConfig) return;
+
+        for (const [category, catConfig] of Object.entries(catalogConfig)) {
+            let pool = catConfig.pool;
+
+            // If no explicit pool, fall back to the random_type pool from items.json
+            if (!pool) {
+                const metaItem = this.getItemData(category);
+                if (metaItem?.random_type) {
+                    pool = [...metaItem.random_type];
+                }
+            }
+
+            if (!pool || pool.length === 0) {
+                console.warn(`item_catalog: No pool found for category "${category}"`);
+                continue;
+            }
+
+            let activeTypes;
+            if (catConfig.count !== undefined && catConfig.count < pool.length) {
+                // Shuffle and pick N types for this run
+                const shuffled = [...pool];
+                for (let i = shuffled.length - 1; i > 0; i--) {
+                    const j = Math.floor(ROT.RNG.getUniform() * (i + 1));
+                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                }
+                activeTypes = shuffled.slice(0, catConfig.count);
+            } else {
+                activeTypes = [...pool];
+            }
+
+            this.activeCatalog.set(category, activeTypes);
+            console.log(`item_catalog: ${category} — ${activeTypes.length} types active: ${activeTypes.join(', ')}`);
+        }
+    }
+
+    getCatalogStats(category) {
+        const activeTypes = this.activeCatalog.get(category);
+        if (!activeTypes) return null;
+        const discovered = activeTypes.filter(t => this.identifiedTypes.has(t)).length;
+        return { total: activeTypes.length, discovered };
+    }
+
+    getCatalogTypeForCategory(category) {
+        const activeTypes = this.activeCatalog.get(category);
+        if (!activeTypes || activeTypes.length === 0) return null;
+        return activeTypes[Math.floor(ROT.RNG.getUniform() * activeTypes.length)];
     }
 
     /**
@@ -2550,6 +2606,12 @@ class Item extends Entity {
 
         this.count = 1;
         this.enchantment = data.enchantment ?? 0;
+
+        // Roll random enchantment on spawn if enchant_range is defined and no explicit enchantment
+        if (data.enchantment === undefined && data.attributes?.enchant_range) {
+            const [min, max] = data.attributes.enchant_range;
+            this.enchantment = min + Math.floor(ROT.RNG.getUniform() * (max - min + 1));
+        }
     }
 
     /**
@@ -3031,7 +3093,8 @@ class Actor extends Entity {
     hasAttribute(key) {
         if (super.hasAttribute(key)) return true;
         for (const state of Object.values(this.states)) {
-            if (state.data?.grants_immunity === key) return true;
+            const immunity = state.data?.grants_immunity;
+            if (immunity === key || (Array.isArray(immunity) && immunity.includes(key))) return true;
         }
         return false;
     }
@@ -4234,27 +4297,40 @@ class Actor extends Entity {
             const perTurn = this.getEffectivePerTurn(statName);
             if (perTurn === 0) continue;
 
-            // Apply the per-turn change
             const oldValue = stat.current;
-            stat.current = Math.max(0, Math.min(stat.max, stat.current + perTurn));
-            let newValue = stat.current;
 
-            // restore_from: debit another stat for any per-turn gains
-            if (stat.restore_from && newValue > oldValue) {
-                const sourceStat = this.stats[stat.restore_from];
-                if (sourceStat) {
-                    const gained = newValue - oldValue;
-                    if (sourceStat.current <= 0) {
-                        stat.current = oldValue;
-                    } else if (sourceStat.current < gained) {
-                        stat.current = oldValue + sourceStat.current;
-                        sourceStat.current = 0;
-                    } else {
-                        sourceStat.current -= gained;
+            // Split into base per-turn (subject to restore_from) and passive bonus (always applies)
+            const basePerTurn = stat.per_turn || 0;
+            const passivePerTurn = perTurn - basePerTurn;
+
+            // Apply base per-turn with restore_from gate
+            let baseGain = 0;
+            if (basePerTurn !== 0) {
+                const afterBase = Math.max(0, Math.min(stat.max, stat.current + basePerTurn));
+                baseGain = afterBase - stat.current;
+
+                if (stat.restore_from && baseGain > 0) {
+                    const sourceStat = this.stats[stat.restore_from];
+                    if (sourceStat) {
+                        if (sourceStat.current <= 0) {
+                            baseGain = 0;
+                        } else if (sourceStat.current < baseGain) {
+                            baseGain = sourceStat.current;
+                            sourceStat.current = 0;
+                        } else {
+                            sourceStat.current -= baseGain;
+                        }
                     }
-                    newValue = stat.current;
                 }
+                stat.current += baseGain;
             }
+
+            // Apply passive bonus (bypasses restore_from)
+            if (passivePerTurn !== 0) {
+                stat.current = Math.max(0, Math.min(stat.max, stat.current + passivePerTurn));
+            }
+
+            let newValue = stat.current;
 
             // Only process if value actually changed
             if (oldValue === newValue) continue;
@@ -4638,20 +4714,28 @@ class Actor extends Entity {
 
         const useEffect = item.getAttribute('use_effect');
 
-        // Scroll reading ceremony for player-controlled actors
-        if (this.isPlayerControlled() && useVerb === 'Read') {
+        // Use ceremony — data-driven dramatic effect before item activation
+        const ceremonySetting = item.getAttribute('use_ceremony');
+        if (this.isPlayerControlled() && ceremonySetting) {
+            const ceremony = typeof ceremonySetting === 'object' ? ceremonySetting : {};
             this._scrollCeremonyActive = true;
             this.engine.turnEngine?.lock();
 
-            const soundId = this.engine.playSound('levelout');
-            const darkenId = this.engine.renderer?.effectRunner.apply('scroll_ceremony', this);
+            const buildSound = ceremony.build_sound || 'levelout';
+            const buildEffect = ceremony.build_effect || 'scroll_ceremony';
+            const releaseSound = ceremony.release_sound || 'magic';
+            const releaseEffect = ceremony.release_effect || 'scroll_ceremony_flash';
+            const duration = ceremony.duration || 1000;
+
+            const soundId = this.engine.playSound(buildSound);
+            const darkenId = this.engine.renderer?.effectRunner.apply(buildEffect, this);
 
             setTimeout(() => {
                 this.engine.stopSound(soundId);
                 if (darkenId) this.engine.renderer?.effectRunner.remove(darkenId);
 
-                this.engine.playSound('magic');
-                this.engine.renderer?.effectRunner.apply('scroll_ceremony_flash', this);
+                this.engine.playSound(releaseSound);
+                this.engine.renderer?.effectRunner.apply(releaseEffect, this);
 
                 let success = false;
                 if (useEffect) {
@@ -4660,13 +4744,13 @@ class Actor extends Entity {
                     success = true;
                 }
 
-                if (useEffect !== 'targeted_spell' && useEffect !== 'identify_item' && useEffect !== 'enchant_item') {
+                if (!item.hasAttribute('deferred')) {
                     this._completeItemUse(item, success);
                     this.engine.inputManager?.onPlayerAction();
                 }
 
                 this._scrollCeremonyActive = false;
-            }, 1000);
+            }, duration);
 
             return true;
         }
@@ -4688,9 +4772,8 @@ class Actor extends Entity {
             success = true;
         }
 
-        // For targeted spells and identify picker, consumption/identification happens in the
-        // follow-up UI interaction, not immediately here.
-        if (useEffect === 'targeted_spell' || useEffect === 'identify_item' || useEffect === 'enchant_item' || useEffect === 'spike_door') {
+        // For deferred items, consumption happens in the follow-up UI interaction, not immediately here.
+        if (item.hasAttribute('deferred')) {
             return success; // Early return - handling continues in interface
         }
 
@@ -4742,7 +4825,7 @@ class Actor extends Entity {
             let anyModified = false;
             let shouldDie = false;
             for (const [key, amount] of Object.entries(effect)) {
-                // Handle state application
+                // Handle state application (to self)
                 if (key === 'apply_state') {
                     const stateName = amount;
                     const statesData = this.engine.globalStates;
@@ -4755,6 +4838,57 @@ class Actor extends Entity {
                     } else {
                         console.log(`Unknown state: ${stateName}`);
                     }
+                    continue;
+                }
+
+                // Apply state to actors in radius: { "apply_state_radius": { "state": "confused", "radius": 5, "filter": "hostile" } }
+                if (key === 'apply_state_radius') {
+                    const { state: stateName, radius = 5, filter, message, empty_message } = amount;
+                    const statesData = this.engine.globalStates;
+                    if (!statesData?.[stateName]) continue;
+                    let affected = 0;
+                    for (const actor of this.engine.entityManager?.actors || []) {
+                        if (actor.isDead || actor === this) continue;
+                        if (filter === 'hostile' && !actor.hasAttribute('hostile')) continue;
+                        if (filter === 'friendly' && actor.hasAttribute('hostile')) continue;
+                        const dist = getChebyshevDistance(this.x, this.y, actor.x, actor.y);
+                        if (dist <= radius) {
+                            actor.applyState(stateName, statesData[stateName]);
+                            affected++;
+                        }
+                    }
+                    if (this.isPlayerControlled() && this.engine.inputManager) {
+                        this.engine.inputManager.showMessage(affected > 0
+                            ? (message || `${affected} creatures are affected!`)
+                            : (empty_message || 'Nothing happens.'));
+                    }
+                    anyModified = affected > 0;
+                    continue;
+                }
+
+                // Remove all states from actors in radius: { "remove_states_radius": { "radius": 5, "filter": "hostile", ... } }
+                if (key === 'remove_states_radius') {
+                    const { radius = 5, filter, message, empty_message } = amount;
+                    let affected = 0;
+                    for (const actor of this.engine.entityManager?.actors || []) {
+                        if (actor.isDead || actor === this) continue;
+                        if (filter === 'hostile' && !actor.hasAttribute('hostile')) continue;
+                        if (filter === 'friendly' && actor.hasAttribute('hostile')) continue;
+                        const dist = getChebyshevDistance(this.x, this.y, actor.x, actor.y);
+                        if (dist <= radius) {
+                            const stateNames = Object.keys(actor.states);
+                            for (const sn of stateNames) {
+                                actor.removeState(sn, true);
+                                affected++;
+                            }
+                        }
+                    }
+                    if (this.isPlayerControlled() && this.engine.inputManager) {
+                        this.engine.inputManager.showMessage(affected > 0
+                            ? (message || 'Magical effects are stripped away!')
+                            : (empty_message || 'Nothing happens.'));
+                    }
+                    anyModified = affected > 0;
                     continue;
                 }
 
@@ -4812,7 +4946,7 @@ class Actor extends Entity {
                 const dest = candidates[Math.floor(ROT.RNG.getUniform() * candidates.length)];
                 this.x = dest.x;
                 this.y = dest.y;
-                this.engine.updateEntityPosition(this);
+                this.updateSpritePosition();
                 this.engine.lightingManager?.computeLighting();
                 if (this.isPlayerControlled()) {
                     this.engine.renderer?.centerViewportOnPlayer?.();
@@ -4903,7 +5037,7 @@ class Actor extends Entity {
 
             case 'toggle_torch': {
                 const isLit = item.hasAttribute('light_source');
-                const targetType = isLit ? 'torch_unlit' : 'torch';
+                const targetType = item.getAttribute('toggle_to') || (isLit ? 'torch_unlit' : 'torch');
                 const itemData = this.engine.currentPrototype?.getItemData(targetType);
                 if (!itemData) return false;
 
@@ -5365,7 +5499,7 @@ class Actor extends Entity {
 
             // Only roll if attacker has accuracy attribute AND target is not incapacitated
             // Skip hit roll for stationary objects (breakable actors without health) - always hit
-            const targetIncapacitated = target.hasAttribute('sleeping') || target.hasAttribute('paralyzed');
+            const targetIncapacitated = target.hasStateProperty?.('skip_turn');
             const targetIsStationary = target.hasAttribute('breakable') && (!target.stats || target.stats.health === undefined);
 
             if (attackerAccuracy !== null && !targetIncapacitated && !targetIsStationary) {
@@ -6725,6 +6859,10 @@ class Actor extends Entity {
      * @param {Entity} target - The target to check visibility for
      * @returns {boolean} True if target is within vision range and has clear line of sight
      */
+    getEffectiveVisionRange() {
+        return this.visionRange + this.getPassiveStatBonus('visionRange');
+    }
+
     canSeeTarget(target) {
         if (!target) return false;
 
@@ -6732,7 +6870,7 @@ class Actor extends Entity {
 
         // First check distance
         const distance = getEuclideanDistance(this.x, this.y, target.x, target.y);
-        if (distance > this.visionRange) return false;
+        if (distance > this.getEffectiveVisionRange()) return false;
 
         // Then check actual line of sight
         const isBlocked = (x, y) => {
@@ -7099,6 +7237,7 @@ class EntityManager {
         this.spawnRandomActors(getAvailableTiles, floorConfig);
         this.spawnRandomTraps(getAvailableTiles, floorConfig);
         this.spawnRandomItems(getAvailableTiles, floorConfig);
+        this.spawnBudgetItems(getAvailableTiles, floorConfig);
     }
 
     spawnRandomTraps(getAvailableTiles, floorConfig) {
@@ -7279,9 +7418,10 @@ class EntityManager {
                     continue;
                 }
 
-                // Resolve random_type pool: pick a random specific type
+                // Resolve random_type pool: use catalog if available, else full pool
                 if (itemData.random_type && Array.isArray(itemData.random_type)) {
-                    resolvedType = randomElement(itemData.random_type);
+                    resolvedType = prototype.getCatalogTypeForCategory(itemType)
+                        || randomElement(itemData.random_type);
                     itemData = prototype.getItemData(resolvedType);
                     if (!itemData) {
                         console.warn(`random_items: random_type "${resolvedType}" not found`);
@@ -7313,11 +7453,12 @@ class EntityManager {
                     break;
                 }
 
-                // Resolve random_type pool: pick a random specific type per spawn
+                // Resolve random_type pool: use catalog if available, else full pool
                 let spawnType = itemType;
                 let spawnData = itemData;
                 if (itemData.random_type && Array.isArray(itemData.random_type)) {
-                    spawnType = randomElement(itemData.random_type);
+                    spawnType = prototype.getCatalogTypeForCategory(itemType)
+                        || randomElement(itemData.random_type);
                     spawnData = prototype.getItemData(spawnType);
                     if (!spawnData) {
                         console.warn(`random_items: random_type "${spawnType}" not found`);
@@ -7332,6 +7473,65 @@ class EntityManager {
                 this.addEntity(item);
                 console.log(`random_items: Spawned "${spawnType}" at (${tile.x}, ${tile.y}) (${i + 1}/${count})`);
             }
+        }
+    }
+
+    spawnBudgetItems(getAvailableTiles, floorConfig) {
+        const prototype = this.engine.currentPrototype;
+        const budget = floorConfig?.item_budget ?? prototype?.config?.item_budget;
+        if (!budget || prototype.activeCatalog.size === 0) return;
+
+        const base = budget.base ?? 3;
+        const extraChance = budget.extra_chance ?? 50;
+        const maxExtra = budget.max_extra ?? 3;
+
+        let totalItems = base;
+        for (let i = 0; i < maxExtra; i++) {
+            if (ROT.RNG.getPercentage() <= extraChance) totalItems++;
+        }
+
+        // Build weighted category list from catalog config
+        const catalogConfig = prototype.config.item_catalog;
+        if (!catalogConfig) return;
+
+        const categories = [];
+        let totalWeight = 0;
+        for (const [category, catConfig] of Object.entries(catalogConfig)) {
+            if (!prototype.activeCatalog.has(category)) continue;
+            const weight = catConfig.weight ?? 10;
+            categories.push({ category, weight });
+            totalWeight += weight;
+        }
+
+        if (categories.length === 0 || totalWeight === 0) return;
+
+        for (let i = 0; i < totalItems; i++) {
+            const availableTiles = getAvailableTiles();
+            if (availableTiles.length === 0) break;
+
+            // Weighted random category selection
+            let roll = ROT.RNG.getUniform() * totalWeight;
+            let selectedCategory = categories[0].category;
+            for (const { category, weight } of categories) {
+                roll -= weight;
+                if (roll <= 0) {
+                    selectedCategory = category;
+                    break;
+                }
+            }
+
+            const itemType = prototype.getCatalogTypeForCategory(selectedCategory);
+            if (!itemType) continue;
+
+            const itemData = prototype.getItemData(itemType);
+            if (!itemData) continue;
+
+            const tileIndex = Math.floor(ROT.RNG.getUniform() * availableTiles.length);
+            const tile = availableTiles[tileIndex];
+
+            const item = new Item(tile.x, tile.y, itemType, itemData, this.engine);
+            this.addEntity(item);
+            console.log(`item_budget: Spawned "${itemType}" (${selectedCategory}) at (${tile.x}, ${tile.y})`);
         }
     }
 
@@ -7815,7 +8015,7 @@ class EntityManager {
             if (other === hazard) continue;
 
             if (other.hasAttribute('fire_immune') ||
-                other.type === 'cloud' || other.type === 'mist' || other.type === 'sewer_gas') continue;
+                other.hasAttribute('hazard_immune')) continue;
 
             // Skip flying actors (hovering above ground hazards)
             if (other.hasStateProperty?.('flying')) continue;
