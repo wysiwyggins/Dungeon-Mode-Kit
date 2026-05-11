@@ -628,6 +628,8 @@
       "stackable": false,
       "weapon": true,
       "enchantable": true,
+      "attack_style": "lunge",
+      "lunge_range": 2,
       "weapon_proc": "critical",
       "critical_chance": 20,
       "collision_effect": {
@@ -635,11 +637,11 @@
       },
       "attack_sound": "bow",
       "collision_sound": "hit",
-      "collision_description": "[actor_name] thrusts at [attacked_actor_name] with [a-an] [weapon_name]!",
+      "collision_description": "[actor_name] lunges at [attacked_actor_name] with [a-an] [weapon_name]!",
       "wear_effect": {
         "accuracy": "{strength}"
       },
-      "description": "[damage] damage. [critical_chance]% chance for critical hits.",
+      "description": "[damage] damage. Lunges through gaps. [critical_chance]% critical.",
       "enchant_range": [
         -1,
         3
@@ -657,6 +659,7 @@
       "stackable": false,
       "weapon": true,
       "enchantable": true,
+      "attack_style": "sweep",
       "collision_effect": {
         "health": -12
       },
@@ -666,7 +669,7 @@
       "wear_effect": {
         "accuracy": "{strength}"
       },
-      "description": "[damage] damage.",
+      "description": "[damage] damage. Sweeps all adjacent foes.",
       "enchant_range": [
         -1,
         3
@@ -683,6 +686,8 @@
       "stackable": false,
       "weapon": true,
       "enchantable": true,
+      "attack_style": "penetrate",
+      "penetrate_depth": 1,
       "collision_effect": {
         "health": -8
       },
@@ -692,7 +697,7 @@
       "wear_effect": {
         "accuracy": "{strength}"
       },
-      "description": "[damage] damage.",
+      "description": "[damage] damage. Pierces through to the foe behind.",
       "enchant_range": [
         -1,
         3

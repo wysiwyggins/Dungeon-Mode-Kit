@@ -4540,6 +4540,106 @@ class Actor extends Entity {
         }
     }
 
+    resolveAttackStyle(newX, newY, dx, dy, actorAtTarget) {
+        const weapon = this.getEquippedWeapon();
+        const style = weapon?.getAttribute('attack_style');
+        if (!style) return { handled: false };
+
+        switch (style) {
+            case 'lunge':
+                if (!actorAtTarget) return this._styleLunge(newX, newY, dx, dy, weapon);
+                return { handled: false };
+            case 'sweep':
+                if (actorAtTarget) return this._styleSweep(newX, newY, weapon);
+                return { handled: false };
+            case 'penetrate':
+                if (actorAtTarget) return this._stylePenetrate(newX, newY, dx, dy, actorAtTarget, weapon);
+                return { handled: false };
+            default:
+                return { handled: false };
+        }
+    }
+
+    _styleLunge(newX, newY, dx, dy, weapon) {
+        const range = weapon.getAttribute('lunge_range') ?? 2;
+        const lungeX = this.x + dx * range;
+        const lungeY = this.y + dy * range;
+
+        if (!this.hasFloorAt(lungeX, lungeY)) return { handled: false };
+
+        const target = this.engine.entityManager.getSolidActorAt(lungeX, lungeY);
+        if (!target || target.isDead || target.stats?.health === undefined) return { handled: false };
+
+        if (this.isPlayerControlled()) {
+            this.engine.inputManager?.showMessage('You lunge forward!');
+        }
+
+        // Attack the distant target before the move happens
+        this.applyCollisionEffects(target);
+
+        // Return unhandled so tryMove proceeds with normal movement to the gap tile
+        // (which handles viewport, lighting, item pickup, doors, etc.)
+        return { handled: false };
+    }
+
+    _styleSweep(newX, newY, weapon) {
+        const collisionDx = newX - this.x;
+        if (collisionDx > 0) this.setFacing('right');
+        else if (collisionDx < 0) this.setFacing('left');
+
+        const targets = [];
+        for (let ddx = -1; ddx <= 1; ddx++) {
+            for (let ddy = -1; ddy <= 1; ddy++) {
+                if (ddx === 0 && ddy === 0) continue;
+                const tx = this.x + ddx;
+                const ty = this.y + ddy;
+                const actor = this.engine.entityManager.getSolidActorAt(tx, ty);
+                if (actor && actor !== this && !actor.isDead && actor.stats?.health !== undefined) {
+                    targets.push(actor);
+                }
+            }
+        }
+
+        if (targets.length === 0) return { handled: false };
+
+        if (this.isPlayerControlled() && targets.length > 1) {
+            this.engine.inputManager?.showMessage('You swing in a wide arc!');
+        }
+
+        for (const target of targets) {
+            this.applyCollisionEffects(target);
+        }
+
+        return { handled: true, moved: false, actionTaken: true };
+    }
+
+    _stylePenetrate(newX, newY, dx, dy, actorAtTarget, weapon) {
+        const collisionDx = newX - this.x;
+        if (collisionDx > 0) this.setFacing('right');
+        else if (collisionDx < 0) this.setFacing('left');
+
+        const primaryResult = this.applyCollisionEffects(actorAtTarget);
+
+        const depth = weapon.getAttribute('penetrate_depth') ?? 1;
+        for (let i = 1; i <= depth; i++) {
+            const behindX = newX + dx * i;
+            const behindY = newY + dy * i;
+            const behindActor = this.engine.entityManager.getSolidActorAt(behindX, behindY);
+            if (behindActor && !behindActor.isDead && behindActor.stats?.health !== undefined) {
+                this.applyCollisionEffects(behindActor);
+                if (this.isPlayerControlled()) {
+                    this.engine.inputManager?.showMessage(
+                        `Your ${weapon.getDisplayName?.()} pierces through!`
+                    );
+                }
+            } else {
+                break;
+            }
+        }
+
+        return { handled: true, moved: false, actionTaken: primaryResult.attackAttempted };
+    }
+
     /**
      * Knockback proc: Push target away from attacker
      * @param {Actor} target - The target to knock back
@@ -6167,6 +6267,12 @@ class Actor extends Entity {
                 // Can't push - fall through to normal blocking behavior
             }
 
+            // Check for weapon attack style (sweep, penetrate)
+            const styleResult = this.resolveAttackStyle(newX, newY, newX - this.x, newY - this.y, actorAtTarget);
+            if (styleResult.handled) {
+                return { moved: styleResult.moved, actionTaken: styleResult.actionTaken };
+            }
+
             // Face toward the target
             const collisionDx = newX - this.x;
             if (collisionDx > 0) this.setFacing('right');
@@ -6238,6 +6344,12 @@ class Actor extends Entity {
             }
             this.fall();
             return { moved: true, actionTaken: true }; // Move happened, actor just died
+        }
+
+        // Check for lunge attack before normal movement
+        const lungeResult = this.resolveAttackStyle(newX, newY, newX - this.x, newY - this.y, null);
+        if (lungeResult.handled) {
+            return { moved: lungeResult.moved, actionTaken: lungeResult.actionTaken };
         }
 
         // Move successful - track last position for notable event detection
