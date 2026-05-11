@@ -1644,7 +1644,7 @@
     "tint": "#8888FF",
     "random_color": true,
     "identified": false,
-    "unidentified_template": "[color_name] wand",
+    "unidentified_template": "[color] wand",
     "identified_template": "Wand of Slowness",
     "effect_description": "A beam of lethargy strikes the target.",
     "attributes": {
@@ -1681,7 +1681,7 @@
     "tint": "#CCCCCC",
     "random_color": true,
     "identified": false,
-    "unidentified_template": "[color_name] wand",
+    "unidentified_template": "[color] wand",
     "identified_template": "Wand of Negation",
     "effect_description": "A pulse of null energy strips away enchantments.",
     "attributes": {
@@ -1718,7 +1718,7 @@
     "tint": "#FF44FF",
     "random_color": true,
     "identified": false,
-    "unidentified_template": "[color_name] wand",
+    "unidentified_template": "[color] wand",
     "identified_template": "Wand of Teleportation",
     "effect_description": "The target vanishes in a flash.",
     "attributes": {
@@ -1755,7 +1755,7 @@
     "tint": "#FFAA00",
     "random_color": true,
     "identified": false,
-    "unidentified_template": "[color_name] wand",
+    "unidentified_template": "[color] wand",
     "identified_template": "Wand of Beckoning",
     "effect_description": "An invisible force drags the target closer.",
     "attributes": {
