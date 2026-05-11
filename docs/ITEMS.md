@@ -127,7 +127,10 @@ If `health` drops to 0 or below, the target dies. See [COMBAT.md](/docs/COMBAT.m
 | Attribute | Effect |
 |-----------|--------|
 | `weapon: true` | Marks item as a weapon (affects combat calculations) |
-| `weapon_proc` | Proc type: `"knockback"`, `"lifesteal"`, or `"critical"` |
+| `attack_style` | Targeting pattern: `"lunge"`, `"sweep"`, or `"penetrate"`. See [COMBAT.md](COMBAT.md) |
+| `lunge_range` | Distance to lunge target in tiles (default `2`). Only with `attack_style: "lunge"` |
+| `penetrate_depth` | Extra enemies hit behind the primary target (default `1`). Only with `attack_style: "penetrate"` |
+| `weapon_proc` | Post-hit proc: `"knockback"`, `"lifesteal"`, or `"critical"` |
 | `knockback_distance` | Tiles to push target on knockback hit (default `1`) |
 | `lifesteal_percent` | Percent of damage healed on lifesteal hit (default `25`) |
 | `critical_chance` | Percent chance for double damage on critical (default `15`) |

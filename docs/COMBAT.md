@@ -93,39 +93,95 @@ The system determines damage from sources in priority order:
 
 ## Weapon Types and Proc Effects
 
-The `weapon` attribute can be a boolean (`true`) or a string specifying a weapon type with special effects:
+The `weapon_proc` attribute (or legacy `weapon` string) specifies a post-hit effect:
 
 | Type | Effect |
 |------|--------|
-| `true` or `"normal"` | Standard weapon, no special effect |
-| `"knockback"` | Pushes target 1 tile away on hit, target loses next turn (stagger) |
-| `"lifesteal"` | Heals attacker for 25% of damage dealt |
-| `"critical"` | 15% chance for double damage |
+| `"normal"` (default) | No special effect |
+| `"knockback"` | Pushes target away on hit, target loses next turn (stagger) |
+| `"lifesteal"` | Heals attacker for a percentage of damage dealt |
+| `"critical"` | Chance for double damage |
 
-**Example weapons:**
+| Proc attribute | Default | Description |
+|----------------|---------|-------------|
+| `knockback_distance` | `1` | Tiles to push target |
+| `lifesteal_percent` | `25` | Percent of damage healed |
+| `critical_chance` | `15` | Percent chance for double damage |
+
+---
+
+## Attack Styles
+
+The `attack_style` attribute modifies how a weapon targets enemies. Unlike `weapon_proc` (which fires after a hit), attack styles change who or where gets attacked. A weapon can have both an `attack_style` and a `weapon_proc`.
+
+| Style | Effect |
+|-------|--------|
+| `"lunge"` | Attack an enemy 2 tiles away by moving through the gap |
+| `"sweep"` | Hit all adjacent enemies simultaneously |
+| `"penetrate"` | Pierce through the primary target to hit the enemy behind |
+
+### Lunge
+
+When the player moves toward an empty tile with an enemy further along the same direction, the weapon attacks the distant enemy and the player moves into the gap tile. This is a combined move + attack.
+
+- Triggered when moving into an **empty** tile with a valid target at `lunge_range` tiles away (default `2`)
+- The attacker physically moves to the gap tile, ending up adjacent to the target
+- If no valid lunge target exists, the player walks forward normally — no wasted turn
+- Works in all 8 directions (cardinal and diagonal)
+- All normal combat mechanics apply (hit roll, strength scaling, enchantment, weapon proc)
+
+```
+Before:          After lunge:
+. . E            . @ E     ← player moved to gap, attacked E
+. @ .            . . .
+```
+
+| Attribute | Default | Description |
+|-----------|---------|-------------|
+| `lunge_range` | `2` | Distance to the lunge target in tiles |
+
+### Sweep
+
+When attacking any enemy, all adjacent enemies are hit simultaneously. Each target gets an independent hit roll, damage calculation, and weapon proc.
+
+```
+Before:          On attack:
+. E .            . E .     ← all 3 enemies hit
+E @ E            E @ E
+. . .            . . .
+```
+
+### Penetrate
+
+When attacking an enemy, the attack also strikes the enemy directly behind the target (in the same direction of movement). The chain stops at the first empty tile or non-enemy actor.
+
+```
+Before:          On attack:
+. . .            . . .
+@ E E            @ E E     ← both enemies hit
+. . .            . . .
+```
+
+| Attribute | Default | Description |
+|-----------|---------|-------------|
+| `penetrate_depth` | `1` | How many extra enemies to hit behind the primary target |
+
+### Example: Rapier (lunge + critical)
 
 ```json
-"warhammer": {
+"rapier": {
   "attributes": {
-    "weapon": "knockback",
-    "collision_effect": { "health": -8 }
-  }
-}
-
-"vampiric_blade": {
-  "attributes": {
-    "weapon": "lifesteal",
-    "collision_effect": { "health": -6 }
-  }
-}
-
-"assassin_dagger": {
-  "attributes": {
-    "weapon": "critical",
-    "collision_effect": { "health": -4 }
+    "weapon": true,
+    "attack_style": "lunge",
+    "lunge_range": 2,
+    "weapon_proc": "critical",
+    "critical_chance": 20,
+    "collision_effect": { "health": -7 }
   }
 }
 ```
+
+The rapier lunges through gaps to strike distant enemies, and each hit has a 20% chance to deal double damage.
 
 ## Combat Attributes
 
@@ -145,7 +201,10 @@ The `weapon` attribute can be a boolean (`true`) or a string specifying a weapon
 | Attribute | Description |
 |-----------|-------------|
 | `weapon` | `true` — marks item as a weapon |
+| `attack_style` | Targeting style: `"lunge"`, `"sweep"`, or `"penetrate"` |
 | `weapon_proc` | Proc type: `"knockback"`, `"lifesteal"`, or `"critical"` |
+| `lunge_range` | Lunge target distance (default `2`) |
+| `penetrate_depth` | Extra enemies hit behind target (default `1`) |
 | `collision_effect` | Damage dealt when weapon hits |
 | `attack_sound` | Sound played on every swing (hit or miss) |
 | `collision_sound` | Sound played on successful hit |
@@ -326,7 +385,14 @@ Miss messages are shown when attacks fail the hit roll.
 
 ```
 1. Actor moves into target's tile
+   ├─> tryMove() checks for attack style
+   │   ├─> sweep: attack all adjacent enemies
+   │   ├─> penetrate: attack target + enemy behind
+   │   └─> (no style): proceed to step 2
    └─> tryMove() triggers applyCollisionEffects()
+   
+   OR: Actor moves into empty tile
+   └─> lunge: if enemy at lunge_range, attack it and move to gap
 
 2. Determine damage source
    ├─> Equipped weapon collision_effect (priority)
