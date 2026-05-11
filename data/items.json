@@ -619,9 +619,8 @@
   },
   "rapier": {
     "name": "Rapier",
-    "tileIndex": "LATIN_SMALL_LETTER_T",
+    "tileIndex": "INVERTED_WHITE_CROSS",
     "tint": "#CCCCEE",
-    "flipV": true,
     "attributes": {
       "pickupable": true,
       "visible": true,
