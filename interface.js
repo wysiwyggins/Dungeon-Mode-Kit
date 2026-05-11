@@ -1045,15 +1045,25 @@ class InterfaceManager {
         lines.push(displayName);
         lines.push(''); // blank line
 
-        // Add description if available
-        const description = item.getAttribute('description');
+        // Add description — hide specifics for unidentified items
+        let description = item.getDescription ? item.getDescription() : item.getAttribute('description');
+        if (item.identified === false) {
+            description = null;
+        }
         if (description) {
-            // Word wrap description to fit in menu
             const wrappedDesc = this.wrapText(description, 20);
             for (const line of wrappedDesc) {
                 lines.push(line);
             }
-            lines.push(''); // blank line after description
+            lines.push('');
+        }
+
+        // Show charges for staves/wands (only when identified)
+        const chargeStat = item.getAttribute('charge_stat');
+        if (chargeStat && item.stats?.[chargeStat] && item.identified !== false) {
+            const s = item.stats[chargeStat];
+            lines.push(`Charges: ${s.current}/${s.max}`);
+            lines.push('');
         }
 
         // Add action options with number keys

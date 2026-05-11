@@ -14,7 +14,8 @@
       "collision_effect": {
         "locked": false
       },
-      "collision_description": "You use the [item_name]."
+      "collision_description": "You use the [item_name].",
+      "description": "Opens a locked door, then crumbles to dust."
     }
   },
   "torch": {
@@ -32,7 +33,8 @@
       "burns_out_item": "torch_spent",
       "burnout_message": "Your torch burns out.",
       "use_verb": "Extinguish",
-      "use_effect": "toggle_torch"
+      "use_effect": "toggle_torch",
+      "description": "A burning torch that lights the way."
     },
     "stats": {
       "burns": {
@@ -58,7 +60,8 @@
       "stackable": true,
       "flammable": true,
       "use_verb": "Light",
-      "use_effect": "toggle_torch"
+      "use_effect": "toggle_torch",
+      "description": "An unlit torch. Can be lit when needed."
     }
   },
   "torch_spent": {
@@ -69,7 +72,8 @@
       "pickupable": true,
       "visible": true,
       "stackable": false,
-      "flammable": false
+      "flammable": false,
+      "description": "A burned-out torch. Useless."
     }
   },
   "sword": {
@@ -95,7 +99,8 @@
       "enchant_range": [
         -1,
         3
-      ]
+      ],
+      "description": "[damage] damage. Scales with strength."
     }
   },
   "dagger": {
@@ -121,7 +126,8 @@
       "enchant_range": [
         -1,
         3
-      ]
+      ],
+      "description": "[damage] damage. Quick but weak."
     }
   },
   "arrow": {
@@ -135,7 +141,8 @@
       "collision_effect": {
         "health": -10
       },
-      "collision_sound": "tap2"
+      "collision_sound": "tap2",
+      "description": "A wooden arrow with a sharp point."
     }
   },
   "spike": {
@@ -153,7 +160,8 @@
       "collision_effect": {
         "health": -5
       },
-      "collision_sound": "tap2"
+      "collision_sound": "tap2",
+      "description": "An iron spike. Jam it into a door to hold it shut."
     }
   },
   "potion": {
@@ -165,7 +173,6 @@
       "paralysis_potion",
       "regeneration_potion",
       "confusion_potion",
-      "darkness_potion",
       "hallucination_potion",
       "levitation_potion",
       "panacea",
@@ -223,7 +230,8 @@
         "health": 20,
         "apply_state": "confused"
       },
-      "use_sound": "heal"
+      "use_sound": "heal",
+      "description": "Restores health, but clouds the mind."
     }
   },
   "strength_potion": {
@@ -245,7 +253,8 @@
       "use_verb": "Drink",
       "use_effect": {
         "strength": 2
-      }
+      },
+      "description": "Permanently increases strength."
     }
   },
   "incinertion_potion": {
@@ -293,7 +302,8 @@
       "visible": true,
       "stackable": true,
       "flammable": true,
-      "tint_variation": true
+      "tint_variation": true,
+      "description": "A delicate wildflower."
     }
   },
   "mattock": {
@@ -317,7 +327,8 @@
       "enchant_range": [
         -1,
         3
-      ]
+      ],
+      "description": "[damage] damage. Can break through walls."
     }
   },
   "crown": {
@@ -337,7 +348,8 @@
       "enchant_range": [
         -1,
         2
-      ]
+      ],
+      "description": "Strength +[strength]. A golden crown."
     }
   },
   "horns": {
@@ -414,7 +426,7 @@
       "attack_sound": "bow",
       "collision_sound": "hit",
       "collision_description": "[actor_name] smashes [attacked_actor_name] with [a-an] [weapon_name]!",
-      "description": "A heavy hammer that knocks enemies back on hit.",
+      "description": "[damage] damage. Knocks enemies back [knockback] tile.",
       "enchant_range": [
         -1,
         3
@@ -443,7 +455,8 @@
       "enchant_range": [
         -1,
         3
-      ]
+      ],
+      "description": "[damage] damage. Knocks enemies back [knockback] tile."
     }
   },
   "vampiric_blade": {
@@ -466,7 +479,7 @@
       "attack_sound": "bow",
       "collision_sound": "hit",
       "collision_description": "[actor_name] slashes [attacked_actor_name] with [a-an] [weapon_name]!",
-      "description": "A dark blade that drains life from enemies.",
+      "description": "[damage] damage. Drains [lifesteal]% of damage as health.",
       "enchant_range": [
         -1,
         3
@@ -491,7 +504,7 @@
       "attack_sound": "bow",
       "collision_sound": "hit",
       "collision_description": "[actor_name] stabs [attacked_actor_name] with [a-an] [weapon_name]!",
-      "description": "A lightweight dagger with a 15% chance for critical hits (double damage).",
+      "description": "[damage] damage. [critical_chance]% chance for critical hits.",
       "enchant_range": [
         -1,
         3
@@ -511,7 +524,7 @@
       "wear_effect": {
         "defense": 8
       },
-      "description": "Interlocking metal rings that make you harder to hit.",
+      "description": "[defense] defense. Interlocking metal rings.",
       "enchant_range": [
         -1,
         2
@@ -534,7 +547,7 @@
       "wear_effect": {
         "defense": 10
       },
-      "description": "A suit of heavy iron plate. Requires strength 8 to wear.",
+      "description": "[defense] defense. Requires strength 8 to wear.",
       "enchant_range": [
         -1,
         2
@@ -554,7 +567,7 @@
       "wear_effect": {
         "defense": 4
       },
-      "description": "Tough hide armor. Light enough for anyone.",
+      "description": "[defense] defense. Light enough for anyone.",
       "enchant_range": [
         -1,
         2
@@ -577,7 +590,7 @@
       "wear_effect": {
         "defense": 6
       },
-      "description": "Overlapping metal scales riveted to leather. Requires strength 5.",
+      "description": "[defense] defense. Requires strength 5.",
       "enchant_range": [
         -1,
         2
@@ -597,7 +610,7 @@
       "wear_effect": {
         "defense": 3
       },
-      "description": "A sturdy iron helm.",
+      "description": "[defense] defense. A sturdy iron helm.",
       "enchant_range": [
         -1,
         2
@@ -626,7 +639,7 @@
       "wear_effect": {
         "accuracy": "{strength}"
       },
-      "description": "A slender blade with a 20% chance for critical hits.",
+      "description": "[damage] damage. [critical_chance]% chance for critical hits.",
       "enchant_range": [
         -1,
         3
@@ -653,7 +666,7 @@
       "wear_effect": {
         "accuracy": "{strength}"
       },
-      "description": "A heavy axe that hits hard.",
+      "description": "[damage] damage.",
       "enchant_range": [
         -1,
         3
@@ -679,7 +692,7 @@
       "wear_effect": {
         "accuracy": "{strength}"
       },
-      "description": "A long spear with decent reach.",
+      "description": "[damage] damage.",
       "enchant_range": [
         -1,
         3
@@ -707,7 +720,7 @@
       "wear_effect": {
         "accuracy": "{strength}"
       },
-      "description": "A heavy mace that knocks enemies back on hit.",
+      "description": "[damage] damage. Knocks enemies back [knockback] tile.",
       "enchant_range": [
         -1,
         3
@@ -888,7 +901,8 @@
       "use_sound": "swallow",
       "use_effect": {
         "apply_state": "poisoned"
-      }
+      },
+      "description": "Inflicts a lingering poison."
     }
   },
   "confusion_potion": {
@@ -915,7 +929,8 @@
       "use_sound": "swallow",
       "use_effect": {
         "apply_state": "confused"
-      }
+      },
+      "description": "Scrambles the senses."
     }
   },
   "haste_potion": {
@@ -942,7 +957,8 @@
       "use_effect": {
         "apply_state": "hasted"
       },
-      "use_sound": "swallow"
+      "use_sound": "swallow",
+      "description": "Greatly increases movement speed."
     }
   },
   "paralysis_potion": {
@@ -969,7 +985,8 @@
       "use_sound": "swallow",
       "use_effect": {
         "apply_state": "paralyzed"
-      }
+      },
+      "description": "Locks the body in place."
     }
   },
   "regeneration_potion": {
@@ -996,34 +1013,8 @@
       "use_effect": {
         "apply_state": "regenerating"
       },
-      "use_sound": "swallow"
-    }
-  },
-  "darkness_potion": {
-    "name": "Potion",
-    "tileIndex": "FEMALE_SYMBOL",
-    "flipV": true,
-    "random_color": true,
-    "identified": false,
-    "unidentified_template": "[color] potion",
-    "identified_template": "Potion of Darkness",
-    "effect_description": "Darkness closes in around you",
-    "use_description": "The [item_name] tastes [adjectives.yucky].",
-    "attributes": {
-      "pickupable": true,
-      "visible": true,
-      "stackable": true,
-      "flammable": true,
-      "consumable": true,
-      "explosive": true,
-      "breakable": true,
-      "break_sound": "glass",
-      "explode_sound": "gas",
-      "use_verb": "Drink",
       "use_sound": "swallow",
-      "use_effect": {
-        "apply_state": "blinded"
-      }
+      "description": "Slowly restores health over time."
     }
   },
   "hallucination_potion": {
@@ -1049,7 +1040,8 @@
       "use_sound": "swallow",
       "use_effect": {
         "apply_state": "hallucinating"
-      }
+      },
+      "description": "Warps perception of reality."
     }
   },
   "panacea": {
@@ -1070,7 +1062,8 @@
       "consumable": true,
       "use_verb": "Drink",
       "use_sound": "heal",
-      "use_effect": "remove_all_states"
+      "use_effect": "remove_all_states",
+      "description": "Cures all ailments."
     }
   },
   "levitation_potion": {
@@ -1097,7 +1090,8 @@
       "use_effect": {
         "apply_state": "flying"
       },
-      "use_sound": "swallow"
+      "use_sound": "swallow",
+      "description": "Allows the drinker to float over hazards."
     }
   },
   "invisibility_potion": {
@@ -1122,7 +1116,8 @@
       "use_effect": {
         "apply_state": "invisible"
       },
-      "use_sound": "swallow"
+      "use_sound": "swallow",
+      "description": "Renders the drinker unseen."
     }
   },
   "fire_immunity_potion": {
@@ -1147,7 +1142,8 @@
       "use_effect": {
         "apply_state": "fireproof_temp"
       },
-      "use_sound": "swallow"
+      "use_sound": "swallow",
+      "description": "Grants temporary immunity to fire."
     }
   },
   "slowness_potion": {
@@ -1174,7 +1170,8 @@
       "use_effect": {
         "apply_state": "slowed"
       },
-      "use_sound": "swallow"
+      "use_sound": "swallow",
+      "description": "Drastically slows movement."
     }
   },
   "telepathy_potion": {
@@ -1199,7 +1196,8 @@
       "use_effect": {
         "apply_state": "telepathic"
       },
-      "use_sound": "swallow"
+      "use_sound": "swallow",
+      "description": "Reveals nearby creatures through walls."
     }
   },
   "scroll_of_identify": {
@@ -1471,7 +1469,7 @@
       "consumable": true,
       "use_verb": "Eat",
       "use_effect": {
-        "nutrition": 15
+        "nutrition": 200
       },
       "use_sound": "pickup",
       "description": "A crisp red apple."
@@ -1489,10 +1487,10 @@
       "consumable": true,
       "use_verb": "Eat",
       "use_effect": {
-        "nutrition": 40
+        "nutrition": 400
       },
       "use_sound": "pickup",
-      "description": "A hunk of dried meat."
+      "description": "A hunk of bloody meat."
     }
   },
   "rations": {
@@ -1507,7 +1505,7 @@
       "consumable": true,
       "use_verb": "Eat",
       "use_effect": {
-        "nutrition": 60
+        "nutrition": 500
       },
       "use_sound": "pickup",
       "description": "A package of preserved travel rations. Very filling."
@@ -1548,7 +1546,7 @@
         "type": "stat_bonus",
         "defense": 3
       },
-      "description": "Provides +3 defense while carried."
+      "description": "+[defense] defense while carried."
     }
   },
   "ring_of_strength": {
@@ -1567,7 +1565,7 @@
         "type": "stat_bonus",
         "strength": 2
       },
-      "description": "Provides +2 strength while carried."
+      "description": "+[strength] strength while carried."
     }
   },
   "ring_of_awareness": {
@@ -1586,7 +1584,7 @@
         "type": "stat_bonus",
         "visionRange": 3
       },
-      "description": "Extends vision range by 3 tiles while carried."
+      "description": "+[visionRange] vision range while carried."
     }
   },
   "ring_of_sustenance": {

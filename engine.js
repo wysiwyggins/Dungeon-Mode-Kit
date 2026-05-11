@@ -2882,6 +2882,59 @@ class Item extends Entity {
         return processArticleTemplates(result);
     }
 
+    getDescription() {
+        const raw = this.getAttribute('description');
+        if (!raw) return null;
+        return raw.replace(/\[([^\]]+)\]/g, (match, key) => {
+            if (key.includes('.')) {
+                const [file, category] = key.split('.');
+                let source = null;
+                if (file === 'substances') source = this.engine.globalSubstances;
+                else if (file === 'adjectives') source = this.engine.globalAdjectives;
+                else if (file === 'reagents') source = this.engine.globalReagents;
+                if (source?.[category]?.length) {
+                    if (this.templateVars[key] !== undefined) return this.templateVars[key];
+                    const val = source[category][Math.floor(Math.random() * source[category].length)];
+                    this.templateVars[key] = val;
+                    return val;
+                }
+                return match;
+            }
+            if (key === 'damage') {
+                const base = Math.abs(this.getAttribute('collision_effect')?.health || 0);
+                return base + (this.enchantment || 0);
+            }
+            if (key === 'defense') {
+                const wearDef = this.getAttribute('wear_effect')?.defense || 0;
+                const passiveDef = this.getAttribute('passive_effect')?.defense || 0;
+                return (wearDef || passiveDef) + (this.enchantment || 0);
+            }
+            if (key === 'strength') {
+                return this.getAttribute('wear_effect')?.strength
+                    || this.getAttribute('passive_effect')?.strength || 0;
+            }
+            if (key === 'knockback') {
+                return this.getAttribute('knockback_distance') || 1;
+            }
+            if (key === 'critical_chance') {
+                return this.getAttribute('critical_chance') || 0;
+            }
+            if (key === 'lifesteal') {
+                return this.getAttribute('lifesteal_percent') || 0;
+            }
+            if (key === 'mining_power') {
+                return this.getAttribute('mining_power') || 0;
+            }
+            const passive = this.getAttribute('passive_effect');
+            if (passive && passive[key] !== undefined) return passive[key];
+            if (this.templateVars[key] !== undefined) return this.templateVars[key];
+            if (this[key] !== undefined) return this[key];
+            const attr = this.getAttribute(key);
+            if (attr !== undefined && typeof attr !== 'object') return attr;
+            return match;
+        });
+    }
+
     /**
      * Update sprite position accounting for flip anchor offset
      */
