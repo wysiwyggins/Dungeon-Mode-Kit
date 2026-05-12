@@ -6392,12 +6392,46 @@ class Actor extends Entity {
 
         // Move successful - track last position for notable event detection
         this._lastPosition = { x: this.x, y: this.y };
+
+        // Check if leaving a liquid tile — pick up its tint for wet tracks
+        const liquidAtOld = this.engine.entityManager._getLiquidActorAt(this.x, this.y);
+        if (liquidAtOld && liquidAtOld.tint != null) {
+            this._liquidTrackTint = liquidAtOld.tint;
+            this._liquidTrackSteps = 3;
+            this._liquidTrackLastEntity = null;
+        }
+
+        const moveDir = this.getMovementDirection(
+            { x: this.x, y: this.y }, { x: newX, y: newY }
+        );
+
         const moveDx = newX - this.x;
         if (moveDx > 0) this.setFacing('right');
         else if (moveDx < 0) this.setFacing('left');
         this.x = newX;
         this.y = newY;
         this.updateSpritePosition();
+
+        // Leave liquid tracks on the new tile
+        if (this._liquidTrackSteps > 0) {
+            const liquidAtNew = this.engine.entityManager._getLiquidActorAt(newX, newY);
+            if (!liquidAtNew) {
+                const em = this.engine.entityManager;
+                // Update previous track segment to connect toward this tile
+                if (this._liquidTrackLastEntity) {
+                    em.updateLiquidTrackTile(
+                        this._liquidTrackLastEntity,
+                        this._liquidTrackLastEntity._trackEntryDir,
+                        moveDir
+                    );
+                }
+                const track = em.spawnLiquidTrack(
+                    newX, newY, this._liquidTrackTint, moveDir, null
+                );
+                this._liquidTrackLastEntity = track;
+                this._liquidTrackSteps--;
+            }
+        }
 
         // Viewport snap check after successful move
         if (this.isPlayerControlled() && this.engine.viewportEnabled) {
@@ -8371,6 +8405,67 @@ class EntityManager {
         this.entities.push(entity);
 
         return entity;
+    }
+
+    spawnLiquidTrack(x, y, tint, entryDir, exitDir) {
+        const tileName = this.getLiquidTrackTileName(entryDir, exitDir);
+        const tileIndex = this.engine.spriteLibrary.getTileByName(tileName);
+        if (!tileIndex) return null;
+
+        const entity = new Entity(x, y, 'liquid_track', this.engine);
+        entity.name = 'tracks';
+        entity.tint = tint;
+        entity.fillColor = null;
+        entity.tileIndex = tileIndex;
+        entity.setAttribute('visible', true);
+        entity._trackEntryDir = entryDir;
+        entity._trackExitDir = exitDir;
+
+        this.engine.renderer?.createEntitySprite(entity);
+        this.entities.push(entity);
+        return entity;
+    }
+
+    getLiquidTrackTileName(entryDir, exitDir) {
+        if (!entryDir && !exitDir) return 'WHITE_DOTTED_BOX_HORIZONTAL';
+        if (!entryDir) {
+            return (exitDir === 'up' || exitDir === 'down')
+                ? 'WHITE_DOTTED_BOX_VERTICAL' : 'WHITE_DOTTED_BOX_HORIZONTAL';
+        }
+        if (!exitDir) {
+            return (entryDir === 'up' || entryDir === 'down')
+                ? 'WHITE_DOTTED_BOX_VERTICAL' : 'WHITE_DOTTED_BOX_HORIZONTAL';
+        }
+        const reverseDir = { 'up': 'down', 'down': 'up', 'left': 'right', 'right': 'left' };
+        const connectFrom = reverseDir[entryDir];
+        const connectTo = exitDir;
+        const connections = [connectFrom, connectTo].sort().join('-');
+        const tileMap = {
+            'down-up': 'WHITE_DOTTED_BOX_VERTICAL',
+            'left-right': 'WHITE_DOTTED_BOX_HORIZONTAL',
+            'left-up': 'WHITE_DOTTED_BOX_BOTTOM_RIGHT',
+            'right-up': 'WHITE_DOTTED_BOX_BOTTOM_LEFT',
+            'down-left': 'WHITE_DOTTED_BOX_TOP_RIGHT',
+            'down-right': 'WHITE_DOTTED_BOX_TOP_LEFT'
+        };
+        return tileMap[connections] || 'WHITE_DOTTED_BOX_HORIZONTAL';
+    }
+
+    updateLiquidTrackTile(entity, entryDir, exitDir) {
+        const tileName = this.getLiquidTrackTileName(entryDir, exitDir);
+        const tileIndex = this.engine.spriteLibrary.getTileByName(tileName);
+        if (!tileIndex || !entity.sprite) return;
+        entity.tileIndex = tileIndex;
+        entity._trackEntryDir = entryDir;
+        entity._trackExitDir = exitDir;
+        const tileset = PIXI.Loader.shared.resources.tiles;
+        const rect = new PIXI.Rectangle(
+            tileIndex.x * globalVars.TILE_WIDTH,
+            tileIndex.y * globalVars.TILE_HEIGHT,
+            globalVars.TILE_WIDTH,
+            globalVars.TILE_HEIGHT
+        );
+        entity.sprite.texture = new PIXI.Texture(tileset.texture.baseTexture, rect);
     }
 
     /**

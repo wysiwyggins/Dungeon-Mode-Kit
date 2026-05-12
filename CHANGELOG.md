@@ -25,6 +25,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Abysses/ Rope bridges (needs testing)
 - Mining (works but requires testing and refinement, Currently 3 hits always removes a breakable actor, which feels unnatural)
 
+## [1.7b] 2026-05-12
+
+### Added
+
+- **Attract screen**: prototypes display a "Click to Play" splash overlay on initial load — solid OPAQUE_FULL_BLOCK grid with randomly flipped tiles and white text rendered from new white tile variants. Click, tap, or any keypress triggers a radial wipe originating from the player's position (or viewport center in observer mode) that reveals the game underneath. Input and the turn engine remain disabled until the wipe completes. Splash only appears on first load; floor transitions skip it.
+
 ## [1.6b] 2026-05-08
 
 ### Added
