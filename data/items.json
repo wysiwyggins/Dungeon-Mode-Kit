@@ -80,6 +80,7 @@
     "name": "Sword",
     "tileIndex": "CROSS",
     "flipV": true,
+    "identified": false,
     "attributes": {
       "pickupable": true,
       "visible": true,
@@ -107,6 +108,7 @@
     "name": "Dagger",
     "tileIndex": "LATIN_SMALL_LETTER_T",
     "flipV": true,
+    "identified": false,
     "attributes": {
       "pickupable": true,
       "visible": true,
@@ -309,6 +311,7 @@
   "mattock": {
     "name": "Mattock",
     "tileIndex": "MATTOCK",
+    "identified": false,
     "attributes": {
       "pickupable": true,
       "visible": true,
@@ -334,6 +337,7 @@
   "crown": {
     "name": "Crown",
     "tileIndex": "CROWN",
+    "identified": false,
     "tint": "#FFD700",
     "attributes": {
       "pickupable": true,
@@ -411,6 +415,7 @@
   "warhammer": {
     "name": "Warhammer",
     "tileIndex": "LATIN_SMALL_LETTER_R",
+    "identified": false,
     "attributes": {
       "pickupable": true,
       "visible": true,
@@ -436,6 +441,7 @@
   "club": {
     "name": "Club",
     "tileIndex": "EXCLAMATION_MARK",
+    "identified": false,
     "tint": "#AA8855",
     "attributes": {
       "pickupable": true,
@@ -464,6 +470,7 @@
     "tileIndex": "CROSS",
     "flipV": true,
     "tint": "#880000",
+    "identified": false,
     "attributes": {
       "pickupable": true,
       "visible": true,
@@ -489,6 +496,7 @@
   "assassin_dagger": {
     "name": "Misericorde",
     "tileIndex": "LATIN_SMALL_LETTER_T",
+    "identified": false,
     "attributes": {
       "pickupable": true,
       "visible": true,
@@ -515,6 +523,7 @@
     "name": "Chainmail",
     "tileIndex": "WHITE_LEG",
     "tint": "#CCEECC",
+    "identified": false,
     "attributes": {
       "pickupable": true,
       "visible": true,
@@ -533,6 +542,7 @@
   },
   "plate": {
     "name": "Plate Armor",
+    "identified": false,
     "tileIndex": "WHITE_LEG",
     "tint": "#888888",
     "attributes": {
@@ -558,6 +568,7 @@
     "name": "Leather Armor",
     "tileIndex": "WHITE_LEG",
     "tint": "#AA7744",
+    "identified": false,
     "attributes": {
       "pickupable": true,
       "visible": true,
@@ -578,6 +589,7 @@
     "name": "Scale Mail",
     "tileIndex": "WHITE_LEG",
     "tint": "#669966",
+    "identified": false,
     "attributes": {
       "pickupable": true,
       "visible": true,
@@ -601,6 +613,7 @@
     "name": "Helmet",
     "tileIndex": "PARTIAL_WHITE_UNDERSCORE",
     "tint": "#9999AA",
+    "identified": false,
     "attributes": {
       "pickupable": true,
       "visible": true,
@@ -621,6 +634,7 @@
     "name": "Rapier",
     "tileIndex": "INVERTED_WHITE_CROSS",
     "tint": "#CCCCEE",
+    "identified": false,
     "attributes": {
       "pickupable": true,
       "visible": true,
@@ -652,6 +666,7 @@
     "tileIndex": "CROSS",
     "tint": "#996633",
     "flipV": true,
+    "identified": false,
     "attributes": {
       "pickupable": true,
       "visible": true,
@@ -679,6 +694,7 @@
     "name": "Spear",
     "tileIndex": "SOLIDUS",
     "tint": "#BBAA88",
+    "identified": false,
     "attributes": {
       "pickupable": true,
       "visible": true,
@@ -707,6 +723,7 @@
     "name": "Mace",
     "tileIndex": "EXCLAMATION_MARK",
     "tint": "#AAAAAA",
+    "identified": false,
     "attributes": {
       "pickupable": true,
       "visible": true,
@@ -1527,11 +1544,11 @@
       "pickupable": true,
       "visible": true,
       "stackable": false,
-      "passive_effect": {
-        "type": "stat_bonus",
+      "wearable": "ring",
+      "wear_effect": {
         "health_per_turn": 1
       },
-      "description": "Slowly regenerates health while carried."
+      "description": "Slowly regenerates health while worn."
     }
   },
   "ring_of_protection": {
@@ -1546,11 +1563,11 @@
       "pickupable": true,
       "visible": true,
       "stackable": false,
-      "passive_effect": {
-        "type": "stat_bonus",
+      "wearable": "ring",
+      "wear_effect": {
         "defense": 3
       },
-      "description": "+[defense] defense while carried."
+      "description": "+[defense] defense while worn."
     }
   },
   "ring_of_strength": {
@@ -1565,11 +1582,11 @@
       "pickupable": true,
       "visible": true,
       "stackable": false,
-      "passive_effect": {
-        "type": "stat_bonus",
+      "wearable": "ring",
+      "wear_effect": {
         "strength": 2
       },
-      "description": "+[strength] strength while carried."
+      "description": "+[strength] strength while worn."
     }
   },
   "ring_of_awareness": {
@@ -1584,11 +1601,11 @@
       "pickupable": true,
       "visible": true,
       "stackable": false,
-      "passive_effect": {
-        "type": "stat_bonus",
+      "wearable": "ring",
+      "wear_effect": {
         "visionRange": 3
       },
-      "description": "+[visionRange] vision range while carried."
+      "description": "+[visionRange] vision range while worn."
     }
   },
   "ring_of_sustenance": {
@@ -1603,11 +1620,11 @@
       "pickupable": true,
       "visible": true,
       "stackable": false,
-      "passive_effect": {
-        "type": "stat_bonus",
+      "wearable": "ring",
+      "wear_effect": {
         "nutrition_per_turn": 0.5
       },
-      "description": "Slows hunger drain while carried."
+      "description": "Slows hunger drain while worn."
     }
   },
   "ring_of_light": {
@@ -1622,9 +1639,10 @@
       "pickupable": true,
       "visible": true,
       "stackable": false,
+      "wearable": "ring",
       "light_source": true,
       "lightRadius": 5,
-      "description": "Emits a soft glow while carried."
+      "description": "Emits a soft glow while worn."
     }
   },
   "ring": {

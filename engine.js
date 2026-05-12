@@ -2598,8 +2598,11 @@ class Item extends Entity {
 
         // Identification status - check if this type was already identified
         if (data.identified === false) {
-            // Item starts unidentified, but check if type was already identified this session
-            this.identified = engine.currentPrototype?.isTypeIdentified(type) ?? false;
+            if (data.attributes?.enchantable) {
+                this.identified = false;
+            } else {
+                this.identified = engine.currentPrototype?.isTypeIdentified(type) ?? false;
+            }
         } else {
             this.identified = data.identified ?? true;
         }
@@ -2654,6 +2657,8 @@ class Item extends Entity {
         if (this.enchantment < 0 && this.hasAttribute('enchantable')) {
             this.setAttribute('cursed', true);
         }
+
+        this.combatUseCount = 0;
     }
 
     /**
@@ -2806,9 +2811,14 @@ class Item extends Entity {
         // If no template, return base name with enchantment suffix
         if (!template) {
             let name = this.name;
-            if (this.enchantment && this.enchantment !== 0) {
-                const sign = this.enchantment > 0 ? '+' : '';
-                name += ` ${sign}${this.enchantment}`;
+            if (this.identified !== false) {
+                if (this.enchantment < 0 && this.hasAttribute('cursed')) {
+                    name = `Cursed ${name}`;
+                }
+                if (this.enchantment && this.enchantment !== 0) {
+                    const sign = this.enchantment > 0 ? '+' : '';
+                    name += ` ${sign}${this.enchantment}`;
+                }
             }
             return name;
         }
@@ -2861,8 +2871,7 @@ class Item extends Entity {
      */
     identify() {
         this.identified = true;
-        // Notify the prototype so all items of this type become identified
-        if (this.engine.currentPrototype) {
+        if (!this.hasAttribute('enchantable') && this.engine.currentPrototype) {
             this.engine.currentPrototype.identifyType(this.type);
         }
     }
@@ -2963,6 +2972,8 @@ class Item extends Entity {
             if (key === 'mining_power') {
                 return this.getAttribute('mining_power') || 0;
             }
+            const wearEff = this.getAttribute('wear_effect');
+            if (wearEff && wearEff[key] !== undefined) return wearEff[key];
             const passive = this.getAttribute('passive_effect');
             if (passive && passive[key] !== undefined) return passive[key];
             if (this.templateVars[key] !== undefined) return this.templateVars[key];
@@ -3004,6 +3015,7 @@ class Item extends Entity {
             stats: this.stats ? JSON.parse(JSON.stringify(this.stats)) : {},
             count: this.count,
             enchantment: this.enchantment,
+            combatUseCount: this.combatUseCount || 0,
             isItem: true
         };
     }
@@ -3014,6 +3026,7 @@ class Item extends Entity {
         if (data.templateVars) this.templateVars = { ...data.templateVars };
         if (data.stats) this.stats = JSON.parse(JSON.stringify(data.stats));
         if (data.count !== undefined) this.count = data.count;
+        if (data.combatUseCount !== undefined) this.combatUseCount = data.combatUseCount;
         if (data.enchantment !== undefined) this.enchantment = data.enchantment;
     }
 }
@@ -3063,7 +3076,9 @@ class Actor extends Entity {
             weapon: null,
             top: null,
             middle: null,
-            lower: null
+            lower: null,
+            ring1: null,
+            ring2: null
         };
         this.spriteEquipment = {
             weapon: null,
@@ -3228,6 +3243,11 @@ class Actor extends Entity {
             const slot = item.getAttribute('wearable');
             if (slot && ['top', 'middle', 'lower'].includes(slot)) {
                 this.equipToSlot(item, slot);
+            }
+            if (slot === 'ring') {
+                const ringSlot = !this.equipment.ring1 ? 'ring1' :
+                                 !this.equipment.ring2 ? 'ring2' : null;
+                if (ringSlot) this.equipToSlot(item, ringSlot);
             }
         }
 
@@ -3690,9 +3710,9 @@ class Actor extends Entity {
         // Apply wear effects to actor
         this.applyWearEffect(item);
 
-        // Create sprite for the equipped item (skip for weapons - they don't render on actor)
+        // Create sprite for the equipped item (skip for weapons/rings - they don't render on actor)
         // Only create sprite if renderer exists and actor sprites have been created
-        if (slot !== 'weapon' && this.engine.renderer && this.spriteBase) {
+        if (slot !== 'weapon' && slot !== 'ring1' && slot !== 'ring2' && this.engine.renderer && this.spriteBase) {
             this.spriteEquipment[slot] = this.engine.renderer.createEquipmentSprite(
                 this,
                 item,
@@ -3703,8 +3723,13 @@ class Actor extends Entity {
         console.log(`${this.name} equipped ${item.name} (${slot})`);
 
         if (item.hasAttribute('cursed') && this.isPlayerControlled()) {
+            item.identified = true;
             this.engine.inputManager?.showMessage(`You feel a malevolent force bind the ${item.getDisplayName?.()} to you!`);
             this.engine.playSound?.('tone1');
+        }
+
+        if (item.hasAttribute('light_source')) {
+            this.engine.lightingManager?.computeLighting();
         }
 
         // Check if this triggers win conditions (for player only)
@@ -3732,6 +3757,10 @@ class Actor extends Entity {
 
         // Clear the slot
         this.equipment[slot] = null;
+
+        if (item.hasAttribute('light_source')) {
+            this.engine.lightingManager?.computeLighting();
+        }
 
         console.log(`${this.name} unequipped ${item.name}`);
 
@@ -3841,7 +3870,8 @@ class Actor extends Entity {
      * @returns {boolean}
      */
     hasEquippedItems() {
-        return this.equipment.top || this.equipment.middle || this.equipment.lower;
+        return this.equipment.top || this.equipment.middle || this.equipment.lower ||
+               this.equipment.ring1 || this.equipment.ring2;
     }
 
     /**
@@ -3878,7 +3908,9 @@ class Actor extends Entity {
         return this.equipment.weapon === item ||
                this.equipment.top === item ||
                this.equipment.middle === item ||
-               this.equipment.lower === item;
+               this.equipment.lower === item ||
+               this.equipment.ring1 === item ||
+               this.equipment.ring2 === item;
     }
 
     // ========================================================================
@@ -4230,7 +4262,7 @@ class Actor extends Entity {
         if (base === undefined) return null;
 
         // Add bonuses from equipped items' wear_effects
-        for (const slot of ['weapon', 'top', 'middle', 'lower']) {
+        for (const slot of ['weapon', 'top', 'middle', 'lower', 'ring1', 'ring2']) {
             const item = this.equipment[slot];
             if (item) {
                 const wearEffect = item.getAttribute('wear_effect');
@@ -4250,7 +4282,7 @@ class Actor extends Entity {
         let base = this.getAttribute('defense') || 0;
 
         // Add bonuses from equipped items' wear_effects and enchantments
-        for (const slot of ['weapon', 'top', 'middle', 'lower']) {
+        for (const slot of ['weapon', 'top', 'middle', 'lower', 'ring1', 'ring2']) {
             const item = this.equipment[slot];
             if (item) {
                 const wearEffect = item.getAttribute('wear_effect');
@@ -4300,7 +4332,7 @@ class Actor extends Entity {
         if (base === undefined) base = 10; // Default strength is 10 (1x multiplier)
 
         // Add bonuses from equipped items' wear_effects
-        for (const slot of ['weapon', 'top', 'middle', 'lower']) {
+        for (const slot of ['weapon', 'top', 'middle', 'lower', 'ring1', 'ring2']) {
             const item = this.equipment[slot];
             if (item) {
                 const wearEffect = item.getAttribute('wear_effect');
@@ -4331,7 +4363,7 @@ class Actor extends Entity {
         // Add modifiers from equipped items' wear_effects
         // Format: wear_effect: { "health_per_turn": 2 } or { "nutrition_per_turn": -0.5 }
         const perTurnKey = `${statName}_per_turn`;
-        for (const slot of ['weapon', 'top', 'middle', 'lower']) {
+        for (const slot of ['weapon', 'top', 'middle', 'lower', 'ring1', 'ring2']) {
             const item = this.equipment[slot];
             if (item) {
                 const wearEffect = item.getAttribute('wear_effect');
@@ -4779,11 +4811,19 @@ class Actor extends Entity {
             return true;
         }
 
-        // Check if it's wearable armor
+        // Check if it's wearable
         const slot = item.getAttribute('wearable');
-        if (!slot || !['top', 'middle', 'lower'].includes(slot)) {
+        if (!slot || !['top', 'middle', 'lower', 'ring'].includes(slot)) {
             console.log(`${item.name} is not equippable`);
             return false;
+        }
+
+        // Rings use two dedicated slots
+        if (slot === 'ring') {
+            const ringSlot = !this.equipment.ring1 ? 'ring1' :
+                             !this.equipment.ring2 ? 'ring2' : 'ring1';
+            this.equipToSlot(item, ringSlot);
+            return true;
         }
 
         // Check for strength requirement - determines equip time
@@ -4892,6 +4932,12 @@ class Actor extends Entity {
         // Handle wearable items
         const slot = item.getAttribute('wearable');
         if (!slot) return false;
+
+        if (slot === 'ring') {
+            if (this.equipment.ring1 === item) { this.unequipFromSlot('ring1'); return true; }
+            if (this.equipment.ring2 === item) { this.unequipFromSlot('ring2'); return true; }
+            return false;
+        }
 
         if (this.equipment[slot] !== item) {
             console.log(`${item.name} is not equipped`);
@@ -5862,6 +5908,35 @@ class Actor extends Entity {
                     // Apply weapon proc effects after successful damage
                     if (key === 'health' && finalValue < 0 && source.sourceActor && source.item) {
                         source.sourceActor.applyWeaponProc(target, source.item, finalValue);
+
+                        // Auto-identify weapon after enough combat use
+                        if (source.sourceActor.isPlayerControlled() &&
+                            source.item.identified === false &&
+                            source.item.hasAttribute('enchantable')) {
+                            source.item.combatUseCount = (source.item.combatUseCount || 0) + 1;
+                            if (source.item.combatUseCount >= 20) {
+                                source.item.identify();
+                                source.sourceActor.engine.inputManager?.showMessage(
+                                    `You are now confident about your ${source.item.getDisplayName()}.`
+                                );
+                            }
+                        }
+                    }
+
+                    // Auto-identify armor after enough hits received
+                    if (key === 'health' && finalValue < 0 && target.isPlayerControlled?.()) {
+                        for (const slot of ['top', 'middle', 'lower', 'ring1', 'ring2']) {
+                            const armor = target.equipment?.[slot];
+                            if (armor?.identified === false && armor.hasAttribute('enchantable')) {
+                                armor.combatUseCount = (armor.combatUseCount || 0) + 1;
+                                if (armor.combatUseCount >= 20) {
+                                    armor.identify();
+                                    target.engine.inputManager?.showMessage(
+                                        `You are now confident about your ${armor.getDisplayName()}.`
+                                    );
+                                }
+                            }
+                        }
                     }
 
                     if (key === 'health' && newValue <= 0) {
@@ -7134,7 +7209,17 @@ class Actor extends Entity {
      * @returns {boolean} True if target is within vision range and has clear line of sight
      */
     getEffectiveVisionRange() {
-        return this.visionRange + this.getPassiveStatBonus('visionRange');
+        let range = this.visionRange + this.getPassiveStatBonus('visionRange');
+        for (const slot of ['ring1', 'ring2']) {
+            const item = this.equipment[slot];
+            if (item) {
+                const wearEffect = item.getAttribute('wear_effect');
+                if (wearEffect && typeof wearEffect.visionRange === 'number') {
+                    range += wearEffect.visionRange;
+                }
+            }
+        }
+        return range;
     }
 
     canSeeTarget(target) {
@@ -7258,7 +7343,9 @@ class Actor extends Entity {
                 weapon: this.equipment.weapon?.type || null,
                 top: this.equipment.top?.type || null,
                 middle: this.equipment.middle?.type || null,
-                lower: this.equipment.lower?.type || null
+                lower: this.equipment.lower?.type || null,
+                ring1: this.equipment.ring1?.type || null,
+                ring2: this.equipment.ring2?.type || null
             },
             states: JSON.parse(JSON.stringify(
                 Object.fromEntries(
@@ -7287,10 +7374,14 @@ class Actor extends Entity {
             }).filter(Boolean);
             // Re-link equipment slots
             if (data.equipment) {
+                const linked = new Set();
                 for (const [slot, itemType] of Object.entries(data.equipment)) {
                     if (itemType) {
-                        const item = this.inventory.find(i => i.type === itemType);
-                        if (item) this.equipment[slot] = item;
+                        const item = this.inventory.find(i => i.type === itemType && !linked.has(i));
+                        if (item) {
+                            this.equipment[slot] = item;
+                            linked.add(item);
+                        }
                     }
                 }
             }

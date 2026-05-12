@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Attract screen**: prototypes display a "Click to Play" splash overlay on initial load — solid OPAQUE_FULL_BLOCK grid with randomly flipped tiles and white text rendered from new white tile variants. Click, tap, or any keypress triggers a radial wipe originating from the player's position (or viewport center in observer mode) that reveals the game underneath. Input and the turn engine remain disabled until the wipe completes. Splash only appears on first load; floor transitions skip it.
+- **Liquid tracks**: actors walking through liquid tiles leave 3 tiles of connected WHITE_DOTTED_BOX track entities tinted with the liquid's color, with directional tile selection for straight segments and corners.
+- **Weapon/armor identification**: Brogue-style — enchantment bonuses, curse status, and descriptions are hidden until identified. Scroll of Identify reveals per-instance (not type-based like potions/scrolls). Weapons auto-identify after 20 successful hits; armor after taking 20 hits. Equipping a cursed item reveals its identity immediately.
+- **Ring equipment slots**: two ring slots added to the equipment system. Rings must be equipped to apply their effects (defense, strength, vision range, per-turn bonuses, light). Wear/Remove actions available in inventory. Actors auto-equip rings on spawn.
 
 ## [1.6b] 2026-05-08
 

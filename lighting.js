@@ -121,11 +121,12 @@ class LightingManager {
             }
         }
 
-        // Inventory light sources (e.g. carried torches)
+        // Inventory light sources (e.g. carried torches, equipped rings)
         for (const actor of this.engine.entityManager.actors) {
             if (!actor.inventory || actor.isDead) continue;
             for (const item of actor.inventory) {
                 if (!item.hasAttribute('light_source')) continue;
+                if (item.getAttribute('wearable') === 'ring' && !actor.isItemEquipped?.(item)) continue;
                 const burns = item.stats?.burns;
                 if (burns && burns.current <= 0) continue; // burned out
                 sources.push({
