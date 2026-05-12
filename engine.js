@@ -9494,7 +9494,7 @@ class RenderSystem {
         this.splashOriginX = originX;
         this.splashOriginY = originY;
 
-        const blockCoords = this.engine.spriteLibrary.getTileByName('FULL_BLOCK');
+        const blockCoords = this.engine.spriteLibrary.getTileByName('OPAQUE_FULL_BLOCK');
         const rect = new PIXI.Rectangle(
             blockCoords.x * globalVars.TILE_WIDTH,
             blockCoords.y * globalVars.TILE_HEIGHT,
@@ -9510,8 +9510,11 @@ class RenderSystem {
         for (let y = 0; y < viewportHeight; y++) {
             for (let x = 0; x < viewportWidth; x++) {
                 const sprite = new PIXI.Sprite(blockTexture);
-                sprite.x = x * globalVars.TILE_WIDTH;
-                sprite.y = y * globalVars.TILE_HEIGHT;
+                sprite.anchor.set(0.5);
+                sprite.x = x * globalVars.TILE_WIDTH + globalVars.TILE_WIDTH / 2;
+                sprite.y = y * globalVars.TILE_HEIGHT + globalVars.TILE_HEIGHT / 2;
+                sprite.scale.x = Math.random() < 0.5 ? -1 : 1;
+                sprite.scale.y = Math.random() < 0.5 ? -1 : 1;
                 this.splashContainer.addChild(sprite);
                 this.splashSprites[y][x] = sprite;
             }
@@ -9527,7 +9530,8 @@ class RenderSystem {
                 text[i],
                 (textX + i) * globalVars.TILE_WIDTH,
                 textY * globalVars.TILE_HEIGHT,
-                0xFFFFFF
+                0xFFFFFF,
+                true
             );
             if (charSprite) {
                 charSprite.zIndex = 1;

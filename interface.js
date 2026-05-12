@@ -397,6 +397,44 @@ class InterfaceManager {
         return null;
     }
 
+    getWhiteTileNameForChar(char) {
+        if (char === ' ') return 'SPACE';
+        const special = {
+            '!': 'WHITE_EXCLAMATION_MARK',
+            '"': 'WHITE_QUOTATION_MARK',
+            '#': 'WHITE_NUMBER_SIGN',
+            '$': 'WHITE_DOLLAR_SIGN',
+            '%': 'WHITE_PERCENT_SIGN',
+            '&': 'WHITE_AMPERSAND',
+            "'": 'WHITE_APOSTROPHE',
+            '(': 'WHITE_LEFT_PARENTHESIS',
+            ')': 'WHITE_RIGHT_PARENTHESIS',
+            '*': 'WHITE_ASTERISK',
+            '+': 'WHITE_PLUS_SIGN',
+            ',': 'WHITE_COMMA',
+            '-': 'WHITE_HYPHEN_MINUS',
+            '.': 'WHITE_FULL_STOP',
+            '/': 'WHITE_SOLIDUS',
+            ':': 'WHITE_COLON',
+            ';': 'WHITE_SEMICOLON',
+            '<': 'WHITE_LESS_THAN_SIGN',
+            '=': 'WHITE_EQUALS_SIGN',
+            '>': 'WHITE_GREATER_THAN_SIGN',
+            '?': 'WHITE_QUESTION_MARK',
+            '@': 'WHITE_COMMERCIAL_AT',
+            '[': 'WHITE_LEFT_SQUARE_BRACKET',
+            '\\': 'WHITE_REVERSE_SOLIDUS',
+            ']': 'WHITE_RIGHT_SQUARE_BRACKET',
+            '^': 'WHITE_CIRCUMFLEX_ACCENT',
+            '_': 'WHITE_LOW_LINE',
+        };
+        if (special[char]) return special[char];
+        if (char >= '0' && char <= '9') return `WHITE_DIGIT_${char}`;
+        if (char >= 'A' && char <= 'Z') return `WHITE_LATIN_CAPITAL_LETTER_${char}`;
+        if (char >= 'a' && char <= 'z') return `WHITE_LATIN_SMALL_LETTER_${char.toUpperCase()}`;
+        return null;
+    }
+
     /**
      * Split a string into an array of visual characters, correctly handling
      * Unicode supplementary-plane characters (surrogate pairs).
@@ -501,8 +539,8 @@ class InterfaceManager {
      * @param {number} tint - Color tint
      * @returns {PIXI.Sprite|null}
      */
-    createCharSprite(char, x, y, tint = 0x000000) {
-        const tileName = this.getTileNameForChar(char);
+    createCharSprite(char, x, y, tint = 0x000000, white = false) {
+        const tileName = white ? this.getWhiteTileNameForChar(char) : this.getTileNameForChar(char);
         if (!tileName) return null;
 
         const tileCoords = this.spriteLibrary.getTileByName(tileName);
