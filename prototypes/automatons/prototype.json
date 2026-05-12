@@ -1,6 +1,6 @@
 {
   "name": "Automatons",
-  "description": "Conway's Game of Life. 10 Thalers on the glider!",
+  "description": "Conway's Game of Life.",
   "loaded_sound": "tone3",
   "depth": 0,
   "turn_speed": 10,

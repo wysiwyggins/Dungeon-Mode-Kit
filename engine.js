@@ -1264,24 +1264,27 @@ class DungeonEngine {
             );
         }
 
-        this.initializeTurnEngine();
+        const startGameplay = () => {
+            this.initializeTurnEngine();
 
-        if (prototypeConfig.loaded_sound) {
-            this.playSound(prototypeConfig.loaded_sound);
-        }
-
-        // Show prototype description on first floor, floor number on subsequent floors
-        if (this.inputManager) {
-            if (floor === 1 && prototypeConfig.description) {
-                this.inputManager.clearMessageStack();
-                this.inputManager.showMessage(prototypeConfig.description);
-            } else if (floor > 1) {
-                this.inputManager.clearMessageStack();
-                this.inputManager.showMessage(`Floor ${floor}`);
+            if (prototypeConfig.loaded_sound) {
+                this.playSound(prototypeConfig.loaded_sound);
             }
-        }
 
-        this.updateInfoDisplay();
+            if (this.inputManager) {
+                this.inputManager.enable();
+                if (floor === 1 && prototypeConfig.description) {
+                    this.inputManager.clearMessageStack();
+                    this.inputManager.showMessage(prototypeConfig.description);
+                } else if (floor > 1) {
+                    this.inputManager.clearMessageStack();
+                    this.inputManager.showMessage(`Floor ${floor}`);
+                }
+            }
+
+            this.updateInfoDisplay();
+        };
+
         console.log(`Floor ${floor} loaded successfully`);
         console.log(`Map size: ${this.mapManager.width}x${this.mapManager.height} tiles`);
         if (this.viewportEnabled) {
@@ -1291,6 +1294,41 @@ class DungeonEngine {
         console.log(`Walkable tiles: ${this.mapManager.walkableTiles.length}`);
         console.log(`Actors spawned: ${this.entityManager.actors.length}`);
         console.log(`Items spawned: ${this.entityManager.items.length}`);
+
+        const shouldShowSplash = (floor === 1 && !playerState);
+
+        if (shouldShowSplash) {
+            if (this.inputManager) this.inputManager.disable();
+
+            const player = this.entityManager.player;
+            let originX, originY;
+            if (player) {
+                originX = this.viewportEnabled ? player.x - this.sectionOriginX : player.x;
+                originY = this.viewportEnabled ? player.y - this.sectionOriginY : player.y;
+            } else {
+                originX = Math.floor(this.viewportWidth / 2);
+                originY = Math.floor(this.viewportHeight / 2);
+            }
+
+            this.renderer.showSplash(this.viewportWidth, this.viewportHeight, originX, originY);
+
+            const canvas = this.app.view;
+            const dismiss = () => {
+                canvas.removeEventListener('click', dismiss);
+                canvas.removeEventListener('touchend', onTouch);
+                document.removeEventListener('keydown', dismiss);
+                this.renderer.dismissSplash(startGameplay);
+            };
+            const onTouch = (e) => {
+                e.preventDefault();
+                dismiss();
+            };
+            canvas.addEventListener('click', dismiss);
+            canvas.addEventListener('touchend', onTouch);
+            document.addEventListener('keydown', dismiss);
+        } else {
+            startGameplay();
+        }
     }
 
     /**
@@ -8443,6 +8481,7 @@ class RenderSystem {
         this.lightColorContainer = new PIXI.Container();
         this.darknessContainer = new PIXI.Container();
         this.uiContainer = new PIXI.Container();
+        this.splashContainer = new PIXI.Container();
 
         this.backgroundContainer.sortableChildren = true;
         this.floorContainer.sortableChildren = true;
@@ -8451,6 +8490,7 @@ class RenderSystem {
         this.lightColorContainer.sortableChildren = true;
         this.darknessContainer.sortableChildren = true;
         this.uiContainer.sortableChildren = true;
+        this.splashContainer.sortableChildren = true;
 
         // Set explicit zIndex to ensure correct layer order
         this.backgroundContainer.zIndex = 0;
@@ -8460,6 +8500,7 @@ class RenderSystem {
         this.lightColorContainer.zIndex = 4;
         this.darknessContainer.zIndex = 5;
         this.uiContainer.zIndex = 6;
+        this.splashContainer.zIndex = 7;
 
         app.stage.addChild(this.backgroundContainer);
         app.stage.addChild(this.floorContainer);
@@ -8468,12 +8509,18 @@ class RenderSystem {
         app.stage.addChild(this.lightColorContainer);
         app.stage.addChild(this.darknessContainer);
         app.stage.addChild(this.uiContainer);
+        app.stage.addChild(this.splashContainer);
 
         this.darknessSprites = [];
         this.lightColorSprites = [];
         this.floorSprites = [];
         this.backgroundSprites = [];
         this.overlaySprites = [];
+
+        // Splash screen state
+        this.splashActive = false;
+        this.splashSprites = [];
+        this.splashTextSprites = [];
 
         // Tile highlight for hover/aiming
         this.highlightFilter = true;
@@ -9439,6 +9486,111 @@ class RenderSystem {
         }
     }
 
+    showSplash(viewportWidth, viewportHeight, originX, originY) {
+        const tileset = PIXI.Loader.shared.resources.tiles;
+        if (!tileset) return;
+
+        this.splashActive = true;
+        this.splashOriginX = originX;
+        this.splashOriginY = originY;
+
+        const blockCoords = this.engine.spriteLibrary.getTileByName('FULL_BLOCK');
+        const rect = new PIXI.Rectangle(
+            blockCoords.x * globalVars.TILE_WIDTH,
+            blockCoords.y * globalVars.TILE_HEIGHT,
+            globalVars.TILE_WIDTH,
+            globalVars.TILE_HEIGHT
+        );
+        const blockTexture = new PIXI.Texture(tileset.texture.baseTexture, rect);
+
+        this.splashSprites = Array.from({ length: viewportHeight }, () =>
+            Array.from({ length: viewportWidth }, () => null)
+        );
+
+        for (let y = 0; y < viewportHeight; y++) {
+            for (let x = 0; x < viewportWidth; x++) {
+                const sprite = new PIXI.Sprite(blockTexture);
+                sprite.x = x * globalVars.TILE_WIDTH;
+                sprite.y = y * globalVars.TILE_HEIGHT;
+                this.splashContainer.addChild(sprite);
+                this.splashSprites[y][x] = sprite;
+            }
+        }
+
+        const text = "Click to Play";
+        const textX = Math.floor((viewportWidth - text.length) / 2);
+        const textY = Math.floor(viewportHeight / 2);
+        this.splashTextSprites = [];
+
+        for (let i = 0; i < text.length; i++) {
+            const charSprite = this.engine.interfaceManager.createCharSprite(
+                text[i],
+                (textX + i) * globalVars.TILE_WIDTH,
+                textY * globalVars.TILE_HEIGHT,
+                0xFFFFFF
+            );
+            if (charSprite) {
+                charSprite.zIndex = 1;
+                this.splashContainer.addChild(charSprite);
+                this.splashTextSprites.push(charSprite);
+            }
+        }
+    }
+
+    dismissSplash(onComplete) {
+        if (!this.splashActive) { onComplete?.(); return; }
+
+        for (const sprite of this.splashTextSprites) {
+            sprite.destroy();
+        }
+        this.splashTextSprites = [];
+
+        const originX = this.splashOriginX;
+        const originY = this.splashOriginY;
+        const vpW = this.splashSprites[0]?.length || 0;
+        const vpH = this.splashSprites.length;
+        const maxRadius = Math.max(vpW, vpH);
+
+        if (this.splashSprites[originY]?.[originX]) {
+            this.splashSprites[originY][originX].destroy();
+            this.splashSprites[originY][originX] = null;
+        }
+
+        let radius = 1;
+
+        const revealCircle = () => {
+            let tilesCleared = false;
+
+            for (let dy = -radius; dy <= radius; dy++) {
+                for (let dx = -radius; dx <= radius; dx++) {
+                    if (Math.sqrt(dx * dx + dy * dy) <= radius) {
+                        const x = originX + dx;
+                        const y = originY + dy;
+                        if (x >= 0 && x < vpW && y >= 0 && y < vpH) {
+                            if (this.splashSprites[y][x]) {
+                                this.splashSprites[y][x].destroy();
+                                this.splashSprites[y][x] = null;
+                                tilesCleared = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (radius < maxRadius && tilesCleared) {
+                radius = radius * 2;
+                setTimeout(revealCircle, 50);
+            } else {
+                this.splashContainer.removeChildren();
+                this.splashSprites = [];
+                this.splashActive = false;
+                onComplete?.();
+            }
+        };
+
+        revealCircle();
+    }
+
     clear() {
         this.backgroundContainer.removeChildren();
         this.floorContainer.removeChildren();
@@ -9447,6 +9599,10 @@ class RenderSystem {
         this.lightColorContainer.removeChildren();
         this.darknessContainer.removeChildren();
         this.uiContainer.removeChildren();
+        this.splashContainer.removeChildren();
+        this.splashActive = false;
+        this.splashSprites = [];
+        this.splashTextSprites = [];
         this.darknessSprites = [];
         this.lightColorSprites = [];
         this.floorSprites = [];

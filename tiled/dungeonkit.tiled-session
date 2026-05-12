@@ -43,10 +43,10 @@
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/dungeon/map.tmj": {
             "scale": 0.75,
-            "selectedLayer": 2,
+            "selectedLayer": 3,
             "viewCenter": {
-                "x": 640.6666666666666,
-                "y": 509.33333333333326
+                "x": 964.6666666666666,
+                "y": 324
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/hunger_game/map.tmj": {
@@ -140,9 +140,9 @@
     ],
     "project": "dungeonkit.tiled-project",
     "recentFiles": [
-        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/dungeon/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/default/map.tmj",
         "tower.tmj",
+        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/dungeon/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/arena/map.tmj",
         "static-tiles.tsj",
