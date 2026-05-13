@@ -181,6 +181,22 @@
     "attack_range": 8
   },
 
+  "horizontal_march": {
+    "name": "Horizontal March",
+    "hostile": true,
+    "behaviors": [
+      "horizontal_bounce"
+    ]
+  },
+
+  "vertical_march": {
+    "name": "Vertical March",
+    "hostile": true,
+    "behaviors": [
+      "vertical_bounce"
+    ]
+  },
+
   "scutigera_head": {
     "name": "Scutigera Head",
     "hostile": true,

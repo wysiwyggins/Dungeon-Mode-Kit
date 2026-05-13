@@ -185,13 +185,24 @@
                 {
                  "height":30,
                  "id":56,
+                 "name":"Sentry",
+                 "rotation":0,
+                 "type":"sentry_h",
+                 "visible":true,
+                 "width":40,
+                 "x":520,
+                 "y":60
+                }, 
+                {
+                 "height":30,
+                 "id":60,
                  "name":"scutigera",
                  "rotation":0,
                  "type":"scutigera_head",
                  "visible":true,
                  "width":40,
-                 "x":1000,
-                 "y":120
+                 "x":1001.12676056338,
+                 "y":114.527162977867
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -273,7 +284,7 @@
          "y":0
         }],
  "nextlayerid":9,
- "nextobjectid":60,
+ "nextobjectid":61,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",

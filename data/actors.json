@@ -213,10 +213,36 @@
       "mattock"
     ]
   },
+  "sentry_h": {
+    "name": "glass sentry",
+    "tileIndexBase": "LEG",
+    "tileIndexTop": "OPAQUE_PRISON_WINDOW",
+    "personality": "horizontal_march",
+    "defaultFacing": "left",
+    "facingEnabled": true,
+    "collision_effect": {
+      "health": -200
+    },
+    "stats": {
+      "health": 1
+    }
+  },
+  "sentry_v": {
+    "name": "glass sentry",
+    "tileIndexBase": "LEG",
+    "tileIndexTop": "OPAQUE_PRISON_WINDOW",
+    "personality": "vertical_march",
+    "collision_effect": {
+      "health": -200
+    },
+    "stats": {
+      "health": 1
+    }
+  },
   "goblin": {
     "name": "goblin",
     "description": "A lumpy piglike humanoid",
-    "tileIndexBase": "WHITE_LEG",
+    "tileIndexBase": "WHITE_GREAVES",
     "tileIndexTop": "SKULL",
     "tint": "#8BFF55",
     "vision_range": 10,

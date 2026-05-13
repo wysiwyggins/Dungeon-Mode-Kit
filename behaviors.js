@@ -2172,6 +2172,30 @@ const BehaviorLibrary = {
         return true;
     },
 
+    horizontal_bounce: (actor) => {
+        if (actor._bounceDir === undefined) actor._bounceDir = -1;
+
+        const nextX = actor.x + actor._bounceDir;
+        const result = actor.tryMove(nextX, actor.y);
+        if (result.moved || result.actionTaken) return true;
+
+        actor._bounceDir *= -1;
+        const retryResult = actor.tryMove(actor.x + actor._bounceDir, actor.y);
+        return retryResult.moved || retryResult.actionTaken;
+    },
+
+    vertical_bounce: (actor) => {
+        if (actor._bounceDir === undefined) actor._bounceDir = -1;
+
+        const nextY = actor.y + actor._bounceDir;
+        const result = actor.tryMove(actor.x, nextY);
+        if (result.moved || result.actionTaken) return true;
+
+        actor._bounceDir *= -1;
+        const retryResult = actor.tryMove(actor.x, actor.y + actor._bounceDir);
+        return retryResult.moved || retryResult.actionTaken;
+    },
+
     // Backward-compat aliases for renamed chain behaviors
     scutigera_head_ai: (...args) => BehaviorLibrary.chain_head_ai(...args),
     scutigera_body_follow: (...args) => BehaviorLibrary.chain_body_follow(...args),
