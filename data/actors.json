@@ -1369,11 +1369,11 @@
       "health": 35
     }
   },
-  "blink_hound": {
-    "name": "Blink Hound",
+  "phantom_hound": {
+    "name": "Phantom Hound",
     "description": "A spectral canine that phases in and out of reality, striking before vanishing.",
-    "tileIndexBase": "DOOR_TOP",
-    "tileIndexTop": "REPTILE_HEAD",
+    "tileIndexBase": "WHITE_DOOR_TOP",
+    "tileIndexTop": "WHITE_REPTILE_HEAD",
     "tint": "#AADDFF",
     "flipTopH": true,
     "personality": "blink_stalker",

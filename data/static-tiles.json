@@ -381,6 +381,8 @@
         "WHITE_LATIN_SMALL_LETTER_Y": [20, 15],
         "WHITE_LATIN_SMALL_LETTER_Z": [21, 15],
         "WHITE_BULLET": [22, 15],
-        "WHITE_GREAVES": [0,16]
+        "WHITE_GREAVES": [0,16],
+        "WHITE_REPTILE_HEAD": [1,16],
+        "WHITE_DOOR_TOP": [2,16]
     }
 }
