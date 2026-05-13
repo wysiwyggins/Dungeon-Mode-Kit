@@ -876,11 +876,46 @@
       }
     }
   },
+  "staff_of_blinking": {
+    "name": "Staff of Blinking",
+    "tileIndex": "SOLIDUS",
+    "tint": "#AADDFF",
+    "identified": false,
+    "unidentified_template": "[substances.substances] staff",
+    "identified_template": "Staff of Blinking",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": false,
+      "treasure_loot": true,
+      "use_verb": "Zap",
+      "use_effect": "targeted_spell",
+      "deferred": true,
+      "charge_stat": "pow",
+      "uses": 2,
+      "spell_range": 8,
+      "spell_effect": { "blink_self": true },
+      "projectile_tile": "OPAQUE_INVERSE_DIAMOND_SUITE",
+      "projectile_tint": "#AADDFF",
+      "spell_name": "Blinking",
+      "cast_sound": "magic",
+      "description": "A [substances.substances] staff."
+    },
+    "stats": {
+      "pow": {
+        "max": 400,
+        "start": 400,
+        "per_turn": 1,
+        "ready_message": "Your [item_name] is fully charged!"
+      }
+    }
+  },
   "staff": {
     "random_type": [
       "staff_of_fireball",
       "staff_of_lightning",
-      "staff_of_poison"
+      "staff_of_poison",
+      "staff_of_blinking"
     ]
   },
   "scroll": {

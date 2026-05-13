@@ -1268,5 +1268,151 @@
     "stats": {
       "health": 30
     }
+  },
+  "poison_frog": {
+    "name": "Poison Frog",
+    "description": "A bright-skinned frog that exudes a toxic miasma.",
+    "tileIndexBase": "DOOR_TOP",
+    "tileIndexTop": "QUOTATION_MARK",
+    "flipTopV": true,
+    "tint": "#44FF44",
+    "personality": "poison_frog",
+    "collision_effect": {
+      "health": -2,
+      "apply_state": "poisoned"
+    },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
+    "attributes": {
+      "hostile": true,
+      "sentient": true,
+      "accuracy": 50,
+      "defense": 3
+    },
+    "stats": {
+      "health": 8
+    }
+  },
+  "shaman": {
+    "name": "Shaman",
+    "description": "A hunched figure muttering incantations, mending allies and calling the dead to rise.",
+    "tileIndexBase": "LEG",
+    "tileIndexTop": "OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE",
+    "tint": "#88AA44",
+    "vision_range": 8,
+    "personality": "shaman",
+    "facingEnabled": true,
+    "defaultFacing": "left",
+    "collision_effect": {
+      "health": -3
+    },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] strikes [attacked_actor_name] with a gnarled staff!",
+    "attributes": {
+      "hostile": true,
+      "sighted": true,
+      "sentient": true,
+      "accuracy": 40,
+      "defense": 5,
+      "remains": "skull",
+      "opaque": false
+    },
+    "stats": {
+      "health": 25
+    }
+  },
+  "crow": {
+    "name": "Crow",
+    "description": "A glossy black bird with greedy eyes, drawn to anything that glitters.",
+    "tileIndexBase": "LIGHT_SHADE",
+    "tileIndexTop": "CARON",
+    "tint": "#222233",
+    "personality": "scavenger",
+    "innate_states": ["flying"],
+    "collision_effect": {
+      "health": -1
+    },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] pecks the [attacked_actor_name]!",
+    "attributes": {
+      "sentient": true,
+      "sighted": true,
+      "inventory": 1,
+      "accuracy": 40,
+      "defense": 15,
+      "opaque": false
+    },
+    "stats": {
+      "health": 5
+    }
+  },
+  "hive_queen": {
+    "name": "Hive Queen",
+    "description": "A bloated insectoid matriarch, ceaselessly birthing drones from her swollen abdomen.",
+    "tileIndexBase": "DOOR_TOP",
+    "tileIndexTop": "TWO_BLACK_DIAMONDS",
+    "tint": "#DDAA22",
+    "personality": "hive_queen",
+    "collision_effect": {
+      "health": -4
+    },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] stings the [attacked_actor_name]!",
+    "attributes": {
+      "hostile": true,
+      "sentient": true,
+      "accuracy": 45,
+      "defense": 8,
+      "remains": "skull"
+    },
+    "stats": {
+      "health": 35
+    }
+  },
+  "blink_hound": {
+    "name": "Blink Hound",
+    "description": "A spectral canine that phases in and out of reality, striking before vanishing.",
+    "tileIndexBase": "DOOR_TOP",
+    "tileIndexTop": "REPTILE_HEAD",
+    "tint": "#AADDFF",
+    "flipTopH": true,
+    "personality": "blink_stalker",
+    "collision_effect": { "health": -6 },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] lunges at the [attacked_actor_name]!",
+    "attributes": {
+      "hostile": true,
+      "sighted": true,
+      "sentient": true,
+      "accuracy": 70,
+      "defense": 12,
+      "light_source": true,
+      "remains": "mist",
+      "opaque": false
+    },
+    "stats": { "health": 25 }
+  },
+  "drone": {
+    "name": "Drone",
+    "description": "A frenzied insect, swarming to protect its queen.",
+    "tileIndexBase": "ASTERISK",
+    "tileIndexTop": "BLANK",
+    "tint": "#DDAA22",
+    "personality": "aggressive_melee",
+    "collision_effect": {
+      "health": -2
+    },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] stings the [attacked_actor_name]!",
+    "attributes": {
+      "hostile": true,
+      "sentient": true,
+      "accuracy": 55,
+      "defense": 3,
+      "opaque": false
+    },
+    "stats": {
+      "health": 6
+    }
   }
 }

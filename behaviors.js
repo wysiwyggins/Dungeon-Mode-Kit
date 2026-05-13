@@ -268,9 +268,36 @@ const BehaviorLibrary = {
         return result.moved || result.actionTaken;
     },
 
-    /**
-     * Random wandering movement
-     */
+    maintain_distance: (actor, data) => {
+        const preferredDist = data.preferred_distance ?? 3;
+        const target = actor.engine.entityManager.findNearestPlayer(actor);
+        if (!target || !actor.canSeeTarget(target)) return false;
+
+        const dist = getChebyshevDistance(actor.x, actor.y, target.x, target.y);
+
+        if (dist < preferredDist) {
+            const dx = actor.x - target.x;
+            const dy = actor.y - target.y;
+            const dirs = shuffleArray([...CARDINAL_DIRS]);
+            dirs.sort((a, b) => {
+                const distA = Math.abs(actor.x + a.dx - target.x) + Math.abs(actor.y + a.dy - target.y);
+                const distB = Math.abs(actor.x + b.dx - target.x) + Math.abs(actor.y + b.dy - target.y);
+                return distB - distA;
+            });
+            for (const dir of dirs) {
+                const result = actor.tryMove(actor.x + dir.dx, actor.y + dir.dy);
+                if (result.moved) return true;
+            }
+            return false;
+        }
+
+        if (dist > preferredDist + 1) {
+            return actor.moveToward(target.x, target.y);
+        }
+
+        return false;
+    },
+
     random_walk: (actor) => {
         // Sighted actors only consider valid moves (avoids pits, walls, etc.)
         if (actor.hasAttribute('sighted')) {
@@ -404,11 +431,71 @@ const BehaviorLibrary = {
         return true; // Attack was attempted
     },
 
-    /**
-     * Mine a nearby breakable wall using equipped mining tool
-     */
+    heal_ally: (actor, data) => {
+        const healAmount = data.heal_amount ?? 5;
+        const healSound = data.heal_sound || 'tone5';
+        const entityManager = actor.engine.entityManager;
+
+        let mostWounded = null;
+        let lowestRatio = 1;
+
+        for (const dir of ALL_DIRS) {
+            const other = entityManager.getSolidActorAt(actor.x + dir.dx, actor.y + dir.dy);
+            if (!other || other === actor || other.isDead) continue;
+            if (other.hasAttribute('controlled')) continue;
+            if (!other.stats?.health) continue;
+
+            const h = other.stats.health;
+            const ratio = h.current / h.max;
+            if (ratio < 1 && ratio < lowestRatio) {
+                lowestRatio = ratio;
+                mostWounded = other;
+            }
+        }
+
+        if (!mostWounded) return false;
+
+        const h = mostWounded.stats.health;
+        h.current = Math.min(h.max, h.current + healAmount);
+        actor.engine.playSound?.(healSound);
+
+        const allyName = mostWounded.getNameWithArticle ? mostWounded.getNameWithArticle() : `the ${mostWounded.name}`;
+        const actorName = actor.getNameWithArticle ? actor.getNameWithArticle() : `The ${actor.name}`;
+        actor.engine.inputManager?.showMessage(`${actorName} heals ${allyName}.`, { x: actor.x, y: actor.y });
+
+        return true;
+    },
+
+    seek_item: (actor, data) => {
+        const searchRadius = data.search_radius ?? 10;
+        const itemType = data.item_type;
+        const entityManager = actor.engine.entityManager;
+        const maxInventory = actor.getAttribute('inventory') || 1;
+        if (actor.inventory.length >= maxInventory) return false;
+
+        let nearest = null;
+        let nearestDist = Infinity;
+
+        for (const item of entityManager.items) {
+            if (item.isDead) continue;
+            if (itemType && item.type !== itemType) continue;
+            const dist = getChebyshevDistance(actor.x, actor.y, item.x, item.y);
+            if (dist > searchRadius || dist >= nearestDist) continue;
+            nearest = item;
+            nearestDist = dist;
+        }
+
+        if (!nearest) return false;
+
+        if (nearestDist <= 1) {
+            actor.pickUpItem?.(nearest);
+            return true;
+        }
+
+        return actor.moveToward(nearest.x, nearest.y);
+    },
+
     mine_nearby_wall: (actor) => {
-        // Check if actor has a mining tool equipped
         const equippedWeapon = actor.getEquippedWeapon?.();
         if (!equippedWeapon || !equippedWeapon.hasAttribute('mining')) {
             return false;
@@ -752,6 +839,30 @@ const BehaviorLibrary = {
         }
 
         return false; // Don't stop other behaviors
+    },
+
+    apply_aura: (actor, data) => {
+        const auraState = data.aura_state;
+        if (!auraState) return false;
+
+        const auraChance = data.aura_chance ?? 25;
+        const hostileOnly = data.aura_hostile_only !== false;
+        const entityManager = actor.engine.entityManager;
+        const statesData = actor.engine.statesData;
+        if (!statesData?.[auraState]) return false;
+
+        for (const dir of ALL_DIRS) {
+            const other = entityManager.getSolidActorAt(actor.x + dir.dx, actor.y + dir.dy);
+            if (!other || other === actor || other.isDead) continue;
+            if (hostileOnly && !other.hasAttribute('controlled')) continue;
+            if (ROT.RNG.getPercentage() > auraChance) continue;
+
+            const stateData = { ...statesData[auraState] };
+            if (data.aura_duration) stateData.duration = data.aura_duration;
+            other.applyState(auraState, stateData);
+        }
+
+        return false;
     },
 
     /**
@@ -1742,6 +1853,86 @@ const BehaviorLibrary = {
         return null;
     },
 
+    ranged_attack: (actor, data) => {
+        const entityManager = actor.engine.entityManager;
+        const attackRange = data.attack_range ?? 5;
+        const cooldown = data.ranged_cooldown ?? 2;
+
+        if (!actor._rangedCooldown) actor._rangedCooldown = 0;
+        actor._rangedCooldown++;
+        if (actor._rangedCooldown < cooldown) return false;
+
+        let target = null;
+        let nearestDist = Infinity;
+
+        for (const other of entityManager.actors) {
+            if (other === actor || other.isDead) continue;
+            if (!other.hasAttribute('controlled')) continue;
+
+            const dist = Math.sqrt(
+                (other.x - actor.x) ** 2 + (other.y - actor.y) ** 2
+            );
+            if (dist > attackRange || dist >= nearestDist) continue;
+
+            const isBlocked = (x, y) => {
+                const a = entityManager.getSolidActorAt(x, y);
+                return a && a !== actor && a !== other;
+            };
+            if (hasLineOfSight(actor.x, actor.y, other.x, other.y, isBlocked)) {
+                target = other;
+                nearestDist = dist;
+            }
+        }
+
+        if (!target) return false;
+
+        actor._rangedCooldown = 0;
+
+        const collisionEffect = actor.getAttribute('collision_effect');
+        if (!collisionEffect) return false;
+
+        const accuracy = actor.getEffectiveAccuracy?.() ?? actor.getAttribute('accuracy') ?? 50;
+        const defense = target.getEffectiveDefense?.() ?? target.getAttribute('defense') ?? 0;
+        const rawProb = accuracy * Math.pow(0.987, defense);
+        const hitChance = Math.max(5, Math.min(95, Math.round(rawProb)));
+        const hits = ROT.RNG.getPercentage() <= hitChance;
+
+        const path = getLinePath(actor.x, actor.y, target.x, target.y);
+        const projectilePath = path.slice(1);
+        if (projectilePath.length === 0) return false;
+
+        const weapon = actor.getEquippedWeapon?.();
+        const ammo = weapon || actor;
+
+        BehaviorLibrary._animateRangedAttack(actor, ammo, projectilePath, target, hits, () => {
+            if (hits) {
+                for (const [key, rawValue] of Object.entries(collisionEffect)) {
+                    const value = actor.resolveAttributeValue?.(rawValue, actor) ?? rawValue;
+                    if (target.stats?.[key] !== undefined) {
+                        const stat = target.stats[key];
+                        if (typeof stat === 'object' && stat.current !== undefined) {
+                            stat.current = Math.min(stat.max, Math.max(0, stat.current + value));
+                            if (key === 'health' && stat.current <= 0) target.die();
+                        }
+                    }
+                }
+                target.flash?.();
+                const targetName = target.getNameWithArticle ? target.getNameWithArticle() : `the ${target.name}`;
+                const actorName = actor.getNameWithArticle ? actor.getNameWithArticle() : `The ${actor.name}`;
+                actor.engine.inputManager?.showMessage(`${actorName} strikes ${targetName}!`);
+                actor.engine.playSound?.('arrow_hit');
+            } else {
+                const targetName = target.getNameWithArticle ? target.getNameWithArticle() : `the ${target.name}`;
+                const actorName = actor.getNameWithArticle ? actor.getNameWithArticle() : `The ${actor.name}`;
+                actor.engine.inputManager?.showMessage(`${actorName}'s attack misses ${targetName}!`);
+                actor.engine.playSound?.('arrow_miss');
+            }
+            actor.engine.interfaceManager?.updateSidebar();
+        });
+
+        return true;
+    },
+
     // ========================================================================
     // CHAIN CREATURE BEHAVIORS
     // ========================================================================
@@ -1937,10 +2128,41 @@ const BehaviorLibrary = {
         }
     },
 
-    /**
-     * Steal an unequipped item from an adjacent player-controlled actor.
-     * After stealing, sets _hasLoot flag so flee behaviors activate.
-     */
+    summon_actor: (actor, data) => {
+        const summonType = data.summon_type;
+        if (!summonType) return false;
+
+        const cooldown = data.summon_cooldown ?? 5;
+        const cap = data.summon_cap ?? 3;
+        const summonSound = data.summon_sound;
+
+        if (!actor._summonCooldown) actor._summonCooldown = 0;
+        actor._summonCooldown++;
+        if (actor._summonCooldown < cooldown) return false;
+
+        const entityManager = actor.engine.entityManager;
+        let activeCount = 0;
+        for (const a of entityManager.actors) {
+            if (a.isDead || a.type !== summonType) continue;
+            if (a._summonedBy === actor) activeCount++;
+        }
+        if (activeCount >= cap) return false;
+
+        const spawnTile = BehaviorLibrary._findAdjacentFloor(
+            actor.x, actor.y, entityManager, actor.engine.mapManager
+        );
+        if (!spawnTile) return false;
+
+        actor._summonCooldown = 0;
+        const summoned = entityManager.spawnActor(summonType, spawnTile.x, spawnTile.y);
+        if (summoned) {
+            summoned._summonedBy = actor;
+            if (summonSound) actor.engine.playSound?.(summonSound);
+        }
+
+        return true;
+    },
+
     pickpocket_adjacent: (actor, data) => {
         const entityManager = actor.engine.entityManager;
 
@@ -2049,6 +2271,74 @@ const BehaviorLibrary = {
         }
 
         return false;
+    },
+
+    blink_away: (actor, data) => {
+        const blinkRange = data.blink_range ?? 8;
+        const cooldown = data.blink_cooldown ?? 5;
+        const prefDist = data.preferred_distance ?? 4;
+
+        if (!actor._blinkCooldown) actor._blinkCooldown = 0;
+        actor._blinkCooldown++;
+        if (actor._blinkCooldown < cooldown) return false;
+
+        const entityManager = actor.engine.entityManager;
+        const mapManager = actor.engine.mapManager;
+        let target = null;
+        let nearestDist = Infinity;
+
+        for (const other of entityManager.actors) {
+            if (other === actor || other.isDead) continue;
+            if (!other.hasAttribute('controlled')) continue;
+            const dist = getChebyshevDistance(actor.x, actor.y, other.x, other.y);
+            if (dist <= blinkRange && dist < nearestDist) {
+                nearestDist = dist;
+                target = other;
+            }
+        }
+
+        if (!target) return false;
+
+        const isBlocked = (x, y) => {
+            const tile = mapManager?.wallMap?.[y]?.[x];
+            return tile && tile.tileId > 0;
+        };
+
+        const candidates = [];
+
+        if (nearestDist <= 1) {
+            // Adjacent to target — blink away to preferred distance
+            for (const tile of mapManager.walkableTiles) {
+                const dist = getChebyshevDistance(tile.x, tile.y, target.x, target.y);
+                if (dist < prefDist - 1 || dist > prefDist + 1) continue;
+                if (entityManager.getSolidActorAt(tile.x, tile.y)) continue;
+                if (!hasLineOfSight(actor.x, actor.y, tile.x, tile.y, isBlocked)) continue;
+                candidates.push(tile);
+            }
+        } else {
+            // Far from target — blink to a tile adjacent to them
+            for (const dir of ALL_DIRS) {
+                const tx = target.x + dir.dx;
+                const ty = target.y + dir.dy;
+                if (!actor.hasFloorAt(tx, ty)) continue;
+                if (entityManager.getSolidActorAt(tx, ty)) continue;
+                if (!hasLineOfSight(actor.x, actor.y, tx, ty, isBlocked)) continue;
+                candidates.push({ x: tx, y: ty });
+            }
+        }
+
+        if (candidates.length === 0) return false;
+
+        const dest = randomElement(candidates);
+        actor._blinkCooldown = 0;
+        actor.x = dest.x;
+        actor.y = dest.y;
+        actor.updateSpritePosition();
+        actor.engine.lightingManager?.computeLighting();
+        actor.engine.playSound?.('magic');
+        actor.engine.renderer?.effectRunner?.apply('blink');
+
+        return true;
     },
 
     bolt_attack: (actor, data) => {

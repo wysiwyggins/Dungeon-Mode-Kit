@@ -394,22 +394,125 @@ Effects only apply if the target has the target attribute. If `health` reaches 0
 "personality": "stationed_melee"
 ```
 
-Personalities are defined in `data/personalities.json`. Each turn, the personality runs through its behavior list until one succeeds.
+Personalities are defined in `data/personalities.json`. Each turn, the personality runs through its behavior list in order until one returns `true` (succeeds), then stops. Behaviors that return `false` are skipped and the next is tried. This priority ordering is the core of actor AI design — put the most important action first.
 
-**Built-in personalities:**
+Personality data fields (besides `name`, `hostile`, `behaviors`) are passed to every behavior as the `data` parameter, so any behavior-specific configuration lives directly in the personality object.
+
+### Built-in Personalities
+
+**Combat:**
 
 | Personality | Behavior |
 |-------------|----------|
-| `aggressive_melee` | Attack adjacent, pursue, follow thread, wander |
-| `stationed_melee` | Attack adjacent, follow thread, pursue, flee danger |
+| `aggressive_melee` | Attack adjacent, follow thread, pursue visible target, wander |
+| `stationed_melee` | Attack adjacent, follow thread, pursue, flee when hurt |
+| `ranged_attacker` | Ranged attack, maintain distance, pursue, wander |
+| `guard` | Attack adjacent, patrol area, guard position, pursue intruders (alerts allies) |
+| `stationed_ranged` | Shoot projectile at target (stationary turret, consumes inventory ammo) |
+| `lightning_mage` | Bolt attack on cooldown, flee danger, melee fallback, pursue, wander |
+| `pickpocket` | Flee danger, flee with stolen loot, steal from adjacent player, pursue, wander |
+| `scutigera_head` | Attack adjacent, chain head pathfinding (multi-segment creature) |
+| `scutigera_body` | Chain body follow, scatter when severed |
+| `horizontal_march` | Bounce horizontally between walls (glass sentry) |
+| `vertical_march` | Bounce vertically between walls (glass sentry) |
+
+**Passive/Utility:**
+
+| Personality | Behavior |
+|-------------|----------|
 | `passive_wanderer` | Random walk, flee danger |
-| `kobold_miner` | Mine walls, wander |
-| `fire_behavior` | Spread to adjacent flammable tiles, burn out |
-| `cloud_behavior` | Spread, disperse, affect actors in tile |
-| `lava_behavior` | Incinerate targets, generate steam on water |
-| `pickpocket` | Steal item from adjacent player, flee toward deep liquid, drop item in |
-| `liquid_pooling` | Cellular spread, color mixing |
-| `deep_water_behavior` | Water currents, drift items |
+| `kobold_miner` | Flee danger, defend self, mine nearby wall, wander to wall, random walk |
+
+**Environmental:**
+
+| Personality | Behavior |
+|-------------|----------|
+| `fire_behavior` | Spread to adjacent flammable tiles, burn out over time |
+| `cloud_behavior` | Spread, disperse to mist, affect actors, countdown lifetime |
+| `mist_behavior` | Fade when isolated, affect actors, countdown lifetime |
+| `lava_behavior` | Incinerate entities, generate steam on adjacent water |
+| `liquid_pooling` | Emit clouds (sewage gas), cellular transform (shallow→deep), color mixing |
+| `deep_water_behavior` | Strip inventory from wading actors, drift ground items, color mixing |
+| `drain_behavior` | Pull items on liquid toward drain |
+| `trap_behavior` | Check trigger conditions (Brogue-style hidden traps) |
+| `cellular_automaton` | Cellular automaton step (Game of Life rules, configurable) |
+
+### Available Behaviors
+
+Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a function `(actor, data) => boolean`.
+
+**Movement:**
+
+| Behavior | Description | Parameters |
+|----------|-------------|------------|
+| `random_walk` | Move in a random cardinal direction. Sighted actors avoid pits. | — |
+| `pursue_target` | Pathfind toward nearest visible controlled actor. | — |
+| `maintain_distance` | Keep `preferred_distance` tiles from target. Move away if too close, toward if too far. | `preferred_distance` (default: 3) |
+| `patrol` | Wander within `patrol_range` of home position. | `patrol_range` |
+| `horizontal_bounce` | Walk left/right, reversing on walls. | — |
+| `vertical_bounce` | Walk up/down, reversing on walls. | — |
+| `flee_from_danger` | Flee harmful tiles, thrown-item hits, or low health. | `health_threshold` (default: 0.25) |
+
+**Combat:**
+
+| Behavior | Description | Parameters |
+|----------|-------------|------------|
+| `attack_adjacent` | Melee attack any adjacent controlled actor. | — |
+| `defend_self` | Retaliate against last attacker. | — |
+| `ranged_attack` | Fire projectile at visible target using actor's `collision_effect`. | `attack_range` (default: 5), `ranged_cooldown` (default: 2) |
+| `shoot_at_target` | Stationary turret — shoots inventory ammo at target. | `attack_range` (default: 8) |
+| `bolt_attack` | Lightning bolt along line to target on cooldown. | `attack_range`, `bolt_cooldown`, `bolt_damage` |
+| `apply_aura` | Chance to apply a status effect to adjacent actors each turn. | `aura_state`, `aura_chance` (default: 25), `aura_duration`, `aura_hostile_only` (default: true) |
+| `heal_ally` | Heal the most wounded adjacent non-controlled actor. | `heal_amount` (default: 5), `heal_sound` (default: `'tone5'`) |
+
+**Detection/Pursuit:**
+
+| Behavior | Description | Parameters |
+|----------|-------------|------------|
+| `guard_area` | Guard home position, alert allies on spotting threat. | `vision_range`, `memory_duration`, `alert_allies` |
+| `pursue_intruders` | Chase alerted target, remember last known position. | `memory_duration` |
+| `follow_thread` | Follow thread trail entities toward the trail owner. | — |
+
+**Utility:**
+
+| Behavior | Description | Parameters |
+|----------|-------------|------------|
+| `seek_item` | Pathfind toward nearest ground item, pick up when adjacent. | `search_radius` (default: 10), `item_type` (optional filter) |
+| `mine_nearby_wall` | Mine adjacent breakable walls with equipped mining tool. | — |
+| `wander_to_wall` | Walk toward nearest visible wall (for miners). | — |
+| `pickpocket_adjacent` | Steal unequipped item from adjacent player. | — |
+| `flee_with_loot` | Flee toward deep liquid and drop stolen items in. | `loot_search_radius` |
+| `summon_actor` | Spawn an actor on adjacent floor tile on cooldown with a cap. | `summon_type`, `summon_cooldown` (default: 5), `summon_cap` (default: 3), `summon_sound` |
+| `emit_cloud` | Spawn cloud actor at position with global cap. | `emit_from_type`, `emit_type`, `emit_chance` (default: 3), `emit_cap` (default: 12) |
+
+**Environmental:**
+
+| Behavior | Description | Parameters |
+|----------|-------------|------------|
+| `fire_spread` | Spread fire to adjacent flammable actors/items. | `spread_chance` |
+| `fire_burn_out` | Countdown fire lifetime, damage actors standing in fire. | `damage_per_turn` |
+| `cloud_spread` | Expand cloud to adjacent tiles. | `spread_radius`, `spread_turns` |
+| `cloud_disperse` | Edge clouds disperse into mist. | `disperse_to`, `disperse_threshold`, `disperse_chance` |
+| `cloud_affect_actors` | Apply cloud's collision_effect/apply_state to actors in tile. | — |
+| `cloud_lifetime` | Countdown and remove cloud. | — |
+| `mist_fade` | Isolated mist fades away. | `fade_threshold`, `fade_chance` |
+| `incinerate_entities` | Destroy items/actors on lava. | `spawn_on_incinerate` |
+| `steam_generation` | Generate steam when adjacent to water. | `steam_type`, `steam_chance` |
+| `strip_inventory` | Chance to strip an item from an actor's inventory. | `item_drop_chance` (default: 0.1) |
+| `drift_ground_items` | Chance to move ground items to adjacent tiles. | `item_drift_chance` (default: 0.3) |
+| `drain_suction` | Pull items on liquid toward drain, delete when adjacent. | `suction_range` (default: 2) |
+| `cellular_transform` | Transform actor when surrounded by enough neighbors of a type. | `neighbor_type`, `neighbor_count`, `transform_to`, `check_cardinal` |
+| `liquid_color_mix` | Gradually blend tint toward neighboring liquids. | `mix_chance`, `mix_step` |
+| `cellular_automaton_step` | Totalistic cellular automaton (configurable survival/birth rules). | `cell_type`, `survive_min`, `survive_max`, `birth_count` |
+| `trap_check_trigger` | Check if actor/item triggers hidden trap. | — |
+
+**Chain Creature:**
+
+| Behavior | Description | Parameters |
+|----------|-------------|------------|
+| `chain_head_ai` | Head segment pursues player, records path for body. | — |
+| `chain_body_follow` | Body segment follows previous segment's path. | — |
+| `chain_scatter` | Severed body segment wanders randomly. | — |
 
 ## Sound Attributes
 

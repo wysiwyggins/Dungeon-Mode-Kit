@@ -3252,6 +3252,24 @@ class InterfaceManager {
             }
         }
 
+        // Blink caster to target tile
+        if (spellEffect.blink_self) {
+            const tx = landingPoint.x;
+            const ty = landingPoint.y;
+            if (caster.hasFloorAt(tx, ty) && !entityManager.getSolidActorAt(tx, ty)) {
+                caster.x = tx;
+                caster.y = ty;
+                caster.updateSpritePosition();
+                this.engine.lightingManager?.computeLighting();
+                if (caster.isPlayerControlled()) {
+                    this.engine.renderer?.centerViewportOnPlayer?.();
+                }
+                this.engine.renderer?.effectRunner?.apply('blink');
+            } else {
+                this.engine.inputManager?.showMessage('You cannot blink there.');
+            }
+        }
+
         // Identify the item after successful cast
         if (!item.identified) {
             item.identify();

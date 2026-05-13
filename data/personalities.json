@@ -247,5 +247,77 @@
       "pursue_target",
       "random_walk"
     ]
+  },
+
+  "poison_frog": {
+    "name": "Poison Frog",
+    "hostile": true,
+    "aura_state": "poisoned",
+    "aura_chance": 30,
+    "aura_duration": 5,
+    "behaviors": [
+      "apply_aura",
+      "attack_adjacent",
+      "pursue_target",
+      "random_walk"
+    ]
+  },
+
+  "shaman": {
+    "name": "Shaman",
+    "hostile": true,
+    "heal_amount": 8,
+    "summon_type": "skeleton",
+    "summon_cooldown": 8,
+    "summon_cap": 2,
+    "summon_sound": "tone3",
+    "preferred_distance": 4,
+    "behaviors": [
+      "summon_actor",
+      "heal_ally",
+      "flee_from_danger",
+      "maintain_distance",
+      "attack_adjacent",
+      "random_walk"
+    ]
+  },
+
+  "scavenger": {
+    "name": "Scavenger",
+    "hostile": false,
+    "search_radius": 15,
+    "behaviors": [
+      "flee_from_danger",
+      "seek_item",
+      "random_walk"
+    ]
+  },
+
+  "blink_stalker": {
+    "name": "Blink Stalker",
+    "hostile": true,
+    "blink_range": 8,
+    "blink_cooldown": 4,
+    "preferred_distance": 4,
+    "behaviors": [
+      "blink_away",
+      "attack_adjacent",
+      "pursue_target",
+      "random_walk"
+    ]
+  },
+
+  "hive_queen": {
+    "name": "Hive Queen",
+    "hostile": true,
+    "summon_type": "drone",
+    "summon_cooldown": 4,
+    "summon_cap": 5,
+    "behaviors": [
+      "summon_actor",
+      "flee_from_danger",
+      "attack_adjacent",
+      "random_walk"
+    ]
   }
 }
