@@ -522,7 +522,7 @@
   "chainmail": {
     "name": "Chainmail",
     "tileIndex": "WHITE_GREAVES",
-    "tint": "#CCEECC",
+    "tint": "#4444CC",
     "identified": false,
     "attributes": {
       "pickupable": true,
@@ -612,7 +612,7 @@
   "helmet": {
     "name": "Helmet",
     "tileIndex": "PARTIAL_WHITE_UNDERSCORE",
-    "tint": "#9999AA",
+    "tint": "#333355",
     "identified": false,
     "attributes": {
       "pickupable": true,
@@ -633,7 +633,7 @@
   "rapier": {
     "name": "Rapier",
     "tileIndex": "INVERTED_WHITE_CROSS",
-    "tint": "#CCCCEE",
+    "tint": "#223399",
     "identified": false,
     "attributes": {
       "pickupable": true,
@@ -693,7 +693,7 @@
   "spear": {
     "name": "Spear",
     "tileIndex": "SOLIDUS",
-    "tint": "#BBAA88",
+    "tint": "#333388",
     "identified": false,
     "attributes": {
       "pickupable": true,
@@ -722,7 +722,7 @@
   "mace": {
     "name": "Mace",
     "tileIndex": "WHITE_UPWARDS_ARROW",
-    "tint": "#AAAAAA",
+    "tint": "#333388",
     "identified": false,
     "attributes": {
       "pickupable": true,

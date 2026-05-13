@@ -766,8 +766,9 @@ const BehaviorLibrary = {
         actor.cloudLifetime--;
 
         if (actor.cloudLifetime <= 0) {
-            if (actor.isCloudOrigin && actor.engine.entityManager._sewerGasCount > 0) {
-                actor.engine.entityManager._sewerGasCount--;
+            if (actor.isCloudOrigin && actor._emitCounterKey) {
+                const em = actor.engine.entityManager;
+                if (em[actor._emitCounterKey] > 0) em[actor._emitCounterKey]--;
             }
             actor.die();
             return true;
@@ -943,10 +944,10 @@ const BehaviorLibrary = {
             const checkX = actor.x + dir.dx;
             const checkY = actor.y + dir.dy;
 
-            // Find actors at this position that match the neighbor type
-            const neighbor = entityManager._getLiquidActorAt(checkX, checkY);
+            const neighbor = entityManager.getActorsAt(checkX, checkY)
+                .find(a => a.type === neighborType || a.type === transformTo);
 
-            if (neighbor && (neighbor.type === neighborType || neighbor.type === transformTo)) {
+            if (neighbor) {
                 matchingNeighbors++;
             }
         }
@@ -1060,137 +1061,88 @@ const BehaviorLibrary = {
         return false;
     },
 
-    /**
-     * Deep water currents behavior - affects actors and items in the water
-     *
-     * For actors with inventory standing in this water:
-     * - Random chance each turn to drop an item from inventory
-     *
-     * For items on the ground at this position:
-     * - Random chance each turn to drift to an adjacent tile
-     *
-     * Data parameters:
-     * - item_drop_chance: Probability (0-1) that an actor drops an item (default: 0.1)
-     * - item_drift_chance: Probability (0-1) that a ground item drifts (default: 0.3)
-     */
-    deep_water_currents: (actor, data) => {
+    strip_inventory: (actor, data) => {
         const entityManager = actor.engine.entityManager;
         const dropChance = data.item_drop_chance ?? 0.1;
+
+        const other = entityManager._getSolidActorAt(actor.x, actor.y);
+        if (!other || other === actor) return false;
+        if (!other.inventory || other.inventory.length === 0) return false;
+        if (ROT.RNG.getUniform() >= dropChance) return false;
+
+        const item = randomElement(other.inventory);
+
+        const validPositions = [];
+        for (const dir of CARDINAL_DIRS) {
+            const newX = other.x + dir.dx;
+            const newY = other.y + dir.dy;
+            if (newX < 0 || newX >= actor.engine.mapManager.width ||
+                newY < 0 || newY >= actor.engine.mapManager.height) continue;
+            const tile = actor.engine.mapManager.floorMap[newY]?.[newX];
+            if (!tile || !tile.tileId) continue;
+            if (entityManager._getSolidActorAt(newX, newY)) continue;
+            validPositions.push({x: newX, y: newY});
+        }
+
+        let dropX = other.x;
+        let dropY = other.y;
+        if (validPositions.length > 0) {
+            const dropPos = randomElement(validPositions);
+            dropX = dropPos.x;
+            dropY = dropPos.y;
+        }
+
+        if (other.isItemEquipped && other.isItemEquipped(item)) {
+            other.unequipItem(item);
+        }
+
+        const itemIndex = other.inventory.indexOf(item);
+        other.inventory.splice(itemIndex, 1);
+
+        item.x = dropX;
+        item.y = dropY;
+        entityManager.addEntity(item);
+        actor.engine.renderer?.updateItemZIndex(item);
+
+        if (other.hasAttribute('controlled')) {
+            const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
+            actor.engine.inputManager?.showMessage(`The current sweeps the ${displayName} from your grasp!`);
+        }
+
+        return true;
+    },
+
+    drift_ground_items: (actor, data) => {
+        const entityManager = actor.engine.entityManager;
         const driftChance = data.item_drift_chance ?? 0.3;
         let actionTaken = false;
 
-        // Find solid actor at this position (player, enemies, etc.)
-        const other = entityManager._getSolidActorAt(actor.x, actor.y);
-        if (other && other !== actor) {
-            // Check if this actor has items in inventory
-            if (other.inventory && other.inventory.length > 0) {
-                if (ROT.RNG.getUniform() < dropChance) {
-                    // Pick a random item to drop
-                    const item = randomElement(other.inventory);
-
-                    // Find an adjacent tile for the item to drift to
-                    const validPositions = [];
-                    for (const dir of CARDINAL_DIRS) {
-                        const newX = other.x + dir.dx;
-                        const newY = other.y + dir.dy;
-
-                        // Check bounds
-                        if (newX < 0 || newX >= actor.engine.mapManager.width ||
-                            newY < 0 || newY >= actor.engine.mapManager.height) {
-                            continue;
-                        }
-
-                        // Check for floor
-                        const tile = actor.engine.mapManager.floorMap[newY]?.[newX];
-                        if (!tile || !tile.tileId) continue;
-
-                        // Check for solid actors blocking
-                        if (entityManager._getSolidActorAt(newX, newY)) continue;
-
-                        validPositions.push({x: newX, y: newY});
-                    }
-
-                    // If no valid adjacent position, drop at current position
-                    let dropX = other.x;
-                    let dropY = other.y;
-                    if (validPositions.length > 0) {
-                        const dropPos = randomElement(validPositions);
-                        dropX = dropPos.x;
-                        dropY = dropPos.y;
-                    }
-
-                    // Unequip if equipped
-                    if (other.isItemEquipped && other.isItemEquipped(item)) {
-                        other.unequipItem(item);
-                    }
-
-                    // Remove from inventory
-                    const itemIndex = other.inventory.indexOf(item);
-                    other.inventory.splice(itemIndex, 1);
-
-                    // Place item at drop position
-                    item.x = dropX;
-                    item.y = dropY;
-                    entityManager.addEntity(item);
-
-                    // Update z-index so item floats above water if on deep water
-                    actor.engine.renderer?.updateItemZIndex(item);
-
-                    // Show message if player
-                    if (other.hasAttribute('controlled')) {
-                        const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
-                        actor.engine.inputManager?.showMessage(`The current sweeps the ${displayName} from your grasp!`);
-                    }
-
-                    console.log(`${actor.name} currents caused ${other.name} to drop ${item.name} at (${dropX}, ${dropY})`);
-                    actionTaken = true;
-                }
-            }
-        }
-
-        // Find items on the ground at this position and potentially drift them
         const itemsHere = entityManager.items.filter(
             item => item.x === actor.x && item.y === actor.y
         );
 
         for (const item of itemsHere) {
-            if (ROT.RNG.getUniform() < driftChance) {
-                // Get valid adjacent positions (must have floor, no solid actors)
-                const validPositions = [];
-                for (const dir of CARDINAL_DIRS) {
-                    const newX = actor.x + dir.dx;
-                    const newY = actor.y + dir.dy;
+            if (ROT.RNG.getUniform() >= driftChance) continue;
 
-                    // Check bounds
-                    if (newX < 0 || newX >= actor.engine.mapManager.width ||
-                        newY < 0 || newY >= actor.engine.mapManager.height) {
-                        continue;
-                    }
+            const validPositions = [];
+            for (const dir of CARDINAL_DIRS) {
+                const newX = actor.x + dir.dx;
+                const newY = actor.y + dir.dy;
+                if (newX < 0 || newX >= actor.engine.mapManager.width ||
+                    newY < 0 || newY >= actor.engine.mapManager.height) continue;
+                const tile = actor.engine.mapManager.floorMap[newY]?.[newX];
+                if (!tile || !tile.tileId) continue;
+                if (entityManager._getSolidActorAt(newX, newY)) continue;
+                validPositions.push({x: newX, y: newY});
+            }
 
-                    // Check for floor
-                    const tile = actor.engine.mapManager.floorMap[newY]?.[newX];
-                    if (!tile || !tile.tileId) continue;
-
-                    // Check for solid actors blocking
-                    if (entityManager._getSolidActorAt(newX, newY)) continue;
-
-                    validPositions.push({x: newX, y: newY});
-                }
-
-                if (validPositions.length > 0) {
-                    const newPos = randomElement(validPositions);
-                    const oldX = item.x;
-                    const oldY = item.y;
-                    item.x = newPos.x;
-                    item.y = newPos.y;
-
-                    // Update sprite position and z-index
-                    item.updateSpritePosition();
-                    actor.engine.renderer?.updateItemZIndex(item);
-
-                    console.log(`${item.name} drifted from (${oldX}, ${oldY}) to (${item.x}, ${item.y})`);
-                    actionTaken = true;
-                }
+            if (validPositions.length > 0) {
+                const newPos = randomElement(validPositions);
+                item.x = newPos.x;
+                item.y = newPos.y;
+                item.updateSpritePosition();
+                actor.engine.renderer?.updateItemZIndex(item);
+                actionTaken = true;
             }
         }
 
@@ -1261,17 +1213,7 @@ const BehaviorLibrary = {
         return false; // Allow other behaviors to run
     },
 
-    /**
-     * Conway's Game of Life cellular automaton step
-     * Evaluates all cells simultaneously and applies Conway's rules:
-     * - Live cell with 2-3 neighbors survives
-     * - Dead cell with exactly 3 neighbors becomes alive
-     * - All other live cells die
-     *
-     * Data parameters:
-     * - cell_type: The actor type to look for/spawn as cells (default: "gol_cell")
-     */
-    game_of_life_step: (actor, data) => {
+    cellular_automaton_step: (actor, data) => {
         const cellType = data.cell_type || 'gol_cell';
         const entityManager = actor.engine.entityManager;
         const mapManager = actor.engine.mapManager;
@@ -1965,28 +1907,33 @@ const BehaviorLibrary = {
         return false;
     },
 
-    emit_sewer_gas: (actor) => {
-        if (actor.type !== 'sewage') return;
-        if (ROT.RNG.getPercentage() > 3) return;
+    emit_cloud: (actor, data) => {
+        const emitFromType = data.emit_from_type;
+        if (emitFromType && actor.type !== emitFromType) return;
+
+        const emitChance = data.emit_chance ?? 3;
+        if (ROT.RNG.getPercentage() > emitChance) return;
 
         const entityManager = actor.engine.entityManager;
+        const emitType = data.emit_type || 'sewer_gas';
+        const emitCap = data.emit_cap ?? 12;
+        const counterKey = '_' + emitType + 'Count';
 
-        // Cap total active sewer gas clouds to prevent runaway spawning
-        if (!entityManager._sewerGasCount) entityManager._sewerGasCount = 0;
-        if (entityManager._sewerGasCount >= 12) return;
+        if (!entityManager[counterKey]) entityManager[counterKey] = 0;
+        if (entityManager[counterKey] >= emitCap) return;
 
-        // Don't emit if there's already a cloud here
         for (const a of entityManager.getActorsAt(actor.x, actor.y)) {
             if (a.personality?.name === 'Cloud') return;
         }
 
-        const cloud = entityManager.spawnActor('sewer_gas', actor.x, actor.y);
+        const cloud = entityManager.spawnActor(emitType, actor.x, actor.y);
         if (cloud) {
             cloud.isCloudOrigin = true;
             cloud.cloudOriginX = actor.x;
             cloud.cloudOriginY = actor.y;
             cloud.cloudLifetime = 6;
-            entityManager._sewerGasCount++;
+            cloud._emitCounterKey = counterKey;
+            entityManager[counterKey]++;
         }
     },
 
@@ -2196,8 +2143,14 @@ const BehaviorLibrary = {
         return retryResult.moved || retryResult.actionTaken;
     },
 
-    // Backward-compat aliases for renamed chain behaviors
+    // Backward-compat aliases
     scutigera_head_ai: (...args) => BehaviorLibrary.chain_head_ai(...args),
     scutigera_body_follow: (...args) => BehaviorLibrary.chain_body_follow(...args),
-    scutigera_scatter: (...args) => BehaviorLibrary.chain_scatter(...args)
+    scutigera_scatter: (...args) => BehaviorLibrary.chain_scatter(...args),
+    game_of_life_step: (...args) => BehaviorLibrary.cellular_automaton_step(...args),
+    emit_sewer_gas: (...args) => BehaviorLibrary.emit_cloud(...args),
+    deep_water_currents: (...args) => {
+        BehaviorLibrary.strip_inventory(...args);
+        return BehaviorLibrary.drift_ground_items(...args);
+    }
 };

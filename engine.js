@@ -8625,7 +8625,6 @@ class EntityManager {
         this._actorPosCache = null;
         this._liquidPosCache = null;
         this._solidPosCache = null;
-        this._sewerGasCount = 0;
     }
 }
 

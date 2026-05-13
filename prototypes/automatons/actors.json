@@ -10,7 +10,7 @@
   "gol_coordinator": {
     "name": "Life Coordinator",
     "tileIndexBase": "BLANK",
-    "personality": "game_of_life",
+    "personality": "cellular_automaton",
     "attributes": {
       "solid": false,
       "visible": false

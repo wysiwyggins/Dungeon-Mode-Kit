@@ -115,10 +115,14 @@
     "name": "Liquid Pooling",
     "hostile": false,
     "behaviors": [
-      "emit_sewer_gas",
+      "emit_cloud",
       "cellular_transform",
       "liquid_color_mix"
     ],
+    "emit_from_type": "sewage",
+    "emit_type": "sewer_gas",
+    "emit_chance": 3,
+    "emit_cap": 12,
     "neighbor_count": 4,
     "check_cardinal": true,
     "mix_chance": 0.2,
@@ -129,7 +133,8 @@
     "name": "Deep Water",
     "hostile": false,
     "behaviors": [
-      "deep_water_currents",
+      "strip_inventory",
+      "drift_ground_items",
       "liquid_color_mix"
     ],
     "item_drop_chance": 0.3,
@@ -145,10 +150,10 @@
     "suction_range": 2
   },
 
-  "game_of_life": {
-    "name": "Game of Life",
+  "cellular_automaton": {
+    "name": "Cellular Automaton",
     "hostile": false,
-    "behaviors": ["game_of_life_step"],
+    "behaviors": ["cellular_automaton_step"],
     "cell_type": "gol_cell"
   },
 
