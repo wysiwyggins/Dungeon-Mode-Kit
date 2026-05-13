@@ -521,7 +521,7 @@
   },
   "chainmail": {
     "name": "Chainmail",
-    "tileIndex": "WHITE_LEG",
+    "tileIndex": "WHITE_GREAVES",
     "tint": "#CCEECC",
     "identified": false,
     "attributes": {
@@ -543,7 +543,7 @@
   "plate": {
     "name": "Plate Armor",
     "identified": false,
-    "tileIndex": "WHITE_LEG",
+    "tileIndex": "WHITE_GREAVES",
     "tint": "#888888",
     "attributes": {
       "pickupable": true,
@@ -566,7 +566,7 @@
   },
   "leather_armor": {
     "name": "Leather Armor",
-    "tileIndex": "WHITE_LEG",
+    "tileIndex": "WHITE_GREAVES",
     "tint": "#AA7744",
     "identified": false,
     "attributes": {
@@ -587,7 +587,7 @@
   },
   "scale_mail": {
     "name": "Scale Mail",
-    "tileIndex": "WHITE_LEG",
+    "tileIndex": "WHITE_GREAVES",
     "tint": "#669966",
     "identified": false,
     "attributes": {
@@ -663,7 +663,7 @@
   },
   "axe": {
     "name": "Axe",
-    "tileIndex": "CROSS",
+    "tileIndex": "LATIN_CAPITAL_LETTER_L",
     "tint": "#996633",
     "flipV": true,
     "identified": false,
@@ -721,7 +721,7 @@
   },
   "mace": {
     "name": "Mace",
-    "tileIndex": "EXCLAMATION_MARK",
+    "tileIndex": "WHITE_UPWARDS_ARROW",
     "tint": "#AAAAAA",
     "identified": false,
     "attributes": {

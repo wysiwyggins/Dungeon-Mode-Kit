@@ -380,6 +380,7 @@
         "WHITE_LATIN_SMALL_LETTER_X": [19, 15],
         "WHITE_LATIN_SMALL_LETTER_Y": [20, 15],
         "WHITE_LATIN_SMALL_LETTER_Z": [21, 15],
-        "WHITE_BULLET": [22, 15]
+        "WHITE_BULLET": [22, 15],
+        "WHITE_GREAVES": [0,16]
     }
 }

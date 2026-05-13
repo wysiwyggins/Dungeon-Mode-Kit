@@ -3678,14 +3678,14 @@ class Actor extends Entity {
             }
         }
 
-        // Auto-equip wearable items (if meets requirements)
-        const slot = item.getAttribute('wearable');
-        if (slot && ['top', 'middle', 'lower'].includes(slot)) {
-            const { canEquip, reason } = this.canEquipItem(item);
-            if (canEquip) {
-                this.equipToSlot(item, slot);
-            } else if (this.isPlayerControlled()) {
-                this.engine.inputManager?.showMessage(`You cannot equip the ${item.name}. ${reason}.`);
+        // Auto-equip wearable items for NPCs only (player must equip manually)
+        if (!this.isPlayerControlled()) {
+            const slot = item.getAttribute('wearable');
+            if (slot && ['top', 'middle', 'lower'].includes(slot)) {
+                const { canEquip } = this.canEquipItem(item);
+                if (canEquip) {
+                    this.equipToSlot(item, slot);
+                }
             }
         }
 
@@ -3725,7 +3725,8 @@ class Actor extends Entity {
         if (item.hasAttribute('cursed') && this.isPlayerControlled()) {
             item.identified = true;
             this.engine.inputManager?.showMessage(`You feel a malevolent force bind the ${item.getDisplayName?.()} to you!`);
-            this.engine.playSound?.('tone1');
+            this.engine.playSound?.('tone9');
+            this.engine.renderer?.effectRunner.apply('curse_reveal');
         }
 
         if (item.hasAttribute('light_source')) {

@@ -101,5 +101,11 @@
     "layers": [
       { "primitive": "canvas_flash", "params": { "color": "0xFFFFFF", "duration_ms": 300, "opacity": 0.5 } }
     ]
+  },
+  "curse_reveal": {
+    "target": "stage",
+    "layers": [
+      { "primitive": "canvas_flash", "params": { "color": "0x440000", "duration_ms": 400, "opacity": 0.4, "blend_mode": "multiply" } }
+    ]
   }
 }
