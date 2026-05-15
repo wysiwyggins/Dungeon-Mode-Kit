@@ -240,8 +240,8 @@
                  "type":"SKULL",
                  "visible":true,
                  "width":40,
-                 "x":920,
-                 "y":660
+                 "x":1400,
+                 "y":90
                 }, 
                 {
                  "height":30,
@@ -265,6 +265,11 @@
                  "id":59,
                  "name":"Skull",
                  "properties":[
+                        {
+                         "name":"tint",
+                         "type":"color",
+                         "value":"#ffdad6c5"
+                        }, 
                         {
                          "name":"walk_description",
                          "type":"string",

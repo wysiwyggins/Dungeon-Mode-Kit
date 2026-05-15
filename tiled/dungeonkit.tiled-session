@@ -139,6 +139,7 @@
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/dungeon/map.tmj"
     ],
     "project": "dungeonkit.tiled-project",
+    "property.type": "color",
     "recentFiles": [
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/default/map.tmj",
         "tower.tmj",
