@@ -28,7 +28,7 @@ Load a prototype by adding `?prototype=my_level` to the URL.
 | `depth` | number | Numeric identifier for the prototype's position in progression |
 | `turn_speed` | number | Milliseconds per AI turn (lower = faster). Default `50`. |
 | `loaded_sound` | string | Sound played when the prototype loads |
-| `next_level` | string | Prototype folder name to advance to (via down stairway or gateway) |
+| `next_level` | string | Prototype folder name to advance to (via down stairway or portal) |
 | `previous_level` | string | Prototype folder name to return to (via up stairway from floor 1) |
 
 ---
@@ -74,7 +74,7 @@ See [LIGHTING.md](../LIGHTING.md) for the full lighting system reference.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `observer_mode` | boolean | `false` | Disable stairway and gateway placement. Use for spectator-only prototypes (e.g. cellular automata demos). |
+| `observer_mode` | boolean | `false` | Disable stairway and portal placement. Use for spectator-only prototypes (e.g. cellular automata demos). |
 | `treasure_room` | number | `0` | Percent chance (0-100) to spawn a treasure room on the level |
 
 ---
@@ -243,7 +243,7 @@ Each floor spawns `base` items guaranteed, then rolls up to `max_extra` addition
 
 ## Win Conditions
 
-`win_conditions` is an array of conditions that must all be met to unlock the floor's stairway or gateway.
+`win_conditions` is an array of conditions that must all be met to unlock the floor's stairway or portal.
 
 ```json
 "win_conditions": ["killed:ghast", "wearing:crown"]
@@ -323,7 +323,7 @@ Fields not specified in a floor object fall back to the prototype-level defaults
 
 - **Stairways** move between floors (not prototypes). The engine auto-places `down_stairway` on every floor except the last.
 - **Win conditions** are per-floor. Each floor's stairway is locked until its conditions are met.
-- **Gateway** is auto-placed on the last floor when `next_level` is set. It starts hidden and appears when the last floor's win conditions are met.
+- **portal** is auto-placed on the last floor when `next_level` is set. It starts hidden and appears when the last floor's win conditions are met.
 - **Going up from floor 1** transitions to `previous_level` (if set).
 - **Floor state** is saved when leaving and restored when returning. Entities, map, and RNG state persist.
 
@@ -354,7 +354,7 @@ Prototypes are linked together using `next_level` and `previous_level`.
 
 - **Down stairway** on the last floor (or single-floor prototype) transitions to `next_level`
 - **Up stairway** on floor 1 transitions to `previous_level`
-- **Gateway** on the last floor of a multi-floor prototype transitions to `next_level` when win conditions are met
+- **portal** on the last floor of a multi-floor prototype transitions to `next_level` when win conditions are met
 
 See [MAP.md](MAP.md) for stairway placement and transition details.
 

@@ -508,18 +508,36 @@
       "breakable": true
     }
   },
-  "gateway": {
-    "name": "Gateway",
+  "portal": {
+    "name": "portal",
     "tileIndexBase": "FLOATING_LEGS_ON_WHITE_UPPER_GRADIENT",
     "tileIndexTop": "OPAQUE_DOOR_TOP",
     "attributes": {
       "solid": false,
       "visible": false,
       "flammable": false,
-      "gateway": true,
+      "portal": true,
       "hidden": true
     }
   },
+  "gate": {
+    "name": "gate",
+    "tileIndexBase": "GATE",
+    "tileIndexTop": "GATE",
+    "tileIndexTop_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
+    "tileIndexBase_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
+    "flipBaseV": true,
+    "attributes": {
+      "flammable": false,
+      "conductive": false,
+      "openable": true,
+      "lockable": true,
+      "gate": true,
+      "open": false,
+      "locked": false
+    }
+  },
+
   "door": {
     "name": "Door",
     "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
@@ -552,17 +570,35 @@
       "locked": true
     }
   },
-  "lever_up": {
+  "lever": {
     "name": "lever",
     "tileIndexBase": "LEVER_BASE",
-    "tileIndexTop": "LEVER_HANDLE"
+    "tileIndexTop": "LEVER_HANDLE",
+    "tileIndexBase_toggled": "LEVER_HANDLE",
+    "tileIndexTop_toggled": "LEVER_BASE",
+    "flipBaseV_toggled": true,
+    "flipTopV_toggled": true,
+    "collision_sound": "push1",
+    "attributes": {
+      "solid": true,
+      "switchable": true,
+      "toggled": false
+    },
+    "switch_message": "You pull the lever.",
+    "switch_effects": {
+      "locked": false
+    }
   },
-  "lever_down": {
-    "name": "lever",
-    "flipTopV": true,
-    "flipBaseV": true,
-    "tileIndexBase": "LEVER_HANDLE",
-    "tileIndexTop": "LEVER_BASE"
+  "pedestal": {
+    "name": "pedestal",
+    "tileIndexBase": "UPPER_ONE_HALF_BLOCK",
+    "tileIndexTop": "BLANK",
+    "attributes": {
+      "solid": true,
+      "pedestal": true,
+      "locked": true
+    },
+    "collision_description": "The item on the pedestal is held fast."
   },
   "water": {
     "name": "water",

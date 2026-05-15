@@ -10,14 +10,14 @@
     "fileStates": {
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/arena/map.tmj": {
             "expandedObjectLayers": [
-                3,
-                8
+                8,
+                3
             ],
-            "scale": 0.7952,
-            "selectedLayer": 2,
+            "scale": 0.3821,
+            "selectedLayer": 5,
             "viewCenter": {
-                "x": 630.658953722334,
-                "y": 227.61569416498995
+                "x": 1045.5378173253075,
+                "y": 1083.4859984297304
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/catacombs/map.tmj": {

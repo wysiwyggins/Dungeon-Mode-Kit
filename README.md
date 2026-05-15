@@ -140,7 +140,7 @@ Add a `levels` array to create a prototype with multiple floors. Each floor can 
 }
 ```
 
-Stairways move between floors within the prototype. On the last floor, a hidden **gateway** actor appears when win conditions are met and transitions to `next_level`. If `levels` is omitted, the prototype works as a single-level (legacy behavior).
+Stairways move between floors within the prototype. On the last floor, a hidden **portal** actor appears when win conditions are met and transitions to `next_level`. If `levels` is omitted, the prototype works as a single-level (legacy behavior).
 
 Floor maps: floor 1 uses `map.tmj`, floor N>1 uses `{N}.tmj` (e.g. `2.tmj`). Missing maps are generated procedurally.
 
@@ -227,7 +227,7 @@ Collision effect values can reference the attacker's stats/attributes: `"-{stren
 | `strength` | Multiplies weapon damage ÷ 10 (combat) |
 | `sighted: true` | AI avoids hazards like fire and lava |
 | `deep: true` | Submerges any actor that enters this tile (canvas tints, sprite swaps to show submersion); extinguishes carried torches |
-| `gateway: true` | Hidden inter-prototype transition point; revealed when last floor's win conditions are met |
+| `portal: true` | Hidden inter-prototype transition point; revealed when last floor's win conditions are met |
 | `hidden: true` | Actor exists but is not rendered until revealed |
 
 ### Stats format

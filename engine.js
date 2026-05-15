@@ -3167,6 +3167,11 @@ class Actor extends Entity {
         this.tileIndexBase_open = engine.spriteLibrary.resolveTile(data.tileIndexBase_open) || null;
         this.tileIndexTop_open = engine.spriteLibrary.resolveTile(data.tileIndexTop_open) || null;
 
+        this.tileIndexBase_toggled = engine.spriteLibrary.resolveTile(data.tileIndexBase_toggled) || null;
+        this.tileIndexTop_toggled = engine.spriteLibrary.resolveTile(data.tileIndexTop_toggled) || null;
+        this.flipBaseV_toggled = data.flipBaseV_toggled || false;
+        this.flipTopV_toggled = data.flipTopV_toggled || false;
+
         // Handle random color assignment for color-locked doors
         if (data.random_color && this.hasAttribute('color_locked') && engine.currentPrototype) {
             const assignedColor = engine.currentPrototype.assignLockColor();
@@ -3297,6 +3302,124 @@ class Actor extends Entity {
         console.log(`${this.name} closed`);
         if (!silent) {
             this.engine.inputManager?.showMessage(`The ${this.name} closes.`, { x: this.x, y: this.y });
+        }
+    }
+
+    toggle() {
+        if (!this.hasAttribute('switchable')) return;
+        if (this.hasAttribute('one_shot') && this.hasAttribute('toggled')) return;
+
+        const nowToggled = !this.hasAttribute('toggled');
+        this.setAttribute('toggled', nowToggled);
+
+        if (nowToggled && this.tileIndexBase_toggled) {
+            this.engine.renderer?.updateSpriteTexture(this.spriteBase, this.tileIndexBase_toggled);
+            this.engine.renderer?.updateSpriteTexture(this.spriteTop, this.tileIndexTop_toggled);
+            if (this.spriteBase) this.spriteBase.scale.y = this.flipBaseV_toggled ? -1 : 1;
+            if (this.spriteTop) this.spriteTop.scale.y = this.flipTopV_toggled ? -1 : 1;
+        } else {
+            this.engine.renderer?.updateSpriteTexture(this.spriteBase, this.tileIndexBase);
+            this.engine.renderer?.updateSpriteTexture(this.spriteTop, this.tileIndexTop);
+            if (this.spriteBase) this.spriteBase.scale.y = this.flipBaseV ? -1 : 1;
+            if (this.spriteTop) this.spriteTop.scale.y = this.flipTopV ? -1 : 1;
+        }
+
+        const sound = this.data?.switch_sound || this.getAttribute('collision_sound') || 'tap2';
+        this.engine.playSound?.(sound);
+        const message = this.data?.switch_message || `The ${this.name} clicks.`;
+        this.engine.inputManager?.showMessage(message, { x: this.x, y: this.y });
+
+        this._propagateSwitchEffects(nowToggled);
+    }
+
+    _propagateSwitchEffects(activated) {
+        const effects = this.data?.switch_effects;
+        if (!effects) return;
+
+        const machineId = this.getAttribute('machine_id');
+        let targets;
+
+        if (machineId) {
+            targets = this.engine.entityManager.actors.filter(
+                a => a !== this && !a.isDead && a.getAttribute('machine_id') === machineId
+            );
+        } else {
+            const radius = this.data?.switch_radius || 10;
+            targets = this.engine.entityManager.actors.filter(a => {
+                if (a === this || a.isDead) return false;
+                if (!a.hasAttribute('gate') && !a.hasAttribute('pedestal') && !a.hasAttribute('switchable')) return false;
+                const dist = Math.abs(a.x - this.x) + Math.abs(a.y - this.y);
+                return dist <= radius;
+            });
+        }
+
+        for (const target of targets) {
+            for (const [key, value] of Object.entries(effects)) {
+                if (activated) {
+                    target.setAttribute(key, value);
+                } else {
+                    if (typeof value === 'boolean') {
+                        target.setAttribute(key, !value);
+                    }
+                }
+            }
+
+            if (target.hasAttribute('openable')) {
+                if (activated && effects.locked === false) {
+                    target.open();
+                } else if (!activated && effects.locked === false) {
+                    target.close(true);
+                }
+            }
+
+            if (target.hasAttribute('pedestal')) {
+                if (activated && effects.locked === false) {
+                    target.releasePedestalItem();
+                } else if (!activated && effects.locked === false) {
+                    target.capturePedestalItem();
+                }
+            }
+        }
+
+        this.engine.updateLighting();
+    }
+
+    releasePedestalItem() {
+        const item = this._pedestalItem;
+        if (!item) return;
+
+        this.setAttribute('solid', false);
+        this.setAttribute('collision_description', null);
+        item.setAttribute('pickupable', true);
+        item.setAttribute('visible', true);
+        if (item.sprite) {
+            item.sprite.visible = true;
+        } else {
+            this.engine.renderer?.createItemSprite(item);
+        }
+
+        this.engine.renderer?.updateSpriteTexture(this.spriteTop, this.tileIndexTop);
+        if (this.spriteTop) this.spriteTop.tint = this.tint ?? 0xFFFFFF;
+
+        this.engine.playSound?.('tone3');
+        this.engine.inputManager?.showMessage(
+            `The ${item.name} on the ${this.name} is released.`,
+            { x: this.x, y: this.y }
+        );
+    }
+
+    capturePedestalItem() {
+        const item = this._pedestalItem;
+        if (!item || item.isDead) return;
+
+        this.setAttribute('solid', true);
+        item.setAttribute('pickupable', false);
+        item.setAttribute('visible', false);
+        if (item.sprite) item.sprite.visible = false;
+
+        if (this.tileIndexTop_item) {
+            this.engine.renderer?.updateSpriteTexture(this.spriteTop, this.tileIndexTop_item);
+            if (this.spriteTop) this.spriteTop.tint = item.tint ?? 0xFFFFFF;
         }
     }
 
@@ -6402,6 +6525,11 @@ class Actor extends Entity {
                 return this.tryMove(newX, newY);
             }
 
+            if (actorAtTarget.hasAttribute('switchable')) {
+                actorAtTarget.toggle();
+                return { moved: false, actionTaken: true };
+            }
+
             // Check if actor can be opened (doors, chests, etc.)
             if (actorAtTarget.hasAttribute('openable') && !actorAtTarget.hasAttribute('open')) {
                 // Spiked doors cannot be opened — must be attacked and destroyed
@@ -7432,6 +7560,33 @@ class EntityManager {
         this.spawnUnplacedEntities(placedActorTypes, placedItemTypes);
 
         console.log(`Entities spawned: ${this.actors.length} actors, ${this.items.length} items`);
+
+        this.initializePedestals();
+    }
+
+    initializePedestals() {
+        for (const actor of this.actors) {
+            if (!actor.hasAttribute('pedestal') || actor.isDead) continue;
+
+            const item = this.getItemAt(actor.x, actor.y);
+            if (!item) continue;
+
+            actor._pedestalItem = item;
+            item.setAttribute('pickupable', false);
+            item.setAttribute('visible', false);
+            if (item.sprite) item.sprite.visible = false;
+
+            const itemTile = item.tileIndex;
+            if (itemTile) {
+                actor.tileIndexTop_item = itemTile;
+                this.engine.renderer?.updateSpriteTexture(actor.spriteTop, itemTile);
+                if (actor.spriteTop) {
+                    actor.spriteTop.tint = item.tint ?? 0xFFFFFF;
+                }
+            }
+
+            console.log(`Pedestal at (${actor.x}, ${actor.y}) captured ${item.name}`);
+        }
     }
 
     /**
@@ -8006,6 +8161,25 @@ class EntityManager {
 
             // Load any default items for this actor
             actor.loadDefaultItems();
+
+            // Parse custom Tiled properties (machine connections, switch overrides)
+            if (obj.properties) {
+                for (const prop of obj.properties) {
+                    if (prop.name === 'machine_id') {
+                        actor.setAttribute('machine_id', prop.value);
+                    } else if (prop.name === 'one_shot') {
+                        actor.setAttribute('one_shot', prop.value);
+                    } else if (prop.name === 'switch_effects') {
+                        try {
+                            actor.data = { ...actor.data, switch_effects: JSON.parse(prop.value) };
+                        } catch (e) {
+                            console.warn(`Invalid switch_effects JSON for ${actorType}:`, prop.value);
+                        }
+                    } else if (prop.name === 'switch_radius') {
+                        actor.data = { ...actor.data, switch_radius: Number(prop.value) };
+                    }
+                }
+            }
 
             console.log(`Spawned ${actorType} at tile (${tileX}, ${tileY}) from pixel (${obj.x}, ${obj.y})`);
         }
