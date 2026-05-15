@@ -591,8 +591,8 @@
   },
   "pedestal": {
     "name": "pedestal",
-    "tileIndexBase": "UPPER_ONE_HALF_BLOCK",
-    "tileIndexTop": "BLANK",
+    "tileIndexBase": "WHITE_DOOR_TOP",
+    "tileIndexTop": "INVERSE_DIAMOND_SUITE",
     "attributes": {
       "solid": true,
       "pedestal": true,

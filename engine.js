@@ -1221,9 +1221,11 @@ class DungeonEngine {
             this.mapManager.addBaseAndShadows();
         }
 
+        this.entityManager.initializeSwitchTints();
         this.renderer.renderTestPattern(this.mapManager);
         this.renderer.renderItems(this.entityManager);
         this.renderer.renderActors(this.entityManager);
+        this.entityManager.initializePedestals();
 
         // Update sidebar and proximity transparency for non-darkness levels
         // (darkness levels update both via updateLighting)
@@ -1383,9 +1385,11 @@ class DungeonEngine {
             this.mapManager.addBaseAndShadows();
         }
 
+        this.entityManager.initializeSwitchTints();
         this.renderer.renderTestPattern(this.mapManager);
         this.renderer.renderItems(this.entityManager);
         this.renderer.renderActors(this.entityManager);
+        this.entityManager.initializePedestals();
 
         // Snap viewport to player
         if (this.viewportEnabled && this.entityManager.player) {
@@ -3315,13 +3319,13 @@ class Actor extends Entity {
         if (nowToggled && this.tileIndexBase_toggled) {
             this.engine.renderer?.updateSpriteTexture(this.spriteBase, this.tileIndexBase_toggled);
             this.engine.renderer?.updateSpriteTexture(this.spriteTop, this.tileIndexTop_toggled);
-            if (this.spriteBase) this.spriteBase.scale.y = this.flipBaseV_toggled ? -1 : 1;
-            if (this.spriteTop) this.spriteTop.scale.y = this.flipTopV_toggled ? -1 : 1;
+            this._applyToggleFlip(this.spriteBase, this.flipBaseV_toggled, this.x, this.y);
+            this._applyToggleFlip(this.spriteTop, this.flipTopV_toggled, this.x, this.y - 1);
         } else {
             this.engine.renderer?.updateSpriteTexture(this.spriteBase, this.tileIndexBase);
             this.engine.renderer?.updateSpriteTexture(this.spriteTop, this.tileIndexTop);
-            if (this.spriteBase) this.spriteBase.scale.y = this.flipBaseV ? -1 : 1;
-            if (this.spriteTop) this.spriteTop.scale.y = this.flipTopV ? -1 : 1;
+            this._applyToggleFlip(this.spriteBase, this.flipBaseV, this.x, this.y);
+            this._applyToggleFlip(this.spriteTop, this.flipTopV, this.x, this.y - 1);
         }
 
         const sound = this.data?.switch_sound || this.getAttribute('collision_sound') || 'tap2';
@@ -3330,6 +3334,21 @@ class Actor extends Entity {
         this.engine.inputManager?.showMessage(message, { x: this.x, y: this.y });
 
         this._propagateSwitchEffects(nowToggled);
+    }
+
+    _applyToggleFlip(sprite, flipV, tileX, tileY) {
+        if (!sprite) return;
+        if (flipV) {
+            sprite.anchor.set(0.5, 0.5);
+            sprite.x = tileX * globalVars.TILE_WIDTH + globalVars.TILE_WIDTH / 2;
+            sprite.y = tileY * globalVars.TILE_HEIGHT + globalVars.TILE_HEIGHT / 2;
+            sprite.scale.y = -1;
+        } else {
+            sprite.anchor.set(0, 0);
+            sprite.x = tileX * globalVars.TILE_WIDTH;
+            sprite.y = tileY * globalVars.TILE_HEIGHT;
+            sprite.scale.y = 1;
+        }
     }
 
     _propagateSwitchEffects(activated) {
@@ -3379,6 +3398,8 @@ class Actor extends Entity {
                     target.capturePedestalItem();
                 }
             }
+
+            target.flash?.();
         }
 
         this.engine.updateLighting();
@@ -3398,8 +3419,9 @@ class Actor extends Entity {
             this.engine.renderer?.createItemSprite(item);
         }
 
-        this.engine.renderer?.updateSpriteTexture(this.spriteTop, this.tileIndexTop);
-        if (this.spriteTop) this.spriteTop.tint = this.tint ?? 0xFFFFFF;
+        if (this.spriteTop) {
+            this.spriteTop.visible = false;
+        }
 
         this.engine.playSound?.('tone3');
         this.engine.inputManager?.showMessage(
@@ -3418,7 +3440,20 @@ class Actor extends Entity {
         if (item.sprite) item.sprite.visible = false;
 
         if (this.tileIndexTop_item) {
-            this.engine.renderer?.updateSpriteTexture(this.spriteTop, this.tileIndexTop_item);
+            if (this.spriteTop) {
+                this.engine.renderer?.updateSpriteTexture(this.spriteTop, this.tileIndexTop_item);
+                this.spriteTop.visible = true;
+            } else {
+                this.spriteTop = this.engine.renderer?.createActorSprite(
+                    this,
+                    this.tileIndexTop_item,
+                    null,
+                    this.x * globalVars.TILE_WIDTH,
+                    (this.y - 1) * globalVars.TILE_HEIGHT,
+                    11,
+                    {}
+                );
+            }
             if (this.spriteTop) this.spriteTop.tint = item.tint ?? 0xFFFFFF;
         }
     }
@@ -7561,7 +7596,49 @@ class EntityManager {
 
         console.log(`Entities spawned: ${this.actors.length} actors, ${this.items.length} items`);
 
-        this.initializePedestals();
+    }
+
+    initializeSwitchTints() {
+        const colors = this.engine.globalColors;
+        if (!colors || colors.length === 0) return;
+
+        const tinted = new Set();
+
+        for (const actor of this.actors) {
+            if (!actor.hasAttribute('switchable') || actor.isDead || tinted.has(actor)) continue;
+
+            const effects = actor.data?.switch_effects;
+            if (!effects) continue;
+
+            const machineId = actor.getAttribute('machine_id');
+            let targets;
+
+            if (machineId) {
+                targets = this.actors.filter(
+                    a => a !== actor && !a.isDead && a.getAttribute('machine_id') === machineId
+                );
+            } else {
+                const radius = actor.data?.switch_radius || 10;
+                targets = this.actors.filter(a => {
+                    if (a === actor || a.isDead) return false;
+                    if (!a.hasAttribute('gate') && !a.hasAttribute('pedestal') && !a.hasAttribute('switchable')) return false;
+                    const dist = Math.abs(a.x - actor.x) + Math.abs(a.y - actor.y);
+                    return dist <= radius;
+                });
+            }
+
+            if (targets.length === 0) continue;
+
+            const color = randomElement(colors);
+            const tint = parseTint(color.hex);
+
+            actor.tint = tint;
+            tinted.add(actor);
+            for (const target of targets) {
+                target.tint = tint;
+                tinted.add(target);
+            }
+        }
     }
 
     initializePedestals() {
@@ -7579,7 +7656,19 @@ class EntityManager {
             const itemTile = item.tileIndex;
             if (itemTile) {
                 actor.tileIndexTop_item = itemTile;
-                this.engine.renderer?.updateSpriteTexture(actor.spriteTop, itemTile);
+                if (!actor.spriteTop) {
+                    actor.spriteTop = this.engine.renderer?.createActorSprite(
+                        actor,
+                        itemTile,
+                        null,
+                        actor.x * globalVars.TILE_WIDTH,
+                        (actor.y - 1) * globalVars.TILE_HEIGHT,
+                        11,
+                        {}
+                    );
+                } else {
+                    this.engine.renderer?.updateSpriteTexture(actor.spriteTop, itemTile);
+                }
                 if (actor.spriteTop) {
                     actor.spriteTop.tint = item.tint ?? 0xFFFFFF;
                 }
