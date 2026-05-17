@@ -24,7 +24,7 @@
     },
     "stats": {
       "health": {
-        "max": 10,
+        "max": 100,
         "per_turn": 1
       }
     }
@@ -586,7 +586,7 @@
     },
     "switch_message": "You pull the lever.",
     "switch_effects": {
-      "locked": false
+      "solid": false
     }
   },
   "pedestal": {
@@ -596,8 +596,9 @@
     "attributes": {
       "solid": true,
       "pedestal": true,
-      "locked": true
+      "display_inventory": true
     },
+    "default_items": ["key"],
     "collision_description": "The item on the pedestal is held fast."
   },
   "water": {

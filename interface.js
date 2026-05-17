@@ -3252,13 +3252,20 @@ class InterfaceManager {
             }
         }
 
-        // Blink caster to target tile
+        // Blink caster to target tile (fall back to last walkable tile along the path)
         if (spellEffect.blink_self) {
-            const tx = landingPoint.x;
-            const ty = landingPoint.y;
-            if (caster.hasFloorAt(tx, ty) && !entityManager.getSolidActorAt(tx, ty)) {
-                caster.x = tx;
-                caster.y = ty;
+            const blinkPath = getLinePath(caster.x, caster.y, landingPoint.x, landingPoint.y);
+            let blinkDest = null;
+            for (let i = blinkPath.length - 1; i >= 1; i--) {
+                const p = blinkPath[i];
+                if (caster.hasFloorAt(p.x, p.y) && !entityManager.getSolidActorAt(p.x, p.y)) {
+                    blinkDest = p;
+                    break;
+                }
+            }
+            if (blinkDest) {
+                caster.x = blinkDest.x;
+                caster.y = blinkDest.y;
                 caster.updateSpritePosition();
                 this.engine.lightingManager?.computeLighting();
                 if (caster.isPlayerControlled()) {

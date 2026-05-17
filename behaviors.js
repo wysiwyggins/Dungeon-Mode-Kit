@@ -299,18 +299,20 @@ const BehaviorLibrary = {
     },
 
     random_walk: (actor) => {
-        // Sighted actors only consider valid moves (avoids pits, walls, etc.)
-        if (actor.hasAttribute('sighted')) {
+        const isConfused = actor.hasStateProperty('random_movement');
+
+        // Sighted, non-confused actors only consider valid moves (avoids pits, walls, etc.)
+        if (actor.hasAttribute('sighted') && !isConfused) {
             const validDirs = actor.getValidMoveDirections();
             if (validDirs.length === 0) {
-                return false; // No valid moves available
+                return false;
             }
             const dir = randomElement(validDirs);
             const result = actor.tryMove(actor.x + dir.dx, actor.y + dir.dy);
             return result.moved || result.actionTaken;
         }
 
-        // Non-sighted actors pick randomly (may fall into pits)
+        // Non-sighted or confused actors pick randomly (may fall into pits, walk into hazards)
         const dir = randomElement(CARDINAL_DIRS);
         const result = actor.tryMove(actor.x + dir.dx, actor.y + dir.dy);
         return result.moved || result.actionTaken;

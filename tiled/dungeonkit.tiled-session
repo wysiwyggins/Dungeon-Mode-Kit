@@ -16,8 +16,8 @@
             "scale": 0.3821,
             "selectedLayer": 5,
             "viewCenter": {
-                "x": 964.4072232399895,
-                "y": 777.2834336561109
+                "x": 799.5289191311175,
+                "y": 599.3195498560588
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/catacombs/map.tmj": {
@@ -37,7 +37,7 @@
             "scale": 0.3942,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 800.3551496702181,
+                "x": 800.355149670218,
                 "y": 585.9969558599695
             }
         },
@@ -48,8 +48,8 @@
             "scale": 0.6069,
             "selectedLayer": 4,
             "viewCenter": {
-                "x": 752.1832262316691,
-                "y": 558.5763717251607
+                "x": 799.9670456417862,
+                "y": 599.7693194925029
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/hunger_game/map.tmj": {
@@ -97,8 +97,8 @@
             "scale": 0.5493,
             "selectedLayer": 5,
             "viewCenter": {
-                "x": 155.65264882577833,
-                "y": 760.9685053704715
+                "x": 800.1092299290005,
+                "y": 600.7646095030038
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/underworld/map.tmj": {
@@ -117,8 +117,8 @@
             "scale": 0.5311,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 420.8247034456788,
-                "y": 510.26172095650526
+                "x": 420.8247034456787,
+                "y": 510.2617209565053
             }
         },
         "vault.tmj": {

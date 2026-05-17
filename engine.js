@@ -509,10 +509,6 @@ function isImportantActor(actor) {
            actor.hasAttribute('controlled');
 }
 
-// ============================================================================
-// SCUTIGERA CHAIN SPAWNING
-// ============================================================================
-
 /**
  * Find a walkable, unoccupied tile adjacent to the given actor (cardinal only).
  * Directions are shuffled using ROT.RNG for deterministic randomness.
@@ -533,7 +529,7 @@ function findAdjacentWalkable(actor, entityManager) {
 }
 
 /**
- * Spawn a chain of body segments behind a chain_head actor.
+ * For multi-actor centepedes etc- spawn a chain of body segments behind a chain_head actor.
  * Sets up _chainPrev/_chainNext/_chainHead links and _pathHistory on the head.
  * Uses entityManager.spawnActor() so each segment gets sprites + scheduler registration.
  */
@@ -1225,7 +1221,7 @@ class DungeonEngine {
         this.renderer.renderTestPattern(this.mapManager);
         this.renderer.renderItems(this.entityManager);
         this.renderer.renderActors(this.entityManager);
-        this.entityManager.initializePedestals();
+        this.entityManager.initializeInventoryDisplays();
 
         // Update sidebar and proximity transparency for non-darkness levels
         // (darkness levels update both via updateLighting)
@@ -1389,7 +1385,7 @@ class DungeonEngine {
         this.renderer.renderTestPattern(this.mapManager);
         this.renderer.renderItems(this.entityManager);
         this.renderer.renderActors(this.entityManager);
-        this.entityManager.initializePedestals();
+        this.entityManager.initializeInventoryDisplays();
 
         // Snap viewport to player
         if (this.viewportEnabled && this.entityManager.player) {
@@ -3391,70 +3387,35 @@ class Actor extends Entity {
                 }
             }
 
-            if (target.hasAttribute('pedestal')) {
-                if (activated && effects.locked === false) {
-                    target.releasePedestalItem();
-                } else if (!activated && effects.locked === false) {
-                    target.capturePedestalItem();
-                }
-            }
-
             target.flash?.();
         }
 
         this.engine.updateLighting();
     }
 
-    releasePedestalItem() {
-        const item = this._pedestalItem;
-        if (!item) return;
-
-        this.setAttribute('solid', false);
-        this.setAttribute('collision_description', null);
-        item.setAttribute('pickupable', true);
-        item.setAttribute('visible', true);
-        if (item.sprite) {
-            item.sprite.visible = true;
-        } else {
-            this.engine.renderer?.createItemSprite(item);
-        }
-
-        if (this.spriteTop) {
-            this.spriteTop.visible = false;
-        }
-
-        this.engine.playSound?.('tone3');
-        this.engine.inputManager?.showMessage(
-            `The ${item.name} on the ${this.name} is released.`,
-            { x: this.x, y: this.y }
-        );
-    }
-
-    capturePedestalItem() {
-        const item = this._pedestalItem;
-        if (!item || item.isDead) return;
-
-        this.setAttribute('solid', true);
-        item.setAttribute('pickupable', false);
-        item.setAttribute('visible', false);
-        if (item.sprite) item.sprite.visible = false;
-
-        if (this.tileIndexTop_item) {
-            if (this.spriteTop) {
-                this.engine.renderer?.updateSpriteTexture(this.spriteTop, this.tileIndexTop_item);
-                this.spriteTop.visible = true;
-            } else {
+    updateInventoryDisplay() {
+        if (!this.hasAttribute('display_inventory')) return;
+        const item = this.inventory[0];
+        if (item && item.tileIndex) {
+            if (!this.spriteTop) {
                 this.spriteTop = this.engine.renderer?.createActorSprite(
-                    this,
-                    this.tileIndexTop_item,
-                    null,
+                    this, item.tileIndex, null,
                     this.x * globalVars.TILE_WIDTH,
                     (this.y - 1) * globalVars.TILE_HEIGHT,
-                    11,
-                    {}
+                    11, {}
                 );
+            } else {
+                this.engine.renderer?.updateSpriteTexture(this.spriteTop, item.tileIndex);
+                this.spriteTop.visible = true;
             }
             if (this.spriteTop) this.spriteTop.tint = item.tint ?? 0xFFFFFF;
+        } else if (this.spriteTop) {
+            if (this.tileIndexTop) {
+                this.engine.renderer?.updateSpriteTexture(this.spriteTop, this.tileIndexTop);
+                this.spriteTop.tint = this.tint ?? 0xFFFFFF;
+            } else {
+                this.spriteTop.visible = false;
+            }
         }
     }
 
@@ -6762,6 +6723,20 @@ class Actor extends Entity {
             }
         }
 
+        // Auto-loot inventory from non-solid actors at destination
+        const actorsHere = this.engine.entityManager.getActorsAt(newX, newY);
+        for (const other of actorsHere) {
+            if (other === this || other.hasAttribute('solid')) continue;
+            if (other.inventory.length === 0) continue;
+            const items = [...other.inventory];
+            for (const item of items) {
+                if (this.pickUpItem(item)) {
+                    other.inventory.splice(other.inventory.indexOf(item), 1);
+                }
+            }
+            other.updateInventoryDisplay();
+        }
+
         return { moved: true, actionTaken: true, entrySound };
     }
 
@@ -7641,40 +7616,11 @@ class EntityManager {
         }
     }
 
-    initializePedestals() {
+    initializeInventoryDisplays() {
         for (const actor of this.actors) {
-            if (!actor.hasAttribute('pedestal') || actor.isDead) continue;
-
-            const item = this.getItemAt(actor.x, actor.y);
-            if (!item) continue;
-
-            actor._pedestalItem = item;
-            item.setAttribute('pickupable', false);
-            item.setAttribute('visible', false);
-            if (item.sprite) item.sprite.visible = false;
-
-            const itemTile = item.tileIndex;
-            if (itemTile) {
-                actor.tileIndexTop_item = itemTile;
-                if (!actor.spriteTop) {
-                    actor.spriteTop = this.engine.renderer?.createActorSprite(
-                        actor,
-                        itemTile,
-                        null,
-                        actor.x * globalVars.TILE_WIDTH,
-                        (actor.y - 1) * globalVars.TILE_HEIGHT,
-                        11,
-                        {}
-                    );
-                } else {
-                    this.engine.renderer?.updateSpriteTexture(actor.spriteTop, itemTile);
-                }
-                if (actor.spriteTop) {
-                    actor.spriteTop.tint = item.tint ?? 0xFFFFFF;
-                }
-            }
-
-            console.log(`Pedestal at (${actor.x}, ${actor.y}) captured ${item.name}`);
+            if (!actor.hasAttribute('display_inventory') || actor.isDead) continue;
+            if (actor.inventory.length === 0) continue;
+            actor.updateInventoryDisplay();
         }
     }
 

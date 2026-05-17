@@ -418,6 +418,12 @@ class InputManager {
             return;
         }
 
+        // Don't show path when confused — player can't navigate reliably
+        if (player.hasStateProperty('random_movement')) {
+            renderer.hideWalkPath();
+            return;
+        }
+
         // Don't show path if target is player's current position
         if (tileX === player.x && tileY === player.y) {
             renderer.hideWalkPath();
@@ -481,6 +487,9 @@ class InputManager {
     startAutoWalk() {
         const player = this.engine.entityManager?.player;
         if (!player || player.isDead) return;
+
+        // Don't auto-walk when confused
+        if (player.hasStateProperty('random_movement')) return;
 
         const targetX = this.hoveredTile.x;
         const targetY = this.hoveredTile.y;
@@ -578,6 +587,12 @@ class InputManager {
 
         const player = this.engine.entityManager?.player;
         if (!player || player.isDead) {
+            this.stopAutoWalk();
+            return;
+        }
+
+        // Stop auto-walk if player became confused mid-walk
+        if (player.hasStateProperty('random_movement')) {
             this.stopAutoWalk();
             return;
         }
