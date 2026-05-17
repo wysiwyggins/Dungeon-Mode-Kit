@@ -3379,10 +3379,10 @@ class Actor extends Entity {
                 }
             }
 
-            if (target.hasAttribute('openable')) {
-                if (activated && effects.locked === false) {
+            if (target.hasAttribute('openable') && effects.solid === false) {
+                if (activated) {
                     target.open();
-                } else if (!activated && effects.locked === false) {
+                } else {
                     target.close(true);
                 }
             }
