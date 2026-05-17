@@ -6414,7 +6414,7 @@ class Actor extends Entity {
         }
 
         // Block diagonal movement past wall corners (Brogue-style)
-        if (isDiagonalBlocked(this.x, this.y, newX, newY, (x, y) => this.hasFloorAt(x, y))) {
+        if (isDiagonalBlocked(this.x, this.y, newX, newY, (x, y) => this.hasFloorAt(x, y) && !this.engine.entityManager.getSolidActorAt(x, y))) {
             return { moved: false, actionTaken: false };
         }
 
