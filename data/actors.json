@@ -584,11 +584,7 @@
       "switchable": true,
       "toggled": false
     },
-    "switch_message": "You pull the lever.",
-    "switch_effects": {
-      "locked": false,
-      "open": true
-    }
+    "collision_description": "a lever"
   },
   "pressure_plate": {
     "name": "pressure plate",
@@ -601,11 +597,7 @@
       "toggled": false,
       "one_shot": true
     },
-    "switch_message": "A stone depresses as you step on it.",
-    "switch_effects": {
-      "locked": true,
-      "open": false
-    }
+    "collision_description": "a pressure plate"
   },
   "pedestal": {
     "name": "pedestal",

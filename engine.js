@@ -1163,6 +1163,11 @@ class DungeonEngine {
             treasureRoomData = this.mapManager.spawnTreasureRoom();
         }
 
+        // Spawn switch puzzles (levers + gates, pressure plates, etc.)
+        if (floorConfig.switch_puzzles) {
+            this.mapManager.spawnSwitchPuzzles(floorConfig.switch_puzzles, architectContext);
+        }
+
         this.mapManager.spawnPendingWalls(architectContext);
         this.mapManager.spawnPendingDoors(architectContext);
         this.mapManager.spawnPendingTorches(architectContext);
@@ -1522,6 +1527,7 @@ class DungeonEngine {
             traps: floorOverride.traps ?? config.traps ?? null,
             map_generator: floorOverride.map_generator ?? config.map_generator,
             mechanics: { ...(config.mechanics || {}), ...(floorOverride.mechanics || {}) },
+            switch_puzzles: floorOverride.switch_puzzles ?? config.switch_puzzles ?? null,
         };
     }
 

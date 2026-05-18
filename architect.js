@@ -25,6 +25,7 @@ class Architect {
         this.pendingPushableWallSpawns = [];
         this.pendingBridgeSpawns = [];
         this.diggerRooms = null;
+        this.claimedRoomIndices = new Set();
 
         this.tileWidth = 16;
         this.tileHeight = 16;
@@ -1649,6 +1650,215 @@ class Architect {
     }
 
     // ========================================================================
+    // SWITCH PUZZLES
+    // ========================================================================
+
+    spawnSwitchPuzzles(config, context) {
+        if (!config || !this.diggerRooms || this.diggerRooms.length === 0) return [];
+        if (!context?.createActor || !context?.getActorData) return [];
+
+        const min = config.min ?? 0;
+        const max = config.max ?? min;
+        const count = min + Math.floor(ROT.RNG.getUniform() * (max - min + 1));
+        if (count <= 0 || !config.patterns || config.patterns.length === 0) return [];
+
+        const totalWeight = config.patterns.reduce((sum, p) => sum + (p.weight ?? 1), 0);
+        const results = [];
+
+        for (let i = 0; i < count; i++) {
+            let roll = ROT.RNG.getUniform() * totalWeight;
+            let pattern = config.patterns[0];
+            for (const p of config.patterns) {
+                roll -= (p.weight ?? 1);
+                if (roll <= 0) { pattern = p; break; }
+            }
+
+            const machineId = `switch_puzzle_${i}`;
+            let result = null;
+
+            switch (pattern.type) {
+                case 'gated_room':
+                    result = this._placeSwitchPuzzle_gatedRoom(pattern, machineId, context);
+                    break;
+                case 'gated_corridor':
+                    result = this._placeSwitchPuzzle_gatedCorridor(pattern, machineId, context);
+                    break;
+            }
+
+            if (result) {
+                results.push(result);
+                console.log(`Switch puzzle "${pattern.type}" placed with machine_id="${machineId}"`);
+            }
+        }
+
+        return results;
+    }
+
+    _placeSwitchPuzzle_gatedRoom(pattern, machineId, context) {
+        const eligibleRooms = this.diggerRooms
+            .map((room, idx) => ({ room, idx }))
+            .filter(({ idx }) => !this.claimedRoomIndices.has(idx))
+            .filter(({ room }) => {
+                let doorCount = 0;
+                room.getDoors(() => doorCount++);
+                return doorCount >= 1;
+            });
+
+        if (eligibleRooms.length === 0) return null;
+
+        const { room, idx } = eligibleRooms[Math.floor(ROT.RNG.getUniform() * eligibleRooms.length)];
+        this.claimedRoomIndices.add(idx);
+
+        const doors = [];
+        room.getDoors((x, y) => doors.push({ x, y }));
+        const chosenDoor = doors[Math.floor(ROT.RNG.getUniform() * doors.length)];
+
+        this.pendingDoorSpawns = this.pendingDoorSpawns.filter(
+            p => !(p.x === chosenDoor.x && p.y === chosenDoor.y)
+        );
+
+        const switchActorType = pattern.switch_actor || 'gate_lever';
+        const targetActorType = pattern.target_actor || 'gate';
+
+        const targetData = context.getActorData(targetActorType);
+        if (!targetData) return null;
+
+        const gateData = {
+            ...targetData,
+            attributes: {
+                ...(targetData.attributes || {}),
+                machine_id: machineId
+            }
+        };
+        context.createActor(chosenDoor.x, chosenDoor.y, targetActorType, gateData);
+
+        const switchData = context.getActorData(switchActorType);
+        if (!switchData) return null;
+
+        const leverPos = this._findLeverPosition(room, chosenDoor);
+        if (!leverPos) return null;
+
+        const leverData = {
+            ...switchData,
+            switch_effects: pattern.switch_effects || switchData.switch_effects || { locked: false, open: true },
+            switch_message: pattern.switch_message || switchData.switch_message || 'You pull the lever.',
+            attributes: {
+                ...(switchData.attributes || {}),
+                machine_id: machineId
+            }
+        };
+        context.createActor(leverPos.x, leverPos.y, switchActorType, leverData);
+
+        this.walkableTiles = this.walkableTiles.filter(
+            t => !(t.x === leverPos.x && t.y === leverPos.y) && !(t.x === chosenDoor.x && t.y === chosenDoor.y)
+        );
+
+        return { machineId, type: 'gated_room', gate: chosenDoor, lever: leverPos };
+    }
+
+    _findLeverPosition(room, doorPos) {
+        const roomLeft = room.getLeft();
+        const roomRight = room.getRight();
+        const roomTop = room.getTop();
+        const roomBottom = room.getBottom();
+
+        const isInsideRoom = (x, y) =>
+            x >= roomLeft && x <= roomRight && y >= roomTop && y <= roomBottom;
+
+        const candidates = [];
+        for (const dir of [{ dx: -1, dy: 0 }, { dx: 1, dy: 0 }, { dx: 0, dy: -1 }, { dx: 0, dy: 1 }]) {
+            const nx = doorPos.x + dir.dx;
+            const ny = doorPos.y + dir.dy;
+            if (!isInsideRoom(nx, ny) && this.isWalkable(nx, ny)) {
+                for (const step of [
+                    { dx: dir.dx, dy: dir.dy },
+                    { dx: dir.dy, dy: dir.dx },
+                    { dx: -dir.dy, dy: -dir.dx }
+                ]) {
+                    const lx = nx + step.dx;
+                    const ly = ny + step.dy;
+                    if (this.isWalkable(lx, ly) && !isInsideRoom(lx, ly)) {
+                        const hasWallNeighbor = [
+                            { dx: -1, dy: 0 }, { dx: 1, dy: 0 },
+                            { dx: 0, dy: -1 }, { dx: 0, dy: 1 }
+                        ].some(d => !this.isWalkable(lx + d.dx, ly + d.dy));
+                        if (hasWallNeighbor) {
+                            candidates.push({ x: lx, y: ly });
+                        }
+                    }
+                }
+                if (candidates.length === 0) {
+                    candidates.push({ x: nx, y: ny });
+                }
+            }
+        }
+
+        if (candidates.length === 0) return null;
+        return candidates[Math.floor(ROT.RNG.getUniform() * candidates.length)];
+    }
+
+    _placeSwitchPuzzle_gatedCorridor(pattern, machineId, context) {
+        const roomTileSet = new Set();
+        for (const room of this.diggerRooms) {
+            for (let y = room.getTop(); y <= room.getBottom(); y++) {
+                for (let x = room.getLeft(); x <= room.getRight(); x++) {
+                    roomTileSet.add(`${x},${y}`);
+                }
+            }
+        }
+
+        const corridorTiles = this.walkableTiles.filter(
+            t => !roomTileSet.has(`${t.x},${t.y}`)
+        );
+
+        if (corridorTiles.length < 3) return null;
+
+        const gatePos = corridorTiles[Math.floor(ROT.RNG.getUniform() * corridorTiles.length)];
+
+        const plateCandidates = corridorTiles.filter(t => {
+            const dist = Math.abs(t.x - gatePos.x) + Math.abs(t.y - gatePos.y);
+            return dist >= 2 && dist <= 6;
+        });
+
+        if (plateCandidates.length === 0) return null;
+
+        const platePos = plateCandidates[Math.floor(ROT.RNG.getUniform() * plateCandidates.length)];
+
+        const targetActorType = pattern.target_actor || 'gate';
+        const switchActorType = pattern.switch_actor || 'trap_plate';
+
+        const targetData = context.getActorData(targetActorType);
+        const switchData = context.getActorData(switchActorType);
+        if (!targetData || !switchData) return null;
+
+        const gateData = {
+            ...targetData,
+            attributes: {
+                ...(targetData.attributes || {}),
+                machine_id: machineId
+            }
+        };
+        context.createActor(gatePos.x, gatePos.y, targetActorType, gateData);
+
+        const plateData = {
+            ...switchData,
+            switch_effects: pattern.switch_effects || switchData.switch_effects || { locked: true, open: false },
+            switch_message: pattern.switch_message || switchData.switch_message || 'A stone depresses.',
+            attributes: {
+                ...(switchData.attributes || {}),
+                machine_id: machineId
+            }
+        };
+        context.createActor(platePos.x, platePos.y, switchActorType, plateData);
+
+        this.walkableTiles = this.walkableTiles.filter(
+            t => !(t.x === gatePos.x && t.y === gatePos.y)
+        );
+
+        return { machineId, type: 'gated_corridor', gate: gatePos, plate: platePos };
+    }
+
+    // ========================================================================
     // TREASURE ROOM
     // ========================================================================
 
@@ -1668,6 +1878,8 @@ class Architect {
         }
 
         const treasureRoom = eligibleRooms[Math.floor(ROT.RNG.getUniform() * eligibleRooms.length)];
+        const roomIndex = this.diggerRooms.indexOf(treasureRoom);
+        if (roomIndex >= 0) this.claimedRoomIndices.add(roomIndex);
 
         const roomTiles = [];
         for (let y = treasureRoom.getTop(); y <= treasureRoom.getBottom(); y++) {
