@@ -534,7 +534,7 @@
       "lockable": true,
       "gate": true,
       "open": false,
-      "locked": false
+      "locked": true
     }
   },
 
@@ -586,7 +586,25 @@
     },
     "switch_message": "You pull the lever.",
     "switch_effects": {
-      "solid": false
+      "locked": false,
+      "open": true
+    }
+  },
+  "pressure_plate": {
+    "name": "pressure plate",
+    "tileIndexBase": "INVERSE_BULLET",
+    "tileIndexTop": "NULL",
+    "collision_sound": "push1",
+    "attributes": {
+      "solid": false,
+      "switchable": true,
+      "toggled": false,
+      "one_shot": true
+    },
+    "switch_message": "A stone depresses as you step on it.",
+    "switch_effects": {
+      "locked": true,
+      "open": false
     }
   },
   "pedestal": {

@@ -9,7 +9,8 @@
     "darkness": true,
     "player_auto_light": false,
     "viewport_width": 40,
-    "viewport_height": 40
+    "viewport_height": 40,
+    "treasure_room": 40
   },
   "item_catalog": {
     "potion":  { "count": 10, "weight": 50 },

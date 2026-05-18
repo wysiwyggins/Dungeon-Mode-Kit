@@ -95,10 +95,10 @@
                 3
             ],
             "scale": 0.5493,
-            "selectedLayer": 5,
+            "selectedLayer": 3,
             "viewCenter": {
-                "x": 800.1092299290005,
-                "y": 600.7646095030038
+                "x": 383.21500091024944,
+                "y": 631.7130893864919
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/underworld/map.tmj": {
@@ -143,7 +143,7 @@
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/arena/map.tmj"
     ],
     "project": "dungeonkit.tiled-project",
-    "property.type": "string",
+    "property.type": "bool",
     "recentFiles": [
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/default/map.tmj",
         "tower.tmj",

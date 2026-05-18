@@ -3370,6 +3370,7 @@ class Actor extends Entity {
 
         for (const target of targets) {
             for (const [key, value] of Object.entries(effects)) {
+                if (key === 'open') continue;
                 if (activated) {
                     target.setAttribute(key, value);
                 } else {
@@ -3379,8 +3380,10 @@ class Actor extends Entity {
                 }
             }
 
-            if (target.hasAttribute('openable') && effects.solid === false) {
-                if (activated) {
+            if (target.hasAttribute('openable') && effects.open !== undefined) {
+                const shouldOpen = activated ? effects.open : !effects.open;
+                if (shouldOpen) {
+                    if (target.hasAttribute('locked')) target.setAttribute('locked', false);
                     target.open();
                 } else {
                     target.close(true);
@@ -6712,6 +6715,14 @@ class Actor extends Entity {
         // Notify interface of player move (for dismissOnMove text boxes)
         if (this.isPlayerControlled() && this.engine.interfaceManager) {
             this.engine.interfaceManager.onPlayerMove();
+        }
+
+        // Trigger non-solid switchable actors at destination (pressure plates, etc.)
+        for (const other of this.engine.entityManager.getActorsAt(newX, newY)) {
+            if (other === this || other.hasAttribute('solid')) continue;
+            if (other.hasAttribute('switchable') && !other.hasAttribute('toggled')) {
+                other.toggle();
+            }
         }
 
         // Check for entry sound from non-solid actors at destination (for controlled actors)
