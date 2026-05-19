@@ -152,7 +152,8 @@
       "solid": false,
       "switchable": true,
       "toggled": false,
-      "one_shot": true
+      "one_shot": true,
+      "visible": false
     },
     "switch_message": "A stone depresses as you step on it.",
     "switch_effects": {

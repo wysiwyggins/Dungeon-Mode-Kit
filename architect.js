@@ -517,6 +517,99 @@ class Architect {
                 break;
             }
 
+            case 'brogue': {
+                const brogueCfg = {
+                    maxRooms: options.maxRooms || 35,
+                    maxAttempts: options.maxAttempts || 50,
+                    corridorChance: options.corridorChance ?? 30,
+                    corridorLength: options.corridorLength || [2, 6],
+                    loopMinDistance: options.loopMinDistance || 20,
+                    maxLoops: options.maxLoops || 5,
+                    doorChance: options.doorChance ?? 50,
+                    torchChance: options.torchChance ?? 30,
+                    wall_types: options.wall_types || [{ type: 'wall', weight: 100 }],
+                    roomWeights: {
+                        rectangle: options.roomWeights?.rectangle ?? 30,
+                        cross: options.roomWeights?.cross ?? 25,
+                        circular: options.roomWeights?.circular ?? 20,
+                        cavern: options.roomWeights?.cavern ?? 25
+                    },
+                    rectWidth: options.rectWidth || [3, 12],
+                    rectHeight: options.rectHeight || [3, 8],
+                    crossWidth: options.crossWidth || [7, 16],
+                    crossHeight: options.crossHeight || [7, 14],
+                    circularRadius: options.circularRadius || [2, 5],
+                    hollowChance: options.hollowChance ?? 20,
+                    cavernWidth: options.cavernWidth || [8, 20],
+                    cavernHeight: options.cavernHeight || [8, 15],
+                };
+
+                const dungeonGrid = Array.from({ length: this.height }, () => new Uint8Array(this.width));
+                const rooms = [];
+
+                // Place first room near center
+                const firstType = this._brogueMakeRoom('rectangle', brogueCfg);
+                const cx = Math.floor(this.width / 2) - Math.floor(firstType.width / 2);
+                const cy = Math.floor(this.height / 2) - Math.floor(firstType.height / 2);
+                for (let ry = 0; ry < firstType.height; ry++) {
+                    for (let rx = 0; rx < firstType.width; rx++) {
+                        if (firstType.grid[ry][rx] === 1) {
+                            dungeonGrid[cy + ry][cx + rx] = 1;
+                        }
+                    }
+                }
+                rooms.push(this._brogueMakeRoomRecord(firstType.grid, firstType.width, firstType.height, cx, cy, []));
+
+                // Attach rooms via cellophane sliding
+                let roomsBuilt = 1;
+                let consecutiveFails = 0;
+                for (let attempt = 0; attempt < brogueCfg.maxAttempts && roomsBuilt < brogueCfg.maxRooms; attempt++) {
+                    const type = this._broguePickRoomType(brogueCfg.roomWeights);
+                    let room = this._brogueMakeRoom(type, brogueCfg);
+                    let doorSites = this._brogueFindDoorSites(room.grid, room.width, room.height);
+                    if (doorSites.length === 0) continue;
+
+                    const corrResult = this._brogueMaybeAddCorridor(room.grid, room.width, room.height, doorSites, brogueCfg);
+                    room = { grid: corrResult.grid, width: corrResult.width, height: corrResult.height };
+                    doorSites = corrResult.doorSites;
+
+                    const placement = this._broguePlaceRoom(dungeonGrid, room.grid, room.width, room.height, doorSites, this.width, this.height);
+                    if (!placement) {
+                        consecutiveFails++;
+                        if (consecutiveFails > 10) break;
+                        continue;
+                    }
+                    consecutiveFails = 0;
+
+                    // Stamp room onto dungeon grid
+                    for (let ry = 0; ry < room.height; ry++) {
+                        for (let rx = 0; rx < room.width; rx++) {
+                            if (room.grid[ry][rx] === 1) {
+                                dungeonGrid[placement.offsetY + ry][placement.offsetX + rx] = 1;
+                            }
+                        }
+                    }
+                    dungeonGrid[placement.doorWorldY][placement.doorWorldX] = 2;
+
+                    const record = this._brogueMakeRoomRecord(
+                        room.grid, room.width, room.height,
+                        placement.offsetX, placement.offsetY,
+                        [{ x: placement.doorWorldX, y: placement.doorWorldY }]
+                    );
+                    rooms.push(record);
+                    roomsBuilt++;
+                }
+
+                // Create loops
+                this._brogueMakeLoops(dungeonGrid, rooms, this.width, this.height, brogueCfg);
+
+                // Convert to framework output
+                this._brogueFinalizeMap(dungeonGrid, rooms, this.width, this.height, brogueCfg);
+
+                console.log(`Brogue map: ${roomsBuilt} rooms, ${this.walkableTiles.length} floors, ${this.pendingWallSpawns.length} walls, ${this.pendingDoorSpawns.length} doors`);
+                break;
+            }
+
             case 'digger':
             default: {
                 const diggerFloorTiles = new Set();
@@ -1924,6 +2017,526 @@ class Architect {
 
         console.log(`Treasure room: ${roomTiles.length} floor tiles, locked door at (${chosenDoor.x}, ${chosenDoor.y}), ${allEntrances.length - 1} extra entrance(s) walled off`);
         return { roomTiles, doorPos: chosenDoor };
+    }
+
+    // ========================================================================
+    // BROGUE GENERATOR HELPERS
+    // ========================================================================
+
+    _brogueMakeRoom(type, cfg) {
+        switch (type) {
+            case 'cross': return this._brogueMakeCross(cfg);
+            case 'circular': return this._brogueMakeCircular(cfg);
+            case 'cavern': return this._brogueMakeCavern(cfg);
+            case 'rectangle':
+            default: return this._brogueMakeRectangle(cfg);
+        }
+    }
+
+    _broguePickRoomType(weights) {
+        const entries = Object.entries(weights);
+        const total = entries.reduce((s, [, w]) => s + w, 0);
+        let roll = ROT.RNG.getUniform() * total;
+        for (const [type, weight] of entries) {
+            roll -= weight;
+            if (roll <= 0) return type;
+        }
+        return entries[0][0];
+    }
+
+    _brogueMakeRectangle(cfg) {
+        const w = ROT.RNG.getUniformInt(cfg.rectWidth[0], cfg.rectWidth[1]);
+        const h = ROT.RNG.getUniformInt(cfg.rectHeight[0], cfg.rectHeight[1]);
+        const grid = Array.from({ length: h }, () => new Uint8Array(w).fill(1));
+        return { grid, width: w, height: h };
+    }
+
+    _brogueMakeCross(cfg) {
+        const totalW = ROT.RNG.getUniformInt(cfg.crossWidth[0], cfg.crossWidth[1]);
+        const totalH = ROT.RNG.getUniformInt(cfg.crossHeight[0], cfg.crossHeight[1]);
+        const grid = Array.from({ length: totalH }, () => new Uint8Array(totalW));
+
+        const hBarH = ROT.RNG.getUniformInt(2, Math.max(3, Math.floor(totalH * 0.5)));
+        const hBarTop = Math.floor((totalH - hBarH) / 2);
+        for (let y = hBarTop; y < hBarTop + hBarH; y++) {
+            for (let x = 0; x < totalW; x++) grid[y][x] = 1;
+        }
+
+        const vBarW = ROT.RNG.getUniformInt(2, Math.max(3, Math.floor(totalW * 0.5)));
+        const vBarLeft = Math.floor((totalW - vBarW) / 2);
+        for (let y = 0; y < totalH; y++) {
+            for (let x = vBarLeft; x < vBarLeft + vBarW; x++) grid[y][x] = 1;
+        }
+
+        return { grid, width: totalW, height: totalH };
+    }
+
+    _brogueMakeCircular(cfg) {
+        const radius = ROT.RNG.getUniformInt(cfg.circularRadius[0], cfg.circularRadius[1]);
+        const size = radius * 2 + 1;
+        const grid = Array.from({ length: size }, () => new Uint8Array(size));
+        const center = radius;
+
+        for (let y = 0; y < size; y++) {
+            for (let x = 0; x < size; x++) {
+                const dx = x - center;
+                const dy = y - center;
+                if (dx * dx + dy * dy < radius * radius + radius) {
+                    grid[y][x] = 1;
+                }
+            }
+        }
+
+        if (radius >= 4 && ROT.RNG.getPercentage() <= cfg.hollowChance) {
+            const innerR = radius - 2;
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    const dx = x - center;
+                    const dy = y - center;
+                    if (dx * dx + dy * dy < innerR * innerR) {
+                        grid[y][x] = 0;
+                    }
+                }
+            }
+        }
+
+        return { grid, width: size, height: size };
+    }
+
+    _brogueMakeCavern(cfg) {
+        const w = ROT.RNG.getUniformInt(cfg.cavernWidth[0], cfg.cavernWidth[1]);
+        const h = ROT.RNG.getUniformInt(cfg.cavernHeight[0], cfg.cavernHeight[1]);
+        let grid = Array.from({ length: h }, () => {
+            const row = new Uint8Array(w);
+            for (let x = 0; x < w; x++) row[x] = ROT.RNG.getUniform() < 0.55 ? 1 : 0;
+            return row;
+        });
+
+        // B5678/S45678 cellular automata, 5 iterations
+        for (let iter = 0; iter < 5; iter++) {
+            const next = Array.from({ length: h }, () => new Uint8Array(w));
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    let neighbors = 0;
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            if (dx === 0 && dy === 0) continue;
+                            const nx = x + dx, ny = y + dy;
+                            if (nx >= 0 && nx < w && ny >= 0 && ny < h && grid[ny][nx] === 1) neighbors++;
+                        }
+                    }
+                    if (grid[y][x] === 1) {
+                        next[y][x] = neighbors >= 4 ? 1 : 0; // survive with 4+
+                    } else {
+                        next[y][x] = neighbors >= 5 ? 1 : 0; // birth with 5+
+                    }
+                }
+            }
+            grid = next;
+        }
+
+        // Flood-fill to find largest connected component
+        const visited = Array.from({ length: h }, () => new Uint8Array(w));
+        let bestBlob = [];
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                if (grid[y][x] !== 1 || visited[y][x]) continue;
+                const blob = [];
+                const stack = [{ x, y }];
+                while (stack.length > 0) {
+                    const cell = stack.pop();
+                    if (cell.x < 0 || cell.x >= w || cell.y < 0 || cell.y >= h) continue;
+                    if (visited[cell.y][cell.x] || grid[cell.y][cell.x] !== 1) continue;
+                    visited[cell.y][cell.x] = 1;
+                    blob.push(cell);
+                    stack.push({ x: cell.x - 1, y: cell.y }, { x: cell.x + 1, y: cell.y },
+                               { x: cell.x, y: cell.y - 1 }, { x: cell.x, y: cell.y + 1 });
+                }
+                if (blob.length > bestBlob.length) bestBlob = blob;
+            }
+        }
+
+        // Rebuild grid with only the largest blob
+        const result = Array.from({ length: h }, () => new Uint8Array(w));
+        for (const cell of bestBlob) result[cell.y][cell.x] = 1;
+
+        // If blob is too small, fall back to rectangle
+        if (bestBlob.length < 6) return this._brogueMakeRectangle(cfg);
+
+        return { grid: result, width: w, height: h };
+    }
+
+    _brogueFindDoorSites(grid, w, h) {
+        const dirs = [
+            { name: 'north', dx: 0, dy: -1 },
+            { name: 'south', dx: 0, dy: 1 },
+            { name: 'east', dx: 1, dy: 0 },
+            { name: 'west', dx: -1, dy: 0 }
+        ];
+
+        const candidates = { north: [], south: [], east: [], west: [] };
+
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                if (grid[y][x] !== 0) continue; // must be empty
+                for (const dir of dirs) {
+                    const ix = x - dir.dx, iy = y - dir.dy; // interior side
+                    const ox = x + dir.dx, oy = y + dir.dy; // exterior side
+                    if (ix < 0 || ix >= w || iy < 0 || iy >= h) continue;
+                    if (grid[iy][ix] !== 1) continue; // must have floor on interior side
+                    // exterior must be out of bounds or empty
+                    if (ox >= 0 && ox < w && oy >= 0 && oy < h && grid[oy][ox] !== 0) continue;
+                    candidates[dir.name].push({ localX: x, localY: y, direction: dir.name });
+                }
+            }
+        }
+
+        const result = [];
+        for (const dir of dirs) {
+            const cands = candidates[dir.name];
+            if (cands.length > 0) {
+                result.push(cands[Math.floor(ROT.RNG.getUniform() * cands.length)]);
+            }
+        }
+        return result;
+    }
+
+    _brogueMaybeAddCorridor(grid, w, h, doorSites, cfg) {
+        if (ROT.RNG.getPercentage() > cfg.corridorChance || doorSites.length === 0) {
+            return { grid, width: w, height: h, doorSites };
+        }
+
+        const dirVecs = { north: { dx: 0, dy: -1 }, south: { dx: 0, dy: 1 }, east: { dx: 1, dy: 0 }, west: { dx: -1, dy: 0 } };
+        const site = doorSites[Math.floor(ROT.RNG.getUniform() * doorSites.length)];
+        const dv = dirVecs[site.direction];
+        const len = ROT.RNG.getUniformInt(cfg.corridorLength[0], cfg.corridorLength[1]);
+
+        // Calculate new grid dimensions
+        let padLeft = 0, padRight = 0, padTop = 0, padBottom = 0;
+        for (let i = 1; i <= len; i++) {
+            const nx = site.localX + dv.dx * i;
+            const ny = site.localY + dv.dy * i;
+            if (nx < 0) padLeft = Math.max(padLeft, -nx);
+            if (nx >= w) padRight = Math.max(padRight, nx - w + 1);
+            if (ny < 0) padTop = Math.max(padTop, -ny);
+            if (ny >= h) padBottom = Math.max(padBottom, ny - h + 1);
+        }
+
+        const newW = w + padLeft + padRight;
+        const newH = h + padTop + padBottom;
+        const newGrid = Array.from({ length: newH }, () => new Uint8Array(newW));
+
+        // Copy old grid with offset
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                newGrid[y + padTop][x + padLeft] = grid[y][x];
+            }
+        }
+
+        // Draw corridor
+        for (let i = 0; i <= len; i++) {
+            const cx = site.localX + padLeft + dv.dx * i;
+            const cy = site.localY + padTop + dv.dy * i;
+            newGrid[cy][cx] = 1;
+        }
+
+        // Update existing door sites with new offsets, remove the used one
+        const newDoorSites = doorSites
+            .filter(s => s !== site)
+            .map(s => ({ localX: s.localX + padLeft, localY: s.localY + padTop, direction: s.direction }));
+
+        // Add new door site at corridor end
+        const endX = site.localX + padLeft + dv.dx * (len + 1);
+        const endY = site.localY + padTop + dv.dy * (len + 1);
+        if (endX >= 0 && endX < newW && endY >= 0 && endY < newH) {
+            newDoorSites.push({ localX: endX, localY: endY, direction: site.direction });
+        }
+
+        return { grid: newGrid, width: newW, height: newH, doorSites: newDoorSites };
+    }
+
+    _broguePlaceRoom(dungeonGrid, roomGrid, roomW, roomH, doorSites, mapW, mapH) {
+        const dirVecs = { north: { dx: 0, dy: -1 }, south: { dx: 0, dy: 1 }, east: { dx: 1, dy: 0 }, west: { dx: -1, dy: 0 } };
+
+        // Collect attachment targets: empty cells adjacent to existing floor
+        const targets = [];
+        for (let y = 1; y < mapH - 1; y++) {
+            for (let x = 1; x < mapW - 1; x++) {
+                if (dungeonGrid[y][x] !== 0) continue;
+                const adjFloor =
+                    (y > 0 && dungeonGrid[y - 1][x] >= 1) ||
+                    (y < mapH - 1 && dungeonGrid[y + 1][x] >= 1) ||
+                    (x > 0 && dungeonGrid[y][x - 1] >= 1) ||
+                    (x < mapW - 1 && dungeonGrid[y][x + 1] >= 1);
+                if (adjFloor) targets.push({ x, y });
+            }
+        }
+
+        // Fisher-Yates shuffle
+        for (let i = targets.length - 1; i > 0; i--) {
+            const j = Math.floor(ROT.RNG.getUniform() * (i + 1));
+            [targets[i], targets[j]] = [targets[j], targets[i]];
+        }
+
+        // Also shuffle door sites to avoid directional bias
+        const shuffledDoors = [...doorSites];
+        for (let i = shuffledDoors.length - 1; i > 0; i--) {
+            const j = Math.floor(ROT.RNG.getUniform() * (i + 1));
+            [shuffledDoors[i], shuffledDoors[j]] = [shuffledDoors[j], shuffledDoors[i]];
+        }
+
+        const maxTargets = Math.min(targets.length, 300);
+
+        for (let ti = 0; ti < maxTargets; ti++) {
+            const target = targets[ti];
+            for (const doorSite of shuffledDoors) {
+                const dv = dirVecs[doorSite.direction];
+
+                // Door's outward direction must point toward existing floor
+                const floorX = target.x + dv.dx;
+                const floorY = target.y + dv.dy;
+                if (floorX < 0 || floorX >= mapW || floorY < 0 || floorY >= mapH) continue;
+                if (dungeonGrid[floorY][floorX] < 1) continue;
+
+                const offsetX = target.x - doorSite.localX;
+                const offsetY = target.y - doorSite.localY;
+
+                // Validate placement
+                let valid = true;
+                for (let ry = 0; ry < roomH && valid; ry++) {
+                    for (let rx = 0; rx < roomW && valid; rx++) {
+                        if (roomGrid[ry][rx] !== 1) continue;
+                        const wx = offsetX + rx;
+                        const wy = offsetY + ry;
+
+                        if (wx < 1 || wx >= mapW - 1 || wy < 1 || wy >= mapH - 1) { valid = false; break; }
+                        if (dungeonGrid[wy][wx] !== 0) { valid = false; break; }
+
+                        // 3x3 neighborhood: no existing floor except room cells or door site
+                        for (let dy = -1; dy <= 1 && valid; dy++) {
+                            for (let dx = -1; dx <= 1 && valid; dx++) {
+                                if (dx === 0 && dy === 0) continue;
+                                const nx = wx + dx, ny = wy + dy;
+                                if (nx < 0 || nx >= mapW || ny < 0 || ny >= mapH) continue;
+                                if (nx === target.x && ny === target.y) continue;
+                                // Check if this neighbor is also a room floor cell
+                                const nrx = nx - offsetX, nry = ny - offsetY;
+                                if (nrx >= 0 && nrx < roomW && nry >= 0 && nry < roomH && roomGrid[nry][nrx] === 1) continue;
+                                if (dungeonGrid[ny][nx] >= 1) valid = false;
+                            }
+                        }
+                    }
+                }
+
+                if (valid) {
+                    return { offsetX, offsetY, doorWorldX: target.x, doorWorldY: target.y, doorSite };
+                }
+            }
+        }
+
+        return null;
+    }
+
+    _brogueMakeRoomRecord(roomGrid, w, h, offsetX, offsetY, doors) {
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                if (roomGrid[y][x] === 1) {
+                    const wx = offsetX + x, wy = offsetY + y;
+                    if (wx < minX) minX = wx;
+                    if (wx > maxX) maxX = wx;
+                    if (wy < minY) minY = wy;
+                    if (wy > maxY) maxY = wy;
+                }
+            }
+        }
+
+        const record = {
+            _x1: minX, _y1: minY, _x2: maxX, _y2: maxY,
+            _doors: {},
+            getLeft() { return this._x1; },
+            getRight() { return this._x2; },
+            getTop() { return this._y1; },
+            getBottom() { return this._y2; },
+            getDoors(cb) {
+                for (const key in this._doors) {
+                    const parts = key.split(',');
+                    cb(parseInt(parts[0]), parseInt(parts[1]));
+                }
+                return this;
+            },
+            addDoor(x, y) { this._doors[`${x},${y}`] = 1; return this; }
+        };
+
+        for (const door of doors) {
+            record.addDoor(door.x, door.y);
+        }
+
+        return record;
+    }
+
+    _brogueMakeLoops(dungeonGrid, rooms, mapW, mapH, cfg) {
+        const candidates = [];
+        for (let y = 1; y < mapH - 1; y++) {
+            for (let x = 1; x < mapW - 1; x++) {
+                if (dungeonGrid[y][x] !== 0) continue;
+                // Check horizontal: floor on both east and west
+                if (dungeonGrid[y][x - 1] >= 1 && dungeonGrid[y][x + 1] >= 1) {
+                    candidates.push({ x, y, side1: { x: x - 1, y }, side2: { x: x + 1, y } });
+                }
+                // Check vertical: floor on both north and south
+                if (dungeonGrid[y - 1][x] >= 1 && dungeonGrid[y + 1][x] >= 1) {
+                    candidates.push({ x, y, side1: { x, y: y - 1 }, side2: { x, y: y + 1 } });
+                }
+            }
+        }
+
+        // Shuffle candidates
+        for (let i = candidates.length - 1; i > 0; i--) {
+            const j = Math.floor(ROT.RNG.getUniform() * (i + 1));
+            [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+        }
+
+        let loopsCreated = 0;
+        for (const cand of candidates) {
+            if (loopsCreated >= cfg.maxLoops) break;
+            const dist = this._brogueBFS(dungeonGrid, cand.side1.x, cand.side1.y, cand.side2.x, cand.side2.y, mapW, mapH, cfg.loopMinDistance * 2);
+            if (dist >= 0 && dist < cfg.loopMinDistance) continue;
+            // dist === -1 means unreachable or exceeded cap — that's a good loop candidate too
+            dungeonGrid[cand.y][cand.x] = 2;
+            loopsCreated++;
+
+            // Add to nearest room's doors
+            let bestRoom = null, bestDist = Infinity;
+            for (const room of rooms) {
+                const rcx = (room._x1 + room._x2) / 2;
+                const rcy = (room._y1 + room._y2) / 2;
+                const d = Math.abs(rcx - cand.x) + Math.abs(rcy - cand.y);
+                if (d < bestDist) { bestDist = d; bestRoom = room; }
+            }
+            if (bestRoom) bestRoom.addDoor(cand.x, cand.y);
+        }
+
+        if (loopsCreated > 0) console.log(`Brogue loops: ${loopsCreated} secondary connections`);
+    }
+
+    _brogueBFS(dungeonGrid, x1, y1, x2, y2, mapW, mapH, maxDist) {
+        if (x1 === x2 && y1 === y2) return 0;
+        const visited = new Set();
+        visited.add(`${x1},${y1}`);
+        let frontier = [{ x: x1, y: y1 }];
+        let dist = 0;
+        const cardinals = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+
+        while (frontier.length > 0 && dist < maxDist) {
+            dist++;
+            const next = [];
+            for (const cell of frontier) {
+                for (const [dx, dy] of cardinals) {
+                    const nx = cell.x + dx, ny = cell.y + dy;
+                    if (nx < 0 || nx >= mapW || ny < 0 || ny >= mapH) continue;
+                    if (dungeonGrid[ny][nx] < 1) continue;
+                    const key = `${nx},${ny}`;
+                    if (visited.has(key)) continue;
+                    if (nx === x2 && ny === y2) return dist;
+                    visited.add(key);
+                    next.push({ x: nx, y: ny });
+                }
+            }
+            frontier = next;
+        }
+
+        return -1;
+    }
+
+    _brogueFinalizeMap(dungeonGrid, rooms, mapW, mapH, cfg) {
+        const floorSet = new Set();
+
+        for (let y = 0; y < mapH; y++) {
+            for (let x = 0; x < mapW; x++) {
+                if (dungeonGrid[y][x] >= 1) {
+                    this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                    this.walkableTiles.push({ x, y });
+                    floorSet.add(`${x},${y}`);
+                }
+            }
+        }
+
+        const hasFloor = (fx, fy) => floorSet.has(`${fx},${fy}`);
+        const wallTypes = cfg.wall_types;
+        const totalWeight = wallTypes.reduce((sum, wt) => sum + wt.weight, 0);
+        const isPerimeter = (px, py) => px === 0 || px === mapW - 1 || py === 0 || py === mapH - 1;
+
+        for (let y = 0; y < mapH; y++) {
+            for (let x = 0; x < mapW; x++) {
+                if (floorSet.has(`${x},${y}`)) continue;
+                const adj =
+                    hasFloor(x - 1, y) || hasFloor(x + 1, y) ||
+                    hasFloor(x, y - 1) || hasFloor(x, y + 1) ||
+                    hasFloor(x - 1, y - 1) || hasFloor(x + 1, y - 1) ||
+                    hasFloor(x - 1, y + 1) || hasFloor(x + 1, y + 1);
+
+                if (adj && y > 0) {
+                    let roll = ROT.RNG.getUniform() * totalWeight;
+                    let wallType = wallTypes[0].type;
+                    for (const wt of wallTypes) {
+                        roll -= wt.weight;
+                        if (roll <= 0) { wallType = wt.type; break; }
+                    }
+                    this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                    this.pendingWallSpawns.push({ x, y, type: isPerimeter(x, y) ? 'metal_wall' : wallType });
+                }
+            }
+        }
+
+        // Fill perimeter gaps (same as digger)
+        const pendingWallSet = new Set(this.pendingWallSpawns.map(p => `${p.x},${p.y}`));
+        for (let y = 0; y < mapH; y++) {
+            for (let x = 0; x < mapW; x++) {
+                if (!isPerimeter(x, y)) continue;
+                if (floorSet.has(`${x},${y}`)) continue;
+                if (pendingWallSet.has(`${x},${y}`)) continue;
+                const adj =
+                    hasFloor(x - 1, y) || hasFloor(x + 1, y) ||
+                    hasFloor(x, y - 1) || hasFloor(x, y + 1) ||
+                    hasFloor(x - 1, y - 1) || hasFloor(x + 1, y - 1) ||
+                    hasFloor(x - 1, y + 1) || hasFloor(x + 1, y + 1);
+                if (adj) {
+                    this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                    this.pendingWallSpawns.push({ x, y, type: 'metal_wall' });
+                }
+            }
+        }
+
+        // Door spawns
+        for (let y = 0; y < mapH; y++) {
+            for (let x = 0; x < mapW; x++) {
+                if (dungeonGrid[y][x] === 2 && y > 0 && ROT.RNG.getPercentage() <= cfg.doorChance) {
+                    this.pendingDoorSpawns.push({ x, y });
+                }
+            }
+        }
+
+        // Torch spawns per room
+        for (const room of rooms) {
+            if (ROT.RNG.getPercentage() > cfg.torchChance) continue;
+            const roomWalls = [];
+            for (const wallPos of this.pendingWallSpawns) {
+                if (wallPos.type === 'metal_wall') continue;
+                if (wallPos.x >= room._x1 - 1 && wallPos.x <= room._x2 + 1 &&
+                    wallPos.y >= room._y1 - 1 && wallPos.y <= room._y2 + 1) {
+                    roomWalls.push(wallPos);
+                }
+            }
+            if (roomWalls.length > 0) {
+                const torchPos = roomWalls[Math.floor(ROT.RNG.getUniform() * roomWalls.length)];
+                this.pendingTorchSpawns.push({ x: torchPos.x, y: torchPos.y });
+                const idx = this.pendingWallSpawns.findIndex(p => p.x === torchPos.x && p.y === torchPos.y);
+                if (idx !== -1) this.pendingWallSpawns.splice(idx, 1);
+            }
+        }
+
+        this.diggerRooms = rooms;
     }
 
     // ========================================================================

@@ -186,7 +186,7 @@
     "name": "kobold",
     "description": "A small humanoid with a stooped back, face hidden beneath a ragged hood.",
     "tileIndexBase": "LEG",
-    "tileIndexTop": "REPTILE_HEAD",
+    "tileIndexTop": "WHITE_GREAVES",
     "tint": "#FFBB55",
     "vision_range": 10,
     "personality": "kobold_miner",
