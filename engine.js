@@ -1528,6 +1528,7 @@ class DungeonEngine {
             map_generator: floorOverride.map_generator ?? config.map_generator,
             mechanics: { ...(config.mechanics || {}), ...(floorOverride.mechanics || {}) },
             switch_puzzles: floorOverride.switch_puzzles ?? config.switch_puzzles ?? null,
+            item_budget: floorOverride.item_budget ?? config.item_budget ?? null,
         };
     }
 

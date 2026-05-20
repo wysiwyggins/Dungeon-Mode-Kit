@@ -370,7 +370,7 @@
     "name": "Wall",
     "tileIndexBase": "OPAQUE_DARK_SHADE",
     "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
-    "tint": "#3322AA",
+    "tint": "#33CCAA",
     "attributes": {
       "flammable": false,
       "pushable": false,

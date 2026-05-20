@@ -43,10 +43,10 @@
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/dungeon/map.tmj": {
             "scale": 0.6069,
-            "selectedLayer": 4,
+            "selectedLayer": 0,
             "viewCenter": {
-                "x": 752.1832262316691,
-                "y": 558.5763717251607
+                "x": 704.3994068215521,
+                "y": 571.7581150107102
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/hunger_game/map.tmj": {

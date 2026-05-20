@@ -603,8 +603,11 @@ class Architect {
                 // Create loops
                 this._brogueMakeLoops(dungeonGrid, rooms, this.width, this.height, brogueCfg);
 
+                // Fix dead-end corridors with pushable walls
+                const secretWalls = this._brogueFixDeadEnds(dungeonGrid, this.width, this.height);
+
                 // Convert to framework output
-                this._brogueFinalizeMap(dungeonGrid, rooms, this.width, this.height, brogueCfg);
+                this._brogueFinalizeMap(dungeonGrid, rooms, this.width, this.height, brogueCfg, secretWalls);
 
                 console.log(`Brogue map: ${roomsBuilt} rooms, ${this.walkableTiles.length} floors, ${this.pendingWallSpawns.length} walls, ${this.pendingDoorSpawns.length} doors`);
                 break;
@@ -2174,19 +2177,28 @@ class Architect {
             { name: 'west', dx: -1, dy: 0 }
         ];
 
-        const candidates = { north: [], south: [], east: [], west: [] };
-
+        // Work on a padded grid so edge-adjacent floor cells get door candidates
+        const pw = w + 2, ph = h + 2;
+        const padded = Array.from({ length: ph }, () => new Uint8Array(pw));
         for (let y = 0; y < h; y++) {
             for (let x = 0; x < w; x++) {
-                if (grid[y][x] !== 0) continue; // must be empty
+                padded[y + 1][x + 1] = grid[y][x];
+            }
+        }
+
+        const candidates = { north: [], south: [], east: [], west: [] };
+
+        for (let y = 0; y < ph; y++) {
+            for (let x = 0; x < pw; x++) {
+                if (padded[y][x] !== 0) continue;
                 for (const dir of dirs) {
-                    const ix = x - dir.dx, iy = y - dir.dy; // interior side
-                    const ox = x + dir.dx, oy = y + dir.dy; // exterior side
-                    if (ix < 0 || ix >= w || iy < 0 || iy >= h) continue;
-                    if (grid[iy][ix] !== 1) continue; // must have floor on interior side
-                    // exterior must be out of bounds or empty
-                    if (ox >= 0 && ox < w && oy >= 0 && oy < h && grid[oy][ox] !== 0) continue;
-                    candidates[dir.name].push({ localX: x, localY: y, direction: dir.name });
+                    const ix = x - dir.dx, iy = y - dir.dy;
+                    const ox = x + dir.dx, oy = y + dir.dy;
+                    if (ix < 0 || ix >= pw || iy < 0 || iy >= ph) continue;
+                    if (padded[iy][ix] !== 1) continue;
+                    if (ox >= 0 && ox < pw && oy >= 0 && oy < ph && padded[oy][ox] !== 0) continue;
+                    // Convert back to original grid coordinates (offset by -1)
+                    candidates[dir.name].push({ localX: x - 1, localY: y - 1, direction: dir.name });
                 }
             }
         }
@@ -2206,8 +2218,28 @@ class Architect {
             return { grid, width: w, height: h, doorSites };
         }
 
+        const dirNames = ['north', 'south', 'east', 'west'];
         const dirVecs = { north: { dx: 0, dy: -1 }, south: { dx: 0, dy: 1 }, east: { dx: 1, dy: 0 }, west: { dx: -1, dy: 0 } };
-        const site = doorSites[Math.floor(ROT.RNG.getUniform() * doorSites.length)];
+        const opposite = { north: 'south', south: 'north', east: 'west', west: 'east' };
+
+        // Pick a random door site that has enough room for a corridor
+        const shuffled = [...doorSites];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(ROT.RNG.getUniform() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        let site = null;
+        for (const s of shuffled) {
+            const dv = dirVecs[s.direction];
+            const endX = s.localX + dv.dx * cfg.corridorLength[1];
+            const endY = s.localY + dv.dy * cfg.corridorLength[1];
+            if (endX >= -w && endX < w * 2 && endY >= -h && endY < h * 2) {
+                site = s;
+                break;
+            }
+        }
+        if (!site) return { grid, width: w, height: h, doorSites };
+
         const dv = dirVecs[site.direction];
         const len = ROT.RNG.getUniformInt(cfg.corridorLength[0], cfg.corridorLength[1]);
 
@@ -2240,16 +2272,28 @@ class Architect {
             newGrid[cy][cx] = 1;
         }
 
-        // Update existing door sites with new offsets, remove the used one
-        const newDoorSites = doorSites
-            .filter(s => s !== site)
-            .map(s => ({ localX: s.localX + padLeft, localY: s.localY + padTop, direction: s.direction }));
+        // Last interior cell of the corridor
+        const lastX = site.localX + padLeft + dv.dx * len;
+        const lastY = site.localY + padTop + dv.dy * len;
 
-        // Add new door site at corridor end
-        const endX = site.localX + padLeft + dv.dx * (len + 1);
-        const endY = site.localY + padTop + dv.dy * (len + 1);
-        if (endX >= 0 && endX < newW && endY >= 0 && endY < newH) {
-            newDoorSites.push({ localX: endX, localY: endY, direction: site.direction });
+        // Replace ALL door sites with ones radiating from corridor end (Brogue's approach).
+        // Forward-facing (same dir as corridor) is always kept.
+        // Perpendicular exits only 15% of the time. Opposite dir (back into room) never.
+        const allowOblique = ROT.RNG.getPercentage() <= 15;
+        const newDoorSites = [];
+        for (const dirName of dirNames) {
+            const ddv = dirVecs[dirName];
+            const doorX = lastX + ddv.dx;
+            const doorY = lastY + ddv.dy;
+
+            if (doorX < 0 || doorX >= newW || doorY < 0 || doorY >= newH) continue;
+            if (newGrid[doorY][doorX] === 1) continue;
+
+            if (dirName === site.direction) {
+                newDoorSites.push({ localX: doorX, localY: doorY, direction: dirName });
+            } else if (dirName !== opposite[site.direction] && allowOblique) {
+                newDoorSites.push({ localX: doorX, localY: doorY, direction: dirName });
+            }
         }
 
         return { grid: newGrid, width: newW, height: newH, doorSites: newDoorSites };
@@ -2449,7 +2493,44 @@ class Architect {
         return -1;
     }
 
-    _brogueFinalizeMap(dungeonGrid, rooms, mapW, mapH, cfg) {
+    _brogueFixDeadEnds(dungeonGrid, mapW, mapH) {
+        const cardinals = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+        const secretWalls = [];
+
+        for (let y = 1; y < mapH - 1; y++) {
+            for (let x = 1; x < mapW - 1; x++) {
+                if (dungeonGrid[y][x] < 1) continue;
+                let floorNeighbors = 0;
+                for (const [dx, dy] of cardinals) {
+                    if (dungeonGrid[y + dy][x + dx] >= 1) floorNeighbors++;
+                }
+                if (floorNeighbors !== 1) continue;
+
+                // Dead end found — look for a room/corridor through a wall
+                for (const [dx, dy] of cardinals) {
+                    if (dungeonGrid[y + dy][x + dx] >= 1) continue; // skip the open side
+                    const wallX = x + dx, wallY = y + dy;
+                    if (wallX < 1 || wallX >= mapW - 1 || wallY < 1 || wallY >= mapH - 1) continue;
+                    // Check 1-3 tiles beyond the wall for floor
+                    for (let dist = 2; dist <= 3; dist++) {
+                        const beyondX = x + dx * dist, beyondY = y + dy * dist;
+                        if (beyondX < 0 || beyondX >= mapW || beyondY < 0 || beyondY >= mapH) break;
+                        if (dungeonGrid[beyondY][beyondX] >= 1) {
+                            secretWalls.push({ x: wallX, y: wallY });
+                            break;
+                        }
+                    }
+                    if (secretWalls.length > 0 && secretWalls[secretWalls.length - 1].x === wallX && secretWalls[secretWalls.length - 1].y === wallY) break;
+                }
+            }
+        }
+
+        if (secretWalls.length > 0) console.log(`Brogue dead ends: ${secretWalls.length} pushable walls placed`);
+        return secretWalls;
+    }
+
+    _brogueFinalizeMap(dungeonGrid, rooms, mapW, mapH, cfg, secretWalls = []) {
+        const secretWallSet = new Set(secretWalls.map(p => `${p.x},${p.y}`));
         const floorSet = new Set();
 
         for (let y = 0; y < mapH; y++) {
@@ -2477,14 +2558,18 @@ class Architect {
                     hasFloor(x - 1, y + 1) || hasFloor(x + 1, y + 1);
 
                 if (adj && y > 0) {
-                    let roll = ROT.RNG.getUniform() * totalWeight;
-                    let wallType = wallTypes[0].type;
-                    for (const wt of wallTypes) {
-                        roll -= wt.weight;
-                        if (roll <= 0) { wallType = wt.type; break; }
-                    }
                     this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
-                    this.pendingWallSpawns.push({ x, y, type: isPerimeter(x, y) ? 'metal_wall' : wallType });
+                    if (secretWallSet.has(`${x},${y}`)) {
+                        this.pendingPushableWallSpawns.push({ x, y });
+                    } else {
+                        let roll = ROT.RNG.getUniform() * totalWeight;
+                        let wallType = wallTypes[0].type;
+                        for (const wt of wallTypes) {
+                            roll -= wt.weight;
+                            if (roll <= 0) { wallType = wt.type; break; }
+                        }
+                        this.pendingWallSpawns.push({ x, y, type: isPerimeter(x, y) ? 'metal_wall' : wallType });
+                    }
                 }
             }
         }
