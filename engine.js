@@ -6436,8 +6436,9 @@ class Actor extends Entity {
             if (this._chainHead && actorAtTarget._chainHead === this._chainHead) {
                 return { moved: false, actionTaken: false };
             }
-            // Check if actor can be pushed
-            if (actorAtTarget.hasAttribute('pushable')) {
+            // Check if actor can be pushed (requires pusher to have strength > 0)
+            const pusherStrength = this.getAttribute('strength');
+            if (actorAtTarget.hasAttribute('pushable') && pusherStrength && pusherStrength > 0) {
                 const dx = newX - this.x;
                 const dy = newY - this.y;
                 const pushX = newX + dx;
@@ -9106,6 +9107,7 @@ class RenderSystem {
     updateEntityVisibility(originX, originY, vpW, vpH) {
         if (!this.engine.viewportEnabled) return;
         for (const actor of this.engine.entityManager.actors) {
+            if (actor.isDead) continue;
             const inView = actor.x >= originX && actor.x < originX + vpW &&
                            actor.y >= originY && actor.y < originY + vpH;
             if (actor.spriteBase) actor.spriteBase.visible = inView;
