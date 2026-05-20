@@ -1,6 +1,6 @@
 {
   "name": "A Dungeon",
-  "description": "A sprawling underground complex of rooms and corridors.\nPress 'i' for info.",
+  "description": "You know once you enter there is no way back without the amulet of Yendor.\nPress 'i' for info.",
   "loaded_sound": "levelout",
   "turn_speed": 50,
   "next_level": "caverns",
