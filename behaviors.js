@@ -1490,6 +1490,14 @@ const BehaviorLibrary = {
                 actor.engine.inputManager?.showMessage(`The fire burns ${victim.name} for ${damagePerTurn} damage!`, { x: actor.x, y: actor.y });
             }
 
+            // Apply burning state if victim isn't already burning
+            if (!actor._isAttachedFire && victim.applyState && !victim.hasState('burning')) {
+                const statesData = actor.engine.globalStates;
+                if (statesData?.burning) {
+                    victim.applyState('burning', statesData.burning);
+                }
+            }
+
             // Flash the victim
             victim.flash?.();
 

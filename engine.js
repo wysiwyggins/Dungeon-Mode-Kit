@@ -9571,6 +9571,10 @@ class RenderSystem {
     createActorSprites(actor) {
         if (!actor.hasAttribute('visible')) return;
 
+        const isAttachedFire = actor._isAttachedFire;
+        const baseZ = isAttachedFire ? 12 : 10;
+        const topZ = isAttachedFire ? 13 : 11;
+
         // Render base sprite (static or animated)
         actor.spriteBase = this.createActorSprite(
             actor,
@@ -9578,7 +9582,7 @@ class RenderSystem {
             actor.animationBase,
             actor.x * globalVars.TILE_WIDTH,
             actor.y * globalVars.TILE_HEIGHT,
-            10, // zIndex
+            baseZ,
             { flipH: actor.flipBaseH, flipV: actor.flipBaseV }
         );
 
@@ -9589,7 +9593,7 @@ class RenderSystem {
             actor.animationTop,
             actor.x * globalVars.TILE_WIDTH,
             (actor.y - 1) * globalVars.TILE_HEIGHT,
-            11, // zIndex
+            topZ,
             { flipH: actor.flipTopH, flipV: actor.flipTopV }
         );
 
