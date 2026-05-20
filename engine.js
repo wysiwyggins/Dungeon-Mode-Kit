@@ -3859,7 +3859,7 @@ class Actor extends Entity {
         }
 
         if (item.hasAttribute('light_source')) {
-            this.engine.lightingManager?.computeLighting();
+            this.engine.updateLighting();
         }
 
         // Check if this triggers win conditions (for player only)
@@ -3889,7 +3889,7 @@ class Actor extends Entity {
         this.equipment[slot] = null;
 
         if (item.hasAttribute('light_source')) {
-            this.engine.lightingManager?.computeLighting();
+            this.engine.updateLighting();
         }
 
         console.log(`${this.name} unequipped ${item.name}`);
@@ -4685,7 +4685,7 @@ class Actor extends Entity {
                     toRemove.push(item);
                 }
 
-                this.engine.lightingManager?.computeLighting();
+                this.engine.updateLighting();
             }
         }
 
@@ -5351,7 +5351,7 @@ class Actor extends Entity {
                 this.x = dest.x;
                 this.y = dest.y;
                 this.updateSpritePosition();
-                this.engine.lightingManager?.computeLighting();
+                this.engine.updateLighting();
                 if (this.isPlayerControlled()) {
                     this.engine.renderer?.centerViewportOnPlayer?.();
                     this.engine.inputManager?.showMessage('You are whisked away in a flash of light.');
@@ -5486,7 +5486,7 @@ class Actor extends Entity {
                     if (idx !== -1) this.inventory[idx] = newItem;
                 }
 
-                this.engine.lightingManager?.computeLighting();
+                this.engine.updateLighting();
                 if (this.isPlayerControlled()) {
                     const msg = isLit ? 'You extinguish the torch.' : 'You light the torch.';
                     this.engine.inputManager?.showMessage(msg);
@@ -5638,7 +5638,7 @@ class Actor extends Entity {
                         extinguished = true;
                     }
                 }
-                if (extinguished) this.engine.lightingManager?.computeLighting();
+                if (extinguished) this.engine.updateLighting();
                 if (this.isPlayerControlled()) {
                     this.engine.inputManager?.showMessage('All light fades around you.');
                 }
@@ -7289,7 +7289,7 @@ class Actor extends Entity {
                 }
             }
             if (toExtinguish.length > 0) {
-                this.engine.lightingManager?.computeLighting();
+                this.engine.updateLighting();
             }
         }
 
