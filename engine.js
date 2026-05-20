@@ -6573,7 +6573,9 @@ class Actor extends Entity {
             }
 
             if (!collisionResult.attackAttempted) {
-                console.log(`${this.name} blocked by ${actorAtTarget.name}`);
+                if (this.isPlayerControlled()) {
+                    this.engine.inputManager?.showMessage(`The ${actorAtTarget.name} blocks your way.`);
+                }
             }
             // Attack attempted (hit or miss) = action taken, even though we didn't move
             return { moved: false, actionTaken: collisionResult.attackAttempted };

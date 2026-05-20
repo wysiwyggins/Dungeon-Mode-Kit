@@ -6,12 +6,12 @@ Currently when confused you are warned about stepping on a hazard when you are a
 
 There should be a visual effect for an invisible playable actor (reduced opacity on the actor, other invisible actors should be visible: false and actually invisible)
 
-Arbitrary variables like bools could be added to prototypes that could be changed by events like actor attributes are. This would be a tool for designers to add persistent states across levels that can be changed bu the player.
-
 A ‘clock’ actor that acts as a switch an adjacent actor bool after a counter loops. it's base tile is a number that ticks every turn. It could be toggled on and off with a bump.
 
-The dialogue/options window
-Arbitrary options that can set a prototype-level variable (should prototypes just have flags or also enums?)
+Arbitrary variables like bools could be added to prototypes that could be changed by events like actor attributes are. This would be a tool for designers to add persistent states across levels that can be changed bu the player.
+
+A dialogue/options window
+This would be a new kind of interface window, like an alert, with an optional list of options, that would be used for a new conversation interaction that could be accessed by bumping into some non hostile actors. This would be a large new feature requiring planning. Could use an existing library like ink (actor personalities could include a link to a corresponding ink file that is accessed when the personality state machine decides its a turn in which to talk)
 
 "Illusionist" actor, makes you hallucinate and summons un solid harmless clones of himself that approach and disappear when you hit them
 
@@ -20,8 +20,6 @@ A hell hound actor that blinks and sets fires.
 It seems really easy to ignore descriptions right now, should there be other kinds of interface window messages that are also recorded in descriptions? Interface messages have less space and are a little harder to read but demand attention. Could also have css colorful description messages in the sidebar that are more noticable.
 
 Scripted npc actor actions- a script of turn-by-turn actions that gets executed by an actor and then it returns to other behaviors. (Is this just another behavior? Maybe we have a behavior editor that allows us to logo-like program an actor). some sort of web interface for programming actors.
-
-Solid actors could have a descriptive message set in json that shows when you bump into them other than default.
 
 A web-form for creating actors with controls for making attributes and stats and selecting pre defined ones.
 
