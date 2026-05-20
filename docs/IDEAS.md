@@ -1,9 +1,5 @@
 # Bugs and ideas
 
-Torches should emit light as soon as they are lit, not the next turn.
-
-When an actor is on fire, it should be displayed as a state. Visually it would be nice to show the fire sprite animation on top of the burning actor as well.
-
 There should be a visual effect for an invisible playable actor (reduced opacity on the actor, other invisible actors should be visible: false and actually invisible)
 
 Illusionist actor, makes you hallucinate and summons un solid harmless clones of himself that approach and disappear when you hit them

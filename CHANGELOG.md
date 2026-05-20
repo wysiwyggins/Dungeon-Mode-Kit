@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - bug where dead actors became visible again after leaving and reentering the viewport
 - blinking to an invalid spot goes as far as it can now instead of failing in an ugly way
+- torch light appears same turn they are lit
+- burning condition displays correctly now
 
 ## [1.7b] 2026-05-12
 

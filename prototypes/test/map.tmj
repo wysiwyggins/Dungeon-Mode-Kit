@@ -437,17 +437,6 @@
                  "width":40,
                  "x":720,
                  "y":480
-                }, 
-                {
-                 "height":30,
-                 "id":66,
-                 "name":"potion",
-                 "rotation":0,
-                 "type":"incinertion_potion",
-                 "visible":true,
-                 "width":40,
-                 "x":760,
-                 "y":690
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -518,7 +507,7 @@
          "y":0
         }],
  "nextlayerid":9,
- "nextobjectid":67,
+ "nextobjectid":68,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",
