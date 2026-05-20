@@ -231,7 +231,7 @@ const BehaviorLibrary = {
                 if (dist <= visionRange && dist < nearestVisibleDist) {
                     // Check line of sight — walls block thread awareness
                     const canSee = hasLineOfSight(actor.x, actor.y, seg.x, seg.y, (x, y) => {
-                        if (!actor.hasFloorAt(x, y)) return true;
+                        if (!actor.hasFloorAt(x, y) && !actor.hasPlatformAt(x, y)) return true;
                         const actorAt = actor.engine.entityManager.getSolidActorAt(x, y);
                         return actorAt && actorAt !== actor;
                     });
@@ -1466,8 +1466,8 @@ const BehaviorLibrary = {
         const entityManager = actor.engine.entityManager;
         const damagePerTurn = actor.data?.damage_per_turn ?? 10;
 
-        // Fire cannot survive on void tiles (no floor)
-        if (!actor.hasFloorAt(actor.x, actor.y)) {
+        // Fire cannot survive on void tiles (no floor) unless on a platform
+        if (!actor.hasFloorAt(actor.x, actor.y) && !actor.hasPlatformAt(actor.x, actor.y)) {
             actor.die();
             return true;
         }
@@ -2275,7 +2275,7 @@ const BehaviorLibrary = {
         for (const dir of fleeDirs) {
             const nx = actor.x + dir.dx;
             const ny = actor.y + dir.dy;
-            if (!actor.hasFloorAt(nx, ny)) continue;
+            if (!actor.hasFloorAt(nx, ny) && !actor.hasPlatformAt(nx, ny)) continue;
             const result = actor.tryMove(nx, ny);
             if (result.moved) return true;
         }
@@ -2330,7 +2330,7 @@ const BehaviorLibrary = {
             for (const dir of ALL_DIRS) {
                 const tx = target.x + dir.dx;
                 const ty = target.y + dir.dy;
-                if (!actor.hasFloorAt(tx, ty)) continue;
+                if (!actor.hasFloorAt(tx, ty) && !actor.hasPlatformAt(tx, ty)) continue;
                 if (entityManager.getSolidActorAt(tx, ty)) continue;
                 if (!hasLineOfSight(actor.x, actor.y, tx, ty, isBlocked)) continue;
                 candidates.push({ x: tx, y: ty });

@@ -518,8 +518,8 @@ function findAdjacentWalkable(actor, entityManager) {
     for (const dir of dirs) {
         const nx = actor.x + dir.dx;
         const ny = actor.y + dir.dy;
-        // Check floor exists
-        if (!actor.hasFloorAt(nx, ny)) continue;
+        // Check floor or platform exists
+        if (!actor.hasFloorAt(nx, ny) && !actor.hasPlatformAt(nx, ny)) continue;
         // Only skip tiles with solid actors (ignore non-solid like water/sewage)
         const occupant = entityManager.getSolidActorAt(nx, ny);
         if (occupant) continue;
@@ -3387,6 +3387,20 @@ class Actor extends Entity {
                 }
             }
 
+            if (effects.visible !== undefined) {
+                const nowVisible = activated ? effects.visible : !effects.visible;
+                if (nowVisible) {
+                    if (!target.spriteBase) {
+                        this.engine.renderer.createActorSprites(target);
+                    }
+                    if (target.spriteBase) target.spriteBase.visible = true;
+                    if (target.spriteTop) target.spriteTop.visible = true;
+                } else {
+                    if (target.spriteBase) target.spriteBase.visible = false;
+                    if (target.spriteTop) target.spriteTop.visible = false;
+                }
+            }
+
             if (target.hasAttribute('openable') && effects.open !== undefined) {
                 const shouldOpen = activated ? effects.open : !effects.open;
                 if (shouldOpen) {
@@ -4221,7 +4235,7 @@ class Actor extends Entity {
             );
             if (!stillFlying) {
                 this.updateSubmersionState();
-                if (!this.hasFloorAt(this.x, this.y)) {
+                if (!this.hasFloorAt(this.x, this.y) && !this.hasPlatformAt(this.x, this.y)) {
                     this.fall();
                 }
             }
@@ -4765,7 +4779,7 @@ class Actor extends Entity {
         const lungeX = this.x + dx * range;
         const lungeY = this.y + dy * range;
 
-        if (!this.hasFloorAt(lungeX, lungeY)) return { handled: false };
+        if (!this.hasFloorAt(lungeX, lungeY) && !this.hasPlatformAt(lungeX, lungeY)) return { handled: false };
 
         const target = this.engine.entityManager.getSolidActorAt(lungeX, lungeY);
         if (!target || target.isDead || target.stats?.health === undefined) return { handled: false };
@@ -6273,6 +6287,11 @@ class Actor extends Entity {
         return tile && tile.tileId;
     }
 
+    hasPlatformAt(x, y) {
+        return this.engine.entityManager.getActorsAt(x, y)
+            .some(a => a.hasAttribute('platform') && a.hasAttribute('visible'));
+    }
+
     /**
      * Check if an actor can be pushed to a position
      * @param {number} x - Target X coordinate
@@ -6324,8 +6343,8 @@ class Actor extends Entity {
                 return false;
             }
 
-            // Check for floor tile
-            if (!this.hasFloorAt(newX, newY)) {
+            // Check for floor tile or platform
+            if (!this.hasFloorAt(newX, newY) && !this.hasPlatformAt(newX, newY)) {
                 return false;
             }
 
@@ -6376,7 +6395,7 @@ class Actor extends Entity {
             for (let dx = -1; dx <= 1; dx++) {
                 const tx = this.x + dx;
                 const ty = this.y + dy;
-                if (this.hasFloorAt(tx, ty)) {
+                if (this.hasFloorAt(tx, ty) || this.hasPlatformAt(tx, ty)) {
                     dropPositions.push({ x: tx, y: ty });
                 }
             }
@@ -6424,7 +6443,7 @@ class Actor extends Entity {
         }
 
         // Block diagonal movement past wall corners (Brogue-style)
-        if (isDiagonalBlocked(this.x, this.y, newX, newY, (x, y) => this.hasFloorAt(x, y) && !this.engine.entityManager.getSolidActorAt(x, y))) {
+        if (isDiagonalBlocked(this.x, this.y, newX, newY, (x, y) => (this.hasFloorAt(x, y) || this.hasPlatformAt(x, y)) && !this.engine.entityManager.getSolidActorAt(x, y))) {
             return { moved: false, actionTaken: false };
         }
 
@@ -6453,8 +6472,8 @@ class Actor extends Entity {
                     actorAtTarget.updateSpritePosition();
                     this.engine.playSound('push1');
 
-                    // Check if pushed into void
-                    if (!this.hasFloorAt(pushX, pushY)) {
+                    // Check if pushed into void (platforms prevent falling)
+                    if (!this.hasFloorAt(pushX, pushY) && !this.hasPlatformAt(pushX, pushY)) {
                         console.log(`${this.name} pushes ${actorAtTarget.name} into the void`);
                         if (this.isPlayerControlled()) {
                             this.engine.inputManager?.showMessage(`You push ${actorAtTarget.getNameWithArticle()} into the void!`);
@@ -6581,8 +6600,8 @@ class Actor extends Entity {
             return { moved: false, actionTaken: collisionResult.attackAttempted };
         }
 
-        // Check for floor tile - if no floor, actor falls (flying actors hover above)
-        if (!this.hasFloorAt(newX, newY) && !this.hasStateProperty('flying')) {
+        // Check for floor tile - if no floor, actor falls (flying actors hover above, platforms prevent falling)
+        if (!this.hasFloorAt(newX, newY) && !this.hasPlatformAt(newX, newY) && !this.hasStateProperty('flying')) {
             // Move to the void tile first (so we can see them fall)
             this.x = newX;
             this.y = newY;
@@ -7393,8 +7412,8 @@ class Actor extends Entity {
 
         // Then check actual line of sight
         const isBlocked = (x, y) => {
-            // Check if tile blocks vision (walls, solid actors)
-            if (!this.hasFloorAt(x, y)) return true;
+            // Check if tile blocks vision (walls, solid actors — platforms span voids)
+            if (!this.hasFloorAt(x, y) && !this.hasPlatformAt(x, y)) return true;
 
             // Check for solid actors at this position (but not self or target)
             const actorAt = this.engine.entityManager.getSolidActorAt(x, y);
@@ -7421,8 +7440,8 @@ class Actor extends Entity {
             return false;
         }
 
-        // Check for floor
-        if (!this.hasFloorAt(x, y)) return false;
+        // Check for floor or platform
+        if (!this.hasFloorAt(x, y) && !this.hasPlatformAt(x, y)) return false;
 
         // Check for solid actors (but allow the actor's own position)
         const actorAt = this.engine.entityManager.getSolidActorAt(x, y);
@@ -7443,7 +7462,7 @@ class Actor extends Entity {
     moveToward(targetX, targetY) {
         if (this.x === targetX && this.y === targetY) return false;
 
-        const hasFloor = (x, y) => this.hasFloorAt(x, y);
+        const hasFloor = (x, y) => this.hasFloorAt(x, y) || this.hasPlatformAt(x, y);
 
         const isPassable = (x, y) => {
             if (x === targetX && y === targetY) return true;
