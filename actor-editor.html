@@ -846,16 +846,26 @@ function updatePreview() {
     const dx = parseInt(document.getElementById('f-sideOffset-dx').value) || 0;
     const dy = parseInt(document.getElementById('f-sideOffset-dy').value) || 0;
 
-    // Main preview
+    // Main preview — render at full res, display at half size for hi-dpi
     const canvas = document.getElementById('preview-canvas');
+    const tileScaledW = TILE_W * 3, tileScaledH = TILE_H * 3;
+
+    const pad = 10;
+    const canvasW = tileScaledW * 3 + pad * 2;
+    const rowsNeeded = 2 + (sideTile ? Math.max(0, dy) : 0);
+    const canvasH = rowsNeeded * tileScaledH + pad * 2;
+    canvas.width = canvasW;
+    canvas.height = Math.max(canvasH, 200);
+    canvas.style.width = (canvas.width / 2) + 'px';
+    canvas.style.height = (canvas.height / 2) + 'px';
+
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = '#d0cfc8';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const tileScaledW = TILE_W * 3, tileScaledH = TILE_H * 3;
-    const cx = (canvas.width - tileScaledW) / 2;
-    const cy = canvas.height - tileScaledH - 10;
+    const cx = pad + tileScaledW;
+    const cy = canvas.height - tileScaledH - pad;
 
     function drawTileAt(tileRef, px, py, fh, fv) {
         const coords = resolveTile(tileRef);
