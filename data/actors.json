@@ -960,6 +960,7 @@
     "personality": "cloud_behavior",
     "attributes": {
       "solid": false,
+      "flammable": true,
       "mass_noun": true,
       "apply_state": "nauseated",
       "hazard_immune": true

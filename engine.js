@@ -8698,6 +8698,16 @@ class EntityManager {
         // This ensures fire/cloud damage hits before victims can flee
         this.applySpawnDamage(actor);
 
+        if (actor.hasAttribute('ignites')) {
+            const flammable = this.getActorsAt(x, y)
+                .filter(a => a !== actor && a.hasAttribute('flammable') && !a.isDead);
+            for (const target of flammable) {
+                target.die();
+                const newFire = this.spawnActor('fire', x, y);
+                if (newFire) newFire.fireLifetime = newFire.lifetime || 5;
+            }
+        }
+
         return actor;
     }
 
