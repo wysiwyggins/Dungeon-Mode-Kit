@@ -465,35 +465,7 @@
       "description": "[damage] damage. Knocks enemies back [knockback] tile."
     }
   },
-  "vampiric_blade": {
-    "name": "Blooddrinker",
-    "tileIndex": "CROSS",
-    "flipV": true,
-    "tint": "#880000",
-    "identified": false,
-    "attributes": {
-      "pickupable": true,
-      "visible": true,
-      "stackable": false,
-      "flammable": false,
-      "weapon": true,
-      "enchantable": true,
-      "weapon_proc": "lifesteal",
-      "lifesteal_percent": 25,
-      "collision_effect": {
-        "health": -6
-      },
-      "attack_sound": "bow",
-      "collision_sound": "hit",
-      "collision_description": "[actor_name] slashes [attacked_actor_name] with [a-an] [weapon_name]!",
-      "description": "[damage] damage. Drains [lifesteal]% of damage as health.",
-      "enchant_range": [
-        -1,
-        3
-      ]
-    }
-  },
-  "assassin_dagger": {
+  "misiricorde": {
     "name": "Misericorde",
     "tileIndex": "LATIN_SMALL_LETTER_T",
     "identified": false,

@@ -71,6 +71,7 @@
       "hostile": true,
       "light_source": true,
       "sentient": true,
+      "dark_vision": true,
       "inventory": 0,
       "accuracy": 70,
       "defense": 10,
@@ -1074,6 +1075,7 @@
     "attributes": {
       "hostile": true,
       "sentient": true,
+      "dark_vision": true,
       "defense": 20,
       "opaque": false
     },
@@ -1096,6 +1098,7 @@
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
       "hostile": true,
+      "dark_vision": true,
       "opaque": false,
       "sentient": true,
       "accuracy": 40
@@ -1119,6 +1122,7 @@
     "attributes": {
       "hostile": true,
       "sentient": true,
+      "dark_vision": true,
       "accuracy": 50,
       "defense": 3
     },
@@ -1141,6 +1145,7 @@
       "hostile": true,
       "flammable": false,
       "sentient": true,
+      "dark_vision": true,
       "light_source": true,
       "accuracy": 65,
       "defense": 12,

@@ -4725,7 +4725,19 @@ class Actor extends Entity {
             if (burns && burns.current <= 0) {
                 const isPlayer = this.hasAttribute('controlled');
                 const msg = item.getAttribute('burnout_message') || `Your ${item.name} burns out.`;
-                if (isPlayer) this.engine.inputManager?.showMessage(msg);
+                if (isPlayer) {
+                    this.engine.inputManager?.showMessage(msg, { style: 'warning' });
+                    if (this.engine.lightingManager) {
+                        const hasOtherLight = this.inventory.some(other =>
+                            other !== item &&
+                            other.hasAttribute('light_source') &&
+                            !(other.stats?.burns && other.stats.burns.current <= 0)
+                        );
+                        if (!hasOtherLight) {
+                            this.engine.inputManager?.showMessage('Darkness closes in around you.', { style: 'danger' });
+                        }
+                    }
+                }
 
                 const burnsOutItem = item.getAttribute('burns_out_item');
                 if (burnsOutItem) {
@@ -7484,21 +7496,27 @@ class Actor extends Entity {
 
         if (target.hasStateProperty?.('invisible')) return false;
 
-        // First check distance
         const distance = getEuclideanDistance(this.x, this.y, target.x, target.y);
-        if (distance > this.getEffectiveVisionRange()) return false;
+        let effectiveRange = this.getEffectiveVisionRange();
 
-        // Then check actual line of sight
+        const lm = this.engine.lightingManager;
+        if (lm && !this.isPlayerControlled() && !this.hasAttribute('dark_vision')) {
+            const targetLight = lm.getLightLevel(target.x, target.y)?.intensity ?? 1;
+            if (targetLight < 0.1) {
+                effectiveRange = Math.min(effectiveRange, 1.5);
+            } else if (targetLight < 1.0) {
+                effectiveRange = Math.max(1.5, effectiveRange * targetLight);
+            }
+        }
+
+        if (distance > effectiveRange) return false;
+
         const isBlocked = (x, y) => {
-            // Check if tile blocks vision (walls, solid actors — platforms span voids)
             if (!this.hasFloorAt(x, y) && !this.hasPlatformAt(x, y)) return true;
-
-            // Check for solid actors at this position (but not self or target)
             const actorAt = this.engine.entityManager.getSolidActorAt(x, y);
             if (actorAt && actorAt !== this && actorAt !== target) {
                 return true;
             }
-
             return false;
         };
 

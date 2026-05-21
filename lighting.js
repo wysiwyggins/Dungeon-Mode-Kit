@@ -184,17 +184,13 @@ class LightingManager {
             a => a.hasAttribute('controlled') && !a.isDead
         );
 
-        // Compute visibility for all controlled actors
-        this.computeVisibility();
-
-        // Compute lighting from all light sources
+        // Compute lighting from all light sources BEFORE visibility,
+        // so player FOV can be clamped by available light
         const sources = this.getLightSources();
 
         for (const source of sources) {
             this.currentSource = source;
 
-            // Only accumulate color from non-white light sources
-            // White light (player) contributes intensity but not color tint
             const isColoredLight = source.color && source.color !== 0xFFFFFF;
             const sr = isColoredLight ? (source.color >> 16) & 0xFF : 0;
             const sg = isColoredLight ? (source.color >> 8) & 0xFF : 0;
@@ -215,6 +211,9 @@ class LightingManager {
             });
         }
         this.currentSource = null;
+
+        // Compute visibility after lighting so FOV respects light levels
+        this.computeVisibility();
 
         // Update shadow entities for actors blocking colored light
         this.updateShadows();
@@ -353,14 +352,77 @@ class LightingManager {
         );
 
         for (const actor of controlledActors) {
-            this.visionFov.compute(actor.x, actor.y, actor.visionRange, (x, y, r, visibility) => {
+            const baseRange = actor.getEffectiveVisionRange();
+            const lightRange = this.getActorLightRange(actor);
+            const effectiveRange = Math.min(baseRange, lightRange);
+
+            this.visionFov.compute(actor.x, actor.y, effectiveRange, (x, y, r, visibility) => {
                 if (x < 0 || x >= this.width || y < 0 || y >= this.height) return;
                 if (visibility > 0) {
-                    this.visibilityMap[y][x] = true;
-                    this.exploredMap[y][x] = true;
+                    if (r <= 1 || this.lightMap[y][x].intensity > 0) {
+                        this.visibilityMap[y][x] = true;
+                        this.exploredMap[y][x] = true;
+                    }
                 }
             });
         }
+    }
+
+    getActorLightRange(actor) {
+        if (this.ambientLight >= 0.5) {
+            return actor.getEffectiveVisionRange();
+        }
+
+        if (actor.hasAttribute('dark_vision')) {
+            return actor.getEffectiveVisionRange();
+        }
+
+        if (actor.hasAttribute('controlled') && this.playerAutoLight) {
+            return this.playerLightRadius;
+        }
+
+        let personalLightRadius = 0;
+
+        if (actor.hasAttribute('light_source')) {
+            personalLightRadius = Math.max(personalLightRadius, actor.lightRadius || 5);
+        }
+
+        if (actor.inventory) {
+            for (const item of actor.inventory) {
+                if (!item.hasAttribute('light_source')) continue;
+                if (item.getAttribute('wearable') === 'ring' && !actor.isItemEquipped?.(item)) continue;
+                const burns = item.stats?.burns;
+                if (burns && burns.current <= 0) continue;
+                personalLightRadius = Math.max(personalLightRadius, item.getAttribute('lightRadius') || 5);
+            }
+        }
+
+        if (personalLightRadius > 0) {
+            return personalLightRadius;
+        }
+
+        // No personal light — check for nearby environmental light sources
+        // (wall torches, fire elementals, lava glow, etc.)
+        const visionRange = actor.getEffectiveVisionRange();
+        let maxLitDist = 1;
+        const ax = actor.x;
+        const ay = actor.y;
+        for (let dy = -visionRange; dy <= visionRange; dy++) {
+            const ty = ay + dy;
+            if (ty < 0 || ty >= this.height) continue;
+            for (let dx = -visionRange; dx <= visionRange; dx++) {
+                const tx = ax + dx;
+                if (tx < 0 || tx >= this.width) continue;
+                if (this.lightMap[ty][tx].intensity > 0) {
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist > maxLitDist && dist <= visionRange) {
+                        maxLitDist = dist;
+                    }
+                }
+            }
+        }
+
+        return Math.ceil(maxLitDist);
     }
 
     getLightLevel(x, y) {
