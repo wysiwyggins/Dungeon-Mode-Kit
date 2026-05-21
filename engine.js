@@ -1219,9 +1219,7 @@ class DungeonEngine {
         // Run cellular automata behaviors once to pre-calculate initial state
         this.entityManager.runCellularAutomataStep();
 
-        if (!prototypeConfig.mechanics?.darkness) {
-            this.mapManager.addBaseAndShadows();
-        }
+        this.mapManager.addBaseAndShadows();
 
         this.entityManager.initializeSwitchTints();
         this.renderer.renderTestPattern(this.mapManager);
@@ -1383,9 +1381,7 @@ class DungeonEngine {
         // Restore player
         this.restorePlayerOnFloor(playerState, entryDirection);
 
-        if (!prototypeConfig.mechanics?.darkness) {
-            this.mapManager.addBaseAndShadows();
-        }
+        this.mapManager.addBaseAndShadows();
 
         this.entityManager.initializeSwitchTints();
         this.renderer.renderTestPattern(this.mapManager);

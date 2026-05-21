@@ -18,7 +18,7 @@
     "stats": {
       "health": 100
     },
-    "default_items": ["sword"]
+    "default_items": ["butter_knife"]
   },
 
   "minotaur": {
