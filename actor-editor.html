@@ -621,8 +621,10 @@ details.section > .section-body { padding: 10px 12px; }
 <div id="tile-picker-tooltip"></div>
 
 <script>
-const TILE_W = 40, TILE_H = 30, SS_COLS = 23, SS_ROWS = 17;
+let TILE_W = 40, TILE_H = 30, SS_COLS = 23, SS_ROWS = 17;
 const SCALE = 4;
+const SPRITESHEET_PATH = 'assets/sprites/static-tiles.png';
+const TILE_DATA_PATH = 'data/static-tiles.json';
 
 const BOOL_ATTRS = [
     'solid','visible','hostile','sentient','controlled','sighted','flammable','fire_immune',
@@ -688,18 +690,25 @@ async function fetchJSON(url) {
 function loadSpritesheet() {
     return new Promise((resolve) => {
         const img = new Image();
-        img.onload = () => { state.spritesheetImg = img; resolve(); };
+        img.onload = () => {
+            state.spritesheetImg = img;
+            SS_ROWS = Math.ceil(img.height / TILE_H);
+            SS_COLS = Math.ceil(img.width / TILE_W);
+            resolve();
+        };
         img.onerror = () => resolve();
-        img.src = 'assets/sprites/static-tiles.png';
+        img.src = SPRITESHEET_PATH;
     });
 }
 
 async function loadBaseData() {
     const [tilesData, actors, personalities] = await Promise.all([
-        fetchJSON('data/static-tiles.json'),
+        fetchJSON(TILE_DATA_PATH),
         fetchJSON('data/actors.json'),
         fetchJSON('data/personalities.json'),
     ]);
+    TILE_W = tilesData.tilePixelWidth || TILE_W;
+    TILE_H = tilesData.tilePixelHeight || TILE_H;
     state.tileMap = tilesData.tiles || {};
     state.baseActors = actors;
     state.basePersonalities = personalities;
