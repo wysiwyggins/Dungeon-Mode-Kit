@@ -1,144 +1,122 @@
 @font-face {
-  font-family: "Computer Modern Roman";
+  font-family: 'Computer Modern Roman';
   src: url("/assets/fonts/cmunrm-webfont.eot");
   src: url("/assets/fonts/cmunrm-webfont.eot?#iefix") format("embedded-opentype"), url("/assets/fonts/cmunrm-webfont.woff") format("woff"), url("/assets/fonts/cmunrm-webfont.ttf") format("truetype"), url("/assets/fonts/cmunrm-webfont.svg#cmu_serifroman") format("svg");
   font-weight: normal;
-  font-style: normal;
-}
+  font-style: normal; }
 @font-face {
-  font-family: "Computer Modern Italic";
+  font-family: 'Computer Modern Italic';
   src: url("/assets/fonts/cmunti-webfont.eot");
   src: url("/assets/fonts/cmunti-webfont.eot?#iefix") format("embedded-opentype"), url("/assets/fonts/cmunti-webfont.woff") format("woff"), url("/assets/fonts/cmunti-webfont.svg#cmu_serifroman") format("svg");
   font-weight: normal;
-  font-style: normal;
-}
+  font-style: normal; }
 @font-face {
-  font-family: "Computer Modern Bold";
+  font-family: 'Computer Modern Bold';
   src: url("/assets/fonts/cmunbx-webfont.eot");
   src: url("/assets/fonts/cmunbx-webfont.eot?#iefix") format("embedded-opentype"), url("/assets/fonts/cmunbx-webfont.woff") format("woff"), url("/assets/fonts/cmunbx-webfont.ttf") format("truetype");
   font-weight: normal;
-  font-style: normal;
-}
+  font-style: normal; }
 @font-face {
-  font-family: "courier_prime_coderegular";
+  font-family: 'courier_prime_coderegular';
   src: url("/assets/fonts/courier_prime_code-webfont.woff2") format("woff2"), url("/assets/fonts/courier_prime_code-webfont.woff") format("woff");
   font-weight: normal;
-  font-style: normal;
-}
+  font-style: normal; }
 #game {
-  line-height: 0;
-}
+  line-height: 0; }
 
 #game canvas {
-  display: block;
-}
+  display: block; }
 
 .game-container {
   display: flex;
-  flex-direction: row;
-}
-@media (max-width: 1000px) {
-  .game-container {
-    flex-direction: column;
-  }
-}
+  flex-direction: row; }
+  @media (max-width: 1000px) {
+    .game-container {
+      flex-direction: column; } }
 
 .text {
   display: flex;
   flex-direction: column;
-}
-@media (max-width: 1000px) {
-  .text {
-    flex-direction: row;
-    justify-content: space-between;
-  }
-}
-.text div {
-  margin-bottom: 10px;
-}
-.text ul {
-  margin: 0;
-  padding: 0;
-  padding-left: 10px;
-}
-.text ul li {
-  display: flex;
-  align-items: center;
-  gap: 0.5em;
-  margin-bottom: 0.25em;
-}
-.text ul .stat-label {
-  min-width: 5em;
-  font-size: 0.9em;
-}
-.text ul .stat-thermometer {
-  flex: 1;
-  min-width: 50px;
-  max-width: 100px;
-  height: 0.75em;
-  background: #333;
-  margin: 0;
-  position: relative;
-  overflow: hidden;
-}
-.text ul .stat-fill {
-  height: 100%;
-  background: #4a4;
-  transition: width 0.2s ease;
-}
-.text ul .sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  border: 0;
-}
-.text .actor-conditions {
-  padding-left: 10px;
-}
-.text .actor-condition {
-  display: inline-block;
-  font-size: 0.9em;
-  color: #e8a838;
-  margin-right: 0.5em;
-}
-.text details {
-  max-width: 260px;
-}
-.text .message-age-1 {
-  color: #878787;
-}
-.text .message-age-2 {
-  color: #adadad;
-}
-.text .message-hover {
-  font-family: "Computer Modern Italic", serif;
-}
-.text {
   margin-top: 30px;
-  margin-left: 15px;
-}
-@media (max-width: 1000px) {
-  .text {
-    margin-top: 10px;
-    min-height: 100px;
-  }
-}
+  margin-left: 15px; }
+  @media (max-width: 1000px) {
+    .text {
+      flex-direction: row;
+      justify-content: space-between; } }
+  .text div {
+    margin-bottom: 10px; }
+  .text ul {
+    margin: 0;
+    padding: 0;
+    padding-left: 10px; }
+    .text ul li {
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+      margin-bottom: 0.25em; }
+    .text ul .stat-label {
+      min-width: 5em;
+      font-size: 0.9em; }
+    .text ul .stat-thermometer {
+      flex: 1;
+      min-width: 50px;
+      max-width: 100px;
+      height: 0.75em;
+      background: #333;
+      margin: 0;
+      position: relative;
+      overflow: hidden; }
+    .text ul .stat-fill {
+      height: 100%;
+      background: #4a4;
+      transition: width 0.2s ease; }
+    .text ul .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border: 0; }
+  .text .actor-conditions {
+    padding-left: 10px; }
+  .text .actor-condition {
+    display: inline-block;
+    font-size: 0.9em;
+    color: #e8a838;
+    margin-right: 0.5em; }
+  .text details {
+    max-width: 260px; }
+  .text .message-age-1 {
+    color: #878787; }
+  .text .message-age-2 {
+    color: #adadad; }
+  .text .message-hover {
+    font-family: "Computer Modern Italic", serif; }
+  .text .message-danger {
+    color: #c44; }
+  .text .message-warning {
+    color: #c88a2e; }
+  .text .message-discovery {
+    color: #3a8a5c; }
+  .text .message-arcane {
+    color: #9966cc; }
+  @media (max-width: 1000px) {
+    .text {
+      margin-top: 10px;
+      min-height: 100px; } }
 
 body {
   margin: 0;
   padding: 20px;
-  font-family: "Computer Modern Roman", serif;
-}
+  font-family: 'Computer Modern Roman', serif; }
 
 strong {
-  font-family: "Computer Modern Bold", serif;
-  font-weight: normal;
-}
+  font-family: 'Computer Modern Bold', serif;
+  font-weight: normal; }
 
 pre, code {
-  font-family: "courier_prime_coderegular", "Courier New", monospace;
-}/*# sourceMappingURL=main.css.map */
+  font-family: 'courier_prime_coderegular', 'Courier New', monospace; }
+
+/*# sourceMappingURL=main.css.map */

@@ -910,8 +910,19 @@ class InputManager {
      * Add a message to the stack (will be displayed together with other messages from the same turn)
      * @param {string} message - The message to display
      */
-    showMessage(message, position = null) {
+    showMessage(message, options = null) {
         if (!this.descriptionElement) return;
+
+        let position = null;
+        let style = null;
+        if (options) {
+            if (options.x !== undefined && options.y !== undefined) {
+                position = options;
+            } else {
+                position = options.position || null;
+                style = options.style || null;
+            }
+        }
 
         if (position && this.engine?.isTileVisible) {
             if (!this.engine.isTileVisible(position.x, position.y)) return;
@@ -922,10 +933,15 @@ class InputManager {
 
         // Check current turn's last message first
         if (this.messageStack.length > 0) {
-            const lastMessage = this.messageStack[this.messageStack.length - 1];
-            const baseLast = lastMessage.replace(/\.+$/, '');
+            const last = this.messageStack[this.messageStack.length - 1];
+            const lastText = typeof last === 'string' ? last : last.text;
+            const baseLast = lastText.replace(/\.+$/, '');
             if (baseNew === baseLast) {
-                this.messageStack[this.messageStack.length - 1] = lastMessage + '.';
+                if (typeof last === 'string') {
+                    this.messageStack[this.messageStack.length - 1] = lastText + '.';
+                } else {
+                    last.text = lastText + '.';
+                }
                 this.displayMessages();
                 return;
             }
@@ -934,10 +950,15 @@ class InputManager {
         else if (this.turnHistory.length > 0) {
             const lastTurn = this.turnHistory[this.turnHistory.length - 1];
             if (lastTurn.length > 0) {
-                const lastMessage = lastTurn[lastTurn.length - 1];
-                const baseLast = lastMessage.replace(/\.+$/, '');
+                const last = lastTurn[lastTurn.length - 1];
+                const lastText = typeof last === 'string' ? last : last.text;
+                const baseLast = lastText.replace(/\.+$/, '');
                 if (baseNew === baseLast) {
-                    lastTurn[lastTurn.length - 1] = lastMessage + '.';
+                    if (typeof last === 'string') {
+                        lastTurn[lastTurn.length - 1] = lastText + '.';
+                    } else {
+                        last.text = lastText + '.';
+                    }
                     this.displayMessages();
                     return;
                 }
@@ -945,7 +966,7 @@ class InputManager {
         }
 
         // Add to message stack
-        this.messageStack.push(message);
+        this.messageStack.push(style ? { text: message, style } : message);
 
         // Display all stacked messages
         this.displayMessages();
@@ -1009,12 +1030,23 @@ class InputManager {
                 }
 
                 // Add messages for this turn
-                const lines = turn.messages.join('\n').split('\n');
-                lines.forEach((line, lineIndex) => {
-                    if (lineIndex > 0) {
-                        turnSpan.appendChild(document.createElement('br'));
-                    }
-                    turnSpan.appendChild(document.createTextNode(line));
+                turn.messages.forEach((msg, msgIndex) => {
+                    const text = typeof msg === 'string' ? msg : msg.text;
+                    const msgStyle = typeof msg === 'string' ? null : msg.style;
+                    const lines = text.split('\n');
+                    lines.forEach((line, lineIndex) => {
+                        if (msgIndex > 0 || lineIndex > 0) {
+                            turnSpan.appendChild(document.createElement('br'));
+                        }
+                        if (msgStyle) {
+                            const styledSpan = document.createElement('span');
+                            styledSpan.className = `message-${msgStyle}`;
+                            styledSpan.textContent = line;
+                            turnSpan.appendChild(styledSpan);
+                        } else {
+                            turnSpan.appendChild(document.createTextNode(line));
+                        }
+                    });
                 });
 
                 this.descriptionElement.appendChild(turnSpan);

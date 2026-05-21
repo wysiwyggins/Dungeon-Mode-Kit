@@ -1680,7 +1680,7 @@ class DungeonEngine {
                 stairway.name = 'Stairs Down';
             }
 
-            this.inputManager?.showMessage('The way forward is now open!');
+            this.inputManager?.showMessage('The way forward is now open!', { style: 'discovery' });
         }
 
         // Reveal gateways when win conditions are met
@@ -1693,7 +1693,7 @@ class DungeonEngine {
                 if (gw.spriteTop) gw.spriteTop.visible = true;
             }
             this.playSound?.('magic');
-            this.inputManager?.showMessage('A gateway has appeared!');
+            this.inputManager?.showMessage('A gateway has appeared!', { style: 'discovery' });
             // Apply visual effect
             if (this.renderer?.applyEffect) {
                 this.renderer.applyEffect('gateway_reveal');
@@ -1746,7 +1746,7 @@ class DungeonEngine {
             }
         }
 
-        this.inputManager?.showMessage('The way forward is sealed once more.');
+        this.inputManager?.showMessage('The way forward is sealed once more.', { style: 'warning' });
     }
 
     /**
@@ -3663,7 +3663,7 @@ class Actor extends Entity {
             } else if (this.isPlayerControlled()) {
                 const restartKey = Object.entries(this.engine.inputManager?.globalKeyMap || {})
                     .find(([, action]) => action === 'reload')?.[0] || 'R';
-                this.engine.inputManager?.showMessage(`You die... \n Press ${restartKey} to restart`);
+                this.engine.inputManager?.showMessage(`You die... \n Press ${restartKey} to restart`, { style: 'danger' });
             } else if (this.getAttribute('death_description')) {
                 this.engine.inputManager?.showMessage(this.getAttribute('death_description'), { x: this.x, y: this.y });
             } else if (!this.stats || this.stats.health === undefined) {
@@ -3780,7 +3780,7 @@ class Actor extends Entity {
             if (this.isPlayerControlled()) {
                 const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
                 const article = this.engine.inputManager?.getIndefiniteArticle(displayName) || 'a';
-                this.engine.inputManager?.showMessage(`Your inventory is full. You can't pick up ${article} ${displayName}.`);
+                this.engine.inputManager?.showMessage(`Your inventory is full. You can't pick up ${article} ${displayName}.`, { style: 'warning' });
             }
             return false;
         }
@@ -3821,9 +3821,9 @@ class Actor extends Entity {
 
             // Show value if item had one
             if (pickupEffect && item.value) {
-                this.engine.inputManager?.showMessage(`You pick up ${article} ${displayName} worth ${item.value}.`);
+                this.engine.inputManager?.showMessage(`You pick up ${article} ${displayName} worth ${item.value}.`, { style: 'discovery' });
             } else {
-                this.engine.inputManager?.showMessage(`You pick up ${article} ${displayName}.`);
+                this.engine.inputManager?.showMessage(`You pick up ${article} ${displayName}.`, { style: 'discovery' });
             }
         }
 
@@ -3873,7 +3873,7 @@ class Actor extends Entity {
 
         if (item.hasAttribute('cursed') && this.isPlayerControlled()) {
             item.identified = true;
-            this.engine.inputManager?.showMessage(`You feel a malevolent force bind the ${item.getDisplayName?.()} to you!`);
+            this.engine.inputManager?.showMessage(`You feel a malevolent force bind the ${item.getDisplayName?.()} to you!`, { style: 'danger' });
             this.engine.playSound?.('tone9');
             this.engine.renderer?.effectRunner.apply('curse_reveal');
         }
@@ -4130,7 +4130,7 @@ class Actor extends Entity {
         if (!options.silent && stateData.on_apply_message && this.engine.inputManager) {
             const message = stateData.on_apply_message.replace('[actor_name]', this.name);
             const pos = this.isPlayerControlled() ? null : { x: this.x, y: this.y };
-            this.engine.inputManager.showMessage(message, pos);
+            this.engine.inputManager.showMessage(message, { position: pos, style: 'warning' });
         }
 
         // Play apply sound (skip for silent/innate states)
@@ -4197,7 +4197,7 @@ class Actor extends Entity {
         if (!silent && state.data.on_remove_message && this.engine.inputManager) {
             const message = state.data.on_remove_message.replace('[actor_name]', this.name);
             const pos = this.isPlayerControlled() ? null : { x: this.x, y: this.y };
-            this.engine.inputManager.showMessage(message, pos);
+            this.engine.inputManager.showMessage(message, { position: pos, style: 'discovery' });
         }
 
         // Play removal sound
@@ -4662,7 +4662,7 @@ class Actor extends Entity {
             const isFatal = statName === 'health' || stat.fatal === true;
             if (newValue <= 0 && isFatal) {
                 if (this.isPlayerControlled() && stat.death_message) {
-                    this.engine.inputManager?.showMessage(stat.death_message);
+                    this.engine.inputManager?.showMessage(stat.death_message, { style: 'danger' });
                 }
                 this.die();
                 return; // Stop processing if dead
@@ -4677,7 +4677,7 @@ class Actor extends Entity {
                 for (const warning of stat.warnings) {
                     // Trigger when crossing below threshold
                     if (newPercentage <= warning.threshold && oldPercentage > warning.threshold) {
-                        this.engine.inputManager.showMessage(warning.message);
+                        this.engine.inputManager.showMessage(warning.message, { style: 'warning' });
                         break; // Only show one warning per turn
                     }
                 }
@@ -5101,7 +5101,7 @@ class Actor extends Entity {
     unequipItem(item) {
         if (item.hasAttribute('cursed')) {
             if (this.isPlayerControlled()) {
-                this.engine.inputManager?.showMessage(`The ${item.getDisplayName?.()} is cursed! You can't remove it.`);
+                this.engine.inputManager?.showMessage(`The ${item.getDisplayName?.()} is cursed! You can't remove it.`, { style: 'danger' });
             }
             return false;
         }
@@ -5390,7 +5390,7 @@ class Actor extends Entity {
                 }
                 if (this.isPlayerControlled()) {
                     if (uncursed > 0) {
-                        this.engine.inputManager?.showMessage('A cleansing light lifts the curse from your equipment!');
+                        this.engine.inputManager?.showMessage('A cleansing light lifts the curse from your equipment!', { style: 'discovery' });
                     } else {
                         this.engine.inputManager?.showMessage('You feel a momentary warmth, but nothing happens.');
                     }
@@ -5508,7 +5508,7 @@ class Actor extends Entity {
 
                 if (!isLit && remainingFuel <= 0) {
                     if (this.isPlayerControlled()) {
-                        this.engine.inputManager?.showMessage('The torch has no fuel left.');
+                        this.engine.inputManager?.showMessage('The torch has no fuel left.', { style: 'warning' });
                     }
                     return false;
                 }

@@ -77,6 +77,22 @@
     .message-hover {
         font-family: "Computer Modern Italic", serif;
     }
+
+    .message-danger {
+        color: #c44;
+    }
+
+    .message-warning {
+        color: #c88a2e;
+    }
+
+    .message-discovery {
+        color: #3a8a5c;
+    }
+
+    .message-arcane {
+        color: #9966cc;
+    }
     margin-top: 30px;
     margin-left: 15px;
     @media (max-width: 1000px) {

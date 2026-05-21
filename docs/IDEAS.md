@@ -6,7 +6,7 @@ Arbitrary variables like bools could be added to prototypes that could be change
 
 A dialogue/options window
 This would be a new kind of interface window, like an alert, with an optional list of options, that would be used for a new conversation interaction that could be accessed by bumping into some non hostile actors. This would be a large new feature requiring planning. There could be a simple version, a switch statement that looks for a prototype variable to pick a message, or more complex- could use an existing library like ink (actor personalities could include a link to a corresponding ink file that is accessed when the personality state machine decides its a turn in which to talk). We should strive for simplicity.
-
+le
 It seems really easy to ignore descriptions right now, should there be other kinds of interface window messages that are also recorded in descriptions? Interface messages have less space and are a little harder to read but demand attention. Could also have css colorful description messages in the sidebar that are more noticable.
 
 Scripted npc actor actions- a script of turn-by-turn actions that gets executed by an actor and then it returns to other behaviors. (Is this just another behavior? Maybe we have a behavior editor that allows us to logo-like program an actor). some sort of web interface for programming actors.
