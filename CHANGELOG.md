@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - blinking to an invalid spot goes as far as it can now instead of failing in an ugly way
 - torch light appears same turn they are lit
 - burning condition displays correctly now
+- when confused you are no longer only warned when you are actually about to step on a hazard
 
 ## [1.7b] 2026-05-12
 

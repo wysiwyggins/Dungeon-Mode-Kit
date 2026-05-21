@@ -1203,7 +1203,18 @@ class InputManager {
             // Check for hazards that need confirmation (skip if hallucinating — player doesn't know)
             const isConfused = player.hasStateProperty('random_movement');
             const isHallucinating = player.hasStateProperty('hallucinating');
-            const hazardCheck = isHallucinating ? null : this.checkMovementHazard(player, targetX, targetY, isConfused);
+            let hazardCheck = null;
+            if (!isHallucinating) {
+                if (isConfused) {
+                    // Confused: check all 8 neighbors — player doesn't know which way they'll go
+                    for (const d of Object.values(this.directions)) {
+                        hazardCheck = this.checkMovementHazard(player, player.x + d.dx, player.y + d.dy, true);
+                        if (hazardCheck) break;
+                    }
+                } else {
+                    hazardCheck = this.checkMovementHazard(player, targetX, targetY, false);
+                }
+            }
             if (hazardCheck) {
                 // Show confirmation dialog
                 this.engine.interfaceManager?.showConfirmDialog(
