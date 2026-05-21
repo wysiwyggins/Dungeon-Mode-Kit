@@ -2,16 +2,14 @@
 
 currently darkness has no affect on FOV. when your torch burns out on dark levels it should affect gameplay other than visually. This could be a big task that also deals with stealth and how actors notice one another.
 
-A ‘clock’ actor that acts as a switch an adjacent actor bool after a counter loops. it's base tile is a number that ticks every turn. It could be toggled on and off with a bump.
-
 Arbitrary variables like bools could be added to prototypes that could be changed by events like actor attributes are. This would be a tool for designers to add persistent states across levels that can be changed bu the player.
 
 A dialogue/options window
 This would be a new kind of interface window, like an alert, with an optional list of options, that would be used for a new conversation interaction that could be accessed by bumping into some non hostile actors. This would be a large new feature requiring planning. There could be a simple version, a switch statement that looks for a prototype variable to pick a message, or more complex- could use an existing library like ink (actor personalities could include a link to a corresponding ink file that is accessed when the personality state machine decides its a turn in which to talk). We should strive for simplicity.
 
-"Illusionist" actor, makes you hallucinate and summons un solid harmless clones of himself that approach and disappear when you hit them
+Lightning attack actor.
 
-A hell hound actor that blinks and sets fires.
+"Illusionist" actor, makes you hallucinate and summons un solid harmless clones of himself that approach and disappear when you hit them
 
 It seems really easy to ignore descriptions right now, should there be other kinds of interface window messages that are also recorded in descriptions? Interface messages have less space and are a little harder to read but demand attention. Could also have css colorful description messages in the sidebar that are more noticable.
 

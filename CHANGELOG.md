@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Switches** There's now a switchable actor attribute that we are using for levers and trap-style pressure plates. These use either proximity or a "machine-id" attribute to activate actors like gates. switch_effects picks what target attributes are effected and switch_message sets the text feedback. The default lever and pressure plate actors are used by architect for some treasure room variation but this needs lots of testing.
 - **New Maze Generator** (see in progress) Trying a more Brogue-like approach than the previous "digger" type, needs testing.
+- **Collapsable Floor actor** lots of work around the platform actor attribute, which was just a stub before
 
 ### Fixed
 
@@ -30,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - torch light appears same turn they are lit
 - burning condition displays correctly now
 - when confused you are no longer only warned when you are actually about to step on a hazard
+- invisible playable characters are translucent, npcs are invisible and hidden from sidebar
 
 ## [1.7b] 2026-05-12
 

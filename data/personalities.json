@@ -143,6 +143,12 @@
     "mix_step": 0.15
   },
 
+  "clock_behavior": {
+    "name": "Clock",
+    "hostile": false,
+    "behaviors": ["clock_tick"]
+  },
+
   "drain_behavior": {
     "name": "Drain",
     "hostile": false,
@@ -299,6 +305,21 @@
     "blink_range": 8,
     "blink_cooldown": 4,
     "preferred_distance": 4,
+    "behaviors": [
+      "blink_away",
+      "attack_adjacent",
+      "pursue_target",
+      "random_walk"
+    ]
+  },
+
+  "hell_hound": {
+    "name": "Hell Hound",
+    "hostile": true,
+    "blink_range": 6,
+    "blink_cooldown": 3,
+    "preferred_distance": 3,
+    "blink_spawn": "fire",
     "behaviors": [
       "blink_away",
       "attack_adjacent",

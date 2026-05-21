@@ -246,7 +246,8 @@
       "random_actors": {
         "spider": { "chance": 100, "min": 3, "max": 5 },
         "ghast": { "chance": 80, "min": 1, "max": 2 },
-        "toad": { "chance": 60, "min": 1, "max": 1 }
+        "toad": { "chance": 60, "min": 1, "max": 1 },
+        "hell_hound": { "chance": 40, "min": 1, "max": 1 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -277,7 +278,8 @@
       "traps": { "min": 2, "max": 30 },
       "random_actors": {
         "ghast": { "chance": 100, "min": 2, "max": 3 },
-        "wraith": { "chance": 80, "min": 1, "max": 2 }
+        "wraith": { "chance": 80, "min": 1, "max": 2 },
+        "hell_hound": { "chance": 60, "min": 1, "max": 2 }
       },
       "random_items": {
         "key": { "chance": 100 },

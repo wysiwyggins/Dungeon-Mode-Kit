@@ -600,6 +600,21 @@
     },
     "collision_description": "a pressure plate"
   },
+  "clock": {
+    "name": "clock",
+    "tileIndexBase": "DIGIT_5",
+    "tileIndexTop": "NULL",
+    "collision_sound": "tap2",
+    "personality": "clock_behavior",
+    "switch_effects": { "visible": true },
+    "attributes": {
+      "solid": true,
+      "clock": true,
+      "clock_interval": 5,
+      "toggled": false
+    },
+    "collision_description": "a clock"
+  },
   "pedestal": {
     "name": "pedestal",
     "tileIndexBase": "WHITE_DOOR_TOP",
@@ -1451,6 +1466,31 @@
       "opaque": false
     },
     "stats": { "health": 25 }
+  },
+  "hell_hound": {
+    "name": "Hell Hound",
+    "description": "A blazing canine that blinks through space, leaving fire in its wake.",
+    "tileIndexBase": "WHITE_DOOR_TOP",
+    "tileIndexTop": "ANIMAL_HEAD",
+    "tint": "#FF6622",
+    "flickerTint": true,
+    "flipTopH": true,
+    "personality": "hell_hound",
+    "collision_effect": { "health": -8 },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
+    "death_sound": "ouch",
+    "attributes": {
+      "hostile": true,
+      "sighted": true,
+      "sentient": true,
+      "accuracy": 60,
+      "defense": 6,
+      "fireproof": true,
+      "light_source": true,
+      "remains": "skull"
+    },
+    "stats": { "health": 40 }
   },
   "drone": {
     "name": "Drone",

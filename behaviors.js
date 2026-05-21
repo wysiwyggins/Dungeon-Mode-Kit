@@ -2340,6 +2340,8 @@ const BehaviorLibrary = {
         if (candidates.length === 0) return false;
 
         const dest = randomElement(candidates);
+        const prevX = actor.x;
+        const prevY = actor.y;
         actor._blinkCooldown = 0;
         actor.x = dest.x;
         actor.y = dest.y;
@@ -2347,6 +2349,10 @@ const BehaviorLibrary = {
         actor.engine.lightingManager?.computeLighting();
         actor.engine.playSound?.('magic');
         actor.engine.renderer?.effectRunner?.apply('blink');
+
+        if (data.blink_spawn) {
+            entityManager.spawnActor(data.blink_spawn, prevX, prevY);
+        }
 
         return true;
     },
@@ -2441,6 +2447,30 @@ const BehaviorLibrary = {
         actor._bounceDir *= -1;
         const retryResult = actor.tryMove(actor.x, actor.y + actor._bounceDir);
         return retryResult.moved || retryResult.actionTaken;
+    },
+
+    clock_tick: (actor) => {
+        if (actor._clockPaused) return true;
+
+        if (actor._clockCounter === undefined) {
+            actor._clockCounter = actor.getAttribute('clock_interval') || 5;
+        }
+
+        actor._clockCounter--;
+
+        if (actor._clockCounter <= 0) {
+            actor._clockCounter = actor.getAttribute('clock_interval') || 5;
+
+            const nowToggled = !actor.hasAttribute('toggled');
+            actor.setAttribute('toggled', nowToggled);
+            actor.engine.playSound?.('tap2');
+            actor._propagateSwitchEffects(nowToggled);
+        }
+
+        const digit = Math.min(actor._clockCounter, 9);
+        actor.updateTileIndex(`DIGIT_${digit}`, 'base');
+
+        return true;
     },
 
     // Backward-compat aliases

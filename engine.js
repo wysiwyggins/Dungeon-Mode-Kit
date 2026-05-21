@@ -6596,6 +6596,14 @@ class Actor extends Entity {
                 return this.tryMove(newX, newY);
             }
 
+            if (actorAtTarget.hasAttribute('clock')) {
+                actorAtTarget._clockPaused = !actorAtTarget._clockPaused;
+                const state = actorAtTarget._clockPaused ? 'stops' : 'resumes';
+                this.engine.playSound?.('tap2');
+                this.engine.inputManager?.showMessage(`The ${actorAtTarget.name} ${state} ticking.`, { x: actorAtTarget.x, y: actorAtTarget.y });
+                return { moved: false, actionTaken: true };
+            }
+
             if (actorAtTarget.hasAttribute('switchable')) {
                 actorAtTarget.toggle();
                 return { moved: false, actionTaken: true };
@@ -7685,7 +7693,7 @@ class EntityManager {
         const tinted = new Set();
 
         for (const actor of this.actors) {
-            if (!actor.hasAttribute('switchable') || actor.isDead || tinted.has(actor)) continue;
+            if ((!actor.hasAttribute('switchable') && !actor.hasAttribute('clock')) || actor.isDead || tinted.has(actor)) continue;
 
             const effects = actor.data?.switch_effects;
             if (!effects) continue;
