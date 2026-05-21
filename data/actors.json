@@ -20,7 +20,8 @@
       "inventory": 4,
       "remains": "skull",
       "accuracy": 40,
-      "opaque": false
+      "opaque": false,
+      "strength": 1
     },
     "stats": {
       "health": {
