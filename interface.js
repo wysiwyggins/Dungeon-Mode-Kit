@@ -3933,7 +3933,8 @@ class InterfaceManager {
         // Filter to visible actors with stats (or all if darkness is off)
         const visibleActors = actors.filter(a =>
             this.engine.isTileVisible(a.x, a.y) &&
-            a.stats && Object.keys(a.stats).length > 0
+            a.stats && Object.keys(a.stats).length > 0 &&
+            (!a.hasStateProperty?.('invisible') || a.hasAttribute('controlled'))
         );
 
         // Sort: controllable actors first, then by name

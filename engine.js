@@ -4166,6 +4166,11 @@ class Actor extends Entity {
             this.engine.renderer?.applyHallucinationEffect();
         }
 
+        // Invisibility: translucent for player-controlled, fully hidden for others
+        if (stateData.invisible) {
+            this._updateInvisibilitySprites();
+        }
+
         return true;
     }
 
@@ -4228,6 +4233,11 @@ class Actor extends Entity {
             this.engine.renderer?.removeHallucinationEffect();
         }
 
+        // Invisibility: restore sprite visibility/alpha
+        if (state.data.invisible) {
+            this._updateInvisibilitySprites();
+        }
+
         // Flying: handle landing when flight ends
         if (state.data.flying && !this.isDead) {
             // Check if still flying from another source
@@ -4243,6 +4253,33 @@ class Actor extends Entity {
         }
 
         delete this.states[stateName];
+    }
+
+    _updateInvisibilitySprites() {
+        const isInvisible = this.hasStateProperty('invisible');
+        if (isInvisible && this.isPlayerControlled()) {
+            const alpha = 0.35;
+            if (this.spriteBase) this.spriteBase.alpha = alpha;
+            if (this.spriteTop) this.spriteTop.alpha = alpha;
+            if (this.spriteSide) this.spriteSide.alpha = alpha;
+            for (const slot of ['top', 'middle', 'lower']) {
+                if (this.spriteEquipment[slot]) this.spriteEquipment[slot].alpha = alpha;
+            }
+        } else if (isInvisible) {
+            if (this.spriteBase) this.spriteBase.visible = false;
+            if (this.spriteTop) this.spriteTop.visible = false;
+            if (this.spriteSide) this.spriteSide.visible = false;
+        } else {
+            if (this.spriteBase) this.spriteBase.alpha = 1;
+            if (this.spriteTop) this.spriteTop.alpha = 1;
+            if (this.spriteSide) this.spriteSide.alpha = 1;
+            for (const slot of ['top', 'middle', 'lower']) {
+                if (this.spriteEquipment[slot]) this.spriteEquipment[slot].alpha = 1;
+            }
+            if (this.spriteBase) this.spriteBase.visible = true;
+            if (this.spriteTop) this.spriteTop.visible = true;
+            if (this.spriteSide) this.spriteSide.visible = true;
+        }
     }
 
     /**
@@ -10222,6 +10259,27 @@ class RenderSystem {
             const playerTelepathic = this.engine.entityManager?.player?.hasStateProperty?.('telepathic');
             const revealedByTelepathy = playerTelepathic && actor.personality && !actor.hasAttribute('controlled');
 
+            // Invisible actors: translucent for player, hidden for others
+            if (actor.hasStateProperty?.('invisible')) {
+                if (actor.hasAttribute('controlled')) {
+                    const alpha = 0.35;
+                    if (actor.spriteBase) { actor.spriteBase.visible = vis.showBase; actor.spriteBase.alpha = alpha; }
+                    if (actor.spriteTop) { actor.spriteTop.visible = vis.showTop && !actor.isSubmerged; actor.spriteTop.alpha = alpha; }
+                    if (actor.spriteSide) actor.spriteSide.alpha = alpha;
+                    for (const slot of ['top', 'middle', 'lower']) {
+                        if (actor.spriteEquipment[slot]) actor.spriteEquipment[slot].alpha = alpha;
+                    }
+                } else {
+                    if (actor.spriteBase) actor.spriteBase.visible = false;
+                    if (actor.spriteTop) actor.spriteTop.visible = false;
+                    if (actor.spriteSide) actor.spriteSide.visible = false;
+                    for (const slot of ['top', 'middle', 'lower']) {
+                        if (actor.spriteEquipment[slot]) actor.spriteEquipment[slot].visible = false;
+                    }
+                }
+                continue;
+            }
+
             if (actor.spriteBase) actor.spriteBase.visible = vis.showBase || revealedByTelepathy;
             if (actor.spriteTop) actor.spriteTop.visible = (vis.showTop || revealedByTelepathy) && !actor.isSubmerged;
 
@@ -10326,6 +10384,7 @@ class RenderSystem {
         if (!player || player.isDead) return;
 
         for (const actor of this.engine.entityManager.actors) {
+            if (actor.hasStateProperty?.('invisible')) continue;
             if (actor.spriteTop) actor.spriteTop.alpha = 1.0;
             if (actor.spriteEquipment.middle) actor.spriteEquipment.middle.alpha = 1.0;
         }

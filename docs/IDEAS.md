@@ -1,10 +1,6 @@
 # Bugs and ideas
 
-We could have visible:false, platform: false bridges that become visible and walkable with a switch. also sections of walls that switch away.
-
-Currently when confused you are warned about stepping on a hazard when you are actually going to step on it, instead of any time you attempt a move while next to the hazard. The intention is that you do not know if you will step on it because you are confused so you are taking a risk.
-
-There should be a visual effect for an invisible playable actor (reduced opacity on the actor, other invisible actors should be visible: false and actually invisible)
+currently darkness has no affect on FOV. when your torch burns out on dark levels it should affect gameplay other than visually. This could be a big task that also deals with stealth and how actors notice one another.
 
 A ‘clock’ actor that acts as a switch an adjacent actor bool after a counter loops. it's base tile is a number that ticks every turn. It could be toggled on and off with a bump.
 
