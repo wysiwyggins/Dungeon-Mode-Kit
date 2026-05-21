@@ -1176,6 +1176,7 @@ class DungeonEngine {
         this.mapManager.spawnPendingSewage(architectContext);
         this.mapManager.spawnPendingPushableWalls(architectContext);
         this.mapManager.spawnPendingBridges(architectContext);
+        this.mapManager.spawnPendingCollapsingFloors(architectContext);
 
         if (treasureRoomData) {
             this.entityManager.spawnTreasureRoomContents(treasureRoomData, architectContext);
@@ -6289,7 +6290,7 @@ class Actor extends Entity {
 
     hasPlatformAt(x, y) {
         return this.engine.entityManager.getActorsAt(x, y)
-            .some(a => a.hasAttribute('platform') && a.hasAttribute('visible'));
+            .some(a => !a.isDead && a.hasAttribute('platform') && a.hasAttribute('visible'));
     }
 
     /**
@@ -6367,6 +6368,13 @@ class Actor extends Entity {
 
         this.dropItems(true); // Items lost to void
         this.die(false); // Don't spawn remains when falling into void
+    }
+
+    collapse() {
+        if (this.spriteBase) this.spriteBase.visible = false;
+        if (this.spriteTop) this.spriteTop.visible = false;
+        this.die(false);
+        this.engine.entityManager.invalidateActorPosCache();
     }
 
     /**
@@ -6752,6 +6760,26 @@ class Actor extends Entity {
             if (other.hasAttribute('switchable') && !other.hasAttribute('toggled')) {
                 other.toggle();
             }
+        }
+
+        // Collapse any collapsible platform actors at destination
+        const collapsibles = this.engine.entityManager.getActorsAt(newX, newY)
+            .filter(a => a !== this && !a.isDead && a.hasAttribute('collapsible'));
+        if (collapsibles.length > 0) {
+            const actor = this;
+            this.engine.renderer?.effectRunner.apply('collapse_shake');
+            this.engine.playSound('push1');
+            if (this.engine.turnEngine) this.engine.turnEngine.lock();
+            setTimeout(() => {
+                for (const other of collapsibles) {
+                    other.collapse();
+                }
+                if (!actor.hasFloorAt(newX, newY) && !actor.hasPlatformAt(newX, newY) && !actor.hasStateProperty('flying')) {
+                    actor.fall();
+                }
+                if (actor.engine.turnEngine) actor.engine.turnEngine.unlock();
+            }, 300);
+            return { moved: true, actionTaken: true };
         }
 
         // Check for entry sound from non-solid actors at destination (for controlled actors)

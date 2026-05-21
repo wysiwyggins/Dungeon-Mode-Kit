@@ -47,6 +47,12 @@
       { "primitive": "screen_shake", "params": { "intensity": 4, "duration_ms": 150 } }
     ]
   },
+  "collapse_shake": {
+    "target": "stage",
+    "layers": [
+      { "primitive": "screen_shake", "params": { "intensity": 3, "duration_ms": 300 } }
+    ]
+  },
   "white_flash": {
     "target": "stage",
     "layers": [

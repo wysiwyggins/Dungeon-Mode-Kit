@@ -7,13 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Pie in the sky
-
-- music engine
-- Alternative first-person view pane (for perspective dungeon style play, this is prob a whole different thing)
-- Vaults: interactive fiction riddles in treasure rooms
-- Dialogue: npc's with convo trees
-
 ### Planned
 
 - falling on a prototype with mutliple levels shouldn't instadeath, it takes you to the next level down with a fall injury

@@ -1359,8 +1359,8 @@ class InputManager {
             }
         }
 
-        // Check for void (no floor)
-        if (!player.hasFloorAt(targetX, targetY)) {
+        // Check for void (no floor and no platform)
+        if (!player.hasFloorAt(targetX, targetY) && !player.hasPlatformAt(targetX, targetY)) {
             return { message: confused ? "Risk diving into the depths?" : "Dive into the depths?" };
         }
 

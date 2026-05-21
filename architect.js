@@ -24,6 +24,7 @@ class Architect {
         this.pendingSewageSpawns = [];
         this.pendingPushableWallSpawns = [];
         this.pendingBridgeSpawns = [];
+        this.pendingCollapsingFloorSpawns = [];
         this.diggerRooms = null;
         this.claimedRoomIndices = new Set();
 
@@ -740,6 +741,10 @@ class Architect {
             this.generateBridges(options.bridges);
         }
 
+        if (options.collapsing_floors) {
+            this.generateCollapsingFloors(options.collapsing_floors);
+        }
+
         if (this.pendingWallSpawns.length > 0) {
             const hasFloor = (x, y) => {
                 if (x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
@@ -1011,6 +1016,107 @@ class Architect {
 
         if (placed > 0) {
             console.log(`Bridge generation: ${placed} bridge(s)`);
+        }
+    }
+
+    generateCollapsingFloors(config) {
+        const maxPatches = config.max || 2;
+        const minPatchSize = config.minSize || 2;
+        const maxPatchSize = config.maxSize || 5;
+        const BLACK_TILE = 217;
+
+        const isAbyss = (x, y) => {
+            if (x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
+            const bg = this.backgroundMap[y][x];
+            return bg && bg.tileId === BLACK_TILE && this.floorMap[y][x] === null;
+        };
+
+        const hasFloor = (x, y) => {
+            if (x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
+            return this.floorMap[y][x] !== null;
+        };
+
+        const wallSet = new Set(this.pendingWallSpawns.map(p => `${p.x},${p.y}`));
+        const bridgeSet = new Set(this.pendingBridgeSpawns.map(p => `${p.x},${p.y}`));
+
+        const cardinalDirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+        const edgeTiles = [];
+
+        for (let y = 1; y < this.height - 1; y++) {
+            for (let x = 1; x < this.width - 1; x++) {
+                if (!hasFloor(x, y)) continue;
+                if (wallSet.has(`${x},${y}`)) continue;
+                if (bridgeSet.has(`${x},${y}`)) continue;
+                const adjacentToAbyss = cardinalDirs.some(([dx, dy]) => isAbyss(x + dx, y + dy));
+                if (adjacentToAbyss) {
+                    edgeTiles.push({ x, y });
+                }
+            }
+        }
+
+        if (edgeTiles.length === 0) return;
+
+        for (let i = edgeTiles.length - 1; i > 0; i--) {
+            const j = Math.floor(ROT.RNG.getUniform() * (i + 1));
+            [edgeTiles[i], edgeTiles[j]] = [edgeTiles[j], edgeTiles[i]];
+        }
+
+        const usedCells = new Set();
+        let placed = 0;
+
+        for (const seed of edgeTiles) {
+            if (placed >= maxPatches) break;
+            if (usedCells.has(`${seed.x},${seed.y}`)) continue;
+
+            const patchSize = minPatchSize + Math.floor(ROT.RNG.getUniform() * (maxPatchSize - minPatchSize + 1));
+            const patch = [seed];
+            const patchSet = new Set([`${seed.x},${seed.y}`]);
+            const frontier = [];
+
+            for (const [dx, dy] of cardinalDirs) {
+                const nx = seed.x + dx, ny = seed.y + dy;
+                if (hasFloor(nx, ny) && !wallSet.has(`${nx},${ny}`) && !bridgeSet.has(`${nx},${ny}`)) {
+                    frontier.push({ x: nx, y: ny });
+                }
+            }
+
+            while (patch.length < patchSize && frontier.length > 0) {
+                const idx = Math.floor(ROT.RNG.getUniform() * frontier.length);
+                const cell = frontier.splice(idx, 1)[0];
+                const key = `${cell.x},${cell.y}`;
+                if (patchSet.has(key) || usedCells.has(key)) continue;
+
+                patch.push(cell);
+                patchSet.add(key);
+
+                for (const [dx, dy] of cardinalDirs) {
+                    const nx = cell.x + dx, ny = cell.y + dy;
+                    const nk = `${nx},${ny}`;
+                    if (hasFloor(nx, ny) && !patchSet.has(nk) && !wallSet.has(nk) && !bridgeSet.has(nk)) {
+                        frontier.push({ x: nx, y: ny });
+                    }
+                }
+            }
+
+            if (patch.length < minPatchSize) continue;
+
+            for (const c of patch) {
+                this.floorMap[c.y][c.x] = null;
+                this.backgroundMap[c.y][c.x] = { tileId: BLACK_TILE, layer: 'background' };
+                this.pendingCollapsingFloorSpawns.push(c);
+                usedCells.add(`${c.x},${c.y}`);
+            }
+
+            placed++;
+            console.log(`  Collapsing floor: ${patch.length} tiles`);
+        }
+
+        this.walkableTiles = this.walkableTiles.filter(
+            t => !usedCells.has(`${t.x},${t.y}`)
+        );
+
+        if (placed > 0) {
+            console.log(`Collapsing floor generation: ${placed} patch(es)`);
         }
     }
 
@@ -1743,6 +1849,27 @@ class Architect {
 
         console.log(`Spawned ${this.pendingBridgeSpawns.length} rope bridge actors`);
         this.pendingBridgeSpawns = [];
+    }
+
+    spawnPendingCollapsingFloors(context) {
+        if (!this.pendingCollapsingFloorSpawns || this.pendingCollapsingFloorSpawns.length === 0) return;
+        if (!context || !context.getActorData || !context.createActor) {
+            console.warn('Cannot spawn collapsing floors without context');
+            return;
+        }
+
+        const actorData = context.getActorData('collapsing_floor');
+        if (!actorData) {
+            console.warn('No collapsing_floor actor data found');
+            return;
+        }
+
+        for (const pos of this.pendingCollapsingFloorSpawns) {
+            context.createActor(pos.x, pos.y, 'collapsing_floor', actorData);
+        }
+
+        console.log(`Spawned ${this.pendingCollapsingFloorSpawns.length} collapsing floor actors`);
+        this.pendingCollapsingFloorSpawns = [];
     }
 
     // ========================================================================
@@ -2734,6 +2861,7 @@ class Architect {
         this.pendingSewageSpawns = [];
         this.pendingPushableWallSpawns = [];
         this.pendingBridgeSpawns = [];
+        this.pendingCollapsingFloorSpawns = [];
         this.diggerRooms = null;
         this.actorWildcardCache = null;
     }

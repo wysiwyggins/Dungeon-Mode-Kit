@@ -709,6 +709,18 @@
       "platform": true
     }
   },
+  "collapsing_floor": {
+    "name": "floor",
+    "tileIndexBase": "FLOOR",
+    "tileIndexTop": "BLANK",
+    "collision_sound": "push1",
+    "attributes": {
+      "solid": false,
+      "platform": true,
+      "visible": true,
+      "collapsible": true
+    }
+  },
   "fungus": {
     "name": "fungus",
     "tileIndexBase": "IMPERFECT_DOTTED_WHITE_SHADE",

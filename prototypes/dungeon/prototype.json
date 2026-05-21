@@ -36,7 +36,8 @@
       "roomWeights": { "rectangle": 40, "cross": 25, "circular": 20, "cavern": 10 },
       "lakes": { "count": [1, 3], "types": ["water", "water", "water", "water", "water", "water", "lava"], "minSize": 15, "maxSize": 80 },
       "abyss": { "count": [0, 2], "types": ["abyss"], "minSize": 10, "maxSize": 60 },
-      "bridges": { "max": 1 }
+      "bridges": { "max": 1 },
+      "collapsing_floors": { "max": 2, "minSize": 2, "maxSize": 4 }
     }
   },
   "levels": [
