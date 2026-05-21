@@ -1524,5 +1524,51 @@
     "stats": {
       "health": 6
     }
+  },
+  "name": "illusionist",
+  "description": "A shimmering cloaked figure, light seems to bend around it.",
+  "tileIndexBase": "LEG",
+  "tileIndexTop": "OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE",
+  "flipTopH": true,
+  "tint": "#CC77FF",
+  "flickerTint": true,
+  "lightRadius": 1,
+  "personality": "illusionist",
+  "collision_effect": {
+    "health": -4
+  },
+  "collision_sound": "hit",
+  "death_sound": "ouch",
+  "attributes": {
+    "hostile": true,
+    "sentient": true,
+    "sighted": true,
+    "accuracy": 55,
+    "defense": 8,
+    "light_radius": 1,
+    "remains": "skull",
+    "light_color": "#f1c9fe"
+  },
+  "illusion": {
+    "name": "illusionist",
+    "description": "Is it real?",
+    "tileIndexBase": "LEG",
+    "tileIndexTop": "OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE",
+    "flipTopH": true,
+    "tint": "#CC77FF",
+    "personality": "illusion_clone",
+    "death_description": "The illusion shimmers and fades.",
+    "death_sound": "magic",
+    "attributes": {
+      "hostile": true,
+      "sighted": true,
+      "sentient": true,
+      "accuracy": 0,
+      "defense": 0,
+      "opaque": false,
+      "light_radius": 1,
+      "light_color": "#f1c9fe"
+    },
+    "stats": { "health": 1 }
   }
 }

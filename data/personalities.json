@@ -340,5 +340,38 @@
       "attack_adjacent",
       "random_walk"
     ]
+  },
+
+  "illusionist": {
+    "name": "Illusionist",
+    "hostile": true,
+    "summon_type": "illusion",
+    "summon_cooldown": 5,
+    "summon_cap": 3,
+    "summon_sound": "magic",
+    "aura_state": "hallucinating",
+    "aura_chance": 30,
+    "aura_duration": 8,
+    "blink_range": 6,
+    "blink_cooldown": 4,
+    "preferred_distance": 4,
+    "behaviors": [
+      "apply_aura",
+      "summon_actor",
+      "blink_away",
+      "attack_adjacent",
+      "maintain_distance",
+      "pursue_target",
+      "random_walk"
+    ]
+  },
+
+  "illusion_clone": {
+    "name": "Illusion Clone",
+    "hostile": true,
+    "behaviors": [
+      "pursue_target",
+      "random_walk"
+    ]
   }
 }

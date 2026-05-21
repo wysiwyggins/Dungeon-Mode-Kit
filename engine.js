@@ -3151,6 +3151,9 @@ class Actor extends Entity {
         if (data.death_sound) {
             this.setAttribute('death_sound', data.death_sound);
         }
+        if (data.death_description) {
+            this.setAttribute('death_description', data.death_description);
+        }
 
         // Copy lifetime for actors that expire (clouds, fire, etc.)
         this.lifetime = data.lifetime || null;
@@ -3661,6 +3664,8 @@ class Actor extends Entity {
                 const restartKey = Object.entries(this.engine.inputManager?.globalKeyMap || {})
                     .find(([, action]) => action === 'reload')?.[0] || 'R';
                 this.engine.inputManager?.showMessage(`You die... \n Press ${restartKey} to restart`);
+            } else if (this.getAttribute('death_description')) {
+                this.engine.inputManager?.showMessage(this.getAttribute('death_description'), { x: this.x, y: this.y });
             } else if (!this.stats || this.stats.health === undefined) {
                 // Actors without health (breakable objects like walls)
                 this.engine.inputManager?.showMessage(`The ${this.name} crumbles.`, { x: this.x, y: this.y });
