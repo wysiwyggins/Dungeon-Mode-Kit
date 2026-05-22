@@ -4055,11 +4055,17 @@ class InterfaceManager {
             return;
         }
 
-        // Build HTML content as unordered list with header
-        const listItems = visibleItems.map(item => {
+        // Group items by display name and count duplicates
+        const itemCounts = new Map();
+        for (const item of visibleItems) {
             const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
-            return `<li>${displayName}</li>`;
-        });
+            itemCounts.set(displayName, (itemCounts.get(displayName) || 0) + 1);
+        }
+
+        const listItems = [];
+        for (const [name, count] of itemCounts) {
+            listItems.push(count > 1 ? `<li>${name} x${count}</li>` : `<li>${name}</li>`);
+        }
 
         itemsDiv.innerHTML = `<details><summary><strong>Visible Items</strong></summary><ul>${listItems.join('')}</ul></details>`;
     }

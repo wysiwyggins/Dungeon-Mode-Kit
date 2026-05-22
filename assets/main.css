@@ -1,3 +1,7 @@
+* {
+  box-sizing: border-box;
+}
+
 @font-face {
   font-family: "Computer Modern Roman";
   src: url("/assets/fonts/cmunrm-webfont.eot");
@@ -34,6 +38,8 @@
 }
 
 .game-container {
+  min-height: 280px;
+  width: auto;
   display: flex;
   flex-direction: row;
 }
@@ -46,6 +52,7 @@
 .text {
   display: flex;
   flex-direction: column;
+  width: auto;
 }
 @media (max-width: 1000px) {
   .text {
@@ -130,12 +137,10 @@
   color: #9966cc;
 }
 .text {
-  border: 1px solid;
   padding: 20px;
 }
 @media (max-width: 1000px) {
   .text {
-    margin-top: 10px;
     min-height: 100px;
   }
 }

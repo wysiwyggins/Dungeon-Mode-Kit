@@ -1,6 +1,7 @@
 .text {
     display: flex;
     flex-direction: column;
+    width: auto;
     @media (max-width: 1000px) {
         flex-direction: row;
         justify-content: space-between;
@@ -93,10 +94,9 @@
     .message-arcane {
         color: #9966cc;
     }
-    border: 1px solid;
+    //border: 1px solid;
     padding: $spacing-unit * 2;
     @media (max-width: 1000px) {
-        margin-top: 10px;
         min-height: 100px;
     }
 }

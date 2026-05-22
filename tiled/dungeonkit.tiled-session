@@ -10,14 +10,14 @@
     "fileStates": {
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/arena/map.tmj": {
             "expandedObjectLayers": [
-                8,
-                3
+                3,
+                8
             ],
             "scale": 0.3821,
             "selectedLayer": 5,
             "viewCenter": {
-                "x": 677.8330280031406,
-                "y": 673.9073540957864
+                "x": 799.5289191311176,
+                "y": 599.3195498560586
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/catacombs/map.tmj": {
@@ -31,22 +31,22 @@
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/default/map.tmj": {
             "expandedObjectLayers": [
                 6,
-                8,
-                3
+                3,
+                8
             ],
             "scale": 0.3942,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 800.355149670218,
-                "y": 585.9969558599695
+                "x": 800.3551496702181,
+                "y": 585.9969558599696
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/dungeon/map.tmj": {
             "scale": 0.6069,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 692.0415224913495,
-                "y": 559.4002306805075
+                "x": 799.9670456417861,
+                "y": 599.7693194925029
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/hunger_game/map.tmj": {
@@ -95,8 +95,8 @@
             "scale": 2.518,
             "selectedLayer": 4,
             "viewCenter": {
-                "x": 1095.909451945989,
-                "y": 555.2025416997617
+                "x": 800.0397140587769,
+                "y": 600.0794281175537
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/underworld/map.tmj": {
@@ -111,8 +111,8 @@
             "scale": 0.3612,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 758.5825027685493,
-                "y": 261.62790697674416
+                "x": 400.0553709856036,
+                "y": 451.2735326688815
             }
         },
         "static-tiles.tsj": {
@@ -123,8 +123,8 @@
             "scale": 0.5311,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 420.8247034456787,
-                "y": 510.2617209565053
+                "x": 420.8247034456788,
+                "y": 510.26172095650526
             }
         },
         "vault.tmj": {

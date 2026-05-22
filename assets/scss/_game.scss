@@ -10,6 +10,8 @@ body {
 
 .game-container {
  //justify-content: center;
+ min-height: 280px;
+ width: auto;
  display: flex;
  flex-direction: row;
  @media (max-width: 1000px) {
