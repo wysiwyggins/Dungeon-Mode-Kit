@@ -93,8 +93,8 @@
     .message-arcane {
         color: #9966cc;
     }
-    margin-top: 30px;
-    margin-left: 15px;
+    border: 1px solid;
+    padding: $spacing-unit * 2;
     @media (max-width: 1000px) {
         margin-top: 10px;
         min-height: 100px;
