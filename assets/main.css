@@ -49,36 +49,36 @@
   }
 }
 
-.text {
+.game-sidebar-text {
   display: flex;
   flex-direction: column;
   width: auto;
 }
 @media (max-width: 1000px) {
-  .text {
+  .game-sidebar-text {
     flex-direction: row;
     justify-content: space-between;
   }
 }
-.text div {
+.game-sidebar-text div {
   margin-bottom: 10px;
 }
-.text ul {
+.game-sidebar-text ul {
   margin: 0;
   padding: 0;
   padding-left: 10px;
 }
-.text ul li {
+.game-sidebar-text ul li {
   display: flex;
   align-items: center;
   gap: 0.5em;
   margin-bottom: 0.25em;
 }
-.text ul .stat-label {
+.game-sidebar-text ul .stat-label {
   min-width: 5em;
   font-size: 0.9em;
 }
-.text ul .stat-thermometer {
+.game-sidebar-text ul .stat-thermometer {
   flex: 1;
   min-width: 50px;
   max-width: 100px;
@@ -88,12 +88,12 @@
   position: relative;
   overflow: hidden;
 }
-.text ul .stat-fill {
+.game-sidebar-text ul .stat-fill {
   height: 100%;
   background: #4a4;
   transition: width 0.2s ease;
 }
-.text ul .sr-only {
+.game-sidebar-text ul .sr-only {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -103,44 +103,44 @@
   clip: rect(0, 0, 0, 0);
   border: 0;
 }
-.text .actor-conditions {
+.game-sidebar-text .actor-conditions {
   padding-left: 10px;
 }
-.text .actor-condition {
+.game-sidebar-text .actor-condition {
   display: inline-block;
   font-size: 0.9em;
   color: #e8a838;
   margin-right: 0.5em;
 }
-.text details {
+.game-sidebar-text details {
   max-width: 260px;
 }
-.text .message-age-1 {
+.game-sidebar-text .message-age-1 {
   color: #878787;
 }
-.text .message-age-2 {
+.game-sidebar-text .message-age-2 {
   color: #adadad;
 }
-.text .message-hover {
+.game-sidebar-text .message-hover {
   font-family: "Computer Modern Italic", serif;
 }
-.text .message-danger {
+.game-sidebar-text .message-danger {
   color: #c44;
 }
-.text .message-warning {
+.game-sidebar-text .message-warning {
   color: #c88a2e;
 }
-.text .message-discovery {
+.game-sidebar-text .message-discovery {
   color: #3a8a5c;
 }
-.text .message-arcane {
+.game-sidebar-text .message-arcane {
   color: #9966cc;
 }
-.text {
+.game-sidebar-text {
   padding: 20px;
 }
 @media (max-width: 1000px) {
-  .text {
+  .game-sidebar-text {
     min-height: 100px;
   }
 }
