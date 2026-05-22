@@ -9,8 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned
 
-- falling on a prototype with mutliple levels shouldn't instadeath, it takes you to the next level down with a fall injury
-
 ### In Progress
 
 - New more broguelike dungeon generator- compacted rooms that include circular and cross shaped rooms (testing)

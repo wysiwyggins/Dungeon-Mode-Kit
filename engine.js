@@ -10503,7 +10503,7 @@ async function initializeGame() {
         console.log('Starting game initialization...');
         
         // Clear any existing content
-        gameContainer.innerHTML = '<p>Loading game...</p>';
+        gameContainer.innerHTML = '';
         
         // Parse URL parameters early — needed for seed before any RNG consumption
         const urlParams = new URLSearchParams(window.location.search);
