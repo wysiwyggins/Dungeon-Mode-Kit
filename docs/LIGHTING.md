@@ -45,9 +45,11 @@ The rendering system uses multiple layers (bottom to top):
 1. **backgroundContainer** (z=0) - Wall tiles, shadows
 2. **floorContainer** (z=1) - Floor tiles
 3. **entityContainer** (z=2) - Actors and items
-4. **lightColorContainer** (z=3) - Colored light overlay
-5. **darknessContainer** (z=4) - Darkness/shadow overlay
-6. **uiContainer** (z=5) - UI elements
+4. **overlayContainer** (z=3) - Visual effects overlays
+5. **lightColorContainer** (z=4) - Colored light overlay
+6. **darknessContainer** (z=5) - Darkness/shadow overlay
+7. **uiContainer** (z=6) - UI elements (inventory, menus)
+8. **splashContainer** (z=7) - Full-screen splash effects
 
 ### Darkness Overlay
 

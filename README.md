@@ -2,7 +2,7 @@
 
 A web-based roguelike toolkit. Build levels by editing JSON files and drawing maps in Tiled.
 
-**[Design Notes & Vision](/DUNGEON_MODE_KIT_DESIGN.md)**
+**[Design Notes & Vision](docs/DUNGEON_MODE_KIT_DESIGN.md)**
 
 ---
 
@@ -59,6 +59,7 @@ Create a folder under `prototypes/your_level_name/`. The only required file is `
 | `name` | Display name | `"The Mines"` |
 | `description` | Shown on level load | `"Dark tunnels ahead."` |
 | `levels` | Array of per-floor config objects (enables multi-floor prototype) | `[{...}, {...}]` |
+| `depth` | Numeric position in progression | `2` |
 | `turn_speed` | MS per AI turn (lower = faster) | `50` |
 | `loaded_sound` | Sound played on load | `"levelout"` |
 | `previous_level` | Level name to return to | `"default"` |
@@ -68,8 +69,13 @@ Create a folder under `prototypes/your_level_name/`. The only required file is `
 | `mechanics.ambient_light` | Minimum light level 0–1 | `0.1` |
 | `mechanics.player_light_radius` | Radius of player's auto-light (when `player_auto_light` is true) | `6` |
 | `mechanics.player_auto_light` | Auto-illuminate the player in darkness (default `true`; set `false` to require a carried light source) | `false` |
+| `mechanics.viewport_width` | Visible width in tiles (smaller than map = scrolling) | `30` |
+| `mechanics.viewport_height` | Visible height in tiles | `30` |
+| `mechanics.observer_mode` | No player, spectator only | `true` |
+| `map_generator` | Procedural map config (when no `map.tmj`) | `{"type": "digger", "options": {...}}` |
 | `random_actors` | Randomly spawned actors on load | `{"skeleton": {"chance": 60, "min": 1, "max": 3}}` |
 | `random_items` | Randomly spawned items on load | `{"sword": {"chance": 100}}` |
+| `traps` | Random hidden traps | `{"min": 1, "max": 10}` |
 | `win_conditions` | Array of win condition strings | `["killed:minotaur", "wearing:crown"]` |
 
 Win condition formats:
@@ -83,7 +89,7 @@ Win condition formats:
 
 Object condition fields: `actor` (`"player"` or an actor type), `stat` (stat or attribute name), `op` (`">"`, `">="`, `"<"`, `"<="`, `"=="`, `"!="`), `value` (number).
 
-For procedural map generation (when no `map.tmj` exists), add a `map_generator` block — see [ARCHITECT.md](ARCHITECT.md).
+For procedural map generation (when no `map.tmj` exists), add a `map_generator` block — see [PROTOTYPE.md](docs/PROTOTYPE.md).
 
 ### Example prototype.json
 
@@ -148,7 +154,7 @@ Floor maps: floor 1 uses `map.tmj`, floor N>1 uses `{N}.tmj` (e.g. `2.tmj`). Mis
 
 ## Making Maps in Tiled
 
-Open `tiled/dungeonkit.tiled-project` — the tileset loads automatically. Match existing maps: 40×40 tiles at 16×16 px. Save as `map.tmj` inside your prototype folder.
+Open `tiled/dungeonkit.tiled-project` — the tileset loads automatically. Tile size is 40×30 px. Save as `map.tmj` inside your prototype folder.
 
 ### Layer names (must match exactly)
 
@@ -210,7 +216,7 @@ Place actors on the map via the `actors` object layer in Tiled (set object `type
 | `attributes` | Boolean flags and config values |
 | `default_items` | Array of item IDs the actor spawns carrying |
 
-Collision effect values can reference the attacker's stats/attributes: `"-{strength}"` deals damage equal to the attacker's strength, `"{strength}"` heals by it. See [COMBAT.md](COMBAT.md) for full details.
+Collision effect values can reference the attacker's stats/attributes: `"-{strength}"` deals damage equal to the attacker's strength, `"{strength}"` heals by it. See [COMBAT.md](docs/COMBAT.md) for full details.
 
 ### Existing attributes
 
@@ -251,7 +257,7 @@ Extended format for per-turn changes and warnings:
 }
 ```
 
-See [COMBAT.md](COMBAT.md) for full combat stat documentation.
+See [COMBAT.md](docs/COMBAT.md) for full combat stat documentation.
 
 ---
 
@@ -261,7 +267,7 @@ Global templates live in `data/items.json`. Level overrides go in `prototypes/yo
 
 Place items via the `items` object layer in Tiled, or use `random_items` in `prototype.json`.
 
-See **[ITEMS.md](ITEMS.md)** for the full attribute reference. Quick summary:
+See **[ITEMS.md](docs/ITEMS.md)** for the full attribute reference. Quick summary:
 
 | Attribute | Effect |
 |-----------|--------|
@@ -269,7 +275,7 @@ See **[ITEMS.md](ITEMS.md)** for the full attribute reference. Quick summary:
 | `wearable: "top"\|"middle"\|"lower"` | Equipment slot |
 | `wear_effect: { "defense": 5 }` | Stat bonus while equipped |
 | `collision_effect: { "health": -10 }` | Damage dealt when holder bumps a target |
-| `weapon: true` | Marks as weapon (also `"knockback"`, `"lifesteal"`, `"critical"`) |
+| `weapon: true` | Marks as weapon. Add `weapon_proc` for special effects: `"knockback"`, `"lifesteal"`, `"critical"` |
 | `consumable: true` | Removed from inventory after use |
 | `light_source: true` | Emits light when carried; uses item `tint` as light color |
 | `lightRadius: N` | Light radius in tiles when carried (default 5) |
@@ -345,7 +351,7 @@ Enable in `prototype.json`:
 }
 ```
 
-Give any actor `"light_source": true` to make it emit light. The light color comes from the actor's `tint`. See **[LIGHTING.md](LIGHTING.md)** for full configuration details.
+Give any actor `"light_source": true` to make it emit light. The light color comes from the actor's `tint`. See **[LIGHTING.md](docs/LIGHTING.md)** for full configuration details.
 
 ---
 
@@ -363,11 +369,13 @@ Use these exact strings in:
 
 ## Reference Docs
 
+- [PROTOTYPE.md](docs/PROTOTYPE.md) — Full prototype config reference, map generation, item catalogs
 - [MAP.md](docs/MAP.md) — Designer's guide to making maps in Tiled
-- [ITEMS.md](ITEMS.md) — Full item attribute reference, use effects, equipment
-- [COMBAT.md](COMBAT.md) — Hit/damage math, weapon types, equipment slots
-- [LIGHTING.md](LIGHTING.md) — Darkness, fog of war, light source configuration
-- [ARCHITECT.md](ARCHITECT.md) — Procedural generation options, wildcard system
+- [ACTORS.md](docs/ACTORS.md) — Actor attributes, stats, personalities, behaviors
+- [ITEMS.md](docs/ITEMS.md) — Full item attribute reference, use effects, equipment
+- [COMBAT.md](docs/COMBAT.md) — Hit/damage math, weapon types, equipment slots
+- [LIGHTING.md](docs/LIGHTING.md) — Darkness, fog of war, light source configuration
+- [SOUNDS.md](docs/SOUNDS.md) — Sound system, audio sprite, adding new sounds
 - [CHANGELOG.md](CHANGELOG.md) — Version history
 
 ---

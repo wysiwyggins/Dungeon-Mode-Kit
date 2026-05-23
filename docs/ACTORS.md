@@ -70,6 +70,8 @@ When `facingEnabled` is `true`, the actor's sprites (base, top, side, and equipm
 | `sentient` | boolean | Can have states (burning, poisoned, etc.) applied. Default `false`. |
 | `controlled` | boolean | This is the player character |
 | `sighted` | boolean | Uses vision range for AI line-of-sight checks |
+| `dark_vision` | boolean | Actor can see and act normally without light (bypasses darkness AI penalties) |
+| `opaque` | boolean | Actor blocks line of sight for vision checks. Default `false` for most actors. |
 | `inventory` | number | Max items this actor can carry |
 | `remains` | string | Actor type spawned at this actor's position on death |
 | `mass_noun` | boolean | Suppress "the" article — use for clouds, water, etc. |
@@ -294,6 +296,7 @@ Items listed in `default_items` are added to the actor's inventory on spawn. Wea
 | Attribute | Type | Description |
 |-----------|------|-------------|
 | `pushable` | boolean | Can be pushed by walking actors |
+| `conductive` | boolean | Bolt attacks pass through this actor to hit targets behind. Default `true` for most actors; set `false` on walls/pillars to block bolts. |
 | `breakable` | boolean | Can be destroyed by mining |
 | `break_threshold` | number | Mining damage required to break |
 | `lode` | string | Item dropped when mined |
@@ -484,6 +487,8 @@ Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a fu
 | `flee_with_loot` | Flee toward deep liquid and drop stolen items in. | `loot_search_radius` |
 | `summon_actor` | Spawn an actor on adjacent floor tile on cooldown with a cap. | `summon_type`, `summon_cooldown` (default: 5), `summon_cap` (default: 3), `summon_sound` |
 | `emit_cloud` | Spawn cloud actor at position with global cap. | `emit_from_type`, `emit_type`, `emit_chance` (default: 3), `emit_cap` (default: 12) |
+| `blink_away` | Teleport away from an adjacent target (or toward a distant one) on cooldown. Leaves `blink_spawn` actor at origin if set. | `blink_range` (default: 8), `blink_cooldown` (default: 5), `preferred_distance` (default: 4), `blink_spawn` (optional actor type) |
+| `clock_tick` | Count down each turn, toggling `toggled` attribute at zero and propagating switch effects. Updates base tile to show digit. | `clock_interval` (attribute, default: 5) |
 
 **Environmental:**
 

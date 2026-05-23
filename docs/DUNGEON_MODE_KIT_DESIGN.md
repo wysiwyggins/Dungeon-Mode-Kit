@@ -14,206 +14,118 @@
 
 ## Project Overview
 
-**Dungeon Mode Kit** is a modular web-based roguelike framework designed to create multiple small game prototypes with different mechanics, all sharing common assets and core systems. This would allow me to make small embeddable games that correspond to the different topic in *The Dungeon Mode*
-Based on previous expiments— [grotto roguelike](https://github.com/wysiwyggins/grotto_roguelike), [didaktik gama](https://github.com/wysiwyggins/Didaktik-Gama)
+**Dungeon Mode Kit** is a modular web-based roguelike framework designed to create multiple small game prototypes with different mechanics, all sharing common assets and core systems. Each prototype is a self-contained game that can be embedded in a web page.
+
+Based on previous experiments — [grotto roguelike](https://github.com/wysiwyggins/grotto_roguelike), [didaktik gama](https://github.com/wysiwyggins/Didaktik-Gama)
 
 ### Core Philosophy
 
-- **Modular**: Mix authored and procedural content seamlessly
-- **Embeddable**: Canvas games integrated into web pages
-- **Rapid Prototyping**: Quick iteration on different game mechanics, don't bother with persistence between levels
+- **Modular**: Reusable tiles, actors, items, and behaviors that combine in different ways. Visual style (tiles fit together) mirrors code style (data-driven components).
+- **Embeddable**: Canvas games integrated into web pages.
+- **Rapid Prototyping**: Quick prototypes rather than one large specific game. Prototypes are essentially different games without continuity between them, although they can load one another.
 
-Modular reusable generalized stuff lives in the scripts. Specific design happens in the data files and maps in /prototypes/. Reusable specific design is in /data/ and /prototypes/ override same named items, actors, entities, or add new ones. New actors, items, and entities can have wholly new and different attributes on top of the established ones, and our prototype data files can use those in new ways. All our prototypes use the same character spritesheet though, for a unified visual language. Prototypes can load one another as exits but they are essentially different games without continuity between them and potentially different mechanics.
+Modular reusable systems live in the scripts. Specific design happens in the data files and maps in `/prototypes/`. Default actors, items, etc. are in `/data/` and prototypes override same-named entries or add new ones. New actors and items can have wholly new attributes on top of established ones.
 
-## Design Questions
+All prototypes use the same character spritesheet for a unified visual language. Sprites are tiles which can be used for actors (usually two tiles), items (one tile), or map tiles. Prototypes can load one another as exits but are essentially different games. Prototypes can also have multiple floors, and floors can be larger than the viewport (scrolling).
 
-- How do we deal with a changing number of arbitrary stats? This means how do we display them and give feedback when they change and describe them in text? We may need to add another html element over description for visible actor stats to avoid taking up canvas space. We want to always avoid hard coding and specificity as much as possible to allow for things to be defined by the data files- prototypes, actors, items, personalities, behaviors, etc. Strive towards readability and flexibility in those files.
+An HTML sidebar displays actor stats and visible items alongside the game canvas, but the engine can run without it.
 
 ## Technical Architecture
 
-### Rendering System
+### Libraries
 
-- **Technology**: PIXI.js (or performance-equivalent alternative)
-- **Resolution**: Tiles displayed at half-size for hi-DPI displays
-- **Height System**: Actors are two tiles high, so maps are floor + 2-tile height walls (floor, base, top, ((ok and also maybe hats as wearable items))
-- **Layers**: in Tiled- Background, Floor, Actors, Wildcards (paint tiles that spawn actors). Most tiles have transparent backgrounds so we need to manually hide occluded tiles on locations behind actors.
-- - **Effects**: Sprite tinting, animation frames
+| Library | Role |
+|---------|------|
+| ROT.js | Map generation algorithms, FOV shadowcasting, RNG with seed support |
+| PIXI.js | 2D rendering (sprites, containers, blend modes) |
+| Tween.js | Animation tweening (movement, fades) |
+| Howler.js | Audio sprite playback |
+
+### Rendering
+
+- Tiles displayed at half-size for hi-DPI displays
+- Actors are two tiles tall (base + top), with an optional side tile
+- Maps have floor + 2-tile height walls. Most tiles have transparent backgrounds; occluded tiles behind actors are hidden automatically.
+- 8 render layers (bottom to top): background, floor, landmarks, overlay, light color, darkness, UI, splash
+- Sprite tinting, animated frames, flicker/ripple effects, facing
+
+### File Structure
+
+```
+data/                    ← Global entity definitions
+  actors.json            ← All actor types
+  items.json             ← All item types  
+  personalities.json     ← AI behavior configs
+  states.json            ← Temporary condition definitions
+  static-tiles.json      ← Tile name → index mapping
+  sounds.json            ← Audio sprite map
+prototypes/
+  my_level/
+    prototype.json       ← Level config (required)
+    actors.json          ← Override/add actors (optional)
+    items.json           ← Override/add items (optional)
+    personalities.json   ← Override/add behaviors (optional)
+    map.tmj              ← Tiled map for floor 1 (optional)
+    2.tmj, 3.tmj, ...   ← Maps for floors 2+ (optional)
+```
 
 ## Entity System
 
-The engine uses a simple class hierarchy: **Entity** → **Item** and **Actor**. All behavior is driven by attributes defined in JSON data files.
+Simple class hierarchy: **Entity** → **Item** and **Actor**. All behavior is data-driven through attributes defined in JSON.
 
-### Entity (Base Class)
+**Entity** has a position, type identifier, sprite, tint, and an attributes Map. Attributes can be any value type. `hasAttribute(key)` returns true only if the attribute exists and is truthy.
 
-Entities have a position, type identifier, sprite, tint, and a map of attributes. Attributes can be any value type—boolean flags, numbers, strings, or objects. The `hasAttribute(key)` method returns true only if the attribute exists and is truthy, while `getAttribute(key)` returns the raw value.
+**Item** — single-tile entities on the floor. Can be picked up, equipped, used. Effects are attribute-based: `collision_effect` (damage on hit), `wear_effect` (stat bonuses when worn), `use_effect` (activated from inventory).
 
-### Item
+**Actor** — two-tile entities (base + top). Includes creatures, the player, doors, walls, fire, water, and more. Actors with a `personality` participate in the turn-based scheduler.
 
-Items are single-tile entities defined in `data/items.json` or prototype-specific `items.json` files. They sit on the floor and can be picked up by actors with an `inventory` attribute.
-
-Key item attributes include `pickupable`, `visible`, `stackable`, `consumable`, and `flammable`. Items can have a `wearable` slot (`top`, `middle`, or `lower`) to auto-equip when picked up. Wearable items render above the actor at their slot position.
-
-**Effects:** Items use attribute-based effects rather than hardcoded types:
-
-- `collision_effect` modifies attributes on actors the holder collides with (e.g., `{"health": -10}` for damage, `{"locked": false}` for keys)
-- `wear_effect` modifies the wearer's attributes while equipped (e.g., `{"strength": 5}`)
-- Effect values can be numbers (add/subtract), booleans (set), or `"toggle"`
-
-Items with `use_verb` can be activated through UI (e.g., "Drink", "Dig"). The `use_effect` attribute specifies the effect type.
-
-### Actor
-
-Actors are two-tile entities (base + top) defined in `data/actors.json`. They include creatures, the player, doors, walls, fire, and other interactive objects. Actors participate in the turn-based scheduler if they have a `personality` attribute.
-
-Actor qualities are organized into two categories:
-
-- **Attributes**: Boolean flags and configuration values stored in a Map. Examples: `solid`, `visible`, `hostile`, `controlled` (player), `sighted`, `flammable`, `openable`, `locked`, `open`, `light_source`, `stairway`, `inventory` (max size).
-- **Stats**: Numeric values with `{ max, current }` structure that change during gameplay. Examples: `health`, `strength`. Stats can be referenced in collision effects using `"{stat}"` or `"-{stat}"` syntax.
-
-Actors can have their own `collision_effect` for unarmed attacks or special interactions. The `default_items` array spawns items in the actor's inventory on creation. The `paint_tile` attribute lets you place actors in Tiled using a specific tile on the wildcards layer.
-
-### Personalities and AI
-
-Actor behavior is controlled by the `personality` attribute (e.g., `"aggressive_melee"`, `"random_walk"`). Personalities map to behavior functions that execute each turn. Hostile actors with `sighted` avoid walking into pits; those without may fall.
+See [ENTITIES.md](ENTITIES.md), [ACTORS.md](ACTORS.md), [ITEMS.md](ITEMS.md).
 
 ## Combat System
 
-Combat occurs when actors collide. The system uses exponential hit calculations, strength-based damage scaling, and weapon special effects.
+Combat occurs when actors collide. Hit probability uses an exponential formula with diminishing returns on defense stacking:
 
-**See [COMBAT.md](/COMBAT.md) for full documentation.**
-
-### Quick Reference
-
-**Hit Calculation:** `hit_chance = accuracy × 0.987^defense` (clamped 5-95%)
-
-- Exponential formula provides diminishing returns on defense stacking
-- Actors without `accuracy` always hit (deterministic combat)
-
-**Damage Calculation:**
-
-1. Base damage from weapon or actor `collision_effect`
-2. Critical hit check (15% for `"critical"` weapons = 2x damage)
-3. Strength multiplier: `damage × (strength / 10)`
-
-**Combat Attributes:**
-
-- `accuracy`: Base hit chance percentage
-- `defense`: Reduces hit chance (exponential)
-- `strength`: Multiplies weapon damage (default 10 = 1x)
-
-**Weapon Types:**
-
-- `"weapon": true` or `"normal"` - Standard weapon
-- `"weapon": "knockback"` - Pushes target back on hit
-- `"weapon": "lifesteal"` - Heals 25% of damage dealt
-- `"weapon": "critical"` - 15% chance for double damage
-
-**Equipment Slots:** `weapon`, `top`, `middle`, `lower`
-
-### Example Configuration
-
-```json
-"player": {
-  "collision_effect": { "health": "-{strength}" },
-  "attributes": {
-    "strength": 10,
-    "accuracy": 70,
-    "defense": 5
-  }
-}
-
-"minotaur": {
-  "collision_effect": { "health": "-{strength}" },
-  "attributes": {
-    "strength": 12,
-    "accuracy": 80,
-    "defense": 15
-  }
-}
-
-"warhammer": {
-  "attributes": {
-    "weapon": "knockback",
-    "collision_effect": { "health": -8 }
-  }
-}
 ```
+hit_chance = accuracy × 0.987^defense    (clamped 5–95%)
+```
+
+Weapon damage is scaled by attacker strength (`damage × strength/10`), with optional enchantment bonuses and weapon procs (knockback, lifesteal, critical).
+
+Attack styles modify targeting: **lunge** (gap-closing strike), **sweep** (hit all adjacent), **penetrate** (pierce through to enemy behind).
+
+See [COMBAT.md](COMBAT.md).
 
 ## Map System
 
-See [MAPS.md](MAPS.md)
+Maps are authored in [Tiled](https://www.mapeditor.org/) or generated procedurally. Authored maps use 6 layers: background, floor, wildcards, actors, items, landmarks.
 
-### Tiled Integration
+**Wildcards** are special tiles painted on a tile layer that the engine replaces with procedural content at runtime — dungeon rooms, caves, mazes, lava pools, or entity spawn points. This allows mixing hand-crafted and generated content on the same map.
 
-**Layers**:
+Generator types: digger, cellular, uniform, rogue, brogue, arena, infernal, and several maze variants.
 
-- **Floor Layer**: Defines playable area (engine auto-generates shadow background)
-- **Item Layer**: 1-tile item placement
-- **Actor Layer**: 2-tile actor placement
-
-### Wildcard System
-
-**Procedural Zones**: Special tiles painted in Tiled that spawn actors on prototype load
-
-- **Floor Wildcards**: Generate maze hallways, room layouts
-- **Item Wildcards**: Randomize item drops (validates walkable floor)
-- **Actor Wildcards**: Place procedural enemies, walls
-
-### Processing Pipeline
-
-1. **Load prototype**: Check for `map.tmj` in prototype folder
-2. **Map handling**:
-   - If `map.tmj` exists → load authored map
-   - If no `map.tmj` → generate fully procedural level using ROT.js
-3. **Process wildcard tiles** → replace with ROT.js generated content:
-
-   ```javascript
-   // Wildcard maze generation
-   if (tileType === WILDCARD_MAZE) {
-     const maze = new ROT.Map.Uniform(width, height);
-     maze.create((x, y, value) => {
-       floorMap[x][y] = value === 0 ? FLOOR_TILE : null;
-       if (value === 1) spawnWallActor(x, y);
-     });
-   }
-   ```
-
-4. **Auto-generate wall actors** around floor perimeters (procgen areas)
-5. **Load entities**:
-   - Start with global actors/items
-   - Override with prototype-specific variants
-6. **Validate item placements** (must be on walkable floor)
-7. **Instantiate entities** from tile IDs using lookup tables
+See [MAP.md](MAP.md), [PROTOTYPE.md](PROTOTYPE.md), [Tile Index](/docs/tiles.pdf).
 
 ## Prototype System
 
-A prototype is a self-contained level or game variant. Each prototype folder contains a `prototype.json` config and optionally a `map.tmj` (Tiled map), plus local `actors.json` and `items.json` overrides.
+A prototype is a self-contained level or game variant. The `prototype.json` config controls mechanics (lighting, fog of war, viewport), map generation, entity spawning, win conditions, and progression to other prototypes.
 
-### Prototype Config
+Prototypes can have multiple floors with per-floor overrides. Floors are linked by stairways; prototypes are linked by portals and `next_level`/`previous_level` fields.
 
-```json
-{
-  "name": "Cretan Labyrinth",
-  "loaded_sound": "levelout",
-  "depth": 2,
-  "turn_speed": 50,
-  "next_level": "deeper_labyrinth",
-  "previous_level": "default",
-  "mechanics": {
-    "fog_of_war": true,
-    "darkness": true,
-    "ambient_light": 0.1,
-    "player_light_radius": 6
-  }
-}
-```
-
-The `next_level` and `previous_level` fields link prototypes via stairway actors. The `mechanics` object controls lighting and visibility systems. The `loaded_sound` plays when the level finishes loading.
-
-### Entity Overrides
-
-Actor and item stats are defined in actor/item JSON files, not the prototype config. Prototypes can override global definitions by including local `actors.json` or `items.json` files. The engine loads global definitions first, then merges prototype-specific overrides.
+See [PROTOTYPE.md](PROTOTYPE.md).
 
 ### Creating a Prototype
 
-Create a folder in `prototypes/` with a `prototype.json`. For authored content, add a `map.tmj` with floor, actors, items, and wildcards layers. *Without a map file, the engine generates a procedural level*. Add local `actors.json` or `items.json` to customize entities for this prototype.
+1. Create a folder in `prototypes/` with a `prototype.json`
+2. For authored content, create a map in Tiled and save as `map.tmj` in the folder
+3. Without a map file, the engine generates a procedural level
+4. Add local `actors.json` or `items.json` to customize entities
+5. Serve locally with `python3 -m http.server` and load with `?prototype=your_level`
+
+## Other Systems
+
+| System | Doc | Summary |
+|--------|-----|---------|
+| Lighting | [LIGHTING.md](LIGHTING.md) | Dynamic colored lighting with shadowcasting FOV, fog of war |
+| Sound | [SOUNDS.md](SOUNDS.md) | Audio sprite with Howler.js, data-driven sound attributes |
+| Descriptions | [DESCRIPTIONS.md](DESCRIPTIONS.md) | Turn-based message history, hover descriptions, template substitution |
+| Save/Load | [SAVING.md](SAVING.md) | Seed URLs, floor state serialization, entity serialize/deserialize |

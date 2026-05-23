@@ -73,4 +73,4 @@ You don't need to do anything special — entities are serialized automatically 
 | Class | Description | Reference |
 |-------|-------------|-----------|
 | `Item` | Pickupable objects, weapons, consumables, equipment | See [ITEMS.md](ITEMS.md) |
-| `Actor` | Characters, enemies, doors, environmental hazards | See ACTORS.md (coming soon) |
+| `Actor` | Characters, enemies, doors, environmental hazards | See [ACTORS.md](ACTORS.md) |

@@ -14,3 +14,9 @@ This would be a new kind of interface window, like an alert, with an optional li
 - A web front end level creator would create a prototype that supplements and sometimes overrides the base data. It could even have an upload or pixel art tool for adding tiles to an overriding prototype version. You’d be able to experiment with combining tiles to make actors. A web map editor would replicate some tiled features but would also let you paint entities with color tints, currently tiled can only draw shapes with objects and attributes for entities which you can’t see the tile or tint of.
 
 future- the kit is hosted online in a way that users could create prototypes with web forms and test them, like bitsy.
+
+## Bugs found during doc audit (2026-05-23)
+
+- Broken sound references: `trap1` (interface.js:2504) and `match` (behaviors.js:671) call playSound but have no audio sprite entry. They fail silently. Need source audio files added to the sprite.
+
+- The `lock` sound exists in the audio sprite but is never played. Should be wired to locked door rejection.

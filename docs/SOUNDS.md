@@ -175,7 +175,7 @@ All 35 sounds currently in the audio sprite:
 | `glass` | **Active** | Breakable potion shatter on throw (`break_sound` in items.json) |
 | `heal` | **Active** | Health potion use sound |
 | `hit` | **Active** | Melee collision sound for most actors |
-| `levelout` | **Data only** | `loaded_sound` in several prototype.json files |
+| `levelout` | **Active** | `loaded_sound` in prototypes, default ceremony build sound |
 | `lock` | **Unused** | Defined in sprite but never played |
 | `magic` | **Active** | Scroll use sound |
 | `ouch` | **Active** | Player/actor death sound |
@@ -194,9 +194,9 @@ All 35 sounds currently in the audio sprite:
 | `tap3` | **Unused** | — |
 | `tone1` | **Active** | Default item use sound |
 | `tone2` | **Unused** | — |
-| `tone3` | **Data only** | `loaded_sound` in some prototypes |
+| `tone3` | **Active** | Default pickup sound, `loaded_sound` in some prototypes, shaman summon |
 | `tone4` | **Unused** | — |
-| `tone5` | **Unused** | — |
+| `tone5` | **Active** | Default heal_ally sound |
 | `tone6` | **Unused** | — |
 | `tone7` | **Unused** | — |
 | `tone8` | **Unused** | — |

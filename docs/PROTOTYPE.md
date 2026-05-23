@@ -60,7 +60,7 @@ The `mechanics` object controls core gameplay systems for the level. All fields 
 | `player_auto_light` | boolean | `true` | Player emits light automatically. Set `false` to require a carried light source (torch, lantern). |
 | `tint` | string | none | Hex color overlay applied to the entire level (e.g. `"#3355AA"` for a blue tint) |
 
-See [LIGHTING.md](../LIGHTING.md) for the full lighting system reference.
+See [LIGHTING.md](LIGHTING.md) for the full lighting system reference.
 
 ### Viewport & Scrolling
 
@@ -104,7 +104,8 @@ When no Tiled map file exists for a floor, the engine generates a procedural map
 | `digger` | Rooms connected by corridors (default) |
 | `cellular` | Cave-like organic shapes |
 | `uniform` | Evenly distributed rooms |
-| `rogue` | Classic roguelike grid rooms (no walls)|
+| `rogue` | Classic roguelike grid rooms (no walls) |
+| `brogue` | Brogue-style rooms (rectangle, cross, circular, cavern) attached via corridors and loops |
 | `divided_maze` | Recursive division maze |
 | `icey_maze` | Maze with regularity control |
 | `eller_maze` | Perfect maze (Eller's algorithm) |
@@ -126,7 +127,18 @@ When no Tiled map file exists for a floor, the engine generates a procedural map
 | `lava_chance` | number | Percent chance for lava pools (infernal) |
 | `wall_types` | array | Weighted wall types: `[{ "type": "rock_wall", "weight": 95 }]` |
 
-See [ARCHITECT.md](ARCHITECT.md) for the full generator reference including cellular automata rules, room types, and wildcard processing.
+#### Brogue-Specific Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `maxRooms` | number | `35` | Maximum rooms to generate |
+| `corridorChance` | number | `30` | Percent chance to add a corridor between rooms |
+| `corridorLength` | `[min, max]` | `[2, 6]` | Corridor length range |
+| `doorChance` | number | `50` | Percent chance to place a door at room connections |
+| `torchChance` | number | `30` | Percent chance to place a torch in a room |
+| `roomWeights` | object | `{ rectangle: 30, cross: 25, circular: 20, cavern: 25 }` | Relative weights for room types |
+| `loopMinDistance` | number | `20` | Minimum path distance between rooms before a loop shortcut is added |
+| `maxLoops` | number | `5` | Maximum loop connections to add |
 
 If both a `map.tmj` and `map_generator` exist for a floor, the `.tmj` takes priority.
 
@@ -156,6 +168,60 @@ If both a `map.tmj` and `map_generator` exist for a floor, the `.tmj` takes prio
 Each entity type rolls independently. If the roll succeeds, a random count between `min` and `max` is placed on walkable tiles.
 
 Actor and item IDs reference definitions in `data/actors.json`, `data/items.json`, or the prototype's own `actors.json` / `items.json`.
+
+### Traps
+
+`traps` spawns hidden trap actors on random walkable tiles. The engine picks from all actors with the `trap` attribute defined in actors.json.
+
+```json
+"traps": { "min": 1, "max": 10 }
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `min` | number | Minimum traps to spawn |
+| `max` | number | Maximum traps to spawn |
+
+Can be set at the prototype level or per-floor (overrides prototype default).
+
+### Switch Puzzles
+
+`switch_puzzles` spawns switch-and-target pairs on the map (e.g., a lever that opens a gate).
+
+```json
+"switch_puzzles": {
+  "min": 0, "max": 2,
+  "patterns": [
+    {
+      "type": "gated_room",
+      "weight": 1,
+      "switch_actor": "gate_lever",
+      "target_actor": "gate",
+      "switch_effects": { "locked": false, "open": true },
+      "switch_message": "You pull the lever. A gate grinds open."
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `min` | number | Minimum puzzles to spawn |
+| `max` | number | Maximum puzzles to spawn |
+| `patterns` | array | Available puzzle patterns to choose from |
+
+Each pattern defines:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | string | Pattern type (e.g. `"gated_room"`) |
+| `weight` | number | Relative spawn probability when multiple patterns exist |
+| `switch_actor` | string | Actor type ID for the switch |
+| `target_actor` | string | Actor type ID for the target |
+| `switch_effects` | object | Attributes to set on the target when the switch is activated |
+| `switch_message` | string | Message shown when the switch is activated |
+
+Can be set at the prototype level or per-floor.
 
 ### Item Pools (random_type)
 
@@ -316,6 +382,8 @@ Each floor object can override these fields from the prototype root:
 | `random_actors` | Actor spawns for this floor |
 | `random_items` | Item spawns for this floor |
 | `item_budget` | Override the prototype-level item budget for this floor |
+| `traps` | Trap spawn config for this floor |
+| `switch_puzzles` | Switch puzzle config for this floor |
 
 Fields not specified in a floor object fall back to the prototype-level defaults.
 

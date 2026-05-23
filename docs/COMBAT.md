@@ -52,7 +52,7 @@ Damage values can reference attributes using `"{stat}"` syntax:
 
 ### 2. Critical Hits (Weapon Proc)
 
-Weapons with `"weapon": "critical"` have a 15% chance to deal double damage.
+Weapons with `"weapon_proc": "critical"` have a 15% chance to deal double damage.
 
 ### 3. Strength Multiplier
 
@@ -439,8 +439,6 @@ The `arena` prototype provides a test environment for combat mechanics:
 - Stat-modifying potions (strength, defense, accuracy)
 - Chainmail armor (+8 defense)
 
-Load with: prototype name `arena`
-
-Open `arena.html` for a testing UI with live stat editing.
+Load with `?prototype=arena` in the URL.
 
 Combat calculations are logged to the browser console for verification.
