@@ -1,7 +1,7 @@
 {
   "name": "Default Test Prototype",
   "loaded_sound": "tone3",
-"description": "Welcome to the Dungeon of Doom. \nFind the crown and wear it to clear the way downward. \nPress 'i' for info. Use arrow keys or mouse to move.",
+  "description": "Welcome to the Dungeon of Doom. \nFind the crown and wear it to clear the way downward. \nPress 'i' for info. Use arrow keys or mouse to move.",
   "depth": 1,
   "turn_speed": 50,
   "next_level": "labyrinth",
@@ -10,14 +10,31 @@
     "darkness": false
   },
   "traps": { "min": 2, "max": 5 },
-  "random_actors": {
-    "skeleton": { "chance": 100, "min": 1, "max": 3 },
-    "monkey": { "chance": 100, "min": 1, "max": 2 }
-  },
-  "random_items": {
-    "staff": { "chance": 100, "min": 1, "max": 1 },
-    "haste": { "chance": 50, "min": 1, "max": 2 },
-    "scroll": { "chance": 100, "min": 1, "max": 1 }
-  },
-  "win_conditions": ["wearing:crown"]
+  "levels": [
+    {
+      "win_conditions": ["wearing:crown"],
+      "random_actors": {
+        "skeleton": { "chance": 100, "min": 1, "max": 3 },
+        "monkey": { "chance": 100, "min": 1, "max": 2 }
+      },
+      "random_items": {
+        "staff": { "chance": 100, "min": 1, "max": 1 },
+        "haste": { "chance": 50, "min": 1, "max": 2 },
+        "scroll": { "chance": 100, "min": 1, "max": 1 }
+      }
+    },
+    {
+      "win_conditions": ["killed:scutigera_head"],
+      "mechanics": {
+        "darkness": true,
+        "viewport_width": 40,
+        "viewport_height": 40,
+        "ai_margin": 5
+      },
+      "random_items": {
+        "staff_of_fireball": { "chance": 100, "min": 1, "max": 1 },
+        "regeneration_potion": { "chance": 50, "min": 1, "max": 2 }
+      }
+    }
+  ]
 }

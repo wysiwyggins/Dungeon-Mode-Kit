@@ -28,7 +28,8 @@
         "max": 100,
         "per_turn": 1
       }
-    }
+    },
+    "default_items": ["torch", "butter_knife"]
   },
   "skeleton": {
     "name": "Skeleton",
@@ -758,7 +759,7 @@
       "flammable": true,
       "spreads": false,
       "liquid": false,
-      "paint_tile": "IMPERFECT_DOTTED_LIGHT_SHADE",
+      "paint_tile": "BLACK_SPADE_SUITE",
       "mass_noun": true,
       "light_source": true,
       "light_radius": 2,

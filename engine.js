@@ -587,6 +587,7 @@ class DungeonEngine {
         // Multi-floor state
         this.currentFloor = 1;           // 1-indexed
         this.floorStates = new Map();    // floor# → { entities: [...], map: {...} }
+        this.pendingFallenActors = new Map(); // floor# → [serialized actor data]
         
         // Configuration
         this.config = {
@@ -1266,6 +1267,8 @@ class DungeonEngine {
             );
         }
 
+        this.spawnPendingFallenActors();
+
         const startGameplay = () => {
             this.initializeTurnEngine();
 
@@ -1426,6 +1429,8 @@ class DungeonEngine {
             );
         }
 
+        this.spawnPendingFallenActors();
+
         this.initializeTurnEngine();
 
         this.inputManager?.clearMessageStack();
@@ -1456,30 +1461,43 @@ class DungeonEngine {
      * @param {string} entryDirection - 'from_above' or 'from_below'
      */
     restorePlayerOnFloor(playerState, entryDirection) {
-        // Determine spawn stairway type
-        let targetStairwayType;
-        if (entryDirection === 'from_above') {
-            targetStairwayType = 'up';
-        } else if (entryDirection === 'from_below') {
-            targetStairwayType = 'down';
-        } else {
-            targetStairwayType = 'up';
-        }
-
-        const stairway = this.entityManager.findActorByAttribute('stairway', targetStairwayType);
         const playerData = this.currentPrototype.getActorData('player');
         if (!playerData) {
             console.error('No player actor data found in prototype');
             return;
         }
 
-        const spawnX = stairway ? stairway.x : (this.mapManager.walkableTiles[0]?.x ?? 1);
-        const spawnY = stairway ? stairway.y : (this.mapManager.walkableTiles[0]?.y ?? 1);
+        // Remove map-spawned player if one exists (we're restoring from saved state)
+        if (this.entityManager.player) {
+            this.entityManager.removeEntity(this.entityManager.player);
+        }
+
+        let spawnX, spawnY;
+
+        if (entryDirection === 'from_fall') {
+            const walkableTiles = this.mapManager.walkableTiles;
+            const available = walkableTiles.filter(t => !this.entityManager.getActorAt(t.x, t.y));
+            const tile = available.length > 0
+                ? available[Math.floor(ROT.RNG.getUniform() * available.length)]
+                : walkableTiles[0];
+            spawnX = tile?.x ?? 1;
+            spawnY = tile?.y ?? 1;
+        } else {
+            let targetStairwayType;
+            if (entryDirection === 'from_above') {
+                targetStairwayType = 'up';
+            } else if (entryDirection === 'from_below') {
+                targetStairwayType = 'down';
+            } else {
+                targetStairwayType = 'up';
+            }
+            const stairway = this.entityManager.findActorByAttribute('stairway', targetStairwayType);
+            spawnX = stairway ? stairway.x : (this.mapManager.walkableTiles[0]?.x ?? 1);
+            spawnY = stairway ? stairway.y : (this.mapManager.walkableTiles[0]?.y ?? 1);
+        }
 
         const player = new Actor(spawnX, spawnY, 'player', playerData, this);
-        // Restore player state (stats, inventory, equipment, etc.)
         player.deserialize(playerState);
-        // Override position to stairway location
         player.x = spawnX;
         player.y = spawnY;
         this.entityManager.addEntity(player);
@@ -1677,6 +1695,7 @@ class DungeonEngine {
                 stairway.name = 'Stairs Down';
             }
 
+            this.playSound?.('lock');
             this.inputManager?.showMessage('The way forward is now open!', { style: 'discovery' });
         }
 
@@ -1836,7 +1855,27 @@ class DungeonEngine {
         // Determine which stairway to spawn at
         // from_above (descended) = spawn at up_stairway (the stairs leading back up)
         // from_below (ascended) = spawn at down_stairway (the stairs leading back down)
+        // from_fall = random walkable tile (fell through collapsed floor)
         // direct load = spawn at up_stairway if it exists
+        const playerData = this.currentPrototype.getActorData('player');
+        if (!playerData) {
+            console.error('No player actor data found in prototype');
+            return;
+        }
+
+        if (entryDirection === 'from_fall' || entryDirection === null) {
+            const walkableTiles = this.mapManager.walkableTiles;
+            const available = walkableTiles.filter(t => !this.entityManager.getActorAt(t.x, t.y));
+            if (available.length > 0) {
+                const tile = available[Math.floor(ROT.RNG.getUniform() * available.length)];
+                console.log(`Spawning player at random tile (${tile.x}, ${tile.y}) — entry: ${entryDirection}`);
+                const player = new Actor(tile.x, tile.y, 'player', playerData, this);
+                this.entityManager.addEntity(player);
+                player.loadDefaultItems();
+                return;
+            }
+        }
+
         let targetStairwayType;
         if (entryDirection === 'from_above') {
             targetStairwayType = 'up';
@@ -1850,28 +1889,9 @@ class DungeonEngine {
 
         if (stairway) {
             console.log(`Spawning player at ${targetStairwayType} stairway (${stairway.x}, ${stairway.y})`);
-            const playerData = this.currentPrototype.getActorData('player');
-            if (playerData) {
-                const player = new Actor(stairway.x, stairway.y, 'player', playerData, this);
-                this.entityManager.addEntity(player);
-                player.loadDefaultItems();
-            } else {
-                console.error('No player actor data found in prototype');
-            }
-        } else if (entryDirection === null) {
-            // No stairway to spawn at — place player on a random walkable tile
-            const playerData = this.currentPrototype.getActorData('player');
-            if (playerData) {
-                const walkableTiles = this.mapManager.walkableTiles;
-                const available = walkableTiles.filter(t => !this.entityManager.getActorAt(t.x, t.y));
-                if (available.length > 0) {
-                    const tile = available[Math.floor(ROT.RNG.getUniform() * available.length)];
-                    console.log(`No stairway found, spawning player at random tile (${tile.x}, ${tile.y})`);
-                    const player = new Actor(tile.x, tile.y, 'player', playerData, this);
-                    this.entityManager.addEntity(player);
-                    player.loadDefaultItems();
-                }
-            }
+            const player = new Actor(stairway.x, stairway.y, 'player', playerData, this);
+            this.entityManager.addEntity(player);
+            player.loadDefaultItems();
         } else {
             console.warn(`No ${targetStairwayType} stairway found to spawn player at`);
         }
@@ -2073,6 +2093,64 @@ class DungeonEngine {
             // Load fresh floor
             await this.loadFloor(targetFloor, entryDirection, playerState);
         }
+    }
+
+    async fallToNextFloor(actor) {
+        const targetFloor = this.currentFloor + 1;
+        const fallDamage = Math.floor(actor.stats?.health?.max * 0.3) || 10;
+        console.log(`${actor.name} falls to floor ${targetFloor}, taking ${fallDamage} damage`);
+
+        this.playSound?.('push1');
+        await this.transitionToFloor(targetFloor, 'from_fall');
+
+        const player = this.entityManager?.player;
+        if (player) {
+            player.modifyStat('health', -fallDamage);
+            this.inputManager?.showMessage(`You crash down, injured from the fall! (-${fallDamage} health)`);
+            if (player.stats?.health?.current <= 0) {
+                player.die();
+            }
+        }
+    }
+
+    spawnPendingFallenActors() {
+        const pending = this.pendingFallenActors.get(this.currentFloor);
+        if (!pending || pending.length === 0) return;
+
+        const walkableTiles = this.mapManager.walkableTiles;
+
+        for (const data of pending) {
+            const fallDamage = data._fallDamage || 0;
+            delete data._fallDamage;
+
+            const available = walkableTiles.filter(t =>
+                !this.entityManager.getActorAt(t.x, t.y)
+            );
+            if (available.length === 0) continue;
+
+            const tile = available[Math.floor(ROT.RNG.getUniform() * available.length)];
+            const actorData = this.currentPrototype.getActorData(data.type);
+            if (!actorData) continue;
+
+            const actor = new Actor(tile.x, tile.y, data.type, actorData, this);
+            actor.deserialize(data);
+            actor.x = tile.x;
+            actor.y = tile.y;
+            this.entityManager.addEntity(actor);
+            this.renderer?.createActorSprite(actor);
+
+            if (fallDamage > 0 && actor.stats?.health) {
+                actor.modifyStat('health', -fallDamage);
+                if (actor.stats.health.current <= 0) {
+                    actor.die();
+                    continue;
+                }
+            }
+
+            console.log(`${actor.name} landed from above at (${tile.x}, ${tile.y})`);
+        }
+
+        this.pendingFallenActors.delete(this.currentFloor);
     }
 
     /**
@@ -3284,6 +3362,7 @@ class Actor extends Entity {
         if (!this.hasAttribute('openable')) return;
         if (this.hasAttribute('locked')) {
             console.log(`${this.name} is locked`);
+            this.engine.playSound?.('plunk3');
             return;
         }
 
@@ -6235,6 +6314,7 @@ class Actor extends Entity {
                         target.setAttribute(key, value);
                         console.log(`${source.name} (${sourceLockColor}) unlocks ${target.name} (${targetLockColor})!`);
                         sourceApplied = true;
+                        this.engine.playSound?.('lock');
                         target.open();
                         this.engine.updateLighting();
                         targetPassable = !target.hasAttribute('solid');
@@ -6260,6 +6340,7 @@ class Actor extends Entity {
                     sourceApplied = true;
 
                     if (key === 'locked' && value === false && target.hasAttribute('openable')) {
+                        this.engine.playSound?.('lock');
                         target.open();
                         this.engine.updateLighting();
                         targetPassable = !target.hasAttribute('solid');
@@ -6407,18 +6488,46 @@ class Actor extends Entity {
     /**
      * Called when actor falls into a void tile
      */
-    fall() {
+    async fall() {
         console.log(`${this.name} fell into the void!`);
 
-        // Show fall message
+        const config = this.engine.currentPrototype?.config;
+        const totalFloors = config?.levels ? config.levels.length : 1;
+        const hasFloorBelow = totalFloors > 1 && this.engine.currentFloor < totalFloors;
+
+        if (hasFloorBelow) {
+            if (this.isPlayerControlled()) {
+                this.engine.inputManager?.showMessage(`The floor gives way beneath you!`);
+                await this.engine.fallToNextFloor(this);
+                return;
+            }
+
+            // Queue non-player actor to appear on the next floor
+            const targetFloor = this.engine.currentFloor + 1;
+            const serialized = this.serialize();
+            const fallDamage = Math.floor((this.stats?.health?.max || 20) * 0.3);
+            serialized._fallDamage = fallDamage;
+
+            if (!this.engine.pendingFallenActors.has(targetFloor)) {
+                this.engine.pendingFallenActors.set(targetFloor, []);
+            }
+            this.engine.pendingFallenActors.get(targetFloor).push(serialized);
+
+            if (this.hasAttribute('visible')) {
+                this.engine.inputManager?.showMessage(`The ${this.name} falls through!`, { x: this.x, y: this.y });
+            }
+            this.die(false);
+            return;
+        }
+
         if (this.isPlayerControlled()) {
             this.engine.inputManager?.showMessage(`You plunge into the depths!`);
         } else if (this.hasAttribute('visible')) {
             this.engine.inputManager?.showMessage(`The ${this.name} falls into the void.`, { x: this.x, y: this.y });
         }
 
-        this.dropItems(true); // Items lost to void
-        this.die(false); // Don't spawn remains when falling into void
+        this.dropItems(true);
+        this.die(false);
     }
 
     collapse() {
@@ -6635,10 +6744,10 @@ class Actor extends Entity {
                     }
                     return { moved: false, actionTaken: false };
                 }
-                // Check if locked - play tap sound and block
+                // Check if locked - play rejection sound and block
                 if (actorAtTarget.hasAttribute('locked')) {
                     console.log(`${actorAtTarget.name} is locked`);
-                    this.engine.playSound?.('tap1');
+                    this.engine.playSound?.('plunk3');
                     if (this.isPlayerControlled()) {
                         this.engine.inputManager?.showMessage(`The ${actorAtTarget.name} is locked.`);
                     }
@@ -6829,12 +6938,13 @@ class Actor extends Entity {
             this.engine.renderer?.effectRunner.apply('collapse_shake');
             this.engine.playSound('push1');
             if (this.engine.turnEngine) this.engine.turnEngine.lock();
-            setTimeout(() => {
+            setTimeout(async () => {
                 for (const other of collapsibles) {
                     other.collapse();
                 }
                 if (!actor.hasFloorAt(newX, newY) && !actor.hasPlatformAt(newX, newY) && !actor.hasStateProperty('flying')) {
-                    actor.fall();
+                    await new Promise(r => setTimeout(r, 400));
+                    await actor.fall();
                 }
                 if (actor.engine.turnEngine) actor.engine.turnEngine.unlock();
             }, 300);
