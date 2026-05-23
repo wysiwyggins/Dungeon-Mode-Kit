@@ -134,8 +134,7 @@
   },
   "butter_knife": {
     "name": "Butter Knife",
-    "tileIndex": "LATIN_SMALL_LETTER_I",
-    "flipV": true,
+    "tileIndex": "APOSTROPHE",
     "attributes": {
       "pickupable": true,
       "visible": true,
