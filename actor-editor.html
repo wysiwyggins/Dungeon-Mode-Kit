@@ -453,7 +453,7 @@ details.section > .section-body { padding: 10px 12px; }
         <details class="section" open>
             <summary>Attributes</summary>
             <div class="section-body">
-                <div class="checkbox-grid" id="bool-attrs">
+                <div id="bool-attrs">
                 </div>
                 <div style="margin: 6px 0 4px; font-size:11px; color:var(--accent)">Numeric / String Attributes</div>
                 <div id="typed-attrs"></div>
@@ -599,10 +599,6 @@ details.section > .section-body { padding: 10px 12px; }
                     <label>Spread Chance (0-1)</label>
                     <input type="number" id="f-spread_chance" min="0" max="1" step="0.05" value="">
                 </div>
-                <div class="field-row">
-                    <label>Remains (top-level)</label>
-                    <input type="text" id="f-remains" placeholder="skull, rubble, blood...">
-                </div>
             </div>
         </details>
     </div>
@@ -636,20 +632,67 @@ const SCALE = 4;
 const SPRITESHEET_PATH = 'assets/sprites/static-tiles.png';
 const TILE_DATA_PATH = 'data/static-tiles.json';
 
-const BOOL_ATTRS = [
-    'solid','visible','hostile','sentient','controlled','sighted','flammable','fire_immune',
-    'breakable','pushable','opaque','conductive','light_source','proper_named','mass_noun',
-    'hazard_immune','pack','follows_thread','liquid','deep','spreads','switchable','toggled',
-    'openable','lockable','color_locked','gate','pedestal','display_inventory','clock',
-    'one_shot','trap','hidden','portal','pickupable','stackable','cursed','platform','collapsible'
+const PRIMARY_BOOL_ATTRS = [
+    'solid','visible','hostile','sentient','sighted','opaque',
+    'flammable','fire_immune','conductive','breakable','pushable','light_source','dark_vision'
 ];
+const SECONDARY_BOOL_ATTRS = [
+    'controlled','hazard_immune','pack','follows_thread','mass_noun','proper_named',
+    'liquid','deep','spreads','ignites','openable','lockable','color_locked','gate',
+    'switchable','toggled','clock','one_shot','pedestal','display_inventory',
+    'platform','collapsible','portal','trap','hidden','pickupable','stackable','cursed'
+];
+const BOOL_ATTRS = [...PRIMARY_BOOL_ATTRS, ...SECONDARY_BOOL_ATTRS];
+
+const BOOL_HINTS = {
+    solid: 'Default: true. Blocks movement.',
+    visible: 'Default: true. Sprite is drawn.',
+    flammable: 'Default: true (inherited). Can catch fire.',
+    hostile: 'Default: false. Attacks player.',
+    sentient: 'Default: false. Takes turns / has AI.',
+    sighted: 'AI can see targets (needs vision_range).',
+    opaque: 'Blocks line of sight for lighting/FOV.',
+    fire_immune: 'Immune to fire damage.',
+    conductive: 'Conducts lightning.',
+    breakable: 'Can be destroyed by attacks.',
+    pushable: 'Can be pushed by collisions.',
+    light_source: 'Emits light (radius set in Appearance).',
+    dark_vision: 'AI ignores darkness for targeting.',
+    controlled: 'Player-controlled actor.',
+    hazard_immune: 'Immune to environmental hazards.',
+    pack: 'Spawns in clusters via random_actors.',
+    follows_thread: 'AI uses thread-following pathfinding.',
+    mass_noun: 'No article: "water" not "a water".',
+    proper_named: 'No article: "Asterion" not "the Asterion".',
+    liquid: 'Liquid terrain (water, sewage, lava).',
+    deep: 'Deep liquid — drowning hazard.',
+    spreads: 'Spreads to adjacent tiles.',
+    ignites: 'Sets flammable neighbors on fire.',
+    openable: 'Can be opened/closed (doors, gates).',
+    lockable: 'Can be locked.',
+    color_locked: 'Requires matching color key to unlock.',
+    gate: 'Gate actor (opened by mechanisms).',
+    switchable: 'Toggle-able mechanism.',
+    toggled: 'Current toggle state.',
+    clock: 'Ticks on an interval (see clock_interval).',
+    one_shot: 'Triggers once then stops.',
+    pedestal: 'Displays an item on top.',
+    display_inventory: 'Shows held item visually.',
+    platform: 'Walkable surface over void/liquid.',
+    collapsible: 'Collapses when stepped on.',
+    portal: 'Teleports actors that step on it.',
+    trap: 'Trap — triggers on step (see Trap section).',
+    hidden: 'Not yet implemented.',
+    pickupable: 'Can be picked up as an item.',
+    stackable: 'Stacks in inventory.',
+    cursed: 'Cannot be unequipped.'
+};
 
 const TYPED_ATTRS = [
     { key: 'accuracy', type: 'number', label: 'Accuracy' },
     { key: 'defense', type: 'number', label: 'Defense' },
     { key: 'strength', type: 'number', label: 'Strength' },
     { key: 'inventory', type: 'number', label: 'Inventory slots' },
-    { key: 'light_radius', type: 'number', label: 'Light Radius (attr)' },
     { key: 'lode_chance', type: 'number', label: 'Lode Chance (0-100)' },
     { key: 'clock_interval', type: 'number', label: 'Clock Interval' },
     { key: 'remains', type: 'text', label: 'Remains' },
@@ -662,7 +705,6 @@ const TYPED_ATTRS = [
     { key: 'chain_segment_type', type: 'text', label: 'Chain Segment Type' },
     { key: 'entry_sound', type: 'text', label: 'Entry Sound' },
     { key: 'apply_state', type: 'text', label: 'Apply State' },
-    { key: 'light_color', type: 'color', label: 'Light Color (attr)' },
     { key: 'paint_tile', type: 'text', label: 'Paint Tile' },
 ];
 
@@ -1087,21 +1129,47 @@ function initTilePicker() {
 
 // ---- Boolean attributes ----
 
+function makeBoolCheckbox(attr, container) {
+    const label = document.createElement('label');
+    if (BOOL_HINTS[attr]) label.title = BOOL_HINTS[attr];
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.id = 'attr-' + attr;
+    cb.addEventListener('change', () => {
+        updateConditionalSections();
+        updatePreview();
+    });
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(' ' + attr));
+    container.appendChild(label);
+}
+
 function initBoolAttrs() {
-    const grid = document.getElementById('bool-attrs');
-    for (const attr of BOOL_ATTRS) {
-        const label = document.createElement('label');
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.id = 'attr-' + attr;
-        cb.addEventListener('change', () => {
-            updateConditionalSections();
-            updatePreview();
-        });
-        label.appendChild(cb);
-        label.appendChild(document.createTextNode(' ' + attr));
-        grid.appendChild(label);
-    }
+    const wrapper = document.getElementById('bool-attrs');
+
+    const primaryGrid = document.createElement('div');
+    primaryGrid.className = 'checkbox-grid';
+    for (const attr of PRIMARY_BOOL_ATTRS) makeBoolCheckbox(attr, primaryGrid);
+    wrapper.appendChild(primaryGrid);
+
+    const toggle = document.createElement('button');
+    toggle.className = 'add-btn';
+    toggle.textContent = '+ More attributes...';
+    toggle.style.marginTop = '4px';
+    wrapper.appendChild(toggle);
+
+    const secondaryGrid = document.createElement('div');
+    secondaryGrid.className = 'checkbox-grid';
+    secondaryGrid.style.display = 'none';
+    secondaryGrid.style.marginTop = '6px';
+    for (const attr of SECONDARY_BOOL_ATTRS) makeBoolCheckbox(attr, secondaryGrid);
+    wrapper.appendChild(secondaryGrid);
+
+    toggle.addEventListener('click', () => {
+        const open = secondaryGrid.style.display !== 'none';
+        secondaryGrid.style.display = open ? 'none' : 'grid';
+        toggle.textContent = open ? '+ More attributes...' : '- Fewer attributes';
+    });
 }
 
 function initTypedAttrs() {
@@ -1376,6 +1444,10 @@ function clearForm() {
     document.querySelector('input[name="defaultFacing"][value="left"]').checked = true;
 
     for (const attr of BOOL_ATTRS) document.getElementById('attr-' + attr).checked = false;
+    const secGrid = document.getElementById('bool-attrs').querySelector('.checkbox-grid:last-of-type');
+    const secToggle = document.getElementById('bool-attrs').querySelector('.add-btn');
+    if (secGrid) secGrid.style.display = 'none';
+    if (secToggle) secToggle.textContent = '+ More attributes...';
     for (const ta of TYPED_ATTRS) {
         const el = document.getElementById('attr-' + ta.key);
         if (el) el.value = ta.type === 'color' ? '#ffffff' : '';
@@ -1408,7 +1480,6 @@ function clearForm() {
     document.getElementById('f-lifetime').value = '';
     document.getElementById('f-damage_per_turn').value = '';
     document.getElementById('f-spread_chance').value = '';
-    document.getElementById('f-remains').value = '';
 
     updateConditionalSections();
 }
@@ -1461,8 +1532,16 @@ function populateForm(key, data) {
 
     // Attributes
     const attrs = data.attributes || {};
+    let hasSecondary = false;
     for (const attr of BOOL_ATTRS) {
         document.getElementById('attr-' + attr).checked = !!attrs[attr];
+        if (attrs[attr] && SECONDARY_BOOL_ATTRS.includes(attr)) hasSecondary = true;
+    }
+    const secGrid = document.getElementById('bool-attrs').querySelector('.checkbox-grid:last-of-type');
+    const secToggle = document.getElementById('bool-attrs').querySelector('.add-btn');
+    if (secGrid && secToggle) {
+        secGrid.style.display = hasSecondary ? 'grid' : 'none';
+        secToggle.textContent = hasSecondary ? '- Fewer attributes' : '+ More attributes...';
     }
     const knownKeys = new Set([...BOOL_ATTRS, ...TYPED_ATTRS.map(t => t.key)]);
     for (const ta of TYPED_ATTRS) {
@@ -1538,7 +1617,6 @@ function populateForm(key, data) {
     document.getElementById('f-lifetime').value = data.lifetime || '';
     document.getElementById('f-damage_per_turn').value = data.damage_per_turn || '';
     document.getElementById('f-spread_chance').value = data.spread_chance || '';
-    document.getElementById('f-remains').value = data.remains || '';
 
     updateConditionalSections();
     updatePreview();
@@ -1721,8 +1799,6 @@ function readForm() {
     if (!isNaN(dpt) && dpt !== 0) obj.damage_per_turn = dpt;
     const sc = parseFloat(document.getElementById('f-spread_chance').value);
     if (!isNaN(sc) && sc > 0) obj.spread_chance = sc;
-    const rem = document.getElementById('f-remains').value.trim();
-    if (rem) obj.remains = rem;
 
     return obj;
 }

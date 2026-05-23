@@ -754,6 +754,7 @@
     "tileIndexBase": "IMPERFECT_DOTTED_WHITE_SHADE",
     "tileIndexTop": "BLANK",
     "tint": "#33AA77",
+    "lightRadius": 2,
     "attributes": {
       "solid": false,
       "flammable": true,
@@ -762,8 +763,6 @@
       "paint_tile": "BLACK_SPADE_SUITE",
       "mass_noun": true,
       "light_source": true,
-      "light_radius": 2,
-      "light_color": "#225544",
       "entry_sound": "step_mud"
     }
   },
@@ -1247,7 +1246,7 @@
     "tint": "#C4A035",
     "flipTopH": true,
     "personality": "aggressive_melee",
-    "remains": "meat",
+    "vision_range": 10,
     "death_sound": "hit",
     "collision_effect": {
       "health": -2
@@ -1259,8 +1258,8 @@
       "sighted": true,
       "sentient": true,
       "pack": true,
-      "vision_range": 10,
       "inventory": 0,
+      "remains": "meat",
       "accuracy": 80,
       "defense": 5,
       "strength": 3
@@ -1503,7 +1502,7 @@
       "sentient": true,
       "accuracy": 60,
       "defense": 6,
-      "fireproof": true,
+      "fire_immune": true,
       "light_source": true,
       "remains": "skull"
     },
@@ -1532,29 +1531,31 @@
       "health": 6
     }
   },
-  "name": "illusionist",
-  "description": "A shimmering cloaked figure, light seems to bend around it.",
-  "tileIndexBase": "LEG",
-  "tileIndexTop": "OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE",
-  "flipTopH": true,
-  "tint": "#CC77FF",
-  "flickerTint": true,
-  "lightRadius": 1,
-  "personality": "illusionist",
-  "collision_effect": {
-    "health": -4
-  },
-  "collision_sound": "hit",
-  "death_sound": "ouch",
-  "attributes": {
-    "hostile": true,
-    "sentient": true,
-    "sighted": true,
-    "accuracy": 55,
-    "defense": 8,
-    "light_radius": 1,
-    "remains": "skull",
-    "light_color": "#f1c9fe"
+  "illusionist": {
+    "name": "illusionist",
+    "description": "A shimmering cloaked figure, light seems to bend around it.",
+    "tileIndexBase": "LEG",
+    "tileIndexTop": "OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE",
+    "flipTopH": true,
+    "tint": "#CC77FF",
+    "flickerTint": true,
+    "lightRadius": 1,
+    "personality": "illusionist",
+    "collision_effect": {
+      "health": -4
+    },
+    "collision_sound": "hit",
+    "death_sound": "ouch",
+    "attributes": {
+      "hostile": true,
+      "sentient": true,
+      "sighted": true,
+      "accuracy": 55,
+      "defense": 8,
+      "remains": "skull",
+      "light_source": true
+    },
+    "stats": { "health": 30 }
   },
   "illusion": {
     "name": "illusionist",
@@ -1572,9 +1573,7 @@
       "sentient": true,
       "accuracy": 0,
       "defense": 0,
-      "opaque": false,
-      "light_radius": 1,
-      "light_color": "#f1c9fe"
+      "opaque": false
     },
     "stats": { "health": 1 }
   }
