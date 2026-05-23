@@ -1351,8 +1351,9 @@ class DungeonEngine {
         this.mapManager = new Architect();
         this.mapManager.deserializeMap(saved.map);
 
-        // Viewport setup
-        const mechanics = prototypeConfig.mechanics || {};
+        // Viewport setup — use floor-specific mechanics (includes ambient_light, etc.)
+        const floorConfig = this.getFloorConfig(floor);
+        const mechanics = floorConfig.mechanics || prototypeConfig.mechanics || {};
         const vpW = mechanics.viewport_width || null;
         const vpH = mechanics.viewport_height || null;
 
@@ -1394,7 +1395,7 @@ class DungeonEngine {
             this.snapViewportToTile(this.entityManager.player.x, this.entityManager.player.y);
         }
 
-        if (!prototypeConfig.mechanics?.darkness) {
+        if (!mechanics.darkness) {
             this.interfaceManager?.updateSidebar();
         }
 
@@ -1402,12 +1403,12 @@ class DungeonEngine {
             actor.updateSubmersionState();
         }
 
-        if (prototypeConfig.mechanics?.darkness) {
+        if (mechanics.darkness) {
             this.lightingManager = new LightingManager(this);
             this.lightingManager.initialize(
                 this.mapManager.width,
                 this.mapManager.height,
-                prototypeConfig.mechanics
+                mechanics
             );
             this.renderer.initializeDarkness(this.mapManager.width, this.mapManager.height);
             this.updateLighting();
