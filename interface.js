@@ -1274,9 +1274,21 @@ class InterfaceManager {
                 );
                 const target = enchantable[idx];
                 if (target) {
-                    target.enchantment = (target.enchantment || 0) + 1;
+                    const chargeStat = target.getAttribute('charge_stat');
+                    const cStat = chargeStat ? target.stats?.[chargeStat] : null;
                     const revealed = target.getDisplayName ? target.getDisplayName() : target.name;
-                    this.engine.inputManager?.showMessage(`Your ${revealed} glows brightly!`);
+
+                    if (cStat && cStat.per_turn === 0) {
+                        const uses = target.getAttribute('uses') || 1;
+                        const useCost = cStat.ready_at || Math.floor(cStat.max / uses);
+                        cStat.max += useCost;
+                        cStat.current += useCost;
+                        target.setAttribute('uses', uses + 1);
+                        this.engine.inputManager?.showMessage(`Your ${revealed} surges with new energy!`);
+                    } else {
+                        target.enchantment = (target.enchantment || 0) + 1;
+                        this.engine.inputManager?.showMessage(`Your ${revealed} glows brightly!`);
+                    }
                     this.engine.inputManager?.showMessage('The scroll dissolves into ashes.');
                     this.engine.playSound?.('tap1');
                     if (caster && scroll) {

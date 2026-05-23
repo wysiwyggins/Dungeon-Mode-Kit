@@ -1,0 +1,2394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Item Editor — Dungeon Mode Kit</title>
+<style>
+:root {
+    --bg: #fffdf8;
+    --bg2: #c1dcd8;
+    --bg3: #f3ffd9;
+    --surface: #ffffff;
+    --border: rgb(55, 55, 55);
+    --text: #161616;
+    --text-dim: rgb(60, 60, 60);
+    --accent: #003a4c;
+    --accent2: #7a0014;
+    --input-bg: #eeeeee;
+    --tile-w: 40;
+    --tile-h: 30;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    overflow-x: hidden;
+}
+a { color: var(--accent); }
+
+header {
+    background: var(--bg2);
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+header h1 { font-size: 16px; color: var(--accent); margin-right: 12px; }
+header label { color: var(--text-dim); font-size: 12px; }
+header select, header button {
+    background: var(--input-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 4px 8px;
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}
+header select:focus, header button:focus { outline: 1px solid var(--accent); }
+header button:hover { background: var(--bg3); }
+.btn-accent { background: var(--bg3) !important; border-color: var(--accent) !important; color: var(--accent) !important; }
+.btn-accent:hover { background: var(--accent) !important; color: var(--bg) !important; }
+
+#workspace {
+    display: flex;
+    height: calc(100vh - 90px);
+}
+
+#preview-panel {
+    width: 220px;
+    min-width: 220px;
+    padding: 12px;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    background: var(--bg2);
+}
+#preview-panel h3 { font-size: 12px; color: var(--accent); margin-bottom: 8px; }
+#preview-canvas { background: #d0cfc8; border: 1px solid var(--border); display: block; margin-bottom: 12px; image-rendering: pixelated; }
+.preview-label { font-size: 10px; color: var(--text-dim); margin-top: 8px; margin-bottom: 2px; }
+.preview-tile { display: inline-block; border: 1px solid var(--border); margin-right: 4px; image-rendering: pixelated; background: #d0cfc8; }
+
+#form-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+}
+
+details.section {
+    border: 1px solid var(--border);
+    margin-bottom: 8px;
+    background: var(--surface);
+}
+details.section > summary {
+    cursor: pointer;
+    padding: 8px 12px;
+    font-weight: bold;
+    font-size: 12px;
+    color: var(--accent);
+    background: var(--bg2);
+    user-select: none;
+    list-style: none;
+}
+details.section > summary::before { content: '+ '; }
+details.section[open] > summary::before { content: '- '; }
+details.section > .section-body { padding: 10px 12px; }
+
+.field-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+.field-row label {
+    min-width: 150px;
+    font-size: 11px;
+    color: var(--text-dim);
+}
+.field-row input[type="text"],
+.field-row input[type="number"],
+.field-row textarea,
+.field-row select {
+    background: var(--input-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 3px 6px;
+    font-family: inherit;
+    font-size: 12px;
+    flex: 1;
+    min-width: 0;
+}
+.field-row input[type="number"] { width: 100px; min-width: 100px; flex: 0; }
+.field-row input[type="color"] {
+    width: 40px; height: 24px; padding: 0; border: 1px solid var(--border);
+    background: var(--input-bg); cursor: pointer;
+}
+.field-row textarea { resize: vertical; min-height: 40px; }
+.field-row input:focus, .field-row select:focus, .field-row textarea:focus { outline: 1px solid var(--accent); }
+
+.checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 3px 8px;
+    margin-bottom: 10px;
+}
+.checkbox-grid label {
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    color: var(--text);
+    min-width: unset;
+}
+.checkbox-grid input[type="checkbox"] { accent-color: var(--accent); }
+
+.tile-slot {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 4px;
+    border: 1px dashed var(--border);
+    margin-bottom: 6px;
+    min-height: 38px;
+}
+.tile-slot:hover { border-color: var(--accent); }
+.tile-slot canvas {
+    image-rendering: pixelated;
+    background: #d0cfc8;
+    display: block;
+}
+.tile-slot .tile-name { font-size: 10px; color: var(--text-dim); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile-slot .clear-btn {
+    font-size: 10px;
+    color: var(--accent2);
+    cursor: pointer;
+    padding: 2px 4px;
+    border: 1px solid var(--accent2);
+    background: none;
+}
+
+.dynamic-list .list-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+.dynamic-list .list-item input, .dynamic-list .list-item select { flex: 1; }
+.remove-btn {
+    font-size: 10px; color: var(--accent2); cursor: pointer; background: none;
+    border: 1px solid var(--accent2); padding: 1px 6px; font-family: inherit;
+}
+.remove-btn:hover { background: var(--accent2); color: #fff; }
+.add-btn {
+    font-size: 11px; color: var(--accent); cursor: pointer; background: none;
+    border: 1px solid var(--accent); padding: 2px 8px; margin-top: 4px; font-family: inherit;
+}
+.add-btn:hover { background: var(--accent); color: var(--bg); }
+
+.sub-section { border-left: 2px solid var(--border); padding-left: 10px; margin: 6px 0; }
+.sub-section-title { font-size: 11px; color: var(--accent); margin-bottom: 4px; }
+
+#json-output-panel {
+    border-top: 1px solid var(--border);
+    background: var(--bg2);
+    padding: 8px 16px;
+    display: flex;
+    flex-direction: column;
+    max-height: 300px;
+}
+#json-output-panel .output-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+#json-output-panel h3 { font-size: 12px; color: var(--accent); }
+#json-output {
+    background: #111;
+    color: #0f8;
+    border: 1px solid var(--border);
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    padding: 8px;
+    flex: 1;
+    resize: vertical;
+    white-space: pre;
+    overflow: auto;
+    tab-size: 2;
+}
+
+/* Tile picker modal */
+#tile-picker-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 1000;
+    justify-content: center;
+    align-items: flex-start;
+    padding-top: 30px;
+}
+#tile-picker-overlay.active { display: flex; }
+#tile-picker {
+    background: var(--bg2);
+    border: 1px solid var(--accent);
+    padding: 12px;
+    max-height: 90vh;
+    overflow-y: auto;
+    width: fit-content;
+}
+#tile-picker-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+#tile-picker-header input {
+    background: var(--input-bg); color: var(--text); border: 1px solid var(--border);
+    padding: 4px 8px; font-family: inherit; font-size: 12px; width: 250px;
+}
+#tile-picker-header button {
+    background: var(--input-bg); color: var(--text); border: 1px solid var(--border);
+    padding: 4px 10px; cursor: pointer; font-family: inherit; font-size: 12px;
+}
+#tile-picker-target { font-size: 11px; color: var(--accent); }
+#tile-picker-canvas { cursor: crosshair; image-rendering: pixelated; display: block; }
+#tile-picker-tooltip {
+    position: fixed;
+    background: var(--bg);
+    color: var(--accent);
+    padding: 3px 8px;
+    font-size: 11px;
+    border: 1px solid var(--accent);
+    pointer-events: none;
+    display: none;
+    z-index: 1001;
+    white-space: nowrap;
+    max-width: 400px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stat-advanced { display: none; }
+.stat-advanced.visible { display: block; }
+
+.hidden { display: none !important; }
+.conditional-section { display: none; }
+.conditional-section.visible { display: block; }
+
+.field-inline { display: inline-flex; align-items: center; gap: 4px; margin-right: 12px; }
+.field-inline label { min-width: unset; }
+
+#item-key-field { font-size: 12px; color: var(--accent); }
+
+#item-filter-wrap {
+    position: relative;
+    display: inline-block;
+}
+#item-filter {
+    background: var(--input-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 4px 8px;
+    font-family: inherit;
+    font-size: 12px;
+    width: 180px;
+}
+#item-filter:focus { outline: 1px solid var(--accent); }
+#item-filter-results {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 320px;
+    max-height: 300px;
+    overflow-y: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    z-index: 100;
+    font-size: 11px;
+}
+#item-filter-results.active { display: block; }
+#item-filter-results .filter-item {
+    padding: 4px 8px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+}
+#item-filter-results .filter-item:hover { background: var(--bg3); }
+#item-filter-results .filter-item .filter-cat {
+    color: var(--text-dim);
+    font-size: 10px;
+}
+
+#typed-attrs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+}
+#typed-attrs .field-row {
+    flex: 0 0 calc(50% - 8px);
+    min-width: 220px;
+}
+</style>
+</head>
+<body>
+
+<header>
+    <h1>Item Editor</h1>
+    <label>Item:
+        <select id="item-select" style="min-width:220px"></select>
+    </label>
+    <div id="item-filter-wrap">
+        <input type="text" id="item-filter" placeholder="Search items...">
+        <div id="item-filter-results"></div>
+    </div>
+    <button id="btn-duplicate">Duplicate</button>
+    <label>Template:
+        <select id="template-select">
+            <option value="">— new from template —</option>
+            <option value="weapon">Weapon</option>
+            <option value="potion">Potion</option>
+            <option value="scroll">Scroll</option>
+            <option value="ring">Ring</option>
+            <option value="staff">Staff</option>
+            <option value="wand">Wand</option>
+            <option value="armor">Armor</option>
+            <option value="food">Food</option>
+        </select>
+    </label>
+    <button id="btn-new">New Blank</button>
+    <button id="btn-export" class="btn-accent">Export JSON</button>
+    <button id="btn-copy" class="btn-accent">Copy to Clipboard</button>
+</header>
+
+<div id="workspace">
+    <aside id="preview-panel">
+        <h3>Preview</h3>
+        <canvas id="preview-canvas" width="200" height="200"></canvas>
+        <div class="preview-label">Tile</div>
+        <canvas class="preview-tile" id="preview-tile" width="80" height="60"></canvas>
+    </aside>
+
+    <div id="form-panel">
+        <!-- Identity -->
+        <details class="section" open>
+            <summary>Identity</summary>
+            <div class="section-body">
+                <div class="field-row">
+                    <label>Item Key</label>
+                    <input type="text" id="item-key" placeholder="e.g. health_potion">
+                </div>
+                <div class="field-row">
+                    <label>Name</label>
+                    <input type="text" id="f-name" placeholder="Display name">
+                </div>
+                <div class="field-row">
+                    <label>Description</label>
+                    <textarea id="f-description" rows="2" placeholder="Flavor text (in attributes)"></textarea>
+                </div>
+                <div class="field-row">
+                    <label style="min-width:unset"><input type="checkbox" id="f-identified"> Identified by default</label>
+                </div>
+                <div class="field-row">
+                    <label>Unidentified Template</label>
+                    <input type="text" id="f-unidentified_template" placeholder="[color] potion">
+                </div>
+                <div class="field-row">
+                    <label>Identified Template</label>
+                    <input type="text" id="f-identified_template" placeholder="Aqua Vita">
+                </div>
+                <div class="field-row">
+                    <label>Effect Description</label>
+                    <input type="text" id="f-effect_description" placeholder="Shown when identified">
+                </div>
+            </div>
+        </details>
+
+        <!-- Appearance -->
+        <details class="section" open>
+            <summary>Appearance</summary>
+            <div class="section-body">
+                <div class="field-row"><label>Tile</label>
+                    <div class="tile-slot" data-target="tileIndex"><canvas width="40" height="30"></canvas><span class="tile-name">—</span><button class="clear-btn" title="Clear">x</button></div>
+                </div>
+                <div class="field-row">
+                    <label>Tint</label>
+                    <input type="color" id="f-tint" value="#ffffff">
+                    <input type="text" id="f-tint-hex" value="" placeholder="#rrggbb" style="width:80px">
+                </div>
+                <div class="field-row">
+                    <label style="min-width:unset"><input type="checkbox" id="f-flipH"> Flip H</label>
+                    <label style="min-width:unset"><input type="checkbox" id="f-flipV"> Flip V</label>
+                </div>
+                <div class="field-row">
+                    <label style="min-width:unset"><input type="checkbox" id="f-random_color"> Random color</label>
+                    <label style="min-width:unset"><input type="checkbox" id="f-random_glyph_name"> Random glyph name</label>
+                </div>
+                <div class="field-row">
+                    <label style="min-width:unset"><input type="checkbox" id="f-flickerTint"> Flicker tint</label>
+                    <label style="min-width:unset"><input type="checkbox" id="f-ignore_darkness"> Ignore darkness</label>
+                </div>
+            </div>
+        </details>
+
+        <!-- Attributes (boolean) -->
+        <details class="section" open>
+            <summary>Attributes</summary>
+            <div class="section-body">
+                <div id="bool-attrs"></div>
+                <div style="margin: 8px 0 4px; font-size:11px; color:var(--accent)">Typed Attributes</div>
+                <div id="typed-attrs"></div>
+                <div style="margin: 8px 0 4px; font-size:11px; color:var(--accent)">Custom Attributes</div>
+                <div id="custom-attrs" class="dynamic-list"></div>
+                <button class="add-btn" id="btn-add-custom-attr">+ Add Custom Attribute</button>
+            </div>
+        </details>
+
+        <!-- Combat / Weapon -->
+        <details class="section">
+            <summary>Combat / Weapon</summary>
+            <div class="section-body">
+                <div style="font-size:10px; color:var(--text-dim); margin-bottom:8px; line-height:1.4">
+                    Collision effect fires when the wielder attacks with this weapon, or when a non-weapon item hits something (e.g. a key unlocking a door sets locked: false).
+                </div>
+                <div class="sub-section-title">Collision Effect</div>
+                <div class="field-row">
+                    <label>Health</label>
+                    <input type="text" id="f-ce-health" placeholder='-10 or "-{strength}"'>
+                </div>
+                <div class="field-row">
+                    <label>Apply State</label>
+                    <input type="text" id="f-ce-apply_state" placeholder="poisoned, burning, etc.">
+                </div>
+                <div class="field-row">
+                    <label>Locked</label>
+                    <select id="f-ce-locked"><option value="">—</option><option value="false">false</option><option value="true">true</option></select>
+                </div>
+                <div class="field-row">
+                    <label>Collision Sound</label>
+                    <input type="text" id="f-collision_sound" placeholder="hit, tap2...">
+                </div>
+                <div class="field-row">
+                    <label>Collision Description</label>
+                    <input type="text" id="f-collision_description" placeholder="[actor_name] strikes...">
+                </div>
+                <div class="field-row">
+                    <label>Attack Sound</label>
+                    <input type="text" id="f-attack_sound" placeholder="bow">
+                </div>
+
+                <div class="sub-section-title" style="margin-top:8px">Attack Style</div>
+                <div class="field-row">
+                    <label>Style</label>
+                    <select id="f-attack_style">
+                        <option value="">— none —</option>
+                        <option value="lunge">lunge</option>
+                        <option value="sweep">sweep</option>
+                        <option value="penetrate">penetrate</option>
+                    </select>
+                </div>
+                <div class="field-row">
+                    <label>Lunge Range</label>
+                    <input type="number" id="f-lunge_range" min="1" value="">
+                </div>
+                <div class="field-row">
+                    <label>Sweep Depth</label>
+                    <input type="number" id="f-sweep_depth" min="1" value="">
+                </div>
+                <div class="field-row">
+                    <label>Penetrate Depth</label>
+                    <input type="number" id="f-penetrate_depth" min="1" value="">
+                </div>
+
+                <div class="sub-section-title" style="margin-top:8px">Weapon Proc</div>
+                <div class="field-row">
+                    <label>Proc Type</label>
+                    <select id="f-weapon_proc">
+                        <option value="">— none —</option>
+                        <option value="knockback">knockback</option>
+                        <option value="critical">critical</option>
+                    </select>
+                </div>
+                <div class="field-row">
+                    <label>Knockback Distance</label>
+                    <input type="number" id="f-knockback_distance" min="1" value="">
+                </div>
+                <div class="field-row">
+                    <label>Critical Chance (%)</label>
+                    <input type="number" id="f-critical_chance" min="0" max="100" value="">
+                </div>
+            </div>
+        </details>
+
+        <!-- Equipment -->
+        <details class="section">
+            <summary>Equipment</summary>
+            <div class="section-body">
+                <div style="font-size:10px; color:var(--text-dim); margin-bottom:8px; line-height:1.4">
+                    Items with <b>weapon</b> checked equip to the weapon slot. Items with a <b>wearable slot</b> equip to that armor slot.
+                    These are mutually exclusive — the engine checks weapon first. Weapons and armor can both have <b>wear_effect</b> stat bonuses and <b>enchantment</b>.
+                </div>
+                <div class="field-row">
+                    <label>Wearable Slot</label>
+                    <select id="f-wearable">
+                        <option value="">— not wearable —</option>
+                        <option value="top">top (head)</option>
+                        <option value="middle">middle (body)</option>
+                        <option value="lower">lower (legs)</option>
+                        <option value="ring">ring</option>
+                    </select>
+                </div>
+                <div style="margin: 6px 0 4px; font-size:11px; color:var(--accent)">Wear Effect (stat bonuses when equipped)</div>
+                <div id="wear-effects-list" class="dynamic-list"></div>
+                <button class="add-btn" id="btn-add-wear-effect">+ Add Wear Effect</button>
+
+                <div style="margin: 8px 0 4px; font-size:11px; color:var(--accent)">Requires Stat (minimum to equip)</div>
+                <div id="requires-stat-list" class="dynamic-list"></div>
+                <button class="add-btn" id="btn-add-requires-stat">+ Add Requirement</button>
+
+                <div class="field-row" style="margin-top:8px">
+                    <label style="min-width:unset"><input type="checkbox" id="f-enchantable"> Enchantable</label>
+                </div>
+                <div class="field-row">
+                    <label>Enchant Range</label>
+                    <input type="number" id="f-enchant_min" placeholder="min" style="width:60px"> to
+                    <input type="number" id="f-enchant_max" placeholder="max" style="width:60px">
+                </div>
+            </div>
+        </details>
+
+        <!-- Use Effect -->
+        <details class="section">
+            <summary>Use Effect</summary>
+            <div class="section-body">
+                <div style="font-size:10px; color:var(--text-dim); margin-bottom:8px; line-height:1.4">
+                    Items with a <b>use_verb</b> appear in the Use menu. The effect can be a <b>string</b> (built-in action) or an <b>object</b> (stat/state changes).
+                    Set <b>consumable</b> in Attributes to destroy the item after use. Set <b>deferred</b> when the player must pick a target before the effect fires.
+                </div>
+                <div class="field-row">
+                    <label>Use Verb</label>
+                    <input type="text" id="f-use_verb" placeholder="Drink, Read, Eat, Zap, Jam...">
+                </div>
+
+                <div style="margin: 8px 0 4px; font-size:11px; color:var(--accent)">Use Effect — pick one</div>
+                <div class="field-row">
+                    <label>String effect</label>
+                    <select id="f-use_effect_string">
+                        <option value="">— none (use object below) —</option>
+                        <option value="targeted_spell">targeted_spell (aim + fire projectile)</option>
+                        <option value="toggle_torch">toggle_torch (light/extinguish)</option>
+                        <option value="teleport">teleport (random location)</option>
+                        <option value="identify_item">identify_item (pick item to ID)</option>
+                        <option value="enchant_item">enchant_item (pick item to enchant)</option>
+                        <option value="remove_curse">remove_curse (uncurse equipment)</option>
+                        <option value="reveal_map">reveal_map (show full map)</option>
+                        <option value="aggravate_monsters">aggravate_monsters</option>
+                        <option value="summon_monsters">summon_monsters</option>
+                        <option value="recharge_items">recharge_items (refill charges)</option>
+                        <option value="shatter_walls">shatter_walls (break nearby walls)</option>
+                        <option value="remove_all_states">remove_all_states (cure all)</option>
+                        <option value="spike_door">spike_door (jam a door shut)</option>
+                    </select>
+                </div>
+                <div style="margin: 6px 0 4px; font-size:11px; color:var(--accent)">— or Object effect (stat/state modifiers) —</div>
+                <div style="font-size:10px; color:var(--text-dim); margin-bottom:4px">
+                    e.g. health: 20, apply_state: confused, strength: 2, nutrition: 500
+                </div>
+                <div id="use-effect-list" class="dynamic-list"></div>
+                <button class="add-btn" id="btn-add-use-effect">+ Add Use Effect Property</button>
+
+                <div style="margin: 10px 0 4px; font-size:11px; color:var(--accent)">Use Options</div>
+                <div class="field-row">
+                    <label>Use Sound</label>
+                    <input type="text" id="f-use_sound" placeholder="heal, swallow, magic...">
+                </div>
+                <div class="field-row">
+                    <label>Use Description</label>
+                    <textarea id="f-use_description" rows="2" placeholder="The [item_name] tastes [adjectives.yucky]."></textarea>
+                </div>
+                <div class="field-row">
+                    <label style="min-width:unset"><input type="checkbox" id="f-use_ceremony"> Ceremony (dramatic scroll reading)</label>
+                </div>
+                <div class="field-row">
+                    <label style="min-width:unset"><input type="checkbox" id="f-deferred"> Deferred (player picks target first)</label>
+                </div>
+
+                <!-- Targeted spell sub-section -->
+                <div class="conditional-section" id="targeted-spell-section">
+                    <div class="sub-section" style="margin-top:10px">
+                        <div class="sub-section-title">Targeted Spell Settings</div>
+                        <div style="font-size:10px; color:var(--text-dim); margin-bottom:6px">
+                            Used by staffs, wands, and any item with use_effect "targeted_spell".
+                            The player aims, a projectile fires, and the spell_effect triggers on hit.
+                            Charges are tracked via the Stats section below (add a "pow" stat).
+                            Staffs recharge over time (per_turn &gt; 0). Wands do not recharge (per_turn: 0) but can gain charges via enchantment.
+                        </div>
+                        <div class="field-row">
+                            <label>Charge Stat</label>
+                            <input type="text" id="f-charge_stat" placeholder="pow" title="Name of the stat that tracks charges. Usually 'pow'. Must match a stat in the Stats section.">
+                        </div>
+                        <div class="field-row">
+                            <label>Uses per Charge</label>
+                            <input type="number" id="f-uses" min="1" value="" title="How many times the item can be used per full charge. The charge cost is max/uses.">
+                        </div>
+                        <div class="field-row">
+                            <label>Spell Range</label>
+                            <input type="number" id="f-spell_range" min="1" value="" title="Max targeting distance in tiles. Leave blank for unlimited.">
+                        </div>
+                        <div class="field-row">
+                            <label>Spell Name</label>
+                            <input type="text" id="f-spell_name" placeholder="Fireball" title="Display name for the spell in UI messages.">
+                        </div>
+                        <div class="field-row">
+                            <label>Cast Sound</label>
+                            <input type="text" id="f-cast_sound" placeholder="fireball, magic, squarewave...">
+                        </div>
+                        <div style="margin: 6px 0 4px; font-size:11px; color:var(--accent)">Spell Effect (what happens on hit)</div>
+                        <div style="font-size:10px; color:var(--text-dim); margin-bottom:4px">
+                            e.g. center: intense_fire, radius: 1, outer: fire (area), or apply_state: poisoned (single target), or blink_self: true
+                        </div>
+                        <div id="spell-effect-list" class="dynamic-list"></div>
+                        <button class="add-btn" id="btn-add-spell-effect">+ Add Spell Effect Property</button>
+                        <div style="margin: 8px 0 4px; font-size:11px; color:var(--accent)">Projectile</div>
+                        <div class="field-row"><label>Projectile Tile</label>
+                            <div class="tile-slot" data-target="projectile_tile"><canvas width="40" height="30"></canvas><span class="tile-name">—</span><button class="clear-btn" title="Clear">x</button></div>
+                        </div>
+                        <div class="field-row">
+                            <label>Projectile Tint</label>
+                            <input type="color" id="f-projectile_tint" value="#ffffff">
+                            <input type="text" id="f-projectile_tint_hex" value="" placeholder="#rrggbb" style="width:80px">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </details>
+
+        <!-- Stats -->
+        <details class="section">
+            <summary>Stats</summary>
+            <div class="section-body">
+                <div id="stats-list" class="dynamic-list"></div>
+                <button class="add-btn" id="btn-add-stat">+ Add Stat</button>
+            </div>
+        </details>
+
+        <!-- Special -->
+        <details class="section">
+            <summary>Special Properties</summary>
+            <div class="section-body">
+                <div class="field-row">
+                    <label>Burns Out Item</label>
+                    <input type="text" id="f-burns_out_item" placeholder="torch_spent">
+                </div>
+                <div class="field-row">
+                    <label>Burnout Message</label>
+                    <input type="text" id="f-burnout_message" placeholder="Your torch burns out.">
+                </div>
+                <div class="field-row">
+                    <label>Break Sound</label>
+                    <input type="text" id="f-break_sound" placeholder="glass, shatter...">
+                </div>
+                <div class="field-row">
+                    <label>Breaks Into</label>
+                    <input type="text" id="f-breaks_into" placeholder="item type key">
+                </div>
+                <div class="field-row">
+                    <label>Explode Sound</label>
+                    <input type="text" id="f-explode_sound" placeholder="gas, fireball...">
+                </div>
+                <div class="field-row">
+                    <label>Explosion Radius</label>
+                    <input type="number" id="f-explosion_radius" min="0" value="">
+                </div>
+                <div class="field-row">
+                    <label>Pickup Sound</label>
+                    <input type="text" id="f-pickup_sound" placeholder="pickup">
+                </div>
+                <div class="field-row">
+                    <label>Mining Power</label>
+                    <input type="number" id="f-mining_power" min="0" value="">
+                </div>
+                <div class="field-row">
+                    <label>Lock Color</label>
+                    <input type="text" id="f-lock_color" placeholder="red, blue...">
+                </div>
+                <div class="field-row">
+                    <label>Random Value</label>
+                    <input type="number" id="f-random_value_min" placeholder="min" style="width:60px"> to
+                    <input type="number" id="f-random_value_max" placeholder="max" style="width:60px">
+                </div>
+                <div style="margin: 6px 0 4px; font-size:11px; color:var(--accent)">Pickup Effect</div>
+                <div id="pickup-effect-list" class="dynamic-list"></div>
+                <button class="add-btn" id="btn-add-pickup-effect">+ Add Pickup Effect</button>
+            </div>
+        </details>
+
+        <!-- Random Type -->
+        <details class="section">
+            <summary>Random Type Pool</summary>
+            <div class="section-body">
+                <div style="font-size:11px; color:var(--text-dim); margin-bottom:6px">If this item is a random category (e.g. "potion", "weapon"), list the possible item types here. All other fields will be ignored.</div>
+                <div id="random-type-list" class="dynamic-list"></div>
+                <button class="add-btn" id="btn-add-random-type">+ Add Type</button>
+            </div>
+        </details>
+    </div>
+</div>
+
+<div id="json-output-panel">
+    <div class="output-header">
+        <h3>JSON Output</h3>
+        <span id="item-key-field"></span>
+    </div>
+    <textarea id="json-output" readonly rows="8"></textarea>
+</div>
+
+<!-- Tile picker modal -->
+<div id="tile-picker-overlay">
+    <div id="tile-picker">
+        <div id="tile-picker-header">
+            <span id="tile-picker-target">Selecting: —</span>
+            <input type="text" id="tile-picker-search" placeholder="Search tile name...">
+            <button id="tile-picker-none">None / Blank</button>
+            <button id="tile-picker-close">Close</button>
+        </div>
+        <canvas id="tile-picker-canvas"></canvas>
+    </div>
+</div>
+<div id="tile-picker-tooltip"></div>
+
+<script>
+let TILE_W = 40, TILE_H = 30, SS_COLS = 23, SS_ROWS = 17;
+const SCALE = 4;
+const SPRITESHEET_PATH = 'assets/sprites/static-tiles.png';
+const TILE_DATA_PATH = 'data/static-tiles.json';
+
+const PRIMARY_BOOL_ATTRS = [
+    'pickupable','visible','stackable','consumable','flammable','weapon',
+    'breakable','explosive','light_source','key'
+];
+const SECONDARY_BOOL_ATTRS = [
+    'ignites','fire_explosion','mining','drop','deferred',
+    'use_ceremony','random_effect','treasure_loot','tint_variation'
+];
+const BOOL_ATTRS = [...PRIMARY_BOOL_ATTRS, ...SECONDARY_BOOL_ATTRS];
+
+const BOOL_HINTS = {
+    pickupable: 'Can be picked up by actors.',
+    visible: 'Drawn as a sprite on the ground.',
+    stackable: 'Multiple items merge into a stack in inventory.',
+    consumable: 'Destroyed when used.',
+    flammable: 'Can catch fire.',
+    weapon: 'Can be wielded as a weapon.',
+    breakable: 'Can be shattered by impact.',
+    explosive: 'Explodes when broken or thrown.',
+    light_source: 'Emits light while held/worn.',
+    key: 'Opens locked doors (consumed on use).',
+    ignites: 'Sets flammable things on fire.',
+    fire_explosion: 'Explosion is fire-type.',
+    mining: 'Can break through walls.',
+    drop: 'Set to false to prevent dropping.',
+    deferred: 'Use effect requires target selection.',
+    use_ceremony: 'Show ceremonial use text (scrolls).',
+    random_effect: 'Generate a random beneficial/harmful effect.',
+    treasure_loot: 'Spawns in treasure/loot pools.',
+    tint_variation: 'Applies subtle random tint variation.'
+};
+
+const TYPED_ATTRS = [
+    { key: 'lightRadius', type: 'number', label: 'Light Radius', hint: 'Radius of emitted light. Requires light_source.' },
+];
+
+const TILE_FIELDS = ['tileIndex', 'projectile_tile'];
+
+let state = {
+    tileMap: {},
+    reverseTileMap: {},
+    tileNames: [],
+    spritesheetImg: null,
+    items: {},
+    currentTiles: {},
+    activeTileTarget: null,
+    highlightedTiles: null
+};
+
+// ---- Data loading ----
+
+async function fetchJSON(url) {
+    try {
+        const r = await fetch(url);
+        if (!r.ok) return {};
+        const text = await r.text();
+        if (!text.trim()) return {};
+        return JSON.parse(text);
+    } catch { return {}; }
+}
+
+function loadSpritesheet() {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            state.spritesheetImg = img;
+            SS_ROWS = Math.ceil(img.height / TILE_H);
+            SS_COLS = Math.ceil(img.width / TILE_W);
+            resolve();
+        };
+        img.onerror = () => resolve();
+        img.src = SPRITESHEET_PATH;
+    });
+}
+
+async function loadBaseData() {
+    const [tilesData, items] = await Promise.all([
+        fetchJSON(TILE_DATA_PATH),
+        fetchJSON('data/items.json'),
+    ]);
+    TILE_W = tilesData.tilePixelWidth || TILE_W;
+    TILE_H = tilesData.tilePixelHeight || TILE_H;
+    state.tileMap = tilesData.tiles || {};
+    state.items = items;
+
+    state.tileNames = Object.keys(state.tileMap).sort();
+    state.reverseTileMap = {};
+    for (const [name, coords] of Object.entries(state.tileMap)) {
+        const key = coords[0] + ',' + coords[1];
+        if (!state.reverseTileMap[key]) state.reverseTileMap[key] = [];
+        state.reverseTileMap[key].push(name);
+    }
+}
+
+// ---- Dropdown ----
+
+function populateItemDropdown() {
+    const sel = document.getElementById('item-select');
+    const prev = sel.value;
+    sel.innerHTML = '';
+
+    // Group items by category
+    const groups = {};
+    const keys = Object.keys(state.items).sort();
+    for (const k of keys) {
+        const cat = getItemCategory(state.items[k]);
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push(k);
+    }
+
+    const catOrder = ['weapon', 'armor', 'ring', 'potion', 'scroll', 'staff', 'wand', 'food', 'consumable', 'key', 'light', 'misc', 'pool'];
+    for (const cat of catOrder) {
+        if (!groups[cat]) continue;
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = cat.toUpperCase() + ` (${groups[cat].length})`;
+        for (const k of groups[cat]) {
+            const opt = document.createElement('option');
+            opt.value = k;
+            const item = state.items[k];
+            const display = item.name || (item.random_type ? 'random pool' : k);
+            opt.textContent = `${k} (${display})`;
+            optgroup.appendChild(opt);
+        }
+        sel.appendChild(optgroup);
+    }
+
+    if (keys.includes(prev)) sel.value = prev;
+    else if (keys.length) sel.value = keys[0];
+}
+
+// ---- Tile drawing ----
+
+function resolveTile(ref) {
+    if (!ref || ref === 'BLANK' || ref === 'NULL') return null;
+    if (typeof ref === 'string') {
+        const coords = state.tileMap[ref];
+        if (!coords) return null;
+        return { x: coords[0], y: coords[1] };
+    }
+    if (typeof ref === 'object' && ref.x !== undefined) return ref;
+    return null;
+}
+
+function drawTileOnCanvas(canvas, tileRef, tintColor, flipH, flipV, scale) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    const coords = resolveTile(tileRef);
+    if (!coords || !state.spritesheetImg) return;
+
+    scale = scale || (w / TILE_W);
+    const dw = TILE_W * scale, dh = TILE_H * scale;
+
+    const offscreen = document.createElement('canvas');
+    offscreen.width = TILE_W;
+    offscreen.height = TILE_H;
+    const octx = offscreen.getContext('2d');
+
+    octx.save();
+    if (flipH) { octx.translate(TILE_W, 0); octx.scale(-1, 1); }
+    if (flipV) { octx.translate(0, TILE_H); octx.scale(1, -1); }
+    octx.drawImage(state.spritesheetImg, coords.x * TILE_W, coords.y * TILE_H, TILE_W, TILE_H, 0, 0, TILE_W, TILE_H);
+    octx.restore();
+
+    if (tintColor && tintColor !== '#ffffff') {
+        octx.globalCompositeOperation = 'multiply';
+        octx.fillStyle = tintColor;
+        octx.fillRect(0, 0, TILE_W, TILE_H);
+        octx.globalCompositeOperation = 'destination-in';
+        octx.save();
+        if (flipH) { octx.translate(TILE_W, 0); octx.scale(-1, 1); }
+        if (flipV) { octx.translate(0, TILE_H); octx.scale(1, -1); }
+        octx.drawImage(state.spritesheetImg, coords.x * TILE_W, coords.y * TILE_H, TILE_W, TILE_H, 0, 0, TILE_W, TILE_H);
+        octx.restore();
+    }
+
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(offscreen, 0, 0, TILE_W, TILE_H, (w - dw) / 2, (h - dh) / 2, dw, dh);
+}
+
+// ---- Tint animation helpers ----
+
+function getFlickerTint(baseTint) {
+    if (!baseTint || baseTint === '#ffffff') return baseTint;
+    const r = parseInt(baseTint.slice(1,3), 16);
+    const g = parseInt(baseTint.slice(3,5), 16);
+    const b = parseInt(baseTint.slice(5,7), 16);
+    const factor = 0.7 + Math.random() * 0.3;
+    const clamp = v => Math.min(255, Math.round(v * factor));
+    return '#' + [clamp(r), clamp(g), clamp(b)].map(v => v.toString(16).padStart(2,'0')).join('');
+}
+
+function getRippleTint(baseTint, time) {
+    if (!baseTint || baseTint === '#ffffff') return baseTint;
+    const r = parseInt(baseTint.slice(1,3), 16);
+    const g = parseInt(baseTint.slice(3,5), 16);
+    const b = parseInt(baseTint.slice(5,7), 16);
+    const wave = Math.sin(time * 0.003) * 12;
+    const clamp = v => Math.max(0, Math.min(255, Math.round(v + wave)));
+    return '#' + [clamp(r), clamp(g), clamp(b)].map(v => v.toString(16).padStart(2,'0')).join('');
+}
+
+function hasActiveAnimation() {
+    return document.getElementById('f-flickerTint').checked || document.getElementById('f-rippleTint').checked;
+}
+
+let animRAF = null;
+let animLastTick = 0;
+const ANIM_TINT_INTERVAL = 80;
+
+function animLoop(timestamp) {
+    if (timestamp - animLastTick >= ANIM_TINT_INTERVAL) {
+        animLastTick = timestamp;
+        renderPreview();
+    }
+    if (hasActiveAnimation()) {
+        animRAF = requestAnimationFrame(animLoop);
+    } else {
+        animRAF = null;
+    }
+}
+
+function startAnimLoop() {
+    if (!animRAF && hasActiveAnimation()) {
+        animRAF = requestAnimationFrame(animLoop);
+    }
+}
+
+function stopAnimLoop() {
+    if (animRAF) {
+        cancelAnimationFrame(animRAF);
+        animRAF = null;
+    }
+}
+
+// ---- Preview ----
+
+function getActiveTint() {
+    const hex = document.getElementById('f-tint-hex').value.trim() || document.getElementById('f-tint').value;
+    if (!hex || hex === '#ffffff') return null;
+    return hex;
+}
+
+function renderPreview() {
+    let tint = getActiveTint();
+    if (document.getElementById('f-flickerTint').checked) tint = getFlickerTint(tint);
+    else if (document.getElementById('f-rippleTint').checked) tint = getRippleTint(tint, performance.now());
+
+    const tile = state.currentTiles.tileIndex;
+    const flipH = document.getElementById('f-flipH').checked;
+    const flipV = document.getElementById('f-flipV').checked;
+
+    const canvas = document.getElementById('preview-canvas');
+    const tileScaledW = TILE_W * 4, tileScaledH = TILE_H * 4;
+    canvas.width = 200;
+    canvas.height = 200;
+    canvas.style.width = '200px';
+    canvas.style.height = '200px';
+
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = '#d0cfc8';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const coords = resolveTile(tile);
+    if (coords && state.spritesheetImg) {
+        const offscreen = document.createElement('canvas');
+        offscreen.width = TILE_W; offscreen.height = TILE_H;
+        const octx = offscreen.getContext('2d');
+        octx.save();
+        if (flipH) { octx.translate(TILE_W, 0); octx.scale(-1, 1); }
+        if (flipV) { octx.translate(0, TILE_H); octx.scale(1, -1); }
+        octx.drawImage(state.spritesheetImg, coords.x * TILE_W, coords.y * TILE_H, TILE_W, TILE_H, 0, 0, TILE_W, TILE_H);
+        octx.restore();
+
+        if (tint && tint !== '#ffffff') {
+            octx.globalCompositeOperation = 'multiply';
+            octx.fillStyle = tint;
+            octx.fillRect(0, 0, TILE_W, TILE_H);
+            octx.globalCompositeOperation = 'destination-in';
+            octx.save();
+            if (flipH) { octx.translate(TILE_W, 0); octx.scale(-1, 1); }
+            if (flipV) { octx.translate(0, TILE_H); octx.scale(1, -1); }
+            octx.drawImage(state.spritesheetImg, coords.x * TILE_W, coords.y * TILE_H, TILE_W, TILE_H, 0, 0, TILE_W, TILE_H);
+            octx.restore();
+        }
+
+        const px = (canvas.width - tileScaledW) / 2;
+        const py = (canvas.height - tileScaledH) / 2;
+        ctx.drawImage(offscreen, 0, 0, TILE_W, TILE_H, px, py, tileScaledW, tileScaledH);
+    }
+
+    drawTileOnCanvas(document.getElementById('preview-tile'), tile, tint, flipH, flipV, 2);
+}
+
+function updatePreview() {
+    renderPreview();
+    updateConditionalSections();
+    updateJSONOutput();
+    if (hasActiveAnimation()) startAnimLoop();
+    else stopAnimLoop();
+}
+
+function updateConditionalSections() {
+    const effectStr = document.getElementById('f-use_effect_string').value;
+    document.getElementById('targeted-spell-section').classList.toggle('visible', effectStr === 'targeted_spell');
+}
+
+// ---- Tile slots ----
+
+function updateTileSlot(target) {
+    const slot = document.querySelector(`.tile-slot[data-target="${target}"]`);
+    if (!slot) return;
+    const canvas = slot.querySelector('canvas');
+    const nameSpan = slot.querySelector('.tile-name');
+    const tileRef = state.currentTiles[target];
+    if (!tileRef) {
+        canvas.getContext('2d').clearRect(0, 0, 40, 30);
+        nameSpan.textContent = '—';
+        return;
+    }
+    drawTileOnCanvas(canvas, tileRef, null, false, false, 1);
+    nameSpan.textContent = typeof tileRef === 'string' ? tileRef : `{${tileRef.x}, ${tileRef.y}}`;
+}
+
+function initTileSlots() {
+    document.querySelectorAll('.tile-slot').forEach(slot => {
+        slot.addEventListener('click', (e) => {
+            if (e.target.classList.contains('clear-btn')) {
+                const target = slot.dataset.target;
+                state.currentTiles[target] = null;
+                updateTileSlot(target);
+                updatePreview();
+                return;
+            }
+            openTilePicker(slot.dataset.target);
+        });
+    });
+}
+
+// ---- Tile Picker ----
+
+function openTilePicker(target) {
+    state.activeTileTarget = target;
+    const overlay = document.getElementById('tile-picker-overlay');
+    overlay.classList.add('active');
+    document.getElementById('tile-picker-target').textContent = 'Selecting: ' + target;
+    document.getElementById('tile-picker-search').value = '';
+    state.highlightedTiles = null;
+    drawTilePickerGrid();
+    document.getElementById('tile-picker-search').focus();
+}
+
+function closeTilePicker() {
+    document.getElementById('tile-picker-overlay').classList.remove('active');
+    document.getElementById('tile-picker-tooltip').style.display = 'none';
+    state.activeTileTarget = null;
+}
+
+function drawTilePickerGrid() {
+    const canvas = document.getElementById('tile-picker-canvas');
+    const w = SS_COLS * TILE_W, h = SS_ROWS * TILE_H;
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+
+    if (state.spritesheetImg) {
+        ctx.drawImage(state.spritesheetImg, 0, 0);
+    }
+
+    if (state.highlightedTiles) {
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        for (let r = 0; r < SS_ROWS; r++) {
+            for (let c = 0; c < SS_COLS; c++) {
+                if (!state.highlightedTiles.has(c + ',' + r)) {
+                    ctx.fillRect(c * TILE_W, r * TILE_H, TILE_W, TILE_H);
+                }
+            }
+        }
+    }
+
+    ctx.strokeStyle = 'rgba(132,220,207,0.2)';
+    ctx.lineWidth = 0.5;
+    for (let c = 0; c <= SS_COLS; c++) {
+        ctx.beginPath(); ctx.moveTo(c * TILE_W, 0); ctx.lineTo(c * TILE_W, h); ctx.stroke();
+    }
+    for (let r = 0; r <= SS_ROWS; r++) {
+        ctx.beginPath(); ctx.moveTo(0, r * TILE_H); ctx.lineTo(w, r * TILE_H); ctx.stroke();
+    }
+
+    const current = state.currentTiles[state.activeTileTarget];
+    const coords = resolveTile(current);
+    if (coords) {
+        ctx.strokeStyle = '#e94560';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(coords.x * TILE_W + 1, coords.y * TILE_H + 1, TILE_W - 2, TILE_H - 2);
+    }
+}
+
+function initTilePicker() {
+    const canvas = document.getElementById('tile-picker-canvas');
+    const tooltip = document.getElementById('tile-picker-tooltip');
+
+    canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const col = Math.floor((e.clientX - rect.left) * scaleX / TILE_W);
+        const row = Math.floor((e.clientY - rect.top) * scaleY / TILE_H);
+        const names = state.reverseTileMap[col + ',' + row];
+        if (names && names.length) {
+            tooltip.textContent = names.join(', ');
+            tooltip.style.display = 'block';
+            tooltip.style.left = (e.clientX + 12) + 'px';
+            tooltip.style.top = (e.clientY - 8) + 'px';
+        } else {
+            tooltip.style.display = 'none';
+        }
+    });
+
+    canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+
+    canvas.addEventListener('click', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const col = Math.floor((e.clientX - rect.left) * scaleX / TILE_W);
+        const row = Math.floor((e.clientY - rect.top) * scaleY / TILE_H);
+        const names = state.reverseTileMap[col + ',' + row];
+        if (names && names.length) {
+            state.currentTiles[state.activeTileTarget] = names[0];
+        } else {
+            state.currentTiles[state.activeTileTarget] = { x: col, y: row };
+        }
+        updateTileSlot(state.activeTileTarget);
+        closeTilePicker();
+        updatePreview();
+    });
+
+    document.getElementById('tile-picker-search').addEventListener('input', (e) => {
+        const q = e.target.value.trim().toUpperCase();
+        if (!q) {
+            state.highlightedTiles = null;
+            drawTilePickerGrid();
+            return;
+        }
+        state.highlightedTiles = new Set();
+        for (const [name, coords] of Object.entries(state.tileMap)) {
+            if (name.toUpperCase().includes(q)) {
+                state.highlightedTiles.add(coords[0] + ',' + coords[1]);
+            }
+        }
+        drawTilePickerGrid();
+    });
+
+    document.getElementById('tile-picker-none').addEventListener('click', () => {
+        state.currentTiles[state.activeTileTarget] = 'BLANK';
+        updateTileSlot(state.activeTileTarget);
+        closeTilePicker();
+        updatePreview();
+    });
+
+    document.getElementById('tile-picker-close').addEventListener('click', closeTilePicker);
+    document.getElementById('tile-picker-overlay').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) closeTilePicker();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && document.getElementById('tile-picker-overlay').classList.contains('active')) {
+            closeTilePicker();
+        }
+    });
+}
+
+// ---- Boolean attributes ----
+
+function makeBoolCheckbox(attr, container) {
+    const label = document.createElement('label');
+    if (BOOL_HINTS[attr]) label.title = BOOL_HINTS[attr];
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.id = 'attr-' + attr;
+    cb.addEventListener('change', updatePreview);
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(' ' + attr));
+    container.appendChild(label);
+}
+
+function initBoolAttrs() {
+    const wrapper = document.getElementById('bool-attrs');
+
+    const primaryGrid = document.createElement('div');
+    primaryGrid.className = 'checkbox-grid';
+    for (const attr of PRIMARY_BOOL_ATTRS) makeBoolCheckbox(attr, primaryGrid);
+    wrapper.appendChild(primaryGrid);
+
+    const toggle = document.createElement('button');
+    toggle.className = 'add-btn';
+    toggle.textContent = '+ More attributes...';
+    toggle.style.marginTop = '4px';
+    wrapper.appendChild(toggle);
+
+    const secondaryGrid = document.createElement('div');
+    secondaryGrid.className = 'checkbox-grid';
+    secondaryGrid.style.display = 'none';
+    secondaryGrid.style.marginTop = '6px';
+    for (const attr of SECONDARY_BOOL_ATTRS) makeBoolCheckbox(attr, secondaryGrid);
+    wrapper.appendChild(secondaryGrid);
+
+    toggle.addEventListener('click', () => {
+        const open = secondaryGrid.style.display !== 'none';
+        secondaryGrid.style.display = open ? 'none' : 'grid';
+        toggle.textContent = open ? '+ More attributes...' : '- Fewer attributes';
+    });
+}
+
+function initTypedAttrs() {
+    const container = document.getElementById('typed-attrs');
+    for (const ta of TYPED_ATTRS) {
+        const row = document.createElement('div');
+        row.className = 'field-row';
+        if (ta.hint) row.title = ta.hint;
+        const lbl = document.createElement('label');
+        lbl.textContent = ta.label;
+        row.appendChild(lbl);
+        const inp = document.createElement('input');
+        inp.type = ta.type;
+        inp.id = 'attr-' + ta.key;
+        inp.addEventListener('input', updatePreview);
+        if (ta.type === 'number') inp.style.width = '100px';
+        row.appendChild(inp);
+        container.appendChild(row);
+    }
+}
+
+// ---- Custom attributes ----
+
+function addCustomAttrRow(key, val) {
+    const container = document.getElementById('custom-attrs');
+    const row = document.createElement('div');
+    row.className = 'list-item';
+    const ki = document.createElement('input');
+    ki.type = 'text'; ki.placeholder = 'key'; ki.value = key || '';
+    ki.style.width = '120px'; ki.style.flex = '0';
+    ki.addEventListener('input', updatePreview);
+    const vi = document.createElement('input');
+    vi.type = 'text'; vi.placeholder = 'value'; vi.value = val !== undefined ? String(val) : '';
+    vi.addEventListener('input', updatePreview);
+    const btn = document.createElement('button');
+    btn.className = 'remove-btn'; btn.textContent = 'x';
+    btn.addEventListener('click', () => { row.remove(); updatePreview(); });
+    row.appendChild(ki); row.appendChild(vi); row.appendChild(btn);
+    container.appendChild(row);
+}
+
+// ---- Dynamic key/value list helpers ----
+
+function addKVRow(containerId, key, val) {
+    const container = document.getElementById(containerId);
+    const row = document.createElement('div');
+    row.className = 'list-item';
+    const ki = document.createElement('input');
+    ki.type = 'text'; ki.placeholder = 'key'; ki.value = key || '';
+    ki.style.width = '120px'; ki.style.flex = '0';
+    ki.addEventListener('input', updatePreview);
+    const vi = document.createElement('input');
+    vi.type = 'text'; vi.placeholder = 'value'; vi.value = val !== undefined ? String(val) : '';
+    vi.addEventListener('input', updatePreview);
+    const btn = document.createElement('button');
+    btn.className = 'remove-btn'; btn.textContent = 'x';
+    btn.addEventListener('click', () => { row.remove(); updatePreview(); });
+    row.appendChild(ki); row.appendChild(vi); row.appendChild(btn);
+    container.appendChild(row);
+}
+
+function readKVList(containerId) {
+    const obj = {};
+    for (const row of document.querySelectorAll(`#${containerId} .list-item`)) {
+        const inputs = row.querySelectorAll('input');
+        const k = inputs[0].value.trim();
+        const v = inputs[1].value.trim();
+        if (k) obj[k] = parseValue(v);
+    }
+    return Object.keys(obj).length ? obj : undefined;
+}
+
+function addStringRow(containerId, val) {
+    const container = document.getElementById(containerId);
+    const row = document.createElement('div');
+    row.className = 'list-item';
+    const inp = document.createElement('input');
+    inp.type = 'text'; inp.value = val || ''; inp.placeholder = 'item type key';
+    inp.addEventListener('input', updatePreview);
+    const btn = document.createElement('button');
+    btn.className = 'remove-btn'; btn.textContent = 'x';
+    btn.addEventListener('click', () => { row.remove(); updatePreview(); });
+    row.appendChild(inp); row.appendChild(btn);
+    container.appendChild(row);
+}
+
+// ---- Stats ----
+
+function addStatRow(name, data) {
+    const container = document.getElementById('stats-list');
+    const row = document.createElement('div');
+    row.className = 'list-item';
+    row.style.flexWrap = 'wrap';
+
+    const nameInp = document.createElement('input');
+    nameInp.type = 'text'; nameInp.placeholder = 'stat name';
+    nameInp.value = name || 'pow'; nameInp.style.width = '100px'; nameInp.style.flex = '0';
+    nameInp.addEventListener('input', updatePreview);
+
+    const isSimple = typeof data === 'number' || data === undefined;
+    const simpleVal = isSimple ? (data || 0) : (data?.max || 0);
+
+    const simpleInp = document.createElement('input');
+    simpleInp.type = 'number'; simpleInp.placeholder = 'max';
+    simpleInp.value = simpleVal; simpleInp.style.width = '100px'; simpleInp.style.flex = '0';
+    simpleInp.addEventListener('input', updatePreview);
+
+    const advToggle = document.createElement('button');
+    advToggle.className = 'add-btn'; advToggle.textContent = 'adv';
+    advToggle.style.marginTop = '0';
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'remove-btn'; removeBtn.textContent = 'x';
+    removeBtn.addEventListener('click', () => { row.remove(); updatePreview(); });
+
+    const advDiv = document.createElement('div');
+    advDiv.className = 'stat-advanced';
+    advDiv.style.width = '100%';
+    advDiv.style.paddingLeft = '108px';
+    advDiv.style.marginTop = '4px';
+
+    const advData = isSimple ? {} : (data || {});
+    const advFields = [
+        { key: 'start', label: 'Start', type: 'number' },
+        { key: 'current', label: 'Current', type: 'number' },
+        { key: 'per_turn', label: 'Per Turn', type: 'number' },
+        { key: 'display_label', label: 'Display Label', type: 'text' },
+        { key: 'ready_message', label: 'Ready Message', type: 'text' },
+        { key: 'ready_at', label: 'Ready At', type: 'number' },
+    ];
+
+    for (const af of advFields) {
+        const fr = document.createElement('div');
+        fr.className = 'field-row';
+        const lbl = document.createElement('label');
+        lbl.textContent = af.label; lbl.style.minWidth = '100px';
+        fr.appendChild(lbl);
+        const inp = document.createElement('input');
+        inp.type = af.type; inp.dataset.statField = af.key;
+        inp.value = advData[af.key] !== undefined ? advData[af.key] : '';
+        inp.addEventListener('input', updatePreview);
+        if (af.type === 'number') { inp.style.width = '100px'; inp.style.flex = '0'; }
+        fr.appendChild(inp);
+        advDiv.appendChild(fr);
+    }
+
+    // Warnings sub-list
+    const warnTitle = document.createElement('div');
+    warnTitle.className = 'sub-section-title';
+    warnTitle.style.marginTop = '6px';
+    warnTitle.textContent = 'Warnings';
+    advDiv.appendChild(warnTitle);
+
+    const warnList = document.createElement('div');
+    warnList.className = 'dynamic-list';
+    warnList.dataset.warnings = 'true';
+    advDiv.appendChild(warnList);
+
+    if (advData.warnings) {
+        for (const w of advData.warnings) {
+            addWarningRow(warnList, w.threshold, w.message);
+        }
+    }
+
+    const warnBtn = document.createElement('button');
+    warnBtn.className = 'add-btn';
+    warnBtn.textContent = '+ Add Warning';
+    warnBtn.addEventListener('click', () => addWarningRow(warnList, '', ''));
+    advDiv.appendChild(warnBtn);
+
+    advToggle.addEventListener('click', () => {
+        advDiv.classList.toggle('visible');
+        advToggle.textContent = advDiv.classList.contains('visible') ? 'simple' : 'adv';
+    });
+
+    if (!isSimple) {
+        advDiv.classList.add('visible');
+        advToggle.textContent = 'simple';
+    }
+
+    row.appendChild(nameInp);
+    row.appendChild(simpleInp);
+    row.appendChild(advToggle);
+    row.appendChild(removeBtn);
+    row.appendChild(advDiv);
+    container.appendChild(row);
+}
+
+function addWarningRow(container, threshold, message) {
+    const row = document.createElement('div');
+    row.className = 'list-item';
+    const ti = document.createElement('input');
+    ti.type = 'number'; ti.placeholder = 'threshold (0-1)';
+    ti.value = threshold !== undefined ? threshold : '';
+    ti.style.width = '80px'; ti.style.flex = '0';
+    ti.step = '0.1'; ti.min = '0'; ti.max = '1';
+    ti.addEventListener('input', updatePreview);
+    const mi = document.createElement('input');
+    mi.type = 'text'; mi.placeholder = 'warning message';
+    mi.value = message || '';
+    mi.addEventListener('input', updatePreview);
+    const btn = document.createElement('button');
+    btn.className = 'remove-btn'; btn.textContent = 'x';
+    btn.addEventListener('click', () => { row.remove(); updatePreview(); });
+    row.appendChild(ti); row.appendChild(mi); row.appendChild(btn);
+    container.appendChild(row);
+}
+
+function readStats() {
+    const rows = document.querySelectorAll('#stats-list > .list-item');
+    const stats = {};
+    for (const row of rows) {
+        const name = row.querySelector('input[type="text"]').value.trim();
+        if (!name) continue;
+        const maxVal = parseInt(row.querySelector('input[type="number"]').value) || 0;
+        const advDiv = row.querySelector('.stat-advanced');
+        if (advDiv.classList.contains('visible')) {
+            const obj = { max: maxVal };
+            for (const inp of advDiv.querySelectorAll('[data-stat-field]')) {
+                const key = inp.dataset.statField;
+                if (inp.type === 'number') {
+                    const v = parseFloat(inp.value);
+                    if (!isNaN(v) && v !== 0) obj[key] = v;
+                } else {
+                    if (inp.value.trim()) obj[key] = inp.value.trim();
+                }
+            }
+            // Warnings
+            const warnList = advDiv.querySelector('[data-warnings]');
+            if (warnList) {
+                const warnings = [];
+                for (const wr of warnList.querySelectorAll('.list-item')) {
+                    const inputs = wr.querySelectorAll('input');
+                    const t = parseFloat(inputs[0].value);
+                    const m = inputs[1].value.trim();
+                    if (!isNaN(t) && m) warnings.push({ threshold: t, message: m });
+                }
+                if (warnings.length) obj.warnings = warnings;
+            }
+            stats[name] = obj;
+        } else {
+            stats[name] = maxVal;
+        }
+    }
+    return Object.keys(stats).length ? stats : undefined;
+}
+
+// ---- Form population ----
+
+function parseValue(str) {
+    str = str.trim();
+    if (str === 'true') return true;
+    if (str === 'false') return false;
+    const n = Number(str);
+    if (!isNaN(n) && str !== '') return n;
+    return str;
+}
+
+function clearForm() {
+    document.getElementById('f-name').value = '';
+    document.getElementById('f-description').value = '';
+    document.getElementById('item-key').value = '';
+
+    for (const f of TILE_FIELDS) {
+        state.currentTiles[f] = null;
+        updateTileSlot(f);
+    }
+
+    document.getElementById('f-tint').value = '#ffffff';
+    document.getElementById('f-tint-hex').value = '';
+    document.getElementById('f-flipH').checked = false;
+    document.getElementById('f-flipV').checked = false;
+    document.getElementById('f-random_color').checked = false;
+    document.getElementById('f-random_glyph_name').checked = false;
+    document.getElementById('f-flickerTint').checked = false;
+    document.getElementById('f-ignore_darkness').checked = false;
+    document.getElementById('f-identified').checked = false;
+    document.getElementById('f-unidentified_template').value = '';
+    document.getElementById('f-identified_template').value = '';
+    document.getElementById('f-effect_description').value = '';
+
+    for (const attr of BOOL_ATTRS) document.getElementById('attr-' + attr).checked = false;
+    const secGrid = document.getElementById('bool-attrs').querySelector('.checkbox-grid:last-of-type');
+    const secToggle = document.getElementById('bool-attrs').querySelector('.add-btn');
+    if (secGrid) secGrid.style.display = 'none';
+    if (secToggle) secToggle.textContent = '+ More attributes...';
+    for (const ta of TYPED_ATTRS) {
+        const el = document.getElementById('attr-' + ta.key);
+        if (el) el.value = '';
+    }
+
+    document.getElementById('custom-attrs').innerHTML = '';
+    document.getElementById('stats-list').innerHTML = '';
+    document.getElementById('wear-effects-list').innerHTML = '';
+    document.getElementById('requires-stat-list').innerHTML = '';
+    document.getElementById('use-effect-list').innerHTML = '';
+    document.getElementById('spell-effect-list').innerHTML = '';
+    document.getElementById('pickup-effect-list').innerHTML = '';
+    document.getElementById('random-type-list').innerHTML = '';
+
+    document.getElementById('f-ce-health').value = '';
+    document.getElementById('f-ce-apply_state').value = '';
+    document.getElementById('f-ce-locked').value = '';
+    document.getElementById('f-collision_sound').value = '';
+    document.getElementById('f-collision_description').value = '';
+    document.getElementById('f-attack_sound').value = '';
+    document.getElementById('f-attack_style').value = '';
+    document.getElementById('f-lunge_range').value = '';
+    document.getElementById('f-sweep_depth').value = '';
+    document.getElementById('f-penetrate_depth').value = '';
+    document.getElementById('f-weapon_proc').value = '';
+    document.getElementById('f-knockback_distance').value = '';
+    document.getElementById('f-critical_chance').value = '';
+
+    document.getElementById('f-wearable').value = '';
+    document.getElementById('f-enchantable').checked = false;
+    document.getElementById('f-enchant_min').value = '';
+    document.getElementById('f-enchant_max').value = '';
+
+    document.getElementById('f-use_verb').value = '';
+    document.getElementById('f-use_effect_string').value = '';
+    document.getElementById('f-use_sound').value = '';
+    document.getElementById('f-use_description').value = '';
+    document.getElementById('f-use_ceremony').checked = false;
+    document.getElementById('f-deferred').checked = false;
+
+    document.getElementById('f-charge_stat').value = '';
+    document.getElementById('f-uses').value = '';
+    document.getElementById('f-spell_range').value = '';
+    document.getElementById('f-spell_name').value = '';
+    document.getElementById('f-cast_sound').value = '';
+    document.getElementById('f-projectile_tint').value = '#ffffff';
+    document.getElementById('f-projectile_tint_hex').value = '';
+
+    document.getElementById('f-burns_out_item').value = '';
+    document.getElementById('f-burnout_message').value = '';
+    document.getElementById('f-break_sound').value = '';
+    document.getElementById('f-breaks_into').value = '';
+    document.getElementById('f-explode_sound').value = '';
+    document.getElementById('f-explosion_radius').value = '';
+    document.getElementById('f-pickup_sound').value = '';
+    document.getElementById('f-mining_power').value = '';
+    document.getElementById('f-lock_color').value = '';
+    document.getElementById('f-random_value_min').value = '';
+    document.getElementById('f-random_value_max').value = '';
+
+    updatePreview();
+}
+
+function populateForm(key, data) {
+    clearForm();
+    document.getElementById('item-key').value = key || '';
+
+    // Random type pool — just populate that and return
+    if (data.random_type) {
+        for (const t of data.random_type) addStringRow('random-type-list', t);
+        updatePreview();
+        return;
+    }
+
+    document.getElementById('f-name').value = data.name || '';
+
+    // Tile
+    state.currentTiles.tileIndex = data.tileIndex || null;
+    updateTileSlot('tileIndex');
+
+    // Tint
+    if (data.tint) {
+        document.getElementById('f-tint').value = data.tint;
+        document.getElementById('f-tint-hex').value = data.tint;
+    }
+    document.getElementById('f-flipH').checked = !!data.flipH;
+    document.getElementById('f-flipV').checked = !!data.flipV;
+    document.getElementById('f-random_color').checked = !!data.random_color;
+    document.getElementById('f-random_glyph_name').checked = !!data.random_glyph_name;
+    document.getElementById('f-flickerTint').checked = !!data.flickerTint;
+    document.getElementById('f-ignore_darkness').checked = !!data.ignore_darkness;
+
+    // Identity
+    if (data.identified !== undefined) document.getElementById('f-identified').checked = !!data.identified;
+    document.getElementById('f-unidentified_template').value = data.unidentified_template || '';
+    document.getElementById('f-identified_template').value = data.identified_template || '';
+    document.getElementById('f-effect_description').value = data.effect_description || '';
+    document.getElementById('f-use_description').value = data.use_description || '';
+
+    // Random value
+    if (data.random_value) {
+        document.getElementById('f-random_value_min').value = data.random_value[0];
+        document.getElementById('f-random_value_max').value = data.random_value[1];
+    }
+
+    // Attributes
+    const attrs = data.attributes || {};
+
+    // Bool attrs
+    let hasSecondary = false;
+    for (const attr of BOOL_ATTRS) {
+        if (attrs[attr] !== undefined) {
+            document.getElementById('attr-' + attr).checked = !!attrs[attr];
+            if (attrs[attr] && SECONDARY_BOOL_ATTRS.includes(attr)) hasSecondary = true;
+        }
+    }
+    const secGrid = document.getElementById('bool-attrs').querySelector('.checkbox-grid:last-of-type');
+    const secToggle = document.getElementById('bool-attrs').querySelector('.add-btn');
+    if (secGrid && secToggle) {
+        secGrid.style.display = hasSecondary ? 'grid' : 'none';
+        secToggle.textContent = hasSecondary ? '- Fewer attributes' : '+ More attributes...';
+    }
+
+    // Typed attrs
+    for (const ta of TYPED_ATTRS) {
+        const val = attrs[ta.key];
+        if (val !== undefined) {
+            document.getElementById('attr-' + ta.key).value = val;
+        }
+    }
+
+    // Description (in attributes)
+    document.getElementById('f-description').value = attrs.description || '';
+
+    // Combat
+    if (attrs.collision_effect) {
+        const ce = attrs.collision_effect;
+        if (ce.health !== undefined) document.getElementById('f-ce-health').value = ce.health;
+        if (ce.apply_state) document.getElementById('f-ce-apply_state').value = ce.apply_state;
+        if (ce.locked !== undefined) document.getElementById('f-ce-locked').value = String(ce.locked);
+    }
+    document.getElementById('f-collision_sound').value = attrs.collision_sound || '';
+    document.getElementById('f-collision_description').value = attrs.collision_description || '';
+    document.getElementById('f-attack_sound').value = attrs.attack_sound || '';
+
+    if (attrs.attack_style) document.getElementById('f-attack_style').value = attrs.attack_style;
+    if (attrs.lunge_range) document.getElementById('f-lunge_range').value = attrs.lunge_range;
+    if (attrs.sweep_depth) document.getElementById('f-sweep_depth').value = attrs.sweep_depth;
+    if (attrs.penetrate_depth) document.getElementById('f-penetrate_depth').value = attrs.penetrate_depth;
+    if (attrs.weapon_proc) document.getElementById('f-weapon_proc').value = attrs.weapon_proc;
+    if (attrs.knockback_distance) document.getElementById('f-knockback_distance').value = attrs.knockback_distance;
+    if (attrs.critical_chance) document.getElementById('f-critical_chance').value = attrs.critical_chance;
+
+    // Equipment
+    if (attrs.wearable) document.getElementById('f-wearable').value = attrs.wearable;
+    if (attrs.wear_effect) {
+        for (const [k, v] of Object.entries(attrs.wear_effect)) addKVRow('wear-effects-list', k, v);
+    }
+    if (attrs.requires_stat) {
+        for (const [k, v] of Object.entries(attrs.requires_stat)) addKVRow('requires-stat-list', k, v);
+    }
+    document.getElementById('f-enchantable').checked = !!attrs.enchantable;
+    if (attrs.enchant_range) {
+        document.getElementById('f-enchant_min').value = attrs.enchant_range[0];
+        document.getElementById('f-enchant_max').value = attrs.enchant_range[1];
+    }
+
+    // Use effect
+    if (attrs.use_verb) document.getElementById('f-use_verb').value = attrs.use_verb;
+    if (attrs.use_effect) {
+        if (typeof attrs.use_effect === 'string') {
+            const sel = document.getElementById('f-use_effect_string');
+            // If the value isn't in the dropdown, add it dynamically
+            if (!Array.from(sel.options).some(o => o.value === attrs.use_effect)) {
+                const opt = document.createElement('option');
+                opt.value = attrs.use_effect;
+                opt.textContent = attrs.use_effect;
+                sel.appendChild(opt);
+            }
+            sel.value = attrs.use_effect;
+        } else {
+            for (const [k, v] of Object.entries(attrs.use_effect)) {
+                addKVRow('use-effect-list', k, typeof v === 'object' ? JSON.stringify(v) : v);
+            }
+        }
+    }
+    if (attrs.use_sound) document.getElementById('f-use_sound').value = attrs.use_sound;
+    document.getElementById('f-use_ceremony').checked = !!attrs.use_ceremony;
+    document.getElementById('f-deferred').checked = !!attrs.deferred;
+
+    // Spell
+    if (attrs.charge_stat) document.getElementById('f-charge_stat').value = attrs.charge_stat;
+    if (attrs.uses) document.getElementById('f-uses').value = attrs.uses;
+    if (attrs.spell_range) document.getElementById('f-spell_range').value = attrs.spell_range;
+    if (attrs.spell_name) document.getElementById('f-spell_name').value = attrs.spell_name;
+    if (attrs.cast_sound) document.getElementById('f-cast_sound').value = attrs.cast_sound;
+    if (attrs.spell_effect) {
+        for (const [k, v] of Object.entries(attrs.spell_effect)) {
+            addKVRow('spell-effect-list', k, typeof v === 'object' ? JSON.stringify(v) : v);
+        }
+    }
+    if (attrs.projectile_tile) {
+        state.currentTiles.projectile_tile = attrs.projectile_tile;
+        updateTileSlot('projectile_tile');
+    }
+    if (attrs.projectile_tint) {
+        document.getElementById('f-projectile_tint').value = attrs.projectile_tint;
+        document.getElementById('f-projectile_tint_hex').value = attrs.projectile_tint;
+    }
+
+    // Special
+    if (attrs.burns_out_item) document.getElementById('f-burns_out_item').value = attrs.burns_out_item;
+    if (attrs.burnout_message) document.getElementById('f-burnout_message').value = attrs.burnout_message;
+    if (attrs.break_sound) document.getElementById('f-break_sound').value = attrs.break_sound;
+    if (attrs.breaks_into) document.getElementById('f-breaks_into').value = attrs.breaks_into;
+    if (attrs.explode_sound) document.getElementById('f-explode_sound').value = attrs.explode_sound;
+    if (attrs.explosion_radius) document.getElementById('f-explosion_radius').value = attrs.explosion_radius;
+    if (attrs.pickup_sound) document.getElementById('f-pickup_sound').value = attrs.pickup_sound;
+    if (attrs.mining_power) document.getElementById('f-mining_power').value = attrs.mining_power;
+    if (attrs.lock_color) document.getElementById('f-lock_color').value = attrs.lock_color;
+    if (attrs.pickup_effect) {
+        for (const [k, v] of Object.entries(attrs.pickup_effect)) addKVRow('pickup-effect-list', k, v);
+    }
+
+    // Custom attrs — anything not handled above
+    const knownAttrKeys = new Set([
+        ...BOOL_ATTRS, ...TYPED_ATTRS.map(t => t.key), 'description',
+        'collision_effect', 'collision_sound', 'collision_description',
+        'attack_sound', 'attack_style', 'lunge_range', 'sweep_depth', 'penetrate_depth',
+        'weapon_proc', 'knockback_distance', 'critical_chance',
+        'wearable', 'wear_effect', 'requires_stat', 'enchantable', 'enchant_range',
+        'use_verb', 'use_effect', 'use_sound', 'use_ceremony',
+        'charge_stat', 'uses', 'spell_range', 'spell_name', 'cast_sound',
+        'spell_effect', 'projectile_tile', 'projectile_tint',
+        'burns_out_item', 'burnout_message', 'break_sound', 'breaks_into',
+        'explode_sound', 'explosion_radius', 'pickup_sound', 'mining_power',
+        'lock_color', 'pickup_effect'
+    ]);
+    for (const [k, v] of Object.entries(attrs)) {
+        if (!knownAttrKeys.has(k)) {
+            addCustomAttrRow(k, typeof v === 'object' ? JSON.stringify(v) : v);
+        }
+    }
+
+    // Stats
+    if (data.stats) {
+        for (const [name, val] of Object.entries(data.stats)) {
+            addStatRow(name, val);
+        }
+    }
+
+    updatePreview();
+}
+
+// ---- Read form -> JSON ----
+
+function readForm() {
+    // Random type pool
+    const randomTypes = [];
+    for (const row of document.querySelectorAll('#random-type-list .list-item')) {
+        const v = row.querySelector('input').value.trim();
+        if (v) randomTypes.push(v);
+    }
+    if (randomTypes.length) {
+        return { random_type: randomTypes };
+    }
+
+    const obj = {};
+
+    const name = document.getElementById('f-name').value.trim();
+    if (name) obj.name = name;
+
+    // Tile
+    const tile = state.currentTiles.tileIndex;
+    if (tile && tile !== 'BLANK' && tile !== 'NULL') obj.tileIndex = tile;
+
+    // Appearance
+    if (document.getElementById('f-flipH').checked) obj.flipH = true;
+    if (document.getElementById('f-flipV').checked) obj.flipV = true;
+
+    const tint = getActiveTint();
+    if (tint) obj.tint = tint;
+
+    if (document.getElementById('f-random_color').checked) obj.random_color = true;
+    if (document.getElementById('f-random_glyph_name').checked) obj.random_glyph_name = true;
+    if (document.getElementById('f-flickerTint').checked) obj.flickerTint = true;
+    if (document.getElementById('f-ignore_darkness').checked) obj.ignore_darkness = true;
+
+    // Identity
+    const identified = document.getElementById('f-identified').checked;
+    if (!identified) obj.identified = false;
+    const uit = document.getElementById('f-unidentified_template').value.trim();
+    if (uit) obj.unidentified_template = uit;
+    const it = document.getElementById('f-identified_template').value.trim();
+    if (it) obj.identified_template = it;
+    const ed = document.getElementById('f-effect_description').value.trim();
+    if (ed) obj.effect_description = ed;
+    const ud = document.getElementById('f-use_description').value.trim();
+    if (ud) obj.use_description = ud;
+
+    // Random value
+    const rvMin = parseInt(document.getElementById('f-random_value_min').value);
+    const rvMax = parseInt(document.getElementById('f-random_value_max').value);
+    if (!isNaN(rvMin) && !isNaN(rvMax)) obj.random_value = [rvMin, rvMax];
+
+    // Build attributes
+    const attrs = {};
+
+    // Bool attrs
+    for (const attr of BOOL_ATTRS) {
+        if (document.getElementById('attr-' + attr).checked) attrs[attr] = true;
+    }
+
+    // Typed attrs
+    for (const ta of TYPED_ATTRS) {
+        const el = document.getElementById('attr-' + ta.key);
+        if (ta.type === 'number') {
+            const v = parseFloat(el.value);
+            if (!isNaN(v)) attrs[ta.key] = v;
+        } else {
+            if (el.value.trim()) attrs[ta.key] = el.value.trim();
+        }
+    }
+
+    // Description
+    const desc = document.getElementById('f-description').value.trim();
+    if (desc) attrs.description = desc;
+
+    // Collision effect
+    const ceHealth = document.getElementById('f-ce-health').value.trim();
+    const ceState = document.getElementById('f-ce-apply_state').value.trim();
+    const ceLocked = document.getElementById('f-ce-locked').value;
+    if (ceHealth || ceState || ceLocked) {
+        attrs.collision_effect = {};
+        if (ceHealth) {
+            const num = Number(ceHealth);
+            attrs.collision_effect.health = isNaN(num) ? ceHealth : num;
+        }
+        if (ceState) attrs.collision_effect.apply_state = ceState;
+        if (ceLocked) attrs.collision_effect.locked = ceLocked === 'true';
+    }
+
+    const cs = document.getElementById('f-collision_sound').value.trim();
+    if (cs) attrs.collision_sound = cs;
+    const cd = document.getElementById('f-collision_description').value.trim();
+    if (cd) attrs.collision_description = cd;
+    const as = document.getElementById('f-attack_sound').value.trim();
+    if (as) attrs.attack_sound = as;
+
+    const attackStyle = document.getElementById('f-attack_style').value;
+    if (attackStyle) attrs.attack_style = attackStyle;
+    const lr = parseInt(document.getElementById('f-lunge_range').value);
+    if (!isNaN(lr)) attrs.lunge_range = lr;
+    const sd = parseInt(document.getElementById('f-sweep_depth').value);
+    if (!isNaN(sd)) attrs.sweep_depth = sd;
+    const pd = parseInt(document.getElementById('f-penetrate_depth').value);
+    if (!isNaN(pd)) attrs.penetrate_depth = pd;
+
+    const wp = document.getElementById('f-weapon_proc').value;
+    if (wp) attrs.weapon_proc = wp;
+    const kd = parseInt(document.getElementById('f-knockback_distance').value);
+    if (!isNaN(kd)) attrs.knockback_distance = kd;
+    const cc = parseInt(document.getElementById('f-critical_chance').value);
+    if (!isNaN(cc)) attrs.critical_chance = cc;
+
+    // Equipment
+    const wearable = document.getElementById('f-wearable').value;
+    if (wearable) attrs.wearable = wearable;
+    const we = readKVList('wear-effects-list');
+    if (we) attrs.wear_effect = we;
+    const rs = readKVList('requires-stat-list');
+    if (rs) attrs.requires_stat = rs;
+    if (document.getElementById('f-enchantable').checked) attrs.enchantable = true;
+    const eMin = parseInt(document.getElementById('f-enchant_min').value);
+    const eMax = parseInt(document.getElementById('f-enchant_max').value);
+    if (!isNaN(eMin) && !isNaN(eMax)) attrs.enchant_range = [eMin, eMax];
+
+    // Use effect
+    const uv = document.getElementById('f-use_verb').value.trim();
+    if (uv) attrs.use_verb = uv;
+    const ues = document.getElementById('f-use_effect_string').value.trim();
+    const ueo = readKVList('use-effect-list');
+    if (ues) attrs.use_effect = ues;
+    else if (ueo) attrs.use_effect = ueo;
+    const usound = document.getElementById('f-use_sound').value.trim();
+    if (usound) attrs.use_sound = usound;
+    if (document.getElementById('f-use_ceremony').checked) attrs.use_ceremony = true;
+    if (document.getElementById('f-deferred').checked) attrs.deferred = true;
+
+    // Spell
+    const chStat = document.getElementById('f-charge_stat').value.trim();
+    if (chStat) attrs.charge_stat = chStat;
+    const uses = parseInt(document.getElementById('f-uses').value);
+    if (!isNaN(uses)) attrs.uses = uses;
+    const sr = parseInt(document.getElementById('f-spell_range').value);
+    if (!isNaN(sr)) attrs.spell_range = sr;
+    const se = readKVList('spell-effect-list');
+    if (se) attrs.spell_effect = se;
+    const projTile = state.currentTiles.projectile_tile;
+    if (projTile) attrs.projectile_tile = projTile;
+    const projTintHex = document.getElementById('f-projectile_tint_hex').value.trim();
+    const projTint = projTintHex || document.getElementById('f-projectile_tint').value;
+    if (projTint && projTint !== '#ffffff') attrs.projectile_tint = projTint;
+    const sn = document.getElementById('f-spell_name').value.trim();
+    if (sn) attrs.spell_name = sn;
+    const cSound = document.getElementById('f-cast_sound').value.trim();
+    if (cSound) attrs.cast_sound = cSound;
+
+    // Special
+    const boi = document.getElementById('f-burns_out_item').value.trim();
+    if (boi) attrs.burns_out_item = boi;
+    const bom = document.getElementById('f-burnout_message').value.trim();
+    if (bom) attrs.burnout_message = bom;
+    const bs = document.getElementById('f-break_sound').value.trim();
+    if (bs) attrs.break_sound = bs;
+    const bi = document.getElementById('f-breaks_into').value.trim();
+    if (bi) attrs.breaks_into = bi;
+    const es = document.getElementById('f-explode_sound').value.trim();
+    if (es) attrs.explode_sound = es;
+    const er = parseInt(document.getElementById('f-explosion_radius').value);
+    if (!isNaN(er)) attrs.explosion_radius = er;
+    const ps = document.getElementById('f-pickup_sound').value.trim();
+    if (ps) attrs.pickup_sound = ps;
+    const mp = parseInt(document.getElementById('f-mining_power').value);
+    if (!isNaN(mp)) attrs.mining_power = mp;
+    const lc = document.getElementById('f-lock_color').value.trim();
+    if (lc) attrs.lock_color = lc;
+    const pe = readKVList('pickup-effect-list');
+    if (pe) attrs.pickup_effect = pe;
+
+    // Custom attrs
+    for (const row of document.querySelectorAll('#custom-attrs .list-item')) {
+        const inputs = row.querySelectorAll('input');
+        const k = inputs[0].value.trim();
+        const v = inputs[1].value.trim();
+        if (k) attrs[k] = parseValue(v);
+    }
+
+    if (Object.keys(attrs).length) obj.attributes = attrs;
+
+    // Stats
+    const stats = readStats();
+    if (stats) obj.stats = stats;
+
+    return obj;
+}
+
+// ---- JSON output ----
+
+function updateJSONOutput() {
+    const obj = readForm();
+    const key = document.getElementById('item-key').value.trim() || 'new_item';
+    document.getElementById('item-key-field').textContent = `"${key}"`;
+    document.getElementById('json-output').value = JSON.stringify(obj, null, 2);
+}
+
+// ---- Tint sync ----
+
+function initTintSync() {
+    const colorInput = document.getElementById('f-tint');
+    const hexInput = document.getElementById('f-tint-hex');
+
+    colorInput.addEventListener('input', () => {
+        hexInput.value = colorInput.value;
+        updatePreview();
+    });
+    hexInput.addEventListener('input', () => {
+        if (/^#[0-9a-fA-F]{6}$/.test(hexInput.value)) colorInput.value = hexInput.value;
+        updatePreview();
+    });
+
+    const pColorInput = document.getElementById('f-projectile_tint');
+    const pHexInput = document.getElementById('f-projectile_tint_hex');
+    pColorInput.addEventListener('input', () => { pHexInput.value = pColorInput.value; updatePreview(); });
+    pHexInput.addEventListener('input', () => {
+        if (/^#[0-9a-fA-F]{6}$/.test(pHexInput.value)) pColorInput.value = pHexInput.value;
+        updatePreview();
+    });
+}
+
+// ---- Item templates ----
+
+const ITEM_TEMPLATES = {
+    weapon: {
+        name: 'New Weapon',
+        tileIndex: 'CROSS',
+        flipV: true,
+        identified: false,
+        attributes: {
+            pickupable: true,
+            visible: true,
+            stackable: false,
+            flammable: false,
+            weapon: true,
+            enchantable: true,
+            collision_effect: { health: -8 },
+            attack_sound: 'bow',
+            collision_sound: 'hit',
+            collision_description: '[actor_name] [attacks.melee_verbs] the [attacked_actor_name] with [a-an] [weapon_name]!',
+            wear_effect: { accuracy: '{strength}' },
+            enchant_range: [-1, 3],
+            description: '[damage] damage.'
+        }
+    },
+    potion: {
+        name: 'Potion',
+        tileIndex: 'FEMALE_SYMBOL',
+        flipV: true,
+        random_color: true,
+        identified: false,
+        unidentified_template: '[color] potion',
+        identified_template: 'Potion of ...',
+        effect_description: '',
+        use_description: 'The [item_name] tastes [adjectives.yucky].',
+        attributes: {
+            pickupable: true,
+            visible: true,
+            stackable: true,
+            flammable: false,
+            consumable: true,
+            breakable: true,
+            break_sound: 'glass',
+            use_verb: 'Drink',
+            use_sound: 'swallow',
+            use_effect: { apply_state: 'poisoned' },
+            description: 'A mysterious potion.'
+        }
+    },
+    scroll: {
+        name: 'Scroll',
+        tileIndex: 'BEAMED_EIGHTH_NOTES',
+        random_glyph_name: true,
+        identified: false,
+        unidentified_template: '[glyph_name] scroll',
+        identified_template: 'Scroll of ...',
+        effect_description: 'The scroll dissolves as you read it.',
+        attributes: {
+            pickupable: true,
+            visible: true,
+            stackable: true,
+            consumable: true,
+            use_verb: 'Read',
+            use_effect: 'teleport',
+            use_sound: 'magic',
+            use_ceremony: true,
+            description: 'A scroll with strange runic markings.'
+        }
+    },
+    ring: {
+        name: 'Ring',
+        tileIndex: 'WHITE_RING',
+        random_color: true,
+        identified: false,
+        unidentified_template: '[color] ring',
+        identified_template: 'Ring of ...',
+        effect_description: '',
+        attributes: {
+            pickupable: true,
+            visible: true,
+            stackable: false,
+            wearable: 'ring',
+            wear_effect: { defense: 2 },
+            description: 'A mysterious ring.'
+        }
+    },
+    staff: {
+        name: 'Staff of ...',
+        tileIndex: 'SOLIDUS',
+        identified: false,
+        unidentified_template: '[substances.substances] staff',
+        identified_template: 'Staff of ...',
+        attributes: {
+            pickupable: true,
+            visible: true,
+            stackable: false,
+            treasure_loot: true,
+            use_verb: 'Zap',
+            use_effect: 'targeted_spell',
+            deferred: true,
+            charge_stat: 'pow',
+            uses: 1,
+            spell_effect: { center: 'fire', radius: 1 },
+            projectile_tile: 'OPAQUE_INVERSE_DIAMOND_SUITE',
+            projectile_tint: '#FF6600',
+            spell_name: 'Fireball',
+            cast_sound: 'magic',
+            description: 'A strange staff.'
+        },
+        stats: {
+            pow: { max: 800, start: 800, per_turn: 1, ready_message: 'Your [item_name] is fully charged!' }
+        }
+    },
+    wand: {
+        name: 'Wand of ...',
+        tileIndex: 'EXCLAMATION_MARK',
+        random_color: true,
+        identified: false,
+        unidentified_template: '[color] wand',
+        identified_template: 'Wand of ...',
+        effect_description: '',
+        attributes: {
+            pickupable: true,
+            visible: true,
+            stackable: false,
+            enchantable: true,
+            use_verb: 'Zap',
+            use_effect: 'targeted_spell',
+            deferred: true,
+            charge_stat: 'pow',
+            uses: 3,
+            spell_range: 8,
+            spell_effect: { apply_state: 'slowed' },
+            projectile_tile: 'OPAQUE_INVERSE_DIAMOND_SUITE',
+            projectile_tint: '#8888FF',
+            spell_name: 'Slowness',
+            cast_sound: 'magic',
+            description: 'A slender wand.'
+        },
+        stats: {
+            pow: { max: 300, start: 300, per_turn: 0 }
+        }
+    },
+    armor: {
+        name: 'New Armor',
+        tileIndex: 'WHITE_GREAVES',
+        tint: '#888888',
+        identified: false,
+        attributes: {
+            pickupable: true,
+            visible: true,
+            stackable: false,
+            wearable: 'lower',
+            enchantable: true,
+            wear_effect: { defense: 5 },
+            enchant_range: [-1, 2],
+            description: '[defense] defense.'
+        }
+    },
+    food: {
+        name: 'New Food',
+        tileIndex: 'INVERSE_BULLET',
+        tint: '#d4a574',
+        attributes: {
+            pickupable: true,
+            visible: true,
+            stackable: true,
+            flammable: true,
+            consumable: true,
+            use_verb: 'Eat',
+            use_effect: { nutrition: 200 },
+            use_sound: 'pickup',
+            description: 'Something to eat.'
+        }
+    }
+};
+
+// ---- Item category helper ----
+
+function getItemCategory(data) {
+    if (data.random_type) return 'pool';
+    const a = data.attributes || {};
+    if (a.weapon) return 'weapon';
+    if (a.wearable === 'ring') return 'ring';
+    if (a.wearable) return 'armor';
+    if (a.use_effect === 'targeted_spell' || a.charge_stat) {
+        const statDef = data.stats?.[a.charge_stat || 'pow'];
+        if (statDef && statDef.per_turn > 0) return 'staff';
+        return 'wand';
+    }
+    if (a.use_ceremony) return 'scroll';
+    if (a.consumable && a.use_verb === 'Drink') return 'potion';
+    if (a.consumable && a.use_verb === 'Eat') return 'food';
+    if (a.consumable) return 'consumable';
+    if (a.key) return 'key';
+    if (a.light_source) return 'light';
+    return 'misc';
+}
+
+// ---- Search/filter ----
+
+function initItemFilter() {
+    const input = document.getElementById('item-filter');
+    const results = document.getElementById('item-filter-results');
+
+    input.addEventListener('input', () => {
+        const q = input.value.trim().toLowerCase();
+        if (!q) {
+            results.classList.remove('active');
+            return;
+        }
+        results.innerHTML = '';
+        const keys = Object.keys(state.items).sort();
+        let count = 0;
+        for (const k of keys) {
+            const item = state.items[k];
+            const name = item.name || '';
+            const cat = getItemCategory(item);
+            if (k.toLowerCase().includes(q) || name.toLowerCase().includes(q) || cat.includes(q)) {
+                const div = document.createElement('div');
+                div.className = 'filter-item';
+                div.innerHTML = `<span>${k} <span style="color:var(--text-dim)">(${name || '—'})</span></span><span class="filter-cat">${cat}</span>`;
+                div.addEventListener('click', () => {
+                    document.getElementById('item-select').value = k;
+                    populateForm(k, item);
+                    input.value = '';
+                    results.classList.remove('active');
+                });
+                results.appendChild(div);
+                if (++count >= 20) break;
+            }
+        }
+        results.classList.toggle('active', count > 0);
+    });
+
+    input.addEventListener('focus', () => {
+        if (input.value.trim()) input.dispatchEvent(new Event('input'));
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#item-filter-wrap')) {
+            results.classList.remove('active');
+        }
+    });
+}
+
+// ---- Duplicate ----
+
+function duplicateCurrentItem() {
+    const currentKey = document.getElementById('item-key').value.trim();
+    const obj = readForm();
+    const newKey = currentKey ? currentKey + '_copy' : 'new_item';
+    populateForm(newKey, obj);
+    document.getElementById('item-key').value = newKey;
+    document.getElementById('f-name').value = (obj.name || '') + ' (copy)';
+    updatePreview();
+}
+
+// ---- Wire up events ----
+
+function initEventListeners() {
+    document.getElementById('item-select').addEventListener('change', (e) => {
+        const key = e.target.value;
+        if (state.items[key]) {
+            populateForm(key, state.items[key]);
+        }
+    });
+
+    document.getElementById('btn-new').addEventListener('click', () => {
+        clearForm();
+    });
+
+    document.getElementById('btn-duplicate').addEventListener('click', duplicateCurrentItem);
+
+    document.getElementById('template-select').addEventListener('change', (e) => {
+        const tmpl = e.target.value;
+        if (tmpl && ITEM_TEMPLATES[tmpl]) {
+            populateForm('new_' + tmpl, JSON.parse(JSON.stringify(ITEM_TEMPLATES[tmpl])));
+        }
+        e.target.value = '';
+    });
+
+    document.getElementById('btn-export').addEventListener('click', updateJSONOutput);
+
+    document.getElementById('btn-copy').addEventListener('click', () => {
+        const key = document.getElementById('item-key').value.trim() || 'new_item';
+        const obj = readForm();
+        const full = `"${key}": ${JSON.stringify(obj, null, 2)}`;
+        navigator.clipboard.writeText(full).then(() => {
+            const btn = document.getElementById('btn-copy');
+            btn.textContent = 'Copied!';
+            setTimeout(() => btn.textContent = 'Copy to Clipboard', 1500);
+        });
+    });
+
+    document.getElementById('btn-add-custom-attr').addEventListener('click', () => addCustomAttrRow('', ''));
+    document.getElementById('btn-add-stat').addEventListener('click', () => addStatRow('', 0));
+    document.getElementById('btn-add-wear-effect').addEventListener('click', () => addKVRow('wear-effects-list', '', ''));
+    document.getElementById('btn-add-requires-stat').addEventListener('click', () => addKVRow('requires-stat-list', '', ''));
+    document.getElementById('btn-add-use-effect').addEventListener('click', () => addKVRow('use-effect-list', '', ''));
+    document.getElementById('btn-add-spell-effect').addEventListener('click', () => addKVRow('spell-effect-list', '', ''));
+    document.getElementById('btn-add-pickup-effect').addEventListener('click', () => addKVRow('pickup-effect-list', '', ''));
+    document.getElementById('btn-add-random-type').addEventListener('click', () => addStringRow('random-type-list', ''));
+
+    document.getElementById('f-name').addEventListener('input', (e) => {
+        const key = e.target.value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+        document.getElementById('item-key').value = key;
+        updatePreview();
+    });
+
+    document.querySelectorAll('#form-panel input[type="text"], #form-panel input[type="number"], #form-panel textarea, #form-panel select').forEach(el => {
+        el.addEventListener('input', updatePreview);
+        el.addEventListener('change', updatePreview);
+    });
+    document.querySelectorAll('#form-panel input[type="checkbox"], #form-panel input[type="radio"]').forEach(el => {
+        el.addEventListener('change', updatePreview);
+    });
+}
+
+// ---- Init ----
+
+async function init() {
+    initBoolAttrs();
+    initTypedAttrs();
+    initTileSlots();
+    initTilePicker();
+    initTintSync();
+
+    await Promise.all([loadBaseData(), loadSpritesheet()]);
+    populateItemDropdown();
+
+    initItemFilter();
+    initEventListeners();
+
+    const firstKey = document.getElementById('item-select').value;
+    if (firstKey && state.items[firstKey]) {
+        populateForm(firstKey, state.items[firstKey]);
+    }
+}
+
+init();
+</script>
+</body>
+</html>

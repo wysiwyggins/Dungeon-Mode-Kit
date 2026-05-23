@@ -410,7 +410,7 @@
     }
   },
   "uranium_nugget": {
-    "name": "gold nugget",
+    "name": "uranium nugget",
     "tileIndex": "INVERSE_THALER_SIGN",
     "tint": "#FFD24A",
     "ignore_darkness": true,
@@ -1693,6 +1693,7 @@
       "pickupable": true,
       "visible": true,
       "stackable": false,
+      "enchantable": true,
       "use_verb": "Zap",
       "use_effect": "targeted_spell",
       "deferred": true,
@@ -1712,8 +1713,7 @@
       "pow": {
         "max": 300,
         "start": 300,
-        "per_turn": 1,
-        "ready_message": "Your [item_name] is ready."
+        "per_turn": 0
       }
     }
   },
@@ -1730,6 +1730,7 @@
       "pickupable": true,
       "visible": true,
       "stackable": false,
+      "enchantable": true,
       "use_verb": "Zap",
       "use_effect": "targeted_spell",
       "deferred": true,
@@ -1749,8 +1750,7 @@
       "pow": {
         "max": 300,
         "start": 300,
-        "per_turn": 1,
-        "ready_message": "Your [item_name] is ready."
+        "per_turn": 0
       }
     }
   },
@@ -1767,6 +1767,7 @@
       "pickupable": true,
       "visible": true,
       "stackable": false,
+      "enchantable": true,
       "use_verb": "Zap",
       "use_effect": "targeted_spell",
       "deferred": true,
@@ -1786,8 +1787,7 @@
       "pow": {
         "max": 300,
         "start": 300,
-        "per_turn": 1,
-        "ready_message": "Your [item_name] is ready."
+        "per_turn": 0
       }
     }
   },
@@ -1804,6 +1804,7 @@
       "pickupable": true,
       "visible": true,
       "stackable": false,
+      "enchantable": true,
       "use_verb": "Zap",
       "use_effect": "targeted_spell",
       "deferred": true,
@@ -1823,8 +1824,7 @@
       "pow": {
         "max": 300,
         "start": 300,
-        "per_turn": 1,
-        "ready_message": "Your [item_name] is ready."
+        "per_turn": 0
       }
     }
   },

@@ -5682,6 +5682,7 @@ class Actor extends Entity {
                     const chargeStat = invItem.getAttribute('charge_stat');
                     if (!chargeStat || !invItem.stats?.[chargeStat]) continue;
                     const stat = invItem.stats[chargeStat];
+                    if (stat.per_turn === 0) continue;
                     if (stat.current < stat.max) {
                         stat.current = stat.max;
                         recharged = true;
@@ -5801,7 +5802,10 @@ class Actor extends Entity {
                     const readyAt = stat?.ready_at ?? Math.floor((stat?.max ?? 100) / uses);
                     if (this.isPlayerControlled()) {
                         const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
-                        this.engine.inputManager?.showMessage(`The ${displayName} is not charged yet (${Math.floor(current)}/${readyAt}).`);
+                        const msg = stat?.per_turn === 0
+                            ? `The ${displayName} is empty.`
+                            : `The ${displayName} is not charged yet (${Math.floor(current)}/${readyAt}).`;
+                        this.engine.inputManager?.showMessage(msg);
                     }
                     return false;
                 }
