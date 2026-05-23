@@ -306,8 +306,8 @@ details.section > .section-body { padding: 10px 12px; }
     <h1>Actor Editor</h1>
     <label>Prototype:
         <select id="prototype-select">
-            <option value="">— base only —</option>
-            <option value="dungeon" selected>dungeon</option>
+            <option value="" selected>— base only —</option>
+            <option value="dungeon">dungeon</option>
             <option value="arena">arena</option>
             <option value="labyrinth">labyrinth</option>
             <option value="automatons">automatons</option>
@@ -359,11 +359,12 @@ details.section > .section-body { padding: 10px 12px; }
         <details class="section" open>
             <summary>Appearance</summary>
             <div class="section-body">
-                <div class="field-row"><label>Base Tile</label>
-                    <div class="tile-slot" data-target="tileIndexBase"><canvas width="40" height="30"></canvas><span class="tile-name">—</span><button class="clear-btn" title="Clear">x</button></div>
-                </div>
+                <button class="add-btn" id="btn-randomize" style="margin-bottom:8px">&#9861; Randomize</button>
                 <div class="field-row"><label>Top Tile</label>
                     <div class="tile-slot" data-target="tileIndexTop"><canvas width="40" height="30"></canvas><span class="tile-name">—</span><button class="clear-btn" title="Clear">x</button></div>
+                </div>
+                 <div class="field-row"><label>Base Tile</label>
+                    <div class="tile-slot" data-target="tileIndexBase"><canvas width="40" height="30"></canvas><span class="tile-name">—</span><button class="clear-btn" title="Clear">x</button></div>
                 </div>
                 <div class="field-row"><label>Side Tile</label>
                     <div class="tile-slot" data-target="tileIndexSide"><canvas width="40" height="30"></canvas><span class="tile-name">—</span><button class="clear-btn" title="Clear">x</button></div>
@@ -387,7 +388,6 @@ details.section > .section-body { padding: 10px 12px; }
                     <label>Tint</label>
                     <input type="color" id="f-tint" value="#ffffff">
                     <input type="text" id="f-tint-hex" value="" placeholder="#rrggbb" style="width:80px">
-                    <label style="min-width:unset"><input type="checkbox" id="f-tint-enabled"> Use tint</label>
                 </div>
                 <div class="field-row">
                     <label style="min-width:unset"><input type="checkbox" id="f-flickerTint"> Flicker</label>
@@ -689,32 +689,41 @@ const BOOL_HINTS = {
 };
 
 const TYPED_ATTRS = [
-    { key: 'accuracy', type: 'number', label: 'Accuracy' },
-    { key: 'defense', type: 'number', label: 'Defense' },
-    { key: 'strength', type: 'number', label: 'Strength' },
-    { key: 'inventory', type: 'number', label: 'Inventory slots' },
-    { key: 'lode_chance', type: 'number', label: 'Lode Chance (0-100)' },
-    { key: 'clock_interval', type: 'number', label: 'Clock Interval' },
-    { key: 'remains', type: 'text', label: 'Remains' },
-    { key: 'damage_type', type: 'text', label: 'Damage Type' },
-    { key: 'lode', type: 'text', label: 'Lode (item type)' },
-    { key: 'lock_color', type: 'text', label: 'Lock Color' },
-    { key: 'machine_id', type: 'text', label: 'Machine ID' },
-    { key: 'trap_type', type: 'text', label: 'Trap Type' },
-    { key: 'stairway', type: 'text', label: 'Stairway (up/down)' },
-    { key: 'chain_segment_type', type: 'text', label: 'Chain Segment Type' },
-    { key: 'entry_sound', type: 'text', label: 'Entry Sound' },
-    { key: 'apply_state', type: 'text', label: 'Apply State' },
-    { key: 'paint_tile', type: 'text', label: 'Paint Tile' },
+    { key: 'accuracy', type: 'number', label: 'Accuracy', hint: 'Base hit chance (%). Formula: accuracy × 0.987^defense. Typical: 35-80. No accuracy = always hits.' },
+    { key: 'defense', type: 'number', label: 'Defense', hint: 'Each point reduces incoming hit chance by ~1.3%. Typical: 3-20.' },
+    { key: 'strength', type: 'number', label: 'Strength', hint: 'Melee damage when using "-{strength}" in collision_effect. Typical: 1-18.' },
+    { key: 'inventory', type: 'number', label: 'Inventory slots', hint: 'Number of items this actor can carry. 0 = none, player default is 4.' },
+    { key: 'lode_chance', type: 'number', label: 'Lode Chance (0-100)', hint: 'Percent chance to drop a lode item when broken. Requires breakable + lode.' },
+    { key: 'clock_interval', type: 'number', label: 'Clock Interval', hint: 'Turns between clock ticks. Requires the clock attribute.' },
+    { key: 'remains', type: 'text', label: 'Remains', hint: 'Actor type spawned on death. e.g. skull, rubble, blood, mist, log.' },
+    { key: 'damage_type', type: 'text', label: 'Damage Type', hint: 'Hazard damage category. Known: "fire". Used for immunity checks.' },
+    { key: 'lode', type: 'text', label: 'Lode (item type)', hint: 'Item type dropped when broken. e.g. gold_nugget, uranium_nugget.' },
+    { key: 'lock_color', type: 'text', label: 'Lock Color', hint: 'Fixed lock color (overrides random). Matches color key items.' },
+    { key: 'machine_id', type: 'text', label: 'Machine ID', hint: 'Links switches to targets. All actors with the same machine_id are affected together.' },
+    { key: 'trap_type', type: 'text', label: 'Trap Type', hint: 'Trap identifier. Known: fire, poison_gas, paralysis_gas, confusion_gas.' },
+    { key: 'stairway', type: 'text', label: 'Stairway (up/down)', hint: '"up" or "down". Links floors in multi-level prototypes.' },
+    { key: 'chain_segment_type', type: 'text', label: 'Chain Segment Type', hint: 'Actor type for body segments. Used by chain creatures (e.g. scutigera).' },
+    { key: 'entry_sound', type: 'text', label: 'Entry Sound', hint: 'Sound played when another actor steps on this tile. e.g. step_mud.' },
+    { key: 'apply_state', type: 'text', label: 'Apply State', hint: 'State applied on contact (non-combat). e.g. nauseated. For combat use collision_effect.' },
+    { key: 'paint_tile', type: 'text', label: 'Paint Tile', hint: 'Tile name on the Tiled wildcards layer that spawns this actor. Must be unique per actor.' },
 ];
 
 const TILE_FIELDS = ['tileIndexBase','tileIndexTop','tileIndexSide','tileIndexBase_open','tileIndexTop_open','tileIndexBase_toggled','tileIndexTop_toggled'];
+
+const ANIM_SHEETS = {
+    fire:  'assets/sprites/fire-animation.png',
+    smoke: 'assets/sprites/smoke-animation.png',
+    mist:  'assets/sprites/light-smoke-animation.png',
+    fluid: 'assets/sprites/fluid-animation.png'
+};
 
 let state = {
     tileMap: {},
     reverseTileMap: {},
     tileNames: [],
     spritesheetImg: null,
+    animImages: {},
+    animFrameCounts: {},
     baseActors: {},
     protoActors: {},
     mergedActors: {},
@@ -727,6 +736,9 @@ let state = {
     highlightedTiles: null
 };
 
+let animFrame = 0;
+let animRAF = null;
+
 // ---- Data loading ----
 
 async function fetchJSON(url) {
@@ -737,6 +749,20 @@ async function fetchJSON(url) {
         if (!text.trim()) return {};
         return JSON.parse(text);
     } catch { return {}; }
+}
+
+function loadAnimSheets() {
+    const promises = Object.entries(ANIM_SHEETS).map(([name, path]) => new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+            state.animImages[name] = img;
+            state.animFrameCounts[name] = Math.floor(img.width / TILE_W);
+            resolve();
+        };
+        img.onerror = () => resolve();
+        img.src = path;
+    }));
+    return Promise.all(promises);
 }
 
 function loadSpritesheet() {
@@ -879,10 +905,78 @@ function drawTileOnCanvas(canvas, tileRef, tintColor, flipH, flipV, scale) {
     ctx.drawImage(offscreen, 0, 0, TILE_W, TILE_H, (w - dw) / 2, (h - dh) / 2, dw, dh);
 }
 
+// ---- Animation helpers ----
+
+function drawAnimFrameToOffscreen(animName, frame, fh, fv) {
+    const img = state.animImages[animName];
+    if (!img) return null;
+    const frameCount = state.animFrameCounts[animName] || 1;
+    const f = frame % frameCount;
+    const offscreen = document.createElement('canvas');
+    offscreen.width = TILE_W; offscreen.height = TILE_H;
+    const octx = offscreen.getContext('2d');
+    octx.save();
+    if (fh) { octx.translate(TILE_W, 0); octx.scale(-1, 1); }
+    if (fv) { octx.translate(0, TILE_H); octx.scale(1, -1); }
+    octx.drawImage(img, f * TILE_W, 0, TILE_W, TILE_H, 0, 0, TILE_W, TILE_H);
+    octx.restore();
+    return offscreen;
+}
+
+function applyTintToOffscreen(offscreen, tint, srcImg, sx, sy, fh, fv) {
+    if (!tint || tint === '#ffffff') return;
+    const octx = offscreen.getContext('2d');
+    octx.globalCompositeOperation = 'multiply';
+    octx.fillStyle = tint;
+    octx.fillRect(0, 0, TILE_W, TILE_H);
+    octx.globalCompositeOperation = 'destination-in';
+    octx.save();
+    if (fh) { octx.translate(TILE_W, 0); octx.scale(-1, 1); }
+    if (fv) { octx.translate(0, TILE_H); octx.scale(1, -1); }
+    octx.drawImage(srcImg, sx, sy, TILE_W, TILE_H, 0, 0, TILE_W, TILE_H);
+    octx.restore();
+}
+
+function getFlickerTint(baseTint) {
+    if (!baseTint || baseTint === '#ffffff') return baseTint;
+    const r = parseInt(baseTint.slice(1,3), 16);
+    const g = parseInt(baseTint.slice(3,5), 16);
+    const b = parseInt(baseTint.slice(5,7), 16);
+    const factor = 0.7 + Math.random() * 0.3;
+    const clamp = v => Math.min(255, Math.round(v * factor));
+    return '#' + [clamp(r), clamp(g), clamp(b)].map(v => v.toString(16).padStart(2,'0')).join('');
+}
+
+function getPreviewAnimState() {
+    return {
+        base: document.getElementById('f-animationBase').value || null,
+        top: document.getElementById('f-animationTop').value || null,
+        side: document.getElementById('f-animationSide').value || null,
+        flicker: document.getElementById('f-flickerTint').checked,
+        ripple: document.getElementById('f-rippleTint').checked
+    };
+}
+
+function getRippleTint(baseTint, time) {
+    if (!baseTint || baseTint === '#ffffff') return baseTint;
+    const r = parseInt(baseTint.slice(1,3), 16);
+    const g = parseInt(baseTint.slice(3,5), 16);
+    const b = parseInt(baseTint.slice(5,7), 16);
+    const wave = Math.sin(time * 0.003) * 12;
+    const clamp = v => Math.max(0, Math.min(255, Math.round(v + wave)));
+    return '#' + [clamp(r), clamp(g), clamp(b)].map(v => v.toString(16).padStart(2,'0')).join('');
+}
+
+function hasActiveAnimation() {
+    const a = getPreviewAnimState();
+    return !!(a.base || a.top || a.side || a.flicker || a.ripple);
+}
+
 // ---- Preview ----
 
-function updatePreview() {
-    const tint = document.getElementById('f-tint-enabled').checked ? document.getElementById('f-tint-hex').value || document.getElementById('f-tint').value : null;
+function renderPreview() {
+    const tintBase = getActiveTint();
+    const animState = getPreviewAnimState();
 
     const baseTile = state.currentTiles.tileIndexBase;
     const topTile = state.currentTiles.tileIndexTop;
@@ -898,7 +992,6 @@ function updatePreview() {
     const dx = parseInt(document.getElementById('f-sideOffset-dx').value) || 0;
     const dy = parseInt(document.getElementById('f-sideOffset-dy').value) || 0;
 
-    // Main preview — render at full res, display at half size for hi-dpi
     const canvas = document.getElementById('preview-canvas');
     const tileScaledW = TILE_W * 3, tileScaledH = TILE_H * 3;
 
@@ -919,43 +1012,132 @@ function updatePreview() {
     const cx = pad + tileScaledW;
     const cy = canvas.height - tileScaledH - pad;
 
-    function drawTileAt(tileRef, px, py, fh, fv) {
-        const coords = resolveTile(tileRef);
-        if (!coords || !state.spritesheetImg) return;
-        const offscreen = document.createElement('canvas');
-        offscreen.width = TILE_W; offscreen.height = TILE_H;
-        const octx = offscreen.getContext('2d');
-        octx.save();
-        if (fh) { octx.translate(TILE_W, 0); octx.scale(-1, 1); }
-        if (fv) { octx.translate(0, TILE_H); octx.scale(1, -1); }
-        octx.drawImage(state.spritesheetImg, coords.x * TILE_W, coords.y * TILE_H, TILE_W, TILE_H, 0, 0, TILE_W, TILE_H);
-        octx.restore();
-        if (tint && tint !== '#ffffff') {
-            octx.globalCompositeOperation = 'multiply';
-            octx.fillStyle = tint;
-            octx.fillRect(0, 0, TILE_W, TILE_H);
-            octx.globalCompositeOperation = 'destination-in';
+    function drawSlotAt(tileRef, animName, px, py, fh, fv) {
+        let offscreen;
+        let tint = tintBase;
+        if (animState.flicker) tint = getFlickerTint(tintBase);
+        else if (animState.ripple) tint = getRippleTint(tintBase, performance.now());
+        if (animName && state.animImages[animName]) {
+            offscreen = drawAnimFrameToOffscreen(animName, animFrame, fh, fv);
+            if (!offscreen) return;
+            const frameCount = state.animFrameCounts[animName] || 1;
+            const f = animFrame % frameCount;
+            applyTintToOffscreen(offscreen, tint, state.animImages[animName], f * TILE_W, 0, fh, fv);
+        } else {
+            const coords = resolveTile(tileRef);
+            if (!coords || !state.spritesheetImg) return;
+            offscreen = document.createElement('canvas');
+            offscreen.width = TILE_W; offscreen.height = TILE_H;
+            const octx = offscreen.getContext('2d');
             octx.save();
             if (fh) { octx.translate(TILE_W, 0); octx.scale(-1, 1); }
             if (fv) { octx.translate(0, TILE_H); octx.scale(1, -1); }
             octx.drawImage(state.spritesheetImg, coords.x * TILE_W, coords.y * TILE_H, TILE_W, TILE_H, 0, 0, TILE_W, TILE_H);
             octx.restore();
+            applyTintToOffscreen(offscreen, tint, state.spritesheetImg, coords.x * TILE_W, coords.y * TILE_H, fh, fv);
         }
         ctx.drawImage(offscreen, 0, 0, TILE_W, TILE_H, px, py, tileScaledW, tileScaledH);
     }
 
-    drawTileAt(baseTile, cx, cy, flipBH, flipBV);
-    drawTileAt(topTile, cx, cy - tileScaledH, flipTH, flipTV);
-    if (sideTile) {
-        drawTileAt(sideTile, cx + dx * tileScaledW, cy + dy * tileScaledH, flipSH, flipSV);
+    drawSlotAt(baseTile, animState.base, cx, cy, flipBH, flipBV);
+    drawSlotAt(topTile, animState.top, cx, cy - tileScaledH, flipTH, flipTV);
+    if (sideTile || animState.side) {
+        drawSlotAt(sideTile, animState.side, cx + dx * tileScaledW, cy + dy * tileScaledH, flipSH, flipSV);
     }
 
-    // Individual tiles
-    drawTileOnCanvas(document.getElementById('preview-base'), baseTile, tint, flipBH, flipBV, 2);
-    drawTileOnCanvas(document.getElementById('preview-top'), topTile, tint, flipTH, flipTV, 2);
-    drawTileOnCanvas(document.getElementById('preview-side'), sideTile, tint, flipSH, flipSV, 2);
+    // Individual tile previews (static — no animation)
+    drawTileOnCanvas(document.getElementById('preview-base'), baseTile, tintBase, flipBH, flipBV, 2);
+    drawTileOnCanvas(document.getElementById('preview-top'), topTile, tintBase, flipTH, flipTV, 2);
+    drawTileOnCanvas(document.getElementById('preview-side'), sideTile, tintBase, flipSH, flipSV, 2);
+}
 
+let animLastTick = 0;
+const ANIM_FRAME_INTERVAL = 150;
+const ANIM_TINT_INTERVAL = 80;
+
+function animLoop(timestamp) {
+    const a = getPreviewAnimState();
+    const hasFrameAnim = a.base || a.top || a.side;
+    const interval = hasFrameAnim ? ANIM_FRAME_INTERVAL : ANIM_TINT_INTERVAL;
+    if (timestamp - animLastTick >= interval) {
+        animLastTick = timestamp;
+        if (hasFrameAnim) animFrame++;
+        renderPreview();
+    }
+    if (hasActiveAnimation()) {
+        animRAF = requestAnimationFrame(animLoop);
+    } else {
+        animRAF = null;
+    }
+}
+
+function startAnimLoop() {
+    if (!animRAF && hasActiveAnimation()) {
+        animRAF = requestAnimationFrame(animLoop);
+    }
+}
+
+function stopAnimLoop() {
+    if (animRAF) {
+        cancelAnimationFrame(animRAF);
+        animRAF = null;
+    }
+}
+
+function randomizeAppearance() {
+    const names = state.tileNames;
+    if (!names.length) return;
+    const pick = () => names[Math.floor(Math.random() * names.length)];
+
+    state.currentTiles.tileIndexBase = pick();
+    updateTileSlot('tileIndexBase');
+    state.currentTiles.tileIndexTop = pick();
+    updateTileSlot('tileIndexTop');
+
+    if (Math.random() < 0.25) {
+        state.currentTiles.tileIndexSide = pick();
+        updateTileSlot('tileIndexSide');
+        const offsets = [-1, 0, 1];
+        document.getElementById('f-sideOffset-dx').value = offsets[Math.floor(Math.random() * offsets.length)];
+        document.getElementById('f-sideOffset-dy').value = offsets[Math.floor(Math.random() * offsets.length)];
+    } else {
+        state.currentTiles.tileIndexSide = null;
+        updateTileSlot('tileIndexSide');
+        document.getElementById('f-sideOffset-dx').value = 0;
+        document.getElementById('f-sideOffset-dy').value = 0;
+    }
+
+    ['f-flipBaseH','f-flipBaseV','f-flipTopH','f-flipTopV','f-flipSideH','f-flipSideV'].forEach(id => {
+        document.getElementById(id).checked = Math.random() < 0.3;
+    });
+
+    const r = Math.floor(Math.random() * 256);
+    const g = Math.floor(Math.random() * 256);
+    const b = Math.floor(Math.random() * 256);
+    const hex = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+    document.getElementById('f-tint').value = hex;
+    document.getElementById('f-tint-hex').value = hex;
+
+    document.getElementById('f-flickerTint').checked = Math.random() < 0.15;
+    document.getElementById('f-rippleTint').checked = Math.random() < 0.1;
+    document.getElementById('f-random_color').checked = Math.random() < 0.05;
+
+    const animOpts = ['', '', '', '', 'fire', 'smoke', 'mist', 'fluid'];
+    const pickAnim = () => animOpts[Math.floor(Math.random() * animOpts.length)];
+    document.getElementById('f-animationBase').value = pickAnim();
+    document.getElementById('f-animationTop').value = Math.random() < 0.15 ? pickAnim() : '';
+    document.getElementById('f-animationSide').value = '';
+
+    document.getElementById('f-facingEnabled').checked = Math.random() < 0.3;
+
+    updatePreview();
+}
+
+function updatePreview() {
+    renderPreview();
     updateJSONOutput();
+    if (hasActiveAnimation()) startAnimLoop();
+    else stopAnimLoop();
 }
 
 // ---- Tile slots ----
@@ -1177,6 +1359,7 @@ function initTypedAttrs() {
     for (const ta of TYPED_ATTRS) {
         const row = document.createElement('div');
         row.className = 'field-row';
+        if (ta.hint) row.title = ta.hint;
         const lbl = document.createElement('label');
         lbl.textContent = ta.label;
         row.appendChild(lbl);
@@ -1432,7 +1615,6 @@ function clearForm() {
     });
     document.getElementById('f-tint').value = '#ffffff';
     document.getElementById('f-tint-hex').value = '';
-    document.getElementById('f-tint-enabled').checked = false;
     document.getElementById('f-flickerTint').checked = false;
     document.getElementById('f-rippleTint').checked = false;
     document.getElementById('f-random_color').checked = false;
@@ -1509,7 +1691,6 @@ function populateForm(key, data) {
 
     // Tint
     if (data.tint) {
-        document.getElementById('f-tint-enabled').checked = true;
         document.getElementById('f-tint').value = data.tint;
         document.getElementById('f-tint-hex').value = data.tint;
     }
@@ -1660,9 +1841,8 @@ function readForm() {
     });
 
     // Tint
-    if (document.getElementById('f-tint-enabled').checked) {
-        obj.tint = document.getElementById('f-tint-hex').value || document.getElementById('f-tint').value;
-    }
+    const tint = getActiveTint();
+    if (tint) obj.tint = tint;
     if (document.getElementById('f-flickerTint').checked) obj.flickerTint = true;
     if (document.getElementById('f-rippleTint').checked) obj.rippleTint = true;
     if (document.getElementById('f-random_color').checked) obj.random_color = true;
@@ -1814,10 +1994,15 @@ function updateJSONOutput() {
 
 // ---- Tint sync ----
 
+function getActiveTint() {
+    const hex = document.getElementById('f-tint-hex').value.trim() || document.getElementById('f-tint').value;
+    if (!hex || hex === '#ffffff') return null;
+    return hex;
+}
+
 function initTintSync() {
     const colorInput = document.getElementById('f-tint');
     const hexInput = document.getElementById('f-tint-hex');
-    const enabledCb = document.getElementById('f-tint-enabled');
 
     colorInput.addEventListener('input', () => {
         hexInput.value = colorInput.value;
@@ -1827,7 +2012,6 @@ function initTintSync() {
         if (/^#[0-9a-fA-F]{6}$/.test(hexInput.value)) colorInput.value = hexInput.value;
         updatePreview();
     });
-    enabledCb.addEventListener('change', updatePreview);
 
     // Trap tint sync
     const tColorInput = document.getElementById('f-trap_spawn_tint');
@@ -1866,6 +2050,9 @@ function initEventListeners() {
         addStatRow('health', 10);
         updatePreview();
     });
+
+    // Randomize appearance
+    document.getElementById('btn-randomize').addEventListener('click', randomizeAppearance);
 
     // Export
     document.getElementById('btn-export').addEventListener('click', updateJSONOutput);
@@ -1915,7 +2102,7 @@ async function init() {
     initTilePicker();
     initTintSync();
 
-    await Promise.all([loadBaseData(), loadSpritesheet()]);
+    await Promise.all([loadBaseData(), loadSpritesheet(), loadAnimSheets()]);
     await loadPrototype(document.getElementById('prototype-select').value);
 
     initEventListeners();
