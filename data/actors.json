@@ -39,7 +39,7 @@
     "tint": "#fffece",
     "personality": "stationed_melee",
     "collision_effect": {
-      "health": -5
+      "health": -3
     },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
@@ -48,8 +48,8 @@
       "sentient": true,
       "inventory": 1,
       "remains": "skull",
-      "accuracy": 60,
-      "defense": 5,
+      "accuracy": 40,
+      "defense": 2,
       "opaque": false
     },
     "stats": {
@@ -164,11 +164,15 @@
   },
   "basilisk": {
     "name": "Basilisk",
-    "tileIndexBase": {
-      "x": 10,
-      "y": 7
+    "tileIndexBase": "WHITE_DOOR_TOP",
+    "tileIndexTop": "WHITE_REPTILE_HEAD",
+    "tileIndexSide": "OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE",
+    "sideOffset": {
+      "dx": -1,
+      "dy": 0
     },
-    "tileIndexTop": "CYCLOPS_FACE",
+    "tint": "#e32400",
+    "flickerTint": true,
     "personality": "ranged_attacker",
     "collision_effect": {
       "health": -8
@@ -177,7 +181,6 @@
     "collision_description": "[actor_name] [attacks.melee_verbs] [attacked_actor_name]!",
     "attributes": {
       "hostile": true,
-      "flammable": false,
       "sentient": true,
       "strength": 8
     },
@@ -615,16 +618,17 @@
   "clock": {
     "name": "clock",
     "tileIndexBase": "DIGIT_5",
-    "tileIndexTop": "NULL",
-    "collision_sound": "tap2",
+    "tileIndexTop": "MEDIUM_SHADE_LOWER_ONE_HALF_BLOCK",
     "personality": "timed_switch",
-    "switch_effects": { "visible": true },
+    "collision_sound": "tap2",
+    "collision_description": "a clock",
     "attributes": {
       "solid": true,
-      "pausable": true,
-      "toggled": false
+      "pausable": true
     },
-    "collision_description": "a clock"
+    "switch_effects": {
+      "visible": true
+    }
   },
   "pedestal": {
     "name": "pedestal",
@@ -1061,7 +1065,7 @@
   },
   "bat": {
     "name": "Bat",
-    "tileIndexBase": "LIGHT_SHADE",
+    "tileIndexBase": "BOX_DRAWING_LIGHT_HORIZONTAL",
     "tileIndexTop": "CARON",
     "personality": "aggressive_melee",
     "collision_effect": {
@@ -1069,19 +1073,18 @@
     },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
-    "innate_states": [
-      "flying"
-    ],
     "attributes": {
       "hostile": true,
       "sentient": true,
       "dark_vision": true,
-      "defense": 20,
-      "opaque": false
+      "defense": 20
     },
     "stats": {
       "health": 5
-    }
+    },
+    "innate_states": [
+      "flying"
+    ]
   },
   "rat": {
     "name": "Rat",

@@ -296,17 +296,6 @@
                 }, 
                 {
                  "height":30,
-                 "id":38,
-                 "name":"Door",
-                 "rotation":0,
-                 "type":"locked_door",
-                 "visible":true,
-                 "width":40,
-                 "x":560,
-                 "y":480
-                }, 
-                {
-                 "height":30,
                  "id":43,
                  "name":"Stairway",
                  "rotation":0,
@@ -448,6 +437,17 @@
                  "width":40,
                  "x":1040,
                  "y":630
+                }, 
+                {
+                 "height":30,
+                 "id":100,
+                 "name":"Door",
+                 "rotation":0,
+                 "type":"locked_door",
+                 "visible":true,
+                 "width":40,
+                 "x":570.869690840797,
+                 "y":473.298179716845
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -490,8 +490,8 @@
                  "type":"sword",
                  "visible":true,
                  "width":40,
-                 "x":1000,
-                 "y":750
+                 "x":960,
+                 "y":720
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -562,7 +562,7 @@
          "y":0
         }],
  "nextlayerid":9,
- "nextobjectid":98,
+ "nextobjectid":101,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",
