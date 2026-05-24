@@ -617,12 +617,11 @@
     "tileIndexBase": "DIGIT_5",
     "tileIndexTop": "NULL",
     "collision_sound": "tap2",
-    "personality": "clock_behavior",
+    "personality": "timed_switch",
     "switch_effects": { "visible": true },
     "attributes": {
       "solid": true,
-      "clock": true,
-      "clock_interval": 5,
+      "pausable": true,
       "toggled": false
     },
     "collision_description": "a clock"
@@ -665,7 +664,7 @@
     "animation_frames": "fluid",
     "tint": "#283656",
     "rippleTint": true,
-    "personality": "deep_water_behavior",
+    "personality": "deep_water",
     "attributes": {
       "solid": false,
       "flammable": false,
@@ -701,7 +700,7 @@
     "animated": true,
     "animation_frames": "fluid",
     "tint": "#9BC964",
-    "personality": "deep_water_behavior",
+    "personality": "deep_water",
     "attributes": {
       "solid": false,
       "deep": true,
@@ -719,7 +718,7 @@
     "animated": true,
     "animation_frames": "fluid",
     "tint": "#CAD49D",
-    "personality": "drain_behavior",
+    "personality": "drain",
     "attributes": {
       "flammable": false,
       "spreads": false,
@@ -773,7 +772,7 @@
     "animated": true,
     "animation_frames": "fluid",
     "tint": "#FF2200",
-    "personality": "lava_behavior",
+    "personality": "lava",
     "attributes": {
       "solid": false,
       "flammable": false,
@@ -793,7 +792,7 @@
     "animation_frames": "fire",
     "tint": "#EC7505",
     "flickerTint": true,
-    "personality": "fire_behavior",
+    "personality": "fire",
     "attributes": {
       "solid": false,
       "flammable": false,
@@ -816,7 +815,7 @@
     "animation_frames": "fire",
     "tint": "#FFCCBB",
     "flickerTint": true,
-    "personality": "fire_behavior",
+    "personality": "fire",
     "attributes": {
       "solid": false,
       "flammable": false,
@@ -908,7 +907,7 @@
     "tileIndexTop": "BLANK",
     "animated": true,
     "animation_frames": "smoke",
-    "personality": "cloud_behavior",
+    "personality": "cloud",
     "attributes": {
       "solid": false,
       "mass_noun": true,
@@ -923,7 +922,7 @@
     "tileIndexTop": "BLANK",
     "animated": true,
     "animation_frames": "mist",
-    "personality": "mist_behavior",
+    "personality": "mist",
     "attributes": {
       "solid": false,
       "mass_noun": true,
@@ -939,7 +938,7 @@
     "animated": true,
     "animation_frames": "smoke",
     "tint": "#DDDDDD",
-    "personality": "cloud_behavior",
+    "personality": "cloud",
     "attributes": {
       "solid": false,
       "flammable": false,
@@ -957,7 +956,7 @@
     "animated": true,
     "animation_frames": "smoke",
     "tint": "#AACC66",
-    "personality": "cloud_behavior",
+    "personality": "cloud",
     "attributes": {
       "solid": false,
       "flammable": true,
@@ -972,7 +971,7 @@
     "name": "Poison Gas Trap",
     "tileIndexBase": "INVERSE_BULLET",
     "tint": "#55AA55",
-    "personality": "trap_behavior",
+    "personality": "trap",
     "attributes": {
       "solid": false,
       "visible": false,
@@ -991,7 +990,7 @@
     "name": "Fire Trap",
     "tileIndexBase": "INVERSE_BULLET",
     "tint": "#FF6622",
-    "personality": "trap_behavior",
+    "personality": "trap",
     "attributes": {
       "solid": false,
       "visible": false,
@@ -1011,7 +1010,7 @@
     "name": "Paralysis Gas Trap",
     "tileIndexBase": "INVERSE_BULLET",
     "tint": "#AAAAFF",
-    "personality": "trap_behavior",
+    "personality": "trap",
     "attributes": {
       "solid": false,
       "visible": false,
@@ -1028,7 +1027,7 @@
     "name": "Confusion Gas Trap",
     "tileIndexBase": "INVERSE_BULLET",
     "tint": "#FF88FF",
-    "personality": "trap_behavior",
+    "personality": "trap",
     "attributes": {
       "solid": false,
       "visible": false,

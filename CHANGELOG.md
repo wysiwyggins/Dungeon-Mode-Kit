@@ -13,6 +13,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - New more broguelike dungeon generator- compacted rooms that include circular and cross shaped rooms (testing)
 - Mining (works but requires testing and refinement, Currently 3 hits always removes a breakable actor, which feels unnatural)
+- Web frontend editors for actors, items and personalities
+
+## [1.9b] 2026-05-24
+
+### Added
+
+- **Item editor** (`item-editor.html`): web tool for creating and editing item definitions with live preview, tile picker, and template presets for weapons, potions, scrolls, rings, staffs, wands, armor, and food
+- **Actor editor** (`actor-editor.html`): web tool for creating and editing actor definitions with tile preview, stat configuration, and equipment setup
+- **Personality editor** (`personality-editor.html`): web tool for editing behavior-driven AI personalities with drag-reorder behavior lists and contextual parameter fields
+- **Parameterized behaviors**: behaviors can now have inputs from personality data instead of just hardcoded values
+
+### Fixed
+
+- **Sidebar shows effective stats**: defense, strength, and accuracy in the HTML sidebar now reflect equipment and passive item bonuses, not just base attribute values (try with shield in labyrinth prototype)
 
 ## [1.8b] 2026-05-20
 

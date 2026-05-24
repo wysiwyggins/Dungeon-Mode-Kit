@@ -35,7 +35,7 @@ fi
 
 # Create destination directories
 echo "Creating directories..."
-mkdir -p "$DEST"/{lib,assets/sprites,assets/audio,data,prototypes/default,prototypes/test,prototypes/labyrinth}
+mkdir -p "$DEST"/{lib,assets/sprites,assets/audio,data,prototypes/default,prototypes/test,prototypes/labyrinth,prototypes/arena,prototypes/automatons,prototypes/dungeon}
 
 # Core JavaScript files
 echo "Copying core JS files..."
@@ -76,10 +76,22 @@ cp "$SCRIPT_DIR/prototypes/test/"*.json "$DEST/prototypes/test/"
 cp "$SCRIPT_DIR/prototypes/test/"*.tmj "$DEST/prototypes/test/"
 cp "$SCRIPT_DIR/prototypes/labyrinth/"*.json "$DEST/prototypes/labyrinth/"
 cp "$SCRIPT_DIR/prototypes/labyrinth/"*.tmj "$DEST/prototypes/labyrinth/"
+cp "$SCRIPT_DIR/prototypes/arena/"*.json "$DEST/prototypes/arena/" 2>/dev/null
+cp "$SCRIPT_DIR/prototypes/arena/"*.tmj "$DEST/prototypes/arena/" 2>/dev/null
+cp "$SCRIPT_DIR/prototypes/automatons/"*.json "$DEST/prototypes/automatons/" 2>/dev/null
+cp "$SCRIPT_DIR/prototypes/automatons/"*.tmj "$DEST/prototypes/automatons/" 2>/dev/null
+cp "$SCRIPT_DIR/prototypes/dungeon/"*.json "$DEST/prototypes/dungeon/" 2>/dev/null
+cp "$SCRIPT_DIR/prototypes/dungeon/"*.tmj "$DEST/prototypes/dungeon/" 2>/dev/null
 
 # Copy index.html as a reference (optional - you may want to customize this)
 echo "Copying index.html template..."
 cp "$SCRIPT_DIR/index.html" "$DEST/"
+
+# Editor tools
+echo "Copying editor tools..."
+cp "$SCRIPT_DIR/item-editor.html" "$DEST/"
+cp "$SCRIPT_DIR/actor-editor.html" "$DEST/"
+cp "$SCRIPT_DIR/personality-editor.html" "$DEST/"
 
 echo ""
 echo -e "${GREEN}Deploy complete!${NC}"

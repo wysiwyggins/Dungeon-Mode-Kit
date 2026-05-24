@@ -2514,7 +2514,10 @@ class Prototype {
     }
     
     getPersonality(personalityName) {
-        return this.personalities[personalityName] || null;
+        const entry = this.personalities[personalityName];
+        if (!entry) return null;
+        if (entry.$alias) return this.personalities[entry.$alias] || null;
+        return entry;
     }
 }
 
@@ -2741,6 +2744,7 @@ class Item extends Entity {
             this.setAttribute('cursed', true);
         }
 
+        this.flickerTint = data.flickerTint || false;
         this.combatUseCount = 0;
     }
 
@@ -6723,9 +6727,9 @@ class Actor extends Entity {
                 return this.tryMove(newX, newY);
             }
 
-            if (actorAtTarget.hasAttribute('clock')) {
-                actorAtTarget._clockPaused = !actorAtTarget._clockPaused;
-                const state = actorAtTarget._clockPaused ? 'stops' : 'resumes';
+            if (actorAtTarget.hasAttribute('pausable')) {
+                actorAtTarget._paused = !actorAtTarget._paused;
+                const state = actorAtTarget._paused ? 'stops' : 'resumes';
                 this.engine.playSound?.('tap2');
                 this.engine.inputManager?.showMessage(`The ${actorAtTarget.name} ${state} ticking.`, { x: actorAtTarget.x, y: actorAtTarget.y });
                 return { moved: false, actionTaken: true };
@@ -7827,7 +7831,7 @@ class EntityManager {
         const tinted = new Set();
 
         for (const actor of this.actors) {
-            if ((!actor.hasAttribute('switchable') && !actor.hasAttribute('clock')) || actor.isDead || tinted.has(actor)) continue;
+            if ((!actor.hasAttribute('switchable') && !actor.data?.switch_effects) || actor.isDead || tinted.has(actor)) continue;
 
             const effects = actor.data?.switch_effects;
             if (!effects) continue;
@@ -10108,6 +10112,10 @@ class RenderSystem {
             sprite.y += globalVars.TILE_HEIGHT / 2;
             sprite.scale.x = item.flipH ? -1 : 1;
             sprite.scale.y = item.flipV ? -1 : 1;
+        }
+
+        if (item.flickerTint) {
+            this.effectRunner.apply('flicker_tint', sprite, { baseTint: item.tint });
         }
 
         this.entityContainer.addChild(sprite);

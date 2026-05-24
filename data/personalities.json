@@ -61,7 +61,7 @@
     "flee_threshold": 3
   },
 
-  "lava_behavior": {
+  "lava": {
     "name": "Lava",
     "hostile": false,
     "behaviors": [
@@ -72,8 +72,9 @@
     "steam_type": "steam",
     "steam_chance": 0.3
   },
+  "lava_behavior": { "$alias": "lava" },
 
-  "fire_behavior": {
+  "fire": {
     "name": "Fire",
     "hostile": false,
     "behaviors": [
@@ -81,8 +82,9 @@
       "fire_burn_out"
     ]
   },
+  "fire_behavior": { "$alias": "fire" },
 
-  "cloud_behavior": {
+  "cloud": {
     "name": "Cloud",
     "hostile": false,
     "behaviors": [
@@ -98,8 +100,9 @@
     "disperse_chance": 0.5,
     "spawn_mist_chance": 0.4
   },
+  "cloud_behavior": { "$alias": "cloud" },
 
-  "mist_behavior": {
+  "mist": {
     "name": "Mist",
     "hostile": false,
     "behaviors": [
@@ -110,6 +113,7 @@
     "fade_threshold": 1,
     "fade_chance": 0.25
   },
+  "mist_behavior": { "$alias": "mist" },
 
   "liquid_pooling": {
     "name": "Liquid Pooling",
@@ -129,7 +133,7 @@
     "mix_step": 0.15
   },
 
-  "deep_water_behavior": {
+  "deep_water": {
     "name": "Deep Water",
     "hostile": false,
     "behaviors": [
@@ -142,19 +146,26 @@
     "mix_chance": 0.2,
     "mix_step": 0.15
   },
+  "deep_water_behavior": { "$alias": "deep_water" },
 
-  "clock_behavior": {
-    "name": "Clock",
+  "timed_switch": {
+    "name": "Timed Switch",
     "hostile": false,
-    "behaviors": ["clock_tick"]
+    "behaviors": ["countdown", "countdown_display"],
+    "interval": 5,
+    "countdown_event": "toggle_and_propagate",
+    "countdown_sound": "tap2",
+    "countdown_display": "digit"
   },
+  "clock_behavior": { "$alias": "timed_switch" },
 
-  "drain_behavior": {
+  "drain": {
     "name": "Drain",
     "hostile": false,
     "behaviors": ["drain_suction"],
     "suction_range": 2
   },
+  "drain_behavior": { "$alias": "drain" },
 
   "cellular_automaton": {
     "name": "Cellular Automaton",
@@ -175,13 +186,14 @@
     ]
   },
 
-  "trap_behavior": {
+  "trap": {
     "name": "Trap",
     "hostile": false,
     "behaviors": [
       "trap_check_trigger"
     ]
   },
+  "trap_behavior": { "$alias": "trap" },
 
   "stationed_ranged": {
     "name": "Stationed Ranged",

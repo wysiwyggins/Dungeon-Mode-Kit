@@ -388,6 +388,7 @@
         "FLOOR": [5, 16],
         "OPAQUE_LIGHT_SHADE_QUADRANT_LOWER_RIGHT_AND_UPPER_LEFT": [5, 16],
         "HAUNTED_FACE": [6,16],
-        "GRIM_FACE": [7,16]
+        "GRIM_FACE": [7,16],
+        "GUARDIAN_HEAD": [7,17]
     }
 }

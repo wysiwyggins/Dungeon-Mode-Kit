@@ -2451,27 +2451,41 @@ const BehaviorLibrary = {
         return retryResult.moved || retryResult.actionTaken;
     },
 
-    clock_tick: (actor) => {
-        if (actor._clockPaused) return true;
+    countdown: (actor, data) => {
+        if (actor._paused) return false;
 
-        if (actor._clockCounter === undefined) {
-            actor._clockCounter = actor.getAttribute('clock_interval') || 5;
+        if (actor._countdownCounter === undefined) {
+            actor._countdownCounter = data.interval ?? actor.getAttribute('clock_interval') ?? 5;
         }
 
-        actor._clockCounter--;
+        actor._countdownCounter--;
 
-        if (actor._clockCounter <= 0) {
-            actor._clockCounter = actor.getAttribute('clock_interval') || 5;
+        if (actor._countdownCounter <= 0) {
+            actor._countdownCounter = data.interval ?? actor.getAttribute('clock_interval') ?? 5;
 
-            const nowToggled = !actor.hasAttribute('toggled');
-            actor.setAttribute('toggled', nowToggled);
-            actor.engine.playSound?.('tap2');
-            actor._propagateSwitchEffects(nowToggled);
+            const eventName = data.countdown_event ?? 'toggle_and_propagate';
+            const eventBehavior = BehaviorLibrary[eventName];
+            if (eventBehavior) eventBehavior(actor, data);
+
+            if (data.countdown_sound) actor.engine.playSound?.(data.countdown_sound);
         }
 
-        const digit = Math.min(actor._clockCounter, 9);
-        actor.updateTileIndex(`DIGIT_${digit}`, 'base');
+        return false;
+    },
 
+    countdown_display: (actor, data) => {
+        if (data.countdown_display === 'digit') {
+            const counter = actor._countdownCounter ?? (data.interval ?? 5);
+            const digit = Math.min(counter, 9);
+            actor.updateTileIndex(`DIGIT_${digit}`, 'base');
+        }
+        return true;
+    },
+
+    toggle_and_propagate: (actor) => {
+        const nowToggled = !actor.hasAttribute('toggled');
+        actor.setAttribute('toggled', nowToggled);
+        actor._propagateSwitchEffects(nowToggled);
         return true;
     },
 
@@ -2484,5 +2498,10 @@ const BehaviorLibrary = {
     deep_water_currents: (...args) => {
         BehaviorLibrary.strip_inventory(...args);
         return BehaviorLibrary.drift_ground_items(...args);
+    },
+    clock_tick: (actor, data) => {
+        BehaviorLibrary.countdown(actor, data);
+        BehaviorLibrary.countdown_display(actor, { ...data, countdown_display: 'digit' });
+        return true;
     }
 };

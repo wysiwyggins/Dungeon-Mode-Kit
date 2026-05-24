@@ -430,14 +430,15 @@ Personality data fields (besides `name`, `hostile`, `behaviors`) are passed to e
 
 | Personality | Behavior |
 |-------------|----------|
-| `fire_behavior` | Spread to adjacent flammable tiles, burn out over time |
-| `cloud_behavior` | Spread, disperse to mist, affect actors, countdown lifetime |
-| `mist_behavior` | Fade when isolated, affect actors, countdown lifetime |
-| `lava_behavior` | Incinerate entities, generate steam on adjacent water |
+| `fire` | Spread to adjacent flammable tiles, burn out over time |
+| `cloud` | Spread, disperse to mist, affect actors, countdown lifetime |
+| `mist` | Fade when isolated, affect actors, countdown lifetime |
+| `lava` | Incinerate entities, generate steam on adjacent water |
 | `liquid_pooling` | Emit clouds (sewage gas), cellular transform (shallow→deep), color mixing |
-| `deep_water_behavior` | Strip inventory from wading actors, drift ground items, color mixing |
-| `drain_behavior` | Pull items on liquid toward drain |
-| `trap_behavior` | Check trigger conditions (Brogue-style hidden traps) |
+| `deep_water` | Strip inventory from wading actors, drift ground items, color mixing |
+| `drain` | Pull items on liquid toward drain |
+| `trap` | Check trigger conditions (Brogue-style hidden traps) |
+| `timed_switch` | Countdown timer that toggles switch effects at zero (configurable interval and event) |
 | `cellular_automaton` | Cellular automaton step (Game of Life rules, configurable) |
 
 ### Available Behaviors
@@ -488,7 +489,9 @@ Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a fu
 | `summon_actor` | Spawn an actor on adjacent floor tile on cooldown with a cap. | `summon_type`, `summon_cooldown` (default: 5), `summon_cap` (default: 3), `summon_sound` |
 | `emit_cloud` | Spawn cloud actor at position with global cap. | `emit_from_type`, `emit_type`, `emit_chance` (default: 3), `emit_cap` (default: 12) |
 | `blink_away` | Teleport away from an adjacent target (or toward a distant one) on cooldown. Leaves `blink_spawn` actor at origin if set. | `blink_range` (default: 8), `blink_cooldown` (default: 5), `preferred_distance` (default: 4), `blink_spawn` (optional actor type) |
-| `clock_tick` | Count down each turn, toggling `toggled` attribute at zero and propagating switch effects. Updates base tile to show digit. | `clock_interval` (attribute, default: 5) |
+| `countdown` | Decrement counter each turn; at zero, reset and call the behavior named in `countdown_event`. | `interval` (default: 5), `countdown_event` (default: `toggle_and_propagate`), `countdown_sound` |
+| `countdown_display` | Update base tile to show remaining countdown as a digit. | `countdown_display` (set to `"digit"`) |
+| `toggle_and_propagate` | Flip `toggled` attribute and propagate switch effects to linked actors. | — |
 
 **Environmental:**
 
