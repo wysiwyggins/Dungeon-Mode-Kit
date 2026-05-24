@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Personality Editor — Dungeon Mode Kit</title>
+<link rel="stylesheet" href="assets/main.css">
+</head>
+<body class="editor personality-editor">
+
+<header>
+    <h1>Personality Editor</h1>
+    <label>Prototype:
+        <select id="prototype-select">
+            <option value="" selected>— base only —</option>
+            <option value="dungeon">dungeon</option>
+            <option value="arena">arena</option>
+            <option value="labyrinth">labyrinth</option>
+            <option value="automatons">automatons</option>
+            <option value="test">test</option>
+            <option value="default">default</option>
+        </select>
+    </label>
+    <label>Personality:
+        <select id="personality-select" style="min-width:220px"></select>
+    </label>
+    <button id="btn-new">New Personality</button>
+    <button id="btn-export" class="btn-accent">Export JSON</button>
+    <button id="btn-copy" class="btn-accent">Copy to Clipboard</button>
+</header>
+
+<div id="workspace">
+    <aside id="behavior-panel">
+        <h3>Behavior Palette</h3>
+        <input type="text" id="behavior-search" placeholder="Filter behaviors...">
+        <div id="behavior-palette"></div>
+    </aside>
+
+    <div id="form-panel">
+        <!-- Identity -->
+        <details class="section" open>
+            <summary>Identity</summary>
+            <div class="section-body">
+                <div class="field-row">
+                    <label>Personality Key</label>
+                    <input type="text" id="personality-key" placeholder="e.g. aggressive_melee">
+                </div>
+                <div class="field-row">
+                    <label>Name</label>
+                    <input type="text" id="f-name" placeholder="Display name">
+                </div>
+            </div>
+        </details>
+
+        <!-- Flags -->
+        <details class="section" open>
+            <summary>Flags</summary>
+            <div class="section-body">
+                <div class="checkbox-grid">
+                    <label title="Attacks player-controlled actors"><input type="checkbox" id="f-hostile"> hostile</label>
+                    <label title="Player-controlled"><input type="checkbox" id="f-controlled"> controlled</label>
+                    <label title="Uses tactical positioning logic"><input type="checkbox" id="f-tactical"> tactical</label>
+                    <label title="Alerts nearby allies when spotting an intruder"><input type="checkbox" id="f-alert_allies"> alert_allies</label>
+                </div>
+                <div class="field-row">
+                    <label title="Health threshold (0-1) below which flee_from_danger activates">flee_threshold</label>
+                    <input type="number" id="f-flee_threshold" min="0" max="1" step="0.1" value="" placeholder="e.g. 0.3">
+                </div>
+                <div style="margin: 6px 0 4px; font-size:11px; color:var(--accent)">Preferred Positions</div>
+                <div id="preferred-positions-list" class="dynamic-list"></div>
+                <button class="add-btn" id="btn-add-position">+ Add Position</button>
+            </div>
+        </details>
+
+        <!-- Behavior List -->
+        <details class="section" open>
+            <summary>Behavior List</summary>
+            <div class="section-body">
+                <div style="font-size:10px; color:var(--text-dim); margin-bottom:8px">
+                    Behaviors execute in order. The first to succeed stops the chain. Drag to reorder.
+                </div>
+                <div id="behavior-list-container"></div>
+                <div class="behavior-add-row">
+                    <select id="behavior-add-select"></select>
+                    <button class="add-btn" id="btn-add-behavior">+ Add</button>
+                </div>
+            </div>
+        </details>
+
+        <!-- Parameters -->
+        <details class="section" open>
+            <summary>Parameters</summary>
+            <div class="section-body">
+                <div id="params-hint" style="font-size:10px; color:var(--text-dim); margin-bottom:8px">
+                    Showing parameters used by the current behavior list.
+                </div>
+                <div id="params-container"></div>
+                <div id="no-params-hint" class="empty-hint" style="display:none">
+                    No parameterized behaviors in the list.
+                </div>
+            </div>
+        </details>
+
+        <!-- Custom Parameters -->
+        <details class="section">
+            <summary>Custom Parameters</summary>
+            <div class="section-body">
+                <div style="font-size:10px; color:var(--text-dim); margin-bottom:8px">
+                    Additional key-value pairs passed to all behaviors.
+                </div>
+                <div id="custom-params" class="dynamic-list"></div>
+                <button class="add-btn" id="btn-add-custom-param">+ Add Parameter</button>
+            </div>
+        </details>
+    </div>
+</div>
+
+<div id="json-output-panel">
+    <div class="output-header">
+        <h3>JSON Output</h3>
+        <span id="personality-key-field"></span>
+    </div>
+    <textarea id="json-output" readonly rows="8"></textarea>
+</div>
+
+<script>
+
+// ---- Behavior definitions ----
+
+const BEHAVIOR_CATEGORIES = [
+    { name: 'Combat', behaviors: ['attack_adjacent', 'ranged_attack', 'shoot_at_target', 'bolt_attack', 'pickpocket_adjacent', 'defend_self'] },
+    { name: 'Movement', behaviors: ['random_walk', 'pursue_target', 'maintain_distance', 'blink_away', 'flee_from_danger', 'flee_with_loot', 'wander_to_wall'] },
+    { name: 'Patrol / Guard', behaviors: ['patrol', 'guard_area', 'pursue_intruders', 'follow_thread'] },
+    { name: 'Chain Creatures', behaviors: ['chain_head_ai', 'chain_body_follow', 'chain_scatter'] },
+    { name: 'Environmental', behaviors: [
+        'incinerate_entities', 'steam_generation', 'fire_spread', 'fire_burn_out',
+        'cloud_spread', 'cloud_affect_actors', 'cloud_disperse', 'cloud_lifetime', 'mist_fade',
+        'liquid_color_mix', 'strip_inventory', 'drift_ground_items', 'drain_suction',
+        'cellular_automaton_step', 'cellular_transform', 'emit_cloud'
+    ]},
+    { name: 'Special', behaviors: [
+        'summon_actor', 'heal_ally', 'seek_item', 'mine_nearby_wall',
+        'trap_check_trigger', 'apply_aura', 'horizontal_bounce', 'vertical_bounce', 'clock_tick'
+    ]}
+];
+
+const ALL_BEHAVIORS = BEHAVIOR_CATEGORIES.flatMap(c => c.behaviors);
+
+const BEHAVIOR_HINTS = {
+    attack_adjacent: 'Attack an adjacent hostile target',
+    ranged_attack: 'Fire a projectile at a visible target',
+    shoot_at_target: 'Stationary ranged attack (turret-style)',
+    bolt_attack: 'Fire a lightning bolt at a target',
+    pickpocket_adjacent: 'Steal an item from an adjacent target',
+    defend_self: 'Attack adjacent threat when cornered',
+    random_walk: 'Move in a random valid direction',
+    pursue_target: 'Move toward a visible target',
+    maintain_distance: 'Keep preferred_distance from target',
+    blink_away: 'Teleport away when target is too close',
+    flee_from_danger: 'Run away when health is low',
+    flee_with_loot: 'Run away after stealing an item',
+    wander_to_wall: 'Move toward nearest wall',
+    patrol: 'Walk a random pattern within patrol_range of home',
+    guard_area: 'Watch for intruders, alert allies',
+    pursue_intruders: 'Chase last known intruder position',
+    follow_thread: 'Follow a thread trail left by the player',
+    chain_head_ai: 'Chain creature head movement',
+    chain_body_follow: 'Chain creature body follows head',
+    chain_scatter: 'Chain segments scatter when head dies',
+    incinerate_entities: 'Burn actors standing on this tile',
+    steam_generation: 'Chance to spawn steam nearby',
+    fire_spread: 'Spread fire to adjacent flammable tiles',
+    fire_burn_out: 'Fade and eventually die',
+    cloud_spread: 'Expand cloud radius over time',
+    cloud_affect_actors: 'Apply effects to actors in the cloud',
+    cloud_disperse: 'Chance to disperse into mist',
+    cloud_lifetime: 'Track age and eventually expire',
+    mist_fade: 'Chance to fade away',
+    liquid_color_mix: 'Blend color with adjacent liquids',
+    strip_inventory: 'Chance to knock items off actors',
+    drift_ground_items: 'Push ground items to adjacent tiles',
+    drain_suction: 'Pull nearby actors toward drain',
+    cellular_automaton_step: 'Conway-style cell update',
+    cellular_transform: 'Transform based on neighbor count',
+    emit_cloud: 'Periodically spawn a cloud nearby',
+    summon_actor: 'Summon an actor on cooldown',
+    heal_ally: 'Heal a nearby wounded ally',
+    seek_item: 'Move toward nearest ground item',
+    mine_nearby_wall: 'Break an adjacent wall tile',
+    trap_check_trigger: 'Check if an actor stepped on the trap',
+    apply_aura: 'Chance to apply a state to adjacent actors',
+    horizontal_bounce: 'Move left/right, reverse at walls',
+    vertical_bounce: 'Move up/down, reverse at walls',
+    clock_tick: 'Tick a clock mechanism'
+};
+
+const BEHAVIOR_PARAMS = {
+    patrol: ['patrol_range'],
+    guard_area: ['memory_duration'],
+    pursue_intruders: ['memory_duration'],
+    maintain_distance: ['preferred_distance'],
+    flee_from_danger: ['health_threshold'],
+    flee_with_loot: ['loot_search_radius'],
+    heal_ally: ['heal_amount', 'heal_sound'],
+    seek_item: ['search_radius', 'item_type'],
+    apply_aura: ['aura_state', 'aura_chance', 'aura_duration', 'aura_hostile_only'],
+    summon_actor: ['summon_type', 'summon_cooldown', 'summon_cap', 'summon_sound'],
+    emit_cloud: ['emit_from_type', 'emit_type', 'emit_chance', 'emit_cap'],
+    blink_away: ['blink_range', 'blink_cooldown', 'preferred_distance', 'blink_spawn'],
+    bolt_attack: ['attack_range', 'bolt_cooldown', 'bolt_damage'],
+    ranged_attack: ['attack_range', 'ranged_cooldown'],
+    shoot_at_target: ['attack_range'],
+    incinerate_entities: ['spawn_on_incinerate', 'spawn_on_liquid_incinerate'],
+    steam_generation: ['steam_type', 'steam_chance'],
+    cloud_spread: ['spread_radius', 'spread_turns', 'spawn_type'],
+    cloud_disperse: ['disperse_to', 'disperse_threshold', 'disperse_chance', 'spawn_mist_chance'],
+    mist_fade: ['fade_threshold', 'fade_chance'],
+    cellular_transform: ['neighbor_type', 'neighbor_count', 'transform_to', 'check_cardinal'],
+    cellular_automaton_step: ['cell_type', 'survive_min', 'survive_max'],
+    liquid_color_mix: ['mix_chance', 'mix_step'],
+    strip_inventory: ['item_drop_chance'],
+    drift_ground_items: ['item_drift_chance'],
+    drain_suction: ['suction_range'],
+    fire_spread: ['spawn_type'],
+    pickpocket_adjacent: ['loot_search_radius'],
+};
+
+const PARAM_DEFS = [
+    { key: 'preferred_distance', type: 'number', label: 'Preferred Distance', hint: 'Target distance to maintain from enemies' },
+    { key: 'patrol_range', type: 'number', label: 'Patrol Range', hint: 'Max distance from home position during patrol' },
+    { key: 'memory_duration', type: 'number', label: 'Memory Duration', hint: 'Turns to remember intruder location' },
+    { key: 'health_threshold', type: 'number', label: 'Health Threshold', hint: 'Fraction (0-1) below which to flee. Default: 0.3', step: 0.1 },
+    { key: 'attack_range', type: 'number', label: 'Attack Range', hint: 'Max distance for ranged attacks' },
+    { key: 'ranged_cooldown', type: 'number', label: 'Ranged Cooldown', hint: 'Turns between ranged attacks' },
+    { key: 'bolt_cooldown', type: 'number', label: 'Bolt Cooldown', hint: 'Turns between bolt attacks' },
+    { key: 'bolt_damage', type: 'number', label: 'Bolt Damage', hint: 'Damage dealt by bolt (negative = harm)' },
+    { key: 'blink_range', type: 'number', label: 'Blink Range', hint: 'Max teleport distance' },
+    { key: 'blink_cooldown', type: 'number', label: 'Blink Cooldown', hint: 'Turns between blinks' },
+    { key: 'blink_spawn', type: 'text', label: 'Blink Spawn', hint: 'Actor type spawned at blink origin (e.g. fire)' },
+    { key: 'loot_search_radius', type: 'number', label: 'Loot Search Radius', hint: 'How far to look for loot/escape routes' },
+    { key: 'search_radius', type: 'number', label: 'Search Radius', hint: 'How far to search for ground items' },
+    { key: 'item_type', type: 'text', label: 'Item Type', hint: 'Specific item type to seek' },
+    { key: 'heal_amount', type: 'number', label: 'Heal Amount', hint: 'HP restored per heal' },
+    { key: 'heal_sound', type: 'text', label: 'Heal Sound', hint: 'Sound played when healing' },
+    { key: 'summon_type', type: 'text', label: 'Summon Type', hint: 'Actor type key to summon' },
+    { key: 'summon_cooldown', type: 'number', label: 'Summon Cooldown', hint: 'Turns between summons' },
+    { key: 'summon_cap', type: 'number', label: 'Summon Cap', hint: 'Max active summons at once' },
+    { key: 'summon_sound', type: 'text', label: 'Summon Sound', hint: 'Sound played when summoning' },
+    { key: 'aura_state', type: 'text', label: 'Aura State', hint: 'State applied by aura (e.g. poisoned, hallucinating)' },
+    { key: 'aura_chance', type: 'number', label: 'Aura Chance', hint: 'Percent chance per turn to apply aura' },
+    { key: 'aura_duration', type: 'number', label: 'Aura Duration', hint: 'Turns the aura state lasts' },
+    { key: 'aura_hostile_only', type: 'boolean', label: 'Aura Hostile Only', hint: 'Only affect hostile targets' },
+    { key: 'emit_from_type', type: 'text', label: 'Emit From Type', hint: 'Only emit if actor type matches (e.g. sewage)' },
+    { key: 'emit_type', type: 'text', label: 'Emit Type', hint: 'Actor type to emit (e.g. sewer_gas)' },
+    { key: 'emit_chance', type: 'number', label: 'Emit Chance', hint: 'Percent chance per turn to emit' },
+    { key: 'emit_cap', type: 'number', label: 'Emit Cap', hint: 'Max emitted actors in the area' },
+    { key: 'spawn_on_incinerate', type: 'text', label: 'Spawn on Incinerate', hint: 'Actor type spawned when incinerating (e.g. fire)' },
+    { key: 'spawn_on_liquid_incinerate', type: 'text', label: 'Spawn on Liquid Incinerate', hint: 'Actor type spawned when incinerating liquid' },
+    { key: 'steam_type', type: 'text', label: 'Steam Type', hint: 'Actor type for steam (e.g. steam)' },
+    { key: 'steam_chance', type: 'number', label: 'Steam Chance', hint: 'Probability (0-1) of steam generation per turn', step: 0.05 },
+    { key: 'spread_radius', type: 'number', label: 'Spread Radius', hint: 'Max radius for cloud spreading' },
+    { key: 'spread_turns', type: 'number', label: 'Spread Turns', hint: 'Turns over which cloud expands' },
+    { key: 'spawn_type', type: 'text', label: 'Spawn Type', hint: 'Actor type spawned during spread' },
+    { key: 'disperse_to', type: 'text', label: 'Disperse To', hint: 'Actor type cloud disperses into (e.g. mist)' },
+    { key: 'disperse_threshold', type: 'number', label: 'Disperse Threshold', hint: 'Age in turns before dispersion starts' },
+    { key: 'disperse_chance', type: 'number', label: 'Disperse Chance', hint: 'Probability (0-1) per turn to disperse', step: 0.05 },
+    { key: 'spawn_mist_chance', type: 'number', label: 'Spawn Mist Chance', hint: 'Probability (0-1) to spawn mist on disperse', step: 0.05 },
+    { key: 'fade_threshold', type: 'number', label: 'Fade Threshold', hint: 'Age in turns before fading starts' },
+    { key: 'fade_chance', type: 'number', label: 'Fade Chance', hint: 'Probability (0-1) per turn to fade', step: 0.05 },
+    { key: 'cell_type', type: 'text', label: 'Cell Type', hint: 'Actor type for cellular automaton cells' },
+    { key: 'survive_min', type: 'number', label: 'Survive Min', hint: 'Min neighbors to survive' },
+    { key: 'survive_max', type: 'number', label: 'Survive Max', hint: 'Max neighbors to survive' },
+    { key: 'neighbor_type', type: 'text', label: 'Neighbor Type', hint: 'Actor type to count as neighbors' },
+    { key: 'neighbor_count', type: 'number', label: 'Neighbor Count', hint: 'Required neighbor count for transform' },
+    { key: 'transform_to', type: 'text', label: 'Transform To', hint: 'Actor type to transform into' },
+    { key: 'check_cardinal', type: 'boolean', label: 'Check Cardinal Only', hint: 'Only count cardinal (non-diagonal) neighbors' },
+    { key: 'mix_chance', type: 'number', label: 'Mix Chance', hint: 'Probability (0-1) of color mixing per turn', step: 0.05 },
+    { key: 'mix_step', type: 'number', label: 'Mix Step', hint: 'How much color blends per mix (0-1)', step: 0.05 },
+    { key: 'item_drop_chance', type: 'number', label: 'Item Drop Chance', hint: 'Probability (0-1) to strip an item per turn', step: 0.05 },
+    { key: 'item_drift_chance', type: 'number', label: 'Item Drift Chance', hint: 'Probability (0-1) to drift a ground item', step: 0.05 },
+    { key: 'suction_range', type: 'number', label: 'Suction Range', hint: 'Tile radius for drain pull effect' },
+];
+
+const FLAG_KEYS = new Set(['name', 'hostile', 'controlled', 'tactical', 'alert_allies', 'flee_threshold', 'preferred_positions', 'behaviors']);
+const PARAM_KEYS = new Set(PARAM_DEFS.map(p => p.key));
+
+// ---- State ----
+
+let state = {
+    basePersonalities: {},
+    protoPersonalities: {},
+    mergedPersonalities: {},
+    prototypeCache: {},
+    currentBehaviors: [],
+};
+
+let dragSourceIndex = null;
+
+// ---- Data loading ----
+
+async function fetchJSON(url) {
+    try {
+        const r = await fetch(url);
+        if (!r.ok) return {};
+        const text = await r.text();
+        if (!text.trim()) return {};
+        return JSON.parse(text);
+    } catch { return {}; }
+}
+
+async function loadBaseData() {
+    state.basePersonalities = await fetchJSON('data/personalities.json');
+}
+
+async function loadPrototype(name) {
+    if (!name) {
+        state.protoPersonalities = {};
+    } else {
+        if (state.prototypeCache[name]) {
+            state.protoPersonalities = state.prototypeCache[name];
+        } else {
+            const p = await fetchJSON(`prototypes/${name}/personalities.json`);
+            state.protoPersonalities = p;
+            state.prototypeCache[name] = p;
+        }
+    }
+    state.mergedPersonalities = { ...state.basePersonalities, ...state.protoPersonalities };
+    populateDropdown();
+}
+
+// ---- Dropdown ----
+
+function populateDropdown() {
+    const sel = document.getElementById('personality-select');
+    const prev = sel.value;
+    sel.innerHTML = '';
+    const keys = Object.keys(state.mergedPersonalities).sort();
+    for (const k of keys) {
+        const opt = document.createElement('option');
+        opt.value = k;
+        opt.textContent = `${k} (${state.mergedPersonalities[k].name || k})`;
+        sel.appendChild(opt);
+    }
+    if (keys.includes(prev)) sel.value = prev;
+    else if (keys.length) sel.value = keys[0];
+}
+
+// ---- Form ----
+
+function clearForm() {
+    document.getElementById('personality-key').value = '';
+    document.getElementById('f-name').value = '';
+    document.getElementById('f-hostile').checked = false;
+    document.getElementById('f-controlled').checked = false;
+    document.getElementById('f-tactical').checked = false;
+    document.getElementById('f-alert_allies').checked = false;
+    document.getElementById('f-flee_threshold').value = '';
+    document.getElementById('preferred-positions-list').innerHTML = '';
+    state.currentBehaviors = [];
+    renderBehaviorList();
+    clearParams();
+    document.getElementById('custom-params').innerHTML = '';
+    updateContextualParams();
+    updateJSONOutput();
+}
+
+function clearParams() {
+    for (const pd of PARAM_DEFS) {
+        const el = document.getElementById('param-' + pd.key);
+        if (!el) continue;
+        if (pd.type === 'boolean') el.checked = false;
+        else el.value = '';
+    }
+}
+
+function populateForm(key, data) {
+    clearForm();
+    document.getElementById('personality-key').value = key;
+    document.getElementById('f-name').value = data.name || '';
+    document.getElementById('f-hostile').checked = !!data.hostile;
+    document.getElementById('f-controlled').checked = !!data.controlled;
+    document.getElementById('f-tactical').checked = !!data.tactical;
+    document.getElementById('f-alert_allies').checked = !!data.alert_allies;
+    document.getElementById('f-flee_threshold').value = data.flee_threshold != null ? data.flee_threshold : '';
+
+    if (data.preferred_positions) {
+        for (const pos of data.preferred_positions) addPositionRow(pos);
+    }
+
+    state.currentBehaviors = [...(data.behaviors || [])];
+    renderBehaviorList();
+
+    for (const pd of PARAM_DEFS) {
+        if (data[pd.key] !== undefined) {
+            const el = document.getElementById('param-' + pd.key);
+            if (!el) continue;
+            if (pd.type === 'boolean') el.checked = !!data[pd.key];
+            else el.value = data[pd.key];
+        }
+    }
+
+    const knownKeys = new Set([...FLAG_KEYS, ...PARAM_KEYS]);
+    for (const [k, v] of Object.entries(data)) {
+        if (!knownKeys.has(k)) {
+            addCustomParamRow(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
+        }
+    }
+
+    updateContextualParams();
+    updateJSONOutput();
+}
+
+// ---- Preferred positions ----
+
+function addPositionRow(value) {
+    const list = document.getElementById('preferred-positions-list');
+    const row = document.createElement('div');
+    row.className = 'list-item';
+    row.innerHTML = `<input type="text" value="${value || ''}" placeholder="doorway, corner, chokepoint...">
+        <button class="remove-btn" title="Remove">x</button>`;
+    row.querySelector('.remove-btn').addEventListener('click', () => { row.remove(); updateJSONOutput(); });
+    row.querySelector('input').addEventListener('input', updateJSONOutput);
+    list.appendChild(row);
+}
+
+// ---- Custom parameters ----
+
+function addCustomParamRow(key, value) {
+    const list = document.getElementById('custom-params');
+    const row = document.createElement('div');
+    row.className = 'list-item';
+    row.innerHTML = `<input type="text" value="${key || ''}" placeholder="key" style="max-width:160px">
+        <input type="text" value="${escapeHTML(value || '')}" placeholder="value">
+        <button class="remove-btn" title="Remove">x</button>`;
+    row.querySelector('.remove-btn').addEventListener('click', () => { row.remove(); updateJSONOutput(); });
+    row.querySelectorAll('input').forEach(i => i.addEventListener('input', updateJSONOutput));
+    list.appendChild(row);
+}
+
+function escapeHTML(str) {
+    return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ---- Behavior palette ----
+
+function renderPalette() {
+    const container = document.getElementById('behavior-palette');
+    container.innerHTML = '';
+    const inUse = new Set(state.currentBehaviors);
+
+    for (const cat of BEHAVIOR_CATEGORIES) {
+        const header = document.createElement('div');
+        header.className = 'behavior-category';
+        header.textContent = cat.name;
+        container.appendChild(header);
+
+        for (const b of cat.behaviors) {
+            const item = document.createElement('div');
+            item.className = 'behavior-palette-item' + (inUse.has(b) ? ' in-use' : '');
+            item.textContent = b;
+            item.title = BEHAVIOR_HINTS[b] || '';
+            item.dataset.behavior = b;
+            item.addEventListener('click', () => {
+                addBehavior(b);
+            });
+            container.appendChild(item);
+        }
+    }
+}
+
+function filterPalette(query) {
+    const q = query.toLowerCase();
+    for (const item of document.querySelectorAll('.behavior-palette-item')) {
+        const match = !q || item.dataset.behavior.includes(q) || (BEHAVIOR_HINTS[item.dataset.behavior] || '').toLowerCase().includes(q);
+        item.style.display = match ? '' : 'none';
+    }
+    for (const header of document.querySelectorAll('.behavior-category')) {
+        let next = header.nextElementSibling;
+        let anyVisible = false;
+        while (next && !next.classList.contains('behavior-category')) {
+            if (next.style.display !== 'none') anyVisible = true;
+            next = next.nextElementSibling;
+        }
+        header.style.display = anyVisible ? '' : 'none';
+    }
+}
+
+// ---- Behavior list ----
+
+function renderBehaviorList() {
+    const container = document.getElementById('behavior-list-container');
+    container.innerHTML = '';
+
+    if (state.currentBehaviors.length === 0) {
+        container.innerHTML = '<div class="empty-hint">No behaviors added. Click a behavior in the palette or use the dropdown below.</div>';
+        renderPalette();
+        return;
+    }
+
+    for (let i = 0; i < state.currentBehaviors.length; i++) {
+        const b = state.currentBehaviors[i];
+        const row = document.createElement('div');
+        row.className = 'behavior-list-item';
+        row.draggable = true;
+        row.dataset.index = i;
+
+        const hint = BEHAVIOR_HINTS[b] || '';
+        row.innerHTML = `
+            <span class="drag-handle" title="Drag to reorder">≡</span>
+            <span class="behavior-index">${i + 1}</span>
+            <span class="behavior-name">${b}</span>
+            <span class="behavior-hint" title="${hint}">${hint}</span>
+            <button class="move-btn" data-dir="up" title="Move up" ${i === 0 ? 'disabled' : ''}>↑</button>
+            <button class="move-btn" data-dir="down" title="Move down" ${i === state.currentBehaviors.length - 1 ? 'disabled' : ''}>↓</button>
+            <button class="remove-btn" title="Remove">x</button>`;
+
+        row.querySelector('.remove-btn').addEventListener('click', () => removeBehavior(i));
+        row.querySelectorAll('.move-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const dir = btn.dataset.dir === 'up' ? -1 : 1;
+                moveBehavior(i, i + dir);
+            });
+        });
+
+        container.appendChild(row);
+    }
+
+    initDragAndDrop(container);
+    renderPalette();
+}
+
+function addBehavior(name) {
+    state.currentBehaviors.push(name);
+    renderBehaviorList();
+    updateContextualParams();
+    updateJSONOutput();
+}
+
+function removeBehavior(index) {
+    state.currentBehaviors.splice(index, 1);
+    renderBehaviorList();
+    updateContextualParams();
+    updateJSONOutput();
+}
+
+function moveBehavior(from, to) {
+    if (to < 0 || to >= state.currentBehaviors.length) return;
+    const [moved] = state.currentBehaviors.splice(from, 1);
+    state.currentBehaviors.splice(to, 0, moved);
+    renderBehaviorList();
+    updateContextualParams();
+    updateJSONOutput();
+}
+
+// ---- Drag and drop ----
+
+function initDragAndDrop(container) {
+    container.addEventListener('dragstart', (e) => {
+        const item = e.target.closest('.behavior-list-item');
+        if (!item) return;
+        dragSourceIndex = parseInt(item.dataset.index);
+        item.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', '');
+    });
+
+    container.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const item = e.target.closest('.behavior-list-item');
+        container.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+        if (item && parseInt(item.dataset.index) !== dragSourceIndex) {
+            item.classList.add('drag-over');
+        }
+    });
+
+    container.addEventListener('dragleave', (e) => {
+        const item = e.target.closest('.behavior-list-item');
+        if (item) item.classList.remove('drag-over');
+    });
+
+    container.addEventListener('drop', (e) => {
+        e.preventDefault();
+        container.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+        const target = e.target.closest('.behavior-list-item');
+        if (!target) return;
+        const targetIndex = parseInt(target.dataset.index);
+        if (dragSourceIndex !== null && dragSourceIndex !== targetIndex) {
+            const [moved] = state.currentBehaviors.splice(dragSourceIndex, 1);
+            state.currentBehaviors.splice(targetIndex, 0, moved);
+            renderBehaviorList();
+            updateContextualParams();
+            updateJSONOutput();
+        }
+        dragSourceIndex = null;
+    });
+
+    container.addEventListener('dragend', () => {
+        container.querySelectorAll('.dragging, .drag-over').forEach(el => {
+            el.classList.remove('dragging', 'drag-over');
+        });
+        dragSourceIndex = null;
+    });
+}
+
+// ---- Contextual parameters ----
+
+function buildParamRows() {
+    const container = document.getElementById('params-container');
+    container.innerHTML = '';
+
+    for (const pd of PARAM_DEFS) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'param-row inactive';
+        wrapper.dataset.paramKey = pd.key;
+
+        const fieldRow = document.createElement('div');
+        fieldRow.className = 'field-row';
+
+        const label = document.createElement('label');
+        label.textContent = pd.label;
+        label.title = pd.hint || '';
+        fieldRow.appendChild(label);
+
+        let input;
+        if (pd.type === 'boolean') {
+            input = document.createElement('input');
+            input.type = 'checkbox';
+            input.id = 'param-' + pd.key;
+            input.style.flex = '0';
+            input.addEventListener('change', updateJSONOutput);
+        } else if (pd.type === 'number') {
+            input = document.createElement('input');
+            input.type = 'number';
+            input.id = 'param-' + pd.key;
+            if (pd.step) input.step = pd.step;
+            input.addEventListener('input', updateJSONOutput);
+        } else {
+            input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'param-' + pd.key;
+            input.addEventListener('input', updateJSONOutput);
+        }
+        fieldRow.appendChild(input);
+        wrapper.appendChild(fieldRow);
+
+        if (pd.hint) {
+            const hintDiv = document.createElement('div');
+            hintDiv.className = 'param-hint';
+            hintDiv.textContent = pd.hint;
+            wrapper.appendChild(hintDiv);
+        }
+
+        container.appendChild(wrapper);
+    }
+}
+
+function updateContextualParams() {
+    const activeParams = new Set();
+    const behaviorUsers = {};
+
+    for (const b of state.currentBehaviors) {
+        const params = BEHAVIOR_PARAMS[b];
+        if (!params) continue;
+        for (const p of params) {
+            activeParams.add(p);
+            if (!behaviorUsers[p]) behaviorUsers[p] = [];
+            if (!behaviorUsers[p].includes(b)) behaviorUsers[p].push(b);
+        }
+    }
+
+    let anyVisible = false;
+    for (const row of document.querySelectorAll('#params-container .param-row')) {
+        const key = row.dataset.paramKey;
+        if (activeParams.has(key)) {
+            row.classList.remove('inactive');
+            anyVisible = true;
+        } else {
+            row.classList.add('inactive');
+        }
+    }
+
+    document.getElementById('no-params-hint').style.display = anyVisible ? 'none' : '';
+
+    const hintEl = document.getElementById('params-hint');
+    if (anyVisible) {
+        const behaviors = new Set();
+        for (const b of state.currentBehaviors) {
+            if (BEHAVIOR_PARAMS[b]?.length) behaviors.add(b);
+        }
+        hintEl.textContent = `Showing parameters for: ${[...behaviors].join(', ')}`;
+    } else {
+        hintEl.textContent = 'Showing parameters used by the current behavior list.';
+    }
+}
+
+// ---- Behavior add dropdown ----
+
+function populateBehaviorAddDropdown() {
+    const sel = document.getElementById('behavior-add-select');
+    sel.innerHTML = '';
+    for (const cat of BEHAVIOR_CATEGORIES) {
+        const group = document.createElement('optgroup');
+        group.label = cat.name;
+        for (const b of cat.behaviors) {
+            const opt = document.createElement('option');
+            opt.value = b;
+            opt.textContent = b;
+            group.appendChild(opt);
+        }
+        sel.appendChild(group);
+    }
+}
+
+// ---- Read form -> JSON ----
+
+function parseValue(str) {
+    str = str.trim();
+    if (str === 'true') return true;
+    if (str === 'false') return false;
+    if (str === '') return str;
+    try {
+        const parsed = JSON.parse(str);
+        if (typeof parsed === 'object') return parsed;
+    } catch {}
+    const n = Number(str);
+    if (!isNaN(n) && str !== '') return n;
+    return str;
+}
+
+function readForm() {
+    const obj = {};
+
+    const name = document.getElementById('f-name').value.trim();
+    if (name) obj.name = name;
+
+    if (document.getElementById('f-hostile').checked) obj.hostile = true;
+    if (document.getElementById('f-controlled').checked) obj.controlled = true;
+    if (document.getElementById('f-tactical').checked) obj.tactical = true;
+    if (document.getElementById('f-alert_allies').checked) obj.alert_allies = true;
+
+    const ft = parseFloat(document.getElementById('f-flee_threshold').value);
+    if (!isNaN(ft)) obj.flee_threshold = ft;
+
+    const positions = [];
+    for (const row of document.querySelectorAll('#preferred-positions-list .list-item')) {
+        const v = row.querySelector('input').value.trim();
+        if (v) positions.push(v);
+    }
+    if (positions.length) obj.preferred_positions = positions;
+
+    for (const pd of PARAM_DEFS) {
+        const el = document.getElementById('param-' + pd.key);
+        if (!el) continue;
+        if (pd.type === 'boolean') {
+            if (el.checked) obj[pd.key] = true;
+        } else if (pd.type === 'number') {
+            const v = parseFloat(el.value);
+            if (!isNaN(v)) obj[pd.key] = v;
+        } else {
+            const v = el.value.trim();
+            if (v) obj[pd.key] = v;
+        }
+    }
+
+    for (const row of document.querySelectorAll('#custom-params .list-item')) {
+        const inputs = row.querySelectorAll('input');
+        const k = inputs[0].value.trim();
+        const v = inputs[1].value.trim();
+        if (k) obj[k] = parseValue(v);
+    }
+
+    obj.behaviors = [...state.currentBehaviors];
+
+    return obj;
+}
+
+// ---- JSON output ----
+
+function updateJSONOutput() {
+    const obj = readForm();
+    const key = document.getElementById('personality-key').value.trim() || 'new_personality';
+    document.getElementById('personality-key-field').textContent = `"${key}"`;
+    document.getElementById('json-output').value = JSON.stringify(obj, null, 2);
+}
+
+// ---- Event wiring ----
+
+function initEventListeners() {
+    document.getElementById('prototype-select').addEventListener('change', async (e) => {
+        await loadPrototype(e.target.value);
+        const firstKey = Object.keys(state.mergedPersonalities).sort()[0];
+        if (firstKey) {
+            document.getElementById('personality-select').value = firstKey;
+            populateForm(firstKey, state.mergedPersonalities[firstKey]);
+        }
+    });
+
+    document.getElementById('personality-select').addEventListener('change', (e) => {
+        const key = e.target.value;
+        if (state.mergedPersonalities[key]) {
+            populateForm(key, state.mergedPersonalities[key]);
+        }
+    });
+
+    document.getElementById('btn-new').addEventListener('click', () => {
+        clearForm();
+    });
+
+    document.getElementById('btn-export').addEventListener('click', updateJSONOutput);
+
+    document.getElementById('btn-copy').addEventListener('click', () => {
+        const key = document.getElementById('personality-key').value.trim() || 'new_personality';
+        const obj = readForm();
+        const full = `"${key}": ${JSON.stringify(obj, null, 2)}`;
+        navigator.clipboard.writeText(full).then(() => {
+            const btn = document.getElementById('btn-copy');
+            btn.textContent = 'Copied!';
+            setTimeout(() => btn.textContent = 'Copy to Clipboard', 1500);
+        });
+    });
+
+    document.getElementById('btn-add-behavior').addEventListener('click', () => {
+        const sel = document.getElementById('behavior-add-select');
+        if (sel.value) addBehavior(sel.value);
+    });
+
+    document.getElementById('btn-add-position').addEventListener('click', () => {
+        addPositionRow('');
+        updateJSONOutput();
+    });
+
+    document.getElementById('btn-add-custom-param').addEventListener('click', () => {
+        addCustomParamRow('', '');
+    });
+
+    document.getElementById('behavior-search').addEventListener('input', (e) => {
+        filterPalette(e.target.value);
+    });
+
+    document.getElementById('f-name').addEventListener('input', (e) => {
+        const key = e.target.value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+        document.getElementById('personality-key').value = key;
+        updateJSONOutput();
+    });
+
+    document.querySelectorAll('#form-panel input[type="text"], #form-panel input[type="number"]').forEach(el => {
+        el.addEventListener('input', updateJSONOutput);
+    });
+    document.querySelectorAll('#form-panel input[type="checkbox"]').forEach(el => {
+        el.addEventListener('change', updateJSONOutput);
+    });
+}
+
+// ---- Init ----
+
+async function init() {
+    await loadBaseData();
+    await loadPrototype('');
+    buildParamRows();
+    populateBehaviorAddDropdown();
+    renderPalette();
+    initEventListeners();
+
+    const firstKey = Object.keys(state.mergedPersonalities).sort()[0];
+    if (firstKey) {
+        document.getElementById('personality-select').value = firstKey;
+        populateForm(firstKey, state.mergedPersonalities[firstKey]);
+    }
+}
+
+init();
+
+</script>
+</body>
+</html>

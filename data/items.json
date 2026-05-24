@@ -19,36 +19,37 @@
     }
   },
   "torch": {
-    "name": "Torch",
-    "tileIndex": "BOX_VERTICAL_INVERSE_TOP",
-    "tint": "#EC7505",
-    "attributes": {
-      "pickupable": true,
-      "light_source": true,
-      "lightRadius": 6,
-      "visible": true,
-      "stackable": false,
-      "flammable": true,
-      "ignites": true,
-      "burns_out_item": "torch_spent",
-      "burnout_message": "Your torch burns out.",
-      "use_verb": "Extinguish",
-      "use_effect": "toggle_torch",
-      "description": "A burning torch that lights the way."
-    },
-    "stats": {
-      "burns": {
-        "max": 500,
-        "per_turn": -1,
-        "display_label": "Fuel",
-        "warnings": [
-          {
-            "threshold": 0.1,
-            "message": "Your torch is almost out!"
-          }
-        ]
-      }
+  "name": "Torch",
+  "tileIndex": "BOX_VERTICAL_INVERSE_TOP",
+  "tint": "#EC7505",
+  "flickerTint": true,
+  "identified": false,
+  "attributes": {
+    "pickupable": true,
+    "visible": true,
+    "flammable": true,
+    "light_source": true,
+    "ignites": true,
+    "lightRadius": 6,
+    "description": "A burning torch that lights the way.",
+    "use_verb": "Extinguish",
+    "use_effect": "toggle_torch",
+    "burns_out_item": "torch_spent",
+    "burnout_message": "Your torch burns out."
+  },
+  "stats": {
+    "burns": {
+      "max": 500,
+      "per_turn": -1,
+      "display_label": "Fuel",
+      "warnings": [
+        {
+          "threshold": 0.1,
+          "message": "Your torch is almost out!"
+        }
+      ]
     }
+  }
   },
   "torch_unlit": {
     "name": "Unlit Torch",
@@ -410,26 +411,25 @@
     }
   },
   "uranium_nugget": {
-    "name": "uranium nugget",
-    "tileIndex": "INVERSE_THALER_SIGN",
-    "tint": "#FFD24A",
-    "ignore_darkness": true,
-    "flickerTint": true,
-    "random_value": [
-      5,
-      10
-    ],
-    "attributes": {
-      "pickupable": true,
-      "visible": true,
-      "stackable": false,
-      "flammable": false,
-      "pickup_effect": {
-        "wealth": "{value}"
-      },
-      "description": "A heavy lump of gold."
+  "name": "uranium nugget",
+  "tileIndex": "INVERSE_THALER_SIGN",
+  "tint": "#cce8b5",
+  "flickerTint": true,
+  "ignore_darkness": true,
+  "identified": false,
+  "random_value": [
+    5,
+    10
+  ],
+  "attributes": {
+    "pickupable": true,
+    "visible": true,
+    "description": "A heavy lump of gold.",
+    "pickup_effect": {
+      "wealth": "{value}"
     }
-  },
+  }
+},
   "warhammer": {
     "name": "Warhammer",
     "tileIndex": "LATIN_SMALL_LETTER_R",
@@ -1486,22 +1486,23 @@
     }
   },
   "bread": {
-    "name": "Bread",
-    "tileIndex": "INVERSE_BULLET",
-    "tint": "#d4a574",
-    "attributes": {
-      "pickupable": true,
-      "visible": true,
-      "stackable": true,
-      "flammable": true,
-      "consumable": true,
-      "use_verb": "Eat",
-      "use_effect": {
-        "nutrition": 25
-      },
-      "use_sound": "pickup",
-      "description": "A crusty loaf of bread."
-    }
+  "name": "Bread",
+  "tileIndex": "WHITE_BULLET",
+  "tint": "#d4a574",
+  "identified": false,
+  "attributes": {
+    "pickupable": true,
+    "visible": true,
+    "stackable": true,
+    "consumable": true,
+    "flammable": true,
+    "description": "A crusty loaf of bread.",
+    "use_verb": "Eat",
+    "use_effect": {
+      "nutrition": 25
+    },
+    "use_sound": "pickup"
+  }
   },
   "apple": {
     "name": "Apple",
@@ -1540,22 +1541,23 @@
     }
   },
   "rations": {
-    "name": "Rations",
-    "tileIndex": "SEMICOLON",
-    "tint": "#daa520",
-    "attributes": {
-      "pickupable": true,
-      "visible": true,
-      "stackable": true,
-      "flammable": true,
-      "consumable": true,
-      "use_verb": "Eat",
-      "use_effect": {
-        "nutrition": 500
-      },
-      "use_sound": "pickup",
-      "description": "A package of preserved travel rations. Very filling."
-    }
+  "name": "Rations",
+  "tileIndex": "WHITE_SEMICOLON",
+  "tint": "#daa520",
+  "identified": false,
+  "attributes": {
+    "pickupable": true,
+    "visible": true,
+    "stackable": true,
+    "consumable": true,
+    "flammable": true,
+    "description": "A package of preserved travel rations. Very filling.",
+    "use_verb": "Eat",
+    "use_effect": {
+      "nutrition": 500
+    },
+    "use_sound": "pickup"
+  }
   },
   "ring_of_regeneration": {
     "name": "Ring",
