@@ -205,15 +205,15 @@ const BEHAVIOR_PARAMS = {
     seek_item: ['search_radius', 'item_type'],
     apply_aura: ['aura_state', 'aura_chance', 'aura_duration', 'aura_hostile_only'],
     summon_actor: ['summon_type', 'summon_cooldown', 'summon_cap', 'summon_sound'],
-    emit_cloud: ['emit_from_type', 'emit_type', 'emit_chance', 'emit_cap'],
-    blink_away: ['blink_range', 'blink_cooldown', 'preferred_distance', 'blink_spawn'],
-    bolt_attack: ['attack_range', 'bolt_cooldown', 'bolt_damage'],
-    ranged_attack: ['attack_range', 'ranged_cooldown'],
-    shoot_at_target: ['attack_range'],
+    emit_cloud: ['emit_from_type', 'emit_type', 'emit_chance', 'emit_cap', 'cloud_lifetime'],
+    blink_away: ['blink_range', 'blink_cooldown', 'preferred_distance', 'blink_spawn', 'blink_sound', 'blink_effect'],
+    bolt_attack: ['attack_range', 'bolt_cooldown', 'bolt_damage', 'bolt_sound', 'bolt_effect'],
+    ranged_attack: ['attack_range', 'ranged_cooldown', 'hit_sound', 'miss_sound'],
+    shoot_at_target: ['attack_range', 'hit_sound', 'miss_sound'],
     incinerate_entities: ['spawn_on_incinerate', 'spawn_on_liquid_incinerate'],
     steam_generation: ['steam_type', 'steam_chance'],
-    cloud_spread: ['spread_radius', 'spread_turns', 'spawn_type'],
-    cloud_disperse: ['disperse_to', 'disperse_threshold', 'disperse_chance', 'spawn_mist_chance'],
+    cloud_spread: ['spread_radius', 'spread_turns', 'spawn_type', 'cloud_lifetime'],
+    cloud_disperse: ['disperse_to', 'disperse_threshold', 'disperse_chance', 'spawn_mist_chance', 'cloud_lifetime'],
     mist_fade: ['fade_threshold', 'fade_chance'],
     cellular_transform: ['neighbor_type', 'neighbor_count', 'transform_to', 'check_cardinal'],
     cellular_automaton_step: ['cell_type', 'survive_min', 'survive_max'],
@@ -221,7 +221,9 @@ const BEHAVIOR_PARAMS = {
     strip_inventory: ['item_drop_chance'],
     drift_ground_items: ['item_drift_chance'],
     drain_suction: ['suction_range'],
-    fire_spread: ['spawn_type'],
+    fire_spread: ['spawn_type', 'spread_chance', 'fire_lifetime'],
+    fire_burn_out: ['damage_per_turn', 'burn_state'],
+    trap_check_trigger: ['trap_sound', 'trap_cloud_lifetime'],
     pickpocket_adjacent: ['loot_search_radius'],
 };
 
@@ -236,13 +238,13 @@ const PARAM_DEFS = [
     { key: 'bolt_damage', type: 'number', label: 'Bolt Damage', hint: 'Damage dealt by bolt (negative = harm)' },
     { key: 'blink_range', type: 'number', label: 'Blink Range', hint: 'Max teleport distance' },
     { key: 'blink_cooldown', type: 'number', label: 'Blink Cooldown', hint: 'Turns between blinks' },
-    { key: 'blink_spawn', type: 'text', label: 'Blink Spawn', hint: 'Actor type spawned at blink origin (e.g. fire)' },
+    { key: 'blink_spawn', type: 'actor-select', label: 'Blink Spawn', hint: 'Actor type spawned at blink origin (e.g. fire)' },
     { key: 'loot_search_radius', type: 'number', label: 'Loot Search Radius', hint: 'How far to look for loot/escape routes' },
     { key: 'search_radius', type: 'number', label: 'Search Radius', hint: 'How far to search for ground items' },
     { key: 'item_type', type: 'text', label: 'Item Type', hint: 'Specific item type to seek' },
     { key: 'heal_amount', type: 'number', label: 'Heal Amount', hint: 'HP restored per heal' },
     { key: 'heal_sound', type: 'text', label: 'Heal Sound', hint: 'Sound played when healing' },
-    { key: 'summon_type', type: 'text', label: 'Summon Type', hint: 'Actor type key to summon' },
+    { key: 'summon_type', type: 'actor-select', label: 'Summon Type', hint: 'Actor type key to summon' },
     { key: 'summon_cooldown', type: 'number', label: 'Summon Cooldown', hint: 'Turns between summons' },
     { key: 'summon_cap', type: 'number', label: 'Summon Cap', hint: 'Max active summons at once' },
     { key: 'summon_sound', type: 'text', label: 'Summon Sound', hint: 'Sound played when summoning' },
@@ -250,35 +252,48 @@ const PARAM_DEFS = [
     { key: 'aura_chance', type: 'number', label: 'Aura Chance', hint: 'Percent chance per turn to apply aura' },
     { key: 'aura_duration', type: 'number', label: 'Aura Duration', hint: 'Turns the aura state lasts' },
     { key: 'aura_hostile_only', type: 'boolean', label: 'Aura Hostile Only', hint: 'Only affect hostile targets' },
-    { key: 'emit_from_type', type: 'text', label: 'Emit From Type', hint: 'Only emit if actor type matches (e.g. sewage)' },
-    { key: 'emit_type', type: 'text', label: 'Emit Type', hint: 'Actor type to emit (e.g. sewer_gas)' },
+    { key: 'emit_from_type', type: 'actor-select', label: 'Emit From Type', hint: 'Only emit if actor type matches (e.g. sewage)' },
+    { key: 'emit_type', type: 'actor-select', label: 'Emit Type', hint: 'Actor type to emit (e.g. sewer_gas)' },
     { key: 'emit_chance', type: 'number', label: 'Emit Chance', hint: 'Percent chance per turn to emit' },
     { key: 'emit_cap', type: 'number', label: 'Emit Cap', hint: 'Max emitted actors in the area' },
-    { key: 'spawn_on_incinerate', type: 'text', label: 'Spawn on Incinerate', hint: 'Actor type spawned when incinerating (e.g. fire)' },
-    { key: 'spawn_on_liquid_incinerate', type: 'text', label: 'Spawn on Liquid Incinerate', hint: 'Actor type spawned when incinerating liquid' },
-    { key: 'steam_type', type: 'text', label: 'Steam Type', hint: 'Actor type for steam (e.g. steam)' },
+    { key: 'spawn_on_incinerate', type: 'actor-select', label: 'Spawn on Incinerate', hint: 'Actor type spawned when incinerating (e.g. fire)' },
+    { key: 'spawn_on_liquid_incinerate', type: 'actor-select', label: 'Spawn on Liquid Incinerate', hint: 'Actor type spawned when incinerating liquid' },
+    { key: 'steam_type', type: 'actor-select', label: 'Steam Type', hint: 'Actor type for steam (e.g. steam)' },
     { key: 'steam_chance', type: 'number', label: 'Steam Chance', hint: 'Probability (0-1) of steam generation per turn', step: 0.05 },
     { key: 'spread_radius', type: 'number', label: 'Spread Radius', hint: 'Max radius for cloud spreading' },
     { key: 'spread_turns', type: 'number', label: 'Spread Turns', hint: 'Turns over which cloud expands' },
-    { key: 'spawn_type', type: 'text', label: 'Spawn Type', hint: 'Actor type spawned during spread' },
-    { key: 'disperse_to', type: 'text', label: 'Disperse To', hint: 'Actor type cloud disperses into (e.g. mist)' },
+    { key: 'spawn_type', type: 'actor-select', label: 'Spawn Type', hint: 'Actor type spawned during spread' },
+    { key: 'disperse_to', type: 'actor-select', label: 'Disperse To', hint: 'Actor type cloud disperses into (e.g. mist)' },
     { key: 'disperse_threshold', type: 'number', label: 'Disperse Threshold', hint: 'Age in turns before dispersion starts' },
     { key: 'disperse_chance', type: 'number', label: 'Disperse Chance', hint: 'Probability (0-1) per turn to disperse', step: 0.05 },
     { key: 'spawn_mist_chance', type: 'number', label: 'Spawn Mist Chance', hint: 'Probability (0-1) to spawn mist on disperse', step: 0.05 },
     { key: 'fade_threshold', type: 'number', label: 'Fade Threshold', hint: 'Age in turns before fading starts' },
     { key: 'fade_chance', type: 'number', label: 'Fade Chance', hint: 'Probability (0-1) per turn to fade', step: 0.05 },
-    { key: 'cell_type', type: 'text', label: 'Cell Type', hint: 'Actor type for cellular automaton cells' },
+    { key: 'cell_type', type: 'actor-select', label: 'Cell Type', hint: 'Actor type for cellular automaton cells' },
     { key: 'survive_min', type: 'number', label: 'Survive Min', hint: 'Min neighbors to survive' },
     { key: 'survive_max', type: 'number', label: 'Survive Max', hint: 'Max neighbors to survive' },
-    { key: 'neighbor_type', type: 'text', label: 'Neighbor Type', hint: 'Actor type to count as neighbors' },
+    { key: 'neighbor_type', type: 'actor-select', label: 'Neighbor Type', hint: 'Actor type to count as neighbors' },
     { key: 'neighbor_count', type: 'number', label: 'Neighbor Count', hint: 'Required neighbor count for transform' },
-    { key: 'transform_to', type: 'text', label: 'Transform To', hint: 'Actor type to transform into' },
+    { key: 'transform_to', type: 'actor-select', label: 'Transform To', hint: 'Actor type to transform into' },
     { key: 'check_cardinal', type: 'boolean', label: 'Check Cardinal Only', hint: 'Only count cardinal (non-diagonal) neighbors' },
     { key: 'mix_chance', type: 'number', label: 'Mix Chance', hint: 'Probability (0-1) of color mixing per turn', step: 0.05 },
     { key: 'mix_step', type: 'number', label: 'Mix Step', hint: 'How much color blends per mix (0-1)', step: 0.05 },
     { key: 'item_drop_chance', type: 'number', label: 'Item Drop Chance', hint: 'Probability (0-1) to strip an item per turn', step: 0.05 },
     { key: 'item_drift_chance', type: 'number', label: 'Item Drift Chance', hint: 'Probability (0-1) to drift a ground item', step: 0.05 },
     { key: 'suction_range', type: 'number', label: 'Suction Range', hint: 'Tile radius for drain pull effect' },
+    { key: 'bolt_sound', type: 'text', label: 'Bolt Sound', hint: 'Sound sprite key for bolt (default: squarewave)' },
+    { key: 'bolt_effect', type: 'text', label: 'Bolt Effect', hint: 'Visual effect name for bolt (default: lightning_bolt)' },
+    { key: 'blink_sound', type: 'text', label: 'Blink Sound', hint: 'Sound sprite key for blink (default: magic)' },
+    { key: 'blink_effect', type: 'text', label: 'Blink Effect', hint: 'Visual effect name for blink (default: blink)' },
+    { key: 'spread_chance', type: 'number', label: 'Spread Chance', hint: 'Probability (0-1) of fire spreading per turn. Default: 0.3', step: 0.05 },
+    { key: 'fire_lifetime', type: 'number', label: 'Fire Lifetime', hint: 'Turns before spawned fire burns out. Default: 5' },
+    { key: 'damage_per_turn', type: 'number', label: 'Damage Per Turn', hint: 'HP damage dealt each turn by fire. Default: 10' },
+    { key: 'burn_state', type: 'text', label: 'Burn State', hint: 'State applied to victims (default: burning)' },
+    { key: 'cloud_lifetime', type: 'number', label: 'Cloud Lifetime', hint: 'Turns before emitted/spread cloud expires' },
+    { key: 'trap_sound', type: 'text', label: 'Trap Sound', hint: 'Sound sprite key when trap triggers (default: tap2)' },
+    { key: 'trap_cloud_lifetime', type: 'number', label: 'Trap Cloud Lifetime', hint: 'Turns trap-spawned clouds persist. Default: 8' },
+    { key: 'hit_sound', type: 'text', label: 'Hit Sound', hint: 'Sound on ranged hit (default: arrow_hit)' },
+    { key: 'miss_sound', type: 'text', label: 'Miss Sound', hint: 'Sound on ranged miss (default: arrow_miss)' },
 ];
 
 const FLAG_KEYS = new Set(['name', 'hostile', 'controlled', 'tactical', 'alert_allies', 'flee_threshold', 'preferred_positions', 'behaviors']);
@@ -290,6 +305,9 @@ let state = {
     basePersonalities: {},
     protoPersonalities: {},
     mergedPersonalities: {},
+    baseActors: {},
+    protoActors: {},
+    mergedActorKeys: [],
     prototypeCache: {},
     currentBehaviors: [],
 };
@@ -310,22 +328,29 @@ async function fetchJSON(url) {
 
 async function loadBaseData() {
     state.basePersonalities = await fetchJSON('data/personalities.json');
+    state.baseActors = await fetchJSON('data/actors.json');
 }
 
 async function loadPrototype(name) {
     if (!name) {
         state.protoPersonalities = {};
+        state.protoActors = {};
     } else {
         if (state.prototypeCache[name]) {
-            state.protoPersonalities = state.prototypeCache[name];
+            state.protoPersonalities = state.prototypeCache[name].personalities;
+            state.protoActors = state.prototypeCache[name].actors;
         } else {
             const p = await fetchJSON(`prototypes/${name}/personalities.json`);
+            const a = await fetchJSON(`prototypes/${name}/actors.json`);
             state.protoPersonalities = p;
-            state.prototypeCache[name] = p;
+            state.protoActors = a;
+            state.prototypeCache[name] = { personalities: p, actors: a };
         }
     }
     state.mergedPersonalities = { ...state.basePersonalities, ...state.protoPersonalities };
+    state.mergedActorKeys = Object.keys({ ...state.baseActors, ...state.protoActors }).sort();
     populateDropdown();
+    populateActorSelects();
 }
 
 // ---- Dropdown ----
@@ -635,6 +660,11 @@ function buildParamRows() {
             input.id = 'param-' + pd.key;
             if (pd.step) input.step = pd.step;
             input.addEventListener('input', updateJSONOutput);
+        } else if (pd.type === 'actor-select') {
+            input = document.createElement('select');
+            input.id = 'param-' + pd.key;
+            input.innerHTML = '<option value="">(none)</option>';
+            input.addEventListener('change', updateJSONOutput);
         } else {
             input = document.createElement('input');
             input.type = 'text';
@@ -652,6 +682,23 @@ function buildParamRows() {
         }
 
         container.appendChild(wrapper);
+    }
+}
+
+function populateActorSelects() {
+    const selects = document.querySelectorAll('#params-container select');
+    for (const sel of selects) {
+        const prev = sel.value;
+        const none = sel.querySelector('option[value=""]');
+        sel.innerHTML = '';
+        sel.appendChild(none || Object.assign(document.createElement('option'), { value: '', textContent: '(none)' }));
+        for (const key of state.mergedActorKeys) {
+            const opt = document.createElement('option');
+            opt.value = key;
+            opt.textContent = key;
+            sel.appendChild(opt);
+        }
+        sel.value = prev;
     }
 }
 
@@ -858,6 +905,7 @@ async function init() {
     await loadBaseData();
     await loadPrototype('');
     buildParamRows();
+    populateActorSelects();
     populateBehaviorAddDropdown();
     renderPalette();
     initEventListeners();

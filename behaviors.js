@@ -702,7 +702,7 @@ const BehaviorLibrary = {
 
         // Get the origin cloud's lifetime (initialize if needed)
         if (actor.cloudLifetime === undefined) {
-            actor.cloudLifetime = actor.lifetime || 10;
+            actor.cloudLifetime = actor.lifetime || data.cloud_lifetime || 10;
         }
 
         // Spread to tiles at the current distance from origin
@@ -910,7 +910,7 @@ const BehaviorLibrary = {
 
         // Initialize lifetime if not set (needed for non-origin clouds)
         if (actor.cloudLifetime === undefined) {
-            actor.cloudLifetime = actor.lifetime || 10;
+            actor.cloudLifetime = actor.lifetime || data.cloud_lifetime || 10;
         }
 
         // Count cloud neighbors (same type as this actor, typically 'cloud')
@@ -1394,8 +1394,9 @@ const BehaviorLibrary = {
      * Uses actor's spread_chance from actor data
      */
     fire_spread: (actor, data) => {
-        const spreadChance = actor.data?.spread_chance ?? 0.3;
+        const spreadChance = data.spread_chance ?? actor.data?.spread_chance ?? 0.3;
         const spawnType = data?.spawn_type || actor.type;
+        const fireLifetime = data.fire_lifetime;
         const entityManager = actor.engine.entityManager;
         const mapManager = actor.engine.mapManager;
 
@@ -1426,7 +1427,7 @@ const BehaviorLibrary = {
             if (targetEntity && targetEntity.hasAttribute('flammable')) {
                 targetEntity.die();
                 const newFire = entityManager.spawnActor(spawnType, targetX, targetY);
-                if (newFire) newFire.fireLifetime = newFire.lifetime || 5;
+                if (newFire) newFire.fireLifetime = fireLifetime ?? newFire.lifetime ?? 5;
                 continue;
             }
 
@@ -1435,7 +1436,7 @@ const BehaviorLibrary = {
             const targetActor = actorsAtTarget.find(a => a.type !== actor.type);
             if (targetActor && targetActor.hasAttribute('flammable')) {
                 const newFire = entityManager.spawnActor(spawnType, targetX, targetY);
-                if (newFire) newFire.fireLifetime = newFire.lifetime || 5;
+                if (newFire) newFire.fireLifetime = fireLifetime ?? newFire.lifetime ?? 5;
                 continue;
             }
 
@@ -1451,7 +1452,7 @@ const BehaviorLibrary = {
                 }
                 targetItem.die();
                 const newFire = entityManager.spawnActor(spawnType, targetX, targetY);
-                if (newFire) newFire.fireLifetime = newFire.lifetime || 5;
+                if (newFire) newFire.fireLifetime = fireLifetime ?? newFire.lifetime ?? 5;
             }
         }
 
@@ -1462,9 +1463,10 @@ const BehaviorLibrary = {
      * Fire burn out behavior - counts down lifetime and removes fire when expired
      * Also damages entities standing in the fire
      */
-    fire_burn_out: (actor) => {
+    fire_burn_out: (actor, data) => {
         const entityManager = actor.engine.entityManager;
-        const damagePerTurn = actor.data?.damage_per_turn ?? 10;
+        const damagePerTurn = data.damage_per_turn ?? actor.data?.damage_per_turn ?? 10;
+        const burnState = data.burn_state ?? 'burning';
 
         // Fire cannot survive on void tiles (no floor) unless on a platform
         if (!actor.hasFloorAt(actor.x, actor.y) && !actor.hasPlatformAt(actor.x, actor.y)) {
@@ -1491,10 +1493,10 @@ const BehaviorLibrary = {
             }
 
             // Apply burning state if victim isn't already burning
-            if (!actor._isAttachedFire && victim.applyState && !victim.hasState('burning')) {
+            if (!actor._isAttachedFire && victim.applyState && !victim.hasState(burnState)) {
                 const statesData = actor.engine.globalStates;
-                if (statesData?.burning) {
-                    victim.applyState('burning', statesData.burning);
+                if (statesData?.[burnState]) {
+                    victim.applyState(burnState, statesData[burnState]);
                 }
             }
 
@@ -1523,7 +1525,7 @@ const BehaviorLibrary = {
      * Traps start invisible and become visible when triggered (Brogue-style)
      * Traps are re-triggerable but won't trigger again while same entity remains on tile
      */
-    trap_check_trigger: (actor) => {
+    trap_check_trigger: (actor, data) => {
         const entityManager = actor.engine.entityManager;
 
         // Initialize tracking set for entities that have triggered while on this tile
@@ -1575,7 +1577,7 @@ const BehaviorLibrary = {
         actor.engine.inputManager?.showMessage(trapMessage, { x: actor.x, y: actor.y });
 
         // Play trap sound
-        actor.engine.playSound?.('tap2');
+        actor.engine.playSound?.(data.trap_sound ?? 'tap2');
 
         // Spawn the trap effect - supports two formats:
         // 1. trap_effect: { center, radius, outer } - spell-like area effect (like fireball)
@@ -1641,7 +1643,7 @@ const BehaviorLibrary = {
                     spawnedActor.isCloudOrigin = true;
                     spawnedActor.cloudOriginX = actor.x;
                     spawnedActor.cloudOriginY = actor.y;
-                    spawnedActor.cloudLifetime = 8;
+                    spawnedActor.cloudLifetime = data.trap_cloud_lifetime ?? 8;
                 }
             }
         }
@@ -1750,7 +1752,7 @@ const BehaviorLibrary = {
                 actor.engine.inputManager?.showMessage(`${actorName} shoots ${targetName} with ${displayName}!`, hitPos);
 
                 // Play hit sound
-                const collisionSound = ammo.getAttribute('collision_sound') || 'arrow_hit';
+                const collisionSound = ammo.getAttribute('collision_sound') || data.hit_sound || 'arrow_hit';
                 actor.engine.playSound?.(collisionSound);
             } else {
                 // Show miss message
@@ -1761,7 +1763,7 @@ const BehaviorLibrary = {
                 actor.engine.inputManager?.showMessage(`${actorName}'s ${displayName} misses ${targetName}!`, missPos);
 
                 // Play miss sound
-                actor.engine.playSound?.('arrow_miss');
+                actor.engine.playSound?.(data.miss_sound ?? 'arrow_miss');
 
                 // Drop the ammo near the target (on a random adjacent floor tile)
                 const adjacentTile = BehaviorLibrary._findAdjacentFloor(target.x, target.y, entityManager, actor.engine.mapManager);
@@ -1930,12 +1932,12 @@ const BehaviorLibrary = {
                 const targetName = target.getNameWithArticle ? target.getNameWithArticle() : `the ${target.name}`;
                 const actorName = actor.getNameWithArticle ? actor.getNameWithArticle() : `The ${actor.name}`;
                 actor.engine.inputManager?.showMessage(`${actorName} strikes ${targetName}!`);
-                actor.engine.playSound?.('arrow_hit');
+                actor.engine.playSound?.(data.hit_sound ?? 'arrow_hit');
             } else {
                 const targetName = target.getNameWithArticle ? target.getNameWithArticle() : `the ${target.name}`;
                 const actorName = actor.getNameWithArticle ? actor.getNameWithArticle() : `The ${actor.name}`;
                 actor.engine.inputManager?.showMessage(`${actorName}'s attack misses ${targetName}!`);
-                actor.engine.playSound?.('arrow_miss');
+                actor.engine.playSound?.(data.miss_sound ?? 'arrow_miss');
             }
             actor.engine.interfaceManager?.updateSidebar();
         });
@@ -2132,7 +2134,7 @@ const BehaviorLibrary = {
             cloud.isCloudOrigin = true;
             cloud.cloudOriginX = actor.x;
             cloud.cloudOriginY = actor.y;
-            cloud.cloudLifetime = 6;
+            cloud.cloudLifetime = data.cloud_lifetime ?? 6;
             cloud._emitCounterKey = counterKey;
             entityManager[counterKey]++;
         }
@@ -2347,8 +2349,8 @@ const BehaviorLibrary = {
         actor.y = dest.y;
         actor.updateSpritePosition();
         actor.engine.lightingManager?.computeLighting();
-        actor.engine.playSound?.('magic');
-        actor.engine.renderer?.effectRunner?.apply('blink');
+        actor.engine.playSound?.(data.blink_sound ?? 'magic');
+        actor.engine.renderer?.effectRunner?.apply(data.blink_effect ?? 'blink');
 
         if (data.blink_spawn) {
             entityManager.spawnActor(data.blink_spawn, prevX, prevY);
@@ -2402,8 +2404,8 @@ const BehaviorLibrary = {
 
         if (boltPath.length === 0) return false;
 
-        actor.engine.playSound?.('squarewave');
-        actor.engine.renderer?.effectRunner.apply('lightning_bolt', actor, { path: boltPath });
+        actor.engine.playSound?.(data.bolt_sound ?? 'squarewave');
+        actor.engine.renderer?.effectRunner.apply(data.bolt_effect ?? 'lightning_bolt', actor, { path: boltPath });
 
         const fillDuration = boltPath.length * 25 + 100;
         setTimeout(() => {
