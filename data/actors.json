@@ -17,7 +17,7 @@
       "controlled": true,
       "sighted": true,
       "sentient": true,
-      "inventory": 4,
+      "inventory": 5,
       "remains": "skull",
       "accuracy": 40,
       "opaque": false,
