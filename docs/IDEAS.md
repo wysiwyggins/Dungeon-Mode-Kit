@@ -153,7 +153,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 - [ ] Dialogue editor or ink — visual tool for authoring branching dialogue trees
 - [ ] Prototype editor — configure prototype.json visually (mechanics, win conditions, floors)
 - [ ] Variable editor — define and manage prototype variables
-- [ ] Event wiring editor — visually connect actors, events, and responses
+- [ ] Event wiring editor — visually connect actors, events, and responses 
 - [ ] State editor — create/edit states.json entries with duration, effects, immunities
 - [ ] Sound composer — simple tone sequencer for creating sound effects and music
 
