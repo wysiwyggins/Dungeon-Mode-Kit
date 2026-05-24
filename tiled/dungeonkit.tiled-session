@@ -16,7 +16,7 @@
             "scale": 0.3821,
             "selectedLayer": 5,
             "viewCenter": {
-                "x": 799.5289191311176,
+                "x": 800.8374771002357,
                 "y": 599.3195498560586
             }
         },
@@ -30,14 +30,14 @@
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/default/map.tmj": {
             "expandedObjectLayers": [
-                6,
                 3,
-                8
+                8,
+                6
             ],
             "scale": 0.3942,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 800.3551496702181,
+                "x": 799.0867579908675,
                 "y": 585.9969558599696
             }
         },
@@ -45,7 +45,7 @@
             "scale": 0.6069,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 799.9670456417861,
+                "x": 800.790904597133,
                 "y": 599.7693194925029
             }
         },
@@ -97,14 +97,14 @@
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/map.tmj": {
             "expandedObjectLayers": [
-                6,
-                3
+                3,
+                6
             ],
             "scale": 0.6922,
             "selectedLayer": 5,
             "viewCenter": {
-                "x": 824.1837619185206,
-                "y": 634.2097659635942
+                "x": 800.3467206009825,
+                "y": 654.4351343542328
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/underworld/map.tmj": {
@@ -119,7 +119,7 @@
             "scale": 0.3612,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 400.0553709856036,
+                "x": 398.6710963455149,
                 "y": 451.2735326688815
             }
         },
@@ -131,7 +131,7 @@
             "scale": 0.5311,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 420.8247034456788,
+                "x": 419.8832611560911,
                 "y": 510.26172095650526
             }
         },

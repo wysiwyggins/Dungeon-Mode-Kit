@@ -481,6 +481,17 @@
                  "width":40,
                  "x":720,
                  "y":480
+                }, 
+                {
+                 "height":30,
+                 "id":97,
+                 "name":"sword",
+                 "rotation":0,
+                 "type":"sword",
+                 "visible":true,
+                 "width":40,
+                 "x":1000,
+                 "y":750
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -551,7 +562,7 @@
          "y":0
         }],
  "nextlayerid":9,
- "nextobjectid":96,
+ "nextobjectid":98,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",
