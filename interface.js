@@ -4021,7 +4021,16 @@ class InterfaceManager {
                             const currentItems = actor.inventory ? actor.inventory.length : 0;
                             attributesHtml += `<span class="stat-value">${currentItems}/${value}</span>`;
                         } else {
-                            attributesHtml += `<span class="stat-value">${value}</span>`;
+                            // Use effective values for stats with equipment/passive bonuses
+                            let displayValue = value;
+                            if (key === 'defense' && actor.getEffectiveDefense) {
+                                displayValue = actor.getEffectiveDefense();
+                            } else if (key === 'strength' && actor.getEffectiveStrength) {
+                                displayValue = actor.getEffectiveStrength();
+                            } else if (key === 'accuracy' && actor.getEffectiveAccuracy) {
+                                displayValue = actor.getEffectiveAccuracy();
+                            }
+                            attributesHtml += `<span class="stat-value">${displayValue}</span>`;
                         }
 
                         attributesHtml += `</li>`;

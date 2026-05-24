@@ -10,6 +10,17 @@
 
 <header>
     <h1>Item Editor</h1>
+    <label>Prototype:
+        <select id="prototype-select">
+            <option value="" selected>— base only —</option>
+            <option value="dungeon">dungeon</option>
+            <option value="arena">arena</option>
+            <option value="labyrinth">labyrinth</option>
+            <option value="automatons">automatons</option>
+            <option value="test">test</option>
+            <option value="default">default</option>
+        </select>
+    </label>
     <label>Item:
         <select id="item-select" style="min-width:220px"></select>
     </label>
@@ -483,6 +494,10 @@ let state = {
     tileNames: [],
     spritesheetImg: null,
     items: {},
+    protoItems: {},
+    mergedItems: {},
+    protoItemKeys: new Set(),
+    prototypeCache: {},
     currentTiles: {},
     activeTileTarget: null,
     highlightedTiles: null
@@ -533,6 +548,27 @@ async function loadBaseData() {
     }
 }
 
+async function loadPrototype(name) {
+    if (!name) {
+        state.protoItems = {};
+    } else {
+        if (state.prototypeCache[name]) {
+            state.protoItems = state.prototypeCache[name];
+        } else {
+            const items = await fetchJSON(`prototypes/${name}/items.json`);
+            state.protoItems = items;
+            state.prototypeCache[name] = items;
+        }
+    }
+    state.mergedItems = { ...state.items, ...state.protoItems };
+    state.protoItemKeys = new Set(Object.keys(state.protoItems));
+    populateItemDropdown();
+    const firstKey = document.getElementById('item-select').value;
+    if (firstKey && state.mergedItems[firstKey]) {
+        populateForm(firstKey, state.mergedItems[firstKey]);
+    }
+}
+
 // ---- Dropdown ----
 
 function populateItemDropdown() {
@@ -542,9 +578,9 @@ function populateItemDropdown() {
 
     // Group items by category
     const groups = {};
-    const keys = Object.keys(state.items).sort();
+    const keys = Object.keys(state.mergedItems).sort();
     for (const k of keys) {
-        const cat = getItemCategory(state.items[k]);
+        const cat = getItemCategory(state.mergedItems[k]);
         if (!groups[cat]) groups[cat] = [];
         groups[cat].push(k);
     }
@@ -557,9 +593,10 @@ function populateItemDropdown() {
         for (const k of groups[cat]) {
             const opt = document.createElement('option');
             opt.value = k;
-            const item = state.items[k];
+            const item = state.mergedItems[k];
             const display = item.name || (item.random_type ? 'random pool' : k);
-            opt.textContent = `${k} (${display})`;
+            const prefix = state.protoItemKeys.has(k) ? '◆ ' : '';
+            opt.textContent = `${prefix}${k} (${display})`;
             optgroup.appendChild(opt);
         }
         sel.appendChild(optgroup);
@@ -1933,16 +1970,17 @@ function initItemFilter() {
             return;
         }
         results.innerHTML = '';
-        const keys = Object.keys(state.items).sort();
+        const keys = Object.keys(state.mergedItems).sort();
         let count = 0;
         for (const k of keys) {
-            const item = state.items[k];
+            const item = state.mergedItems[k];
             const name = item.name || '';
             const cat = getItemCategory(item);
             if (k.toLowerCase().includes(q) || name.toLowerCase().includes(q) || cat.includes(q)) {
+                const prefix = state.protoItemKeys.has(k) ? '◆ ' : '';
                 const div = document.createElement('div');
                 div.className = 'filter-item';
-                div.innerHTML = `<span>${k} <span style="color:var(--text-dim)">(${name || '—'})</span></span><span class="filter-cat">${cat}</span>`;
+                div.innerHTML = `<span>${prefix}${k} <span style="color:var(--text-dim)">(${name || '—'})</span></span><span class="filter-cat">${cat}</span>`;
                 div.addEventListener('click', () => {
                     document.getElementById('item-select').value = k;
                     populateForm(k, item);
@@ -1984,9 +2022,13 @@ function duplicateCurrentItem() {
 function initEventListeners() {
     document.getElementById('item-select').addEventListener('change', (e) => {
         const key = e.target.value;
-        if (state.items[key]) {
-            populateForm(key, state.items[key]);
+        if (state.mergedItems[key]) {
+            populateForm(key, state.mergedItems[key]);
         }
+    });
+
+    document.getElementById('prototype-select').addEventListener('change', async (e) => {
+        await loadPrototype(e.target.value);
     });
 
     document.getElementById('btn-new').addEventListener('click', () => {
@@ -2050,15 +2092,10 @@ async function init() {
     initTintSync();
 
     await Promise.all([loadBaseData(), loadSpritesheet()]);
-    populateItemDropdown();
+    await loadPrototype('');
 
     initItemFilter();
     initEventListeners();
-
-    const firstKey = document.getElementById('item-select').value;
-    if (firstKey && state.items[firstKey]) {
-        populateForm(firstKey, state.items[firstKey]);
-    }
 }
 
 init();
