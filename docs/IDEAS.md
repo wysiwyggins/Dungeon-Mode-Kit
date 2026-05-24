@@ -28,16 +28,16 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Scripted Behaviors [Z][b]
 
-- Scripted npc actor actions- a script of turn-by-turn actions that gets executed by an actor and then it returns to other behaviors.  (Is this just another behavior? Maybe we create a behavior editor that allows us to Logo-like program an actor). some sort of web interface for programming actors.
+- Scripted npc actor actions- a script of turn-by-turn actions that gets executed by an actor and then it returns to other behaviors, expand existing behavior editor page
 - [ ] Action sequences — personalities execute a fixed series of actions (move, wait, speak, spawn)
 - [ ] State machines — personalities with named states and transition conditions
-- [ ] Patrol paths — actors follow a defined waypoint route instead of random patrol
+- [ ] Patrol paths — actors follow a defined waypoint route instead of random patrol, might require a path drawing tool other than Tiled
 - [ ] Triggered behaviors — personality switches when a variable or event condition is met
 - [ ] Conditional behavior list — behaviors that only execute when a variable/state check passes
 
 ## Event System [Z]
 
-- [ ] Event broadcasting — actors emit named events (e.g. "lever_pulled", "boss_killed")
+- [ ] Event broadcasting — actors emit named events (e.g. "lever_pulled", "boss_killed") this could suppliment or replace win_conditions and machine_id
 - [ ] Event listeners — actors respond to events with attribute changes, spawns, or removal
 - [ ] Touch events — trigger effects when actors become adjacent (not just collide) [Z]
 - [ ] Chain reactions — events trigger other events (button → trap → door → spawn)
@@ -46,15 +46,12 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 ## Actors & Creatures
 
 - [ ] Aquatic creatures — actors restricted to water tiles, can't be pushed onto land
-- [ ] Flying creatures — ignore terrain hazards, cross chasms [B]
 - [ ] Burrowing creatures — can move through wall tiles, leave tunnels behind
 - [ ] Splitting creatures — on death, spawn smaller versions (slimes, oozes) [B]
-- [ ] Invisible creatures — only visible via telepathy or adjacency [B]
-- [ ] Pack spawning — hordes that spawn as coordinated groups with a leader [B]
+- [ ] Invisible creatures — only visible via telepathy or adjacency (visible: false exists, but needs telepathy build-out) [B]
 - [ ] Creature mutations — random bonus traits applied at spawn (agile, poisonous, fire-immune) [B]
-- [ ] Totems/turrets — immobile actors that project area effects (healing, buffing, debuffing) [B]
+- [ ] Totems/turrets — immobile actors like the Dart Turret that project area effects (healing, buffing, debuffing) [B]
 - [ ] Mimics — actors disguised as items or terrain until disturbed
-- [ ] Undead raising — dead actors reanimate after N turns unless corpse is destroyed
 
 ## Ally System
 
@@ -109,9 +106,6 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Dungeon Generation
 
-- [ ] Lake generation — cellular automata for natural water/lava pools [B]
-- [ ] Cavern rooms — organic cave shapes via cellular automata [B]
-- [ ] Quest/vault rooms — pre-designed challenge rooms with lock-and-key puzzles [B]
 - [ ] Biome/theme system — per-floor visual and mechanical themes (crypt, sewer, forest, crystal caves)
 - [ ] Secret rooms — hidden passages revealed by searching or breaking walls
 - [ ] Shop rooms — merchant NPCs with buy/sell interaction
@@ -130,15 +124,13 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 - [ ] Edge wrapping — movement off one map edge enters the opposite side [Z]
 - [ ] Persistent floor state — items dropped on a floor remain when you return (partially exists)
 - [ ] World map — non-linear prototype graph with branching paths
-- [ ] Hub areas — safe zones between dungeon levels for shops, NPCs, storage
+- [ ] Hub areas — safe zones between dungeon levels for shops, NPCs, storage (runes of protection could use the existing evil eye tile)
 - [ ] Outdoor/overworld — large open maps with different generation rules than dungeons
 
 ## Progression
 
-- [ ] Experience/leveling — XP from kills, stat increases on level-up
-- [ ] Skill trees — unlockable abilities or passive bonuses
 - [ ] Achievements — tracked accomplishments across runs
-- [ ] Seeds — deterministic RNG for reproducible dungeons and competitive play [B]
+- [ ] Compendium of discoveries — a list of all the things discovered in a prototype across play sessions
 - [ ] Challenges — pre-configured difficulty modifiers (no food, no armor, etc.) [B]
 - [ ] Score system — point tracking based on depth, kills, items, gold [B]
 - [ ] Auto-explore — pathfind through safe explored areas, stop on encounter [B]
@@ -150,7 +142,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 - [ ] Background music — looping tracks per prototype or per floor
 - [ ] Music notation — simple tracker for composing level music from tone data
 - [ ] Adaptive music — track changes based on combat/peaceful state
-- [ ] Ambient sound — environmental audio loops (dripping, wind, crackling)
+- [ ] Ambient sound — environmental audio loops (dripping, hauntings, crackling torches)
 - [ ] Spatial audio — sound volume based on distance from source
 
 ## Editor Tools
@@ -158,7 +150,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 - A web front end level creator would create a prototype that supplements and sometimes overrides the base data. It could even have an upload or pixel art tool for adding tiles to an overriding prototype version. You'd be able to experiment with combining tiles to make actors. A web map editor would replicate some tiled features but would also let you paint entities with color tints, currently tiled can only draw shapes with objects and attributes for entities which you can't see the tile or tint of.
 - future- the kit is hosted online in a way that users could create prototypes with web forms and test them, like bitsy.
 - Look to Bitsy and ZZT for feature inspiration as well as roguelikes, we want to be surprised by what designers make rather than be proscriptive
-- [ ] Dialogue editor — visual tool for authoring branching dialogue trees
+- [ ] Dialogue editor or ink — visual tool for authoring branching dialogue trees
 - [ ] Prototype editor — configure prototype.json visually (mechanics, win conditions, floors)
 - [ ] Variable editor — define and manage prototype variables
 - [ ] Event wiring editor — visually connect actors, events, and responses
