@@ -71,25 +71,6 @@ Older messages use CSS classes for visual hierarchy (defined in `_typography.scs
 | `.message-age-1` | 1 turn ago      | `#666`  |
 | `.message-age-2` | 2+ turns ago    | `#999`  |
 
-## Event Message Types
-
-The engine calls `showMessage()` for various events:
-
-| Event          | Example Message                           |
-|----------------|-------------------------------------------|
-| Item pickup    | "You pick up a Sword."                    |
-| Door open/close| "The Door opens."                         |
-| Door locked    | "The Door is locked."                     |
-| Key unlock     | "The blue key unlocks the blue door!"     |
-| Wrong key      | "The red door requires a red key."        |
-| Push           | "You push the Boulder."                   |
-| Death          | "You die..." / "The Skeleton dies."       |
-| Fall           | "You plunge into the depths!"             |
-| Incineration   | "The Lava incinerates the Skeleton!"      |
-| Item use       | Templated `use_description`               |
-| Attack         | Templated `collision_description`         |
-| Identification | "You identified the Potion of Healing!"   |
-
 ## Template System
 
 Items and actors can define templated descriptions that are processed at runtime.
