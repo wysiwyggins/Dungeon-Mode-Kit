@@ -700,7 +700,7 @@
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
     "tint": "#77bb41",
-    "flickerTint": true,
+    "rippleTint": true,
     "animated": true,
     "animation_frames": "fluid",
     "personality": "deep_water",
