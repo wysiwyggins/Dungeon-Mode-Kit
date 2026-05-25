@@ -345,7 +345,7 @@ const PRIMARY_BOOL_ATTRS = [
 const SECONDARY_BOOL_ATTRS = [
     'controlled','hazard_immune','pack','follows_thread','mass_noun','proper_named',
     'liquid','deep','spreads','ignites','openable','lockable','color_locked','gate',
-    'switchable','toggled','clock','one_shot','pedestal','display_inventory',
+    'switchable','toggled','pausable','one_shot','pedestal','display_inventory',
     'platform','collapsible','portal','trap','hidden','pickupable','stackable','cursed'
 ];
 const BOOL_ATTRS = [...PRIMARY_BOOL_ATTRS, ...SECONDARY_BOOL_ATTRS];
@@ -380,7 +380,7 @@ const BOOL_HINTS = {
     gate: 'Gate actor (opened by mechanisms).',
     switchable: 'Toggle-able mechanism.',
     toggled: 'Current toggle state.',
-    clock: 'Ticks on an interval (see clock_interval).',
+    pausable: 'Can be paused/resumed by player bump.',
     one_shot: 'Triggers once then stops.',
     pedestal: 'Displays an item on top.',
     display_inventory: 'Shows held item visually.',
@@ -400,7 +400,6 @@ const TYPED_ATTRS = [
     { key: 'strength', type: 'number', label: 'Strength', hint: 'Melee damage when using "-{strength}" in collision_effect. Typical: 1-18.' },
     { key: 'inventory', type: 'number', label: 'Inventory slots', hint: 'Number of items this actor can carry. 0 = none, player default is 4.' },
     { key: 'lode_chance', type: 'number', label: 'Lode Chance (0-100)', hint: 'Percent chance to drop a lode item when broken. Requires breakable + lode.' },
-    { key: 'clock_interval', type: 'number', label: 'Clock Interval', hint: 'Turns between clock ticks. Requires the clock attribute.' },
     { key: 'remains', type: 'text', label: 'Remains', hint: 'Actor type spawned on death. e.g. skull, rubble, blood, mist, log.' },
     { key: 'damage_type', type: 'text', label: 'Damage Type', hint: 'Hazard damage category. Known: "fire". Used for immunity checks.' },
     { key: 'lode', type: 'text', label: 'Lode (item type)', hint: 'Item type dropped when broken. e.g. gold_nugget, uranium_nugget.' },
@@ -1295,12 +1294,12 @@ function addSwitchEffectRow(key, val) {
 function updateConditionalSections() {
     const openable = document.getElementById('attr-openable').checked;
     const switchable = document.getElementById('attr-switchable').checked;
-    const clock = document.getElementById('attr-clock').checked;
+    const pausable = document.getElementById('attr-pausable').checked;
     const trap = document.getElementById('attr-trap').checked;
 
     document.getElementById('open-tiles-section').classList.toggle('visible', openable);
     document.getElementById('toggled-tiles-section').classList.toggle('visible', switchable);
-    document.getElementById('switch-section').classList.toggle('visible', switchable || clock);
+    document.getElementById('switch-section').classList.toggle('visible', switchable || pausable);
     document.getElementById('trap-section').classList.toggle('visible', trap);
 }
 

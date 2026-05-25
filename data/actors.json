@@ -910,14 +910,13 @@
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
     "animated": true,
-    "animation_frames": "smoke",
+    "animation_frames": "mist",
+    "animationTop": "smoke",
     "personality": "cloud",
     "attributes": {
-      "solid": false,
-      "mass_noun": true,
-      "hazard_immune": true
+      "hazard_immune": true,
+      "mass_noun": true
     },
-    "collision_effect": {},
     "lifetime": 10
   },
   "mist": {

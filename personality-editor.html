@@ -140,7 +140,8 @@ const BEHAVIOR_CATEGORIES = [
     ]},
     { name: 'Special', behaviors: [
         'summon_actor', 'heal_ally', 'seek_item', 'mine_nearby_wall',
-        'trap_check_trigger', 'apply_aura', 'horizontal_bounce', 'vertical_bounce', 'clock_tick'
+        'trap_check_trigger', 'apply_aura', 'horizontal_bounce', 'vertical_bounce',
+        'countdown', 'countdown_display', 'toggle_and_propagate'
     ]}
 ];
 
@@ -191,7 +192,9 @@ const BEHAVIOR_HINTS = {
     apply_aura: 'Chance to apply a state to adjacent actors',
     horizontal_bounce: 'Move left/right, reverse at walls',
     vertical_bounce: 'Move up/down, reverse at walls',
-    clock_tick: 'Tick a clock mechanism'
+    countdown: 'Decrement a counter each turn, fire event at zero',
+    countdown_display: 'Update tile to show countdown digit',
+    toggle_and_propagate: 'Toggle state and propagate switch effects'
 };
 
 const BEHAVIOR_PARAMS = {
@@ -225,6 +228,8 @@ const BEHAVIOR_PARAMS = {
     fire_burn_out: ['damage_per_turn', 'burn_state'],
     trap_check_trigger: ['trap_sound', 'trap_cloud_lifetime'],
     pickpocket_adjacent: ['loot_search_radius'],
+    countdown: ['interval', 'countdown_event', 'countdown_sound'],
+    countdown_display: ['countdown_display'],
 };
 
 const PARAM_DEFS = [
@@ -294,6 +299,10 @@ const PARAM_DEFS = [
     { key: 'trap_cloud_lifetime', type: 'number', label: 'Trap Cloud Lifetime', hint: 'Turns trap-spawned clouds persist. Default: 8' },
     { key: 'hit_sound', type: 'text', label: 'Hit Sound', hint: 'Sound on ranged hit (default: arrow_hit)' },
     { key: 'miss_sound', type: 'text', label: 'Miss Sound', hint: 'Sound on ranged miss (default: arrow_miss)' },
+    { key: 'interval', type: 'number', label: 'Interval', hint: 'Turns between countdown events. Default: 5' },
+    { key: 'countdown_event', type: 'text', label: 'Countdown Event', hint: 'Behavior to call at zero (e.g. toggle_and_propagate)' },
+    { key: 'countdown_sound', type: 'text', label: 'Countdown Sound', hint: 'Sound played when countdown fires' },
+    { key: 'countdown_display', type: 'text', label: 'Countdown Display', hint: 'Display mode for countdown (e.g. digit)' },
 ];
 
 const FLAG_KEYS = new Set(['name', 'hostile', 'controlled', 'tactical', 'alert_allies', 'flee_threshold', 'preferred_positions', 'behaviors']);
