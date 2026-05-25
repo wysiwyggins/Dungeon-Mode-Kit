@@ -143,7 +143,7 @@
       "flammable": false,
       "weapon": true,
       "collision_effect": {
-        "health": -2
+        "health": -6
       },
       "attack_sound": "bow",
       "collision_sound": "hit",

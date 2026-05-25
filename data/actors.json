@@ -19,7 +19,7 @@
       "sentient": true,
       "inventory": 5,
       "remains": "skull",
-      "accuracy": 40,
+      "accuracy": 50,
       "opaque": false,
       "strength": 1
     },
@@ -672,7 +672,6 @@
       "flammable": false,
       "spreads": false,
       "liquid": true,
-      "deep": true,
       "mass_noun": true,
       "entry_sound": "step_mud"
     }
@@ -708,6 +707,7 @@
       "mass_noun": true,
       "liquid": true,
       "deep": true,
+      "solid": false,
       "entry_sound": "step_mud"
     }
   },
@@ -1265,7 +1265,7 @@
       "vision_range": 10,
       "inventory": 1,
       "accuracy": 70,
-      "defense": 5,
+      "defense": 3,
       "strength": 1,
       "remains": "skull"
     },
