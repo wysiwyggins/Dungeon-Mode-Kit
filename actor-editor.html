@@ -401,7 +401,7 @@ const TYPED_ATTRS = [
     { key: 'inventory', type: 'number', label: 'Inventory slots', hint: 'Number of items this actor can carry. 0 = none, player default is 4.' },
     { key: 'lode_chance', type: 'number', label: 'Lode Chance (0-100)', hint: 'Percent chance to drop a lode item when broken. Requires breakable + lode.' },
     { key: 'remains', type: 'text', label: 'Remains', hint: 'Actor type spawned on death. e.g. skull, rubble, blood, mist, log.' },
-    { key: 'damage_type', type: 'text', label: 'Damage Type', hint: 'Hazard damage category. Known: "fire". Used for immunity checks.' },
+    { key: 'damage_type', type: 'select', label: 'Damage Type', hint: 'Hazard damage category. Grants immunity via {type}_immune attribute.', options: ['', 'fire', 'poison', 'electric'] },
     { key: 'lode', type: 'text', label: 'Lode (item type)', hint: 'Item type dropped when broken. e.g. gold_nugget, uranium_nugget.' },
     { key: 'lock_color', type: 'text', label: 'Lock Color', hint: 'Fixed lock color (overrides random). Matches color key items.' },
     { key: 'machine_id', type: 'text', label: 'Machine ID', hint: 'Links switches to targets. All actors with the same machine_id are affected together.' },
@@ -1068,7 +1068,18 @@ function initTypedAttrs() {
         const lbl = document.createElement('label');
         lbl.textContent = ta.label;
         row.appendChild(lbl);
-        if (ta.type === 'color') {
+        if (ta.type === 'select') {
+            const sel = document.createElement('select');
+            sel.id = 'attr-' + ta.key;
+            for (const opt of ta.options) {
+                const o = document.createElement('option');
+                o.value = opt;
+                o.textContent = opt || '— none —';
+                sel.appendChild(o);
+            }
+            sel.addEventListener('change', updatePreview);
+            row.appendChild(sel);
+        } else if (ta.type === 'color') {
             const ci = document.createElement('input');
             ci.type = 'color';
             ci.id = 'attr-' + ta.key;
