@@ -232,7 +232,10 @@ const EffectPrimitives = {
             speed = 0.002,
             mod_speed = 0,
             phase_factor = 0.618,
-            waveform = 'sine'
+            waveform = 'sine',
+            step_up = 0.33,
+            step_down = -0.33,
+            blend = 0
         } = params;
 
         const cv = typeof color_variation === 'string' ? parseInt(color_variation, 16) : color_variation;
@@ -259,7 +262,8 @@ const EffectPrimitives = {
                     speed,
                     mod_speed,
                     phase_factor,
-                    waveform
+                    waveform,
+                    step_up, step_down, blend
                 };
                 ctx.renderer._tintCycleSprites.push(entry);
 
@@ -276,9 +280,18 @@ const EffectPrimitives = {
                             let wave = primary * mod;
 
                             if (e.waveform === 'step') {
-                                if (wave > 0.33) wave = 1;
-                                else if (wave < -0.33) wave = -1;
-                                else wave = 0;
+                                if (e.blend > 0) {
+                                    const hw = e.blend * 0.5;
+                                    if (wave >= e.step_up + hw) wave = 1;
+                                    else if (wave >= e.step_up - hw) wave = (wave - (e.step_up - hw)) / (2 * hw);
+                                    else if (wave <= e.step_down - hw) wave = -1;
+                                    else if (wave <= e.step_down + hw) wave = -((e.step_down + hw) - wave) / (2 * hw);
+                                    else wave = 0;
+                                } else {
+                                    if (wave > e.step_up) wave = 1;
+                                    else if (wave < e.step_down) wave = -1;
+                                    else wave = 0;
+                                }
                             }
 
                             const hR = Math.round(wave * e.cvR);
@@ -300,6 +313,114 @@ const EffectPrimitives = {
                 if (entry) {
                     const idx = ctx.renderer._tintCycleSprites.indexOf(entry);
                     if (idx >= 0) ctx.renderer._tintCycleSprites.splice(idx, 1);
+                    entry = null;
+                }
+            }
+        };
+    },
+
+    /**
+     * Random timer-based tint flicker — mimics the old CreateJS Tween fire effect.
+     * Cycles through lighter/base/darker states with randomized hold durations.
+     */
+    tint_flicker(ctx, params) {
+        const {
+            color_variation = '0x181808',
+            lighter_min = 100, lighter_max = 280,
+            base_min = 200, base_max = 500,
+            darker_min = 80, darker_max = 200,
+            transition_ms = 80
+        } = params;
+
+        const cv = typeof color_variation === 'string' ? parseInt(color_variation, 16) : color_variation;
+        const cvR = (cv >> 16) & 0xFF;
+        const cvG = (cv >> 8) & 0xFF;
+        const cvB = cv & 0xFF;
+
+        let entry = null;
+
+        function randRange(min, max) { return min + Math.random() * (max - min); }
+
+        function pickNext(e) {
+            const roll = Math.random();
+            if (roll < 0.35) {
+                e.targetState = 1;
+                e.holdMs = randRange(e.lighter_min, e.lighter_max);
+            } else if (roll < 0.65) {
+                e.targetState = -1;
+                e.holdMs = randRange(e.darker_min, e.darker_max);
+            } else {
+                e.targetState = 0;
+                e.holdMs = randRange(e.base_min, e.base_max);
+            }
+            e.transitionStart = Date.now();
+            e.transitionEnd = e.transitionStart + e.transition_ms;
+            e.holdEnd = e.transitionEnd + e.holdMs;
+            e.prevState = e.currentState;
+        }
+
+        return {
+            apply(runtimeParams) {
+                const sprite = runtimeParams?._target;
+                const baseTint = runtimeParams?.baseTint;
+                if (!sprite || baseTint === undefined) return;
+
+                entry = {
+                    sprite,
+                    baseR: (baseTint >> 16) & 0xFF,
+                    baseG: (baseTint >> 8) & 0xFF,
+                    baseB: baseTint & 0xFF,
+                    cvR, cvG, cvB,
+                    lighter_min, lighter_max,
+                    base_min, base_max,
+                    darker_min, darker_max,
+                    transition_ms,
+                    currentState: 0,
+                    prevState: 0,
+                    targetState: 0,
+                    holdMs: 0,
+                    transitionStart: 0,
+                    transitionEnd: 0,
+                    holdEnd: 0
+                };
+                pickNext(entry);
+                entry.holdEnd = Date.now() + randRange(base_min, base_max);
+
+                if (!ctx.renderer._tintFlickerSprites) ctx.renderer._tintFlickerSprites = [];
+                ctx.renderer._tintFlickerSprites.push(entry);
+
+                if (!ctx.renderer._tintFlickerTickerFn) {
+                    ctx.renderer._tintFlickerTickerFn = () => {
+                        const now = Date.now();
+                        for (const e of ctx.renderer._tintFlickerSprites) {
+                            if (e.sprite.destroyed) continue;
+
+                            if (now >= e.holdEnd) {
+                                e.currentState = e.targetState;
+                                pickNext(e);
+                            }
+
+                            let state;
+                            if (now < e.transitionEnd) {
+                                const t = (now - e.transitionStart) / e.transition_ms;
+                                state = e.prevState + (e.targetState - e.prevState) * t;
+                            } else {
+                                state = e.targetState;
+                            }
+
+                            const rr = Math.min(255, Math.max(0, e.baseR + Math.round(state * e.cvR)));
+                            const gg = Math.min(255, Math.max(0, e.baseG + Math.round(state * e.cvG)));
+                            const bb = Math.min(255, Math.max(0, e.baseB + Math.round(state * e.cvB)));
+                            e.sprite.tint = (rr << 16) | (gg << 8) | bb;
+                        }
+                    };
+                    ctx.ticker.add(ctx.renderer._tintFlickerTickerFn);
+                }
+            },
+            remove() {
+                if (entry && ctx.renderer._tintFlickerSprites) {
+                    const idx = ctx.renderer._tintFlickerSprites.indexOf(entry);
+                    if (idx >= 0) ctx.renderer._tintFlickerSprites.splice(idx, 1);
                     entry = null;
                 }
             }

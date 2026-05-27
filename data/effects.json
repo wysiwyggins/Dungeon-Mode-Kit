@@ -32,7 +32,7 @@
   "flicker_tint": {
     "target": "sprite",
     "layers": [
-      { "primitive": "tint_cycle", "params": { "color_variation": "0x181808", "speed": 0.006, "waveform": "step" } }
+      { "primitive": "tint_flicker", "params": { "color_variation": "0x181808" } }
     ]
   },
   "ripple_tint": {

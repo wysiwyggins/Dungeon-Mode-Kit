@@ -663,9 +663,28 @@ function drawTileOnCanvas(canvas, tileRef, tintColor, flipH, flipV, scale) {
 // ---- Tint animation helpers ----
 
 const TINT_EFFECT_PRESETS = {
-    flicker_tint: { cvR: 0x18, cvG: 0x18, cvB: 0x08, amplitude: 0, speed: 0.006, mod_speed: 0, waveform: 'step' },
-    ripple_tint:  { cvR: 0, cvG: 0, cvB: 0, amplitude: 12, speed: 0.001, mod_speed: 0.000314, phase_factor: 0.618, waveform: 'sine' }
+    flicker_tint: { type: 'flicker', cvR: 0x18, cvG: 0x18, cvB: 0x08, lighter_min: 100, lighter_max: 280, base_min: 200, base_max: 500, darker_min: 80, darker_max: 200, transition_ms: 80 },
+    ripple_tint:  { type: 'cycle', cvR: 0, cvG: 0, cvB: 0, amplitude: 12, speed: 0.001, mod_speed: 0.000314, phase_factor: 0.618 }
 };
+
+const _flickerState = { currentState: 0, prevState: 0, targetState: 0, holdEnd: 0, transitionStart: 0, transitionEnd: 0 };
+
+function _flickerPickNext(p) {
+    const roll = Math.random();
+    _flickerState.prevState = _flickerState.currentState;
+    if (roll < 0.35) {
+        _flickerState.targetState = 1;
+        _flickerState.holdEnd = Date.now() + p.transition_ms + p.lighter_min + Math.random() * (p.lighter_max - p.lighter_min);
+    } else if (roll < 0.65) {
+        _flickerState.targetState = -1;
+        _flickerState.holdEnd = Date.now() + p.transition_ms + p.darker_min + Math.random() * (p.darker_max - p.darker_min);
+    } else {
+        _flickerState.targetState = 0;
+        _flickerState.holdEnd = Date.now() + p.transition_ms + p.base_min + Math.random() * (p.base_max - p.base_min);
+    }
+    _flickerState.transitionStart = Date.now();
+    _flickerState.transitionEnd = Date.now() + p.transition_ms;
+}
 
 function getEffectTint(baseTint, effectName, time) {
     if (!baseTint || baseTint === '#ffffff' || !effectName) return baseTint;
@@ -674,15 +693,31 @@ function getEffectTint(baseTint, effectName, time) {
     const r = parseInt(baseTint.slice(1,3), 16);
     const g = parseInt(baseTint.slice(3,5), 16);
     const b = parseInt(baseTint.slice(5,7), 16);
+    const clamp = v => Math.max(0, Math.min(255, Math.round(v)));
+
+    if (p.type === 'flicker') {
+        const now = Date.now();
+        if (now >= _flickerState.holdEnd) {
+            _flickerState.currentState = _flickerState.targetState;
+            _flickerPickNext(p);
+        }
+        let state;
+        if (now < _flickerState.transitionEnd) {
+            const t = (now - _flickerState.transitionStart) / p.transition_ms;
+            state = _flickerState.prevState + (_flickerState.targetState - _flickerState.prevState) * t;
+        } else {
+            state = _flickerState.targetState;
+        }
+        return '#' + [
+            clamp(r + state * p.cvR),
+            clamp(g + state * p.cvG),
+            clamp(b + state * p.cvB)
+        ].map(v => v.toString(16).padStart(2,'0')).join('');
+    }
+
     const primary = Math.sin(time * p.speed);
     const mod = p.mod_speed ? (0.5 + 0.5 * Math.sin(time * p.mod_speed)) : 1.0;
     let wave = primary * mod;
-    if (p.waveform === 'step') {
-        if (wave > 0.33) wave = 1;
-        else if (wave < -0.33) wave = -1;
-        else wave = 0;
-    }
-    const clamp = v => Math.max(0, Math.min(255, Math.round(v)));
     return '#' + [
         clamp(r + wave * (p.cvR || 0) + wave * (p.amplitude || 0)),
         clamp(g + wave * (p.cvG || 0) + wave * (p.amplitude || 0)),

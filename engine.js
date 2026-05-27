@@ -9200,6 +9200,10 @@ class RenderSystem {
         this._tintCycleSprites = [];
         this._tintCycleTickerFn = null;
 
+        // Tint flicker animation (shared state for tint_flicker primitives)
+        this._tintFlickerSprites = [];
+        this._tintFlickerTickerFn = null;
+
         // Effect runner - data-driven visual effects system
         this.effectRunner = new EffectRunner(this);
 
@@ -10291,6 +10295,11 @@ class RenderSystem {
             this._tintCycleTickerFn = null;
         }
         this._tintCycleSprites = [];
+        if (this._tintFlickerTickerFn) {
+            this.app.ticker.remove(this._tintFlickerTickerFn);
+            this._tintFlickerTickerFn = null;
+        }
+        this._tintFlickerSprites = [];
 
         // Clean up all active effects
         this.effectRunner.removeAll();

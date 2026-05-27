@@ -646,6 +646,63 @@ body.editor {
     margin-left: 168px;
     margin-top: -4px;
     margin-bottom: 6px; }
+  body.editor.effects-editor .field-row label {
+    min-width: 140px; }
+  body.editor.effects-editor #waveform-canvas {
+    background: #111;
+    border: 1px solid var(--border);
+    display: block;
+    width: 100%;
+    height: 120px;
+    margin-bottom: 8px; }
+  body.editor.effects-editor .timing-readout {
+    display: flex;
+    gap: 12px;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 8px; }
+    body.editor.effects-editor .timing-readout .timing-lighter {
+      color: #cc9933; }
+    body.editor.effects-editor .timing-readout .timing-base {
+      color: var(--text); }
+    body.editor.effects-editor .timing-readout .timing-darker {
+      color: #6688bb; }
+  body.editor.effects-editor .range-pair {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1; }
+    body.editor.effects-editor .range-pair input[type="range"] {
+      flex: 1; }
+    body.editor.effects-editor .range-pair input[type="number"] {
+      width: 90px;
+      flex: 0; }
+  body.editor.effects-editor .cv-breakdown {
+    display: none;
+    padding-left: 148px;
+    margin-bottom: 6px; }
+    body.editor.effects-editor .cv-breakdown.visible {
+      display: block; }
+    body.editor.effects-editor .cv-breakdown .field-row {
+      margin-bottom: 3px; }
+    body.editor.effects-editor .cv-breakdown label {
+      min-width: 20px !important;
+      font-size: 10px; }
+  body.editor.effects-editor .layer-item {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    margin-bottom: 8px;
+    padding: 8px 10px; }
+  body.editor.effects-editor .layer-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px; }
+    body.editor.effects-editor .layer-header select {
+      flex: 1; }
+  body.editor.effects-editor .layer-params {
+    border-top: 1px solid var(--border);
+    padding-top: 8px; }
 
 body {
   margin: 0;

@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Effects Editor — Dungeon Mode Kit</title>
+<link rel="stylesheet" href="assets/main.css">
+</head>
+<body class="editor effects-editor">
+
+<header>
+    <h1>Effects Editor</h1>
+    <label>Effect:
+        <select id="effect-select" style="min-width:200px"></select>
+    </label>
+    <button id="btn-new">New Effect</button>
+    <button id="btn-export" class="btn-accent">Export JSON</button>
+    <button id="btn-copy" class="btn-accent">Copy to Clipboard</button>
+</header>
+
+<div id="workspace">
+    <aside id="preview-panel">
+        <h3>Preview</h3>
+        <canvas id="preview-canvas" width="200" height="200"></canvas>
+        <div class="preview-label">Top</div>
+        <div class="tile-slot" data-target="tileTop">
+            <canvas width="80" height="60"></canvas>
+            <span class="tile-name">—</span>
+        </div>
+        <div class="preview-label">Base</div>
+        <div class="tile-slot" data-target="tileBase">
+            <canvas width="80" height="60"></canvas>
+            <span class="tile-name">—</span>
+        </div>
+        <div class="field-row" style="margin-top:8px">
+            <label style="min-width:unset">Tint</label>
+            <input type="color" id="f-preview-tint" value="#ffffff">
+            <input type="text" id="f-preview-tint-hex" value="#ffffff" placeholder="#rrggbb" style="width:80px">
+        </div>
+        <div style="font-size:9px;color:var(--text-dim);margin-top:4px">Tint is for preview only. At runtime, each actor/item provides its own.</div>
+    </aside>
+
+    <div id="form-panel">
+        <!-- Effect Definition -->
+        <details class="section" open>
+            <summary>Effect Definition</summary>
+            <div class="section-body">
+                <div class="field-row">
+                    <label>Key</label>
+                    <input type="text" id="effect-key" placeholder="my_effect">
+                </div>
+                <div class="field-row">
+                    <label>Target</label>
+                    <select id="f-target">
+                        <option value="sprite">sprite</option>
+                        <option value="stage">stage</option>
+                        <option value="scene">scene</option>
+                        <option value="overlay">overlay</option>
+                        <option value="actor_sprites">actor_sprites</option>
+                    </select>
+                </div>
+            </div>
+        </details>
+
+        <!-- Layers -->
+        <details class="section" open>
+            <summary>Layers</summary>
+            <div class="section-body">
+                <div id="layers-container"></div>
+                <button class="add-btn" id="btn-add-layer">+ Add Layer</button>
+            </div>
+        </details>
+
+        <!-- Waveform Visualizer (visible when tint_cycle step layer exists) -->
+        <details class="section" id="waveform-section">
+            <summary>Waveform</summary>
+            <div class="section-body">
+                <canvas id="waveform-canvas" width="600" height="120"></canvas>
+                <div class="timing-readout" id="timing-readout"></div>
+            </div>
+        </details>
+    </div>
+</div>
+
+<div id="json-output-panel">
+    <div class="output-header">
+        <h3>JSON Output</h3>
+        <span id="effect-key-field"></span>
+    </div>
+    <textarea id="json-output" readonly rows="8"></textarea>
+</div>
+
+<!-- Tile picker modal -->
+<div id="tile-picker-overlay">
+    <div id="tile-picker">
+        <div id="tile-picker-header">
+            <span id="tile-picker-target">Selecting: —</span>
+            <input type="text" id="tile-picker-search" placeholder="Search tile name...">
+            <button id="tile-picker-none">None / Blank</button>
+            <button id="tile-picker-close">Close</button>
+        </div>
+        <canvas id="tile-picker-canvas"></canvas>
+    </div>
+</div>
+<div id="tile-picker-tooltip"></div>
+
+<script>
+// ============================================================================
+// Constants & State
+// ============================================================================
+
+let TILE_W = 40, TILE_H = 30, SS_COLS = 23, SS_ROWS = 17;
+const SPRITESHEET_PATH = 'assets/sprites/static-tiles.png';
+const TILE_DATA_PATH = 'data/static-tiles.json';
+const EFFECTS_DATA_PATH = 'data/effects.json';
+
+let state = {
+    tileMap: {},
+    reverseTileMap: {},
+    tileNames: [],
+    spritesheetImg: null,
+    effects: {},
+    currentTiles: { tileBase: 'WHITE_LEG', tileTop: 'OPAQUE_WHITE_SMILING_FACE' },
+    activeTileTarget: null,
+    highlightedTiles: null
+};
+
+let animRAF = null;
+
+// ============================================================================
+// Primitive Parameter Registry
+// ============================================================================
+
+const PRIMITIVE_PARAMS = {
+    tint_flicker: [
+        { key: 'color_variation', type: 'hex', default: '0x181808', label: 'Color Variation', expandRGB: true },
+        { key: 'lighter_min', type: 'range', min: 20, max: 500, step: 10, default: 100, label: 'Lighter Min (ms)' },
+        { key: 'lighter_max', type: 'range', min: 50, max: 1000, step: 10, default: 280, label: 'Lighter Max (ms)' },
+        { key: 'base_min', type: 'range', min: 50, max: 1000, step: 10, default: 200, label: 'Base Min (ms)' },
+        { key: 'base_max', type: 'range', min: 100, max: 2000, step: 10, default: 500, label: 'Base Max (ms)' },
+        { key: 'darker_min', type: 'range', min: 20, max: 500, step: 10, default: 80, label: 'Darker Min (ms)' },
+        { key: 'darker_max', type: 'range', min: 50, max: 1000, step: 10, default: 200, label: 'Darker Max (ms)' },
+        { key: 'transition_ms', type: 'range', min: 10, max: 300, step: 5, default: 80, label: 'Transition (ms)' },
+    ],
+    tint_cycle: [
+        { key: 'color_variation', type: 'hex', default: '0x000000', label: 'Color Variation', expandRGB: true },
+        { key: 'amplitude', type: 'range', min: 0, max: 50, step: 1, default: 0, label: 'Amplitude' },
+        { key: 'speed', type: 'range', min: 0.0001, max: 0.02, step: 0.0001, default: 0.002, label: 'Speed' },
+        { key: 'mod_speed', type: 'range', min: 0, max: 0.005, step: 0.00001, default: 0, label: 'Mod Speed' },
+        { key: 'phase_factor', type: 'range', min: 0, max: 2, step: 0.001, default: 0.618, label: 'Phase Factor' },
+        { key: 'waveform', type: 'select', options: ['sine', 'step'], default: 'sine', label: 'Waveform' },
+        { key: 'step_up', type: 'range', min: 0, max: 1, step: 0.01, default: 0.33, label: 'Step Up', showWhen: { waveform: 'step' } },
+        { key: 'step_down', type: 'range', min: -1, max: 0, step: 0.01, default: -0.33, label: 'Step Down', showWhen: { waveform: 'step' } },
+        { key: 'blend', type: 'range', min: 0, max: 1, step: 0.01, default: 0, label: 'Blend', showWhen: { waveform: 'step' } },
+    ],
+    screen_shake: [
+        { key: 'intensity', type: 'range', min: 1, max: 20, step: 1, default: 6, label: 'Intensity' },
+        { key: 'duration_ms', type: 'range', min: 50, max: 1000, step: 10, default: 200, label: 'Duration (ms)' },
+        { key: 'decay', type: 'checkbox', default: true, label: 'Decay' },
+    ],
+    canvas_flash: [
+        { key: 'color', type: 'hex', default: '0xFFFFFF', label: 'Color' },
+        { key: 'duration_ms', type: 'range', min: 50, max: 5000, step: 10, default: 150, label: 'Duration (ms)' },
+        { key: 'opacity', type: 'range', min: 0, max: 1, step: 0.01, default: 0.5, label: 'Opacity' },
+        { key: 'blend_mode', type: 'select', options: ['normal', 'add', 'multiply'], default: 'normal', label: 'Blend Mode' },
+    ],
+    hue_oscillate: [
+        { key: 'speed', type: 'range', min: 0.0001, max: 0.01, step: 0.0001, default: 0.002, label: 'Speed' },
+        { key: 'amplitude', type: 'range', min: 0, max: 180, step: 1, default: 40, label: 'Amplitude' },
+        { key: 'secondary_speed', type: 'range', min: 0, max: 0.005, step: 0.0001, default: 0.0007, label: 'Secondary Speed' },
+        { key: 'secondary_amplitude', type: 'range', min: 0, max: 90, step: 1, default: 20, label: 'Secondary Amplitude' },
+    ],
+    brightness_oscillate: [
+        { key: 'speed', type: 'range', min: 0.0001, max: 0.01, step: 0.0001, default: 0.003, label: 'Speed' },
+        { key: 'amplitude', type: 'range', min: 0, max: 0.5, step: 0.01, default: 0.05, label: 'Amplitude' },
+    ],
+    blur_pulse: [
+        { key: 'speed', type: 'range', min: 0, max: 0.01, step: 0.0001, default: 0.002, label: 'Speed' },
+        { key: 'min_strength', type: 'range', min: 0, max: 10, step: 0.5, default: 0, label: 'Min Strength' },
+        { key: 'max_strength', type: 'range', min: 0, max: 20, step: 0.5, default: 6, label: 'Max Strength' },
+    ],
+    alpha_pulse: [
+        { key: 'speed', type: 'range', min: 0.0001, max: 0.01, step: 0.0001, default: 0.003, label: 'Speed' },
+        { key: 'min_alpha', type: 'range', min: 0, max: 1, step: 0.01, default: 0.3, label: 'Min Alpha' },
+        { key: 'max_alpha', type: 'range', min: 0, max: 1, step: 0.01, default: 1.0, label: 'Max Alpha' },
+    ],
+    radial_tile_fill: [
+        { key: 'color', type: 'hex', default: '0xCC8844', label: 'Color' },
+        { key: 'duration_ms', type: 'range', min: 100, max: 2000, step: 10, default: 600, label: 'Duration (ms)' },
+        { key: 'radius', type: 'range', min: 1, max: 10, step: 1, default: 3, label: 'Radius' },
+        { key: 'opacity', type: 'range', min: 0, max: 1, step: 0.01, default: 0.7, label: 'Opacity' },
+        { key: 'ring_delay_ms', type: 'range', min: 10, max: 200, step: 5, default: 60, label: 'Ring Delay (ms)' },
+        { key: 'fade_ms', type: 'range', min: 50, max: 1000, step: 10, default: 300, label: 'Fade (ms)' },
+        { key: 'blend_mode', type: 'select', options: ['normal', 'add', 'multiply'], default: 'multiply', label: 'Blend Mode' },
+    ],
+    line_tile_fill: [
+        { key: 'color', type: 'hex', default: '0xAADDFF', label: 'Color' },
+        { key: 'duration_ms', type: 'range', min: 100, max: 2000, step: 10, default: 400, label: 'Duration (ms)' },
+        { key: 'opacity', type: 'range', min: 0, max: 1, step: 0.01, default: 0.9, label: 'Opacity' },
+        { key: 'tile_delay_ms', type: 'range', min: 5, max: 100, step: 5, default: 25, label: 'Tile Delay (ms)' },
+        { key: 'fade_ms', type: 'range', min: 50, max: 500, step: 10, default: 200, label: 'Fade (ms)' },
+        { key: 'blend_mode', type: 'select', options: ['normal', 'add', 'multiply'], default: 'add', label: 'Blend Mode' },
+    ],
+    color_overlay: [
+        { key: 'container', type: 'select', options: ['darkness'], default: 'darkness', label: 'Container' },
+        { key: 'blend_mode', type: 'select', options: ['normal', 'multiply', 'add'], default: 'multiply', label: 'Blend Mode' },
+    ],
+    color_invert: [],
+    tile_color_drift: [
+        { key: 'amplitude', type: 'range', min: 0, max: 120, step: 1, default: 60, label: 'Amplitude' },
+        { key: 'throttle_frames', type: 'range', min: 1, max: 10, step: 1, default: 4, label: 'Throttle Frames' },
+    ],
+    texture_scramble: [
+        { key: 'skip_player', type: 'checkbox', default: true, label: 'Skip Player' },
+    ],
+    floor_swap: [
+        { key: 'count_min', type: 'range', min: 1, max: 10, step: 1, default: 1, label: 'Count Min' },
+        { key: 'count_max', type: 'range', min: 1, max: 10, step: 1, default: 2, label: 'Count Max' },
+    ],
+};
+
+const PRIMITIVE_NAMES = Object.keys(PRIMITIVE_PARAMS).sort();
+
+// ============================================================================
+// Data Loading
+// ============================================================================
+
+async function fetchJSON(url) {
+    try {
+        const r = await fetch(url);
+        if (!r.ok) return {};
+        const text = await r.text();
+        if (!text.trim()) return {};
+        return JSON.parse(text);
+    } catch { return {}; }
+}
+
+function loadSpritesheet() {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+            state.spritesheetImg = img;
+            SS_ROWS = Math.ceil(img.height / TILE_H);
+            SS_COLS = Math.ceil(img.width / TILE_W);
+            resolve();
+        };
+        img.onerror = () => resolve();
+        img.src = SPRITESHEET_PATH;
+    });
+}
+
+async function loadBaseData() {
+    const [tilesData, effects] = await Promise.all([
+        fetchJSON(TILE_DATA_PATH),
+        fetchJSON(EFFECTS_DATA_PATH),
+    ]);
+    TILE_W = tilesData.tilePixelWidth || TILE_W;
+    TILE_H = tilesData.tilePixelHeight || TILE_H;
+    state.tileMap = tilesData.tiles || {};
+    state.effects = effects;
+
+    state.tileNames = Object.keys(state.tileMap).sort();
+    state.reverseTileMap = {};
+    for (const [name, coords] of Object.entries(state.tileMap)) {
+        const key = coords[0] + ',' + coords[1];
+        if (!state.reverseTileMap[key]) state.reverseTileMap[key] = [];
+        state.reverseTileMap[key].push(name);
+    }
+}
+
+// ============================================================================
+// Tile Drawing
+// ============================================================================
+
+function resolveTile(ref) {
+    if (!ref || ref === 'BLANK' || ref === 'NULL') return null;
+    if (typeof ref === 'string') {
+        const coords = state.tileMap[ref];
+        if (!coords) return null;
+        return { x: coords[0], y: coords[1] };
+    }
+    if (typeof ref === 'object' && ref.x !== undefined) return ref;
+    return null;
+}
+
+function drawTileOnCanvas(canvas, tileRef, tintColor, flipH, flipV, scale) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    const coords = resolveTile(tileRef);
+    if (!coords || !state.spritesheetImg) return;
+
+    scale = scale || (w / TILE_W);
+    const dw = TILE_W * scale, dh = TILE_H * scale;
+
+    const offscreen = document.createElement('canvas');
+    offscreen.width = TILE_W;
+    offscreen.height = TILE_H;
+    const octx = offscreen.getContext('2d');
+
+    octx.drawImage(state.spritesheetImg, coords.x * TILE_W, coords.y * TILE_H, TILE_W, TILE_H, 0, 0, TILE_W, TILE_H);
+
+    if (tintColor && tintColor !== '#ffffff') {
+        octx.globalCompositeOperation = 'multiply';
+        octx.fillStyle = tintColor;
+        octx.fillRect(0, 0, TILE_W, TILE_H);
+        octx.globalCompositeOperation = 'destination-in';
+        octx.drawImage(state.spritesheetImg, coords.x * TILE_W, coords.y * TILE_H, TILE_W, TILE_H, 0, 0, TILE_W, TILE_H);
+    }
+
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(offscreen, 0, 0, TILE_W, TILE_H, (w - dw) / 2, (h - dh) / 2, dw, dh);
+}
+
+// ============================================================================
+// tint_cycle Preview Math (mirrors effects.js)
+// ============================================================================
+
+function computeTintCycleWave(params, time) {
+    const speed = params.speed ?? 0.002;
+    const mod_speed = params.mod_speed ?? 0;
+    const phase_factor = params.phase_factor ?? 0.618;
+    const waveform = params.waveform ?? 'sine';
+    const step_up = params.step_up ?? 0.33;
+    const step_down = params.step_down ?? -0.33;
+    const blend = params.blend ?? 0;
+
+    const primary = Math.sin(time * speed);
+    const mod = mod_speed > 0 ? (0.5 + 0.5 * Math.sin(time * mod_speed)) : 1.0;
+    let wave = primary * mod;
+
+    if (waveform === 'step') {
+        if (blend > 0) {
+            const hw = blend * 0.5;
+            if (wave >= step_up + hw) wave = 1;
+            else if (wave >= step_up - hw) wave = (wave - (step_up - hw)) / (2 * hw);
+            else if (wave <= step_down - hw) wave = -1;
+            else if (wave <= step_down + hw) wave = -((step_down + hw) - wave) / (2 * hw);
+            else wave = 0;
+        } else {
+            if (wave > step_up) wave = 1;
+            else if (wave < step_down) wave = -1;
+            else wave = 0;
+        }
+    }
+    return wave;
+}
+
+const _editorFlickerState = { currentState: 0, prevState: 0, targetState: 0, holdEnd: 0, transitionStart: 0, transitionEnd: 0 };
+
+function _editorFlickerPickNext(p) {
+    const roll = Math.random();
+    _editorFlickerState.prevState = _editorFlickerState.currentState;
+    const tMs = p.transition_ms || 80;
+    if (roll < 0.35) {
+        _editorFlickerState.targetState = 1;
+        _editorFlickerState.holdEnd = Date.now() + tMs + (p.lighter_min || 100) + Math.random() * ((p.lighter_max || 280) - (p.lighter_min || 100));
+    } else if (roll < 0.65) {
+        _editorFlickerState.targetState = -1;
+        _editorFlickerState.holdEnd = Date.now() + tMs + (p.darker_min || 80) + Math.random() * ((p.darker_max || 200) - (p.darker_min || 80));
+    } else {
+        _editorFlickerState.targetState = 0;
+        _editorFlickerState.holdEnd = Date.now() + tMs + (p.base_min || 200) + Math.random() * ((p.base_max || 500) - (p.base_min || 200));
+    }
+    _editorFlickerState.transitionStart = Date.now();
+    _editorFlickerState.transitionEnd = Date.now() + tMs;
+}
+
+function getFlickerTint(baseTint, params) {
+    if (!baseTint) return baseTint;
+    const cv = typeof params.color_variation === 'string' ? parseInt(params.color_variation, 16) : (params.color_variation || 0);
+    const cvR = (cv >> 16) & 0xFF;
+    const cvG = (cv >> 8) & 0xFF;
+    const cvB = cv & 0xFF;
+    const r = parseInt(baseTint.slice(1, 3), 16);
+    const g = parseInt(baseTint.slice(3, 5), 16);
+    const b = parseInt(baseTint.slice(5, 7), 16);
+
+    const now = Date.now();
+    if (now >= _editorFlickerState.holdEnd) {
+        _editorFlickerState.currentState = _editorFlickerState.targetState;
+        _editorFlickerPickNext(params);
+    }
+    let s;
+    const tMs = params.transition_ms || 80;
+    if (now < _editorFlickerState.transitionEnd) {
+        const t = (now - _editorFlickerState.transitionStart) / tMs;
+        s = _editorFlickerState.prevState + (_editorFlickerState.targetState - _editorFlickerState.prevState) * t;
+    } else {
+        s = _editorFlickerState.targetState;
+    }
+    const clamp = v => Math.max(0, Math.min(255, Math.round(v)));
+    return '#' + [clamp(r + s * cvR), clamp(g + s * cvG), clamp(b + s * cvB)].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+function getCycleTint(baseTint, params, time) {
+    if (!baseTint) return baseTint;
+    const cv = typeof params.color_variation === 'string' ? parseInt(params.color_variation, 16) : (params.color_variation || 0);
+    const cvR = (cv >> 16) & 0xFF;
+    const cvG = (cv >> 8) & 0xFF;
+    const cvB = cv & 0xFF;
+    const amplitude = params.amplitude || 0;
+    const r = parseInt(baseTint.slice(1, 3), 16);
+    const g = parseInt(baseTint.slice(3, 5), 16);
+    const b = parseInt(baseTint.slice(5, 7), 16);
+    const wave = computeTintCycleWave(params, time);
+    const clamp = v => Math.max(0, Math.min(255, Math.round(v)));
+    return '#' + [
+        clamp(r + wave * cvR + wave * amplitude),
+        clamp(g + wave * cvG + wave * amplitude),
+        clamp(b + wave * cvB + wave * amplitude)
+    ].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+// ============================================================================
+// Rendering
+// ============================================================================
+
+function drawTintedTile(tileRef, tint) {
+    const coords = resolveTile(tileRef);
+    if (!coords || !state.spritesheetImg) return null;
+
+    const offscreen = document.createElement('canvas');
+    offscreen.width = TILE_W;
+    offscreen.height = TILE_H;
+    const octx = offscreen.getContext('2d');
+    octx.drawImage(state.spritesheetImg, coords.x * TILE_W, coords.y * TILE_H, TILE_W, TILE_H, 0, 0, TILE_W, TILE_H);
+
+    if (tint && tint !== '#ffffff') {
+        octx.globalCompositeOperation = 'multiply';
+        octx.fillStyle = tint;
+        octx.fillRect(0, 0, TILE_W, TILE_H);
+        octx.globalCompositeOperation = 'destination-in';
+        octx.drawImage(state.spritesheetImg, coords.x * TILE_W, coords.y * TILE_H, TILE_W, TILE_H, 0, 0, TILE_W, TILE_H);
+    }
+    return offscreen;
+}
+
+function renderPreview() {
+    const baseTile = state.currentTiles.tileBase;
+    const topTile = state.currentTiles.tileTop;
+    const baseTint = document.getElementById('f-preview-tint').value;
+
+    const tintInfo = getFirstTintParams();
+    let tint = baseTint;
+    if (tintInfo) {
+        if (tintInfo.primitive === 'tint_flicker') {
+            tint = getFlickerTint(baseTint, tintInfo.params);
+        } else {
+            tint = getCycleTint(baseTint, tintInfo.params, performance.now());
+        }
+    }
+
+    const canvas = document.getElementById('preview-canvas');
+    const scale = 4;
+    const tileScaledW = TILE_W * scale, tileScaledH = TILE_H * scale;
+    const pad = 10;
+    canvas.width = tileScaledW + pad * 2;
+    canvas.height = tileScaledH * 2 + pad * 2;
+    canvas.style.width = (canvas.width / 2) + 'px';
+    canvas.style.height = (canvas.height / 2) + 'px';
+
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = '#222';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const baseOff = drawTintedTile(baseTile, tint);
+    const topOff = drawTintedTile(topTile, tint);
+
+    const bx = pad, by = pad + tileScaledH;
+    if (baseOff) ctx.drawImage(baseOff, 0, 0, TILE_W, TILE_H, bx, by, tileScaledW, tileScaledH);
+    if (topOff) ctx.drawImage(topOff, 0, 0, TILE_W, TILE_H, bx, pad, tileScaledW, tileScaledH);
+}
+
+function renderWaveform() {
+    const canvas = document.getElementById('waveform-canvas');
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, w, h);
+
+    const params = getFirstTintCycleParams();
+    if (!params) return;
+
+    const speed = params.speed ?? 0.002;
+    const period = (2 * Math.PI) / speed;
+    const midY = h / 2;
+    const ampPx = (h / 2) - 8;
+
+    // Draw zero line
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, midY);
+    ctx.lineTo(w, midY);
+    ctx.stroke();
+
+    // Draw threshold lines (for step waveform)
+    if (params.waveform === 'step') {
+        const su = params.step_up ?? 0.33;
+        const sd = params.step_down ?? -0.33;
+        ctx.strokeStyle = 'rgba(255,200,100,0.3)';
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(0, midY - su * ampPx);
+        ctx.lineTo(w, midY - su * ampPx);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(100,150,255,0.3)';
+        ctx.beginPath();
+        ctx.moveTo(0, midY - sd * ampPx);
+        ctx.lineTo(w, midY - sd * ampPx);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    // Draw raw sine (faint)
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let x = 0; x < w; x++) {
+        const t = (x / w) * period;
+        const rawSine = Math.sin(t * speed);
+        const mod = (params.mod_speed ?? 0) > 0
+            ? (0.5 + 0.5 * Math.sin(t * (params.mod_speed ?? 0)))
+            : 1.0;
+        const raw = rawSine * mod;
+        const y = midY - raw * ampPx;
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Draw processed waveform (bright)
+    ctx.strokeStyle = '#0f8';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let x = 0; x < w; x++) {
+        const t = (x / w) * period;
+        const wave = computeTintCycleWave(params, t);
+        const y = midY - wave * ampPx;
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Fill colored regions for step waveform
+    if (params.waveform === 'step') {
+        ctx.globalAlpha = 0.08;
+        for (let x = 0; x < w; x++) {
+            const t = (x / w) * period;
+            const wave = computeTintCycleWave(params, t);
+            if (wave > 0.5) {
+                ctx.fillStyle = '#ffcc44';
+                ctx.fillRect(x, 0, 1, h);
+            } else if (wave < -0.5) {
+                ctx.fillStyle = '#4488ff';
+                ctx.fillRect(x, 0, 1, h);
+            }
+        }
+        ctx.globalAlpha = 1;
+    }
+}
+
+function updateTimingReadout() {
+    const el = document.getElementById('timing-readout');
+    const params = getFirstTintCycleParams();
+    if (!params || params.waveform !== 'step') {
+        el.textContent = '';
+        return;
+    }
+    const su = params.step_up ?? 0.33;
+    const sd = Math.abs(params.step_down ?? -0.33);
+    const lighterPct = (Math.PI - 2 * Math.asin(Math.min(1, su))) / (2 * Math.PI) * 100;
+    const darkerPct = (Math.PI - 2 * Math.asin(Math.min(1, sd))) / (2 * Math.PI) * 100;
+    const basePct = Math.max(0, 100 - lighterPct - darkerPct);
+    el.innerHTML =
+        `<span class="timing-lighter">Lighter: ${lighterPct.toFixed(1)}%</span>` +
+        `<span class="timing-base">Base: ${basePct.toFixed(1)}%</span>` +
+        `<span class="timing-darker">Darker: ${darkerPct.toFixed(1)}%</span>`;
+}
+
+// ============================================================================
+// Layer Management
+// ============================================================================
+
+let layerCount = 0;
+
+function getFirstTintParams() {
+    const container = document.getElementById('layers-container');
+    for (const item of container.children) {
+        const sel = item.querySelector('.layer-primitive-select');
+        if (sel && (sel.value === 'tint_cycle' || sel.value === 'tint_flicker')) {
+            return { primitive: sel.value, params: readLayerParams(item) };
+        }
+    }
+    return null;
+}
+
+function getFirstTintCycleParams() {
+    const result = getFirstTintParams();
+    return (result && result.primitive === 'tint_cycle') ? result.params : null;
+}
+
+function readLayerParams(layerEl) {
+    const params = {};
+    const primitiveName = layerEl.querySelector('.layer-primitive-select').value;
+    const paramDefs = PRIMITIVE_PARAMS[primitiveName] || [];
+    for (const def of paramDefs) {
+        const input = layerEl.querySelector(`[data-param-key="${def.key}"]`);
+        if (!input) continue;
+        if (def.type === 'checkbox') {
+            params[def.key] = input.checked;
+        } else if (def.type === 'range') {
+            params[def.key] = parseFloat(input.value);
+        } else {
+            params[def.key] = input.value;
+        }
+    }
+    return params;
+}
+
+function addLayer(primitiveName, existingParams) {
+    primitiveName = primitiveName || 'tint_cycle';
+    existingParams = existingParams || {};
+
+    const container = document.getElementById('layers-container');
+    const layerId = 'layer-' + (layerCount++);
+
+    const item = document.createElement('div');
+    item.className = 'layer-item';
+    item.id = layerId;
+
+    const header = document.createElement('div');
+    header.className = 'layer-header';
+
+    const sel = document.createElement('select');
+    sel.className = 'layer-primitive-select';
+    for (const name of PRIMITIVE_NAMES) {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        sel.appendChild(opt);
+    }
+    sel.value = primitiveName;
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'remove-btn';
+    removeBtn.textContent = 'Remove';
+    removeBtn.addEventListener('click', () => {
+        item.remove();
+        updateAll();
+    });
+
+    header.appendChild(sel);
+    header.appendChild(removeBtn);
+    item.appendChild(header);
+
+    const paramsDiv = document.createElement('div');
+    paramsDiv.className = 'layer-params';
+    item.appendChild(paramsDiv);
+
+    sel.addEventListener('change', () => {
+        buildParamFields(paramsDiv, sel.value, {});
+        updateAll();
+    });
+
+    container.appendChild(item);
+    buildParamFields(paramsDiv, primitiveName, existingParams);
+    return item;
+}
+
+function buildParamFields(container, primitiveName, existingParams) {
+    container.innerHTML = '';
+    const paramDefs = PRIMITIVE_PARAMS[primitiveName] || [];
+
+    if (paramDefs.length === 0) {
+        container.innerHTML = '<div class="empty-hint">No configurable parameters</div>';
+        return;
+    }
+
+    for (const def of paramDefs) {
+        const val = existingParams[def.key] !== undefined ? existingParams[def.key] : def.default;
+
+        const row = document.createElement('div');
+        row.className = 'field-row';
+        if (def.showWhen) row.dataset.showWhen = JSON.stringify(def.showWhen);
+
+        const label = document.createElement('label');
+        label.textContent = def.label || def.key;
+        row.appendChild(label);
+
+        if (def.type === 'range') {
+            const rangeWrap = document.createElement('div');
+            rangeWrap.className = 'range-pair';
+
+            const range = document.createElement('input');
+            range.type = 'range';
+            range.min = def.min;
+            range.max = def.max;
+            range.step = def.step;
+            range.value = val;
+            range.dataset.paramKey = def.key;
+
+            const num = document.createElement('input');
+            num.type = 'number';
+            num.min = def.min;
+            num.max = def.max;
+            num.step = def.step;
+            num.value = val;
+
+            range.addEventListener('input', () => {
+                num.value = range.value;
+                onParamChange(container);
+            });
+            num.addEventListener('input', () => {
+                range.value = num.value;
+                onParamChange(container);
+            });
+
+            rangeWrap.appendChild(range);
+            rangeWrap.appendChild(num);
+            row.appendChild(rangeWrap);
+        } else if (def.type === 'hex') {
+            const hexInput = document.createElement('input');
+            hexInput.type = 'text';
+            hexInput.value = val;
+            hexInput.style.width = '100px';
+            hexInput.style.flex = '0';
+            hexInput.dataset.paramKey = def.key;
+            hexInput.addEventListener('input', () => {
+                onParamChange(container);
+                if (colorSwatch) {
+                    const hex = hexInput.value.replace('0x', '#');
+                    colorSwatch.value = hex.length === 7 ? hex : colorSwatch.value;
+                }
+                if (def.expandRGB) updateRGBFromHex(hexInput, container);
+            });
+
+            const colorSwatch = document.createElement('input');
+            colorSwatch.type = 'color';
+            const hexForColor = val.replace('0x', '#');
+            colorSwatch.value = hexForColor.length === 7 ? hexForColor : '#000000';
+            colorSwatch.addEventListener('input', () => {
+                hexInput.value = '0x' + colorSwatch.value.slice(1);
+                onParamChange(container);
+                if (def.expandRGB) updateRGBFromHex(hexInput, container);
+            });
+
+            row.appendChild(hexInput);
+            row.appendChild(colorSwatch);
+
+            if (def.expandRGB) {
+                const toggleBtn = document.createElement('button');
+                toggleBtn.className = 'add-btn';
+                toggleBtn.textContent = 'R/G/B';
+                toggleBtn.style.marginLeft = '4px';
+                toggleBtn.addEventListener('click', () => {
+                    const breakdown = container.querySelector(`.cv-breakdown[data-for="${def.key}"]`);
+                    if (breakdown) breakdown.classList.toggle('visible');
+                });
+                row.appendChild(toggleBtn);
+            }
+
+            container.appendChild(row);
+
+            if (def.expandRGB) {
+                const breakdown = document.createElement('div');
+                breakdown.className = 'cv-breakdown';
+                breakdown.dataset.for = def.key;
+                const cv = typeof val === 'string' ? parseInt(val, 16) : val;
+                for (const [ch, shift] of [['R', 16], ['G', 8], ['B', 0]]) {
+                    const chRow = document.createElement('div');
+                    chRow.className = 'field-row';
+                    const chLabel = document.createElement('label');
+                    chLabel.textContent = ch;
+                    chLabel.style.minWidth = '20px';
+
+                    const chRange = document.createElement('input');
+                    chRange.type = 'range';
+                    chRange.min = 0;
+                    chRange.max = 255;
+                    chRange.step = 1;
+                    chRange.value = (cv >> shift) & 0xFF;
+                    chRange.dataset.rgbChannel = ch;
+                    chRange.style.flex = '1';
+
+                    const chNum = document.createElement('input');
+                    chNum.type = 'number';
+                    chNum.min = 0;
+                    chNum.max = 255;
+                    chNum.value = chRange.value;
+                    chNum.style.width = '60px';
+
+                    chRange.addEventListener('input', () => {
+                        chNum.value = chRange.value;
+                        updateHexFromRGB(hexInput, container, def.key);
+                        if (colorSwatch) colorSwatch.value = hexInput.value.replace('0x', '#');
+                        onParamChange(container);
+                    });
+                    chNum.addEventListener('input', () => {
+                        chRange.value = chNum.value;
+                        updateHexFromRGB(hexInput, container, def.key);
+                        if (colorSwatch) colorSwatch.value = hexInput.value.replace('0x', '#');
+                        onParamChange(container);
+                    });
+
+                    chRow.appendChild(chLabel);
+                    const rp = document.createElement('div');
+                    rp.className = 'range-pair';
+                    rp.appendChild(chRange);
+                    rp.appendChild(chNum);
+                    chRow.appendChild(rp);
+                    breakdown.appendChild(chRow);
+                }
+                container.appendChild(breakdown);
+            }
+            continue;
+        } else if (def.type === 'select') {
+            const select = document.createElement('select');
+            select.dataset.paramKey = def.key;
+            for (const opt of def.options) {
+                const o = document.createElement('option');
+                o.value = opt;
+                o.textContent = opt;
+                select.appendChild(o);
+            }
+            select.value = val;
+            select.addEventListener('change', () => onParamChange(container));
+            row.appendChild(select);
+        } else if (def.type === 'checkbox') {
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.checked = !!val;
+            cb.dataset.paramKey = def.key;
+            cb.addEventListener('change', () => onParamChange(container));
+            row.appendChild(cb);
+        }
+
+        container.appendChild(row);
+    }
+
+    updateConditionalFields(container);
+}
+
+function updateRGBFromHex(hexInput, container) {
+    const key = hexInput.dataset.paramKey;
+    const breakdown = container.querySelector(`.cv-breakdown[data-for="${key}"]`);
+    if (!breakdown) return;
+    const cv = parseInt(hexInput.value.replace('0x', '').replace('#', ''), 16) || 0;
+    const channels = breakdown.querySelectorAll('[data-rgb-channel]');
+    for (const ch of channels) {
+        const shift = ch.dataset.rgbChannel === 'R' ? 16 : ch.dataset.rgbChannel === 'G' ? 8 : 0;
+        const val = (cv >> shift) & 0xFF;
+        ch.value = val;
+        const numSibling = ch.parentElement.querySelector('input[type="number"]');
+        if (numSibling) numSibling.value = val;
+    }
+}
+
+function updateHexFromRGB(hexInput, container, key) {
+    const breakdown = container.querySelector(`.cv-breakdown[data-for="${key}"]`);
+    if (!breakdown) return;
+    const channels = breakdown.querySelectorAll('[data-rgb-channel]');
+    let r = 0, g = 0, b = 0;
+    for (const ch of channels) {
+        const v = parseInt(ch.value) || 0;
+        if (ch.dataset.rgbChannel === 'R') r = v;
+        else if (ch.dataset.rgbChannel === 'G') g = v;
+        else b = v;
+    }
+    hexInput.value = '0x' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
+}
+
+function onParamChange(paramsContainer) {
+    updateConditionalFields(paramsContainer);
+    updateAll();
+}
+
+function updateConditionalFields(container) {
+    const rows = container.querySelectorAll('.field-row[data-show-when]');
+    for (const row of rows) {
+        const cond = JSON.parse(row.dataset.showWhen);
+        let visible = true;
+        for (const [key, expected] of Object.entries(cond)) {
+            const input = container.querySelector(`[data-param-key="${key}"]`);
+            if (input && input.value !== expected) visible = false;
+        }
+        row.style.display = visible ? '' : 'none';
+    }
+}
+
+// ============================================================================
+// Form Population & Reading
+// ============================================================================
+
+function populateEffectDropdown() {
+    const sel = document.getElementById('effect-select');
+    sel.innerHTML = '';
+    for (const key of Object.keys(state.effects).sort()) {
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = key;
+        sel.appendChild(opt);
+    }
+}
+
+function loadEffect(key) {
+    const data = state.effects[key];
+    if (!data) return;
+
+    document.getElementById('effect-key').value = key;
+    document.getElementById('f-target').value = data.target || 'sprite';
+
+    const container = document.getElementById('layers-container');
+    container.innerHTML = '';
+    layerCount = 0;
+
+    if (data.layers) {
+        for (const layer of data.layers) {
+            addLayer(layer.primitive, layer.params || {});
+        }
+    }
+
+    updateAll();
+    startAnimLoop();
+}
+
+function readForm() {
+    const obj = {};
+    obj.target = document.getElementById('f-target').value;
+
+    const container = document.getElementById('layers-container');
+    const layers = [];
+    for (const item of container.children) {
+        const sel = item.querySelector('.layer-primitive-select');
+        if (!sel) continue;
+        const primitiveName = sel.value;
+        const params = readLayerParams(item);
+
+        // Only include params that differ from defaults
+        const paramDefs = PRIMITIVE_PARAMS[primitiveName] || [];
+        const cleanParams = {};
+        for (const def of paramDefs) {
+            if (params[def.key] !== undefined && params[def.key] !== def.default) {
+                cleanParams[def.key] = params[def.key];
+            }
+        }
+
+        const layer = { primitive: primitiveName };
+        if (Object.keys(cleanParams).length > 0) layer.params = cleanParams;
+        layers.push(layer);
+    }
+
+    if (layers.length) obj.layers = layers;
+    return obj;
+}
+
+function updateJSONOutput() {
+    const key = document.getElementById('effect-key').value || 'new_effect';
+    const obj = readForm();
+    document.getElementById('effect-key-field').textContent = key;
+    document.getElementById('json-output').textContent = JSON.stringify({ [key]: obj }, null, 2);
+}
+
+// ============================================================================
+// Animation Loop
+// ============================================================================
+
+function animLoop() {
+    renderPreview();
+    animRAF = requestAnimationFrame(animLoop);
+}
+
+function startAnimLoop() {
+    if (!animRAF) animRAF = requestAnimationFrame(animLoop);
+}
+
+function stopAnimLoop() {
+    if (animRAF) {
+        cancelAnimationFrame(animRAF);
+        animRAF = null;
+    }
+}
+
+function hasTintLayer() {
+    const container = document.getElementById('layers-container');
+    for (const item of container.children) {
+        const sel = item.querySelector('.layer-primitive-select');
+        if (sel && (sel.value === 'tint_cycle' || sel.value === 'tint_flicker')) return true;
+    }
+    return false;
+}
+
+function updateAll() {
+    renderPreview();
+    renderWaveform();
+    updateTimingReadout();
+    updateJSONOutput();
+
+    const hasTint = hasTintLayer();
+    const hasCycle = getFirstTintCycleParams() !== null;
+    document.getElementById('waveform-section').style.display = hasCycle ? '' : 'none';
+    if (hasTint) startAnimLoop();
+    else stopAnimLoop();
+}
+
+// ============================================================================
+// Tile Slot
+// ============================================================================
+
+function updateTileSlot(target) {
+    const slot = document.querySelector(`.tile-slot[data-target="${target}"]`);
+    if (!slot) return;
+    const canvas = slot.querySelector('canvas');
+    const nameSpan = slot.querySelector('.tile-name');
+    const tileRef = state.currentTiles[target];
+    if (!tileRef) {
+        canvas.getContext('2d').clearRect(0, 0, 80, 60);
+        nameSpan.textContent = '—';
+        return;
+    }
+    drawTileOnCanvas(canvas, tileRef, null, false, false, 1);
+    nameSpan.textContent = typeof tileRef === 'string' ? tileRef : `{${tileRef.x}, ${tileRef.y}}`;
+}
+
+// ============================================================================
+// Tile Picker
+// ============================================================================
+
+function openTilePicker(target) {
+    state.activeTileTarget = target;
+    const overlay = document.getElementById('tile-picker-overlay');
+    overlay.classList.add('active');
+    document.getElementById('tile-picker-target').textContent = 'Selecting: ' + target;
+    document.getElementById('tile-picker-search').value = '';
+    state.highlightedTiles = null;
+    drawTilePickerGrid();
+    document.getElementById('tile-picker-search').focus();
+}
+
+function closeTilePicker() {
+    document.getElementById('tile-picker-overlay').classList.remove('active');
+    document.getElementById('tile-picker-tooltip').style.display = 'none';
+    state.activeTileTarget = null;
+}
+
+function drawTilePickerGrid() {
+    const canvas = document.getElementById('tile-picker-canvas');
+    const w = SS_COLS * TILE_W, h = SS_ROWS * TILE_H;
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+
+    if (state.spritesheetImg) ctx.drawImage(state.spritesheetImg, 0, 0);
+
+    if (state.highlightedTiles) {
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        for (let r = 0; r < SS_ROWS; r++) {
+            for (let c = 0; c < SS_COLS; c++) {
+                if (!state.highlightedTiles.has(c + ',' + r)) {
+                    ctx.fillRect(c * TILE_W, r * TILE_H, TILE_W, TILE_H);
+                }
+            }
+        }
+    }
+
+    ctx.strokeStyle = 'rgba(132,220,207,0.2)';
+    ctx.lineWidth = 0.5;
+    for (let c = 0; c <= SS_COLS; c++) { ctx.beginPath(); ctx.moveTo(c * TILE_W, 0); ctx.lineTo(c * TILE_W, h); ctx.stroke(); }
+    for (let r = 0; r <= SS_ROWS; r++) { ctx.beginPath(); ctx.moveTo(0, r * TILE_H); ctx.lineTo(w, r * TILE_H); ctx.stroke(); }
+
+    const current = state.currentTiles[state.activeTileTarget];
+    const coords = resolveTile(current);
+    if (coords) {
+        ctx.strokeStyle = '#e94560';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(coords.x * TILE_W + 1, coords.y * TILE_H + 1, TILE_W - 2, TILE_H - 2);
+    }
+}
+
+function initTilePicker() {
+    const canvas = document.getElementById('tile-picker-canvas');
+    const tooltip = document.getElementById('tile-picker-tooltip');
+
+    canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const col = Math.floor((e.clientX - rect.left) * scaleX / TILE_W);
+        const row = Math.floor((e.clientY - rect.top) * scaleY / TILE_H);
+        const names = state.reverseTileMap[col + ',' + row];
+        if (names && names.length) {
+            tooltip.textContent = names.join(', ');
+            tooltip.style.display = 'block';
+            tooltip.style.left = (e.clientX + 12) + 'px';
+            tooltip.style.top = (e.clientY - 8) + 'px';
+        } else {
+            tooltip.style.display = 'none';
+        }
+    });
+
+    canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+
+    canvas.addEventListener('click', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const col = Math.floor((e.clientX - rect.left) * scaleX / TILE_W);
+        const row = Math.floor((e.clientY - rect.top) * scaleY / TILE_H);
+        const names = state.reverseTileMap[col + ',' + row];
+        if (names && names.length) {
+            state.currentTiles[state.activeTileTarget] = names[0];
+        } else {
+            state.currentTiles[state.activeTileTarget] = { x: col, y: row };
+        }
+        updateTileSlot(state.activeTileTarget);
+        closeTilePicker();
+        updateAll();
+    });
+
+    document.getElementById('tile-picker-search').addEventListener('input', (e) => {
+        const q = e.target.value.trim().toUpperCase();
+        if (!q) { state.highlightedTiles = null; drawTilePickerGrid(); return; }
+        state.highlightedTiles = new Set();
+        for (const [name, coords] of Object.entries(state.tileMap)) {
+            if (name.toUpperCase().includes(q)) state.highlightedTiles.add(coords[0] + ',' + coords[1]);
+        }
+        drawTilePickerGrid();
+    });
+
+    document.getElementById('tile-picker-none').addEventListener('click', () => {
+        state.currentTiles[state.activeTileTarget] = 'BLANK';
+        updateTileSlot(state.activeTileTarget);
+        closeTilePicker();
+        updateAll();
+    });
+
+    document.getElementById('tile-picker-close').addEventListener('click', closeTilePicker);
+    document.getElementById('tile-picker-overlay').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) closeTilePicker();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && document.getElementById('tile-picker-overlay').classList.contains('active')) {
+            closeTilePicker();
+        }
+    });
+}
+
+// ============================================================================
+// Initialization
+// ============================================================================
+
+async function init() {
+    await Promise.all([loadBaseData(), loadSpritesheet()]);
+
+    populateEffectDropdown();
+    initTilePicker();
+    updateTileSlot('tileBase');
+    updateTileSlot('tileTop');
+
+    // Wire tile slot clicks
+    document.querySelector('.tile-slot[data-target="tileBase"]').addEventListener('click', () => {
+        openTilePicker('tileBase');
+    });
+    document.querySelector('.tile-slot[data-target="tileTop"]').addEventListener('click', () => {
+        openTilePicker('tileTop');
+    });
+
+    // Wire effect select
+    document.getElementById('effect-select').addEventListener('change', () => {
+        loadEffect(document.getElementById('effect-select').value);
+    });
+
+    // Wire buttons
+    document.getElementById('btn-new').addEventListener('click', () => {
+        document.getElementById('effect-key').value = 'new_effect';
+        document.getElementById('f-target').value = 'sprite';
+        document.getElementById('layers-container').innerHTML = '';
+        layerCount = 0;
+        addLayer('tint_cycle', {});
+        updateAll();
+        startAnimLoop();
+    });
+
+    document.getElementById('btn-add-layer').addEventListener('click', () => {
+        addLayer('tint_cycle', {});
+        updateAll();
+    });
+
+    document.getElementById('btn-export').addEventListener('click', updateJSONOutput);
+    document.getElementById('btn-copy').addEventListener('click', () => {
+        const text = document.getElementById('json-output').textContent;
+        navigator.clipboard.writeText(text).then(() => {
+            const btn = document.getElementById('btn-copy');
+            btn.textContent = 'Copied!';
+            setTimeout(() => { btn.textContent = 'Copy to Clipboard'; }, 1200);
+        });
+    });
+
+    // Wire tint color picker sync
+    const tintColor = document.getElementById('f-preview-tint');
+    const tintHex = document.getElementById('f-preview-tint-hex');
+    tintColor.addEventListener('input', () => { tintHex.value = tintColor.value; updateAll(); });
+    tintHex.addEventListener('input', () => {
+        if (/^#[0-9a-fA-F]{6}$/.test(tintHex.value)) tintColor.value = tintHex.value;
+        updateAll();
+    });
+
+    // Wire form inputs to updateAll
+    document.getElementById('effect-key').addEventListener('input', updateJSONOutput);
+    document.getElementById('f-target').addEventListener('change', updateAll);
+
+    // Load first effect
+    const keys = Object.keys(state.effects).sort();
+    if (keys.length) {
+        document.getElementById('effect-select').value = keys[0];
+        loadEffect(keys[0]);
+    }
+}
+
+init();
+</script>
+</body>
+</html>
