@@ -221,59 +221,24 @@ const EffectPrimitives = {
     },
 
     /**
-     * TweenJS looping tint animation on a single sprite.
+     * Parametric tint cycle — shared ticker drives per-channel hue shift and/or
+     * uniform brightness oscillation. Waveform "step" quantizes to three levels
+     * for a stutter-step fire look; "sine" gives smooth modulation.
      */
-    tint_flicker(ctx, params) {
+    tint_cycle(ctx, params) {
         const {
-            variation = '0x181808',
-            lighter_ms = 80,
-            wait1_ms = 150,
-            base_ms = 200,
-            wait2_ms = 300,
-            darker_ms = 60,
-            wait3_ms = 100
+            color_variation = '0x000000',
+            amplitude = 0,
+            speed = 0.002,
+            mod_speed = 0,
+            phase_factor = 0.618,
+            waveform = 'sine'
         } = params;
 
-        let tween = null;
-
-        return {
-            apply(runtimeParams) {
-                const sprite = runtimeParams?._target;
-                const baseTint = runtimeParams?.baseTint;
-                if (!sprite || baseTint === undefined) return;
-
-                const variationNum = typeof variation === 'string' ? parseInt(variation, 16) : variation;
-                const colors = generateColorVariation(baseTint, variationNum);
-                tween = new createjs.Tween.get(sprite, { loop: true })
-                    .to({ tint: colors.lighter }, lighter_ms)
-                    .wait(wait1_ms)
-                    .to({ tint: baseTint }, base_ms)
-                    .wait(wait2_ms)
-                    .to({ tint: colors.darker }, darker_ms)
-                    .wait(wait3_ms);
-                const totalDuration = lighter_ms + wait1_ms + base_ms + wait2_ms + darker_ms + wait3_ms;
-                tween.setPosition(Math.floor(Math.random() * totalDuration));
-                sprite._flickerTween = tween;
-            },
-            remove() {
-                if (tween) {
-                    tween.setPaused(true);
-                    tween = null;
-                }
-            }
-        };
-    },
-
-    /**
-     * Ticker sine-wave tint modulation on a single sprite.
-     */
-    tint_ripple(ctx, params) {
-        const {
-            slow_speed = 0.002,
-            mod_speed = 0.000314,
-            amplitude = 13,
-            phase_factor = 0.618
-        } = params;
+        const cv = typeof color_variation === 'string' ? parseInt(color_variation, 16) : color_variation;
+        const cvR = (cv >> 16) & 0xFF;
+        const cvG = (cv >> 8) & 0xFF;
+        const cvB = cv & 0xFF;
 
         let entry = null;
 
@@ -284,37 +249,57 @@ const EffectPrimitives = {
                 if (!sprite || baseTint === undefined) return;
 
                 entry = {
-                    sprite: sprite,
+                    sprite,
                     phase: Math.random() * Math.PI * 2,
                     baseR: (baseTint >> 16) & 0xFF,
                     baseG: (baseTint >> 8) & 0xFF,
-                    baseB: baseTint & 0xFF
+                    baseB: baseTint & 0xFF,
+                    cvR, cvG, cvB,
+                    amplitude,
+                    speed,
+                    mod_speed,
+                    phase_factor,
+                    waveform
                 };
-                ctx.renderer._rippleSprites.push(entry);
+                ctx.renderer._tintCycleSprites.push(entry);
 
-                // Set up shared ticker if not already running
-                if (!ctx.renderer._rippleTickerFn) {
-                    ctx.renderer._rippleTickerFn = () => {
+                if (!ctx.renderer._tintCycleTickerFn) {
+                    ctx.renderer._tintCycleTickerFn = () => {
                         const t = Date.now();
-                        for (const e of ctx.renderer._rippleSprites) {
+                        for (const e of ctx.renderer._tintCycleSprites) {
                             if (e.sprite.destroyed) continue;
-                            const slowSin = Math.sin(t * slow_speed + e.phase);
-                            const modSin = Math.sin(t * mod_speed + e.phase * phase_factor);
-                            const delta = Math.round(slowSin * (0.5 + 0.5 * modSin) * amplitude);
+
+                            const primary = Math.sin(t * e.speed + e.phase);
+                            const mod = e.mod_speed > 0
+                                ? (0.5 + 0.5 * Math.sin(t * e.mod_speed + e.phase * e.phase_factor))
+                                : 1.0;
+                            let wave = primary * mod;
+
+                            if (e.waveform === 'step') {
+                                if (wave > 0.33) wave = 1;
+                                else if (wave < -0.33) wave = -1;
+                                else wave = 0;
+                            }
+
+                            const hR = Math.round(wave * e.cvR);
+                            const hG = Math.round(wave * e.cvG);
+                            const hB = Math.round(wave * e.cvB);
+                            const bright = Math.round(wave * e.amplitude);
+
                             e.sprite.tint = (
-                                (Math.min(255, Math.max(0, e.baseR + delta)) << 16) |
-                                (Math.min(255, Math.max(0, e.baseG + delta)) << 8) |
-                                 Math.min(255, Math.max(0, e.baseB + delta))
+                                (Math.min(255, Math.max(0, e.baseR + hR + bright)) << 16) |
+                                (Math.min(255, Math.max(0, e.baseG + hG + bright)) << 8) |
+                                 Math.min(255, Math.max(0, e.baseB + hB + bright))
                             );
                         }
                     };
-                    ctx.ticker.add(ctx.renderer._rippleTickerFn);
+                    ctx.ticker.add(ctx.renderer._tintCycleTickerFn);
                 }
             },
             remove() {
                 if (entry) {
-                    const idx = ctx.renderer._rippleSprites.indexOf(entry);
-                    if (idx >= 0) ctx.renderer._rippleSprites.splice(idx, 1);
+                    const idx = ctx.renderer._tintCycleSprites.indexOf(entry);
+                    if (idx >= 0) ctx.renderer._tintCycleSprites.splice(idx, 1);
                     entry = null;
                 }
             }

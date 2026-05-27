@@ -2744,7 +2744,8 @@ class Item extends Entity {
             this.setAttribute('cursed', true);
         }
 
-        this.flickerTint = data.flickerTint || false;
+        this.effect = data.effect || null;
+        if (!this.effect && data.flickerTint) this.effect = 'flicker_tint';
         this.combatUseCount = 0;
     }
 
@@ -3125,8 +3126,11 @@ class Actor extends Entity {
         this.height = 2;
         this.tint = parseTint(data.tint);
         this.originalTint = this.tint;
-        this.flickerTint = data.flickerTint || false;
-        this.rippleTint = data.rippleTint || false;
+        this.effect = data.effect || null;
+        if (!this.effect) {
+            if (data.flickerTint) this.effect = 'flicker_tint';
+            else if (data.rippleTint) this.effect = 'ripple_tint';
+        }
         this.visionRange = data.vision_range ?? 8;
 
         this.tileIndexBase = engine.spriteLibrary.resolveTile(data.tileIndexBase) || null;
@@ -9192,9 +9196,9 @@ class RenderSystem {
         // Submersion overlay sprite (referenced by color_overlay primitive)
         this.submersionOverlay = null;
 
-        // Ripple tint animation (shared state for tint_ripple primitives)
-        this._rippleSprites = [];
-        this._rippleTickerFn = null;
+        // Tint cycle animation (shared state for tint_cycle primitives)
+        this._tintCycleSprites = [];
+        this._tintCycleTickerFn = null;
 
         // Effect runner - data-driven visual effects system
         this.effectRunner = new EffectRunner(this);
@@ -9896,12 +9900,8 @@ class RenderSystem {
                 animSprite.zIndex = zIndex;
                 animSprite.tint = actor.tint;
 
-                if (actor.flickerTint) {
-                    this.effectRunner.apply('flicker_tint', animSprite, { baseTint: actor.tint });
-                }
-
-                if (actor.rippleTint) {
-                    this.effectRunner.apply('ripple_tint', animSprite, { baseTint: actor.tint });
+                if (actor.effect) {
+                    this.effectRunner.apply(actor.effect, animSprite, { baseTint: actor.tint });
                 }
 
                 this.entityContainer.addChild(animSprite);
@@ -9938,6 +9938,10 @@ class RenderSystem {
             } else {
                 sprite.x = x;
                 sprite.y = y;
+            }
+
+            if (actor.effect) {
+                this.effectRunner.apply(actor.effect, sprite, { baseTint: actor.tint });
             }
 
             this.entityContainer.addChild(sprite);
@@ -10114,8 +10118,8 @@ class RenderSystem {
             sprite.scale.y = item.flipV ? -1 : 1;
         }
 
-        if (item.flickerTint) {
-            this.effectRunner.apply('flicker_tint', sprite, { baseTint: item.tint });
+        if (item.effect) {
+            this.effectRunner.apply(item.effect, sprite, { baseTint: item.tint });
         }
 
         this.entityContainer.addChild(sprite);
@@ -10282,11 +10286,11 @@ class RenderSystem {
         this.highlightEnabled = false;
         this.linePathSprites = [];
         this.walkPathSprites = [];
-        if (this._rippleTickerFn) {
-            this.app.ticker.remove(this._rippleTickerFn);
-            this._rippleTickerFn = null;
+        if (this._tintCycleTickerFn) {
+            this.app.ticker.remove(this._tintCycleTickerFn);
+            this._tintCycleTickerFn = null;
         }
-        this._rippleSprites = [];
+        this._tintCycleSprites = [];
 
         // Clean up all active effects
         this.effectRunner.removeAll();

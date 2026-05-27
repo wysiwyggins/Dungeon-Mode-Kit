@@ -32,13 +32,13 @@
   "flicker_tint": {
     "target": "sprite",
     "layers": [
-      { "primitive": "tint_flicker", "params": { "variation": "0x181808", "lighter_ms": 80, "wait1_ms": 150, "base_ms": 200, "wait2_ms": 300, "darker_ms": 60, "wait3_ms": 100 } }
+      { "primitive": "tint_cycle", "params": { "color_variation": "0x181808", "speed": 0.006, "waveform": "step" } }
     ]
   },
   "ripple_tint": {
     "target": "sprite",
     "layers": [
-      { "primitive": "tint_ripple", "params": { "slow_speed": 0.001, "mod_speed": 0.000314, "amplitude": 12, "phase_factor": 0.618 } }
+      { "primitive": "tint_cycle", "params": { "amplitude": 12, "speed": 0.001, "mod_speed": 0.000314, "phase_factor": 0.618 } }
     ]
   },
   "damage_shake": {
