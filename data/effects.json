@@ -38,7 +38,7 @@
   "ripple_tint": {
     "target": "sprite",
     "layers": [
-      { "primitive": "tint_cycle", "params": { "amplitude": 12, "speed": 0.001, "mod_speed": 0.000314, "phase_factor": 0.618 } }
+      { "primitive": "tint_cycle", "params": { "amplitude": 13, "speed": 0.002, "mod_speed": 0.000314, "phase_factor": 0.618 } }
     ]
   },
   "damage_shake": {
