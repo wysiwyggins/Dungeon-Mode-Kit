@@ -30,15 +30,15 @@
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/default/map.tmj": {
             "expandedObjectLayers": [
+                8,
                 6,
-                3,
-                8
+                3
             ],
-            "scale": 0.3942,
+            "scale": 0.3155,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 799.0867579908675,
-                "y": 585.9969558599696
+                "x": 686.2123613312203,
+                "y": 603.8034865293184
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/dungeon/map.tmj": {
@@ -124,7 +124,7 @@
             }
         },
         "static-tiles.tsj": {
-            "scaleInDock": 0.561,
+            "scaleInDock": 0.8765,
             "scaleInEditor": 1
         },
         "tower.tmj": {

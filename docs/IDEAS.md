@@ -4,6 +4,10 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ---
 
+## PVP
+
+- A prototype should allow for mutliple player controlled actors and become a turn based mutliplayer game as a reuslt. Test this with a Chaos style vs strategy prototype
+
 ## Dialogue & Narrative [b]
 
 - A dialogue/options window
@@ -43,6 +47,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Actors & Creatures
 
+- [ ] Auto-explore — pathfind through safe explored areas, stop on encounter [B]
 - [ ] Searching action to discover traps and eventually hidden doors
 - [ ] Aquatic creatures — actors restricted to water tiles, can't be pushed onto land
 - [ ] Burrowing creatures — can move through wall tiles, leave tunnels behind
@@ -61,7 +66,6 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Combat
 
-- [ ] Stealth system — detection range based on light level, armor weight, movement [B]
 - [ ] Backstab — attacking unaware/sleeping enemies for bonus damage [B]
 - [ ] Weapon runic enchantments — special procs beyond the existing weapon_proc system (vampiric, slowing, quietus, paralysis) [B]
 - [ ] Armor runic enchantments — defensive procs (reflection, reprisal, immunity, absorption) [B]
@@ -98,6 +102,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Map & World Structure
 
+- [ ] use white box drawing tiles to draw a perimeter around the map, giving a visual clue for which parts of the viewport can be crossed over to a new screen. Perimeter should block movement.
 - [ ] Persistent floor state — items dropped on a floor remain when you return (partially exists)
 - [ ] Hub areas — safe zones between dungeon levels for shops, NPCs, storage (runes of protection could use the existing evil eye tile)
 
@@ -105,9 +110,8 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 - [ ] Achievements — tracked accomplishments across runs
 - [ ] Compendium of discoveries — a list of all the things discovered in a prototype across play sessions
-- [ ] Challenges — pre-configured difficulty modifiers (no food, no armor, etc.) [B]
 - [ ] Score system — point tracking based on depth, kills, items, gold [B]
-- [ ] Auto-explore — pathfind through safe explored areas, stop on encounter [B]
+
 - [ ] Recording/replay — deterministic action log for replaying completed runs [B]
 
 ## Sound & Music
