@@ -3,7 +3,7 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/default/map.tmj",
+    "activeFile": "tower.tmj",
     "expandedProjectPaths": [
     ],
     "file.lastUsedOpenFilter": "All Files (*)",
@@ -37,8 +37,8 @@
             "scale": 0.3155,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 686.2123613312203,
-                "y": 603.8034865293184
+                "x": 798.7321711568939,
+                "y": 580.0316957210775
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/dungeon/map.tmj": {
@@ -124,15 +124,15 @@
             }
         },
         "static-tiles.tsj": {
-            "scaleInDock": 0.8765,
+            "scaleInDock": 0.7076,
             "scaleInEditor": 1
         },
         "tower.tmj": {
             "scale": 0.5311,
-            "selectedLayer": 0,
+            "selectedLayer": 2,
             "viewCenter": {
                 "x": 419.8832611560911,
-                "y": 510.26172095650526
+                "y": 510.2617209565053
             }
         },
         "vault.tmj": {
@@ -150,7 +150,8 @@
     "map.tileWidth": 40,
     "map.width": 20,
     "openFiles": [
-        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/default/map.tmj"
+        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/default/map.tmj",
+        "tower.tmj"
     ],
     "project": "dungeonkit.tiled-project",
     "property.type": "string",

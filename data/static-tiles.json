@@ -400,6 +400,9 @@
         "TAURUS": [16,16],
         "MERCURY": [17,16],
         "SULFUR": [18,16],
-        "SALT": [19,16]
+        "SALT": [19,16],
+        "WATER": [20,16],
+        "LEO": [21,16],
+        "MEDIUM_SHADE_LOWER_RIGHT_TRIANGLE" [22,16]
     }
 }

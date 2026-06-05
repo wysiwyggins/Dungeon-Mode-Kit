@@ -66,7 +66,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Combat
 
-- [ ] Backstab — attacking unaware/sleeping enemies for bonus damage [B]
+- [x] Backstab — attacking unaware/sleeping enemies for bonus damage [B] (3x vs. sleeping/stunned/paralyzed or unalerted AI; engine.js `BACKSTAB_MULTIPLIER`)
 - [ ] Weapon runic enchantments — special procs beyond the existing weapon_proc system (vampiric, slowing, quietus, paralysis) [B]
 - [ ] Armor runic enchantments — defensive procs (reflection, reprisal, immunity, absorption) [B]
 - [ ] Grappling — creature seizes target, preventing movement until broken free [B]

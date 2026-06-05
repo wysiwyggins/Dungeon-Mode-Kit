@@ -2525,6 +2525,9 @@ class Prototype {
 // ENTITY SYSTEM
 // ============================================================================
 
+// Backstab: damage multiplier when attacking an unaware target (Brogue parity)
+const BACKSTAB_MULTIPLIER = 3;
+
 class Entity {
     constructor(x, y, type, engine) {
         this.x = x;
@@ -6167,6 +6170,23 @@ class Actor extends Entity {
                                 source.sourceActor.engine.inputManager?.showMessage('Critical hit!');
                             }
                             console.log(`Critical hit! ${value} -> ${finalValue}`);
+                        }
+
+                        // Backstab: bonus damage vs. unaware targets (stacks with crit, before strength scaling)
+                        const targetUnaware = target.hasStateProperty?.('skip_turn') ||
+                                              (target.personality && !target._alerted);
+                        if (targetUnaware) {
+                            finalValue = Math.round(finalValue * BACKSTAB_MULTIPLIER);
+                            if (source.sourceActor.isPlayerControlled()) {
+                                source.sourceActor.engine.inputManager?.showMessage('Backstab!');
+                            }
+                            console.log(`Backstab! ${value} -> ${finalValue}`);
+                            // Mark AI target as now alerted so follow-up hits aren't also backstabs
+                            if (target.personality) {
+                                target._alerted = true;
+                                target._alertTarget = source.sourceActor;
+                                target._alertTurns = target.personality.data?.memory_duration || 10;
+                            }
                         }
 
                         // Apply strength multiplier: damage = base * (strength / 10)
