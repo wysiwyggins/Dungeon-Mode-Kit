@@ -357,8 +357,8 @@
                  "type":"pushable_wall",
                  "visible":true,
                  "width":40,
-                 "x":1044.99180775532,
-                 "y":509.303659202621
+                 "x":1040,
+                 "y":510
                 }, 
                 {
                  "height":30,
@@ -446,8 +446,8 @@
                  "type":"locked_door",
                  "visible":true,
                  "width":40,
-                 "x":570.869690840797,
-                 "y":473.298179716845
+                 "x":560,
+                 "y":480
                 }],
          "opacity":1,
          "type":"objectgroup",

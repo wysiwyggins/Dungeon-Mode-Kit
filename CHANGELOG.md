@@ -21,12 +21,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Overlay layer transparency**: tiles on the authored `overlay` map layer (used for outdoor levels with tall structures) now go translucent when an actor passes behind them, the same way actor "height" tiles already did. Reveals the actor's full two-tile footprint; applies to controlled actors, NPCs, doors, stairways, and gateways.
 - **Locked stairways are a locked pair**: when a level's down-stairway is sealed by an unmet win condition, the matching up-stairway on the level below is now locked too. Previously a player who *fell* between levels (bypassing the stairs) could simply walk back up through a stairway that should still be sealed. The pair stays in sync — meeting or re-breaking the win condition unlocks/re-locks both halves, including on levels visited earlier or not yet visited.
+- **Generic (any-key) locked doors**: designers can author a simple, unpaired lock. A locked door with `lockable` but no `color_locked` (or the new `generic_locked_door` actor) is opened by *any* key, and any key can open *any* generic locked door — alongside the existing color-paired key/door system. Stairways and gates remain key-proof.
+- **Per-object `default_items` override**: an actor object placed in a Tiled `actors` layer can set a `default_items` custom property to override the starting inventory for that one placement (JSON array, comma-separated list, or empty to hold nothing). For example, a `pedestal` can be made to hold a crown instead of its default key — no new actor type needed. See [docs/MAP.md](docs/MAP.md).
 
 ### Fixed
 
 - **Deep water submersion**: restored the missing `deep` attribute on the `deep_water` actor, so traversing deep water once again submerges the player (a regression that left submersion working only for deep sewage, while the float-items behavior still worked for both).
 - **Input during collapsing-floor fall**: player input is now blocked during the pause when a collapsable floor activates, so the character can no longer move again before falling to the next level.
 - **Stairway naming**: unlocking a stairway no longer mislabels it "Stairs Down" regardless of direction; up-stairways are now correctly named.
+- **Keys open doors, not stairways or gates**: a key bumped against a locked actor now only unlocks doors — either the color-matched `locked_door` it's paired to, or any *generic* locked door. Previously a carried key would silently unlock *any* openable+locked actor on contact — including win-condition-sealed stairways and switch-driven gates — which let complex levels (key → door → crown → win condition → stairway) be short-circuited.
+- **Key/door colors pair regardless of spawn order**: a key and its color-locked door now always share a color, even when the key is authored *before* its door on the map (e.g. a pedestal key listed ahead of the door). Previously the key's color was assigned at spawn time from a not-yet-populated queue, so a key placed before its door got a mismatched random color and couldn't open it. Pairing is now reconciled once after all doors and keys are placed.
 
 ## [1.9b] 2026-05-24
 

@@ -237,6 +237,27 @@ function randomElement(arr) {
 }
 
 /**
+ * Parse an item-list value from a Tiled object property into an array of item-type strings.
+ * Accepts a JSON array (e.g. '["crown", "torch"]'), a comma-separated string (e.g. 'crown, torch'),
+ * an already-parsed array, or an empty value (→ []). Used for per-object default_items overrides.
+ */
+function parseItemList(value) {
+    if (Array.isArray(value)) return value.map(String).map(s => s.trim()).filter(Boolean);
+    if (typeof value !== 'string') return [];
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    if (trimmed.startsWith('[')) {
+        try {
+            const parsed = JSON.parse(trimmed);
+            if (Array.isArray(parsed)) return parsed.map(String).map(s => s.trim()).filter(Boolean);
+        } catch (e) {
+            console.warn('Invalid default_items JSON:', value);
+        }
+    }
+    return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+}
+
+/**
  * Get the indefinite article ('a' or 'an') for a word
  * @param {string} word - The word to get the article for
  * @returns {string} 'a' or 'an'
@@ -1184,6 +1205,10 @@ class DungeonEngine {
         if (treasureRoomData) {
             this.entityManager.spawnTreasureRoomContents(treasureRoomData, architectContext);
         }
+
+        // Pair keys to their color-locked doors now that all doors and keys exist, so an
+        // authored key spawned before its door (order-dependent eager coloring) still matches.
+        this.entityManager.reconcileKeyDoorColors();
 
         // Stairway/gateway placement — after pending doors so getActorAt sees them
         if (!prototypeConfig.mechanics?.observer_mode) {
@@ -6458,15 +6483,41 @@ class Actor extends Entity {
                     }
                 }
                 else if (currentValue !== undefined) {
-                    target.setAttribute(key, value);
-                    console.log(`${source.name}: set ${target.name}'s ${key} to ${value}`);
-                    sourceApplied = true;
+                    // A {locked:false} utility effect from a key may open a GENERIC locked door
+                    // (lockable, no color_locked) — any key opens any generic door. But it must
+                    // NOT open: stairways (owned by the win-condition system) or gates
+                    // (switch/machine-driven). Color-locked doors are handled by the matched branch
+                    // above and never reach here. All other boolean effects set freely.
+                    const isKeyUnlock = key === 'locked' && value === false && source.item?.hasAttribute('key');
+                    if (isKeyUnlock) {
+                        const isGenericLockableDoor = target.hasAttribute('lockable') &&
+                            !target.hasAttribute('color_locked') &&
+                            !target.hasAttribute('stairway') &&
+                            !target.hasAttribute('gate');
+                        if (isGenericLockableDoor) {
+                            target.setAttribute(key, value);
+                            console.log(`${source.name} unlocks ${target.name} (generic lock)`);
+                            sourceApplied = true;
+                            this.engine.playSound?.('lock');
+                            target.open();
+                            this.engine.updateLighting();
+                            targetPassable = !target.hasAttribute('solid');
 
-                    if (key === 'locked' && value === false && target.hasAttribute('openable')) {
-                        this.engine.playSound?.('lock');
-                        target.open();
-                        this.engine.updateLighting();
-                        targetPassable = !target.hasAttribute('solid');
+                            if (this.isPlayerControlled()) {
+                                this.engine.inputManager?.showMessage(`The ${source.name} unlocks the ${target.name}!`);
+                            }
+
+                            if (source.item && source.item.hasAttribute('consumable')) {
+                                this.inventory = this.inventory.filter(i => i !== source.item);
+                                console.log(`${source.name} was consumed`);
+                            }
+                        }
+                        // else: not a key-openable lock (stairway/gate/non-lockable) — inert,
+                        // key not consumed, player gets the standard locked-rejection feedback.
+                    } else {
+                        target.setAttribute(key, value);
+                        console.log(`${source.name}: set ${target.name}'s ${key} to ${value}`);
+                        sourceApplied = true;
                     }
                 }
             }
@@ -7946,6 +7997,75 @@ class EntityManager {
 
     }
 
+    /**
+     * Pair each key to a color-locked door so their colors match, regardless of the order
+     * they spawned in. Key color is assigned eagerly at construction (Item constructor), which
+     * is order-dependent: a key spawned before its door (e.g. a pedestal's default key listed
+     * before the door in a .tmj) gets a random color and never matches. This deferred pass runs
+     * once after ALL map entities exist (fresh loadFloor only) and fixes the mismatch.
+     *
+     * - Only color_locked doors are paired (generic_locked_door has no color_locked → any key opens
+     *   it, so it is intentionally excluded). Stairways/gates are never keys/doors here.
+     * - Idempotent: a key already carrying a real door's color is left alone — this preserves the
+     *   treasure-room flow (door-then-key already matches) and makes floor reloads safe.
+     * - Not run on restoreFloor: serialized lock_color/tint already persist the pairing.
+     */
+    reconcileKeyDoorColors() {
+        const globalColors = this.engine.globalColors;
+        if (!globalColors || globalColors.length === 0) return;
+
+        // Collect color-locked doors (deterministic order for reproducible pairing).
+        const doors = this.actors
+            .filter(a => !a.isDead && a.hasAttribute('color_locked') && a.hasAttribute('locked'))
+            .sort((a, b) => (a.y - b.y) || (a.x - b.x));
+        if (doors.length === 0) return;
+
+        // Collect every key, on the ground and in any actor's inventory, de-duped by identity.
+        const keySet = new Set();
+        for (const item of this.items) {
+            if (item.hasAttribute?.('key')) keySet.add(item);
+        }
+        for (const actor of this.actors) {
+            for (const item of actor.inventory || []) {
+                if (item.hasAttribute?.('key')) keySet.add(item);
+            }
+        }
+        if (keySet.size === 0) return;
+
+        // Colors already claimed by a correctly-paired key shouldn't be reused.
+        const doorColors = new Set(doors.map(d => d.getAttribute('lock_color')).filter(Boolean));
+        const claimed = new Set();
+        const unmatchedKeys = [];
+        for (const key of keySet) {
+            const kc = key.getAttribute('lock_color');
+            if (kc && doorColors.has(kc)) {
+                claimed.add(kc); // already paired to a real door — leave it
+            } else {
+                unmatchedKeys.push(key);
+            }
+        }
+
+        // Door colors still available to hand out, in deterministic order.
+        const freeColors = doors
+            .map(d => d.getAttribute('lock_color'))
+            .filter(c => c && !claimed.has(c));
+
+        // Assign each unmatched key the next free door color. If keys outnumber doors, extra
+        // keys keep their existing color (they can still open generic doors).
+        for (const key of unmatchedKeys) {
+            const colorName = freeColors.shift();
+            if (!colorName) break;
+            const colorDef = globalColors.find(c => c.color === colorName);
+            key.setAttribute('lock_color', colorName);
+            key.templateVars.color = colorName; // drives the "[color] key" unidentified name
+            if (colorDef) {
+                key.tint = parseTint(colorDef.hex);
+                if (key.sprite) key.sprite.tint = key.tint; // refresh any already-created sprite
+            }
+            console.log(`Paired ${key.name} to ${colorName} door`);
+        }
+    }
+
     initializeSwitchTints() {
         const colors = this.engine.globalColors;
         if (!colors || colors.length === 0) return;
@@ -8567,10 +8687,8 @@ class EntityManager {
             const actor = new Actor(tileX, tileY, actorType, actorData, this.engine);
             this.addEntity(actor);
 
-            // Load any default items for this actor
-            actor.loadDefaultItems();
-
-            // Parse custom Tiled properties (machine connections, switch overrides)
+            // Parse custom Tiled properties (machine connections, switch overrides, item overrides).
+            // Done BEFORE loadDefaultItems() so a default_items override takes effect.
             if (obj.properties) {
                 for (const prop of obj.properties) {
                     if (prop.name === 'machine_id') {
@@ -8585,9 +8703,17 @@ class EntityManager {
                         }
                     } else if (prop.name === 'switch_radius') {
                         actor.data = { ...actor.data, switch_radius: Number(prop.value) };
+                    } else if (prop.name === 'default_items') {
+                        // Override the actor type's default inventory for this one placement.
+                        // Accepts a JSON array (e.g. ["crown"]) or a comma-separated list
+                        // (e.g. "crown, torch"). An empty value clears the defaults.
+                        actor.defaultItems = parseItemList(prop.value);
                     }
                 }
             }
+
+            // Load default items (type defaults, or the per-object override parsed above)
+            actor.loadDefaultItems();
 
             console.log(`Spawned ${actorType} at tile (${tileX}, ${tileY}) from pixel (${obj.x}, ${obj.y})`);
         }

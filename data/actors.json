@@ -593,6 +593,21 @@
       "locked": true
     }
   },
+  "generic_locked_door": {
+    "name": "Door",
+    "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
+    "tileIndexTop": "OPAQUE_DOOR_TOP",
+    "tileIndexTop_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
+    "tileIndexBase_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
+    "attributes": {
+      "flammable": false,
+      "conductive": false,
+      "openable": true,
+      "lockable": true,
+      "open": false,
+      "locked": true
+    }
+  },
   "lever": {
     "name": "lever",
     "tileIndexBase": "LEVER_BASE",

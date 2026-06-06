@@ -71,6 +71,26 @@ Some existing maps include a `ui` tile layer — the engine ignores it completel
 
 [What are Tiled Objects?](https://doc.mapeditor.org/en/stable/manual/objects/) — Objects are regions drawn with a shape tool, with attributes like `class`. The `wildcards` tile layer supplements this by letting you paint tiles that spawn common actors and mark off procedurally generated areas.
 
+### Per-Object Property Overrides (actors layer)
+
+By default an actor object inherits everything from its type definition in `data/actors.json` (or a prototype's `actors.json` override). You can also set **custom properties** on an individual actor object to override or augment that one placement, without defining a new actor type. Recognized properties:
+
+| Custom Property | Type | Purpose |
+|-----------------|------|---------|
+| `machine_id` | string | Link this actor to switches/targets sharing the same id (see [PROTOTYPE.md](PROTOTYPE.md) switches). |
+| `switch_effects` | string (JSON) | Override the attributes a switch sets on activation, e.g. `{"locked": false, "open": true}`. |
+| `switch_radius` | number | Override the proximity radius a switch activates within (when not using `machine_id`). |
+| `one_shot` | bool | Mark a switch/trap as single-use. |
+| `default_items` | string | Override the actor type's starting inventory **for this placement only**. |
+
+**`default_items` override.** An actor's `default_items` (the items it spawns holding — see [ACTORS.md](ACTORS.md#default-items)) normally comes from the shared type definition. For example, the global `pedestal` defines `"default_items": ["key"]`, so *every* pedestal holds a key. To make one specific pedestal hold something else, set a `default_items` custom property on that object. Accepted formats:
+
+- JSON array: `["crown"]` or `["crown", "torch"]`
+- Comma-separated list: `crown, torch`
+- Empty string: holds nothing (clears the type default)
+
+The pedestal's `display_inventory` attribute renders whatever it holds on top of it, so a pedestal with `default_items` = `["crown"]` displays and guards a crown instead of a key. This override applies before the item is created, so key/door color pairing still resolves correctly.
+
 ---
 
 ## Wildcard Tiles (Generative Fills)
