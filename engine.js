@@ -588,6 +588,7 @@ class DungeonEngine {
         this.currentFloor = 1;           // 1-indexed
         this.floorStates = new Map();    // floor# → { entities: [...], map: {...} }
         this.pendingFallenActors = new Map(); // floor# → [serialized actor data]
+        this.sealedDownFloors = new Set(); // floor#s whose down-stairway is sealed (win conditions unmet) → that floor's N+1 up-stairway must be locked
         
         // Configuration
         this.config = {
@@ -1079,6 +1080,7 @@ class DungeonEngine {
         await this.currentPrototype.loadAssets();
         this.currentFloor = 1;
         this.floorStates.clear();
+        this.sealedDownFloors.clear();
         await this.loadFloor(this.currentFloor, entryDirection);
     }
 
@@ -1227,6 +1229,9 @@ class DungeonEngine {
         this.renderer.renderItems(this.entityManager);
         this.renderer.renderActors(this.entityManager);
         this.entityManager.initializeInventoryDisplays();
+
+        // Lock/unlock this floor's up-stairway to match the floor below's seal state.
+        this.reconcileUpStairwayLock();
 
         // Update sidebar and proximity transparency for non-darkness levels
         // (darkness levels update both via updateLighting)
@@ -1393,6 +1398,10 @@ class DungeonEngine {
         this.renderer.renderActors(this.entityManager);
         this.entityManager.initializeInventoryDisplays();
 
+        // Lock/unlock this floor's up-stairway to match the floor below's seal state.
+        // Corrects a cached floor whose paired seal changed while the player was away.
+        this.reconcileUpStairwayLock();
+
         // Snap viewport to player
         if (this.viewportEnabled && this.entityManager.player) {
             this.snapViewportToTile(this.entityManager.player.x, this.entityManager.player.y);
@@ -1548,6 +1557,29 @@ class DungeonEngine {
         };
     }
 
+    /**
+     * Is the given floor's down-stairway currently sealed (its win conditions unmet)?
+     * When floor N is sealed, floor N+1's up-stairway must be locked as the paired half,
+     * so a player who fell down can't simply walk back up. The only ways to reach floor
+     * N+1 (descending N's down-stairway, or falling from N) both require N to have been
+     * loaded first, so N is always present in sealedDownFloors before its up-stairway is
+     * needed — making the tracker an authoritative source of truth.
+     */
+    isFloorDownSealed(floor) {
+        return floor >= 1 && this.sealedDownFloors.has(floor);
+    }
+
+    /** Record whether a floor's down-way is sealed (membership in the tracker). */
+    setDownSeal(floor, sealed) {
+        if (sealed) this.sealedDownFloors.add(floor);
+        else this.sealedDownFloors.delete(floor);
+    }
+
+    /** Derive a floor's down-seal state from its actual down-stairway actor (authored or generated). */
+    updateDownSealFromStairway(stairway) {
+        this.setDownSeal(this.currentFloor, !!stairway.getAttribute('locked'));
+    }
+
     getDefaultPrototypeConfig() {
         return {
             name: "Default Prototype",
@@ -1578,6 +1610,7 @@ class DungeonEngine {
         // Reset floor state when transitioning to a new prototype
         this.currentFloor = 1;
         this.floorStates.clear();
+        this.sealedDownFloors.clear();
         await this.loadPrototype(prototypeName, entryDirection);
     }
 
@@ -1679,6 +1712,55 @@ class DungeonEngine {
     }
 
     /**
+     * Apply a locked/unlocked state to a single live stairway actor (attributes + sprite).
+     * Idempotent and direction-aware (names "Stairs Up"/"Stairs Down" correctly), so it
+     * works for both the floor's own down-stairway and a paired up-stairway.
+     */
+    applyStairwayLockState(stairway, locked) {
+        if (locked) {
+            stairway.setAttribute('locked', true);
+            stairway.setAttribute('open', false);
+            stairway.setAttribute('solid', true);
+            stairway.setAttribute('collision_description', 'The stairs are sealed. You must fulfill your quest first.');
+            stairway.name = 'Sealed Stairs';
+
+            // Update tiles back to locked appearance
+            if (stairway.tileIndexBase && stairway.spriteBase) {
+                const tileset = PIXI.Loader.shared.resources.tiles;
+                const rect = new PIXI.Rectangle(
+                    stairway.tileIndexBase.x * globalVars.TILE_WIDTH,
+                    stairway.tileIndexBase.y * globalVars.TILE_HEIGHT,
+                    globalVars.TILE_WIDTH,
+                    globalVars.TILE_HEIGHT
+                );
+                stairway.spriteBase.texture = new PIXI.Texture(tileset.texture.baseTexture, rect);
+            }
+        } else {
+            stairway.setAttribute('locked', false);
+            stairway.setAttribute('collision_description', null);
+            stairway.open(); // swaps to *_open sprite; safe now that locked=false
+            stairway.name = stairway.getAttribute('stairway') === 'up' ? 'Stairs Up' : 'Stairs Down';
+        }
+    }
+
+    /**
+     * Reconcile the current floor's up-stairway lock state against the seal tracker.
+     * The up-stairway leads up to the previous floor, so it must be locked iff that floor's
+     * down-way is sealed. Called on every floor entry (fresh load and restore) so a cached
+     * floor whose paired seal changed while the player was away gets corrected — including
+     * the sprite, which a deserialized open stairway would otherwise render as locked.
+     */
+    reconcileUpStairwayLock() {
+        const up = this.entityManager?.findActorByAttribute('stairway', 'up');
+        if (!up) return;
+        const shouldLock = this.isFloorDownSealed(this.currentFloor - 1);
+        const isLocked = !!up.getAttribute('locked');
+        if (shouldLock !== isLocked) {
+            this.applyStairwayLockState(up, shouldLock);
+        }
+    }
+
+    /**
      * Unlock all locked stairways when win conditions are met
      * This is called when a win condition is triggered (e.g., equipping an item)
      */
@@ -1689,15 +1771,18 @@ class DungeonEngine {
 
         if (stairways && stairways.length > 0) {
             for (const stairway of stairways) {
-                stairway.setAttribute('locked', false);
-                stairway.setAttribute('collision_description', null);
-                stairway.open();
-                stairway.name = 'Stairs Down';
+                this.applyStairwayLockState(stairway, false);
             }
 
             this.playSound?.('lock');
             this.inputManager?.showMessage('The way forward is now open!', { style: 'discovery' });
         }
+
+        // This floor's down-way is now open; record it and unlock the paired
+        // up-stairway on the floor below's destination (floor N+1). N+1 is never the
+        // current floor here (the player is on N), so it's reconciled from the tracker
+        // the next time N+1 is entered — see reconcileUpStairwayLock().
+        this.sealedDownFloors.delete(this.currentFloor);
 
         // Reveal gateways when win conditions are met
         const gateways = this.entityManager?.actors.filter(a => a.hasAttribute('gateway'));
@@ -1729,27 +1814,21 @@ class DungeonEngine {
             actor.hasAttribute('open')
         );
 
-        if (!stairways || stairways.length === 0) return;
+        if (!stairways || stairways.length === 0) {
+            // No live unlocked stairway to re-seal (e.g. it was never opened), but the
+            // current floor's win condition is broken — still record the seal so the
+            // paired up-stairway on N+1 re-locks on next entry.
+            this.sealedDownFloors.add(this.currentFloor);
+            return;
+        }
 
         for (const stairway of stairways) {
-            stairway.setAttribute('locked', true);
-            stairway.setAttribute('open', false);
-            stairway.setAttribute('solid', true);
-            stairway.setAttribute('collision_description', 'The stairs are sealed. You must fulfill your quest first.');
-            stairway.name = 'Sealed Stairs';
-
-            // Update tiles back to locked appearance
-            if (stairway.tileIndexBase && stairway.spriteBase) {
-                const tileset = PIXI.Loader.shared.resources.tiles;
-                const rect = new PIXI.Rectangle(
-                    stairway.tileIndexBase.x * globalVars.TILE_WIDTH,
-                    stairway.tileIndexBase.y * globalVars.TILE_HEIGHT,
-                    globalVars.TILE_WIDTH,
-                    globalVars.TILE_HEIGHT
-                );
-                stairway.spriteBase.texture = new PIXI.Texture(tileset.texture.baseTexture, rect);
-            }
+            this.applyStairwayLockState(stairway, true);
         }
+
+        // This floor's down-way is sealed again; record it so the paired up-stairway on
+        // floor N+1 re-locks the next time N+1 is entered (see reconcileUpStairwayLock()).
+        this.sealedDownFloors.add(this.currentFloor);
 
         // Re-hide gateways when win conditions break
         const gateways = this.entityManager?.actors.filter(a => a.hasAttribute('gateway'));
@@ -1937,8 +2016,12 @@ class DungeonEngine {
         // Pick a random tile using ROT.RNG for consistency
         const tile = randomElement(availableTiles);
 
-        // If we got here, there's somewhere to go up to — use a regular up stairway
-        const stairwayType = 'up_stairway';
+        // This up-stairway leads up to the previous floor. Lock it iff that floor's
+        // down-way is sealed (its win conditions unmet), so a player who fell down can't
+        // walk back up to bypass the quest — the locked pair of the previous floor's
+        // locked_down_stairway.
+        const stairwayType = this.isFloorDownSealed(this.currentFloor - 1)
+            ? 'locked_up_stairway' : 'up_stairway';
 
         // Get the stairway actor data
         const stairwayData = this.currentPrototype.getActorData(stairwayType);
@@ -1961,6 +2044,9 @@ class DungeonEngine {
         const existingStairway = this.entityManager.findActorByAttribute('stairway', 'down');
         if (existingStairway) {
             console.log('Down stairway already exists at', existingStairway.x, existingStairway.y);
+            // Record seal state from the existing (e.g. authored) stairway's locked status,
+            // so the paired up-stairway on floor N+1 matches even when we didn't spawn it.
+            this.updateDownSealFromStairway(existingStairway);
             return;
         }
 
@@ -1985,6 +2071,10 @@ class DungeonEngine {
         const floorConfig = this.getFloorConfig(this.currentFloor);
         const hasWinConditions = floorConfig.win_conditions && floorConfig.win_conditions.length > 0;
         const stairwayType = hasWinConditions ? 'locked_down_stairway' : 'down_stairway';
+
+        // Record whether this floor's down-way starts sealed, so the paired up-stairway
+        // on floor N+1 can be locked to match (the locked-pair source of truth).
+        this.setDownSeal(this.currentFloor, hasWinConditions);
 
         const stairwayData = this.currentPrototype.getActorData(stairwayType);
         if (!stairwayData) {
@@ -2256,6 +2346,7 @@ class DungeonEngine {
         // Reset floor state
         this.currentFloor = 1;
         this.floorStates.clear();
+        this.sealedDownFloors.clear();
     }
 }
 
@@ -6970,6 +7061,12 @@ class Actor extends Entity {
             this.engine.renderer?.effectRunner.apply('collapse_shake');
             this.engine.playSound('push1');
             if (this.engine.turnEngine) this.engine.turnEngine.lock();
+            // Block player input during the collapse pause so the controlled actor
+            // can't move again before falling. turnEngine.lock() only gates the AI
+            // scheduler; handleKeyDown is gated by inputManager.enabled. If a fall
+            // happens, the floor transition re-enables input via startGameplay();
+            // re-enabling below is idempotent and covers the no-fall case.
+            if (actor.isPlayerControlled()) this.engine.inputManager?.disable();
             setTimeout(async () => {
                 for (const other of collapsibles) {
                     other.collapse();
@@ -6979,6 +7076,7 @@ class Actor extends Entity {
                     await actor.fall();
                 }
                 if (actor.engine.turnEngine) actor.engine.turnEngine.unlock();
+                if (actor.isPlayerControlled()) actor.engine.inputManager?.enable();
             }, 300);
             return { moved: true, actionTaken: true };
         }
@@ -10582,10 +10680,32 @@ class RenderSystem {
             if (actor.spriteEquipment.middle) actor.spriteEquipment.middle.alpha = 1.0;
         }
 
+        // Reset overlay (static map) tiles to opaque so a fade from a previous
+        // actor position doesn't linger. overlaySprites is [] until a map renders
+        // and rows are sparse, so guard each access.
+        if (this.overlaySprites) {
+            for (let y = 0; y < this.overlaySprites.length; y++) {
+                const row = this.overlaySprites[y];
+                if (!row) continue;
+                for (let x = 0; x < row.length; x++) {
+                    if (row[x]) row[x].alpha = 1.0;
+                }
+            }
+        }
+
         for (const actor of this.engine.entityManager.actors) {
             if (actor.isDead) continue;
             if (!isImportantActor(actor)) continue;
             if (getChebyshevDistance(player.x, player.y, actor.x, actor.y) > 4) continue;
+
+            // Fade overlay (map) tiles covering this important actor's two-tile
+            // footprint so tall structures don't fully hide it. Runs before the
+            // southern-actor early-continue below so it applies to every important
+            // actor in range, not just those with an obscuring southern actor.
+            const overlayBase = this.overlaySprites?.[actor.y]?.[actor.x];      // tile over the base
+            if (overlayBase) overlayBase.alpha = 0.35;
+            const overlayTop = this.overlaySprites?.[actor.y - 1]?.[actor.x];   // tile over the height sprite
+            if (overlayTop) overlayTop.alpha = 0.35;
 
             const southernActor = this.engine.entityManager.getActorAt(actor.x, actor.y + 1);
             if (!southernActor || southernActor.isDead || southernActor === actor) continue;
@@ -10807,6 +10927,7 @@ window.goToFloor = async (floorNumber) => {
     await engine.currentPrototype.loadAssets();
     engine.currentFloor = floorNumber;
     engine.floorStates.clear();
+    engine.sealedDownFloors.clear();
     await engine.loadFloor(floorNumber, 'from_above');
     console.log(`Jumped to floor ${floorNumber}/${totalFloors}`);
 };

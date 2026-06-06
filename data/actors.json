@@ -292,9 +292,28 @@
       "meat"
     ]
   },
+  "chicken": {
+    "name": "chicken",
+    "tileIndexBase": "OPAQUE_PRISON_WINDOW",
+    "tileIndexTop": "BIRD_HEAD",
+    "personality": "passive_wanderer",
+    "tint": "#FFFF33",
+    "attributes": {
+      "sentient": true,
+      "inventory": 1,
+      "remains": "blood",
+      "opaque": false
+    },
+    "stats": {
+      "health": 10
+    },
+    "default_items": [
+      "meat"
+    ]
+  },
   "minotaur": {
     "name": "Asterion",
-    "tileIndexBase": "DOOR_TOP",
+    "tileIndexBase": "STRONG_TORSO",
     "tileIndexTop": "CABESA_DE_VACA",
     "personality": "stationed_melee",
     "collision_effect": {
@@ -672,6 +691,7 @@
       "flammable": false,
       "spreads": false,
       "liquid": true,
+      "deep": true,
       "mass_noun": true,
       "entry_sound": "step_mud"
     }
@@ -805,7 +825,7 @@
       "mass_noun": true
     },
     "damage_per_turn": 10,
-    "spread_chance": 0.3,
+    "spread_chance": 0.1,
     "lifetime": 5
   },
   "intense_fire": {
@@ -826,7 +846,7 @@
     },
     "lifetime": 7,
     "damage_per_turn": 20,
-    "spread_chance": 0.3
+    "spread_chance": 0.2
   },
   "brazier": {
     "name": "Brazier",

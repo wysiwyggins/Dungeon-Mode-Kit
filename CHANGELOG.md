@@ -15,6 +15,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Mining (works but requires testing and refinement, Currently 3 hits always removes a breakable actor, which feels unnatural)
 - Web frontend editors for actors, items and personalities
 
+## [1.10b] 2026-06-06
+
+### Added
+
+- **Overlay layer transparency**: tiles on the authored `overlay` map layer (used for outdoor levels with tall structures) now go translucent when an actor passes behind them, the same way actor "height" tiles already did. Reveals the actor's full two-tile footprint; applies to controlled actors, NPCs, doors, stairways, and gateways.
+- **Locked stairways are a locked pair**: when a level's down-stairway is sealed by an unmet win condition, the matching up-stairway on the level below is now locked too. Previously a player who *fell* between levels (bypassing the stairs) could simply walk back up through a stairway that should still be sealed. The pair stays in sync — meeting or re-breaking the win condition unlocks/re-locks both halves, including on levels visited earlier or not yet visited.
+
+### Fixed
+
+- **Deep water submersion**: restored the missing `deep` attribute on the `deep_water` actor, so traversing deep water once again submerges the player (a regression that left submersion working only for deep sewage, while the float-items behavior still worked for both).
+- **Input during collapsing-floor fall**: player input is now blocked during the pause when a collapsable floor activates, so the character can no longer move again before falling to the next level.
+- **Stairway naming**: unlocking a stairway no longer mislabels it "Stairs Down" regardless of direction; up-stairways are now correctly named.
+
 ## [1.9b] 2026-05-24
 
 ### Added
