@@ -34,7 +34,7 @@
   "skeleton": {
     "name": "Skeleton",
     "description": "Brittle bones stripped of their flesh and animated by some dark magic.",
-    "tileIndexBase": "SKELETON_LEGS",
+    "tileIndexBase": "THIN_TORSO",
     "tileIndexTop": "SKULL",
     "tint": "#fffece",
     "personality": "stationed_melee",
@@ -296,13 +296,16 @@
     "name": "chicken",
     "tileIndexBase": "OPAQUE_PRISON_WINDOW",
     "tileIndexTop": "BIRD_HEAD",
+    "tint": "#fff2d5",
+    "facingEnabled": true,
+    "defaultFacing": "left",
     "personality": "passive_wanderer",
-    "tint": "#FFFF33",
     "attributes": {
       "sentient": true,
+      "flammable": true,
+      "pushable": true,
       "inventory": 1,
-      "remains": "blood",
-      "opaque": false
+      "remains": "blood"
     },
     "stats": {
       "health": 10
@@ -496,15 +499,12 @@
     "name": "pitchblende",
     "tileIndexBase": "OPAQUE_DOTTED_LIGHT_SHADE",
     "tileIndexTop": "OPAQUE_DOTTED_LIGHT_SHADE",
-    "tint": "#222200",
+    "tint": "#7a7a7a",
     "attributes": {
-      "flammable": false,
-      "pushable": false,
-      "conductive": false,
-      "lode": "uranium_nugget",
-      "lode_chance": 20,
       "breakable": true,
-      "remains": "rubble"
+      "lode_chance": 20,
+      "remains": "rubble",
+      "lode": "uranium_nugget"
     }
   },
   "torch": {
@@ -1191,7 +1191,7 @@
   },
   "ogre": {
     "name": "Ogre",
-    "tileIndexBase": "SKELETON_LEGS",
+    "tileIndexBase": "STRONG_TORSO",
     "tileIndexTop": "GRIM_FACE",
     "tint": "#cce8b5",
     "personality": "stationed_melee",
@@ -1310,7 +1310,7 @@
   },
   "guard": {
     "name": "Guard",
-    "tileIndexBase": "SKELETON_LEGS",
+    "tileIndexBase": "STRONG_TORSO",
     "tileIndexTop": {
       "x": 8,
       "y": 16
