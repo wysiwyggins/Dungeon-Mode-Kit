@@ -350,7 +350,7 @@ const SECONDARY_BOOL_ATTRS = [
     'controlled','hazard_immune','pack','follows_thread','mass_noun','proper_named',
     'liquid','deep','spreads','ignites','openable','lockable','color_locked','gate',
     'switchable','toggled','pausable','one_shot','pedestal','display_inventory',
-    'platform','collapsible','portal','trap','hidden','pickupable','stackable','cursed'
+    'platform','collapsible','portal','trap','hidden'
 ];
 const BOOL_ATTRS = [...PRIMARY_BOOL_ATTRS, ...SECONDARY_BOOL_ATTRS];
 
@@ -392,10 +392,6 @@ const BOOL_HINTS = {
     collapsible: 'Collapses when stepped on.',
     portal: 'Teleports actors that step on it.',
     trap: 'Trap — triggers on step (see Trap section).',
-    hidden: 'Not yet implemented.',
-    pickupable: 'Can be picked up as an item.',
-    stackable: 'Stacks in inventory.',
-    cursed: 'Cannot be unequipped.'
 };
 
 // Runtime defaults applied by the engine's Actor constructor (engine.js:3331-3334),
