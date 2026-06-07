@@ -6287,7 +6287,14 @@ class Actor extends Entity {
         // attackAttempted is true if we had a damage source (even on miss)
         // This is used to consume the turn regardless of hit/miss
         const attackAttempted = damageSource !== null;
-        return { effectApplied, targetPassable, targetKilled: targetShouldDie, attackAttempted };
+        // wasCombat / hitLanded are the authoritative combat signals (effectApplied is not
+        // a reliable hit/miss proxy — utility sources apply on a miss, and damage can round
+        // to zero on a hit). Callers deciding hit-vs-miss should use hitLanded.
+        return {
+            effectApplied, targetPassable, targetKilled: targetShouldDie, attackAttempted,
+            wasCombat: isCombatTarget && damageSource !== null,
+            hitLanded: isCombatTarget && damageSource !== null && damageHits,
+        };
     }
 
     /**
@@ -7024,8 +7031,8 @@ class Actor extends Entity {
             if (nonSolid && !nonSolid.isDead && !nonSolid.hasAttribute('solid') &&
                 nonSolid.getAttribute('collision_effect') && nonSolid.stats?.health !== undefined) {
                 const result = this.applyCollisionEffects(nonSolid);
-                if (result.attackAttempted && !result.targetKilled) {
-                    if (result.effectApplied) {
+                if (result.wasCombat && !result.targetKilled) {
+                    if (result.hitLanded) {
                         // Hit landed — combat is the action; player stays put.
                         return { moved: false, actionTaken: true };
                     }

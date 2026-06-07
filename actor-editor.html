@@ -398,6 +398,13 @@ const BOOL_HINTS = {
     cursed: 'Cannot be unequipped.'
 };
 
+// Runtime defaults applied by the engine's Actor constructor (engine.js:3331-3334),
+// before the actor data's attributes are applied. Any attribute not listed defaults
+// to false. Checkboxes initialize to these defaults, and readForm() only writes a
+// boolean when it DIFFERS from its default (so a default-true can be saved as false).
+const BOOL_DEFAULTS = { solid: true, visible: true };
+const boolDefault = (attr) => BOOL_DEFAULTS[attr] === true;
+
 const TYPED_ATTRS = [
     { key: 'accuracy', type: 'number', label: 'Accuracy', hint: 'Base hit chance (%). Formula: accuracy × 0.987^defense. Typical: 35-80. No accuracy = always hits.' },
     { key: 'defense', type: 'number', label: 'Defense', hint: 'Each point reduces incoming hit chance by ~1.3%. Typical: 3-20.' },
@@ -1032,6 +1039,7 @@ function makeBoolCheckbox(attr, container) {
     const cb = document.createElement('input');
     cb.type = 'checkbox';
     cb.id = 'attr-' + attr;
+    cb.checked = boolDefault(attr);
     cb.addEventListener('change', () => {
         updateConditionalSections();
         updatePreview();
@@ -1350,7 +1358,7 @@ function clearForm() {
     document.getElementById('f-facingEnabled').checked = false;
     document.querySelector('input[name="defaultFacing"][value="left"]').checked = true;
 
-    for (const attr of BOOL_ATTRS) document.getElementById('attr-' + attr).checked = false;
+    for (const attr of BOOL_ATTRS) document.getElementById('attr-' + attr).checked = boolDefault(attr);
     const secGrid = document.getElementById('bool-attrs').querySelector('.checkbox-grid:last-of-type');
     const secToggle = document.getElementById('bool-attrs').querySelector('.add-btn');
     if (secGrid) secGrid.style.display = 'none';
@@ -1442,8 +1450,12 @@ function populateForm(key, data) {
     const attrs = data.attributes || {};
     let hasSecondary = false;
     for (const attr of BOOL_ATTRS) {
-        document.getElementById('attr-' + attr).checked = !!attrs[attr];
-        if (attrs[attr] && SECONDARY_BOOL_ATTRS.includes(attr)) hasSecondary = true;
+        // Use the stored value when present, else the attribute's default. This keeps an
+        // explicit `false` (e.g. solid:false) unchecked, while an absent default-true attr
+        // (e.g. solid omitted) shows checked to match runtime behavior.
+        const v = attrs[attr] !== undefined ? attrs[attr] : boolDefault(attr);
+        document.getElementById('attr-' + attr).checked = !!v;
+        if (v && SECONDARY_BOOL_ATTRS.includes(attr)) hasSecondary = true;
     }
     const secGrid = document.getElementById('bool-attrs').querySelector('.checkbox-grid:last-of-type');
     const secToggle = document.getElementById('bool-attrs').querySelector('.add-btn');
@@ -1622,7 +1634,11 @@ function readForm() {
     // Attributes
     const attrs = {};
     for (const attr of BOOL_ATTRS) {
-        if (document.getElementById('attr-' + attr).checked) attrs[attr] = true;
+        // Only write a boolean when it differs from its default. Lets a default-true attr
+        // be persisted as false (the whole point), while keeping JSON minimal: a checkbox
+        // left at its default is omitted (the runtime re-applies the default).
+        const checked = document.getElementById('attr-' + attr).checked;
+        if (checked !== boolDefault(attr)) attrs[attr] = checked;
     }
     for (const ta of TYPED_ATTRS) {
         const el = document.getElementById('attr-' + ta.key);
