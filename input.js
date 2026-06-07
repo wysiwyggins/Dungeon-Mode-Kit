@@ -1271,6 +1271,8 @@ class InputManager {
             }
 
             const result = player.moveBy(dir.dx, dir.dy);
+            // [JELLYDBG]
+            console.log('[JELLYDBG] moveBy result moved=', result.moved, 'actionTaken=', result.actionTaken, 'player now', player.x, player.y);
             if (result.moved) {
                 const sound = result.entrySound || 'feets';
                 this.engine.playSoundVaried(sound, 0.4, 0.1, 1.0, 0.06);
