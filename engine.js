@@ -3948,6 +3948,50 @@ class Actor extends Entity {
         this.engine.interfaceManager?.updateSidebar();
     }
 
+    /**
+     * Splitting creatures (e.g. pink jelly): on a non-fatal hit, shrink to half health and
+     * spawn a same-type child at half health on a free adjacent tile. Splitting stops once
+     * health drops below `split_min_health` (a natural cap), or when there's no free tile.
+     * Called from the combat damage path after a non-fatal health hit.
+     * @param {Actor} attacker - the actor that dealt the hit (for context/messaging)
+     * @returns {boolean} true if a child was produced
+     */
+    trySplit(attacker) {
+        if (this.isDead || !this.hasAttribute('splits')) return false;
+        const health = this.stats?.health;
+        if (!health || typeof health.current !== 'number') return false;
+
+        const min = this.getAttribute('split_min_health') ?? 2;
+        // Use post-hit current health; need enough to halve into two viable (>=1) halves.
+        if (health.current < min || health.current < 2) return false;
+
+        // Require a free adjacent tile first — don't shrink the parent without a child.
+        const pos = findAdjacentWalkable(this, this.engine.entityManager);
+        if (!pos) return false;
+
+        const half = Math.floor(health.current / 2);
+        health.current = half;
+        health.max = half;
+
+        const child = this.engine.entityManager.spawnActor(this.type, pos.x, pos.y);
+        if (!child) return false;
+        if (child.stats?.health) {
+            child.stats.health.max = half;
+            child.stats.health.current = half;
+        }
+
+        const splitSound = this.getAttribute('split_sound') || this.data?.split_sound;
+        if (splitSound) this.engine.playSound?.(splitSound);
+
+        // Message, matching die()'s visibility/position convention (skip mass nouns).
+        if (this.hasAttribute('visible') && !this.hasAttribute('mass_noun')) {
+            this.engine.inputManager?.showMessage(`The ${this.name} splits!`, { x: this.x, y: this.y });
+        }
+
+        this.engine.interfaceManager?.updateActorsDiv?.();
+        return true;
+    }
+
     pickUpItem(item) {
         // Check if actor has inventory capacity (inventory attribute)
         const maxInventory = this.getAttribute('inventory');
@@ -6365,6 +6409,10 @@ class Actor extends Entity {
                     if (key === 'health' && newValue <= 0) {
                         targetShouldDie = true;
                         targetPassable = true;
+                    } else if (key === 'health' && finalValue < 0 && newValue > 0) {
+                        // Non-fatal damaging hit: splitting creatures (pink jelly) split here.
+                        // Never fires on a kill (handled above) or on healing (finalValue >= 0).
+                        target.trySplit(this);
                     }
                 }
                 continue;
@@ -6784,6 +6832,23 @@ class Actor extends Entity {
             return { moved: false, actionTaken: false };
         }
 
+        // Stuck (held fast, e.g. engulfed by a jelly): each move attempt rolls to escape.
+        // Success breaks free and the move proceeds this turn; failure wastes the turn.
+        if (this.hasStateProperty('stuck')) {
+            const chance = this.getStatePropertyValue('escape_chance') || 0.33;
+            if (ROT.RNG.getUniform() < chance) {
+                for (const [name, s] of Object.entries(this.states)) {
+                    if (s.data?.stuck) this.removeState(name); // emits the break-free message
+                }
+                // fall through to attempt the move this turn
+            } else {
+                if (this.isPlayerControlled()) {
+                    this.engine.inputManager?.showMessage('You struggle but stay stuck.');
+                }
+                return { moved: false, actionTaken: true }; // failure consumes the turn
+            }
+        }
+
         // Block diagonal movement past wall corners (Brogue-style)
         if (isDiagonalBlocked(this.x, this.y, newX, newY, (x, y) => (this.hasFloorAt(x, y) || this.hasPlatformAt(x, y)) && !this.engine.entityManager.getSolidActorAt(x, y))) {
             return { moved: false, actionTaken: false };
@@ -6948,6 +7013,45 @@ class Actor extends Entity {
             }
             // Attack attempted (hit or miss) = action taken, even though we didn't move
             return { moved: false, actionTaken: collisionResult.attackAttempted };
+        }
+
+        // Attacking a NON-SOLID damaging creature (e.g. pink jelly) on bump. Because it's
+        // non-solid the player can occupy its tile: a hit is normal combat (player stays put),
+        // but a MISS lets the creature catch the player — they enter the tile, take the
+        // creature's collision_effect (slime damage) and its grab_state (e.g. 'stuck'), then move on.
+        if (this.isPlayerControlled()) {
+            const nonSolid = this.engine.entityManager.getOtherActorAt(newX, newY, this);
+            if (nonSolid && !nonSolid.isDead && !nonSolid.hasAttribute('solid') &&
+                nonSolid.getAttribute('collision_effect') && nonSolid.stats?.health !== undefined) {
+                const result = this.applyCollisionEffects(nonSolid);
+                if (result.attackAttempted && !result.targetKilled) {
+                    if (result.effectApplied) {
+                        // Hit landed — combat is the action; player stays put.
+                        return { moved: false, actionTaken: true };
+                    }
+                    // Miss — the creature catches the entering player with its own
+                    // collision_effect (slime damage), then we fall through to movement.
+                    nonSolid._applyEffectSource({
+                        name: nonSolid.name,
+                        effect: nonSolid.getAttribute('collision_effect'),
+                        sound: nonSolid.getAttribute('collision_sound'),
+                        item: null,
+                        lockColor: null,
+                        sourceActor: nonSolid
+                    }, this, true);
+                    const grabDesc = nonSolid.getCollisionDescription?.(this);
+                    if (grabDesc) this.engine.inputManager?.showMessage(grabDesc);
+                    this.flash?.();
+                    // If the slime hit killed the player, stop here.
+                    if (this.isDead) return { moved: false, actionTaken: true };
+                    // Engulfing creatures grab the now co-located player (e.g. 'stuck').
+                    // Applied here, not via collision_effect, so adjacent hits don't grab.
+                    const grabState = nonSolid.data?.grab_state;
+                    if (grabState && this.engine.globalStates?.[grabState]) {
+                        this.applyState(grabState, this.engine.globalStates[grabState]);
+                    }
+                }
+            }
         }
 
         // Check for floor tile - if no floor, actor falls (flying actors hover above, platforms prevent falling)

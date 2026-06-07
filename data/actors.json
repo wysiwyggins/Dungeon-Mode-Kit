@@ -56,6 +56,34 @@
       "health": 30
     }
   },
+  "pink_jelly": {
+    "name": "Pink Jelly",
+    "description": "A quivering, gelatinous blob.",
+    "tileIndexBase": "DROPLET",
+    "tileIndexTop": "BLANK",
+    "tint": "#ff00af",
+    "personality": "aggressive_melee",
+    "collision_effect": {
+      "health": -2
+    },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] slimes you!",
+    "split_sound": "step_mud",
+    "grab_state": "stuck",
+    "attributes": {
+      "hostile": true,
+      "sentient": true,
+      "deep": true,
+      "accuracy": 50,
+      "splits": true,
+      "split_min_health": 4,
+      "inventory": 1,
+      "display_inventory": true
+    },
+    "stats": {
+      "health": 40
+    }
+  },
   "ghast": {
     "name": "Ghast",
     "description": "A phantasm casts a baleful, cold light on its surroundings.",
@@ -313,8 +341,11 @@
   },
   "minotaur": {
     "name": "Asterion",
+    "description": "An immense man with the head of a bull.",
     "tileIndexBase": "STRONG_TORSO",
     "tileIndexTop": "CABESA_DE_VACA",
+    "flipBaseH": true,
+    "tint": "#ffd9a8",
     "personality": "stationed_melee",
     "collision_effect": {
       "health": "-{strength}"
@@ -322,14 +353,15 @@
     "collision_sound": "hit",
     "attributes": {
       "hostile": true,
-      "proper_named": true,
       "sentient": true,
+      "sighted": true,
       "follows_thread": true,
-      "inventory": 1,
-      "remains": "skull",
-      "strength": 8,
+      "proper_named": true,
       "accuracy": 80,
-      "defense": 8
+      "defense": 8,
+      "strength": 8,
+      "inventory": 1,
+      "remains": "skull"
     },
     "stats": {
       "health": 30

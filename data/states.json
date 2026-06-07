@@ -158,5 +158,15 @@
     "effect_description": "You sense every living mind",
     "on_apply_message": "Your mind expands — you sense every living creature!",
     "on_remove_message": "The telepathic awareness fades."
+  },
+
+  "stuck": {
+    "name": "Stuck",
+    "duration": -1,
+    "stuck": true,
+    "escape_chance": 0.33,
+    "effect_description": "You're held fast",
+    "on_apply_message": "[actor_name] is stuck fast!",
+    "on_remove_message": "[actor_name] breaks free!"
   }
 }

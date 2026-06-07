@@ -448,6 +448,17 @@
                  "width":40,
                  "x":560,
                  "y":480
+                }, 
+                {
+                 "height":30,
+                 "id":102,
+                 "name":"",
+                 "rotation":0,
+                 "type":"pink_jelly",
+                 "visible":true,
+                 "width":40,
+                 "x":720,
+                 "y":720
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -562,7 +573,7 @@
          "y":0
         }],
  "nextlayerid":9,
- "nextobjectid":101,
+ "nextobjectid":103,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",

@@ -54,7 +54,6 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 - [ ] Splitting creatures — on death, spawn smaller versions (slimes, oozes) [B]
 - [ ] Invisible creatures — only visible via telepathy or adjacency (visible: false exists, but needs telepathy build-out) [B]
 - [ ] Creature mutations — random bonus traits applied at spawn (agile, poisonous, fire-immune) [B]
-- [ ] Totems/turrets — immobile actors like the Dart Turret that project area effects (healing, buffing, debuffing) [B]
 
 ## Ally System
 
