@@ -2,18 +2,24 @@
 
 Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy-inspired.
 
+## Bugs
+
+- why are there both flammable and fire_immune actor attributes, pick one
+
 ---
 
-## Game win
+## Feature ideas
+
+### Game win
 
 - a prototype can have win conditions, similar to levels. when the condition is met, we would fill the canvas with white full block, and write over that in letter tiles all the tracked statistics for the prototype (kills, gold, etc) and run the same color cycle effect on the canvas as the aqua vita potion.
 - the basic win conditions would be getting an object on the lowest floor to a locked exit on the top floor or killing a monster on the lowest floor. Another win condition would be being the only remaining controllable actor in a pvp game
 
-## PVP
+### PVP
 
 - A prototype should allow for mutliple player controlled actors and become a turn based mutliplayer game as a reuslt. Test this with a Chaos style vs strategy prototype
 
-## Dialogue & Narrative [b]
+### Dialogue & Narrative [b]
 
 - A dialogue/options window
     This would be a new kind of interface window, like an alert, with an optional list of options, that would be used for a new conversation interaction that could be accessed by bumping into some non hostile actors. This would be a large new feature requiring planning. There could be a simple version, a switch statement that looks for a prototype variable to pick a message, or more complex- could use an existing library like ink (actor personalities could include a link to a corresponding ink file that is accessed when the personality state machine decides its a turn in which to talk). We should strive for simplicity.
@@ -33,7 +39,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 - [ ] Global counters — score, collectible counts, tracked in prototype state
 - [ ] Time limits — turn countdown per floor or per prototype [Z]
 
-## Scripted Behaviors [Z][b]
+### Scripted Behaviors [Z][b]
 
 - Scripted npc actor actions- a script of turn-by-turn actions that gets executed by an actor and then it returns to other behaviors, expand existing behavior editor page
 - [ ] Action sequences — personalities execute a fixed series of actions (move, wait, speak, spawn)
@@ -42,7 +48,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 - [ ] Triggered behaviors — personality switches when a variable or event condition is met
 - [ ] Conditional behavior list — behaviors that only execute when a variable/state check passes
 
-## Event System [Z]
+### Event System [Z]
 
 - [ ] Event broadcasting — actors emit named events (e.g. "lever_pulled", "boss_killed") this could suppliment or replace win_conditions and machine_id
 - [ ] Event listeners — actors respond to events with attribute changes, spawns, or removal
@@ -50,7 +56,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 - [ ] Chain reactions — events trigger other events (button → trap → door → spawn)
 - [ ] Actor messaging — actors send commands to specific other actors by machine_id [Z]
 
-## Actors & Creatures
+### Actors & Creatures
 
 - [ ] Auto-explore — pathfind through safe explored areas, stop on encounter [B]
 - [ ] Searching action to discover traps and eventually hidden doors
@@ -61,7 +67,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 - [ ] Creature mutations — random bonus traits applied at spawn (agile, poisonous, fire-immune) [B]
 - [ ] Totems/turrets — immobile actors like the Dart Turret that project area effects (healing, buffing, debuffing) [B]
 
-## Ally System
+### Ally System
 
 - [ ] Ally recruitment — wand of domination or freeing imprisoned creatures [B]
 - [ ] Ally commands — follow, wait, attack target, guard area
@@ -69,14 +75,14 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 - [ ] Ally trait learning — allies absorb abilities from defeated enemies [B]
 - [ ] Faction system — actors with faction tags, hostility determined by faction relationships
 
-## Combat
+### Combat
 
 - [x] Backstab — attacking unaware/sleeping enemies for bonus damage [B] (3x vs. sleeping/stunned/paralyzed or unalerted AI; engine.js `BACKSTAB_MULTIPLIER`)
 - [ ] Weapon runic enchantments — special procs beyond the existing weapon_proc system (vampiric, slowing, quietus, paralysis) [B]
 - [ ] Armor runic enchantments — defensive procs (reflection, reprisal, immunity, absorption) [B]
 - [ ] Grappling — creature seizes target, preventing movement until broken free [B]
 
-## Items
+### Items
 
 - [ ] Charms — new item category: single charge, periodic recharge, area/self effects [B]
 - [ ] Item polarity — items classified as positive/negative, revealed before full ID [B]
@@ -85,7 +91,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 - [ ] Wand of plenty — clone a creature [B]
 - [ ] Containers — chests, bags that hold multiple items
 
-## Terrain & Environment
+### Terrain & Environment
 
 - [ ] Tall fungus — blocks line of sight, can be trampled flat, flammable [B]
 - [ ] Conveyor belts — tiles that push actors/items in a direction each turn [Z]
@@ -94,24 +100,24 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 - [ ] Brimstone — hot ground near lava, damages non-fire-immune actors [B]
 - [ ] Steam vents - periodic scalding clouds
 
-## Dungeon Generation
+### Dungeon Generation
 
 - [ ] Biome/theme system — per-floor visual and mechanical themes (crypt, sewer, infernal already exists)
 - [ ] Secret doors/rooms — would require searching action, could also use pushable walls
 - [ ] Outdoor generation — open areas with scattered terrain features
 
-## Lighting & Vision
+### Lighting & Vision
 
 - [ ] Stealth range — detection radius affected by light level, armor, rings [B]
 - [ ] Light-sensitive creatures — enemies that avoid lit areas or are weakened by light
 
-## Map & World Structure
+### Map & World Structure
 
 - [ ] use white box drawing tiles to draw a perimeter around the map, giving a visual clue for which parts of the viewport can be crossed over to a new screen. Perimeter should block movement.
 - [ ] Persistent floor state — items dropped on a floor remain when you return (partially exists)
 - [ ] Hub areas — safe zones between dungeon levels for shops, NPCs, storage (runes of protection could use the existing evil eye tile)
 
-## Progression
+### Progression
 
 - [ ] Achievements — tracked accomplishments across runs
 - [ ] Compendium of discoveries — a list of all the things discovered in a prototype across play sessions
@@ -119,7 +125,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 - [ ] Recording/replay — deterministic action log for replaying completed runs [B]
 
-## Sound & Music
+### Sound & Music
 
 - Add more tones to sound sprite with specified notes for use in simple music tracker for levels. Bitsy is so good at this
 - [ ] Background music — looping tracks per prototype or per floor
@@ -127,7 +133,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 - [ ] Adaptive music — track changes based on combat/peaceful state
 - [ ] Ambient sound — environmental audio loops (dripping, hauntings, crackling torches)
 
-## Editor Tools
+### Editor Tools
 
 - A web front end level creator would create a prototype that supplements and sometimes overrides the base data. It could even have an upload or pixel art tool for adding tiles to an overriding prototype version. You'd be able to experiment with combining tiles to make actors. A web map editor would replicate some tiled features but would also let you paint entities with color tints, currently tiled can only draw shapes with objects and attributes for entities which you can't see the tile or tint of.
 - future- the kit is hosted online in a way that users could create prototypes with web forms and test them, like bitsy.
@@ -138,9 +144,3 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 - [ ] Event wiring editor — visually connect actors, events, and responses
 - [ ] State editor — create/edit states.json entries with duration, effects, immunities
 - [ ] Sound composer — simple tone sequencer for creating sound effects and music
-
----
-
-## Bugs found during doc audit (2026-05-23)
-
-- Broken sound references: `trap1` (interface.js:2504) and `match` (behaviors.js:671) call playSound but have no audio sprite entry. They fail silently. Need source audio files added to the sprite.

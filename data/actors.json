@@ -486,7 +486,7 @@
     "name": "rock",
     "tileIndexBase": "OPAQUE_DOTTED_LIGHT_SHADE",
     "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
-    "tint": "#c0c0c0",
+    "tint": "#a96800",
     "attributes": {
       "breakable": true,
       "lode_chance": 20,
