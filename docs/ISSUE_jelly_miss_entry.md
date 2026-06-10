@@ -1,8 +1,50 @@
-# Open Issue: missing a non-solid jelly doesn't move the player into its tile
+# Issue (RESOLVED): missing a "non-solid" jelly didn't move the player into its tile
 
-**Status:** Unresolved / paused. Splitting + `stuck` state work; the **miss-into-tile** behavior does not.
-**Last touched:** 2026-06-07
+**Status:** ✅ Resolved 2026-06-09. Root cause: the jelly was **solid at runtime** — see Resolution.
+**Last touched:** 2026-06-09
 **Related:** `docs/IDEAS.md` line ~54 (Splitting creatures); the `stuck` state and `pink_jelly`/splitting features (CHANGELOG 1.10b).
+
+## Resolution
+
+The `pink_jelly` was **solid the whole time**, so the player's attack was handled by the *solid-actor* branch of `tryMove` (which attacks and returns "stay put"), and the intended *non-solid* branch never ran.
+
+The engine's `Actor` constructor (`engine.js:3331`) sets **`solid: true` by default**, *before* applying the actor's data attributes (`engine.js:3336-3340`). The `pink_jelly` data never set `solid: false`, so the default stood and the jelly blocked movement like any normal enemy. Every static analysis assumed "non-solid in data ⇒ non-solid at runtime," which is false — non-solid actors (water, sewage, stairways…) all explicitly carry `"solid": false`; the jelly was simply missing it.
+
+**Confirmed by instrumentation:** on a player miss, `[JELLYDBG] tryMove` fired and `Miss: Player -> Pink Jelly` logged, but the non-solid-branch logs (`nonSolid=`, `result wasCombat=`) and `PRE-MOVE` **never** fired, and `moveBy result moved=false`. That proves the miss came from the *solid* branch and the non-solid branch was unreachable.
+
+**Fix:** add `"solid": false` to `pink_jelly`'s attributes in `data/actors.json`. With the jelly genuinely non-solid, `getSolidActorAt` returns null, the solid branch is skipped, and the existing (correct) non-solid miss-entry branch runs: a miss now moves the player onto the tile, applies slime damage + `stuck`. No engine code change was needed — the `tryMove`/`applyCollisionEffects` logic was correct all along.
+
+**Lesson:** when reasoning about an actor attribute at runtime, account for engine-applied **defaults** (`solid`, `visible` default true), not just the data file. (This is the same default-true trap fixed in the actor editor — see CHANGELOG.)
+
+## Order of operations: an actor attempting to move into a tile
+
+This is the sequence inside `Actor.tryMove(newX, newY)` (`engine.js:~6832`), the single entry point for movement and bump-attacks (`moveBy` → `tryMove`). Steps run top to bottom; the **first** one that returns ends the turn's move attempt. `solid` here means the actor's runtime `solid` attribute (defaults to **true** unless the data sets `solid: false`).
+
+1. **Hide walk-path highlight** (cosmetic).
+2. **Bounds check** — target off-map → return `{moved:false, actionTaken:false}` (no turn).
+3. **Stuck check** — if the mover `hasStateProperty('stuck')`, roll `escape_chance`: success → `removeState` and continue; failure → return `{moved:false, actionTaken:true}` (wastes the turn).
+4. **Diagonal-corner block** — Brogue-style: can't cut diagonally past a wall/solid corner → return no-move.
+5. **Solid actor at target?** `getSolidActorAt(newX,newY)` (returns only actors with `solid`). **If a solid actor is there**, enter the *solid-actor branch* and do the first that applies:
+   a. Same scutigera chain member → ignore (no-move).
+   b. **Pushable** + pusher has strength + valid push destination → push it, mover steps in → return `{moved:true}`.
+   c. **Weapon attack style** (sweep/penetrate) handles it → return its result.
+   d. **`applyCollisionEffects(target)`** — the bump-attack: rolls hit/miss, applies damage/effects. If it makes the target passable (e.g. killed, or a key unlocked a door) and not just-killed → **recurse** `tryMove` to move onto the freed tile.
+   e. **Pausable** (clockwork) → toggle paused → return.
+   f. **Switchable** → toggle → return.
+   g. **Openable & closed** → spiked? jammed; locked? rejected (`plunk3`); else open it → return.
+   h. **`collision_description`** (and no `collision_effect`) → show flavor text → return.
+   i. Otherwise → "blocks your way" → return `{moved:false, actionTaken: attackAttempted}`.
+   **The solid branch never falls through to movement** — bumping a solid actor is an action in itself.
+6. **Non-solid combat actor at target?** (only reached when **no solid actor** is at the tile.) For a player moving into a non-solid actor that has a `collision_effect` and `stats.health` (e.g. the pink jelly): `applyCollisionEffects(target)`.
+   - **Hit** (`hitLanded`) → return `{moved:false, actionTaken:true}` (combat is the action; player stays put).
+   - **Miss** → apply the creature's `collision_effect` (slime) + `grab_state` (`stuck`) to the player, then **fall through** to movement so the player enters the tile.
+   - **Killed by the hit** → fall through (tile is now free).
+7. **Floor/void check** — no floor/platform under target and not flying → step in and `fall()` to the next level → return `{moved:true}`.
+8. **Lunge attack style** (for reach weapons into empty tiles) → may handle and return.
+9. **Commit the move** — record last position, liquid-track tint, set facing, **`this.x=newX; this.y=newY`**, update sprite.
+10. **Post-move hooks** — viewport snap, passive item effects, auto-close doors behind, item pickup, walk descriptions, stairway/gateway transitions, lighting update, **submersion** (`updateSubmersionState` — relevant for `deep` actors), cloud/mist effects, pressure-plate/switch triggers.
+
+**Key takeaway (the bug):** step 5 vs step 6 is gated entirely on the target's **runtime `solid`** state. A creature you intend to be "walk-through-able" must explicitly set `"solid": false` in data, or the constructor default (`solid:true`) routes it through the solid branch (step 5) and it can never reach the non-solid path (step 6).
 
 ## Intended behavior
 
@@ -15,7 +57,7 @@ The `pink_jelly` is **non-solid**. When the player presses into the jelly's tile
 
 Attacking the jelly and **missing** does nothing visible: the player stays put, takes no slime damage, and does not become `stuck`. Hits behave correctly. Observed console:
 
-```
+```text
 Hit roll: 57 vs 50% (50 * 0.987^0) = MISS   (engine.js:6236)
 Miss: Player -> Pink Jelly                  (engine.js:6603, _showMissMessage)
 Hit roll: 79 vs 50% = MISS

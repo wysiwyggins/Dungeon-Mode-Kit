@@ -3973,7 +3973,10 @@ class Actor extends Entity {
         health.current = half;
         health.max = half;
 
-        const child = this.engine.entityManager.spawnActor(this.type, pos.x, pos.y);
+        // Spawn the child: a different type if `split_into` is set (e.g. a large jelly breaks
+        // off smaller jellies), otherwise the same type (recursively halving).
+        const childType = this.data?.split_into || this.type;
+        const child = this.engine.entityManager.spawnActor(childType, pos.x, pos.y);
         if (!child) return false;
         if (child.stats?.health) {
             child.stats.health.max = half;
@@ -6833,9 +6836,6 @@ class Actor extends Entity {
         // Hide walk path highlight when player moves
         this.engine.renderer?.hideWalkPath();
 
-        // [JELLYDBG] remove after diagnosis
-        if (this.isPlayerControlled()) console.log('[JELLYDBG] tryMove ->', newX, newY, 'from', this.x, this.y, 'stuck?', this.hasStateProperty('stuck'));
-
         // Check bounds
         if (newX < 0 || newX >= this.engine.mapManager.width ||
             newY < 0 || newY >= this.engine.mapManager.height) {
@@ -7031,18 +7031,9 @@ class Actor extends Entity {
         // creature's collision_effect (slime damage) and its grab_state (e.g. 'stuck'), then move on.
         if (this.isPlayerControlled()) {
             const nonSolid = this.engine.entityManager.getOtherActorAt(newX, newY, this);
-            // [JELLYDBG]
-            {
-                const solidHere = this.engine.entityManager.getSolidActorAt(newX, newY);
-                console.log('[JELLYDBG] nonSolid=', nonSolid?.type, 'solid?', nonSolid?.hasAttribute?.('solid'),
-                    'hasCE?', !!nonSolid?.getAttribute?.('collision_effect'), 'health?', nonSolid?.stats?.health?.current,
-                    'solidActorHere=', solidHere?.type);
-            }
             if (nonSolid && !nonSolid.isDead && !nonSolid.hasAttribute('solid') &&
                 nonSolid.getAttribute('collision_effect') && nonSolid.stats?.health !== undefined) {
                 const result = this.applyCollisionEffects(nonSolid);
-                // [JELLYDBG]
-                console.log('[JELLYDBG] result wasCombat=', result.wasCombat, 'hitLanded=', result.hitLanded, 'targetKilled=', result.targetKilled);
                 if (result.wasCombat && !result.targetKilled) {
                     if (result.hitLanded) {
                         // Hit landed — combat is the action; player stays put.
@@ -7068,6 +7059,8 @@ class Actor extends Entity {
                     const grabState = nonSolid.data?.grab_state;
                     if (grabState && this.engine.globalStates?.[grabState]) {
                         this.applyState(grabState, this.engine.globalStates[grabState]);
+                        const grabSound = nonSolid.getAttribute('grab_sound') || nonSolid.data?.grab_sound;
+                        if (grabSound) this.engine.playSound?.(grabSound);
                     }
                 }
             }
@@ -7113,12 +7106,8 @@ class Actor extends Entity {
         const moveDx = newX - this.x;
         if (moveDx > 0) this.setFacing('right');
         else if (moveDx < 0) this.setFacing('left');
-        // [JELLYDBG]
-        if (this.isPlayerControlled()) console.log('[JELLYDBG] PRE-MOVE at', this.x, this.y, '-> set', newX, newY);
         this.x = newX;
         this.y = newY;
-        // [JELLYDBG]
-        if (this.isPlayerControlled()) console.log('[JELLYDBG] POST-MOVE at', this.x, this.y);
         this.updateSpritePosition();
 
         // Leave liquid tracks on the new tile

@@ -5,6 +5,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 ## Bugs
 
 - why are there both flammable and fire_immune actor attributes, pick one
+- need an attribute to keep non solid moving actors from clustering on one tile
 
 ---
 

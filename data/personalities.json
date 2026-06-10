@@ -50,6 +50,18 @@
     ],
     "alert_allies": true
   },
+
+  "jelly": {
+    "name": "jelly",
+    "hostile": true,
+    "preferred_distance": 1,
+    "behaviors": [
+      "maintain_distance",
+      "attack_adjacent",
+      "pursue_target",
+      "random_walk"
+    ]
+  },
   
   "passive_wanderer": {
     "name": "Passive Wanderer",
