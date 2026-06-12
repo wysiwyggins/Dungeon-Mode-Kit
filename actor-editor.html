@@ -207,6 +207,22 @@
                     <label>Death Sound</label>
                     <input type="text" id="f-death_sound" placeholder="ouch, shatter...">
                 </div>
+                <div class="field-row">
+                    <label>Grab State</label>
+                    <input type="text" id="f-grab_state" placeholder="stuck...">
+                </div>
+                <div class="field-row">
+                    <label>Grab Sound</label>
+                    <input type="text" id="f-grab_sound" placeholder="step_mud...">
+                </div>
+                <div class="field-row">
+                    <label>Split Into</label>
+                    <input type="text" id="f-split_into" placeholder="small_pink_jelly...">
+                </div>
+                <div class="field-row">
+                    <label>Split Sound</label>
+                    <input type="text" id="f-split_sound" placeholder="step_mud...">
+                </div>
             </div>
         </details>
 
@@ -344,13 +360,13 @@ const TILE_DATA_PATH = 'data/static-tiles.json';
 
 const PRIMARY_BOOL_ATTRS = [
     'solid','visible','hostile','sentient','sighted','opaque',
-    'flammable','fire_immune','conductive','breakable','pushable','light_source','dark_vision'
+    'flammable','conductive','breakable','pushable','light_source','dark_vision'
 ];
 const SECONDARY_BOOL_ATTRS = [
     'controlled','hazard_immune','pack','follows_thread','mass_noun','proper_named',
     'liquid','deep','spreads','ignites','openable','lockable','color_locked','gate',
     'switchable','toggled','pausable','one_shot','pedestal','display_inventory',
-    'platform','collapsible','portal','trap','hidden'
+    'platform','collapsible','portal','trap','hidden','splits'
 ];
 const BOOL_ATTRS = [...PRIMARY_BOOL_ATTRS, ...SECONDARY_BOOL_ATTRS];
 
@@ -362,7 +378,7 @@ const BOOL_HINTS = {
     sentient: 'Default: false. Takes turns / has AI.',
     sighted: 'AI can see targets (needs vision_range).',
     opaque: 'Blocks line of sight for lighting/FOV.',
-    fire_immune: 'Immune to fire damage.',
+
     conductive: 'Conducts lightning.',
     breakable: 'Can be destroyed by attacks.',
     pushable: 'Can be pushed by collisions.',
@@ -392,6 +408,7 @@ const BOOL_HINTS = {
     collapsible: 'Collapses when stepped on.',
     portal: 'Teleports actors that step on it.',
     trap: 'Trap — triggers on step (see Trap section).',
+    splits: 'Splits into a child actor on non-fatal hits (see Split Into / Split Min Health).',
 };
 
 // Runtime defaults applied by the engine's Actor constructor (engine.js:3331-3334),
@@ -417,6 +434,7 @@ const TYPED_ATTRS = [
     { key: 'chain_segment_type', type: 'text', label: 'Chain Segment Type', hint: 'Actor type for body segments. Used by chain creatures (e.g. scutigera).' },
     { key: 'entry_sound', type: 'text', label: 'Entry Sound', hint: 'Sound played when another actor steps on this tile. e.g. step_mud.' },
     { key: 'apply_state', type: 'text', label: 'Apply State', hint: 'State applied on contact (non-combat). e.g. nauseated. For combat use collision_effect.' },
+    { key: 'split_min_health', type: 'number', label: 'Split Min Health', hint: 'Minimum health needed to split. Actor stops splitting once below this threshold.' },
     { key: 'paint_tile', type: 'text', label: 'Paint Tile', hint: 'Tile name on the Tiled wildcards layer that spawns this actor. Must be unique per actor.' },
 ];
 
@@ -1376,6 +1394,10 @@ function clearForm() {
     document.getElementById('f-collision_sound').value = '';
     document.getElementById('f-collision_description').value = '';
     document.getElementById('f-death_sound').value = '';
+    document.getElementById('f-grab_state').value = '';
+    document.getElementById('f-grab_sound').value = '';
+    document.getElementById('f-split_into').value = '';
+    document.getElementById('f-split_sound').value = '';
     document.getElementById('f-personality').value = '';
     document.getElementById('f-vision_range').value = '';
     document.getElementById('f-switch_message').value = '';
@@ -1495,6 +1517,10 @@ function populateForm(key, data) {
     document.getElementById('f-collision_sound').value = data.collision_sound || '';
     document.getElementById('f-collision_description').value = data.collision_description || '';
     document.getElementById('f-death_sound').value = data.death_sound || '';
+    document.getElementById('f-grab_state').value = data.grab_state || '';
+    document.getElementById('f-grab_sound').value = data.grab_sound || '';
+    document.getElementById('f-split_into').value = data.split_into || '';
+    document.getElementById('f-split_sound').value = data.split_sound || '';
 
     // AI
     document.getElementById('f-personality').value = data.personality || '';
@@ -1626,6 +1652,14 @@ function readForm() {
     if (cd) obj.collision_description = cd;
     const ds = document.getElementById('f-death_sound').value.trim();
     if (ds) obj.death_sound = ds;
+    const grabState = document.getElementById('f-grab_state').value.trim();
+    if (grabState) obj.grab_state = grabState;
+    const grabSound = document.getElementById('f-grab_sound').value.trim();
+    if (grabSound) obj.grab_sound = grabSound;
+    const splitInto = document.getElementById('f-split_into').value.trim();
+    if (splitInto) obj.split_into = splitInto;
+    const splitSound = document.getElementById('f-split_sound').value.trim();
+    if (splitSound) obj.split_sound = splitSound;
 
     // Attributes
     const attrs = {};

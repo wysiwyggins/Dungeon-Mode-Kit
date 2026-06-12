@@ -2,6 +2,7 @@
   "burning": {
     "name": "Burning",
     "duration": 5,
+    "tint": "#ff6600",
     "attached_actor": "fire",
     "immunity": "fireproof",
     "on_apply_message": "[actor_name] catches fire!",
@@ -12,6 +13,7 @@
   "poisoned": {
     "name": "Poisoned",
     "duration": 20,
+    "tint": "#44ff44",
     "per_turn_effect": { "health": -2 },
     "immunity": "poison_immune",
     "effect_description": "You feel ill",
@@ -22,6 +24,7 @@
   "stunned": {
     "name": "Stunned",
     "duration": 2,
+    "tint": "#ffff88",
     "skip_turn": true,
     "effect_description": "You can't think straight",
     "on_apply_message": "[actor_name] is stunned!",
@@ -31,6 +34,7 @@
   "sleeping": {
     "name": "Sleeping",
     "duration": 10,
+    "tint": "#8888ff",
     "skip_turn": true,
     "remove_on_damage": true,
     "effect_description": "You feel drowsy",
@@ -41,6 +45,7 @@
   "confused": {
     "name": "Confused",
     "duration": 100,
+    "tint": "#ff88ff",
     "random_movement": true,
     "effect_description": "Everything spins",
     "on_apply_message": "[actor_name] is confused!",
@@ -50,6 +55,7 @@
   "hasted": {
     "name": "Hasted",
     "duration": 100,
+    "tint": "#88ffff",
     "extra_turn": true,
     "effect_description": "You feel quick",
     "on_apply_message": "[actor_name] speeds up!",
@@ -59,6 +65,7 @@
   "slowed": {
     "name": "Slowed",
     "duration": 100,
+    "tint": "#aaaaaa",
     "skip_every_other_turn": true,
     "effect_description": "You feel sluggish",
     "on_apply_message": "[actor_name] slows down!",
@@ -68,6 +75,7 @@
   "regenerating": {
     "name": "Regenerating",
     "duration": 100,
+    "tint": "#00ff88",
     "per_turn_effect": { "health": 2 },
     "effect_description": "Your wounds begin to mend",
     "on_apply_message": "[actor_name] begins regenerating!",
@@ -77,6 +85,7 @@
   "paralyzed": {
     "name": "Paralyzed",
     "duration": 12,
+    "tint": "#ccaaff",
     "skip_turn": true,
     "immunity": "gas_immune",
     "effect_description": "You can't move",
@@ -87,6 +96,7 @@
   "blinded": {
     "name": "Blinded",
     "duration": 100,
+    "tint": "#222222",
     "on_apply_effect": { "visionRange": -3 },
     "effect_description": "Darkness closes in around you",
     "on_apply_message": "Darkness closes in around [actor_name]!",
@@ -96,6 +106,7 @@
   "flying": {
     "name": "Flying",
     "duration": 100,
+    "tint": "#ddeeff",
     "flying": true,
     "effect_description": "You hover above the ground",
     "on_apply_message": "[actor_name] rises into the air!",
@@ -105,6 +116,7 @@
   "hallucinating": {
     "name": "Hallucinating",
     "duration": 150,
+    "tint": "#ff44ff",
     "hallucinating": true,
     "effect_description": "Nothing looks right",
     "on_apply_message": "The world begins to shift and melt around [actor_name]!",
@@ -114,6 +126,7 @@
   "nauseated": {
     "name": "Nauseated",
     "duration": 15,
+    "tint": "#99cc44",
     "skip_turn_chance": 0.25,
     "immunity": "gas_immune",
     "effect_description": "Your stomach churns",
@@ -144,6 +157,7 @@
   "fireproof_temp": {
     "name": "Fire Immune",
     "duration": 100,
+    "tint": "#ffcc44",
     "grants_immunity": "fireproof",
     "effect_description": "Flames cannot touch you",
     "on_apply_message": "[actor_name] is wreathed in a protective shimmer!",
@@ -153,6 +167,7 @@
   "telepathic": {
     "name": "Telepathic",
     "duration": 150,
+    "tint": "#44ccff",
     "telepathic": true,
     "player_only": true,
     "effect_description": "You sense every living mind",
@@ -163,6 +178,7 @@
   "stuck": {
     "name": "Stuck",
     "duration": -1,
+    "tint": "#886644",
     "stuck": true,
     "escape_chance": 0.33,
     "effect_description": "You're held fast",

@@ -980,16 +980,17 @@ class DungeonEngine {
 
         // Restore entity visibility/tinting to defaults
         for (const actor of this.entityManager.actors) {
+            const effectiveTint = this.renderer.getEffectiveTint(actor);
             if (actor.spriteBase) {
-                actor.spriteBase.tint = actor.tint ?? 0xFFFFFF;
+                actor.spriteBase.tint = effectiveTint ?? 0xFFFFFF;
                 actor.spriteBase.visible = true;
             }
             if (actor.spriteTop) {
-                actor.spriteTop.tint = actor.tint ?? 0xFFFFFF;
+                actor.spriteTop.tint = effectiveTint ?? 0xFFFFFF;
                 actor.spriteTop.visible = true;
             }
             if (actor.spriteSide) {
-                actor.spriteSide.tint = actor.tint ?? 0xFFFFFF;
+                actor.spriteSide.tint = effectiveTint ?? 0xFFFFFF;
                 actor.spriteSide.visible = true;
             }
         }
@@ -4553,6 +4554,24 @@ class Actor extends Entity {
      */
     getStateDuration(stateName) {
         return this.states[stateName]?.duration ?? null;
+    }
+
+    getStateTint() {
+        const tints = [];
+        for (const state of Object.values(this.states)) {
+            if (state.data?.tint) {
+                tints.push(parseTint(state.data.tint));
+            }
+        }
+        if (tints.length === 0) return null;
+        let r = 0, g = 0, b = 0;
+        for (const t of tints) {
+            r += (t >> 16) & 0xFF;
+            g += (t >> 8) & 0xFF;
+            b += t & 0xFF;
+        }
+        const n = tints.length;
+        return (Math.round(r / n) << 16) | (Math.round(g / n) << 8) | Math.round(b / n);
     }
 
     /**
@@ -9214,7 +9233,7 @@ class EntityManager {
         for (const other of this.getActorsAt(hazard.x, hazard.y)) {
             if (other === hazard) continue;
 
-            if (other.hasAttribute('fire_immune') ||
+            if (!other.hasAttribute('flammable') ||
                 other.hasAttribute('hazard_immune')) continue;
 
             // Skip flying actors (hovering above ground hazards)
@@ -10842,11 +10861,12 @@ class RenderSystem {
             // Light sources keep their own tint
             if (actor.hasAttribute('light_source')) continue;
 
+            const effectiveTint = this.getEffectiveTint(actor);
             if (actor.spriteBase) {
-                actor.spriteBase.tint = this.blendTints(actor.tint, vis.baseTint);
+                actor.spriteBase.tint = this.blendTints(effectiveTint, vis.baseTint);
             }
             if (actor.spriteTop) {
-                actor.spriteTop.tint = this.blendTints(actor.tint, vis.topTint);
+                actor.spriteTop.tint = this.blendTints(effectiveTint, vis.topTint);
             }
             if (actor.spriteSide) {
                 const sideOffset = actor.getEffectiveSideOffset();
@@ -10854,7 +10874,7 @@ class RenderSystem {
                     actor.x + sideOffset.dx, actor.y + sideOffset.dy, fogOfWar, isStatic
                 );
                 if (sideVis.showBase) {
-                    actor.spriteSide.tint = this.blendTints(actor.tint, sideVis.baseTint);
+                    actor.spriteSide.tint = this.blendTints(effectiveTint, sideVis.baseTint);
                 }
             }
 
@@ -10994,6 +11014,12 @@ class RenderSystem {
         const b = Math.floor((bb * lb) / 255);
 
         return (r << 16) | (g << 8) | b;
+    }
+
+    getEffectiveTint(actor) {
+        const stateTint = actor.getStateTint();
+        if (!stateTint) return actor.tint;
+        return this.blendTints(actor.tint, stateTint);
     }
 
     setAnimationPlaying(sprite, shouldPlay) {

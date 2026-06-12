@@ -73,7 +73,7 @@
     "grab_state": "stuck",
     "grab_sound": "step_mud",
     "attributes": {
-      "solid": false,
+      "solid": true,
       "hostile": true,
       "sentient": true,
       "accuracy": 50,
@@ -872,7 +872,6 @@
       "solid": false,
       "flammable": false,
       "damage_type": "fire",
-      "fire_immune": true,
       "spreads": false,
       "light_source": true,
       "paint_tile": "DOUBLE_EXCLAMATION_MARK",
@@ -893,7 +892,6 @@
       "flammable": false,
       "ignites": true,
       "damage_type": "fire",
-      "fire_immune": true,
       "light_source": true,
       "paint_tile": "BLACK_DIAMOND_SUITE",
       "mass_noun": true
@@ -912,7 +910,7 @@
     "animation_frames": "fire",
     "personality": "fire",
     "attributes": {
-      "fire_immune": true,
+      "flammable": false,
       "light_source": true,
       "mass_noun": true,
       "ignites": true,
@@ -1293,7 +1291,6 @@
     "attributes": {
       "hostile": true,
       "flammable": false,
-      "fire_immune": true,
       "sentient": true,
       "light_source": true,
       "accuracy": 70,
@@ -1552,9 +1549,9 @@
     "death_sound": "ouch",
     "attributes": {
       "hostile": true,
+      "flammable": false,
       "sentient": true,
       "sighted": true,
-      "fire_immune": true,
       "light_source": true,
       "accuracy": 60,
       "defense": 6,

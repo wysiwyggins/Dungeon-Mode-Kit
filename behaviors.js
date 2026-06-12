@@ -1481,7 +1481,7 @@ const BehaviorLibrary = {
 
         // Damage any actor standing in the fire (except fire-immune or flying actors)
         const victim = entityManager.getActorsAt(actor.x, actor.y)
-            .find(a => a !== actor && !a.hasAttribute('fire_immune') && !a.hasStateProperty('flying'));
+            .find(a => a !== actor && a.hasAttribute('flammable') && !a.hasStateProperty('flying'));
 
         if (victim && damagePerTurn > 0 && victim.stats?.health) {
             const oldHealth = victim.stats.health.current;
