@@ -2,7 +2,7 @@
   "burning": {
     "name": "Burning",
     "duration": 5,
-    "tint": "#ff6600",
+    "tint": "#ff3300",
     "attached_actor": "fire",
     "immunity": "fireproof",
     "on_apply_message": "[actor_name] catches fire!",
@@ -24,7 +24,7 @@
   "stunned": {
     "name": "Stunned",
     "duration": 2,
-    "tint": "#ffff88",
+    "tint": "#ff0088",
     "skip_turn": true,
     "effect_description": "You can't think straight",
     "on_apply_message": "[actor_name] is stunned!",
@@ -34,7 +34,7 @@
   "sleeping": {
     "name": "Sleeping",
     "duration": 10,
-    "tint": "#8888ff",
+    "tint": "#3388ff",
     "skip_turn": true,
     "remove_on_damage": true,
     "effect_description": "You feel drowsy",
@@ -45,7 +45,7 @@
   "confused": {
     "name": "Confused",
     "duration": 100,
-    "tint": "#ff88ff",
+    "tint": "#3388ff",
     "random_movement": true,
     "effect_description": "Everything spins",
     "on_apply_message": "[actor_name] is confused!",
@@ -65,7 +65,7 @@
   "slowed": {
     "name": "Slowed",
     "duration": 100,
-    "tint": "#aaaaaa",
+    "tint": "#222244",
     "skip_every_other_turn": true,
     "effect_description": "You feel sluggish",
     "on_apply_message": "[actor_name] slows down!",
@@ -106,7 +106,7 @@
   "flying": {
     "name": "Flying",
     "duration": 100,
-    "tint": "#ddeeff",
+    "tint": "#33eeff",
     "flying": true,
     "effect_description": "You hover above the ground",
     "on_apply_message": "[actor_name] rises into the air!",

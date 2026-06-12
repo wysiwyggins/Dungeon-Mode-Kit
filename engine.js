@@ -1718,6 +1718,10 @@ class DungeonEngine {
         // before the target actor has spawned) fire the win screen.
         if (!this.gameplayStarted) return;
         if (this.currentPrototype?.config?.next_level) return;
+        // An escape-style win is triggered deliberately by using the exit (see the
+        // locked-stairway bump path), not the instant the condition becomes true —
+        // otherwise picking up the amulet would win before the player climbs back out.
+        if (this.currentPrototype?.config?.win_state?.via === 'escape') return;
         if (!this.checkPrototypeWinConditions()) return;
         this.triggerGameWin();
     }
@@ -1745,6 +1749,22 @@ class DungeonEngine {
         lines.push(cfg?.win_state?.message || `You have completed ${displayName}`);
         // FUTURE: lines.push(`Kills: ${...}`); lines.push(`Gold: ${...}`);
         return lines;
+    }
+
+    /**
+     * True if the given floor is the "escape exit" floor of an escape-style win_state
+     * (e.g. the dungeon: carry the amulet back up to floor 1 and out). The exit floor
+     * defaults to 1. Returns false for any prototype without win_state.via === 'escape'.
+     */
+    isEscapeExitFloor(floor) {
+        const ws = this.currentPrototype?.config?.win_state;
+        return ws?.via === 'escape' && floor === (ws.exit_floor ?? 1);
+    }
+
+    /** True if `actor` is the up-stairway escape exit on the current escape-exit floor. */
+    isEscapeExitActor(actor) {
+        return this.isEscapeExitFloor(this.currentFloor) &&
+               actor?.getAttribute?.('stairway') === 'up';
     }
 
     /**
@@ -1847,6 +1867,19 @@ class DungeonEngine {
      * the sprite, which a deserialized open stairway would otherwise render as locked.
      */
     reconcileUpStairwayLock() {
+        const up = this.entityManager?.findActorByAttribute('stairway', 'up');
+        if (!up) return;
+
+        // The escape exit is gated by the prototype win_state, not the floor seal tracker.
+        // On a restored floor its attributes survive serialization but its sprite is rebuilt
+        // from the plain up_stairway def — so re-apply the sealed look (idempotent) and skip
+        // the seal-tracker logic entirely. Checked before the top-floor guard below because
+        // the escape exit lives on the (guarded) top floor.
+        if (up.hasAttribute('escape_exit') || this.isEscapeExitActor(up)) {
+            this.makeEscapeExit(up);
+            return;
+        }
+
         // A top floor with no previous_level has no floor below to pair with, so the
         // seal tracker isn't authoritative for its up-stairway — leave an authored
         // locked state (a dead-end seal) intact. Mirrors ensureUpStairway()'s guard.
@@ -1854,8 +1887,6 @@ class DungeonEngine {
         const isTopFloor = !hasLevels || this.currentFloor === 1;
         if (isTopFloor && !this.currentPrototype?.config?.previous_level) return;
 
-        const up = this.entityManager?.findActorByAttribute('stairway', 'up');
-        if (!up) return;
         const shouldLock = this.isFloorDownSealed(this.currentFloor - 1);
         const isLocked = !!up.getAttribute('locked');
         if (shouldLock !== isLocked) {
@@ -1869,7 +1900,8 @@ class DungeonEngine {
      */
     unlockWinConditionStairways() {
         const stairways = this.entityManager?.actors.filter(actor =>
-            actor.hasAttribute('stairway') && actor.hasAttribute('locked')
+            actor.hasAttribute('stairway') && actor.hasAttribute('locked') &&
+            !actor.hasAttribute('escape_exit')
         );
 
         if (stairways && stairways.length > 0) {
@@ -1914,7 +1946,8 @@ class DungeonEngine {
         const stairways = this.entityManager?.actors.filter(actor =>
             actor.hasAttribute('stairway') &&
             actor.hasAttribute('openable') &&
-            actor.hasAttribute('open')
+            actor.hasAttribute('open') &&
+            !actor.hasAttribute('escape_exit')
         );
 
         if (!stairways || stairways.length === 0) {
@@ -2085,17 +2118,34 @@ class DungeonEngine {
      * If the prototype has no previous_level, spawns a locked_up_stairway instead
      */
     ensureUpStairway() {
-        // Don't place an up stairway on the top floor of a prototype if there's nowhere to go
+        // Don't place an up stairway on the top floor of a prototype if there's nowhere to go.
+        // Exception: an escape-style win_state turns the top floor's up-stairway into the
+        // (locked) escape exit, so we fall through and spawn it.
         const hasLevels = !!this.currentPrototype.config.levels;
         const isTopFloor = !hasLevels || this.currentFloor === 1;
-        if (isTopFloor && !this.currentPrototype.config.previous_level) {
+        const escapeExit = this.isEscapeExitFloor(this.currentFloor);
+        console.log('[escape-debug] ensureUpStairway: currentFloor=', this.currentFloor,
+            'win_state=', JSON.stringify(this.currentPrototype?.config?.win_state),
+            'isTopFloor=', isTopFloor, 'escapeExit=', escapeExit);
+        if (isTopFloor && !this.currentPrototype.config.previous_level && !escapeExit) {
             return;
         }
 
-        // Check if an up_stairway already exists
+        // Check if an up_stairway already exists (e.g. authored in the map). If this is the
+        // escape-exit floor, convert that authored stairway into the locked escape exit in
+        // place — so designers can position the exit on the map and it's still gated by the
+        // amulet (and not walkable straight through off the map edge).
         const existingStairway = this.entityManager.findActorByAttribute('stairway', 'up');
+        console.log('[escape-debug] existing up stairway found?', !!existingStairway,
+            existingStairway ? `type=${existingStairway.type} at (${existingStairway.x},${existingStairway.y})` : '');
         if (existingStairway) {
-            console.log('Up stairway already exists at', existingStairway.x, existingStairway.y);
+            if (escapeExit) {
+                this.makeEscapeExit(existingStairway);
+                console.log('[escape-debug] Converted authored up stairway to escape exit at', existingStairway.x, existingStairway.y,
+                    'locked=', existingStairway.getAttribute('locked'), 'solid=', existingStairway.getAttribute('solid'));
+            } else {
+                console.log('Up stairway already exists at', existingStairway.x, existingStairway.y);
+            }
             return;
         }
 
@@ -2119,12 +2169,15 @@ class DungeonEngine {
         // Pick a random tile using ROT.RNG for consistency
         const tile = randomElement(availableTiles);
 
-        // This up-stairway leads up to the previous floor. Lock it iff that floor's
-        // down-way is sealed (its win conditions unmet), so a player who fell down can't
-        // walk back up to bypass the quest — the locked pair of the previous floor's
+        // The escape exit is always a locked stairway (the down-seal logic below is
+        // meaningless on the top floor — there is no floor below it). Otherwise this
+        // up-stairway leads up to the previous floor: lock it iff that floor's down-way
+        // is sealed (its win conditions unmet), so a player who fell down can't walk back
+        // up to bypass the quest — the locked pair of the previous floor's
         // locked_down_stairway.
-        const stairwayType = this.isFloorDownSealed(this.currentFloor - 1)
-            ? 'locked_up_stairway' : 'up_stairway';
+        const stairwayType = escapeExit
+            ? 'locked_up_stairway'
+            : (this.isFloorDownSealed(this.currentFloor - 1) ? 'locked_up_stairway' : 'up_stairway');
 
         // Get the stairway actor data
         const stairwayData = this.currentPrototype.getActorData(stairwayType);
@@ -2135,8 +2188,48 @@ class DungeonEngine {
 
         // Spawn the stairway
         const stairway = new Actor(tile.x, tile.y, stairwayType, stairwayData, this);
+        if (escapeExit) this.makeEscapeExit(stairway);
         this.entityManager.addEntity(stairway);
         console.log(`Spawned ${stairwayType} at (${tile.x}, ${tile.y})`);
+    }
+
+    /**
+     * Turn an up-stairway actor into the locked escape exit: lock it (so the player can't
+     * walk through it, only bump it) and give it amulet-specific rejection text. Used for
+     * both authored (map-placed) and procedurally-spawned exits so they behave identically.
+     */
+    makeEscapeExit(stairway) {
+        if (!stairway) return;
+        // solid so the player bumps (and is gated/wins) rather than walking onto the tile —
+        // matches how applyStairwayLockState locks a stairway.
+        stairway.setAttribute('solid', true);
+        stairway.setAttribute('openable', true);
+        stairway.setAttribute('open', false);
+        stairway.setAttribute('locked', true);
+        stairway.setAttribute('collision_description', 'The exit is sealed. You need the Amulet of Yendor.');
+        // Mark it so the per-floor win-condition lock/unlock system leaves it alone — the
+        // escape exit is gated by the prototype win_state (the amulet), not the floor's
+        // win_conditions, so it must not unlock when the floor's conditions are met.
+        stairway.setAttribute('escape_exit', true);
+
+        // Adopt the sealed-stairs look so a plain authored up_stairway renders as the locked
+        // exit (designers can place either type and get the right sprite). Pull the resolved
+        // tiles/tint from the locked_up_stairway definition and refresh the live sprites.
+        const lockedData = this.currentPrototype.getActorData('locked_up_stairway');
+        if (lockedData) {
+            const lib = this.spriteLibrary;
+            stairway.name = lockedData.name || stairway.name;
+            if (lockedData.tint) stairway.tint = parseTint(lockedData.tint);
+            stairway.tileIndexBase = lib.resolveTile(lockedData.tileIndexBase) || stairway.tileIndexBase;
+            stairway.tileIndexTop = lib.resolveTile(lockedData.tileIndexTop) || stairway.tileIndexTop;
+            stairway.tileIndexBase_open = lib.resolveTile(lockedData.tileIndexBase_open) || stairway.tileIndexBase_open;
+            stairway.tileIndexTop_open = lib.resolveTile(lockedData.tileIndexTop_open) || stairway.tileIndexTop_open;
+            // Push the closed (sealed) textures to the on-screen sprites now.
+            this.renderer?.updateSpriteTexture(stairway.spriteBase, stairway.tileIndexBase);
+            this.renderer?.updateSpriteTexture(stairway.spriteTop, stairway.tileIndexTop);
+            if (stairway.spriteBase && stairway.tint != null) stairway.spriteBase.tint = stairway.tint;
+            if (stairway.spriteTop && stairway.tint != null) stairway.spriteTop.tint = stairway.tint;
+        }
     }
 
     /**
@@ -7101,10 +7194,24 @@ class Actor extends Entity {
                 }
                 // Check if locked - play rejection sound and block
                 if (actorAtTarget.hasAttribute('locked')) {
+                    // Escape-style win: bumping the floor-1 exit while holding the
+                    // amulet (prototype win conditions met) wins the game directly. This
+                    // is a deliberate "use the exit" ending, distinct from the auto-fire
+                    // path in maybeTriggerGameWin (which bails for via: 'escape').
+                    if (this.isPlayerControlled() &&
+                        this.engine.isEscapeExitActor(actorAtTarget) &&
+                        this.engine.checkPrototypeWinConditions()) {
+                        this.engine.triggerGameWin();
+                        return { moved: false, actionTaken: true };
+                    }
                     console.log(`${actorAtTarget.name} is locked`);
                     this.engine.playSound?.('plunk3');
                     if (this.isPlayerControlled()) {
-                        this.engine.inputManager?.showMessage(`The ${actorAtTarget.name} is locked.`);
+                        // Prefer a context-specific rejection (e.g. the escape exit's
+                        // "you need the amulet" text) over the generic locked message.
+                        const lockedMsg = actorAtTarget.getAttribute('collision_description')
+                            || `The ${actorAtTarget.name} is locked.`;
+                        this.engine.inputManager?.showMessage(lockedMsg);
                     }
                     return { moved: false, actionTaken: false };
                 }

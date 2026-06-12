@@ -3,7 +3,12 @@
   "description": "You know once you enter there is no way back without the amulet of Yendor.\nPress 'i' for info.",
   "loaded_sound": "levelout",
   "turn_speed": 50,
-  "next_level": "caverns",
+  "win_state": {
+    "via": "escape",
+    "exit_floor": 1,
+    "conditions": ["holding:amulet"],
+    "message": "You have escaped with the Amulet of Yendor"
+  },
   "mechanics": {
     "fog_of_war": true,
     "darkness": true,
@@ -529,6 +534,7 @@
         "fire_elemental": { "chance": 100, "min": 2, "max": 2 }
       },
       "random_items": {
+        "amulet": { "chance": 100 },
         "key": { "chance": 100 },
         "potion": { "chance": 60, "min": 4, "max": 6 },
         "scroll": { "chance": 40 }

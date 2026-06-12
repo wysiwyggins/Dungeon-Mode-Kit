@@ -1,4 +1,15 @@
 {
+  "amulet": {
+    "name": "Amulet of Yendor",
+    "tileIndex": "WHITE_FEMALE_SYMBOL",
+    "tint": "#ffee00",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": false,
+      "flammable": false
+    }
+  },
   "key": {
     "name": "Key",
     "tileIndex": "WHITE_KEY",
