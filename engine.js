@@ -604,6 +604,7 @@ class DungeonEngine {
         this.currentPrototype = null;
         this.prototypeStack = []; // For multi-level navigation
         this.gameOver = false;
+        this.gameWon = false;            // terminal game-win latch; prevents the win screen from firing twice
 
         // Multi-floor state
         this.currentFloor = 1;           // 1-indexed
@@ -1689,6 +1690,61 @@ class DungeonEngine {
         }
 
         return true;
+    }
+
+    /**
+     * Check prototype-level (game-win) conditions, distinct from the per-floor
+     * win_conditions that govern stairway/gateway unlock. Reuses checkWinCondition().
+     * Returns false when no win_state is declared, so prototypes without it never win
+     * the game — fully backward compatible.
+     */
+    checkPrototypeWinConditions() {
+        const conditions = this.currentPrototype?.config?.win_state?.conditions;
+        if (!Array.isArray(conditions) || conditions.length === 0) return false;
+        const player = this.entityManager?.player;
+        if (!player) return false;
+        return conditions.every(c => this.checkWinCondition(c, player));
+    }
+
+    /**
+     * Fire the game-win once, if the prototype's win conditions hold and there's
+     * nowhere left to go. A prototype with next_level flows onward (handled by the
+     * gateway/stairway path), so it never triggers a terminal win here.
+     */
+    maybeTriggerGameWin() {
+        if (this.gameWon) return;
+        // A win is only ever achieved through play — never let a condition that happens
+        // to be satisfied during the silent load sequence (e.g. equipping default items
+        // before the target actor has spawned) fire the win screen.
+        if (!this.gameplayStarted) return;
+        if (this.currentPrototype?.config?.next_level) return;
+        if (!this.checkPrototypeWinConditions()) return;
+        this.triggerGameWin();
+    }
+
+    /** Terminal: lock out play and render the win screen. Idempotent via gameWon. */
+    triggerGameWin() {
+        if (this.gameWon) return;
+        this.gameWon = true;
+        this.gameOver = true;
+        this.turnEngine?.lock();
+        this.inputManager?.disable();
+
+        const cfg = this.currentPrototype?.config;
+        const displayName = cfg?.name || this.currentPrototype?.name || 'the dungeon';
+        const lines = this.buildWinScreenLines(cfg, displayName);
+        this.renderer?.showWinScreen(this.viewportWidth, this.viewportHeight, lines);
+    }
+
+    /**
+     * Build the centered text lines for the win screen. Basic version is a single
+     * completion line; tracked stats (kills, gold, etc.) can be appended here later.
+     */
+    buildWinScreenLines(cfg, displayName) {
+        const lines = [];
+        lines.push(cfg?.win_state?.message || `You have completed ${displayName}`);
+        // FUTURE: lines.push(`Kills: ${...}`); lines.push(`Gold: ${...}`);
+        return lines;
     }
 
     /**
@@ -3966,6 +4022,11 @@ class Actor extends Entity {
             this.engine.unlockWinConditionStairways();
         }
 
+        // Check if this death satisfies the prototype's game-win conditions
+        if (!this.isPlayerControlled()) {
+            this.engine.maybeTriggerGameWin();
+        }
+
         // Update sidebar to reflect death
         this.engine.interfaceManager?.updateSidebar();
     }
@@ -4157,6 +4218,11 @@ class Actor extends Entity {
         // Check if this triggers win conditions (for player only)
         if (this.isPlayerControlled() && this.engine.checkWinConditions()) {
             this.engine.unlockWinConditionStairways();
+        }
+
+        // Check if equipping this satisfies the prototype's game-win conditions
+        if (this.isPlayerControlled()) {
+            this.engine.maybeTriggerGameWin();
         }
     }
 
@@ -9542,6 +9608,7 @@ class RenderSystem {
         this.darknessContainer = new PIXI.Container();
         this.uiContainer = new PIXI.Container();
         this.splashContainer = new PIXI.Container();
+        this.winContainer = new PIXI.Container();
 
         this.backgroundContainer.sortableChildren = true;
         this.floorContainer.sortableChildren = true;
@@ -9551,6 +9618,7 @@ class RenderSystem {
         this.darknessContainer.sortableChildren = true;
         this.uiContainer.sortableChildren = true;
         this.splashContainer.sortableChildren = true;
+        this.winContainer.sortableChildren = true;
 
         // Set explicit zIndex to ensure correct layer order
         this.backgroundContainer.zIndex = 0;
@@ -9561,6 +9629,7 @@ class RenderSystem {
         this.darknessContainer.zIndex = 5;
         this.uiContainer.zIndex = 6;
         this.splashContainer.zIndex = 7;
+        this.winContainer.zIndex = 8;
 
         app.stage.addChild(this.backgroundContainer);
         app.stage.addChild(this.floorContainer);
@@ -9570,6 +9639,7 @@ class RenderSystem {
         app.stage.addChild(this.darknessContainer);
         app.stage.addChild(this.uiContainer);
         app.stage.addChild(this.splashContainer);
+        app.stage.addChild(this.winContainer);
 
         this.darknessSprites = [];
         this.lightColorSprites = [];
@@ -9581,6 +9651,12 @@ class RenderSystem {
         this.splashActive = false;
         this.splashSprites = [];
         this.splashTextSprites = [];
+
+        // Win screen state (terminal; no dismiss)
+        this.winActive = false;
+        this.winSprites = [];
+        this.winTextSprites = [];
+        this.winEffectHandles = [];
 
         // Tile highlight for hover/aiming
         this.highlightFilter = true;
@@ -10668,7 +10744,88 @@ class RenderSystem {
         revealCircle();
     }
 
+    /**
+     * Render the terminal game-win screen: fill the visible canvas with white
+     * full-block tiles running the aqua-vita (ripple_tint) color cycle, with the
+     * completion text(s) centered over them in white letter tiles. Modeled on
+     * showSplash() but terminal — there is no dismiss. Sized by viewportWidth/Height,
+     * which cover the visible canvas in both viewport and full-map modes; the
+     * winContainer is a stage child (zIndex 8) exempt from the scroll offset.
+     */
+    showWinScreen(viewportWidth, viewportHeight, lines) {
+        const tileset = PIXI.Loader.shared.resources.tiles;
+        if (!tileset) return;
+
+        this.winActive = true;
+
+        const blockCoords = this.engine.spriteLibrary.getTileByName('WHITE_FULL_BLOCK');
+        const rect = new PIXI.Rectangle(
+            blockCoords.x * globalVars.TILE_WIDTH,
+            blockCoords.y * globalVars.TILE_HEIGHT,
+            globalVars.TILE_WIDTH,
+            globalVars.TILE_HEIGHT
+        );
+        const blockTexture = new PIXI.Texture(tileset.texture.baseTexture, rect);
+
+        this.winSprites = [];
+        this.winEffectHandles = [];
+        for (let y = 0; y < viewportHeight; y++) {
+            for (let x = 0; x < viewportWidth; x++) {
+                const sprite = new PIXI.Sprite(blockTexture);
+                sprite.anchor.set(0.5);
+                sprite.x = x * globalVars.TILE_WIDTH + globalVars.TILE_WIDTH / 2;
+                sprite.y = y * globalVars.TILE_HEIGHT + globalVars.TILE_HEIGHT / 2;
+                sprite.scale.x = Math.random() < 0.5 ? -1 : 1;
+                sprite.scale.y = Math.random() < 0.5 ? -1 : 1;
+                sprite.tint = 0xFFFFFF;
+                this.winContainer.addChild(sprite);
+                this.winSprites.push(sprite);
+                // Red/gold gradient wave in horizontal bands (phase from row only) that
+                // scroll upward; spatial_phase increasing with y makes bands move up.
+                const handle = this.effectRunner?.apply('victory_wave', sprite, {
+                    spatial_phase: y * 0.5
+                });
+                if (handle) this.winEffectHandles.push(handle);
+            }
+        }
+
+        // Centered, multi-line completion text as white letter tiles, above the fill.
+        this.winTextSprites = [];
+        const startY = Math.floor((viewportHeight - lines.length) / 2);
+        for (let li = 0; li < lines.length; li++) {
+            const text = lines[li];
+            const textX = Math.floor((viewportWidth - text.length) / 2);
+            const textY = startY + li;
+            for (let i = 0; i < text.length; i++) {
+                // Black glyphs (standard variant, black tint) read clearly over the
+                // color-cycled white field.
+                const charSprite = this.engine.interfaceManager.createCharSprite(
+                    text[i],
+                    (textX + i) * globalVars.TILE_WIDTH,
+                    textY * globalVars.TILE_HEIGHT,
+                    0x000000,
+                    false
+                );
+                if (charSprite) {
+                    charSprite.zIndex = 1;
+                    this.winContainer.addChild(charSprite);
+                    this.winTextSprites.push(charSprite);
+                }
+            }
+        }
+    }
+
     clear() {
+        // Release win-screen ripple_tint handles so the shared tint-cycle list is pruned.
+        for (const handle of this.winEffectHandles) {
+            this.effectRunner?.remove(handle);
+        }
+        this.winEffectHandles = [];
+        this.winContainer.removeChildren();
+        this.winSprites = [];
+        this.winTextSprites = [];
+        this.winActive = false;
+
         this.backgroundContainer.removeChildren();
         this.floorContainer.removeChildren();
         this.entityContainer.removeChildren();
@@ -10700,6 +10857,16 @@ class RenderSystem {
             this._tintFlickerTickerFn = null;
         }
         this._tintFlickerSprites = [];
+        if (this._hueCycleTickerFn) {
+            this.app.ticker.remove(this._hueCycleTickerFn);
+            this._hueCycleTickerFn = null;
+        }
+        this._hueCycleSprites = [];
+        if (this._gradientWaveTickerFn) {
+            this.app.ticker.remove(this._gradientWaveTickerFn);
+            this._gradientWaveTickerFn = null;
+        }
+        this._gradientWaveSprites = [];
 
         // Clean up all active effects
         this.effectRunner.removeAll();

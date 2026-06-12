@@ -25,6 +25,28 @@ function generateColorVariation(baseColor, variation = 0x101008) {
     };
 }
 
+/**
+ * Convert HSV (all components 0..1) to a packed 0xRRGGBB integer for use as a PIXI tint.
+ * Used by the hue_cycle primitive; standalone so it stays self-contained in effects.js.
+ */
+function hsvToRgbInt(h, s, v) {
+    const i = Math.floor(h * 6);
+    const f = h * 6 - i;
+    const p = v * (1 - s);
+    const q = v * (1 - f * s);
+    const t = v * (1 - (1 - f) * s);
+    let r, g, b;
+    switch (i % 6) {
+        case 0: r = v; g = t; b = p; break;
+        case 1: r = q; g = v; b = p; break;
+        case 2: r = p; g = v; b = t; break;
+        case 3: r = p; g = q; b = v; break;
+        case 4: r = t; g = p; b = v; break;
+        default: r = v; g = p; b = q; break;
+    }
+    return (Math.round(r * 255) << 16) | (Math.round(g * 255) << 8) | Math.round(b * 255);
+}
+
 // ============================================================================
 // EFFECT PRIMITIVES
 // ============================================================================
@@ -313,6 +335,141 @@ const EffectPrimitives = {
                 if (entry) {
                     const idx = ctx.renderer._tintCycleSprites.indexOf(entry);
                     if (idx >= 0) ctx.renderer._tintCycleSprites.splice(idx, 1);
+                    entry = null;
+                }
+            }
+        };
+    },
+
+    /**
+     * Continuous rainbow hue rotation. Unlike tint_cycle (which oscillates brightness/
+     * channel offset around a base and so barely moves a white sprite), this rotates a
+     * sprite's tint smoothly through the full hue wheel via HSV — a vivid, always-moving
+     * color cycle that shows clearly on a white sprite. Runtime params: baseTint (only
+     * its brightness is used as the HSV value, so 0xFFFFFF = full brightness) and
+     * spatial_phase (radians, offsets this sprite in the cycle so a field of sprites
+     * flows rather than all showing one flat color). Shares a renderer-level ticker and
+     * sprite list, mirroring tint_cycle.
+     */
+    hue_cycle(ctx, params) {
+        const {
+            speed = 0.0012,       // radians of hue advance per ms
+            saturation = 0.55,    // 0..1
+        } = params;
+
+        let entry = null;
+
+        return {
+            apply(runtimeParams) {
+                const sprite = runtimeParams?._target;
+                if (!sprite) return;
+                const baseTint = runtimeParams?.baseTint ?? 0xFFFFFF;
+                // Use the brightest channel of baseTint as the HSV value, so a white base
+                // gives full-brightness colors and a dimmer base mutes them.
+                const value = Math.max(
+                    (baseTint >> 16) & 0xFF,
+                    (baseTint >> 8) & 0xFF,
+                    baseTint & 0xFF
+                ) / 255;
+
+                entry = {
+                    sprite,
+                    speed,
+                    saturation,
+                    value,
+                    spatialPhase: runtimeParams?.spatial_phase ?? (Math.random() * Math.PI * 2),
+                };
+                if (!ctx.renderer._hueCycleSprites) ctx.renderer._hueCycleSprites = [];
+                ctx.renderer._hueCycleSprites.push(entry);
+
+                if (!ctx.renderer._hueCycleTickerFn) {
+                    ctx.renderer._hueCycleTickerFn = () => {
+                        const t = Date.now();
+                        const TWO_PI = Math.PI * 2;
+                        for (const e of ctx.renderer._hueCycleSprites) {
+                            if (e.sprite.destroyed) continue;
+                            const hue = (((t * e.speed + e.spatialPhase) % TWO_PI) + TWO_PI) % TWO_PI / TWO_PI;
+                            e.sprite.tint = hsvToRgbInt(hue, e.saturation, e.value);
+                        }
+                    };
+                    ctx.ticker.add(ctx.renderer._hueCycleTickerFn);
+                }
+            },
+            remove() {
+                if (entry) {
+                    const list = ctx.renderer._hueCycleSprites;
+                    const idx = list ? list.indexOf(entry) : -1;
+                    if (idx >= 0) list.splice(idx, 1);
+                    entry = null;
+                }
+            }
+        };
+    },
+
+    /**
+     * Animated multi-color gradient wave. Each sprite's tint cycles around a palette of
+     * colors as a ring (last color lerps back to the first) driven by time plus the
+     * sprite's spatial_phase runtime param. Feeding spatial_phase from a single axis
+     * (e.g. row) makes parallel bands; advancing time scrolls them. The phase uses
+     * (time*speed + spatialPhase), so a spatial_phase that increases downward (with screen
+     * row y) scrolls the bands UPWARD. Reusable for any banded color wave.
+     * Params: colors (array of 0xRRGGBB ints or "0x.." strings) — falls back to
+     * [color_a, color_b] for backward compatibility; speed (radians/ms).
+     */
+    gradient_wave(ctx, params) {
+        const parseColor = (c) => (typeof c === 'string' ? parseInt(c, 16) : c);
+        let palette = Array.isArray(params.colors) && params.colors.length >= 2
+            ? params.colors.map(parseColor)
+            : [parseColor(params.color_a ?? 0xFF0000), parseColor(params.color_b ?? 0xFFD000)];
+        // Pre-split into RGB stops for the ticker.
+        const stops = palette.map(c => [(c >> 16) & 0xFF, (c >> 8) & 0xFF, c & 0xFF]);
+        const speed = params.speed ?? 0.0015;
+
+        let entry = null;
+
+        return {
+            apply(runtimeParams) {
+                const sprite = runtimeParams?._target;
+                if (!sprite) return;
+
+                entry = {
+                    sprite,
+                    speed,
+                    stops,
+                    spatialPhase: runtimeParams?.spatial_phase ?? 0,
+                };
+                if (!ctx.renderer._gradientWaveSprites) ctx.renderer._gradientWaveSprites = [];
+                ctx.renderer._gradientWaveSprites.push(entry);
+
+                if (!ctx.renderer._gradientWaveTickerFn) {
+                    const TWO_PI = Math.PI * 2;
+                    ctx.renderer._gradientWaveTickerFn = () => {
+                        const t = Date.now();
+                        for (const e of ctx.renderer._gradientWaveSprites) {
+                            if (e.sprite.destroyed) continue;
+                            const n = e.stops.length;
+                            // Wrapping 0..1 position around the palette ring; + spatialPhase
+                            // (rises with row y) scrolls bands upward as t grows.
+                            const phase = (((t * e.speed + e.spatialPhase) % TWO_PI) + TWO_PI) % TWO_PI / TWO_PI;
+                            const scaled = phase * n;            // 0..n across the ring
+                            const i0 = Math.floor(scaled) % n;
+                            const i1 = (i0 + 1) % n;
+                            const f = scaled - Math.floor(scaled);
+                            const a = e.stops[i0], b = e.stops[i1];
+                            const r = Math.round(a[0] + (b[0] - a[0]) * f);
+                            const g = Math.round(a[1] + (b[1] - a[1]) * f);
+                            const bl = Math.round(a[2] + (b[2] - a[2]) * f);
+                            e.sprite.tint = (r << 16) | (g << 8) | bl;
+                        }
+                    };
+                    ctx.ticker.add(ctx.renderer._gradientWaveTickerFn);
+                }
+            },
+            remove() {
+                if (entry) {
+                    const list = ctx.renderer._gradientWaveSprites;
+                    const idx = list ? list.indexOf(entry) : -1;
+                    if (idx >= 0) list.splice(idx, 1);
                     entry = null;
                 }
             }

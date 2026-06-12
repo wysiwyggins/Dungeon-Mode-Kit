@@ -41,6 +41,12 @@
       { "primitive": "tint_cycle", "params": { "amplitude": 13, "speed": 0.002, "mod_speed": 0.000314, "phase_factor": 0.618 } }
     ]
   },
+  "victory_wave": {
+    "target": "sprite",
+    "layers": [
+      { "primitive": "gradient_wave", "params": { "colors": ["0xCC1111", "0xFFCC22", "0x2255CC"], "speed": 0.0016 } }
+    ]
+  },
   "damage_shake": {
     "target": "stage",
     "layers": [
