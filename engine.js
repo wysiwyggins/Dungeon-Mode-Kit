@@ -2124,9 +2124,6 @@ class DungeonEngine {
         const hasLevels = !!this.currentPrototype.config.levels;
         const isTopFloor = !hasLevels || this.currentFloor === 1;
         const escapeExit = this.isEscapeExitFloor(this.currentFloor);
-        console.log('[escape-debug] ensureUpStairway: currentFloor=', this.currentFloor,
-            'win_state=', JSON.stringify(this.currentPrototype?.config?.win_state),
-            'isTopFloor=', isTopFloor, 'escapeExit=', escapeExit);
         if (isTopFloor && !this.currentPrototype.config.previous_level && !escapeExit) {
             return;
         }
@@ -2136,13 +2133,10 @@ class DungeonEngine {
         // place — so designers can position the exit on the map and it's still gated by the
         // amulet (and not walkable straight through off the map edge).
         const existingStairway = this.entityManager.findActorByAttribute('stairway', 'up');
-        console.log('[escape-debug] existing up stairway found?', !!existingStairway,
-            existingStairway ? `type=${existingStairway.type} at (${existingStairway.x},${existingStairway.y})` : '');
         if (existingStairway) {
             if (escapeExit) {
                 this.makeEscapeExit(existingStairway);
-                console.log('[escape-debug] Converted authored up stairway to escape exit at', existingStairway.x, existingStairway.y,
-                    'locked=', existingStairway.getAttribute('locked'), 'solid=', existingStairway.getAttribute('solid'));
+                console.log('Converted authored up stairway to escape exit at', existingStairway.x, existingStairway.y);
             } else {
                 console.log('Up stairway already exists at', existingStairway.x, existingStairway.y);
             }
