@@ -298,6 +298,38 @@ const BehaviorLibrary = {
         return false;
     },
 
+    avoid_crowding: (actor) => {
+        const entityManager = actor.engine.entityManager;
+
+        // Check if another actor of the same type shares this tile
+        const colocated = entityManager.getActorsAt(actor.x, actor.y)
+            .some(a => a !== actor && a.type === actor.type);
+        if (!colocated) return false;
+
+        // Score each direction by how many same-type actors are there (prefer 0)
+        const dirs = shuffleArray([...ALL_DIRS]);
+        let bestDir = null;
+        let bestScore = Infinity;
+
+        for (const dir of dirs) {
+            const nx = actor.x + dir.dx;
+            const ny = actor.y + dir.dy;
+            if (!actor.hasFloorAt(nx, ny) && !actor.hasPlatformAt(nx, ny)) continue;
+            if (entityManager.getSolidActorAt(nx, ny)) continue;
+            const sameTypeCount = entityManager.getActorsAt(nx, ny)
+                .filter(a => a.type === actor.type).length;
+            if (sameTypeCount < bestScore) {
+                bestScore = sameTypeCount;
+                bestDir = dir;
+                if (bestScore === 0) break;
+            }
+        }
+
+        if (!bestDir) return false;
+        const result = actor.tryMove(actor.x + bestDir.dx, actor.y + bestDir.dy);
+        return result.moved;
+    },
+
     random_walk: (actor) => {
         const isConfused = actor.hasStateProperty('random_movement');
 

@@ -56,6 +56,7 @@
     "hostile": true,
     "preferred_distance": 1,
     "behaviors": [
+      "avoid_crowding",
       "maintain_distance",
       "attack_adjacent",
       "pursue_target",
@@ -100,6 +101,7 @@
     "name": "Cloud",
     "hostile": false,
     "behaviors": [
+      "avoid_crowding",
       "cloud_spread",
       "cloud_disperse",
       "cloud_affect_actors",
@@ -118,6 +120,7 @@
     "name": "Mist",
     "hostile": false,
     "behaviors": [
+      "avoid_crowding",
       "mist_fade",
       "cloud_affect_actors",
       "cloud_lifetime"

@@ -610,7 +610,8 @@ class DungeonEngine {
         this.floorStates = new Map();    // floor# → { entities: [...], map: {...} }
         this.pendingFallenActors = new Map(); // floor# → [serialized actor data]
         this.sealedDownFloors = new Set(); // floor#s whose down-stairway is sealed (win conditions unmet) → that floor's N+1 up-stairway must be locked
-        
+        this.gameplayStarted = false;    // false during the load sequence; gates sounds/messages so load-time state changes don't leak feedback before the player begins play
+
         // Configuration
         this.config = {
             containerId: 'game',
@@ -1055,6 +1056,7 @@ class DungeonEngine {
     }
 
     playSound(soundName, options) {
+        if (!this.gameplayStarted) return;
         if (this.audioManager) {
             return this.audioManager.play(soundName, options);
         }
@@ -1136,6 +1138,9 @@ class DungeonEngine {
      * @param {Object|null} playerState - Serialized player state to restore (null on first load)
      */
     async loadFloor(floor, entryDirection, playerState = null) {
+        // Silence feedback until the player begins play, so load-time state changes
+        // (e.g. stairway lock reconciliation) don't leak sounds/messages.
+        this.gameplayStarted = false;
         const prototypeConfig = this.currentPrototype.config;
         const floorConfig = this.getFloorConfig(floor);
 
@@ -1301,6 +1306,9 @@ class DungeonEngine {
         this.spawnPendingFallenActors();
 
         const startGameplay = () => {
+            // Play has begun — feedback (sounds/messages) is allowed from here on,
+            // including this function's own loaded_sound and floor banner below.
+            this.gameplayStarted = true;
             this.initializeTurnEngine();
 
             if (prototypeConfig.loaded_sound) {
@@ -1374,6 +1382,8 @@ class DungeonEngine {
      * @param {string} entryDirection - 'from_above' or 'from_below'
      */
     async restoreFloor(floor, playerState, entryDirection) {
+        // Silence feedback until the player begins play (see loadFloor).
+        this.gameplayStarted = false;
         const prototypeConfig = this.currentPrototype.config;
         const saved = this.floorStates.get(floor);
 
@@ -1465,6 +1475,10 @@ class DungeonEngine {
         }
 
         this.spawnPendingFallenActors();
+
+        // Restoring a cached floor has no splash/click step — play resumes immediately,
+        // so allow feedback before showing the floor banner below.
+        this.gameplayStarted = true;
 
         this.initializeTurnEngine();
 
@@ -1777,6 +1791,13 @@ class DungeonEngine {
      * the sprite, which a deserialized open stairway would otherwise render as locked.
      */
     reconcileUpStairwayLock() {
+        // A top floor with no previous_level has no floor below to pair with, so the
+        // seal tracker isn't authoritative for its up-stairway — leave an authored
+        // locked state (a dead-end seal) intact. Mirrors ensureUpStairway()'s guard.
+        const hasLevels = !!this.currentPrototype?.config?.levels;
+        const isTopFloor = !hasLevels || this.currentFloor === 1;
+        if (isTopFloor && !this.currentPrototype?.config?.previous_level) return;
+
         const up = this.entityManager?.findActorByAttribute('stairway', 'up');
         if (!up) return;
         const shouldLock = this.isFloorDownSealed(this.currentFloor - 1);

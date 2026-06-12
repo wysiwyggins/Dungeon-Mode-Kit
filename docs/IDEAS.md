@@ -4,22 +4,24 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Bugs
 
-- need an attribute to keep non solid moving actors from clustering on one tile
-
 ---
 
 ## Feature ideas
 
-### Game win
+### Game win [b]
 
 - a prototype can have win conditions, similar to levels. when the condition is met, we would fill the canvas with white full block, and write over that in letter tiles all the tracked statistics for the prototype (kills, gold, etc) and run the same color cycle effect on the canvas as the aqua vita potion.
 - the basic win conditions would be getting an object on the lowest floor to a locked exit on the top floor or killing a monster on the lowest floor. Another win condition would be being the only remaining controllable actor in a pvp game
+
+### Stepping stones
+
+If you push a pushable actor (like pushable wall) onto a deep actor like deep sewage, it appears to sink (top tile moves to base tile and is replaced by null). This also visually suggests that the actor could serve as a platform to walk on if it is next to a floor tile with no deep actor there. A desired behavior would then be, if a solid actor is on a deep tile and another actor approaches it from a tile with no deep actors, treat the "sunken" actor as platform: true and walk on it without sinking too. If an actor approaches the sunken actor from another deep tile, behave as before. This means inside the deep liquid an actor would push the pushable wall, but approching from the shore, the moving actor would visually "walk on top" of it. This might be an overcomplicated, bad idea!
 
 ### PVP
 
 - A prototype should allow for mutliple player controlled actors and become a turn based mutliplayer game as a reuslt. Test this with a Chaos style vs strategy prototype
 
-### Dialogue & Narrative [b]
+### Dialogue
 
 - A dialogue/options window
     This would be a new kind of interface window, like an alert, with an optional list of options, that would be used for a new conversation interaction that could be accessed by bumping into some non hostile actors. This would be a large new feature requiring planning. There could be a simple version, a switch statement that looks for a prototype variable to pick a message, or more complex- could use an existing library like ink (actor personalities could include a link to a corresponding ink file that is accessed when the personality state machine decides its a turn in which to talk). We should strive for simplicity.

@@ -912,6 +912,9 @@ class InputManager {
      */
     showMessage(message, options = null) {
         if (!this.descriptionElement) return;
+        // Suppress messages until the player begins play, so load-time state changes
+        // don't leak feedback before gameplay starts (set true in startGameplay).
+        if (this.engine && !this.engine.gameplayStarted) return;
 
         let position = null;
         let style = null;
