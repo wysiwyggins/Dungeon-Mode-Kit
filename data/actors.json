@@ -358,7 +358,6 @@
     "attributes": {
       "sentient": true,
       "flammable": true,
-      "pushable": true,
       "inventory": 1,
       "remains": "blood"
     },
