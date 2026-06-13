@@ -7080,7 +7080,7 @@ class Actor extends Entity {
                     actorAtTarget.x = pushX;
                     actorAtTarget.y = pushY;
                     actorAtTarget.updateSpritePosition();
-                    this.engine.playSound('push1');
+                    this.engine.playSound(actorAtTarget.getAttribute('push_sound') || 'push1');
 
                     // Check if pushed into void (platforms prevent falling)
                     if (!this.hasFloorAt(pushX, pushY) && !this.hasPlatformAt(pushX, pushY)) {
