@@ -1,0 +1,6 @@
+{
+  "name": "Cutscene Test",
+  "turn_speed": 40,
+  "cutscene": { "flipbook": "cutscene.tmj", "skippable": true },
+  "next_level": "default"
+}

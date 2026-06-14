@@ -1094,18 +1094,33 @@ class DungeonEngine {
         return [];
     }
     
-    async loadPrototype(prototypeName, entryDirection = null) {
+    async loadPrototype(prototypeName, entryDirection = null, fromCutscene = false) {
         console.log(`Loading prototype: ${prototypeName}, entry: ${entryDirection || 'direct'}`);
         let prototypeConfig = await this.loadPrototypeConfig(prototypeName);
         if (!prototypeConfig) {
             prototypeName = 'default';
             prototypeConfig = await this.loadPrototypeConfig('default');
         }
+
+        // Intro hook: a gameplay prototype can name an intro cutscene that plays first.
+        // The `fromCutscene` guard suppresses this on the cutscene's own exit transition,
+        // so we don't loop back into the cutscene when it chains to its next_level.
+        if (!fromCutscene && prototypeConfig.intro_cutscene) {
+            console.log(`Playing intro cutscene "${prototypeConfig.intro_cutscene}" before ${prototypeName}`);
+            return this.transitionToPrototype(prototypeConfig.intro_cutscene, false, entryDirection);
+        }
+
         this.currentPrototype = new Prototype(prototypeName, prototypeConfig, this);
         await this.currentPrototype.loadAssets();
         this.currentFloor = 1;
         this.floorStates.clear();
         this.sealedDownFloors.clear();
+
+        // Cutscene prototype: play the .tmj flipbook instead of the normal gameplay load.
+        if (prototypeConfig.cutscene?.flipbook) {
+            return this.playCutscene();
+        }
+
         await this.loadFloor(this.currentFloor, entryDirection);
     }
 
@@ -1377,6 +1392,108 @@ class DungeonEngine {
     }
 
     /**
+     * Play the current prototype's cutscene: a flipbook built from a single .tmj whose numbered
+     * tilelayers (any layer named `*-<N>`) are the frames, shown one per `turn_speed` ms over any
+     * un-numbered tilelayers as a static backdrop. Any keypress/click/touch skips to next_level.
+     * Assumes currentPrototype is built and loadAssets() has run.
+     *
+     * The whole .tmj loads once; advancing a frame just toggles container visibility — no
+     * per-frame teardown. Deliberately omits the gameplay pipeline: no turn engine, no AI, no
+     * wildcard/random/pending spawns, no input enable, gameplayStarted stays false.
+     */
+    async playCutscene() {
+        const config = this.currentPrototype.config;
+        const flipbook = config.cutscene?.flipbook;
+        const nextLevel = config.next_level;
+        const frameMs = config.turn_speed ?? 50;
+
+        if (!flipbook) {
+            console.warn('Cutscene has no flipbook file; falling back to normal load');
+            return this.loadFloor(this.currentFloor, null);
+        }
+
+        // Fetch and parse the .tmj once. We keep an Architect instance only for its parseTileGID
+        // (the Tiled flip-flag parser); we do NOT run the normal map-collapse pipeline.
+        this.mapManager = new Architect();
+        const mapPath = `${globalVars.BASE_PATH}/prototypes/${this.currentPrototype.name}/${flipbook}`;
+        console.log(`Loading cutscene flipbook: ${mapPath}`);
+        const tiledData = await (await fetch(mapPath)).json();
+
+        // Frame layers: any tilelayer named `*-<N>`, sorted by the trailing number.
+        // Backdrop: any other tilelayer (e.g. `background`/`floor`), drawn once beneath frames.
+        const frameLayers = [];
+        const backdropLayers = [];
+        const frameNum = (name) => {
+            const m = /-(\d+)$/.exec(name || '');
+            return m ? parseInt(m[1], 10) : null;
+        };
+        for (const layer of tiledData.layers) {
+            if (layer.type !== 'tilelayer') continue;
+            if (frameNum(layer.name) !== null) frameLayers.push(layer);
+            else backdropLayers.push(layer);
+        }
+        frameLayers.sort((a, b) => frameNum(a.name) - frameNum(b.name));
+
+        if (!frameLayers.length) {
+            console.warn(`Cutscene ${flipbook} has no *-N frame layers; falling back to normal load`);
+            return this.loadFloor(this.currentFloor, null);
+        }
+
+        this.gameplayStarted = false;
+
+        // Full-map, no scrolling.
+        this.viewportWidth = tiledData.width;
+        this.viewportHeight = tiledData.height;
+        this.viewportEnabled = false;
+        this.aiMargin = Infinity;
+        this.mapManager.width = tiledData.width;
+        this.mapManager.height = tiledData.height;
+        this.canvasWidth = this.viewportWidth * this.config.tileWidth;
+        this.canvasHeight = this.viewportHeight * this.config.tileHeight;
+
+        await this.initializeRenderer();
+        const frameContainers = this.renderer.renderCutsceneFrames(frameLayers, backdropLayers);
+
+        let frameTimer = null;
+        let finished = false;
+        const canvas = this.app.view;
+
+        // Single idempotent exit (end-of-frames and skip share it). The `finished` flag makes the
+        // first caller win, so a skip racing the pending advance() timer can't double-transition.
+        const finish = () => {
+            if (finished) return;
+            finished = true;
+            if (frameTimer) { clearTimeout(frameTimer); frameTimer = null; }
+            document.removeEventListener('keydown', skip);
+            canvas.removeEventListener('click', skip);
+            canvas.removeEventListener('touchend', onTouch);
+            // saveState=false: don't push the cutscene onto the prototype stack.
+            // fromCutscene=true: suppress the intro hook so we don't loop back here.
+            this.transitionToPrototype(nextLevel, false, null, true);
+        };
+        const skip = () => finish();
+        const onTouch = (e) => { e.preventDefault(); finish(); };
+
+        const showFrame = (i) => {
+            frameContainers.forEach((c, idx) => { c.visible = idx === i; });
+            const isLast = i === frameContainers.length - 1;
+            frameTimer = setTimeout(() => {
+                if (isLast) {
+                    // Play-once: chain to next_level. If none, hold on the last frame until input.
+                    if (nextLevel) finish();
+                } else {
+                    showFrame(i + 1);
+                }
+            }, frameMs);
+        };
+
+        document.addEventListener('keydown', skip);
+        canvas.addEventListener('click', skip);
+        canvas.addEventListener('touchend', onTouch);
+        showFrame(0);
+    }
+
+    /**
      * Restore a previously visited floor from saved state
      * @param {number} floor - 1-indexed floor number
      * @param {Object} playerState - Serialized player state
@@ -1639,7 +1756,7 @@ class DungeonEngine {
         };
     }
     
-    async transitionToPrototype(prototypeName, saveState = true, entryDirection = null) {
+    async transitionToPrototype(prototypeName, saveState = true, entryDirection = null, fromCutscene = false) {
         if (saveState) {
             this.prototypeStack.push({
                 name: this.currentPrototype.name,
@@ -1652,7 +1769,7 @@ class DungeonEngine {
         this.currentFloor = 1;
         this.floorStates.clear();
         this.sealedDownFloors.clear();
-        await this.loadPrototype(prototypeName, entryDirection);
+        await this.loadPrototype(prototypeName, entryDirection, fromCutscene);
     }
 
     async returnToPreviousPrototype() {
@@ -10217,6 +10334,57 @@ class RenderSystem {
         console.log(`  Background: ${this.backgroundContainer.children.length} tiles`);
         console.log(`  Floor: ${this.floorContainer.children.length} tiles`);
         console.log(`  Overlay: ${this.overlayContainer.children.length} tiles`);
+    }
+
+    /**
+     * Render raw Tiled tilelayers (from a parsed .tmj) as flipbook cutscene frames.
+     * Each entry in `frameLayers` becomes its own hidden PIXI.Container of tile sprites added to
+     * the floor container; the cutscene driver toggles which one is visible. Any un-numbered
+     * layers (e.g. `background`/`floor`) are drawn once as a static backdrop beneath every frame.
+     *
+     * @param {Array} frameLayers - Tiled tilelayer objects (have width/height/data), in play order
+     * @param {Array} backdropLayers - Tiled tilelayer objects drawn once under every frame
+     * @returns {Array<PIXI.Container>} per-frame containers, in order (all start hidden)
+     */
+    renderCutsceneFrames(frameLayers, backdropLayers = []) {
+        const tileset = PIXI.Loader.shared.resources.tiles;
+        if (!tileset) {
+            console.error('Tileset not loaded');
+            return [];
+        }
+
+        this.clearMapLayers();
+
+        const buildLayerSprites = (layer, container) => {
+            for (let y = 0; y < layer.height; y++) {
+                for (let x = 0; x < layer.width; x++) {
+                    const raw = layer.data[y * layer.width + x];
+                    if (!raw) continue;
+                    const tile = this.engine.mapManager.parseTileGID(raw);
+                    if (tile.tileId > 0) {
+                        container.addChild(this.createTileSprite(tile, x, y, tileset));
+                    }
+                }
+            }
+        };
+
+        // Static backdrop, drawn once beneath the frames.
+        for (const layer of backdropLayers) {
+            buildLayerSprites(layer, this.backgroundContainer);
+        }
+
+        // One container per frame, all hidden; driver flips visibility.
+        const frameContainers = frameLayers.map((layer) => {
+            const container = new PIXI.Container();
+            container.alpha = layer.opacity ?? 1;
+            container.visible = false;
+            buildLayerSprites(layer, container);
+            this.floorContainer.addChild(container);
+            return container;
+        });
+
+        console.log(`Cutscene: ${frameContainers.length} frames, ${backdropLayers.length} backdrop layer(s)`);
+        return frameContainers;
     }
 
     /**
