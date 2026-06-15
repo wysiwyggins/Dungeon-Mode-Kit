@@ -7352,47 +7352,6 @@ class Actor extends Entity {
             return { moved: false, actionTaken: collisionResult.attackAttempted };
         }
 
-        // Attacking a NON-SOLID damaging creature (e.g. pink jelly) on bump. Because it's
-        // non-solid the player can occupy its tile: a hit is normal combat (player stays put),
-        // but a MISS lets the creature catch the player — they enter the tile, take the
-        // creature's collision_effect (slime damage) and its grab_state (e.g. 'stuck'), then move on.
-        if (this.isPlayerControlled()) {
-            const nonSolid = this.engine.entityManager.getOtherActorAt(newX, newY, this);
-            if (nonSolid && !nonSolid.isDead && !nonSolid.hasAttribute('solid') &&
-                nonSolid.getAttribute('collision_effect') && nonSolid.stats?.health !== undefined) {
-                const result = this.applyCollisionEffects(nonSolid);
-                if (result.wasCombat && !result.targetKilled) {
-                    if (result.hitLanded) {
-                        // Hit landed — combat is the action; player stays put.
-                        return { moved: false, actionTaken: true };
-                    }
-                    // Miss — the creature catches the entering player with its own
-                    // collision_effect (slime damage), then we fall through to movement.
-                    nonSolid._applyEffectSource({
-                        name: nonSolid.name,
-                        effect: nonSolid.getAttribute('collision_effect'),
-                        sound: nonSolid.getAttribute('collision_sound'),
-                        item: null,
-                        lockColor: null,
-                        sourceActor: nonSolid
-                    }, this, true);
-                    const grabDesc = nonSolid.getCollisionDescription?.(this);
-                    if (grabDesc) this.engine.inputManager?.showMessage(grabDesc);
-                    this.flash?.();
-                    // If the slime hit killed the player, stop here.
-                    if (this.isDead) return { moved: false, actionTaken: true };
-                    // Engulfing creatures grab the now co-located player (e.g. 'stuck').
-                    // Applied here, not via collision_effect, so adjacent hits don't grab.
-                    const grabState = nonSolid.data?.grab_state;
-                    if (grabState && this.engine.globalStates?.[grabState]) {
-                        this.applyState(grabState, this.engine.globalStates[grabState]);
-                        const grabSound = nonSolid.getAttribute('grab_sound') || nonSolid.data?.grab_sound;
-                        if (grabSound) this.engine.playSound?.(grabSound);
-                    }
-                }
-            }
-        }
-
         // Check for floor tile - if no floor, actor falls (flying actors hover above, platforms prevent falling)
         if (!this.hasFloorAt(newX, newY) && !this.hasPlatformAt(newX, newY) && !this.hasStateProperty('flying')) {
             // Move to the void tile first (so we can see them fall)
@@ -7582,20 +7541,6 @@ class Actor extends Entity {
             if (actorAtTarget && !actorAtTarget.hasAttribute('solid') && actorAtTarget.hasAttribute('entry_sound')) {
                 entrySound = actorAtTarget.getAttribute('entry_sound');
             }
-        }
-
-        // Auto-loot inventory from non-solid actors at destination
-        const actorsHere = this.engine.entityManager.getActorsAt(newX, newY);
-        for (const other of actorsHere) {
-            if (other === this || other.hasAttribute('solid')) continue;
-            if (other.inventory.length === 0) continue;
-            const items = [...other.inventory];
-            for (const item of items) {
-                if (this.pickUpItem(item)) {
-                    other.inventory.splice(other.inventory.indexOf(item), 1);
-                }
-            }
-            other.updateInventoryDisplay();
         }
 
         return { moved: true, actionTaken: true, entrySound };

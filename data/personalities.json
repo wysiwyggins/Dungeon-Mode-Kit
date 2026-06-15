@@ -163,6 +163,21 @@
   },
   "deep_water_behavior": { "$alias": "deep_water" },
 
+  "quicksand": {
+    "name": "Quicksand",
+    "hostile": false,
+    "behaviors": [
+      "apply_state_on_tile",
+      "strip_inventory",
+      "drift_ground_items",
+      "liquid_color_mix"
+    ],
+    "item_drop_chance": 0.3,
+    "item_drift_chance": 0.3,
+    "mix_chance": 0.2,
+    "mix_step": 0.15
+  },
+
   "timed_switch": {
     "name": "Timed Switch",
     "hostile": false,

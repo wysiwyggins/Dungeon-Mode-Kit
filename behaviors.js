@@ -788,6 +788,27 @@ const BehaviorLibrary = {
     },
 
     /**
+     * Apply a named state (from `apply_state`) to any actor sharing this actor's tile,
+     * each turn. Used by stationary hazards that hold/affect whoever stands on them
+     * (quicksand → 'stuck'; reusable for webs, snares, tar). applyState() itself gates on
+     * sentient/controlled and refreshes duration if already present, and emits the state's
+     * own on_apply message — so no filtering or messaging is needed here. Returns false so
+     * it composes with other behaviors (e.g. strip_inventory) without consuming the turn.
+     */
+    apply_state_on_tile: (actor) => {
+        const stateName = actor.getAttribute('apply_state');
+        if (!stateName) return false;
+        const statesData = actor.engine.globalStates;
+        const stateData = statesData?.[stateName];
+        if (!stateData) return false;
+        for (const other of actor.engine.entityManager.getActorsAt(actor.x, actor.y)) {
+            if (other === actor) continue;
+            other.applyState?.(stateName, stateData);
+        }
+        return false;
+    },
+
+    /**
      * Apply cloud's collision effect and/or state to any actors standing in it
      * Shows a message describing the effect for visible actors
      */

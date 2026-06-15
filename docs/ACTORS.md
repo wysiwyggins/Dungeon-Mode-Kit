@@ -359,7 +359,12 @@ its `machine_id` — so a lever can open a distant gate, or a pressure plate can
 
 ### Splitting & Grabbing
 
-Jelly-type actors split when wounded; engulfing actors grab whatever steps into them.
+Jelly-type actors split when wounded.
+
+Jelly-type actors split when wounded. To *hold* an actor that stands on a tile (the "engulf"
+hook — e.g. quicksand applying `stuck`), use the `apply_state` attribute together with the
+`apply_state_on_tile` behavior (see Environmental behaviors), not the legacy `grab_state` /
+`grab_sound` fields below, which have **no readers** and are retained only for reference.
 
 | Attribute / Field | Type | Description |
 |-------------------|------|-------------|
@@ -367,8 +372,8 @@ Jelly-type actors split when wounded; engulfing actors grab whatever steps into 
 | `split_min_health` | number | Health floor below which the actor stops splitting (default `2`). |
 | `split_into` | string | Actor type spawned for each split-off piece. |
 | `split_sound` | string | Sound played on split. |
-| `grab_state` | string | State applied to an actor that walks into this one (e.g. `"stuck"`). |
-| `grab_sound` | string | Sound played when the grab state is applied. |
+| `grab_state` | string | *(Legacy, unused — use `apply_state` + `apply_state_on_tile` instead.)* |
+| `grab_sound` | string | *(Legacy, unused.)* |
 
 ### Traps
 
@@ -499,7 +504,7 @@ Personality data fields (besides `name`, `hostile`, `behaviors`) are passed to e
 | `scutigera_body` | Chain body follow, scatter when severed |
 | `horizontal_march` | Bounce horizontally between walls (glass sentry) |
 | `vertical_march` | Bounce vertically between walls (glass sentry) |
-| `jelly` | Attack adjacent, pursue; splits into smaller copies and grabs whatever touches it (pink jelly) |
+| `jelly` | Attack adjacent, pursue; splits into smaller copies (pink jelly) |
 | `poison_frog` | Attack adjacent, maintain distance; bite applies poison |
 | `shaman` | Heal wounded allies, raise the dead, melee fallback, pursue (witch) |
 | `blink_stalker` | Blink toward/away on cooldown, attack adjacent, pursue (phantom hound) |
@@ -525,6 +530,7 @@ Personality data fields (besides `name`, `hostile`, `behaviors`) are passed to e
 | `lava` | Incinerate entities, generate steam on adjacent water |
 | `liquid_pooling` | Emit clouds (sewage gas), cellular transform (shallow→deep), color mixing |
 | `deep_water` | Strip inventory from wading actors, drift ground items, color mixing |
+| `quicksand` | Deep liquid that holds standing actors fast (`stuck`), strips inventory, drifts items, color mixing |
 | `drain` | Pull items on liquid toward drain |
 | `trap` | Check trigger conditions (Brogue-style hidden traps) |
 | `timed_switch` | Countdown timer that toggles switch effects at zero (configurable interval and event) |
@@ -601,6 +607,7 @@ Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a fu
 | `drain_suction` | Pull items on liquid toward drain, delete when adjacent. | `suction_range` (default: 2) |
 | `cellular_transform` | Transform actor when surrounded by enough neighbors of a type. | `neighbor_type`, `neighbor_count`, `transform_to`, `check_cardinal` |
 | `liquid_color_mix` | Gradually blend tint toward neighboring liquids. | `mix_chance`, `mix_step` |
+| `apply_state_on_tile` | Apply a named state (`apply_state`) to actors sharing this tile each turn (e.g. quicksand → `stuck`). | reads `apply_state` |
 | `cellular_automaton_step` | Totalistic cellular automaton (configurable survival/birth rules). | `cell_type`, `survive_min`, `survive_max`, `birth_count` |
 | `trap_check_trigger` | Check if actor/item triggers hidden trap. | — |
 

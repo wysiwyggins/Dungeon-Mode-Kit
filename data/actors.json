@@ -70,8 +70,6 @@
     "collision_description": "The [actor_name] slimes you!",
     "split_sound": "step_mud",
     "split_into": "small_pink_jelly",
-    "grab_state": "stuck",
-    "grab_sound": "step_mud",
     "attributes": {
       "solid": true,
       "hostile": true,
@@ -745,7 +743,7 @@
       "flammable": false,
       "spreads": false,
       "liquid": true,
-      "paint_tile": "IMPERFECT_DOTTED_LIGHT_SHADE",
+      "paint_tile": "WATER",
       "mass_noun": true,
       "entry_sound": "step_mud"
     }
@@ -860,7 +858,7 @@
     }
   },
   "lava": {
-    "name": "Lava",
+    "name": "lava",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
     "animated": true,
@@ -875,6 +873,26 @@
       "light_source": true,
       "paint_tile": "DOUBLE_EXCLAMATION_MARK",
       "mass_noun": true
+    }
+  },
+  "quicksand": {
+    "name": "quicksand",
+    "tileIndexBase": "BLANK",
+    "tileIndexTop": "BLANK",
+    "animated": true,
+    "animation_frames": "fluid",
+    "tint": "#9b7340",
+    "personality": "quicksand",
+    "attributes": {
+      "solid": false,
+      "flammable": false,
+      "spreads": false,
+      "liquid": true,
+      "deep": true,
+      "mass_noun": true,
+      "entry_sound": "step_mud",
+      "apply_state": "stuck",
+      "paint_tile": "MEDIUM SHADE LOWER ONE HALF BLOCK"
     }
   },
   "fire": {
