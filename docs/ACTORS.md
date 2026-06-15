@@ -39,17 +39,22 @@ Actors are two tiles tall: `tileIndexTop` renders at head height (y-1), `tileInd
 | `sideOffset` | `{dx, dy}` | Grid offset from base for the side tile (default: `{dx: 1, dy: 0}`) |
 | `tileIndexBase_open` | string or `{x, y}` | Base tile when actor is in open state (doors) |
 | `tileIndexTop_open` | string or `{x, y}` | Top tile when actor is in open state (doors) |
+| `tileIndexBase_toggled` | string or `{x, y}` | Base tile when actor is in toggled state (switches, levers) |
+| `tileIndexTop_toggled` | string or `{x, y}` | Top tile when actor is in toggled state (switches, levers) |
 | `animationBase` | string | Animation name for base sprite |
 | `animationTop` | string | Animation name for top sprite |
 | `animationSide` | string | Animation name for side sprite |
 | `flipBaseH` / `flipBaseV` | boolean | Flip base sprite horizontally or vertically |
 | `flipTopH` / `flipTopV` | boolean | Flip top sprite horizontally or vertically |
 | `flipSideH` / `flipSideV` | boolean | Flip side sprite horizontally or vertically |
+| `flipBaseV_toggled` / `flipTopV_toggled` | boolean | Flip applied only while the actor is in its toggled state (levers) |
 | `facingEnabled` | boolean | Enable dynamic horizontal flipping based on movement direction |
 | `defaultFacing` | string | Canonical orientation of the tile art: `"left"` (default) or `"right"` |
 | `flickerTint` | boolean | Sprite color flickers (fire, torches) |
 | `rippleTint` | boolean | Sprite color ripples (water, liquids) |
-| `vision_range` | number | How far this actor can see (default: `8`) |
+| `vision_range` | number | How far this actor can see (default: `8`). Valid as a top-level field or inside `attributes`. |
+
+> **Tint effects:** `flickerTint: true` and `rippleTint: true` are convenience flags that the engine canonicalizes to its internal `effect` field (`"flicker_tint"` / `"ripple_tint"`). You can also set `"effect"` directly to one of those strings; the boolean forms above are the usual way.
 
 ### Side Tiles
 
@@ -296,6 +301,7 @@ Items listed in `default_items` are added to the actor's inventory on spawn. Wea
 | Attribute | Type | Description |
 |-----------|------|-------------|
 | `pushable` | boolean | Can be pushed by walking actors |
+| `push_sound` | string | Sound played when this actor is pushed. Overrides the default `push1`. |
 | `conductive` | boolean | Bolt attacks pass through this actor to hit targets behind. Default `true` for most actors; set `false` on walls/pillars to block bolts. |
 | `breakable` | boolean | Can be destroyed by mining |
 | `break_threshold` | number | Mining damage required to break |
@@ -311,6 +317,76 @@ Items listed in `default_items` are added to the actor's inventory on spawn. Wea
 | `portal` | boolean | Inter-prototype transition point. Hidden by default; revealed when last floor's win conditions are met. |
 | `hidden` | boolean | Actor exists in the world but is not rendered. Used for portals that appear later. |
 
+### Switches & Machines
+
+Switches (levers, pressure plates), gates, pedestals, and clocks form a small machine system.
+A `switchable` actor, when toggled, propagates its `switch_effects` to every actor that shares
+its `machine_id` — so a lever can open a distant gate, or a pressure plate can drop a barrier.
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `switchable` | boolean | Actor can be toggled (by bumping it or by another machine). |
+| `toggled` | boolean | Current toggle state. Drives the `*_toggled` tile/flip variants. |
+| `one_shot` | boolean | Toggles once and then stays put (pressure plate). |
+| `pausable` | boolean | Can be paused/resumed by bumping (e.g. a clock countdown). |
+| `gate` | boolean | A barrier that receives propagated switch effects. |
+| `pedestal` | boolean | Holds an item on display; can also receive switch effects. |
+| `lockable` | boolean | Can be locked/unlocked (doors, gates). |
+| `display_inventory` | boolean | Renders the actor's first held item as a sprite on top (pedestals, jellies that swallowed loot). |
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `machine_id` | string | Links a switch to its targets. All actors with the same `machine_id` react together. |
+| `switch_effects` | object | Attribute → value map applied to linked actors on toggle (e.g. `{ "solid": false, "open": true }`). |
+| `switch_message` | string | Message shown when the switch is toggled. |
+| `switch_sound` | string | Sound played when the switch is toggled. |
+
+```json
+"lever": {
+  "name": "lever",
+  "tileIndexBase": "LEVER_BASE",
+  "tileIndexTop": "LEVER_HANDLE",
+  "tileIndexBase_toggled": "LEVER_HANDLE",
+  "tileIndexTop_toggled": "LEVER_BASE",
+  "flipBaseV_toggled": true,
+  "flipTopV_toggled": true,
+  "collision_sound": "push1",
+  "attributes": { "solid": true, "switchable": true, "toggled": false },
+  "switch_message": "You pull the lever.",
+  "switch_effects": { "solid": false, "open": true }
+}
+```
+
+### Splitting & Grabbing
+
+Jelly-type actors split when wounded; engulfing actors grab whatever steps into them.
+
+| Attribute / Field | Type | Description |
+|-------------------|------|-------------|
+| `splits` | boolean | Actor splits into copies when damaged. |
+| `split_min_health` | number | Health floor below which the actor stops splitting (default `2`). |
+| `split_into` | string | Actor type spawned for each split-off piece. |
+| `split_sound` | string | Sound played on split. |
+| `grab_state` | string | State applied to an actor that walks into this one (e.g. `"stuck"`). |
+| `grab_sound` | string | Sound played when the grab state is applied. |
+
+### Traps
+
+Trap actors are invisible (`visible: false`) until triggered, then fire an effect and reveal
+themselves. They use the `trap` personality. A trap either **spawns a cloud** or **applies an
+area effect** — set one style or the other.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `trap` | boolean | Marks this actor as a trap. |
+| `trap_type` | string | Trap identifier (`"fire"`, `"poison_gas"`, `"paralysis_gas"`, `"confusion_gas"`). |
+| `trap_spawn` | string | Actor type to spawn when triggered (cloud style). |
+| `trap_spawn_tint` | string | Tint applied to the spawned actor. |
+| `trap_collision_effect` | object | Stat effect carried by the spawned cloud (e.g. `{ "health": -3 }`). |
+| `trap_apply_state` | string | State applied to the spawned cloud / triggering actor. |
+| `trap_effect` | object | Area style — `{ "center": <type>, "radius": <n>, "outer": <type> }`. |
+| `trap_message` | string | Message shown when the trap fires. |
+
 ## Environmental Actors
 
 | Attribute | Type | Description |
@@ -318,7 +394,12 @@ Items listed in `default_items` are added to the actor's inventory on spawn. Wea
 | `liquid` | boolean | Non-solid liquid (player can walk through) |
 | `deep` | boolean | Submerges actors that enter (deep water, lava) |
 | `light_source` | boolean | Emits light |
+| `lightRadius` | number | Light range for a `light_source` actor (overrides the default radius) |
 | `entry_sound` | string | Sound played when an actor steps onto this tile |
+| `platform` | boolean | Non-solid but stood on like floor — spans voids/liquids (rope bridge, collapsing floor) |
+| `collapsible` | boolean | A `platform` that collapses after being stepped on |
+| `ignites` | boolean | Sets adjacent flammable actors/items alight (fire, lava) |
+| `damage_type` | string | Tags hazard/bolt damage: `"fire"`, `"poison"`, or `"electric"` |
 
 ### Lifetime
 
@@ -372,10 +453,10 @@ Effects only apply if the target has the target attribute. If `health` reaches 0
 
 ```json
 "collision_sound": "hit",
-"collision_description": "The [actor_name] [attacks.melee_verbs] the [target_name]!"
+"collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!"
 ```
 
-`collision_description` supports `[actor_name]`, `[target_name]`, and table references like `[attacks.melee_verbs]` (draws from a random table).
+`collision_description` supports `[actor_name]` (the attacker), `[attacked_actor_name]` (the target), `[weapon_name]`, and table references like `[attacks.melee_verbs]` (draws from a random table). The `[a-an]` token resolves the correct indefinite article.
 
 ## Death
 
@@ -418,6 +499,13 @@ Personality data fields (besides `name`, `hostile`, `behaviors`) are passed to e
 | `scutigera_body` | Chain body follow, scatter when severed |
 | `horizontal_march` | Bounce horizontally between walls (glass sentry) |
 | `vertical_march` | Bounce vertically between walls (glass sentry) |
+| `jelly` | Attack adjacent, pursue; splits into smaller copies and grabs whatever touches it (pink jelly) |
+| `poison_frog` | Attack adjacent, maintain distance; bite applies poison |
+| `shaman` | Heal wounded allies, raise the dead, melee fallback, pursue (witch) |
+| `blink_stalker` | Blink toward/away on cooldown, attack adjacent, pursue (phantom hound) |
+| `hell_hound` | Blink stalker that leaves fire in its wake |
+| `illusionist` | Spawns illusory clones of itself, melee, flee (illusionist) |
+| `illusion_clone` | Decoy spawned by the illusionist; mimics it, fades when struck |
 
 **Passive/Utility:**
 
@@ -425,6 +513,7 @@ Personality data fields (besides `name`, `hostile`, `behaviors`) are passed to e
 |-------------|----------|
 | `passive_wanderer` | Random walk, flee danger |
 | `kobold_miner` | Flee danger, defend self, mine nearby wall, wander to wall, random walk |
+| `scavenger` | Seek and grab nearby ground items, flee danger, wander (crow) |
 
 **Environmental:**
 
@@ -451,6 +540,7 @@ Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a fu
 |----------|-------------|------------|
 | `random_walk` | Move in a random cardinal direction. Sighted actors avoid pits. | — |
 | `pursue_target` | Pathfind toward nearest visible controlled actor. | — |
+| `avoid_crowding` | When another same-type actor shares this tile, step to the least-crowded adjacent tile. | — |
 | `maintain_distance` | Keep `preferred_distance` tiles from target. Move away if too close, toward if too far. | `preferred_distance` (default: 3) |
 | `patrol` | Wander within `patrol_range` of home position. | `patrol_range` |
 | `horizontal_bounce` | Walk left/right, reversing on walls. | — |

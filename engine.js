@@ -2492,12 +2492,12 @@ class DungeonEngine {
         }
     }
 
-    async fallToNextFloor(actor) {
+    async fallToNextFloor(actor, cause = 'void') {
         const targetFloor = this.currentFloor + 1;
         const fallDamage = Math.floor(actor.stats?.health?.max * 0.3) || 10;
         console.log(`${actor.name} falls to floor ${targetFloor}, taking ${fallDamage} damage`);
 
-        this.playSound?.('push1');
+        this.playSound?.(cause === 'collapse' ? 'push1' : 'ouch');
         await this.transitionToFloor(targetFloor, 'from_fall');
 
         const player = this.entityManager?.player;
@@ -7030,7 +7030,7 @@ class Actor extends Entity {
     /**
      * Called when actor falls into a void tile
      */
-    async fall() {
+    async fall(cause = 'void') {
         console.log(`${this.name} fell into the void!`);
 
         const config = this.engine.currentPrototype?.config;
@@ -7039,8 +7039,11 @@ class Actor extends Entity {
 
         if (hasFloorBelow) {
             if (this.isPlayerControlled()) {
-                this.engine.inputManager?.showMessage(`The floor gives way beneath you!`);
-                await this.engine.fallToNextFloor(this);
+                const fallMessage = cause === 'collapse'
+                    ? `The floor gives way beneath you!`
+                    : `You plunge into the depths!`;
+                this.engine.inputManager?.showMessage(fallMessage);
+                await this.engine.fallToNextFloor(this, cause);
                 return;
             }
 
@@ -7564,7 +7567,7 @@ class Actor extends Entity {
                 }
                 if (!actor.hasFloorAt(newX, newY) && !actor.hasPlatformAt(newX, newY) && !actor.hasStateProperty('flying')) {
                     await new Promise(r => setTimeout(r, 400));
-                    await actor.fall();
+                    await actor.fall('collapse');
                 }
                 if (actor.engine.turnEngine) actor.engine.turnEngine.unlock();
                 if (actor.isPlayerControlled()) actor.engine.inputManager?.enable();
