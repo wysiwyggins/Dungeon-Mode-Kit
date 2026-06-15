@@ -410,6 +410,7 @@
         "FLY": [3,17],
         "STRONG_TORSO": [4,17],
         "THIN_TORSO": [5,17],
-        "WHITE_FEMALE_SYMBOL": [6,17]
+        "WHITE_FEMALE_SYMBOL": [6,17],
+        "RUB_EL_HIZB": [6,17]
     }
 }

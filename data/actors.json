@@ -39,7 +39,7 @@
     "tint": "#fffece",
     "personality": "stationed_melee",
     "collision_effect": {
-      "health": -3
+      "health": -6
     },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
@@ -53,7 +53,7 @@
       "opaque": false
     },
     "stats": {
-      "health": 30
+      "health": 20
     }
   },
   "pink_jelly": {

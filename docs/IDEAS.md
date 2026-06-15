@@ -85,7 +85,6 @@ If you push a pushable actor (like pushable wall) onto a deep actor like deep se
 
 ### Items
 
-- [ ]
 - [ ] Charms — new item category: single charge, periodic recharge, area/self effects [B]
 - [ ] Item polarity — items classified as positive/negative, revealed before full ID [B]
 - [ ] Wand of domination — tame a wounded enemy [B]
@@ -100,7 +99,7 @@ If you push a pushable actor (like pushable wall) onto a deep actor like deep se
 - [ ] Cobwebs — slow movement, flammable, spiders immune [B]
 - [ ] Sunlight tiles — upper-level areas with natural light [B]
 - [ ] Brimstone — hot ground near lava, damages non-fire-immune actors [B]
-- [ ] Steam vents - periodic scalding clouds
+- [ ] Steam vents - periodic scalding clouds [B]
 
 ### Dungeon Generation
 

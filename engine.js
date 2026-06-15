@@ -651,7 +651,7 @@ class DungeonEngine {
     async loadGlobalData() {
         try {
             // Load global entity definitions
-            const [actorsRes, itemsRes, personalitiesRes, entitiesRes, colorsRes, adjectivesRes, attacksRes, reagentsRes, substancesRes, statesRes, glyphsRes, effectsRes, keybindingsRes] = await Promise.all([
+            const [actorsRes, itemsRes, personalitiesRes, entitiesRes, colorsRes, adjectivesRes, attacksRes, reagentsRes, substancesRes, statesRes, wordsRes, effectsRes, keybindingsRes] = await Promise.all([
                 fetch(`${globalVars.BASE_PATH}/data/actors.json`),
                 fetch(`${globalVars.BASE_PATH}/data/items.json`),
                 fetch(`${globalVars.BASE_PATH}/data/personalities.json`),
@@ -662,7 +662,7 @@ class DungeonEngine {
                 fetch(`${globalVars.BASE_PATH}/data/reagents.json`),
                 fetch(`${globalVars.BASE_PATH}/data/substances.json`),
                 fetch(`${globalVars.BASE_PATH}/data/states.json`),
-                fetch(`${globalVars.BASE_PATH}/data/glyphs.json`),
+                fetch(`${globalVars.BASE_PATH}/data/words.json`),
                 fetch(`${globalVars.BASE_PATH}/data/effects.json`),
                 fetch(`${globalVars.BASE_PATH}/data/keybindings.json`)
             ]);
@@ -686,8 +686,8 @@ class DungeonEngine {
             // Load actor states (burning, poisoned, stunned, etc.)
             this.globalStates = await statesRes.json();
 
-            // Load glyph words for scroll name generation
-            this.globalGlyphs = await glyphsRes.json();
+            // Load scroll glyph words for scroll name generation
+            this.globalWords = await wordsRes.json();
 
             // Load visual effects definitions
             this.globalEffects = await effectsRes.json();
@@ -2830,7 +2830,7 @@ class Prototype {
         if (this.glyphNameAssignments.has(itemType)) {
             return this.glyphNameAssignments.get(itemType);
         }
-        const words = this.engine.globalGlyphs?.words;
+        const words = this.engine.globalWords?.scroll_glyphs;
         if (words && words.length > 0) {
             const name = `${randomElement(words)} ${randomElement(words)}`;
             this.glyphNameAssignments.set(itemType, name);
