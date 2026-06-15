@@ -19,6 +19,9 @@ class InterfaceManager {
         this.warningFillColor = 0xEB8A90;
         this.inactiveTintColor = 0x999999;
         this.inactiveTintAlpha = 0.35;
+        this.listStripeColor = 0xF0F0F0; // Subtle light gray for zebra-striping list rows
+        this.statAccentColor = 0xC77A1F; // Amber accent for item stat sub-lines (charges, fuel, etc.)
+        this.cursedColor = 0xA0408C; // Reddish-purple for the word "Cursed" on item names
 
         // Inventory interaction state
         this.inventoryMode = false; // True when player info is showing and accepting item selection
@@ -246,6 +249,32 @@ class InterfaceManager {
     }
 
     /**
+     * Zebra-stripe a list: tint every other item row's background light gray.
+     * @param {PIXI.Container} boxContainer - The box to draw stripes into
+     * @param {Array<{lineIndex:number, span?:number}>} rows - Ordered item rows. span defaults
+     *   to 1; pass 2 to also cover an item's stat sub-line. Stripes the ODD ordinals
+     *   (rows[1], rows[3], ...) so the first item keeps the default fill.
+     * @param {number} contentWidth - Interior content width in tiles
+     * @param {number} padding - Box padding in tiles
+     * Must be called AFTER createBox and BEFORE text/item-tile sprites so glyphs render on top.
+     */
+    drawListStripes(boxContainer, rows, contentWidth, padding) {
+        if (!boxContainer || !rows || rows.length === 0) return;
+        const TW = globalVars.TILE_WIDTH, TH = globalVars.TILE_HEIGHT;
+        const stripeX = (padding + 1) * TW; // align with textStartX (inside border+pad)
+        const stripeW = contentWidth * TW;  // span the content columns
+        const g = new PIXI.Graphics();
+        g.beginFill(this.listStripeColor);
+        for (let ord = 1; ord < rows.length; ord += 2) {
+            const { lineIndex, span = 1 } = rows[ord];
+            const y = (padding + 1) * TH + lineIndex * TH;
+            g.drawRect(stripeX, y, stripeW, span * TH);
+        }
+        g.endFill();
+        boxContainer.addChild(g);
+    }
+
+    /**
      * Update overlays on all boxes so only the active (topmost interactive) box is clear,
      * and all other visible boxes are dimmed with an inactive overlay.
      */
@@ -459,20 +488,25 @@ class InterfaceManager {
      * @param {number} max - Maximum stat value
      * @param {number} x - X position in pixels
      * @param {number} y - Y position in pixels
+     * @param {number} [fillColor] - Optional hex tint for filled tiles. When set, filled tiles
+     *   use the tintable WHITE_FULL_BLOCK glyph so the fill renders in color instead of black.
      */
-    renderThermometerBar(container, current, max, x, y) {
+    renderThermometerBar(container, current, max, x, y, fillColor = null) {
         // Fixed width for all thermometer bars (normalized)
         const totalTiles = 10;
         const fillPercentage = max > 0 ? current / max : 0;
         const filledTiles = Math.round(fillPercentage * totalTiles);
 
-        const fullBlockCoords = this.spriteLibrary.getTileByName('FULL_BLOCK');
+        // Use the tintable white block for colored fills; the plain black block otherwise.
+        const fullBlockName = fillColor !== null ? 'WHITE_FULL_BLOCK' : 'FULL_BLOCK';
+        const fullBlockCoords = this.spriteLibrary.getTileByName(fullBlockName);
         const lightShadeCoords = this.spriteLibrary.getTileByName('LIGHT_SHADE');
 
         if (!fullBlockCoords || !lightShadeCoords || !this.tileset) return;
 
         for (let i = 0; i < totalTiles; i++) {
-            const tileCoords = i < filledTiles ? fullBlockCoords : lightShadeCoords;
+            const filled = i < filledTiles;
+            const tileCoords = filled ? fullBlockCoords : lightShadeCoords;
 
             const rect = new PIXI.Rectangle(
                 tileCoords.x * globalVars.TILE_WIDTH,
@@ -486,6 +520,11 @@ class InterfaceManager {
 
             sprite.x = x + (i * globalVars.TILE_WIDTH);
             sprite.y = y;
+
+            // Tint colored fills (filled tiles only — background shade stays neutral)
+            if (filled && fillColor !== null) {
+                sprite.tint = fillColor;
+            }
 
             container.addChild(sprite);
         }
@@ -563,6 +602,100 @@ class InterfaceManager {
         return sprite;
     }
 
+    // ------------------------------------------------------------------
+    // Inline color markup
+    //
+    // Interface text may carry simple inline color spans of the form
+    //   [c=#RRGGBB]colored text[/c]
+    // so a single rendered line can mix colors (e.g. a reddish-purple
+    // "Cursed" inside an otherwise black item name). Spans do not nest.
+    //
+    // Use markup() to wrap a substring, stripMarkup() wherever a VISIBLE
+    // length is needed (box-width math, wrapText, truncateText), and
+    // renderTextLine() to draw a (possibly marked-up) line — it parses
+    // the markup and colors each character accordingly.
+    // ------------------------------------------------------------------
+
+    /** Wrap `text` in a color span. color is a hex int (e.g. 0xA0408C). */
+    markup(text, color) {
+        const hex = color.toString(16).padStart(6, '0');
+        return `[c=#${hex}]${text}[/c]`;
+    }
+
+    /**
+     * Add color markup to an item display name for list rendering. Currently colors a
+     * leading "Cursed" reddish-purple. Apply AFTER truncation so the markup tokens are
+     * never split. getDisplayName() stays plain text (it's also used in message-log text
+     * that doesn't parse markup); coloring lives here in the interface layer.
+     * @param {string} name - A (possibly truncated) plain item display name
+     * @returns {string} The name with any leading "Cursed" wrapped in color markup
+     */
+    colorizeItemName(name) {
+        if (typeof name === 'string' && name.startsWith('Cursed')) {
+            return this.markup('Cursed', this.cursedColor) + name.slice('Cursed'.length);
+        }
+        return name;
+    }
+
+    /** Remove color markup tokens, returning only the visible text. */
+    stripMarkup(str) {
+        if (typeof str !== 'string' || str.indexOf('[c=') === -1) return str;
+        return str.replace(/\[c=#[0-9a-fA-F]{6}\]/g, '').replace(/\[\/c\]/g, '');
+    }
+
+    /**
+     * Parse a line into visible characters plus a per-character color array.
+     * @param {string} line - Text, optionally containing [c=#RRGGBB]...[/c] spans
+     * @param {number} baseColor - Color for text outside any span
+     * @returns {{chars: string[], colors: number[]}} parallel arrays of visible chars/colors
+     */
+    parseMarkup(line, baseColor) {
+        if (typeof line !== 'string' || line.indexOf('[c=') === -1) {
+            const chars = this.splitChars(line);
+            return { chars, colors: chars.map(() => baseColor) };
+        }
+        const chars = [];
+        const colors = [];
+        const tokenRe = /\[c=#([0-9a-fA-F]{6})\]|\[\/c\]/g;
+        let cursor = 0, current = baseColor, m;
+        const pushRange = (from, to, color) => {
+            for (const ch of this.splitChars(line.slice(from, to))) {
+                chars.push(ch);
+                colors.push(color);
+            }
+        };
+        while ((m = tokenRe.exec(line)) !== null) {
+            pushRange(cursor, m.index, current);
+            current = m[1] !== undefined ? parseInt(m[1], 16) : baseColor;
+            cursor = tokenRe.lastIndex;
+        }
+        pushRange(cursor, line.length, current);
+        return { chars, colors };
+    }
+
+    /**
+     * Render one line of text at (x, y), honoring inline color markup.
+     * Characters in a non-default color use the tintable WHITE_* glyph variant.
+     * @param {PIXI.Container} container - Container to add char sprites to
+     * @param {string} line - The (possibly marked-up) line
+     * @param {number} startX - Pixel x of the first character
+     * @param {number} y - Pixel y of the line
+     * @param {number} [baseColor] - Color for unmarked text (defaults to black)
+     * @param {boolean} [baseWhite] - Render unmarked text via the white glyph variant
+     *   (used when the whole line is already an accent color, e.g. amber stat lines)
+     */
+    renderTextLine(container, line, startX, y, baseColor = this.defaultTextTint, baseWhite = false) {
+        const { chars, colors } = this.parseMarkup(line, baseColor);
+        for (let i = 0; i < chars.length; i++) {
+            const color = colors[i];
+            // A colored glyph (anything not the plain black default) must use the
+            // tintable white variant so the tint shows; honor baseWhite otherwise.
+            const white = baseWhite || color !== this.defaultTextTint;
+            const sprite = this.createCharSprite(chars[i], startX + i * globalVars.TILE_WIDTH, y, color, white);
+            if (sprite) container.addChild(sprite);
+        }
+    }
+
     /**
      * Word-wrap text to fit within a maximum width
      * @param {string} text - Text to wrap
@@ -573,15 +706,21 @@ class InterfaceManager {
         const words = text.split(' ');
         const lines = [];
         let currentLine = '';
+        // Track visible length separately so inline color markup doesn't skew wrapping.
+        let currentLen = 0;
 
         for (const word of words) {
+            const wordLen = this.stripMarkup(word).length;
             if (currentLine.length === 0) {
                 currentLine = word;
-            } else if (currentLine.length + 1 + word.length <= maxWidth) {
+                currentLen = wordLen;
+            } else if (currentLen + 1 + wordLen <= maxWidth) {
                 currentLine += ' ' + word;
+                currentLen += 1 + wordLen;
             } else {
                 lines.push(currentLine);
                 currentLine = word;
+                currentLen = wordLen;
             }
         }
 
@@ -633,7 +772,7 @@ class InterfaceManager {
 
         // Wrap text and calculate dimensions
         const lines = this.wrapText(text, maxContentWidth);
-        const contentWidth = Math.max(...lines.map(line => line.length), 1);
+        const contentWidth = Math.max(...lines.map(line => this.stripMarkup(line).length), 1);
         const contentHeight = lines.length;
 
         // Box dimensions (content + padding + borders)
@@ -692,18 +831,8 @@ class InterfaceManager {
         const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-            const line = lines[lineIndex];
-            const chars = this.splitChars(line);
-            for (let charIndex = 0; charIndex < chars.length; charIndex++) {
-                const char = chars[charIndex];
-                const charX = textStartX + (charIndex * globalVars.TILE_WIDTH);
-                const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
-
-                const sprite = this.createCharSprite(char, charX, charY, textTint);
-                if (sprite) {
-                    boxContainer.addChild(sprite);
-                }
-            }
+            const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+            this.renderTextLine(boxContainer, lines[lineIndex], textStartX, charY, textTint);
         }
 
         this.updateBoxOverlays();
@@ -844,8 +973,8 @@ class InterfaceManager {
                 const letter = String.fromCharCode(97 + i); // 'a', 'b', 'c', etc.
                 // Use getDisplayName() for identification-aware display, truncated for UI
                 let displayName = item.getDisplayName ? item.getDisplayName() : item.name;
-                displayName = this.truncateText(displayName, 26);
-                let itemText = `${letter})  ${displayName}`; // Extra space for tile
+                displayName = this.colorizeItemName(this.truncateText(displayName, 26));
+                let itemText = `${letter})   ${displayName}`; // Two spaces: tile (offset 5) + blank gap (offset 6)
                 if (item.count > 1) {
                     itemText += ` (×${item.count})`;
                 }
@@ -875,12 +1004,14 @@ class InterfaceManager {
                             };
                         }
                     } else {
-                        // Generic display: find first stat with a display_label
+                        // Generic display: find first stat with a display_label.
+                        // Show the label + thermometer only — no numeric value (the raw
+                        // value can be a float that renders a stray glyph in some decimals).
                         for (const stat of Object.values(item.stats)) {
                             if (stat && typeof stat === 'object' && stat.display_label && stat.max !== undefined) {
                                 statLine = {
                                     label: `      ${stat.display_label}: `,
-                                    chargeCount: `${Math.floor(stat.current)}/${stat.max}`,
+                                    chargeCount: null,
                                     current: stat.current,
                                     max: stat.max
                                 };
@@ -941,7 +1072,7 @@ class InterfaceManager {
 
         // Calculate dimensions - account for thermometer bar widths
         const padding = 1;
-        let maxLineLength = Math.max(...lines.map(l => l.length), 10);
+        let maxLineLength = Math.max(...lines.map(l => this.stripMarkup(l).length), 10);
         // Check if any thermometer bars would be wider (fixed width of 10 tiles)
         const thermometerBarWidth = 10;
         for (const { label } of thermometerLineIndices) {
@@ -980,23 +1111,26 @@ class InterfaceManager {
         boxContainer._padding = padding;
         boxContainer._inventoryLineIndices = inventoryLineIndices;
 
+        // Zebra-stripe the inventory rows (an item with a stat sub-line spans 2 rows)
+        const stripeRows = inventoryLineIndices.map(({ lineIndex }) => ({
+            lineIndex,
+            span: itemStatLineIndices.some(s => s.lineIndex === lineIndex + 1) ? 2 : 1,
+        }));
+        this.drawListStripes(boxContainer, stripeRows, contentWidth, padding);
+
         // Add text sprites
         const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
         const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
 
-        for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-            const line = lines[lineIndex];
-            const chars = this.splitChars(line);
-            for (let charIndex = 0; charIndex < chars.length; charIndex++) {
-                const char = chars[charIndex];
-                const charX = textStartX + (charIndex * globalVars.TILE_WIDTH);
-                const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+        // Item stat sub-lines (charges, fuel, etc.) render in the amber accent color
+        const accentLineSet = new Set(itemStatLineIndices.map(s => s.lineIndex));
 
-                const sprite = this.createCharSprite(char, charX, charY, this.defaultTextTint);
-                if (sprite) {
-                    boxContainer.addChild(sprite);
-                }
-            }
+        for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+            const accent = accentLineSet.has(lineIndex);
+            const baseColor = accent ? this.statAccentColor : this.defaultTextTint;
+            const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+            // accent lines are wholly amber (baseWhite); markup spans color individual words
+            this.renderTextLine(boxContainer, lines[lineIndex], textStartX, charY, baseColor, accent);
         }
 
         // Render thermometer bars for health/nutrition stats
@@ -1007,18 +1141,18 @@ class InterfaceManager {
         }
 
         // Render item tiles in inventory list
-        // Format is "  a) [tile] Item Name" - tile goes after ") " which is at offset 5 (2 spaces + letter + ) + space)
+        // Format is "  a)  [tile] _ Item Name" - tile at offset 5, blank gap at offset 6, name at offset 7
         for (const { lineIndex, item } of inventoryLineIndices) {
-            const tileX = textStartX + (5 * globalVars.TILE_WIDTH); // Position after "  a) "
+            const tileX = textStartX + (5 * globalVars.TILE_WIDTH); // Position after "  a)  "
             const tileY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
             this.renderItemTile(boxContainer, item, tileX, tileY);
         }
 
-        // Render thermometer bars for item stats (like staff pow)
+        // Render thermometer bars for item stats (like staff pow) in the amber accent color
         for (const { lineIndex, label, current, max } of itemStatLineIndices) {
             const barX = textStartX + (label.length * globalVars.TILE_WIDTH);
             const barY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
-            this.renderThermometerBar(boxContainer, current, max, barX, barY);
+            this.renderThermometerBar(boxContainer, current, max, barX, barY, this.statAccentColor);
         }
 
         // Enable inventory selection mode
@@ -1147,7 +1281,7 @@ class InterfaceManager {
 
         // Calculate dimensions
         const padding = 1;
-        const maxLineLength = Math.max(...lines.map(l => l.length), 12);
+        const maxLineLength = Math.max(...lines.map(l => this.stripMarkup(l).length), 12);
         const contentWidth = maxLineLength;
         const contentHeight = lines.length;
         const boxWidth = contentWidth + (padding * 2) + 2;
@@ -1196,18 +1330,8 @@ class InterfaceManager {
         const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-            const line = lines[lineIndex];
-            const chars = this.splitChars(line);
-            for (let charIndex = 0; charIndex < chars.length; charIndex++) {
-                const char = chars[charIndex];
-                const charX = textStartX + (charIndex * globalVars.TILE_WIDTH);
-                const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
-
-                const sprite = this.createCharSprite(char, charX, charY, this.defaultTextTint);
-                if (sprite) {
-                    boxContainer.addChild(sprite);
-                }
-            }
+            const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+            this.renderTextLine(boxContainer, lines[lineIndex], textStartX, charY);
         }
 
         this.updateBoxOverlays();
@@ -1569,7 +1693,7 @@ class InterfaceManager {
 
         // Calculate dimensions
         const padding = 1;
-        const maxLineLength = Math.max(...lines.map(l => l.length), 16);
+        const maxLineLength = Math.max(...lines.map(l => this.stripMarkup(l).length), 16);
         const contentWidth = maxLineLength;
         const contentHeight = lines.length;
         const boxWidth = contentWidth + (padding * 2) + 2;
@@ -1600,18 +1724,8 @@ class InterfaceManager {
         const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-            const line = lines[lineIndex];
-            const chars = this.splitChars(line);
-            for (let charIndex = 0; charIndex < chars.length; charIndex++) {
-                const char = chars[charIndex];
-                const charX = textStartX + (charIndex * globalVars.TILE_WIDTH);
-                const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
-
-                const sprite = this.createCharSprite(char, charX, charY, textTint);
-                if (sprite) {
-                    boxContainer.addChild(sprite);
-                }
-            }
+            const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+            this.renderTextLine(boxContainer, lines[lineIndex], textStartX, charY, textTint);
         }
 
         this.updateBoxOverlays();
@@ -2795,7 +2909,7 @@ class InterfaceManager {
         lines.push('  Esc) Cancel');
 
         const padding = 1;
-        const maxLineLength = Math.max(...lines.map(l => l.length), 14);
+        const maxLineLength = Math.max(...lines.map(l => this.stripMarkup(l).length), 14);
         const boxWidth = maxLineLength + padding * 2 + 2;
         const boxHeight = lines.length + padding * 2 + 2;
         const vis = this.getVisibleArea();
@@ -2805,21 +2919,17 @@ class InterfaceManager {
         const boxContainer = this.createBox('identify_picker', x, y, boxWidth, boxHeight);
         if (!boxContainer) return;
 
+        // Zebra-stripe the item rows
+        const stripeRows = Array.from({ length: Math.min(unidentified.length, letters.length) },
+            (_, i) => ({ lineIndex: 2 + i }));
+        this.drawListStripes(boxContainer, stripeRows, maxLineLength, padding);
+
         const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
         const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-            const line = lines[lineIndex];
-            const chars = this.splitChars(line);
-            for (let charIndex = 0; charIndex < chars.length; charIndex++) {
-                const sprite = this.createCharSprite(
-                    chars[charIndex],
-                    textStartX + charIndex * globalVars.TILE_WIDTH,
-                    textStartY + lineIndex * globalVars.TILE_HEIGHT,
-                    this.defaultTextTint
-                );
-                if (sprite) boxContainer.addChild(sprite);
-            }
+            const charY = textStartY + lineIndex * globalVars.TILE_HEIGHT;
+            this.renderTextLine(boxContainer, lines[lineIndex], textStartX, charY);
         }
 
         this.updateBoxOverlays();
@@ -2883,7 +2993,7 @@ class InterfaceManager {
         lines.push('  Esc) Cancel');
 
         const padding = 1;
-        const maxLineLength = Math.max(...lines.map(l => l.length), 14);
+        const maxLineLength = Math.max(...lines.map(l => this.stripMarkup(l).length), 14);
         const boxWidth = maxLineLength + padding * 2 + 2;
         const boxHeight = lines.length + padding * 2 + 2;
         const vis = this.getVisibleArea();
@@ -2893,21 +3003,17 @@ class InterfaceManager {
         const boxContainer = this.createBox('enchant_picker', x, y, boxWidth, boxHeight);
         if (!boxContainer) return;
 
+        // Zebra-stripe the item rows
+        const stripeRows = Array.from({ length: Math.min(enchantable.length, letters.length) },
+            (_, i) => ({ lineIndex: 2 + i }));
+        this.drawListStripes(boxContainer, stripeRows, maxLineLength, padding);
+
         const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
         const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-            const line = lines[lineIndex];
-            const chars = this.splitChars(line);
-            for (let charIndex = 0; charIndex < chars.length; charIndex++) {
-                const sprite = this.createCharSprite(
-                    chars[charIndex],
-                    textStartX + charIndex * globalVars.TILE_WIDTH,
-                    textStartY + lineIndex * globalVars.TILE_HEIGHT,
-                    this.defaultTextTint
-                );
-                if (sprite) boxContainer.addChild(sprite);
-            }
+            const charY = textStartY + lineIndex * globalVars.TILE_HEIGHT;
+            this.renderTextLine(boxContainer, lines[lineIndex], textStartX, charY);
         }
 
         this.updateBoxOverlays();
@@ -3549,7 +3655,7 @@ class InterfaceManager {
             const item = player.inventory[i];
             const letter = String.fromCharCode(97 + i); // 'a', 'b', 'c', etc.
             let displayName = item.getDisplayName ? item.getDisplayName() : item.name;
-            displayName = this.truncateText(displayName, 26);
+            displayName = this.colorizeItemName(this.truncateText(displayName, 26));
             let itemText = `${letter})  ${displayName}`;
             // Mark equipped items
             if (player.isItemEquipped(item)) {
@@ -3563,7 +3669,7 @@ class InterfaceManager {
 
         // Calculate dimensions
         const padding = 1;
-        const maxLineLength = Math.max(...lines.map(l => l.length), 16);
+        const maxLineLength = Math.max(...lines.map(l => this.stripMarkup(l).length), 16);
         const contentWidth = maxLineLength;
         const contentHeight = lines.length;
         const boxWidth = contentWidth + (padding * 2) + 2;
@@ -3584,23 +3690,18 @@ class InterfaceManager {
         boxContainer._itemStartLine = 2; // Items start after "Throw which item?" and blank line
         boxContainer._itemCount = player.inventory.length;
 
+        // Zebra-stripe the item rows
+        const stripeRows = Array.from({ length: player.inventory.length },
+            (_, i) => ({ lineIndex: 2 + i }));
+        this.drawListStripes(boxContainer, stripeRows, contentWidth, padding);
+
         // Add text sprites
         const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
         const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-            const line = lines[lineIndex];
-            const chars = this.splitChars(line);
-            for (let charIndex = 0; charIndex < chars.length; charIndex++) {
-                const char = chars[charIndex];
-                const charX = textStartX + (charIndex * globalVars.TILE_WIDTH);
-                const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
-
-                const sprite = this.createCharSprite(char, charX, charY, this.defaultTextTint);
-                if (sprite) {
-                    boxContainer.addChild(sprite);
-                }
-            }
+            const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+            this.renderTextLine(boxContainer, lines[lineIndex], textStartX, charY);
         }
 
         // Render item tiles (offset for "  a) " = 5 chars)
@@ -3705,7 +3806,7 @@ class InterfaceManager {
         lines.push('  Esc/d) Close');
 
         const padding = 1;
-        const maxLineLength = Math.max(...lines.map(l => l.length), 14);
+        const maxLineLength = Math.max(...lines.map(l => this.stripMarkup(l).length), 14);
         const boxWidth = maxLineLength + padding * 2 + 2;
         const boxHeight = lines.length + padding * 2 + 2;
         const vis = this.getVisibleArea();
@@ -3719,18 +3820,10 @@ class InterfaceManager {
         const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-            const line = lines[lineIndex];
-            const chars = this.splitChars(line);
-            for (let charIndex = 0; charIndex < chars.length; charIndex++) {
-                const tint = lineIndex === 0 ? 0xFFFFFF : this.defaultTextTint;
-                const sprite = this.createCharSprite(
-                    chars[charIndex],
-                    textStartX + charIndex * globalVars.TILE_WIDTH,
-                    textStartY + lineIndex * globalVars.TILE_HEIGHT,
-                    tint
-                );
-                if (sprite) boxContainer.addChild(sprite);
-            }
+            // The title line (0) renders white; the rest use the default black.
+            const baseColor = lineIndex === 0 ? 0xFFFFFF : this.defaultTextTint;
+            const charY = textStartY + lineIndex * globalVars.TILE_HEIGHT;
+            this.renderTextLine(boxContainer, lines[lineIndex], textStartX, charY, baseColor);
         }
 
         this.updateBoxOverlays();
@@ -3798,7 +3891,7 @@ class InterfaceManager {
                 const item = entry.item;
                 const letter = String.fromCharCode(97 + i); // 'a', 'b', 'c', etc.
                 let displayName = item.getDisplayName ? item.getDisplayName() : item.name;
-                displayName = this.truncateText(displayName, 24);
+                displayName = this.colorizeItemName(this.truncateText(displayName, 24));
 
                 const isEquipped = player.isItemEquipped(item);
                 let status = '';
@@ -3815,7 +3908,7 @@ class InterfaceManager {
 
         // Calculate dimensions
         const padding = 1;
-        const maxLineLength = Math.max(...lines.map(l => l.length), 20);
+        const maxLineLength = Math.max(...lines.map(l => this.stripMarkup(l).length), 20);
         const contentWidth = maxLineLength;
         const contentHeight = lines.length;
         const boxWidth = contentWidth + (padding * 2) + 2;
@@ -3836,23 +3929,20 @@ class InterfaceManager {
         boxContainer._itemStartLine = itemsStartLine;
         boxContainer._itemCount = this.equipmentMenuItems.length;
 
+        // Zebra-stripe the item rows
+        if (itemsStartLine !== -1) {
+            const stripeRows = Array.from({ length: this.equipmentMenuItems.length },
+                (_, i) => ({ lineIndex: itemsStartLine + i }));
+            this.drawListStripes(boxContainer, stripeRows, contentWidth, padding);
+        }
+
         // Add text sprites
         const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
         const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-            const line = lines[lineIndex];
-            const chars = this.splitChars(line);
-            for (let charIndex = 0; charIndex < chars.length; charIndex++) {
-                const char = chars[charIndex];
-                const charX = textStartX + (charIndex * globalVars.TILE_WIDTH);
-                const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
-
-                const sprite = this.createCharSprite(char, charX, charY, this.defaultTextTint);
-                if (sprite) {
-                    boxContainer.addChild(sprite);
-                }
-            }
+            const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+            this.renderTextLine(boxContainer, lines[lineIndex], textStartX, charY);
         }
 
         // Render item tiles next to item names (offset for "  a) " = 5 chars)
@@ -4142,7 +4232,7 @@ class InterfaceManager {
             const item = this.useMenuItems[i];
             const letter = String.fromCharCode(97 + i);
             let displayName = item.getDisplayName ? item.getDisplayName() : item.name;
-            displayName = this.truncateText(displayName, 22);
+            displayName = this.colorizeItemName(this.truncateText(displayName, 22));
             lines.push(` ${letter}) ${displayName}`);
         }
 
@@ -4150,7 +4240,7 @@ class InterfaceManager {
         lines.push('Esc to cancel');
 
         const padding = 1;
-        const maxLineLength = Math.max(...lines.map(l => l.length), 16);
+        const maxLineLength = Math.max(...lines.map(l => this.stripMarkup(l).length), 16);
         const contentWidth = maxLineLength;
         const contentHeight = lines.length;
         const boxWidth = contentWidth + (padding * 2) + 2;
@@ -4163,22 +4253,17 @@ class InterfaceManager {
         const boxContainer = this.createBox(menuId, x, y, boxWidth, boxHeight);
         if (!boxContainer) return;
 
+        // Zebra-stripe the item rows
+        const stripeRows = Array.from({ length: this.useMenuItems.length },
+            (_, i) => ({ lineIndex: 2 + i }));
+        this.drawListStripes(boxContainer, stripeRows, contentWidth, padding);
+
         const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
         const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-            const line = lines[lineIndex];
-            const chars = this.splitChars(line);
-            for (let charIndex = 0; charIndex < chars.length; charIndex++) {
-                const char = chars[charIndex];
-                const charX = textStartX + (charIndex * globalVars.TILE_WIDTH);
-                const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
-
-                const sprite = this.createCharSprite(char, charX, charY, this.defaultTextTint);
-                if (sprite) {
-                    boxContainer.addChild(sprite);
-                }
-            }
+            const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+            this.renderTextLine(boxContainer, lines[lineIndex], textStartX, charY);
         }
 
         for (let i = 0; i < this.useMenuItems.length; i++) {
@@ -4330,7 +4415,7 @@ class InterfaceManager {
         lines.push('?/Esc to close');
 
         const padding = 1;
-        const maxLineLength = Math.max(...lines.map(l => l.length));
+        const maxLineLength = Math.max(...lines.map(l => this.stripMarkup(l).length));
         const contentWidth = maxLineLength;
         const contentHeight = lines.length;
         const boxWidth = contentWidth + (padding * 2) + 2;
@@ -4347,18 +4432,8 @@ class InterfaceManager {
         const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-            const line = lines[lineIndex];
-            const chars = this.splitChars(line);
-            for (let charIndex = 0; charIndex < chars.length; charIndex++) {
-                const char = chars[charIndex];
-                const charX = textStartX + (charIndex * globalVars.TILE_WIDTH);
-                const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
-
-                const sprite = this.createCharSprite(char, charX, charY, this.defaultTextTint);
-                if (sprite) {
-                    boxContainer.addChild(sprite);
-                }
-            }
+            const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+            this.renderTextLine(boxContainer, lines[lineIndex], textStartX, charY);
         }
 
         this.updateBoxOverlays();

@@ -10,7 +10,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ### Game win [b]
 
-- a prototype can have win conditions, similar to levels. when the condition is met, we would fill the canvas with white full block, and write over that in letter tiles all the tracked statistics for the prototype (kills, gold, etc) and run the same color cycle effect on the canvas as the aqua vita potion.
+- [x] a prototype can have win conditions, similar to levels. when the condition is met, we would fill the canvas with white full block, and write over that in letter tiles all the tracked statistics for the prototype (kills, gold, etc) and run the same color cycle effect on the canvas as the aqua vita potion.
 - the basic win conditions would be getting an object on the lowest floor to a locked exit on the top floor or killing a monster on the lowest floor. Another win condition would be being the only remaining controllable actor in a pvp game
 
 ### Stepping stones
@@ -85,6 +85,7 @@ If you push a pushable actor (like pushable wall) onto a deep actor like deep se
 
 ### Items
 
+- [ ]
 - [ ] Charms — new item category: single charge, periodic recharge, area/self effects [B]
 - [ ] Item polarity — items classified as positive/negative, revealed before full ID [B]
 - [ ] Wand of domination — tame a wounded enemy [B]

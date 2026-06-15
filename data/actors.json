@@ -391,7 +391,7 @@
       "remains": "skull"
     },
     "stats": {
-      "health": 30
+      "health": 130
     },
     "default_items": [
       "horns"
@@ -913,7 +913,7 @@
       "paint_tile": "BLACK_DIAMOND_SUITE",
       "mass_noun": true
     },
-    "damage_per_turn": 10,
+    "damage_per_turn": 8,
     "spread_chance": 0.1,
     "lifetime": 5
   },
