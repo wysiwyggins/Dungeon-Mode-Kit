@@ -365,7 +365,42 @@ class LightingManager {
                     }
                 }
             });
+
+            // Reveal distant, unobstructed light sources as lone beacons in the dark.
+            this.revealDistantLightBeacons(actor);
         }
+    }
+
+    // On a dark level, reveal any unobstructed light source as a lone point of light,
+    // even beyond the player's reduced FOV — only the source's own tile, not its surroundings.
+    revealDistantLightBeacons(actor) {
+        if (this.ambientLight >= 0.5) return; // lit level: normal FOV already shows everything
+
+        const sources = this.getLightSources().filter(
+            s => s.intensity > 0 && !(s.x === actor.x && s.y === actor.y) // skip player's own/carried light
+        );
+        if (sources.length === 0) return;
+
+        // Index source tiles for O(1) lookup inside the FOV callback.
+        const sourceKeys = new Set(sources.map(s => s.x * 10000 + s.y));
+        const beaconRange = this.getBeaconRange(actor);
+
+        // Cast from the PLAYER (controlled origin passes visionPasses) out to beaconRange.
+        // Shadowcasting reports an opaque blocker's own tile as visible before shadowing past it,
+        // so an unobstructed source tile gets visibility > 0; a blocked one does not.
+        this.visionFov.compute(actor.x, actor.y, beaconRange, (x, y, r, visibility) => {
+            if (visibility <= 0) return;
+            if (!sourceKeys.has(x * 10000 + y)) return;
+            // Reveal ONLY the source tile — never its neighbours.
+            this.visibilityMap[y][x] = true;
+            this.exploredMap[y][x] = true;
+        });
+    }
+
+    getBeaconRange(actor) {
+        const configured = this.engine.currentPrototype?.config?.mechanics?.beacon_range;
+        if (typeof configured === 'number') return configured;
+        return Math.ceil(Math.hypot(this.width, this.height)); // whole map (effectively unlimited)
     }
 
     getActorLightRange(actor) {
