@@ -773,7 +773,7 @@
     "tileIndexTop": "BLANK",
     "animated": true,
     "animation_frames": "fluid",
-    "tint": "#CAD49D",
+    "tint": "#77bb41",
     "personality": "liquid_pooling",
     "attributes": {
       "solid": false,
@@ -1021,7 +1021,10 @@
       "hazard_immune": true,
       "mass_noun": true
     },
-    "lifetime": 10
+    "lifetime": 10,
+    "innate_states": [
+      "flying"
+    ]
   },
   "mist": {
     "name": "mist",
@@ -1036,7 +1039,10 @@
       "hazard_immune": true
     },
     "collision_effect": {},
-    "lifetime": 4
+    "lifetime": 4,
+    "innate_states": [
+      "flying"
+    ]
   },
   "steam": {
     "name": "steam",
@@ -1054,7 +1060,10 @@
     "collision_effect": {
       "health": -3
     },
-    "lifetime": 6
+    "lifetime": 6,
+    "innate_states": [
+      "flying"
+    ]
   },
   "sewer_gas": {
     "name": "sewer gas",
@@ -1072,7 +1081,10 @@
       "hazard_immune": true
     },
     "collision_effect": {},
-    "lifetime": 6
+    "lifetime": 6,
+    "innate_states": [
+      "flying"
+    ]
   },
   "poison_gas_trap": {
     "name": "Poison Gas Trap",

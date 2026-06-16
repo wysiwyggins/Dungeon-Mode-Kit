@@ -1,0 +1,37 @@
+{
+  "name": "A Sewer",
+  "description": "Regrettably, the only way forward is through a tributary of the great cloaca",
+  "loaded_sound": "levelout",
+  "turn_speed": 50,
+  "mechanics": {
+    "fog_of_war": true,
+    "darkness": true,
+    "player_auto_light": false,
+    "viewport_width": 40,
+    "viewport_height": 40,
+    "treasure_room": 40
+  },
+  "item_catalog": {
+    "potion":  { "count": 20, "weight": 50 },
+    "scroll":  { "count": 10,  "weight": 40 },
+    "staff":   { "weight": 15 },
+    "weapon":  { "weight": 10 },
+    "armor":   { "weight": 8 },
+    "ring":    { "weight": 12 },
+    "wand":    { "weight": 10 }
+  },
+  "map_generator": {
+    "type": "brogue",
+    "options": {
+      "map_width": 100, "map_height": 100,
+      "maxRooms": 40, "maxAttempts": 50,
+      "corridorChance": 40, "corridorLength": [2, 6],
+      "loopMinDistance": 20, "maxLoops": 5,
+      "roomWeights": { "rectangle": 40, "cross": 25, "circular": 20, "cavern": 10 },
+      "lakes": { "count": [1, 3], "types": ["water", "sewage", "sewage", "water"], "minSize": 15, "maxSize": 80 },
+      "abyss": { "count": [0, 2], "types": ["abyss"], "minSize": 10, "maxSize": 60 },
+      "bridges": { "max": 1 },
+      "collapsing_floors": { "max": 2, "minSize": 2, "maxSize": 4 }
+    }
+  }
+}
