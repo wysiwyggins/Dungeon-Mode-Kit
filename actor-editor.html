@@ -360,7 +360,7 @@ const TILE_DATA_PATH = 'data/static-tiles.json';
 
 const PRIMARY_BOOL_ATTRS = [
     'solid','visible','hostile','sentient','sighted','opaque',
-    'flammable','conductive','breakable','pushable','light_source','dark_vision'
+    'flammable','conductive','breakable','pushable','light_source','dark_vision','flies'
 ];
 const SECONDARY_BOOL_ATTRS = [
     'controlled','hazard_immune','pack','follows_thread','mass_noun','proper_named',
@@ -384,6 +384,7 @@ const BOOL_HINTS = {
     pushable: 'Can be pushed by collisions.',
     light_source: 'Emits light (radius set in Appearance).',
     dark_vision: 'AI ignores darkness for targeting.',
+    flies: 'Hovers above ground — grants the flying state (skips fall/drown/ground hazards).',
     controlled: 'Player-controlled actor.',
     hazard_immune: 'Immune to environmental hazards.',
     pack: 'Spawns in clusters via random_actors.',
@@ -510,16 +511,18 @@ function loadSpritesheet() {
 }
 
 async function loadBaseData() {
-    const [tilesData, actors, personalities] = await Promise.all([
+    const [tilesData, actors, personalities, states] = await Promise.all([
         fetchJSON(TILE_DATA_PATH),
         fetchJSON('data/actors.json'),
         fetchJSON('data/personalities.json'),
+        fetchJSON('data/states.json'),
     ]);
     TILE_W = tilesData.tilePixelWidth || TILE_W;
     TILE_H = tilesData.tilePixelHeight || TILE_H;
     state.tileMap = tilesData.tiles || {};
     state.baseActors = actors;
     state.basePersonalities = personalities;
+    state.baseStates = states;
 
     state.tileNames = Object.keys(state.tileMap).sort();
     state.reverseTileMap = {};
@@ -1286,13 +1289,25 @@ function addInnateStateRow(val) {
     const container = document.getElementById('innate-states-list');
     const row = document.createElement('div');
     row.className = 'list-item';
-    const inp = document.createElement('input');
-    inp.type = 'text'; inp.value = val || ''; inp.placeholder = 'e.g. flying';
-    inp.addEventListener('input', updatePreview);
+    const sel = document.createElement('select');
+    const blank = document.createElement('option');
+    blank.value = ''; blank.textContent = '— select state —';
+    sel.appendChild(blank);
+    const keys = Object.keys(state.baseStates || {}).sort();
+    if (val && !keys.includes(val)) keys.push(val);
+    for (const k of keys) {
+        const opt = document.createElement('option');
+        opt.value = k;
+        const sd = state.baseStates && state.baseStates[k];
+        opt.textContent = sd && sd.name ? `${k} (${sd.name})` : k;
+        sel.appendChild(opt);
+    }
+    sel.value = val || '';
+    sel.addEventListener('change', updatePreview);
     const btn = document.createElement('button');
     btn.className = 'remove-btn'; btn.textContent = 'x';
     btn.addEventListener('click', () => { row.remove(); updatePreview(); });
-    row.appendChild(inp); row.appendChild(btn);
+    row.appendChild(sel); row.appendChild(btn);
     container.appendChild(row);
 }
 
@@ -1699,7 +1714,7 @@ function readForm() {
     // Innate states
     const innateStates = [];
     for (const row of document.querySelectorAll('#innate-states-list .list-item')) {
-        const v = row.querySelector('input').value.trim();
+        const v = row.querySelector('select').value.trim();
         if (v) innateStates.push(v);
     }
     if (innateStates.length) obj.innate_states = innateStates;

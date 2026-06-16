@@ -3686,6 +3686,11 @@ class Actor extends Entity {
             }
         }
 
+        // The 'flies' attribute grants the permanent flying state
+        if (this.hasAttribute('flies') && engine.globalStates?.flying && !this.hasState('flying')) {
+            this.applyState('flying', engine.globalStates.flying, { duration: Infinity, silent: true });
+        }
+
         this.isDead = false;
 
         // Equipping state for multi-turn armor equipping
