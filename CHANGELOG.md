@@ -13,6 +13,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Web frontend editors for actors, items and personalities
 
+## [1.12b] 2026-06-16
+
+### Added
+
+- **Spider web attack**: the spider's new `web_spinner` personality sprays a cone of webs at the player from range (via the data-driven `spray_web` behavior, tunable range/arc/cooldown/min-distance), then closes in to bite. Webs are non-solid, flammable obstacles that apply the `stuck` state on contact; you roll each turn to break free, and a web tears away when you do (new `consume_on_escape` attribute) — so a patch is something you chew through, not a permanent carpet. Fire also clears webs.
+- **Stuck on non-solid hazards**: non-solid actors with a `collision_effect` (stat damage and/or `apply_state`) now apply it when an actor *walks onto* their tile, not just on a melee bump — previously only `cloud`/`mist`/`sewer_gas` qualified. This is what makes webs and quicksand actually stick you; `consume_on_escape` separates consumable stickers (webs tear) from permanent terrain (quicksand stays).
+- **Quicksand**: a non-solid deep-liquid hazard that holds actors with the `stuck` state, strips/drifts dropped items, and mixes color with adjacent liquids. Unlike webs it persists — you struggle out tile by tile.
+- **`flies` attribute**: a boolean attribute (selectable in the actor editor) granting the permanent `flying` state at spawn, so designers mark a flyer where they'd look for it instead of hand-adding an innate state. Existing flyers (bat, crow, clouds, mist, steam, sewer gas) migrated from `innate_states: ["flying"]`. The editor's Innate States control is now a dropdown of defined states instead of free text.
+- **Colorful canvas text UI**: inline `[c=#RRGGBB]…[/c]` color spans let a single line mix colors (e.g. the reddish-purple "Cursed" label), plus zebra-striped lists, amber accents on item stat sub-lines, and colored thermometer/stat bars.
+
 ## [1.11b] 2026-06-12
 
 ### Added
