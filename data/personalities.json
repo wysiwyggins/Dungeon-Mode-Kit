@@ -20,7 +20,25 @@
       "flee_from_danger"
     ]
   },
-  
+
+  "web_spinner": {
+    "name": "Web Spinner",
+    "hostile": true,
+    "spray_range": 6,
+    "spray_min_distance": 3,
+    "spray_cooldown": 8,
+    "spray_arc": 2,
+    "web_type": "web",
+    "spray_sound": "gas",
+    "behaviors": [
+      "attack_adjacent",
+      "spray_web",
+      "pursue_target",
+      "follow_thread",
+      "flee_from_danger"
+    ]
+  },
+
   "ranged_attacker": {
     "name": "Ranged Attacker",
     "hostile": true,

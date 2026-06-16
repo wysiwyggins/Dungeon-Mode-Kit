@@ -366,7 +366,7 @@ const SECONDARY_BOOL_ATTRS = [
     'controlled','hazard_immune','pack','follows_thread','mass_noun','proper_named',
     'liquid','deep','spreads','ignites','openable','lockable','color_locked','gate',
     'switchable','toggled','pausable','one_shot','pedestal','display_inventory',
-    'platform','collapsible','portal','trap','hidden','splits'
+    'platform','collapsible','portal','trap','hidden','splits','consume_on_escape'
 ];
 const BOOL_ATTRS = [...PRIMARY_BOOL_ATTRS, ...SECONDARY_BOOL_ATTRS];
 
@@ -410,6 +410,7 @@ const BOOL_HINTS = {
     portal: 'Teleports actors that step on it.',
     trap: 'Trap — triggers on step (see Trap section).',
     splits: 'Splits into a child actor on non-fatal hits (see Split Into / Split Min Health).',
+    consume_on_escape: 'Destroyed when a stuck actor on this tile breaks free (e.g. webs tear; quicksand omits this).',
 };
 
 // Runtime defaults applied by the engine's Actor constructor (engine.js:3331-3334),

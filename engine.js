@@ -7168,6 +7168,13 @@ class Actor extends Entity {
                 for (const [name, s] of Object.entries(this.states)) {
                     if (s.data?.stuck) this.removeState(name); // emits the break-free message
                 }
+                // Consumable stickers (webs) tear apart as the actor pulls free;
+                // permanent hazards (quicksand) lack the flag and remain.
+                for (const other of this.engine.entityManager.getActorsAt(this.x, this.y)) {
+                    if (other !== this && !other.isDead && other.hasAttribute('consume_on_escape')) {
+                        other.die();
+                    }
+                }
                 // fall through to attempt the move this turn
             } else {
                 if (this.isPlayerControlled()) {
@@ -7565,7 +7572,10 @@ class Actor extends Entity {
         const entityManager = this.engine.entityManager;
         for (const other of entityManager.getActorsAt(x, y)) {
             if (other === this) continue;
-            if (other.type !== 'cloud' && other.type !== 'mist' && other.type !== 'sewer_gas') continue;
+            // Any non-solid tile occupant (clouds, mist, webs, quicksand-likes)
+            // applies its collision_effect/apply_state on walk-through. Solid actors
+            // use the bump/melee path (applyCollisionEffects) instead.
+            if (other.hasAttribute('solid')) continue;
 
             // Apply collision effect (stat damage)
             const collisionEffect = other.getAttribute('collision_effect');

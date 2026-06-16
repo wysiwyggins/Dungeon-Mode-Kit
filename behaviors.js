@@ -2480,6 +2480,95 @@ const BehaviorLibrary = {
         return true;
     },
 
+    /**
+     * Spray a cone of webs toward the nearest player-controlled target.
+     * The webs are non-solid actors that apply the 'stuck' state on contact,
+     * so the target walks into the patch and must struggle free.
+     * Cooldown-gated and line-of-sight gated, modeled on bolt_attack.
+     * Personality data: spray_range, spray_cooldown, spray_arc (tiles of
+     * half-width at max range), web_type, spray_sound.
+     */
+    spray_web: (actor, data) => {
+        const entityManager = actor.engine.entityManager;
+        const mapManager = actor.engine.mapManager;
+
+        const attackRange = data?.spray_range || actor.getAttribute('spray_range') || 6;
+        const minDistance = data?.spray_min_distance ?? 0;
+        const cooldown = data?.spray_cooldown || actor.getAttribute('spray_cooldown') || 4;
+        const arc = data?.spray_arc ?? 2;
+        const webType = data?.web_type || 'web';
+
+        if (!actor._sprayCooldownCounter) actor._sprayCooldownCounter = 0;
+        actor._sprayCooldownCounter++;
+        if (actor._sprayCooldownCounter < cooldown) return false;
+
+        // Find nearest visible player-controlled target in range
+        let target = null;
+        let nearestDist = Infinity;
+        const isBlocked = (x, y) => {
+            const tile = mapManager?.wallMap?.[y]?.[x];
+            return tile && tile.tileId > 0;
+        };
+
+        for (const other of entityManager.actors) {
+            if (other === actor || other.isDead) continue;
+            if (!other.hasAttribute('controlled')) continue;
+
+            const dx = other.x - actor.x;
+            const dy = other.y - actor.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist >= minDistance && dist <= attackRange && dist < nearestDist &&
+                hasLineOfSight(actor.x, actor.y, other.x, other.y, isBlocked)) {
+                target = other;
+                nearestDist = dist;
+            }
+        }
+
+        if (!target) return false;
+        actor._sprayCooldownCounter = 0;
+
+        // Unit direction from spider toward target
+        const tdx = target.x - actor.x;
+        const tdy = target.y - actor.y;
+        const len = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
+        const ux = tdx / len;
+        const uy = tdy / len;
+        // Perpendicular unit vector, for fanning the cone sideways
+        const px = -uy;
+        const py = ux;
+
+        // Project a fan of endpoints across the cone's width at max range,
+        // trace a line to each, and lay webs on valid floor tiles.
+        const webTiles = new Map(); // key "x,y" -> {x, y}
+        for (let offset = -arc; offset <= arc; offset++) {
+            const endX = Math.round(actor.x + ux * attackRange + px * offset);
+            const endY = Math.round(actor.y + uy * attackRange + py * offset);
+            const path = getLinePath(actor.x, actor.y, endX, endY).slice(1); // skip spider's tile
+            for (const point of path) {
+                if (isBlocked(point.x, point.y)) break; // walls stop this ray
+                const floorTile = mapManager?.floorMap?.[point.y]?.[point.x];
+                if (!floorTile || floorTile.tileId <= 0) continue;
+                webTiles.set(`${point.x},${point.y}`, point);
+            }
+        }
+
+        let spawnedAny = false;
+        for (const point of webTiles.values()) {
+            // Don't stack a web where one already is, or on a solid blocker
+            if (entityManager.getSolidActorAt(point.x, point.y)) continue;
+            if (entityManager.getActorsAt(point.x, point.y).some(a => a.type === webType)) continue;
+            if (entityManager.spawnActor(webType, point.x, point.y)) spawnedAny = true;
+        }
+
+        if (!spawnedAny) return false;
+
+        actor.engine.playSound?.(data?.spray_sound ?? 'gas');
+        const actorName = actor.getNameWithArticle ? actor.getNameWithArticle() : `The ${actor.name}`;
+        actor.engine.inputManager?.showMessage(`${actorName} sprays a web!`, { x: actor.x, y: actor.y });
+
+        return true;
+    },
+
     horizontal_bounce: (actor) => {
         if (actor._bounceDir === undefined) actor._bounceDir = -1;
 

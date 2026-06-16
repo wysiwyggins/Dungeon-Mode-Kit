@@ -389,6 +389,17 @@
                  "width":40,
                  "x":3116.511375948,
                  "y":1084.67497291441
+                }, 
+                {
+                 "height":30,
+                 "id":77,
+                 "name":"",
+                 "rotation":0,
+                 "type":"spider",
+                 "visible":true,
+                 "width":40,
+                 "x":920,
+                 "y":2250
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -436,7 +447,7 @@
          "y":0
         }],
  "nextlayerid":9,
- "nextobjectid":77,
+ "nextobjectid":78,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",

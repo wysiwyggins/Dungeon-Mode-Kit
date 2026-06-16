@@ -1226,6 +1226,17 @@
       "health": 12
     }
   },
+  "eel": {
+    "name": "eel",
+    "tileIndexBase": "LEO",
+    "personality": "aggressive_melee",
+    "attributes": {
+      "hostile": true
+    },
+    "stats": {
+      "health": 25
+    }
+  },
   "giant_fly": {
     "name": "giant fly",
     "tileIndexBase": "BOX_DRAWING_LIGHT_HORIZONTAL",
@@ -1259,10 +1270,10 @@
     },
     "attributes": {
       "solid": false,
-      "flammable": true
-    },
-    "stats": {
-      "health": 3
+      "flammable": true,
+      "platform": true,
+      "mass_noun": true,
+      "consume_on_escape": true
     }
   },
   "spider": {
@@ -1270,7 +1281,7 @@
     "tileIndexBase": "ASTERISK",
     "tileIndexTop": "BLANK",
     "tint": "#665544",
-    "personality": "stationed_melee",
+    "personality": "web_spinner",
     "collision_effect": {
       "health": -3,
       "apply_state": "poisoned"
