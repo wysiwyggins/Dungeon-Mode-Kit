@@ -892,7 +892,7 @@
       "mass_noun": true,
       "entry_sound": "step_mud",
       "apply_state": "stuck",
-      "paint_tile": "MEDIUM SHADE LOWER ONE HALF BLOCK"
+      "paint_tile": "MEDIUM_SHADE_LOWER_ONE_HALF_BLOCK"
     }
   },
   "fire": {
@@ -946,6 +946,16 @@
     "attributes": {
       "opaque": true,
       "flammable": false,
+      "light_source": true
+    }
+  },
+  "oculus": {
+    "name": "oculus",
+    "tint": "#fefcdd",
+    "lightRadius": 3,
+    "attributes": {
+      "solid": false,
+      "visible": false,
       "light_source": true
     }
   },

@@ -89,15 +89,15 @@
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/sewer/map.tmj": {
             "expandedObjectLayers": [
-                8,
                 6,
+                8,
                 3
             ],
-            "scale": 0.2149,
-            "selectedLayer": 2,
+            "scale": 0.5538,
+            "selectedLayer": 3,
             "viewCenter": {
-                "x": 2326.6635644485805,
-                "y": 684.0390879478825
+                "x": 2881.9068255687976,
+                "y": 940.7728421812928
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/2.tmj": {
