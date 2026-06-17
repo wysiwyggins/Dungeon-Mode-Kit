@@ -129,7 +129,7 @@
 
 const BEHAVIOR_CATEGORIES = [
     { name: 'Combat', behaviors: ['attack_adjacent', 'ranged_attack', 'shoot_at_target', 'bolt_attack', 'pickpocket_adjacent', 'defend_self'] },
-    { name: 'Movement', behaviors: ['random_walk', 'pursue_target', 'maintain_distance', 'blink_away', 'flee_from_danger', 'flee_with_loot', 'wander_to_wall'] },
+    { name: 'Movement', behaviors: ['random_walk', 'pursue_target', 'maintain_distance', 'blink_away', 'flee_from_danger', 'flee_with_loot', 'wander_to_wall', 'requires_liquid'] },
     { name: 'Patrol / Guard', behaviors: ['patrol', 'guard_area', 'pursue_intruders', 'follow_thread'] },
     { name: 'Chain Creatures', behaviors: ['chain_head_ai', 'chain_body_follow', 'chain_scatter'] },
     { name: 'Environmental', behaviors: [
@@ -161,6 +161,7 @@ const BEHAVIOR_HINTS = {
     flee_from_danger: 'Run away when health is low',
     flee_with_loot: 'Run away after stealing an item',
     wander_to_wall: 'Move toward nearest wall',
+    requires_liquid: 'Aquatic gate — skip turn (helpless) when stranded out of liquid; place first (eel)',
     patrol: 'Walk a random pattern within patrol_range of home',
     guard_area: 'Watch for intruders, alert allies',
     pursue_intruders: 'Chase last known intruder position',

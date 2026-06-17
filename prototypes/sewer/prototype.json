@@ -20,6 +20,12 @@
     "ring":    { "weight": 12 },
     "wand":    { "weight": 10 }
   },
+  "random_actors": {
+    "goblin":    { "chance": 80, "min": 1, "max": 3 },
+    "giant_fly": { "chance": 70, "min": 1, "max": 4 },
+    "eel":       { "chance": 60, "min": 1, "max": 3 },
+    "spider":    { "chance": 50, "min": 0, "max": 2 }
+  },
   "map_generator": {
     "type": "brogue",
     "options": {

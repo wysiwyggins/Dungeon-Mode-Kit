@@ -351,6 +351,20 @@ const BehaviorLibrary = {
     },
 
     /**
+     * Gate for aquatic actors (eels): if stranded out of liquid, the actor is
+     * helpless — it consumes its turn doing nothing so no later behavior (attack,
+     * pursue, wander) runs. Place this FIRST in an aquatic personality's behavior
+     * list. Returns true to halt the chain when stranded, false to act normally
+     * while in liquid. Pairs with the engine-level movement guards that keep the
+     * actor from beaching itself in the first place, and the getEffectiveDefense
+     * penalty that leaves it defenseless on dry land.
+     * @param {Actor} actor - The actor executing the behavior
+     */
+    requires_liquid: (actor) => {
+        return actor.isOutOfLiquid();
+    },
+
+    /**
      * Flee from danger - triggers when standing in harmful tile, hit by thrown item, or low health
      * @param {Actor} actor - The actor executing the behavior
      * @param {Object} data - Behavior parameters

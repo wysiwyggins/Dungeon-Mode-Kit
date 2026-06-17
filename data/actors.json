@@ -1229,9 +1229,20 @@
   "eel": {
     "name": "eel",
     "tileIndexBase": "LEO",
-    "personality": "aggressive_melee",
+    "tileIndexTop": "NULL",
+    "personality": "aquatic_predator",
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
+    "collision_effect": {
+      "health": -4
+    },
     "attributes": {
-      "hostile": true
+      "hostile": true,
+      "sentient": true,
+      "aquatic": true,
+      "conceals_when_submerged": true,
+      "accuracy": 55,
+      "defense": 4
     },
     "stats": {
       "health": 25
@@ -1265,15 +1276,13 @@
     "name": "web",
     "tileIndexBase": "WHITE_NUMBER_SIGN",
     "tileIndexTop": "BLANK",
-    "collision_effect": {
-      "apply_state": "stuck"
-    },
     "attributes": {
       "solid": false,
       "flammable": true,
       "platform": true,
       "mass_noun": true,
-      "consume_on_escape": true
+      "consume_on_escape": true,
+      "apply_state": "stuck"
     }
   },
   "spider": {
@@ -1292,6 +1301,7 @@
       "hostile": true,
       "sentient": true,
       "dark_vision": true,
+      "web_immune": true,
       "accuracy": 50,
       "defense": 3
     },

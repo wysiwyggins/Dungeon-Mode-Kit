@@ -10,6 +10,18 @@
     ]
   },
 
+  "aquatic_predator": {
+    "name": "Aquatic Predator",
+    "hostile": true,
+    "behaviors": [
+      "requires_liquid",
+      "attack_adjacent",
+      "follow_thread",
+      "pursue_target",
+      "random_walk"
+    ]
+  },
+
   "stationed_melee": {
     "name": "Stationed Melee",
     "hostile": true,

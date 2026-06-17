@@ -5031,6 +5031,9 @@ class Actor extends Entity {
      * @returns {number} Defense value (0 if no defense attribute)
      */
     getEffectiveDefense() {
+        // Aquatic actors flop helplessly on dry land — no defense at all.
+        if (this.isOutOfLiquid()) return 0;
+
         let base = this.getAttribute('defense') || 0;
 
         // Add bonuses from equipped items' wear_effects and enchantments
@@ -6367,6 +6370,8 @@ class Actor extends Entity {
             }
             // Handle special keys
             if (key === 'actor_name') {
+                // Hidden (submerged/invisible) non-player attackers aren't named.
+                if (!this.isPlayerControlled() && this.hasStateProperty('invisible')) return 'something';
                 return this.name;
             }
             if (key === 'attacked_actor_name') {
@@ -6378,6 +6383,11 @@ class Actor extends Entity {
             }
             return match;
         });
+
+        // Drop the article in front of a hidden attacker: "The something" -> "Something".
+        if (!this.isPlayerControlled() && this.hasStateProperty('invisible')) {
+            result = result.replace(/^The something\b/, 'Something').replace(/\bthe something\b/g, 'something');
+        }
 
         // Process [a-an] templates after all other substitutions
         return processArticleTemplates(result);
@@ -6940,6 +6950,8 @@ class Actor extends Entity {
             }
             // Handle special keys
             if (key === 'actor_name') {
+                // Hidden (submerged/invisible) non-player attackers aren't named.
+                if (!this.isPlayerControlled() && this.hasStateProperty('invisible')) return 'something';
                 return this.name;
             }
             if (key === 'attacked_actor_name') {
@@ -6951,6 +6963,11 @@ class Actor extends Entity {
             }
             return match;
         });
+
+        // Drop the article in front of a hidden attacker: "The something" -> "Something".
+        if (!this.isPlayerControlled() && this.hasStateProperty('invisible')) {
+            result = result.replace(/^The something\b/, 'Something').replace(/\bthe something\b/g, 'something');
+        }
 
         return result;
     }
@@ -7364,6 +7381,15 @@ class Actor extends Entity {
             return { moved: false, actionTaken: collisionResult.attackAttempted };
         }
 
+        // Aquatic actors (eels) can't relocate onto a tile without a liquid actor —
+        // they may still attack an adjacent target (handled above) but won't beach
+        // themselves on dry land or lava. Attacks against the player can come from a
+        // shoreline water tile without the eel leaving the water.
+        if (this.hasAttribute('aquatic') &&
+            !this.engine.entityManager._getLiquidActorAt(newX, newY)) {
+            return { moved: false, actionTaken: false };
+        }
+
         // Check for floor tile - if no floor, actor falls (flying actors hover above, platforms prevent falling)
         if (!this.hasFloorAt(newX, newY) && !this.hasPlatformAt(newX, newY) && !this.hasStateProperty('flying')) {
             // Move to the void tile first (so we can see them fall)
@@ -7502,8 +7528,8 @@ class Actor extends Entity {
             this.updateSubmersionState();
         }
 
-        // Check for clouds/mist at destination and apply their effects immediately
-        this.checkCloudEffects(newX, newY);
+        // Apply walk-through effects (clouds, webs, quicksand) at destination immediately
+        this.applyWalkThroughEffects(newX, newY);
 
         // Notify interface of player move (for dismissOnMove text boxes)
         if (this.isPlayerControlled() && this.engine.interfaceManager) {
@@ -7563,12 +7589,14 @@ class Actor extends Entity {
     }
 
     /**
-     * Check for cloud/mist effects at a position and apply them to this actor
-     * Called when actor moves into a tile to apply effects immediately
+     * Apply walk-through effects from any non-solid tile occupant (clouds, mist,
+     * webs, quicksand-likes) to this actor. Called when an actor moves into a tile
+     * so the occupant's collision_effect / apply_state lands immediately.
+     * Solid actors use the bump/melee path (applyCollisionEffects) instead.
      * @param {number} x - X coordinate to check
      * @param {number} y - Y coordinate to check
      */
-    checkCloudEffects(x, y) {
+    applyWalkThroughEffects(x, y) {
         const entityManager = this.engine.entityManager;
         for (const other of entityManager.getActorsAt(x, y)) {
             if (other === this) continue;
@@ -7576,6 +7604,11 @@ class Actor extends Entity {
             // applies its collision_effect/apply_state on walk-through. Solid actors
             // use the bump/melee path (applyCollisionEffects) instead.
             if (other.hasAttribute('solid')) continue;
+
+            // Web-immune actors (spiders) pass freely through their own webs.
+            // The web is the tear-away sticky occupant (consume_on_escape);
+            // quicksand and other 'stuck' hazards lack it and still grab them.
+            if (this.hasAttribute('web_immune') && other.hasAttribute('consume_on_escape')) continue;
 
             // Apply collision effect (stat damage)
             const collisionEffect = other.getAttribute('collision_effect');
@@ -8017,6 +8050,16 @@ class Actor extends Entity {
     }
 
     /**
+     * Aquatic actors (eels) are helpless when not standing in a liquid.
+     * Shared by the turn gate in act() and the defense penalty in getEffectiveDefense().
+     * @returns {boolean} True if this is an aquatic actor currently out of any liquid
+     */
+    isOutOfLiquid() {
+        return this.hasAttribute('aquatic') &&
+            !this.engine.entityManager._getLiquidActorAt(this.x, this.y);
+    }
+
+    /**
      * Submerge this actor (when entering a deep tile)
      * Base sprite shows the top tile texture, top sprite becomes invisible
      * @param {Actor} deepActor - The deep actor we're submerging in
@@ -8102,6 +8145,13 @@ class Actor extends Entity {
         }
 
         console.log(`${this.name} submerges in ${deepActor?.name || 'deep liquid'}`);
+
+        // Aquatic ambushers (eels) vanish while submerged — they can still attack,
+        // but their attacks won't reveal them.
+        if (this.hasAttribute('conceals_when_submerged') && this.engine.globalStates?.invisible
+                && !this.hasState('invisible')) {
+            this.applyState('invisible', this.engine.globalStates.invisible, { duration: Infinity, silent: true });
+        }
     }
 
     /**
@@ -8144,6 +8194,12 @@ class Actor extends Entity {
 
         this.isSubmerged = false;
         this.submergedIn = null;
+
+        // Re-expose aquatic ambushers that hid via submersion.
+        if (this.hasAttribute('conceals_when_submerged') && this.hasState('invisible')) {
+            this.removeState('invisible');
+        }
+
         this._originalBaseTexture = null;
         this._originalTopTexture = null;
         this._originalTopVisible = null;
@@ -8224,6 +8280,12 @@ class Actor extends Entity {
         // Check bounds
         if (x < 0 || x >= this.engine.mapManager.width ||
             y < 0 || y >= this.engine.mapManager.height) {
+            return false;
+        }
+
+        // Aquatic actors (eels) may only enter tiles that contain a liquid actor;
+        // dry land and lava (no 'liquid' attribute) are impassable to them.
+        if (this.hasAttribute('aquatic') && !this.engine.entityManager._getLiquidActorAt(x, y)) {
             return false;
         }
 
@@ -8747,9 +8809,16 @@ class EntityManager {
                 continue;
             }
 
+            // Aquatic actors (eels) may only spawn on a liquid tile — i.e. inside a
+            // water/sewage lake. Lava isn't a liquid, so lava lakes are excluded.
+            const isAquatic = actorData.attributes?.aquatic === true;
+            const tilesForActor = isAquatic
+                ? () => getAvailableTiles().filter(t => this._getLiquidActorAt(t.x, t.y))
+                : getAvailableTiles;
+
             // If chance is 100%, spawn exactly one (guaranteed spawn)
             if (chance >= 100) {
-                const availableTiles = getAvailableTiles();
+                const availableTiles = tilesForActor();
                 if (availableTiles.length === 0) {
                     console.warn(`random_actors: No tiles available for guaranteed spawn of "${actorType}"`);
                     continue;
@@ -8777,7 +8846,7 @@ class EntityManager {
                     continue;
                 }
 
-                const availableTiles = getAvailableTiles();
+                const availableTiles = tilesForActor();
                 if (availableTiles.length === 0) {
                     console.warn(`random_actors: No tiles available for "${actorType}"`);
                     continue;
@@ -8794,7 +8863,7 @@ class EntityManager {
 
                 // Spawn remaining pack members nearby (Manhattan distance <= 2)
                 for (let i = 1; i < count; i++) {
-                    const refreshedTiles = getAvailableTiles();
+                    const refreshedTiles = tilesForActor();
                     const nearbyTiles = refreshedTiles.filter(t =>
                         Math.abs(t.x - anchorTile.x) + Math.abs(t.y - anchorTile.y) <= 2
                     );
@@ -8824,7 +8893,7 @@ class EntityManager {
                     continue;
                 }
 
-                const availableTiles = getAvailableTiles();
+                const availableTiles = tilesForActor();
                 if (availableTiles.length === 0) {
                     console.warn(`random_actors: No tiles available for "${actorType}"`);
                     break;
