@@ -45,9 +45,9 @@ An HTML sidebar displays actor stats and visible items alongside the game canvas
 
 - Tiles displayed at half-size for hi-DPI displays
 - Actors are two tiles tall (base + top), with an optional side tile
-- Maps have floor + 2-tile height walls. Most tiles have transparent backgrounds; occluded tiles behind actors are hidden automatically.
+- Maps have floor + 2-tile height walls. Most tiles have transparent backgrounds, when an 'important' actor moves behind an occluding tile, the occluding tile becomes transparent.
 - 8 render layers (bottom to top): background, floor, landmarks, overlay, light color, darkness, UI, splash
-- Sprite tinting, animated frames, flicker/ripple effects, facing
+- Sprite tinting, animated frames, flicker/ripple effects
 
 ### File Structure
 
@@ -83,7 +83,7 @@ See [ENTITIES.md](ENTITIES.md), [ACTORS.md](ACTORS.md), [ITEMS.md](ITEMS.md).
 
 ## Combat System
 
-Combat occurs when actors collide. Hit probability uses an exponential formula with diminishing returns on defense stacking:
+Combat can occur when actors collide (see [movement](MOVEMENT.md)). Hit probability uses an exponential formula with diminishing returns on defense stacking:
 
 ```
 hit_chance = accuracy × 0.987^defense    (clamped 5–95%)
