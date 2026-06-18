@@ -6128,6 +6128,7 @@ class Actor extends Entity {
                     const msg = isLit ? 'You extinguish the torch.' : 'You light the torch.';
                     this.engine.inputManager?.showMessage(msg);
                     this.engine.interfaceManager?.updatePlayerInfo();
+                    this.engine.playSound(isLit ? 'extinguish' : 'torch');
                 }
                 return true;
             }
@@ -11298,7 +11299,7 @@ class RenderSystem {
             const vis = lightingManager.getEntityVisibility(actor.x, actor.y, fogOfWar, isStatic);
 
             const playerTelepathic = this.engine.entityManager?.player?.hasStateProperty?.('telepathic');
-            const revealedByTelepathy = playerTelepathic && actor.personality && !actor.hasAttribute('controlled');
+            const revealedByTelepathy = playerTelepathic && actor.hasAttribute('sentient') && !actor.hasAttribute('controlled');
 
             // Invisible actors: translucent for player, hidden for others
             if (actor.hasStateProperty?.('invisible')) {
@@ -11310,8 +11311,18 @@ class RenderSystem {
                     for (const slot of ['top', 'middle', 'lower']) {
                         if (actor.spriteEquipment[slot]) actor.spriteEquipment[slot].alpha = alpha;
                     }
+                } else if (revealedByTelepathy) {
+                    // Telepathy senses concealed sentient creatures (e.g. a submerged
+                    // eel) as a ghosted impression. The body texture sits on spriteBase
+                    // while submerged; the rest stays hidden underwater.
+                    if (actor.spriteBase) { actor.spriteBase.visible = true; actor.spriteBase.alpha = 0.35; }
+                    if (actor.spriteTop) actor.spriteTop.visible = false;
+                    if (actor.spriteSide) actor.spriteSide.visible = false;
+                    for (const slot of ['top', 'middle', 'lower']) {
+                        if (actor.spriteEquipment[slot]) actor.spriteEquipment[slot].visible = false;
+                    }
                 } else {
-                    if (actor.spriteBase) actor.spriteBase.visible = false;
+                    if (actor.spriteBase) { actor.spriteBase.visible = false; actor.spriteBase.alpha = 1.0; }
                     if (actor.spriteTop) actor.spriteTop.visible = false;
                     if (actor.spriteSide) actor.spriteSide.visible = false;
                     for (const slot of ['top', 'middle', 'lower']) {
@@ -11321,7 +11332,13 @@ class RenderSystem {
                 continue;
             }
 
-            if (actor.spriteBase) actor.spriteBase.visible = vis.showBase || revealedByTelepathy;
+            if (actor.spriteBase) {
+                actor.spriteBase.visible = vis.showBase || revealedByTelepathy;
+                // Telepathically-sensed submerged creatures read as a ghosted
+                // impression; set alpha every frame so it resets when the actor
+                // surfaces or telepathy ends (nothing else restores spriteBase alpha).
+                actor.spriteBase.alpha = (revealedByTelepathy && actor.isSubmerged && !vis.showBase) ? 0.35 : 1.0;
+            }
             if (actor.spriteTop) actor.spriteTop.visible = (vis.showTop || revealedByTelepathy) && !actor.isSubmerged;
 
             // Update equipment sprite visibility

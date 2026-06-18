@@ -204,15 +204,6 @@ All 35 sounds currently in the audio sprite:
 
 ---
 
-## Broken Sound References
-
-These sounds are called in code but **do not exist in the audio sprite**. They fail silently (AudioManager checks before playing). These need source audio files added to the sprite.
-
-| Sound ID | Called From | Context |
-|----------|-----------|---------|
-| `trap1` | `interface.js:2320` | Trap is triggered |
-| `match` | `engine.js:5889`, `engine.js:5968` | Fire actors merge (cellular automata) |
-
 ---
 
 ## Missing Sounds
