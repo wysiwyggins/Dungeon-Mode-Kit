@@ -7582,6 +7582,20 @@ class Actor extends Entity {
             }
         }
 
+        // Auto-loot inventory from non-solid actors at destination
+        const actorsHere = this.engine.entityManager.getActorsAt(newX, newY);
+        for (const other of actorsHere) {
+            if (other === this || other.hasAttribute('solid')) continue;
+            if (other.inventory.length === 0) continue;
+            const items = [...other.inventory];
+            for (const item of items) {
+                if (this.pickUpItem(item)) {
+                    other.inventory.splice(other.inventory.indexOf(item), 1);
+                }
+            }
+            other.updateInventoryDisplay();
+        }
+
         return { moved: true, actionTaken: true, entrySound };
     }
 

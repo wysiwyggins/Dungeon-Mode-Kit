@@ -42,6 +42,9 @@
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/dungeon/map.tmj": {
+            "expandedObjectLayers": [
+                3
+            ],
             "scale": 0.6069,
             "selectedLayer": 4,
             "viewCenter": {
@@ -96,8 +99,8 @@
             "scale": 0.9611,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": 3095.9317448756638,
-                "y": 1462.907085631048
+                "x": 2747.3728019977116,
+                "y": 1309.9573405472897
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/2.tmj": {
@@ -116,8 +119,8 @@
             "scale": 0.6922,
             "selectedLayer": 4,
             "viewCenter": {
-                "x": 672.4934989887316,
-                "y": 712.2219011846288
+                "x": 477.46316093614564,
+                "y": 856.6888182606184
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/underworld/map.tmj": {
