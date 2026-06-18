@@ -7,6 +7,14 @@ class InterfaceManager {
     constructor(engine) {
         this.engine = engine;
         this.boxes = new Map(); // Track active UI boxes by ID
+        // Sidebar (actor/item panels) is rebuilt via innerHTML, which forces a DOM
+        // reflow. Many callers (every entity add/remove, every move under darkness)
+        // used to trigger that synchronously — on a gas-heavy dark level that meant
+        // dozens of reflows per turn (~1s stall). Instead we mark the panels dirty
+        // and flush at most once per animation frame.
+        this._sidebarDirty = false;
+        this._sidebarFlushScheduled = false;
+        this._flushSidebarBound = () => this._flushSidebar();
         this.textBoxStack = []; // Stack of text box IDs in display order (top to bottom)
         this.maxTextBoxes = 4; // Maximum visible text boxes
         this.dismissOnMoveBoxes = new Set(); // Text boxes to dismiss on player move
@@ -4183,10 +4191,26 @@ class InterfaceManager {
     }
 
     /**
-     * Update both actors and items divs
-     * Call this after turns complete or when visibility changes
+     * Mark the actor/item sidebar dirty and ensure a flush is scheduled.
+     * Cheap to call many times per turn (every entity add/remove, every move under
+     * darkness) — the actual innerHTML rebuild happens once on the next animation
+     * frame instead of once per call, avoiding a per-event DOM-reflow storm.
      */
     updateSidebar() {
+        this._sidebarDirty = true;
+        if (!this._sidebarFlushScheduled) {
+            this._sidebarFlushScheduled = true;
+            requestAnimationFrame(this._flushSidebarBound);
+        }
+    }
+
+    // Rebuild the actor/item panels now if anything marked them dirty. Called from
+    // the scheduled animation frame; safe to call directly when an immediate,
+    // synchronous refresh is required (e.g. just before reading layout).
+    _flushSidebar() {
+        this._sidebarFlushScheduled = false;
+        if (!this._sidebarDirty) return;
+        this._sidebarDirty = false;
         this.updateActorsDiv();
         this.updateItemsDiv();
     }

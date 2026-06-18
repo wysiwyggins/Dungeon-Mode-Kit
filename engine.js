@@ -4129,7 +4129,7 @@ class Actor extends Entity {
                 this.engine.interfaceManager?.updatePlayerInfo();
             }
             // Update sidebar actor list (shows all actors' health thermometers)
-            this.engine.interfaceManager?.updateActorsDiv();
+            this.engine.interfaceManager?.updateSidebar();
         }
 
         // Note: Death is handled by applyCollisionEffects AFTER showing the attack message
@@ -4145,6 +4145,19 @@ class Actor extends Entity {
     die(spawnRemains = true) {
         this.isDead = true;
         this.setAttribute('solid', false);
+
+        // Release this cloud's slot in its emitter's spawn counter. Counted clouds
+        // (e.g. sewage's sewer_gas) have multiple death paths — cloud_lifetime,
+        // cloud_disperse into mist, etc. — so the decrement must live here in the
+        // single death chokepoint, not in one behavior. Clearing the key makes it
+        // idempotent if die() is ever called twice. Without this the counter only
+        // went down on the cloud_lifetime path; clouds that dispersed leaked their
+        // slot until the cap was hit and emission stopped permanently.
+        if (this._emitCounterKey) {
+            const em = this.engine.entityManager;
+            if (em[this._emitCounterKey] > 0) em[this._emitCounterKey]--;
+            this._emitCounterKey = null;
+        }
 
         // Show death message for visible actors (skip for mass nouns like clouds)
         if (this.hasAttribute('visible') && !this.hasAttribute('mass_noun')) {
@@ -4283,7 +4296,7 @@ class Actor extends Entity {
             this.engine.inputManager?.showMessage(`The ${this.name} splits!`, { x: this.x, y: this.y });
         }
 
-        this.engine.interfaceManager?.updateActorsDiv?.();
+        this.engine.interfaceManager?.updateSidebar?.();
         return true;
     }
 
@@ -5271,7 +5284,7 @@ class Actor extends Entity {
         if (this.isPlayerControlled()) {
             this.engine.interfaceManager?.updatePlayerInfo();
         }
-        this.engine.interfaceManager?.updateActorsDiv();
+        this.engine.interfaceManager?.updateSidebar();
     }
 
     /**
@@ -9320,10 +9333,16 @@ class EntityManager {
         this._liquidPosCache = null;
         this._solidPosCache = null;
         this._actorPosCache = null;
-        // Remove from arrays
+        // Remove from arrays (order-preserving). Only rebuild the typed arrays the
+        // entity actually belongs to — an Actor isn't in items and vice versa, so
+        // the old unconditional triple-filter rebuilt arrays that never held it.
+        // Matters when many gas clouds expire per turn on the sewer level.
         this.entities = this.entities.filter(e => e !== entity);
-        this.actors = this.actors.filter(a => a !== entity);
-        this.items = this.items.filter(i => i !== entity);
+        if (entity instanceof Actor) {
+            this.actors = this.actors.filter(a => a !== entity);
+        } else if (entity instanceof Item) {
+            this.items = this.items.filter(i => i !== entity);
+        }
 
         // Clean up sprites
         if (entity.spriteBase) {
@@ -9540,6 +9559,16 @@ class EntityManager {
         this.addEntity(actor);
         actor.loadDefaultItems();
 
+        // A newly-spawned liquid (new lake tile, or a cellular_transform to a deep
+        // variant) is a disturbance: re-wake any settled liquid neighbors so they
+        // re-blend toward it. Keeps the liquid_color_mix settle optimization correct.
+        if (actor.hasAttribute('liquid')) {
+            for (const dir of CARDINAL_DIRS) {
+                const neighbor = this._getLiquidActorAt(x + dir.dx, y + dir.dy);
+                if (neighbor && neighbor._mixSettled) neighbor._mixSettled = false;
+            }
+        }
+
         // Create sprites if renderer exists
         if (this.engine.renderer) {
             this.engine.renderer.createActorSprites(actor);
@@ -9564,7 +9593,133 @@ class EntityManager {
             }
         }
 
+        // Prevent gas from stacking the moment a second cloud/mist lands on a tile.
+        // The _mergingGas guard skips this for the cloud that resolveGasStacking
+        // itself spawns, so the merge can't recurse into another merge.
+        if (!this._mergingGas && this._gasDensity(actor) > 0) {
+            const survivor = this.resolveGasStacking(x, y);
+            // If this actor was merged away, return the survivor instead.
+            if (actor.isDead) return survivor;
+        }
+
         return actor;
+    }
+
+    /**
+     * Classify a gas actor's density by personality: 'Cloud' (dense) = 2,
+     * 'Mist' (thin) = 1, anything else = 0 (not gas). Covers sewer_gas/steam/etc.
+     * which all use the shared cloud/mist personalities.
+     */
+    _gasDensity(actor) {
+        const n = actor.personality?.name;
+        if (n === 'Cloud') return 2;
+        if (n === 'Mist') return 1;
+        return 0;
+    }
+
+    /**
+     * Enforce one gas actor per tile with two density levels (cloud > mist).
+     * Called at spawn time and once per turn (merge_clouds behavior) so gas
+     * concentrates and disperses but never stacks many instances on one tile.
+     *
+     * Rules:
+     *  - Any cloud present → the cloud survives, all other gas on the tile is
+     *    removed. Survivor keeps the longer remaining lifetime (never extended
+     *    beyond it), so total gas-lifetime strictly decreases on every merge.
+     *  - Two or more mists, no cloud → they concentrate: the mists are removed
+     *    and one cloud is spawned in their place (a full spreading origin), again
+     *    inheriting only the longest remaining lifetime. To prevent runaway
+     *    re-spawn waves on a dense lake, a merge-born cloud is tagged so it can't
+     *    itself trigger another upgrade-merge, and it won't form if a merge-born
+     *    cloud is already adjacent this turn.
+     * Returns the surviving/created gas actor on the tile, or null.
+     */
+    resolveGasStacking(x, y) {
+        const gas = this.getActorsAt(x, y).filter(a => !a.isDead && this._gasDensity(a) > 0);
+        if (gas.length <= 1) return gas[0] || null;
+
+        const clouds = gas.filter(a => this._gasDensity(a) === 2);
+        const longestLifetime = gas.reduce(
+            (m, a) => Math.max(m, a.cloudLifetime ?? a.lifetime ?? 0), 0
+        );
+
+        if (clouds.length > 0) {
+            // Keep one cloud (prefer an existing spreading origin), remove the rest.
+            const survivor = clouds.find(c => c.isCloudOrigin) || clouds[0];
+            survivor.cloudLifetime = Math.max(survivor.cloudLifetime ?? 0, longestLifetime);
+            for (const a of gas) {
+                if (a !== survivor) a.die();
+            }
+            this.invalidateActorPosCache();
+            return survivor;
+        }
+
+        // Mist-only stack → concentrate into a single cloud. Several guards keep
+        // concentration from sustaining an endless spread→disperse→merge→spread loop
+        // (the goal is net loss over time, not equilibrium):
+        //  - don't upgrade next to a cloud that was itself just born from a merge,
+        //  - only a probability of co-located mist actually upgrades; the rest just
+        //    collapse to a single mist. So most merges LOSE a gas actor outright and
+        //    only some promote, biasing the population downward each turn.
+        const mergeBornAdjacent = ALL_DIRS.some(d => {
+            const neighbor = this.getActorsAt(x + d.dx, y + d.dy)
+                .find(a => !a.isDead && a._fromMerge && this._gasDensity(a) === 2);
+            return !!neighbor;
+        });
+        const upgradeChance = 0.5;
+        const doUpgrade = !mergeBornAdjacent && ROT.RNG.getUniform() < upgradeChance;
+
+        // Inherit visible/effect identity from one of the mists before removing them.
+        const template = gas[0];
+        const tint = template.tint;
+        const collisionEffect = template.getAttribute('collision_effect');
+        const applyState = template.getAttribute('apply_state');
+
+        for (const a of gas) a.die();
+        this.invalidateActorPosCache();
+
+        if (!doUpgrade) {
+            // No upgrade this time: leave a single mist behind (concentration failed),
+            // so two-mist overlaps usually just shed one actor.
+            let mist;
+            this._mergingGas = true;
+            try {
+                mist = this.spawnActor('mist', x, y);
+            } finally {
+                this._mergingGas = false;
+            }
+            if (mist) {
+                mist.cloudLifetime = longestLifetime;
+                if (tint != null) mist.tint = tint;
+                if (collisionEffect) mist.setAttribute('collision_effect', collisionEffect);
+                if (applyState) mist.setAttribute('apply_state', applyState);
+                if (mist.spriteBase && tint != null) mist.spriteBase.tint = tint;
+                if (mist.spriteTop && tint != null) mist.spriteTop.tint = tint;
+            }
+            return mist;
+        }
+
+        let cloud;
+        this._mergingGas = true;
+        try {
+            cloud = this.spawnActor('cloud', x, y);
+        } finally {
+            this._mergingGas = false;
+        }
+        if (cloud) {
+            cloud._fromMerge = true;
+            cloud.isCloudOrigin = true;
+            cloud.cloudOriginX = x;
+            cloud.cloudOriginY = y;
+            // No lifetime boost — concentration costs gas, it doesn't create it.
+            cloud.cloudLifetime = longestLifetime;
+            if (tint != null) cloud.tint = tint;
+            if (collisionEffect) cloud.setAttribute('collision_effect', collisionEffect);
+            if (applyState) cloud.setAttribute('apply_state', applyState);
+            if (cloud.spriteBase && tint != null) cloud.spriteBase.tint = tint;
+            if (cloud.spriteTop && tint != null) cloud.spriteTop.tint = tint;
+        }
+        return cloud;
     }
 
     /**
@@ -9865,7 +10020,15 @@ class RenderSystem {
         this.mapWidth = mapWidth;
         this.mapHeight = mapHeight;
         this.engine = engine;
-        
+
+        // Cache of sub-rectangle textures keyed by "px,py" within the shared tileset
+        // base texture. Every sprite previously allocated a fresh PIXI.Texture per
+        // creation; on levels that spawn actors at runtime (sewer gas clouds) that
+        // per-spawn allocation caused a visible hitch. These textures are immutable
+        // (frame never mutated in place) and sprite.destroy() never destroys them,
+        // so they are safe to share across any number of sprites.
+        this._tileTextureCache = new Map();
+
         // Create rendering containers
         this.backgroundContainer = new PIXI.Container();
         this.floorContainer = new PIXI.Container();
@@ -10493,14 +10656,10 @@ class RenderSystem {
         const tileX = tileIndex % globalVars.SPRITESHEET_COLS;
         const tileY = Math.floor(tileIndex / globalVars.SPRITESHEET_COLS);
 
-        const rect = new PIXI.Rectangle(
+        const texture = this.getTileTexture(
             tileX * globalVars.TILE_WIDTH,
-            tileY * globalVars.TILE_HEIGHT,
-            globalVars.TILE_WIDTH,
-            globalVars.TILE_HEIGHT
+            tileY * globalVars.TILE_HEIGHT
         );
-
-        const texture = new PIXI.Texture(tileset.texture.baseTexture, rect);
         const sprite = new PIXI.Sprite(texture);
 
         sprite.x = x * globalVars.TILE_WIDTH;
@@ -10612,6 +10771,26 @@ class RenderSystem {
      * Create sprites for a single actor (used when spawning actors dynamically)
      * @param {Actor} actor - The actor to create sprites for
      */
+    /**
+     * Return a cached PIXI.Texture for the given pixel sub-rectangle of the shared
+     * tileset base texture, creating it once on first request. Reused across all
+     * sprites that show the same tile, avoiding a per-sprite texture allocation.
+     * @param {number} px - left pixel of the tile within the spritesheet
+     * @param {number} py - top pixel of the tile within the spritesheet
+     * @returns {PIXI.Texture}
+     */
+    getTileTexture(px, py) {
+        const key = px + ',' + py;
+        let texture = this._tileTextureCache.get(key);
+        if (!texture) {
+            const tileset = PIXI.Loader.shared.resources.tiles;
+            const rect = new PIXI.Rectangle(px, py, globalVars.TILE_WIDTH, globalVars.TILE_HEIGHT);
+            texture = new PIXI.Texture(tileset.texture.baseTexture, rect);
+            this._tileTextureCache.set(key, texture);
+        }
+        return texture;
+    }
+
     createActorSprites(actor) {
         if (!actor.hasAttribute('visible')) return;
 
@@ -10682,8 +10861,6 @@ class RenderSystem {
      * @returns {PIXI.Sprite|PIXI.AnimatedSprite|null} The created sprite or null
      */
     createActorSprite(actor, tileIndex, animationName, x, y, zIndex, options = {}) {
-        const tileset = PIXI.Loader.shared.resources.tiles;
-
         // Check for animated sprite first
         if (animationName && this.engine.animationFrames) {
             const animFrames = this.engine.animationFrames[animationName];
@@ -10709,13 +10886,10 @@ class RenderSystem {
 
         // Fall back to static sprite
         if (tileIndex) {
-            const rect = new PIXI.Rectangle(
+            const texture = this.getTileTexture(
                 tileIndex.x * globalVars.TILE_WIDTH,
-                tileIndex.y * globalVars.TILE_HEIGHT,
-                globalVars.TILE_WIDTH,
-                globalVars.TILE_HEIGHT
+                tileIndex.y * globalVars.TILE_HEIGHT
             );
-            const texture = new PIXI.Texture(tileset.texture.baseTexture, rect);
             const sprite = new PIXI.Sprite(texture);
 
             sprite.zIndex = zIndex;
@@ -10755,7 +10929,6 @@ class RenderSystem {
      * @param {Entity} entity - The entity to create a sprite for
      */
     createEntitySprite(entity) {
-        const tileset = PIXI.Loader.shared.resources.tiles;
         const x = entity.x * globalVars.TILE_WIDTH;
         const y = entity.y * globalVars.TILE_HEIGHT;
 
@@ -10782,13 +10955,10 @@ class RenderSystem {
 
         // If entity has a tile index, create a sprite on top of any fill
         if (entity.tileIndex) {
-            const rect = new PIXI.Rectangle(
+            const texture = this.getTileTexture(
                 entity.tileIndex.x * globalVars.TILE_WIDTH,
-                entity.tileIndex.y * globalVars.TILE_HEIGHT,
-                globalVars.TILE_WIDTH,
-                globalVars.TILE_HEIGHT
+                entity.tileIndex.y * globalVars.TILE_HEIGHT
             );
-            const texture = new PIXI.Texture(tileset.texture.baseTexture, rect);
             const sprite = new PIXI.Sprite(texture);
 
             sprite.x = x;
@@ -10818,13 +10988,10 @@ class RenderSystem {
         const tileset = PIXI.Loader.shared.resources.tiles;
         if (!tileset || !item.tileIndex) return null;
 
-        const rect = new PIXI.Rectangle(
+        const texture = this.getTileTexture(
             item.tileIndex.x * globalVars.TILE_WIDTH,
-            item.tileIndex.y * globalVars.TILE_HEIGHT,
-            globalVars.TILE_WIDTH,
-            globalVars.TILE_HEIGHT
+            item.tileIndex.y * globalVars.TILE_HEIGHT
         );
-        const texture = new PIXI.Texture(tileset.texture.baseTexture, rect);
         const sprite = new PIXI.Sprite(texture);
 
         const useCenterAnchor = actor.facingEnabled;
@@ -10893,13 +11060,10 @@ class RenderSystem {
         const tileset = PIXI.Loader.shared.resources.tiles;
         if (!tileset || !item.tileIndex) return;
 
-        const rect = new PIXI.Rectangle(
+        const texture = this.getTileTexture(
             item.tileIndex.x * globalVars.TILE_WIDTH,
-            item.tileIndex.y * globalVars.TILE_HEIGHT,
-            globalVars.TILE_WIDTH,
-            globalVars.TILE_HEIGHT
+            item.tileIndex.y * globalVars.TILE_HEIGHT
         );
-        const texture = new PIXI.Texture(tileset.texture.baseTexture, rect);
         const sprite = new PIXI.Sprite(texture);
 
         sprite.x = item.x * globalVars.TILE_WIDTH;

@@ -957,7 +957,8 @@
     "attributes": {
       "solid": false,
       "visible": false,
-      "light_source": true
+      "light_source": true,
+      "flying": true
     }
   },
   "down_stairway": {

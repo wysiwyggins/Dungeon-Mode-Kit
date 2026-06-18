@@ -330,6 +330,26 @@ const BehaviorLibrary = {
         return result.moved;
     },
 
+    /**
+     * Cloud/mist specific anti-stacking. Unlike avoid_crowding (which jellies use
+     * to scatter and which only moves same-type actors apart), this collapses any
+     * gas sharing this tile down to a single actor with two density levels:
+     * cloud (dense) absorbs everything; two+ mists concentrate into one cloud.
+     * Delegates to EntityManager.resolveGasStacking so the spawn-time hook and the
+     * per-turn pass share identical rules. Returns true (turn consumed) only if
+     * this actor was merged away, so the now-dead actor stops running behaviors.
+     */
+    merge_clouds: (actor) => {
+        const em = actor.engine.entityManager;
+        if (em._gasDensity(actor) === 0) return false;
+        // Only do work when something else is actually sharing the tile.
+        const here = em.getActorsAt(actor.x, actor.y)
+            .filter(a => a !== actor && !a.isDead && em._gasDensity(a) > 0);
+        if (here.length === 0) return false;
+        em.resolveGasStacking(actor.x, actor.y);
+        return actor.isDead;
+    },
+
     random_walk: (actor) => {
         const isConfused = actor.hasStateProperty('random_movement');
 
@@ -760,10 +780,13 @@ const BehaviorLibrary = {
             const floorTile = actor.engine.mapManager?.floorMap[targetY]?.[targetX];
             if (!floorTile || floorTile.tileId <= 0) continue;
 
+            // Don't spread onto a tile that already holds any gas (cloud OR mist) —
+            // it would only be collapsed by the merge rule anyway. Skipping avoids
+            // the spawn-then-immediately-merge churn on a dense gas field.
             const cloudSpawnType = data.spawn_type || actor.type;
-            const existingCloud = entityManager.getActorsAt(targetX, targetY)
-                .find(a => a.type === cloudSpawnType);
-            if (existingCloud) continue;
+            const existingGas = entityManager.getActorsAt(targetX, targetY)
+                .find(a => !a.isDead && entityManager._gasDensity(a) > 0);
+            if (existingGas) continue;
 
             // Spawn a new cloud at this position
             const newCloud = entityManager.spawnActor(cloudSpawnType, targetX, targetY);
@@ -946,10 +969,8 @@ const BehaviorLibrary = {
         actor.cloudLifetime--;
 
         if (actor.cloudLifetime <= 0) {
-            if (actor.isCloudOrigin && actor._emitCounterKey) {
-                const em = actor.engine.entityManager;
-                if (em[actor._emitCounterKey] > 0) em[actor._emitCounterKey]--;
-            }
+            // Counter decrement now lives in Actor.die() (the common death path),
+            // so it fires for every way a counted cloud can die, not just here.
             actor.die();
             return true;
         }
@@ -1169,6 +1190,11 @@ const BehaviorLibrary = {
     liquid_color_mix: (actor, data) => {
         if (!actor.hasAttribute('liquid')) return false;
 
+        // Settled liquids (already converged, no neighbor disturbance) skip all work
+        // until a cardinal neighbor's tint changes and re-wakes them. Large static
+        // lakes converge in a few turns and then cost nothing.
+        if (actor._mixSettled) return false;
+
         const mixChance = data.mix_chance ?? 0.3;
         if (ROT.RNG.getUniform() >= mixChance) return false;
 
@@ -1192,17 +1218,29 @@ const BehaviorLibrary = {
             }
         }
 
-        // Filter out neighbors with similar hue (e.g. sewage and deep_sewage)
-        const actorHue = rgbToHue(actor.originalTint);
+        // No foreign-type neighbors → nothing to blend toward; settle and bail
+        // before any hue/RGB math (homogeneous pools never need to blend at all).
+        if (foreignNeighbors.length === 0) {
+            actor._mixSettled = true;
+            return false;
+        }
+
+        // Filter out neighbors with similar hue (e.g. sewage and deep_sewage).
+        // actor.originalTint never changes, so its hue is constant — memoize it.
+        if (actor._originalHue === undefined) actor._originalHue = rgbToHue(actor.originalTint);
+        const actorHue = actor._originalHue;
         const hueThreshold = 30;
         const distinctNeighbors = foreignNeighbors.filter(fn => {
-            const fnHue = rgbToHue(fn.originalTint);
-            let hueDiff = Math.abs(actorHue - fnHue);
+            if (fn._originalHue === undefined) fn._originalHue = rgbToHue(fn.originalTint);
+            let hueDiff = Math.abs(actorHue - fn._originalHue);
             if (hueDiff > 180) hueDiff = 360 - hueDiff;
             return hueDiff > hueThreshold;
         });
 
-        if (distinctNeighbors.length === 0) return false;
+        if (distinctNeighbors.length === 0) {
+            actor._mixSettled = true;
+            return false;
+        }
 
         // Weight: more foreign neighbors = stronger pull toward foreign color
         const foreignWeight = distinctNeighbors.length / (distinctNeighbors.length + sameCount + 1);
@@ -1223,11 +1261,15 @@ const BehaviorLibrary = {
         // Target: blend between own original color and foreign average, weighted by neighbor ratio
         const target = lerpColor(actor.originalTint, foreignAvgColor, foreignWeight);
 
-        // Convergence check: stop if already close enough
+        // Convergence check: stop if already close enough. Mark settled so this
+        // tile is skipped until a cardinal neighbor's tint changes and re-wakes it.
         const cur = extractRGB(actor.tint);
         const tgt = extractRGB(target);
         const diff = Math.abs(cur.r - tgt.r) + Math.abs(cur.g - tgt.g) + Math.abs(cur.b - tgt.b);
-        if (diff <= 3) return false;
+        if (diff <= 3) {
+            actor._mixSettled = true;
+            return false;
+        }
 
         // Incrementally shift current tint toward target
         const step = data.mix_step ?? 0.08;
@@ -1237,6 +1279,13 @@ const BehaviorLibrary = {
         // Apply directly to sprites (renderer only updates on lighting changes)
         if (actor.spriteBase) actor.spriteBase.tint = newTint;
         if (actor.spriteTop) actor.spriteTop.tint = newTint;
+
+        // This tile's color changed, so its cardinal liquid neighbors may now need
+        // to re-blend toward it — re-wake any that had settled (conservative).
+        for (const dir of CARDINAL_DIRS) {
+            const neighbor = entityManager._getLiquidActorAt(actor.x + dir.dx, actor.y + dir.dy);
+            if (neighbor && neighbor._mixSettled) neighbor._mixSettled = false;
+        }
 
         return false;
     },

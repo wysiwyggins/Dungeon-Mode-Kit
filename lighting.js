@@ -166,16 +166,22 @@ class LightingManager {
             }
         }
 
-        // Reset light and visibility maps
+        // Reset light and visibility maps. Overwrite the existing tile objects in
+        // place rather than allocating a fresh object per tile every step — on a
+        // 100x100 map that's 10,000 allocations per move, all GC churn.
+        const ambientR = this.ambientTint ? this.ambientTint.r * this.ambientLight : 0;
+        const ambientG = this.ambientTint ? this.ambientTint.g * this.ambientLight : 0;
+        const ambientB = this.ambientTint ? this.ambientTint.b * this.ambientLight : 0;
         for (let y = 0; y < this.height; y++) {
+            const lightRow = this.lightMap[y];
+            const visRow = this.visibilityMap[y];
             for (let x = 0; x < this.width; x++) {
-                this.lightMap[y][x] = {
-                    intensity: this.ambientLight,
-                    r: this.ambientTint ? this.ambientTint.r * this.ambientLight : 0,
-                    g: this.ambientTint ? this.ambientTint.g * this.ambientLight : 0,
-                    b: this.ambientTint ? this.ambientTint.b * this.ambientLight : 0
-                };
-                this.visibilityMap[y][x] = false;
+                const tile = lightRow[x];
+                tile.intensity = this.ambientLight;
+                tile.r = ambientR;
+                tile.g = ambientG;
+                tile.b = ambientB;
+                visRow[x] = false;
             }
         }
 
@@ -185,8 +191,12 @@ class LightingManager {
         );
 
         // Compute lighting from all light sources BEFORE visibility,
-        // so player FOV can be clamped by available light
+        // so player FOV can be clamped by available light.
+        // Cache the source list for this pass — getLightSources() is otherwise
+        // re-run inside revealDistantLightBeacons() every step (3 actor/inventory/
+        // item sweeps per move). Reuse the single result instead.
         const sources = this.getLightSources();
+        this._sourcesThisPass = sources;
 
         for (const source of sources) {
             this.currentSource = source;
@@ -376,14 +386,28 @@ class LightingManager {
     revealDistantLightBeacons(actor) {
         if (this.ambientLight >= 0.5) return; // lit level: normal FOV already shows everything
 
-        const sources = this.getLightSources().filter(
+        // Reuse the source list already gathered this pass (see computeLighting);
+        // fall back to a fresh scan if called outside a recompute.
+        const allSources = this._sourcesThisPass || this.getLightSources();
+        const sources = allSources.filter(
             s => s.intensity > 0 && !(s.x === actor.x && s.y === actor.y) // skip player's own/carried light
         );
-        if (sources.length === 0) return;
+        if (sources.length === 0) return; // no distant sources → skip the FOV pass entirely
 
         // Index source tiles for O(1) lookup inside the FOV callback.
         const sourceKeys = new Set(sources.map(s => s.x * 10000 + s.y));
-        const beaconRange = this.getBeaconRange(actor);
+
+        // Cap the beacon FOV radius to the farthest actual source. Beacons can only
+        // appear on a source tile, so casting past the most distant source is wasted
+        // shadowcasting with identical results — on a dark 100x100 level this is the
+        // difference between a ~142-radius full-map pass and a tight local one.
+        let maxSourceDist = 0;
+        for (const s of sources) {
+            const d = Math.max(Math.abs(s.x - actor.x), Math.abs(s.y - actor.y));
+            if (d > maxSourceDist) maxSourceDist = d;
+        }
+        const beaconRange = Math.min(this.getBeaconRange(actor), maxSourceDist);
+        if (beaconRange <= 0) return;
 
         // Cast from the PLAYER (controlled origin passes visionPasses) out to beaconRange.
         // Shadowcasting reports an opaque blocker's own tile as visible before shadowing past it,

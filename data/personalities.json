@@ -131,7 +131,7 @@
     "name": "Cloud",
     "hostile": false,
     "behaviors": [
-      "avoid_crowding",
+      "merge_clouds",
       "cloud_spread",
       "cloud_disperse",
       "cloud_affect_actors",
@@ -150,7 +150,7 @@
     "name": "Mist",
     "hostile": false,
     "behaviors": [
-      "avoid_crowding",
+      "merge_clouds",
       "mist_fade",
       "cloud_affect_actors",
       "cloud_lifetime"
