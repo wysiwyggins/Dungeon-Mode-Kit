@@ -959,7 +959,7 @@
       "visible": false,
       "light_source": true,
       "flying": true
-    }
+      }
   },
   "down_stairway": {
     "name": "Stairs Down",

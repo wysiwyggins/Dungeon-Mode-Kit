@@ -185,9 +185,9 @@
                 {
                  "height":30,
                  "id":19,
-                 "name":"up stairs",
+                 "name":"Theseus",
                  "rotation":0,
-                 "type":"up_stairway",
+                 "type":"player",
                  "visible":true,
                  "width":40,
                  "x":600,
