@@ -8110,8 +8110,9 @@ class Actor extends Entity {
                 item => item.hasAttribute('light_source') && item.stats?.burns?.current > 0
             );
             for (const item of toExtinguish) {
+               
                 if (this.isPlayerControlled()) {
-                    this.engine.playSound(isLit ? 'extinguish' : 'torch');
+                    this.engine.playSound('extinguish');
                     this.engine.inputManager?.showMessage(`Your ${item.name} is extinguished.`);
                 }
                 const unlitType = 'torch_unlit';

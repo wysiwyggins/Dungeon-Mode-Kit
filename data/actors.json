@@ -836,7 +836,8 @@
       "solid": false,
       "platform": true,
       "visible": true,
-      "collapsible": true
+      "collapsible": true,
+      "paint_tile": "DOWN_ARROW"
     }
   },
   "fungus": {

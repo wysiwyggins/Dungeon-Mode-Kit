@@ -31,13 +31,13 @@
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/default/map.tmj": {
             "expandedObjectLayers": [
                 8,
-                6,
-                3
+                3,
+                6
             ],
             "scale": 0.3155,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 798.7321711568939,
+                "x": 797.1473851030111,
                 "y": 580.0316957210775
             }
         },
@@ -45,7 +45,7 @@
             "scale": 0.6069,
             "selectedLayer": 4,
             "viewCenter": {
-                "x": 426.7589388696655,
+                "x": 425.93507991431864,
                 "y": 616.2464985994397
             }
         },
@@ -89,15 +89,15 @@
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/sewer/map.tmj": {
             "expandedObjectLayers": [
-                6,
                 8,
-                3
+                3,
+                6
             ],
-            "scale": 0.6354,
-            "selectedLayer": 3,
+            "scale": 0.9611,
+            "selectedLayer": 2,
             "viewCenter": {
-                "x": 1922.4110796348757,
-                "y": 1180.3588290840416
+                "x": 3095.9317448756638,
+                "y": 1462.907085631048
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/2.tmj": {
@@ -110,14 +110,14 @@
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/map.tmj": {
             "expandedObjectLayers": [
-                6,
-                3
+                3,
+                6
             ],
             "scale": 0.6922,
             "selectedLayer": 4,
             "viewCenter": {
-                "x": 783.0106905518636,
-                "y": 631.3204276220745
+                "x": 672.4934989887316,
+                "y": 712.2219011846288
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/underworld/map.tmj": {
@@ -144,7 +144,7 @@
             "scale": 0.5311,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": 419.8832611560911,
+                "x": 418.9418188665034,
                 "y": 510.2617209565053
             }
         },
