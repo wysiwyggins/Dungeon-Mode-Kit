@@ -19,8 +19,8 @@
 body.editor {
     background: var(--bg);
     color: var(--text);
-    font-family: 'Courier New', monospace;
-    font-size: 13px;
+    font-family: 'courier_prime_coderegular', monospace;
+    font-size: 14px;
     overflow-x: hidden;
     padding: 0;
 
@@ -39,14 +39,14 @@ body.editor {
         gap: 10px;
 
         h1 { font-size: 16px; color: var(--accent); margin-right: 12px; }
-        label { color: var(--text-dim); font-size: 12px; }
+        label { color: var(--text-dim); font-size: 14px; }
         select, button {
             background: var(--input-bg);
             color: var(--text);
             border: 1px solid var(--border);
             padding: 4px 8px;
             font-family: inherit;
-            font-size: 12px;
+            font-size: 14px;
             cursor: pointer;
         }
         select:focus, button:focus { outline: 1px solid var(--accent); }
@@ -105,7 +105,7 @@ body.editor {
 
         label {
             min-width: 130px;
-            font-size: 11px;
+            font-size: 14px;
             color: var(--text-dim);
         }
         input[type="text"],
@@ -117,7 +117,7 @@ body.editor {
             border: 1px solid var(--border);
             padding: 3px 6px;
             font-family: inherit;
-            font-size: 12px;
+            font-size: 14px;
             flex: 1;
             min-width: 0;
         }
@@ -160,13 +160,13 @@ body.editor {
     }
 
     .remove-btn {
-        font-size: 10px; color: var(--accent2); cursor: pointer; background: none;
+        font-size: 12px; color: var(--accent2); cursor: pointer; background: none;
         border: 1px solid var(--accent2); padding: 1px 6px; font-family: inherit;
         &:hover { background: var(--accent2); color: #fff; }
     }
 
     .add-btn {
-        font-size: 11px; color: var(--accent); cursor: pointer; background: none;
+        font-size: 12px; color: var(--accent); cursor: pointer; background: none;
         border: 1px solid var(--accent); padding: 2px 8px; margin-top: 4px; font-family: inherit;
         &:hover { background: var(--accent); color: var(--bg); }
     }
@@ -182,7 +182,7 @@ body.editor {
         padding: 8px 16px;
         display: flex;
         flex-direction: column;
-        max-height: 300px;
+        height: 200px;
 
         .output-header {
             display: flex;
@@ -190,7 +190,7 @@ body.editor {
             gap: 8px;
             margin-bottom: 6px;
         }
-        h3 { font-size: 12px; color: var(--accent); }
+        h3 { font-size: 14px; color: var(--accent); }
     }
 
     #json-output {
@@ -198,7 +198,7 @@ body.editor {
         color: #0f8;
         border: 1px solid var(--border);
         font-family: 'Courier New', monospace;
-        font-size: 11px;
+        font-size: 12px;
         padding: 8px;
         flex: 1;
         resize: vertical;
@@ -212,7 +212,7 @@ body.editor {
     .hidden { display: none !important; }
     .conditional-section { display: none; &.visible { display: block; } }
     .stat-advanced { display: none; &.visible { display: block; } }
-    .empty-hint { font-size: 11px; color: var(--text-dim); font-style: italic; padding: 8px 0; }
+    .empty-hint { font-size: 12px; color: var(--text-dim); font-style: italic; padding: 8px 0; }
 
     // ---- Preview panel (actor & item editors) ----
 
@@ -223,11 +223,11 @@ body.editor {
         border-right: 1px solid var(--border);
         overflow-y: auto;
         background: var(--bg2);
-        h3 { font-size: 12px; color: var(--accent); margin-bottom: 8px; }
+        h3 { font-size: 14px; color: var(--accent); margin-bottom: 8px; }
     }
 
     #preview-canvas { background: #d0cfc8; border: 1px solid var(--border); display: block; margin-bottom: 12px; image-rendering: pixelated; }
-    .preview-label { font-size: 10px; color: var(--text-dim); margin-top: 8px; margin-bottom: 2px; }
+    .preview-label { font-size: 12px; color: var(--text-dim); margin-top: 8px; margin-bottom: 2px; }
     .preview-tile { display: inline-block; border: 1px solid var(--border); margin-right: 4px; image-rendering: pixelated; background: #d0cfc8; }
 
     // ---- Tile slots (actor & item editors) ----
@@ -244,9 +244,9 @@ body.editor {
         &:hover { border-color: var(--accent); }
 
         canvas { image-rendering: pixelated; background: #d0cfc8; display: block; }
-        .tile-name { font-size: 10px; color: var(--text-dim); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tile-name { font-size: 12px; color: var(--text-dim); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .clear-btn {
-            font-size: 10px; color: var(--accent2); cursor: pointer;
+            font-size: 12px; color: var(--accent2); cursor: pointer;
             padding: 2px 4px; border: 1px solid var(--accent2); background: none;
         }
     }
@@ -530,6 +530,437 @@ body.editor {
         .layer-params {
             border-top: 1px solid var(--border);
             padding-top: 8px;
+        }
+    }
+
+    // ---- Prototype editor (prototype.json) ----
+    // Visual editor for level/prototype configs. Adds widgets the other
+    // editors don't use: floor tabs with inheritance, percentage sliders,
+    // dual-handle min/max ranges, weighted-pool bars, and spawn rows.
+    &.prototype-editor {
+        #workspace {
+            display: block;
+            height: calc(100vh - 48px);
+            overflow: hidden;
+        }
+        #editor-body {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        #proto-main {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        #form-panel {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 16px;
+        }
+
+        // Sections span the full width of the form panel.
+        #form-sections { max-width: none; }
+
+        // ---- Responsive field grid ----
+        // Packs compact fields (number/select/color, dual-ranges) side-by-side
+        // instead of one full-width row each. Auto-fits to available width, so
+        // it's two-up (or more) on wide screens and collapses to one on narrow.
+        .field-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 0 18px;
+            align-items: start;
+
+            // Inside a narrow grid cell, the fixed 130px label crowds the
+            // input — shrink it so the control keeps usable width.
+            .field-row, .sub, .slider-row {
+                margin-bottom: 6px;
+                > label { min-width: 92px; }
+            }
+            // Let inputs/selects fill the cell rather than a fixed 100px.
+            .field-row input[type="number"] { width: auto; min-width: 0; flex: 1; }
+        }
+
+        // ---- Repeating-list grids (spawn rows, switch patterns) ----
+        // The long lists (random_actors/random_items, switch puzzle patterns)
+        // flow into TWO columns on wide screens, one column when narrow.
+        // `minmax(0, 1fr)` lets each column shrink below its content width so
+        // children with min-width:0 stay inside their card border.
+        .spawn-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 6px 12px;
+            align-items: start;
+            margin-bottom: 6px;
+
+            @media (min-width: 900px) {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+
+            .spawn-row { margin-bottom: 0; } // gap handles spacing in the grid
+        }
+        .pattern-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px 12px;
+            align-items: start;
+
+            @media (min-width: 900px) {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .pattern-box { margin-bottom: 0; }
+        }
+
+        // Keep card contents inside the border in a narrow grid cell.
+        // Flex children must be allowed to shrink (min-width:0) or their
+        // intrinsic content width (long <select> options) overflows the card.
+        .spawn-row {
+            min-width: 0;
+            overflow: hidden; // safety net against any residual overflow
+
+            .spawn-head {
+                flex-wrap: wrap; // id select + expected + remove wrap if tight
+                select { min-width: 0; flex: 1; }
+            }
+            // chance: fixed label, slider grows, value pinned right
+            .slider-row {
+                > label { min-width: 0; flex: 0 0 auto; }
+                input[type="range"] { min-width: 0; flex: 1; }
+            }
+            // count: fixed "count" label, then the dual-range row fills the rest
+            .sub {
+                > label { min-width: 0; flex: 0 0 3.4em; }
+                > .slider-row { flex: 1; min-width: 0; }
+            }
+        }
+        .pattern-box { min-width: 0; }
+
+        // The dual-range needs a real track width to be legible — without it the
+        // two thumbs pile up at the left edge over the value text. (Its base
+        // rule already sets flex:1 + min-width:110px; just guard the value text.)
+        .range-vals { flex: 0 0 auto; white-space: nowrap; }
+
+        // ---- Tooltip affordance ----
+        // A small ⓘ next to labels; the native title attribute carries the
+        // actual text, so it works without JS and is keyboard/hover discoverable.
+        .tip-mark {
+            color: var(--accent);
+            font-size: 12px;
+        }
+        label[title], .sub-section-title[title], select[title], input[title] { cursor: help; }
+        label[title] input, label[title] select { cursor: pointer; }
+
+        // ---- Enable/disable toggle line ----
+        // Replaces the repeated inline-styled "enable X" checkboxes.
+        .toggle-line {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            color: var(--accent);
+            cursor: pointer;
+            margin: 6px 0 4px;
+            min-width: unset;
+        }
+        .mini-label {
+            font-size: 9px;
+            color: var(--text-dim);
+            cursor: help;
+        }
+
+        // Floor tab strip
+        .floor-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            align-items: center;
+            padding: 8px 16px;
+            background: var(--bg2);
+            border-bottom: 1px solid var(--border);
+
+            .add-btn { margin-top: 0; }
+            .floor-hint {
+                font-size: 10px;
+                color: var(--text-dim);
+                margin-left: auto;
+                font-style: italic;
+            }
+        }
+        .floor-tab {
+            font-family: inherit;
+            font-size: 11px;
+            cursor: pointer;
+            background: var(--input-bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 3px 10px;
+
+            &:hover { background: var(--bg3); }
+            &.active {
+                background: var(--accent);
+                color: var(--bg);
+                border-color: var(--accent);
+            }
+            &.proto-tab {
+                font-weight: bold;
+                margin-right: 8px;
+            }
+        }
+
+        // Override toggle / inheritance on floor sections
+        .override-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            color: var(--accent);
+            cursor: pointer;
+            margin-left: auto;
+            input { accent-color: var(--accent); }
+        }
+        details.section.inherited {
+            > .section-body { opacity: 0.5; pointer-events: none; }
+            > summary { color: var(--text-dim); }
+        }
+        .section-summary-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            .sec-title { flex: 0 0 auto; }
+        }
+        .inherit-badge {
+            font-size: 9px;
+            color: var(--text-dim);
+            font-style: italic;
+        }
+
+        // Slider widget (percentages / scalars)
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+
+            > label {
+                min-width: 130px;
+                font-size: 11px;
+                color: var(--text-dim);
+            }
+            input[type="range"] {
+                flex: 1;
+                accent-color: var(--accent);
+                min-width: 80px;
+            }
+            .slider-val {
+                font-size: 11px;
+                color: var(--text);
+                min-width: 58px;
+                text-align: right;
+                font-family: 'Courier New', monospace;
+                &.guaranteed { color: var(--accent); font-weight: bold; }
+            }
+        }
+
+        // Dual-handle range (min/max)
+        .dualrange {
+            position: relative;
+            flex: 1;
+            height: 22px;
+            min-width: 110px;
+            display: flex;
+            align-items: center;
+
+            .track {
+                position: absolute;
+                left: 0;
+                right: 0;
+                top: 50%;
+                transform: translateY(-50%);
+                height: 4px;
+                background: #cdcdc5;
+                border: 1px solid var(--border);
+            }
+            .track-fill {
+                position: absolute;
+                top: 50%;
+                transform: translateY(-50%);
+                height: 4px;
+                background: var(--accent);
+            }
+            input[type="range"] {
+                position: absolute;
+                left: 0;
+                right: 0;
+                width: 100%;
+                margin: 0;
+                -webkit-appearance: none;
+                appearance: none;
+                background: none;
+                pointer-events: none;
+
+                &::-webkit-slider-thumb {
+                    -webkit-appearance: none;
+                    appearance: none;
+                    pointer-events: auto;
+                    width: 13px;
+                    height: 13px;
+                    border-radius: 50%;
+                    background: var(--accent);
+                    border: 1px solid var(--bg);
+                    cursor: pointer;
+                }
+                &::-moz-range-thumb {
+                    pointer-events: auto;
+                    width: 13px;
+                    height: 13px;
+                    border-radius: 50%;
+                    background: var(--accent);
+                    border: 1px solid var(--bg);
+                    cursor: pointer;
+                }
+                &::-moz-range-track { background: none; }
+            }
+        }
+        .range-vals {
+            font-size: 11px;
+            color: var(--text);
+            min-width: 64px;
+            font-family: 'Courier New', monospace;
+        }
+
+        // Spawn distribution rows
+        .spawn-row {
+            border: 1px solid var(--border);
+            background: var(--surface);
+            padding: 6px 8px;
+            margin-bottom: 6px;
+
+            .spawn-head {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                margin-bottom: 4px;
+
+                select {
+                    flex: 1;
+                    font-family: inherit;
+                    font-size: 12px;
+                    background: var(--input-bg);
+                    color: var(--text);
+                    border: 1px solid var(--border);
+                    padding: 3px 6px;
+                }
+            }
+            .pool-hint {
+                font-size: 9px;
+                color: var(--accent2);
+                white-space: nowrap;
+            }
+            .expected {
+                font-size: 10px;
+                color: var(--text-dim);
+                font-style: italic;
+                white-space: nowrap;
+                margin-left: 4px;
+            }
+            .sub {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                > label {
+                    min-width: 64px;
+                    font-size: 10px;
+                    color: var(--text-dim);
+                }
+            }
+        }
+
+        // Weighted-pool bars (lakes/abyss types, roomWeights, item_catalog)
+        .weight-table { margin: 4px 0; }
+        .weight-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 3px;
+
+            .wlabel {
+                min-width: 90px;
+                font-size: 11px;
+                color: var(--text);
+            }
+            select.wlabel-sel {
+                min-width: 90px;
+                flex: 0 0 auto;
+                font-family: inherit;
+                font-size: 11px;
+                background: var(--input-bg);
+                color: var(--text);
+                border: 1px solid var(--border);
+                padding: 2px 4px;
+            }
+            .wbar-wrap {
+                flex: 1;
+                height: 14px;
+                background: #e4e3db;
+                border: 1px solid var(--border);
+                position: relative;
+                min-width: 60px;
+            }
+            .wbar-fill { height: 100%; background: var(--accent); }
+            .wbar-pct {
+                position: absolute;
+                right: 3px;
+                top: 0;
+                font-size: 9px;
+                color: var(--text);
+                line-height: 14px;
+            }
+            input[type="number"] {
+                width: 56px;
+                font-family: inherit;
+                font-size: 11px;
+                background: var(--input-bg);
+                color: var(--text);
+                border: 1px solid var(--border);
+                padding: 2px 4px;
+            }
+        }
+
+        // Misc helpers
+        .hint-inline {
+            font-size: 10px;
+            color: var(--text-dim);
+            font-style: italic;
+            margin: 2px 0 6px;
+        }
+        .field-note {
+            font-size: 10px;
+            color: var(--accent2);
+            margin-left: 6px;
+        }
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0 18px;
+        }
+        .pattern-box {
+            border: 1px solid var(--border);
+            background: var(--surface);
+            padding: 8px;
+            margin-bottom: 8px;
+        }
+        .unknown-keys {
+            font-size: 10px;
+            color: var(--accent2);
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .status-text {
+            font-size: 11px;
+            color: var(--text-dim);
         }
     }
 }

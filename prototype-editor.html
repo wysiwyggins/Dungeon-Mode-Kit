@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prototype Editor — Dungeon Mode Kit</title>
+<link rel="stylesheet" href="assets/main.css">
+</head>
+<body class="editor prototype-editor">
+
+<header>
+    <h1>Prototype Editor</h1>
+    <label>Prototype:
+        <select id="prototype-select">
+            <option value="" selected>— choose —</option>
+            <option value="dungeon">dungeon</option>
+            <option value="sewer">sewer</option>
+            <option value="arena">arena</option>
+            <option value="labyrinth">labyrinth</option>
+            <option value="automatons">automatons</option>
+            <option value="test">test</option>
+            <option value="default">default</option>
+            <option value="cutscene_test">cutscene_test</option>
+        </select>
+    </label>
+    <button id="btn-blank">New Blank</button>
+    <button id="btn-export" class="btn-accent">Export JSON</button>
+    <button id="btn-copy" class="btn-accent">Copy to Clipboard</button>
+    <span id="load-status" class="status-text"></span>
+</header>
+
+<div id="workspace">
+  <div id="editor-body">
+    <div class="floor-tabs" id="floor-tabs"></div>
+    <div id="proto-main">
+      <div id="form-panel">
+        <div class="empty-hint" id="empty-hint">Choose a prototype above (or “New Blank”) to begin editing.</div>
+        <div id="form-sections" class="hidden"></div>
+      </div>
+    </div>
+    <div id="json-output-panel">
+      <div class="output-header">
+        <h3>prototype.json</h3>
+        <span id="output-key" class="status-text"></span>
+      </div>
+      <textarea id="json-output" readonly spellcheck="false"></textarea>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* =========================================================================
+   State
+   ========================================================================= */
+const state = {
+    proto: null,          // the live prototype object (source of truth)
+    baseActors: {},
+    baseItems: {},
+    protoActors: {},
+    protoItems: {},
+    mergedActorIds: [],   // sorted ids for dropdowns
+    mergedItemIds: [],
+    soundIds: [],
+    poolItemIds: new Set(),// item ids that have random_type (category pools)
+    activeFloor: 'proto', // 'proto' or an integer index into proto.levels
+    prototypeCache: {},
+};
+
+const CATEGORY_KEYS = ['potion','scroll','staff','weapon','armor','ring','wand'];
+const GEN_TYPES = ['brogue','digger','arena','infernal'];
+const LAKE_TYPES = ['water','sewage','lava','abyss'];
+
+/* =========================================================================
+   Data loading
+   ========================================================================= */
+async function fetchJSON(url) {
+    try {
+        const r = await fetch(url);
+        if (!r.ok) return {};
+        const text = await r.text();
+        if (!text.trim()) return {};
+        return JSON.parse(text);
+    } catch { return {}; }
+}
+
+async function loadBaseData() {
+    const [actors, items, sounds] = await Promise.all([
+        fetchJSON('data/actors.json'),
+        fetchJSON('data/items.json'),
+        fetchJSON('data/sounds.json'),
+    ]);
+    state.baseActors = actors;
+    state.baseItems = items;
+    state.soundIds = Object.keys(sounds.sprite || {}).sort();
+    state.poolItemIds = new Set();
+    for (const [k, v] of Object.entries(items)) {
+        const rt = v.random_type || (v.attributes && v.attributes.random_type);
+        if (rt) state.poolItemIds.add(k);
+    }
+}
+
+async function loadPrototype(name) {
+    let cfg, protoActors, protoItems;
+    if (name && state.prototypeCache[name]) {
+        ({ cfg, protoActors, protoItems } = state.prototypeCache[name]);
+    } else if (name) {
+        [cfg, protoActors, protoItems] = await Promise.all([
+            fetchJSON(`prototypes/${name}/prototype.json`),
+            fetchJSON(`prototypes/${name}/actors.json`),
+            fetchJSON(`prototypes/${name}/items.json`),
+        ]);
+        state.prototypeCache[name] = { cfg, protoActors, protoItems };
+    } else {
+        cfg = blankPrototype();
+        protoActors = {}; protoItems = {};
+    }
+    // deep-clone cfg so editing never mutates the cache
+    state.proto = JSON.parse(JSON.stringify(cfg));
+    state.protoActors = protoActors;
+    state.protoItems = protoItems;
+    rebuildMergedIds();
+    state.activeFloor = 'proto';
+    document.getElementById('empty-hint').classList.add('hidden');
+    document.getElementById('form-sections').classList.remove('hidden');
+    render();
+}
+
+function rebuildMergedIds() {
+    state.mergedActorIds = [...new Set([
+        ...Object.keys(state.baseActors),
+        ...Object.keys(state.protoActors),
+    ])].sort();
+    state.mergedItemIds = [...new Set([
+        ...Object.keys(state.baseItems),
+        ...Object.keys(state.protoItems),
+    ])].sort();
+}
+
+function blankPrototype() {
+    return {
+        name: 'New Prototype',
+        description: '',
+        turn_speed: 50,
+        mechanics: { fog_of_war: true, darkness: true },
+    };
+}
+
+/* =========================================================================
+   Model helpers — current editing target (proto-level or a floor)
+   ========================================================================= */
+// Returns the object currently being edited (the prototype root or a floor).
+function currentTarget() {
+    if (state.activeFloor === 'proto') return state.proto;
+    return state.proto.levels[state.activeFloor];
+}
+function isFloor() { return state.activeFloor !== 'proto'; }
+
+// Inherited value for a floor field = the prototype-level value (or undefined).
+function inheritedValue(key) {
+    return state.proto ? state.proto[key] : undefined;
+}
+
+/* =========================================================================
+   Reusable widget builders
+   Each returns a DOM node and wires onChange to mutate the model + re-output.
+   ========================================================================= */
+function el(tag, props = {}, ...children) {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(props)) {
+        if (k === 'class') n.className = v;
+        else if (k === 'style') n.style.cssText = v;
+        else if (k.startsWith('on') && typeof v === 'function') n.addEventListener(k.slice(2), v);
+        else if (v !== null && v !== undefined) n.setAttribute(k, v);
+    }
+    for (const c of children) {
+        if (c == null) continue;
+        n.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+    }
+    return n;
+}
+
+// Build a <label> that, when `tip` is given, carries a native tooltip on the
+// whole row and appends a small ⓘ marker (also titled) as a discoverable hint.
+function labelEl(text, tip) {
+    const lbl = el('label', {}, text);
+    if (tip) {
+        lbl.setAttribute('title', tip);
+        lbl.appendChild(el('span', { class: 'tip-mark', title: tip }, ' ⓘ'));
+    }
+    return lbl;
+}
+
+// Group compact fields side-by-side. Pass any number of field-row nodes;
+// they flow into a responsive grid instead of each taking the full width.
+function fieldGrid(...rows) {
+    return el('div', { class: 'field-grid' }, ...rows.filter(Boolean));
+}
+
+// A labelled text/number field bound to obj[key]. opts.tip adds a tooltip.
+function fieldRow(label, obj, key, opts = {}) {
+    const type = opts.type || 'text';
+    const input = el('input', { type });
+    if (type === 'number') {
+        input.value = obj[key] != null ? obj[key] : '';
+        input.addEventListener('input', () => {
+            if (input.value === '') delete obj[key];
+            else obj[key] = Number(input.value);
+            commit();
+        });
+    } else {
+        input.value = obj[key] != null ? obj[key] : '';
+        input.addEventListener('input', () => {
+            if (input.value === '') delete obj[key];
+            else obj[key] = input.value;
+            commit();
+        });
+    }
+    if (opts.placeholder) input.placeholder = opts.placeholder;
+    if (opts.tip) input.setAttribute('title', opts.tip);
+    return el('div', { class: 'field-row' }, labelEl(label, opts.tip), input);
+}
+
+function textareaRow(label, obj, key, opts = {}) {
+    const ta = el('textarea', {});
+    ta.value = obj[key] != null ? obj[key] : '';
+    ta.addEventListener('input', () => {
+        if (ta.value === '') delete obj[key]; else obj[key] = ta.value;
+        commit();
+    });
+    if (opts.tip) ta.setAttribute('title', opts.tip);
+    return el('div', { class: 'field-row' }, labelEl(label, opts.tip), ta);
+}
+
+function checkboxRow(label, obj, key, def, tip) {
+    const cb = el('input', { type: 'checkbox' });
+    cb.checked = obj[key] != null ? !!obj[key] : !!def;
+    cb.addEventListener('change', () => { obj[key] = cb.checked; commit(); });
+    const lbl = el('label', { title: tip || null }, cb, ' ' + label);
+    if (tip) lbl.appendChild(el('span', { class: 'tip-mark', title: tip }, ' ⓘ'));
+    return lbl;
+}
+
+// A standalone enable/disable toggle (checkbox + label), not bound to a key.
+// `onToggle(checked)` does the model mutation. Optional tooltip.
+function toggleLine(label, checked, onToggle, tip) {
+    const lbl = el('label', { class: 'toggle-line', title: tip || null });
+    const cb = el('input', { type: 'checkbox' });
+    cb.checked = !!checked;
+    cb.addEventListener('change', () => onToggle(cb.checked));
+    lbl.append(cb, ' ' + label);
+    if (tip) lbl.appendChild(el('span', { class: 'tip-mark', title: tip }, ' ⓘ'));
+    return lbl;
+}
+
+function selectRow(label, obj, key, options, opts = {}) {
+    const sel = el('select', {});
+    const blank = opts.allowBlank !== false;
+    if (blank) sel.appendChild(el('option', { value: '' }, opts.blankLabel || '— none —'));
+    for (const o of options) {
+        const val = typeof o === 'object' ? o.value : o;
+        const txt = typeof o === 'object' ? o.label : o;
+        sel.appendChild(el('option', { value: val }, txt));
+    }
+    sel.value = obj[key] != null ? obj[key] : '';
+    sel.addEventListener('change', () => {
+        if (sel.value === '') delete obj[key]; else obj[key] = sel.value;
+        commit();
+        if (opts.rerender) render();
+    });
+    if (opts.tip) sel.setAttribute('title', opts.tip);
+    return el('div', { class: 'field-row' }, labelEl(label, opts.tip), sel);
+}
+
+// Percentage / numeric slider bound to obj[key].
+// opts: {min,max,step, guaranteedAt (label '100' specially), suffix, onInput}
+function sliderRow(label, obj, key, opts = {}) {
+    const min = opts.min ?? 0, max = opts.max ?? 100, step = opts.step ?? 1;
+    const range = el('input', { type: 'range', min, max, step });
+    const val = el('span', { class: 'slider-val' });
+    const cur = obj[key] != null ? obj[key] : (opts.def ?? min);
+    range.value = cur;
+    const fmt = () => {
+        const v = Number(range.value);
+        if (opts.guaranteedAt != null && v >= opts.guaranteedAt) {
+            val.textContent = 'guaranteed';
+            val.classList.add('guaranteed');
+        } else {
+            val.classList.remove('guaranteed');
+            val.textContent = (opts.decimals ? v.toFixed(opts.decimals) : v) + (opts.suffix || '');
+        }
+    };
+    fmt();
+    range.addEventListener('input', () => {
+        obj[key] = opts.decimals ? Number(Number(range.value).toFixed(opts.decimals)) : Number(range.value);
+        fmt();
+        if (opts.onInput) opts.onInput();
+        commit();
+    });
+    if (opts.tip) range.setAttribute('title', opts.tip);
+    return el('div', { class: 'slider-row' }, labelEl(label, opts.tip), range, val);
+}
+
+// Dual-handle min/max range. Reads/writes obj[minKey]/obj[maxKey].
+// opts: {min,max,step, onInput}
+function dualRange(obj, minKey, maxKey, opts = {}) {
+    const lo = opts.min ?? 0, hi = opts.max ?? 100, step = opts.step ?? 1;
+    const wrap = el('div', { class: 'dualrange' });
+    const track = el('div', { class: 'track' });
+    const fill = el('div', { class: 'track-fill' });
+    const rmin = el('input', { type: 'range', min: lo, max: hi, step });
+    const rmax = el('input', { type: 'range', min: lo, max: hi, step });
+    const out = el('span', { class: 'range-vals' });
+    let vmin = obj[minKey] != null ? obj[minKey] : (opts.defMin ?? lo);
+    let vmax = obj[maxKey] != null ? obj[maxKey] : (opts.defMax ?? hi);
+    // allow values beyond the visual max (e.g. gol_cell 200-400): widen track
+    const trackHi = Math.max(hi, vmax);
+    rmin.max = trackHi; rmax.max = trackHi;
+    rmin.value = vmin; rmax.value = vmax;
+    const paint = () => {
+        const span = trackHi - lo || 1;
+        const a = ((vmin - lo) / span) * 100, b = ((vmax - lo) / span) * 100;
+        fill.style.left = a + '%'; fill.style.width = Math.max(0, b - a) + '%';
+        out.textContent = vmin + '–' + vmax;
+    };
+    const apply = () => {
+        obj[minKey] = vmin; obj[maxKey] = vmax;
+        paint(); if (opts.onInput) opts.onInput(); commit();
+    };
+    rmin.addEventListener('input', () => {
+        vmin = Number(rmin.value); if (vmin > vmax) { vmax = vmin; rmax.value = vmax; } apply();
+    });
+    rmax.addEventListener('input', () => {
+        vmax = Number(rmax.value); if (vmax < vmin) { vmin = vmax; rmin.value = vmin; } apply();
+    });
+    paint();
+    wrap.append(track, fill, rmin, rmax);
+    return el('div', { class: 'slider-row', style: 'gap:10px;' }, wrap, out);
+}
+
+/* Weight-bar editor.
+   mode 'object': obj[key] is { name: weight } (roomWeights, item_catalog-ish)
+   mode 'pool'  : obj[key] is a repeated array ["water","water","lava"] -> edited as {type:count}
+   choices: optional fixed list of selectable names (pool types / categories) */
+function weightEditor(obj, key, opts = {}) {
+    const mode = opts.mode || 'object';
+    const wrap = el('div', { class: 'weight-table' });
+
+    function readWeights() {
+        if (mode === 'pool') {
+            const arr = Array.isArray(obj[key]) ? obj[key] : [];
+            const counts = {};
+            for (const t of arr) counts[t] = (counts[t] || 0) + 1;
+            return counts;
+        }
+        return { ...(obj[key] || {}) };
+    }
+    function writeWeights(w) {
+        if (mode === 'pool') {
+            const arr = [];
+            for (const [t, n] of Object.entries(w)) for (let i = 0; i < n; i++) arr.push(t);
+            obj[key] = arr;
+        } else {
+            obj[key] = w;
+        }
+        commit();
+    }
+
+    function redraw() {
+        wrap.innerHTML = '';
+        const w = readWeights();
+        const total = Object.values(w).reduce((a, b) => a + (Number(b) || 0), 0) || 1;
+        for (const name of Object.keys(w)) {
+            const pct = Math.round((w[name] / total) * 100);
+            const bar = el('div', { class: 'wbar-fill', style: `width:${pct}%` });
+            const barWrap = el('div', { class: 'wbar-wrap' }, bar, el('span', { class: 'wbar-pct' }, pct + '%'));
+            const num = el('input', { type: 'number', min: 0, step: opts.step || 1, value: w[name] });
+            num.addEventListener('input', () => {
+                const nv = Number(num.value);
+                const cur = readWeights();
+                if (num.value === '' || nv <= 0) delete cur[name]; else cur[name] = nv;
+                writeWeights(cur); redraw();
+            });
+            const rm = el('button', { class: 'remove-btn', title: 'remove' }, '×');
+            rm.addEventListener('click', () => { const c = readWeights(); delete c[name]; writeWeights(c); redraw(); });
+
+            let labelNode;
+            if (opts.choices) {
+                labelNode = el('select', { class: 'wlabel-sel' });
+                for (const c of opts.choices) labelNode.appendChild(el('option', { value: c }, c));
+                labelNode.value = name;
+                labelNode.addEventListener('change', () => {
+                    const c = readWeights(); const v = c[name]; delete c[name]; c[labelNode.value] = (c[labelNode.value]||0)+v;
+                    writeWeights(c); redraw();
+                });
+            } else {
+                labelNode = el('span', { class: 'wlabel' }, name);
+            }
+            wrap.appendChild(el('div', { class: 'weight-row' }, labelNode, barWrap, num, rm));
+        }
+        // add control
+        const addSel = el('select', { class: 'wlabel-sel' });
+        addSel.appendChild(el('option', { value: '' }, '+ add…'));
+        const existing = new Set(Object.keys(w));
+        const choices = opts.choices || [];
+        for (const c of choices) if (!existing.has(c)) addSel.appendChild(el('option', { value: c }, c));
+        if (!opts.choices) {
+            // free-text add for object mode without fixed choices (e.g. roomWeights extra)
+            const addInput = el('input', { type: 'text', placeholder: 'new name', style: 'width:90px;' });
+            const addBtn = el('button', { class: 'add-btn' }, '+ add');
+            addBtn.addEventListener('click', () => {
+                const nm = addInput.value.trim(); if (!nm) return;
+                const c = readWeights(); if (!c[nm]) c[nm] = 1; writeWeights(c); redraw();
+            });
+            wrap.appendChild(el('div', { class: 'weight-row' }, addInput, addBtn));
+        } else {
+            addSel.addEventListener('change', () => {
+                if (!addSel.value) return;
+                const c = readWeights(); c[addSel.value] = (c[addSel.value] || 0) + 1; writeWeights(c); redraw();
+            });
+            wrap.appendChild(el('div', { class: 'weight-row' }, addSel));
+        }
+    }
+    redraw();
+    return wrap;
+}
+
+/* =========================================================================
+   Spawn distribution editor (random_actors / random_items)
+   ========================================================================= */
+function spawnEditor(obj, key, kind) {
+    // obj[key] = { id: {chance, min?, max?} }
+    const container = el('div', {});
+    const ids = kind === 'actor' ? state.mergedActorIds : state.mergedItemIds;
+
+    function redraw() {
+        container.innerHTML = '';
+        const table = obj[key] || {};
+        const entries = Object.entries(table);
+        if (!entries.length) {
+            container.appendChild(el('div', { class: 'empty-hint' }, 'No ' + (kind === 'actor' ? 'actors' : 'items') + ' configured.'));
+        }
+        // Rows flow into a responsive multi-column grid on wide screens.
+        const grid = el('div', { class: 'spawn-grid' });
+        for (const [id, spec] of entries) {
+            grid.appendChild(spawnRow(obj, key, id, spec, kind, ids, redraw));
+        }
+        if (entries.length) container.appendChild(grid);
+        // add row
+        const addSel = el('select', { style: 'min-width:200px;' });
+        addSel.appendChild(el('option', { value: '' }, '+ add ' + (kind === 'actor' ? 'actor…' : 'item…')));
+        for (const id of ids) if (!table[id]) addSel.appendChild(el('option', { value: id }, id));
+        addSel.addEventListener('change', () => {
+            if (!addSel.value) return;
+            if (!obj[key]) obj[key] = {};
+            obj[key][addSel.value] = { chance: 100 };
+            commit(); redraw();
+        });
+        container.appendChild(el('div', { style: 'margin-top:4px;' }, addSel));
+    }
+    redraw();
+    return container;
+}
+
+function spawnRow(obj, key, id, spec, kind, ids, redraw) {
+    const row = el('div', { class: 'spawn-row' });
+
+    // header: id selector + pool hint + remove
+    const idSel = el('select', {});
+    for (const x of ids) idSel.appendChild(el('option', { value: x }, x));
+    if (!ids.includes(id)) idSel.appendChild(el('option', { value: id }, id + ' (unknown)'));
+    idSel.value = id;
+    idSel.addEventListener('change', () => {
+        const newId = idSel.value;
+        if (newId === id) return;
+        const tbl = obj[key];
+        const v = tbl[id]; delete tbl[id]; tbl[newId] = v;
+        commit(); redraw();
+    });
+    const expected = el('span', { class: 'expected' });
+    const head = el('div', { class: 'spawn-head' }, idSel);
+    if (kind === 'item' && state.poolItemIds.has(id)) {
+        head.appendChild(el('span', { class: 'pool-hint', title: 'This id is a category pool; spawns a random concrete type.' }, 'ⓘ pool'));
+    }
+    head.appendChild(expected);
+    const rm = el('button', { class: 'remove-btn' }, 'remove');
+    rm.addEventListener('click', () => { delete obj[key][id]; commit(); redraw(); });
+    head.appendChild(rm);
+    row.appendChild(head);
+
+    function recomputeExpected() {
+        const c = spec.chance != null ? spec.chance : 100;
+        const mn = spec.min != null ? spec.min : 1;
+        const mx = spec.max != null ? spec.max : (spec.min != null ? spec.min : 1);
+        const exp = (c / 100) * ((mn + mx) / 2);
+        expected.textContent = '≈ ' + (Math.round(exp * 100) / 100) + ' / floor';
+    }
+
+    // chance slider
+    if (spec.chance == null) spec.chance = 100;
+    const chanceWrap = sliderRow('chance', spec, 'chance', {
+        min: 0, max: 100, guaranteedAt: 100, suffix: '%', onInput: recomputeExpected,
+        tip: 'Probability this entry spawns at all. 100% = guaranteed; below that it’s a per-floor roll.',
+    });
+    row.appendChild(chanceWrap);
+
+    // count dual-range (min/max). Default both to 1 when absent.
+    if (spec.min == null && spec.max == null) { /* leave unset, treated as 1/1 */ }
+    const countObj = {
+        get min() { return spec.min != null ? spec.min : 1; },
+        set min(v) { spec.min = v; },
+        get max() { return spec.max != null ? spec.max : (spec.min != null ? spec.min : 1); },
+        set max(v) { spec.max = v; },
+    };
+    // Use a generous visual max; widen automatically for big counts.
+    const visMax = Math.max(10, spec.max || 0);
+    const countRow = el('div', { class: 'sub' },
+        labelEl('count', 'How many to place when it spawns — a random value in this min–max range. Both unset = exactly 1.'),
+        dualRange(countObj, 'min', 'max', { min: 0, max: visMax, onInput: () => { recomputeExpected(); } })
+    );
+    row.appendChild(countRow);
+    recomputeExpected();
+    return row;
+}
+
+/* =========================================================================
+   win_conditions editor (array of strings or objects)
+   ========================================================================= */
+function winConditionsEditor(obj, key) {
+    const wrap = el('div', { class: 'dynamic-list' });
+    function arr() { if (!Array.isArray(obj[key])) obj[key] = []; return obj[key]; }
+    function redraw() {
+        wrap.innerHTML = '';
+        arr().forEach((cond, i) => wrap.appendChild(condRow(cond, i, redraw, obj, key)));
+        const add = el('button', { class: 'add-btn' }, '+ condition');
+        add.addEventListener('click', () => { arr().push('killed:'); commit(); redraw(); });
+        wrap.appendChild(add);
+    }
+    redraw();
+    return wrap;
+}
+
+function condRow(cond, i, redraw, obj, key) {
+    const isObj = cond && typeof cond === 'object';
+    const row = el('div', { class: 'list-item' });
+    const typeSel = el('select', { style: 'flex:0 0 110px;' });
+    [['wearing','wearing:'],['holding','holding:'],['killed','killed:'],['stat','stat compare']]
+        .forEach(([v, l]) => typeSel.appendChild(el('option', { value: v }, l)));
+    let curType = 'killed';
+    if (isObj) curType = 'stat';
+    else if (typeof cond === 'string') curType = cond.split(':')[0] || 'killed';
+    typeSel.value = curType;
+    typeSel.addEventListener('change', () => {
+        const arr = obj[key];
+        if (typeSel.value === 'stat') arr[i] = { actor: 'player', stat: 'health', op: '>=', value: 0 };
+        else arr[i] = typeSel.value + ':';
+        commit(); redraw();
+    });
+    row.appendChild(typeSel);
+
+    if (curType === 'stat') {
+        const a = el('input', { type: 'text', placeholder: 'actor (player)', style: 'flex:0 0 90px;' });
+        a.value = cond.actor || ''; a.addEventListener('input', () => { cond.actor = a.value || undefined; commit(); });
+        const s = el('input', { type: 'text', placeholder: 'stat', style: 'flex:0 0 80px;' });
+        s.value = cond.stat || ''; s.addEventListener('input', () => { cond.stat = s.value; commit(); });
+        const op = el('select', { style: 'flex:0 0 60px;' });
+        ['>','>=','<','<=','==','!='].forEach(o => op.appendChild(el('option', { value: o }, o)));
+        op.value = cond.op || '>='; op.addEventListener('change', () => { cond.op = op.value; commit(); });
+        const v = el('input', { type: 'number', style: 'flex:0 0 70px;' });
+        v.value = cond.value != null ? cond.value : 0; v.addEventListener('input', () => { cond.value = Number(v.value); commit(); });
+        row.append(a, s, op, v);
+    } else {
+        // operand: actor id (killed) or item id (wearing/holding)
+        const operand = (typeof cond === 'string' ? cond.split(':')[1] : '') || '';
+        const ids = curType === 'killed' ? state.mergedActorIds : state.mergedItemIds;
+        const sel = el('select', {});
+        sel.appendChild(el('option', { value: '' }, '— pick —'));
+        for (const x of ids) sel.appendChild(el('option', { value: x }, x));
+        if (operand && !ids.includes(operand)) sel.appendChild(el('option', { value: operand }, operand + ' (?)'));
+        sel.value = operand;
+        sel.addEventListener('change', () => { obj[key][i] = curType + ':' + sel.value; commit(); });
+        row.appendChild(sel);
+    }
+    const rm = el('button', { class: 'remove-btn' }, '×');
+    rm.addEventListener('click', () => { obj[key].splice(i, 1); commit(); redraw(); });
+    row.appendChild(rm);
+    return row;
+}
+
+/* =========================================================================
+   Section helpers — including the floor inheritance/override toggle
+   ========================================================================= */
+// Build a <details> section. If we're on a floor and `inheritKey` is given,
+// show an "override on this floor" toggle that adds/removes target[inheritKey].
+function section(title, opts = {}) {
+    const det = el('details', { class: 'section' });
+    if (opts.open) det.setAttribute('open', '');
+    const summary = el('summary', {});
+    const summaryRow = el('div', { class: 'section-summary-row' }, el('span', { class: 'sec-title' }, title));
+    summary.appendChild(summaryRow);
+    det.appendChild(summary);
+    const body = el('div', { class: 'section-body' });
+    det.appendChild(body);
+
+    if (opts.inheritKey && isFloor()) {
+        const target = currentTarget();
+        const overridden = Object.prototype.hasOwnProperty.call(target, opts.inheritKey);
+        const toggle = el('label', { class: 'override-toggle' });
+        const cb = el('input', { type: 'checkbox' });
+        cb.checked = overridden;
+        cb.addEventListener('change', (e) => {
+            e.stopPropagation();
+            if (cb.checked) {
+                // copy inherited value as the starting point for the override
+                const inh = inheritedValue(opts.inheritKey);
+                target[opts.inheritKey] = inh !== undefined
+                    ? JSON.parse(JSON.stringify(inh))
+                    : (opts.defaultValue !== undefined ? opts.defaultValue : {});
+            } else {
+                delete target[opts.inheritKey];
+            }
+            commit(); render();
+        });
+        toggle.append(cb, ' override on this floor');
+        toggle.addEventListener('click', (e) => e.stopPropagation());
+        summaryRow.appendChild(toggle);
+        if (!overridden) {
+            det.classList.add('inherited');
+            const inh = inheritedValue(opts.inheritKey);
+            summaryRow.appendChild(el('span', { class: 'inherit-badge' },
+                inh !== undefined ? '(inherited from prototype)' : '(not set at prototype level)'));
+        }
+    }
+    return { det, body };
+}
+
+function subTitle(t, tip) {
+    const n = el('div', { class: 'sub-section-title' }, t);
+    if (tip) { n.setAttribute('title', tip); n.appendChild(el('span', { class: 'tip-mark', title: tip }, ' ⓘ')); }
+    return n;
+}
+
+/* =========================================================================
+   Render
+   ========================================================================= */
+function render() {
+    renderFloorTabs();
+    renderForm();
+    updateJSONOutput();
+}
+
+function renderFloorTabs() {
+    const bar = document.getElementById('floor-tabs');
+    bar.innerHTML = '';
+    if (!state.proto) return;
+    const protoTab = el('button', { class: 'floor-tab proto-tab' + (state.activeFloor === 'proto' ? ' active' : '') }, 'Prototype defaults');
+    protoTab.addEventListener('click', () => { state.activeFloor = 'proto'; render(); });
+    bar.appendChild(protoTab);
+
+    const levels = state.proto.levels || [];
+    levels.forEach((_, i) => {
+        const t = el('button', { class: 'floor-tab' + (state.activeFloor === i ? ' active' : '') }, 'Floor ' + (i + 1));
+        t.addEventListener('click', () => { state.activeFloor = i; render(); });
+        bar.appendChild(t);
+    });
+    const add = el('button', { class: 'add-btn' }, '+ floor');
+    add.addEventListener('click', () => {
+        if (!state.proto.levels) state.proto.levels = [];
+        state.proto.levels.push({ win_conditions: [] });
+        state.activeFloor = state.proto.levels.length - 1;
+        commit(); render();
+    });
+    bar.appendChild(add);
+
+    if (isFloor()) {
+        const del = el('button', { class: 'remove-btn' }, 'remove floor ' + (state.activeFloor + 1));
+        del.addEventListener('click', () => {
+            state.proto.levels.splice(state.activeFloor, 1);
+            if (!state.proto.levels.length) delete state.proto.levels;
+            state.activeFloor = 'proto';
+            commit(); render();
+        });
+        bar.appendChild(del);
+    }
+    bar.appendChild(el('span', { class: 'floor-hint' },
+        isFloor() ? 'Dimmed sections are inherited from prototype defaults; toggle “override” to localize.'
+                  : (levels.length ? levels.length + ' floor(s). Per-floor tabs override these defaults.'
+                                   : 'Flat prototype (no per-floor levels). Add a floor to localize settings.')));
+}
+
+function renderForm() {
+    const root = document.getElementById('form-sections');
+    root.innerHTML = '';
+    if (!state.proto) return;
+    const onProto = !isFloor();
+
+    if (onProto) {
+        root.appendChild(sectionIdentity().det);
+        root.appendChild(sectionMechanics(state.proto, 'mechanics', { open: true }).det);
+        root.appendChild(sectionWinState().det);
+        root.appendChild(sectionMapGenerator(state.proto).det);
+        root.appendChild(sectionItemCatalog().det);
+        root.appendChild(sectionItemBudget(state.proto).det);
+        root.appendChild(sectionSpawns(state.proto, { open: true }).det);
+        root.appendChild(sectionTrapsSwitches(state.proto).det);
+        root.appendChild(sectionAdvanced().det);
+    } else {
+        const floor = currentTarget();
+        root.appendChild(sectionFloorWinConditions(floor).det);
+        root.appendChild(sectionMechanics(floor, 'mechanics', { inheritKey: 'mechanics', open: true }).det);
+        root.appendChild(sectionMapGenerator(floor, { inheritKey: 'map_generator' }).det);
+        root.appendChild(sectionItemBudget(floor, { inheritKey: 'item_budget' }).det);
+        root.appendChild(sectionSpawns(floor, { open: true }).det);
+        root.appendChild(sectionTrapsSwitches(floor).det);
+    }
+}
+
+/* ---- Sections (prototype-level) ---- */
+function sectionIdentity() {
+    const { det, body } = section('Identity', { open: true });
+    const p = state.proto;
+    body.appendChild(fieldRow('Name', p, 'name', { tip: 'Display name of this prototype/level, shown to the player on load.' }));
+    body.appendChild(textareaRow('Description', p, 'description', { tip: 'Intro text shown when the level loads. Use \\n for line breaks.' }));
+    body.appendChild(el('div', { class: 'hint-inline' }, 'Use \\n in description for line breaks (newlines are preserved).'));
+    body.appendChild(selectRow('Loaded sound', p, 'loaded_sound', state.soundIds, {
+        blankLabel: '— none —', tip: 'Sound effect played once when the level finishes loading.' }));
+    body.appendChild(fieldGrid(
+        fieldRow('Depth', p, 'depth', { type: 'number', tip: 'Dungeon depth for progression tracking/scaling. Higher = deeper.' }),
+        fieldRow('Turn speed (ms)', p, 'turn_speed', { type: 'number', tip: 'Milliseconds per turn tick. Lower = faster animation/AI cadence. Default 50.' }),
+    ));
+    body.appendChild(fieldGrid(
+        fieldRow('Next level', p, 'next_level', { placeholder: 'prototype name', tip: 'Prototype loaded when the player exits downward from the final floor.' }),
+        fieldRow('Previous level', p, 'previous_level', { placeholder: 'prototype name', tip: 'Prototype reachable by going back up the entrance stairway.' }),
+    ));
+    body.appendChild(fieldRow('Intro cutscene', p, 'intro_cutscene', { placeholder: 'prototype name', tip: 'Prototype (flipbook cutscene) played before this level begins.' }));
+    return { det };
+}
+
+function sectionMechanics(obj, key, opts = {}) {
+    const { det, body } = section('Mechanics', { ...opts, inheritKey: opts.inheritKey, defaultValue: {} });
+    if (opts.inheritKey && isFloor() && !Object.prototype.hasOwnProperty.call(obj, key)) return { det };
+    if (!obj[key]) obj[key] = {};
+    const m = obj[key];
+    const grid = el('div', { class: 'checkbox-grid' });
+    grid.append(
+        checkboxRow('fog_of_war', m, 'fog_of_war', false, 'Tiles you have seen stay remembered but dim when out of view; unseen tiles are hidden.'),
+        checkboxRow('darkness', m, 'darkness', false, 'Level is dark — only lit areas (torches, light sources, player light) are visible.'),
+        checkboxRow('player_auto_light', m, 'player_auto_light', false, 'Player emits their own light automatically, so they can always see nearby tiles even in darkness.'),
+        checkboxRow('observer_mode', m, 'observer_mode', false, 'No player-controlled actor; the level runs autonomously and you watch (e.g. Game of Life).'),
+    );
+    body.appendChild(grid);
+    body.appendChild(sliderRow('treasure_room %', m, 'treasure_room', { min: 0, max: 100, suffix: '%', def: 0,
+        tip: 'Chance per floor that a special locked treasure room is generated.' }));
+    body.appendChild(sliderRow('ambient_light', m, 'ambient_light', { min: 0, max: 1, step: 0.05, decimals: 2, def: 1,
+        tip: 'Base brightness applied everywhere (0 = pitch black, 1 = fully lit). Used with darkness.' }));
+    body.appendChild(fieldGrid(
+        fieldRow('viewport_width', m, 'viewport_width', { type: 'number',
+            tip: 'Visible columns. If smaller than the map, the level scrolls. Leave blank to show the whole map.' }),
+        fieldRow('viewport_height', m, 'viewport_height', { type: 'number',
+            tip: 'Visible rows. If smaller than the map, the level scrolls. Leave blank to show the whole map.' }),
+    ));
+    body.appendChild(fieldRow('ai_margin', m, 'ai_margin', { type: 'number',
+        tip: 'Scrolling levels only: actors more than this many tiles outside the viewport skip their turn (perf optimization). Default 5; ignored when the whole map is visible.' }));
+    body.appendChild(colorRow('tint', m, 'tint'));
+    return { det };
+}
+
+function colorRow(label, obj, key, tip) {
+    tip = tip || 'Screen color overlay for this level (atmospheric tint). Clear to use no tint.';
+    const color = el('input', { type: 'color' });
+    const hex = el('input', { type: 'text', placeholder: '#RRGGBB', style: 'flex:0 0 90px;' });
+    const cur = obj[key] || '';
+    if (cur) { color.value = cur; hex.value = cur; }
+    color.addEventListener('input', () => { obj[key] = color.value; hex.value = color.value; commit(); });
+    hex.addEventListener('input', () => {
+        if (hex.value === '') { delete obj[key]; }
+        else { obj[key] = hex.value; if (/^#[0-9a-fA-F]{6}$/.test(hex.value)) color.value = hex.value; }
+        commit();
+    });
+    const clear = el('button', { class: 'remove-btn' }, 'clear');
+    clear.addEventListener('click', () => { delete obj[key]; hex.value = ''; commit(); });
+    return el('div', { class: 'field-row' }, labelEl(label, tip), color, hex, clear);
+}
+
+function sectionWinState() {
+    const { det, body } = section('Win state / conditions');
+    const p = state.proto;
+    // top-level win_conditions (used by flat, non-leveled prototypes)
+    body.appendChild(subTitle('win_conditions (prototype-level / flat prototypes)',
+        'Conditions that clear a single-level (flat) prototype. For multi-floor prototypes, set these per floor instead.'));
+    body.appendChild(el('div', { class: 'hint-inline' }, 'For multi-floor prototypes set win_conditions per floor tab instead.'));
+    body.appendChild(winConditionsEditor(p, 'win_conditions'));
+
+    body.appendChild(subTitle('win_state (escape-style victory)', 'Optional overall victory condition for the whole prototype, separate from per-floor win_conditions.'));
+    const enable = toggleLine('enable win_state', !!p.win_state, (on) => {
+        if (on) p.win_state = { conditions: [], message: '' }; else delete p.win_state;
+        commit(); render();
+    }, 'When enabled, the run is won once these conditions are met (optionally only at a specific exit floor).');
+    body.appendChild(enable);
+    if (p.win_state) {
+        const ws = p.win_state;
+        body.appendChild(fieldGrid(
+            selectRow('via', ws, 'via', ['escape'], { blankLabel: '— reach exit (default) —', rerender: true,
+                tip: '“escape” = win by reaching a specific exit_floor with the conditions met. Blank = win on reaching any level exit.' }),
+            (ws.via === 'escape' ? fieldRow('exit_floor', ws, 'exit_floor', { type: 'number', tip: 'Floor number whose exit triggers the escape victory.' }) : null),
+        ));
+        body.appendChild(fieldRow('message', ws, 'message', { tip: 'Victory text shown to the player when the win_state is satisfied.' }));
+        body.appendChild(subTitle('conditions', 'All of these must be true to win. e.g. holding:amulet, killed:minotaur, or a stat comparison.'));
+        body.appendChild(winConditionsEditor(ws, 'conditions'));
+    }
+    return { det };
+}
+
+function sectionFloorWinConditions(floor) {
+    const { det, body } = section('Win conditions (this floor)', { open: true });
+    body.appendChild(el('div', { class: 'hint-inline' }, 'Floor cleared / exit unlocked when all conditions are met.'));
+    body.appendChild(winConditionsEditor(floor, 'win_conditions'));
+    return { det };
+}
+
+function sectionMapGenerator(obj, opts = {}) {
+    const { det, body } = section('Map generator', { ...opts, defaultValue: { type: 'brogue', options: {} } });
+    if (opts.inheritKey && isFloor() && !Object.prototype.hasOwnProperty.call(obj, 'map_generator')) return { det };
+    if (!obj.map_generator) obj.map_generator = { type: 'brogue', options: {} };
+    const mg = obj.map_generator;
+    if (!mg.options) mg.options = {};
+    body.appendChild(selectRow('type', mg, 'type', GEN_TYPES, { allowBlank: false, rerender: true,
+        tip: 'Algorithm used to build the map: brogue (rooms + corridors + loops), digger (ROT.js dungeon), arena (open box), infernal (lava-heavy caverns).' }));
+    const o = mg.options;
+    body.appendChild(fieldGrid(
+        fieldRow('map_width', o, 'map_width', { type: 'number', tip: 'Total map width in tiles (can exceed the viewport — the level then scrolls).' }),
+        fieldRow('map_height', o, 'map_height', { type: 'number', tip: 'Total map height in tiles (can exceed the viewport — the level then scrolls).' }),
+    ));
+
+    const t = mg.type || 'brogue';
+    if (t === 'brogue' || t === 'infernal') {
+        if (t === 'brogue') {
+            body.appendChild(fieldGrid(
+                fieldRow('maxRooms', o, 'maxRooms', { type: 'number', tip: 'Upper bound on the number of rooms placed.' }),
+                fieldRow('maxAttempts', o, 'maxAttempts', { type: 'number', tip: 'How many placement attempts the generator makes before stopping. Default 50.' }),
+            ));
+            body.appendChild(sliderRow('corridorChance %', o, 'corridorChance', { min: 0, max: 100, suffix: '%', def: 0,
+                tip: 'Chance to connect a new room with a corridor (vs. an adjacent doorway). Default 30%.' }));
+            body.appendChild(dualRangeArrayRow('corridorLength', o, 'corridorLength', { min: 1, max: 12,
+                tip: 'Min–max length (tiles) of generated corridors.' }));
+            body.appendChild(fieldGrid(
+                fieldRow('loopMinDistance', o, 'loopMinDistance', { type: 'number',
+                    tip: 'Two points must be at least this far apart (path distance) before a loop-back corridor connects them. Default 20.' }),
+                fieldRow('maxLoops', o, 'maxLoops', { type: 'number',
+                    tip: 'Maximum extra loop corridors added (creates alternate routes). Default 5.' }),
+            ));
+            body.appendChild(el('div', { class: 'sub-section' }, subTitle('roomWeights', 'Relative likelihood of each room shape. Bars show each shape’s share of the total.'),
+                weightEditor(o, 'roomWeights', { choices: ['rectangle','cross','circular','cavern'] })));
+        }
+        body.appendChild(lakeEditor(o, 'lakes', 'lakes'));
+        body.appendChild(lakeEditor(o, 'abyss', 'abyss'));
+        if (t === 'brogue') {
+            body.appendChild(objNumRow('bridges.max', o, 'bridges', 'max', { tip: 'Maximum bridges placed across lakes/abyss so the player can cross.' }));
+            body.appendChild(collapsingEditor(o));
+        }
+    } else if (t === 'digger') {
+        body.appendChild(fieldGrid(
+            dualRangeArrayRow('roomWidth', o, 'roomWidth', { min: 1, max: 20, tip: 'Min–max width of dug rooms (tiles).' }),
+            dualRangeArrayRow('roomHeight', o, 'roomHeight', { min: 1, max: 20, tip: 'Min–max height of dug rooms (tiles).' }),
+        ));
+        body.appendChild(dualRangeArrayRow('corridorLength', o, 'corridorLength', { min: 1, max: 12, tip: 'Min–max corridor length (tiles).' }));
+        body.appendChild(sliderRow('dugPercentage', o, 'dugPercentage', { min: 0, max: 1, step: 0.05, decimals: 2, def: 0.2,
+            tip: 'Fraction of the map carved out into rooms/corridors before the generator stops. Default 0.2.' }));
+    }
+    // arena: only map_width/height (already shown)
+    return { det };
+}
+
+// dual range writing to an array [min,max] at obj[key]
+function dualRangeForArray(obj, key, opts) {
+    if (!Array.isArray(obj[key])) obj[key] = obj[key] || [opts.min ?? 0, opts.max ?? 0];
+    const proxy = {
+        get min() { return obj[key][0]; }, set min(v) { obj[key][0] = v; },
+        get max() { return obj[key][1]; }, set max(v) { obj[key][1] = v; },
+    };
+    return dualRange(proxy, 'min', 'max', opts);
+}
+function dualRangeArrayRow(label, obj, key, opts = {}) {
+    return el('div', { class: 'sub' }, labelEl(label, opts.tip), dualRangeForArray(obj, key, opts));
+}
+// Labelled dual-range over obj[minKey]/obj[maxKey] (a {min,max} object).
+function dualRangeRow(label, obj, minKey, maxKey, opts = {}) {
+    return el('div', { class: 'sub' }, labelEl(label, opts.tip), dualRange(obj, minKey, maxKey, opts));
+}
+function objNumRow(label, obj, parentKey, childKey, opts = {}) {
+    if (!obj[parentKey]) obj[parentKey] = {};
+    return fieldRow(label, obj[parentKey], childKey, { type: 'number', tip: opts.tip });
+}
+
+function lakeEditor(o, key, label) {
+    const lakeTip = key === 'abyss'
+        ? 'Bottomless-pit zones carved into the map. Toggle to add abyss regions.'
+        : 'Liquid regions (water/sewage/lava) carved into the map. Toggle to add lakes.';
+    const wrap = el('div', { class: 'sub-section' });
+    const enable = el('label', { class: 'toggle-line', title: lakeTip });
+    const cb = el('input', { type: 'checkbox' });
+    cb.checked = !!o[key];
+    cb.addEventListener('change', () => {
+        if (cb.checked) o[key] = { count: [1, 2], types: ['water'], minSize: 15, maxSize: 60 };
+        else delete o[key];
+        commit(); render();
+    });
+    enable.append(cb, ' ' + label);
+    enable.appendChild(el('span', { class: 'tip-mark', title: lakeTip }, ' ⓘ'));
+    wrap.appendChild(enable);
+    if (o[key]) {
+        const lk = o[key];
+        wrap.appendChild(dualRangeArrayRow('count', lk, 'count', { min: 0, max: 6, tip: 'Min–max number of separate ' + label + ' regions per floor.' }));
+        wrap.appendChild(subTitle('types (weighted pool)', 'Which liquid types these regions use. Each type’s weight is its share of the random pick.'));
+        wrap.appendChild(weightEditor(lk, 'types', { mode: 'pool', choices: LAKE_TYPES }));
+        wrap.appendChild(fieldGrid(
+            fieldRow('minSize', lk, 'minSize', { type: 'number', tip: 'Smallest size (in tiles) of a single ' + label + ' region.' }),
+            fieldRow('maxSize', lk, 'maxSize', { type: 'number', tip: 'Largest size (in tiles) of a single ' + label + ' region.' }),
+        ));
+    }
+    return wrap;
+}
+
+function collapsingEditor(o) {
+    const tip = 'Patches of floor that crumble away when stepped on, dropping into the abyss below.';
+    const wrap = el('div', { class: 'sub-section' });
+    const enable = el('label', { class: 'toggle-line', title: tip });
+    const cb = el('input', { type: 'checkbox' });
+    cb.checked = !!o.collapsing_floors;
+    cb.addEventListener('change', () => {
+        if (cb.checked) o.collapsing_floors = { max: 2, minSize: 2, maxSize: 4 };
+        else delete o.collapsing_floors;
+        commit(); render();
+    });
+    enable.append(cb, ' collapsing_floors');
+    enable.appendChild(el('span', { class: 'tip-mark', title: tip }, ' ⓘ'));
+    wrap.appendChild(enable);
+    if (o.collapsing_floors) {
+        const c = o.collapsing_floors;
+        body_appendNum(wrap, c);
+    }
+    return wrap;
+}
+function body_appendNum(wrap, c) {
+    wrap.appendChild(fieldRow('max', c, 'max', { type: 'number', tip: 'Maximum number of collapsing-floor patches per floor.' }));
+    wrap.appendChild(fieldGrid(
+        fieldRow('minSize', c, 'minSize', { type: 'number', tip: 'Smallest patch size (tiles).' }),
+        fieldRow('maxSize', c, 'maxSize', { type: 'number', tip: 'Largest patch size (tiles).' }),
+    ));
+}
+
+function sectionItemCatalog() {
+    const { det, body } = section('Item catalog (budget categories)');
+    const p = state.proto;
+    body.appendChild(el('div', { class: 'hint-inline' }, 'Weights bias treasure-room budget spawning across categories. Optional count limits how many distinct types appear this run.'));
+    body.appendChild(toggleLine('enable item_catalog', !!p.item_catalog, (on) => {
+        if (on) p.item_catalog = { potion: { weight: 50 } }; else delete p.item_catalog;
+        commit(); render();
+    }, 'Defines the category mix the item_budget draws from. Weight = relative likelihood; count = how many distinct types of that category appear this run.'));
+    if (p.item_catalog) {
+        body.appendChild(catalogEditor(p.item_catalog));
+    }
+    return { det };
+}
+
+function catalogEditor(cat) {
+    const wrap = el('div', {});
+    function redraw() {
+        wrap.innerHTML = '';
+        const total = Object.values(cat).reduce((a, c) => a + (Number(c.weight) || 0), 0) || 1;
+        for (const name of Object.keys(cat)) {
+            const c = cat[name];
+            const pct = Math.round(((c.weight || 0) / total) * 100);
+            const bar = el('div', { class: 'wbar-fill', style: `width:${pct}%` });
+            const barWrap = el('div', { class: 'wbar-wrap' }, bar, el('span', { class: 'wbar-pct' }, pct + '%'));
+            const wInput = el('input', { type: 'number', min: 0, value: c.weight ?? 0, style: 'width:56px;',
+                title: 'Relative spawn weight for this category (share of the budget bar shown).' });
+            wInput.addEventListener('input', () => { c.weight = Number(wInput.value); commit(); redraw(); });
+            const cntInput = el('input', { type: 'number', min: 0, placeholder: 'count', value: c.count ?? '', style: 'width:56px;',
+                title: 'Optional: how many distinct item types from this category appear this run. Blank = use all.' });
+            cntInput.addEventListener('input', () => { if (cntInput.value === '') delete c.count; else c.count = Number(cntInput.value); commit(); });
+            const rm = el('button', { class: 'remove-btn' }, '×');
+            rm.addEventListener('click', () => { delete cat[name]; commit(); redraw(); });
+            wrap.appendChild(el('div', { class: 'weight-row' },
+                el('span', { class: 'wlabel' }, name), barWrap,
+                el('span', { class: 'mini-label', title: 'weight' }, 'w'), wInput,
+                el('span', { class: 'mini-label', title: 'count' }, 'cnt'), cntInput, rm));
+        }
+        const addSel = el('select', { class: 'wlabel-sel' });
+        addSel.appendChild(el('option', { value: '' }, '+ category…'));
+        for (const k of CATEGORY_KEYS) if (!cat[k]) addSel.appendChild(el('option', { value: k }, k));
+        addSel.addEventListener('change', () => { if (!addSel.value) return; cat[addSel.value] = { weight: 10 }; commit(); redraw(); });
+        wrap.appendChild(el('div', { class: 'weight-row' }, addSel));
+    }
+    redraw();
+    return wrap;
+}
+
+function sectionItemBudget(obj, opts = {}) {
+    const { det, body } = section('Item budget', { ...opts, defaultValue: { base: 2, extra_chance: 40, max_extra: 3 } });
+    if (opts.inheritKey && isFloor() && !Object.prototype.hasOwnProperty.call(obj, 'item_budget')) return { det };
+    // item_budget can be `false` to disable on a floor
+    const enableWrap = el('div', { class: 'field-row' });
+    const sel = el('select', {});
+    [['unset','— not set —'],['object','enabled (configure)'],['false','disabled (false)']].forEach(([v,l]) => sel.appendChild(el('option', { value: v }, l)));
+    let mode = 'unset';
+    if (obj.item_budget === false) mode = 'false';
+    else if (obj.item_budget && typeof obj.item_budget === 'object') mode = 'object';
+    sel.value = mode;
+    const budgetTip = 'Procedural treasure spawning that draws from item_catalog. Each floor spawns `base` items, then up to `max_extra` more, each at `extra_chance`. Set to false to disable on a floor.';
+    sel.setAttribute('title', budgetTip);
+    sel.addEventListener('change', () => {
+        if (sel.value === 'false') obj.item_budget = false;
+        else if (sel.value === 'object') obj.item_budget = { base: 2, extra_chance: 40, max_extra: 3 };
+        else delete obj.item_budget;
+        commit(); render();
+    });
+    enableWrap.append(labelEl('item_budget', budgetTip), sel);
+    body.appendChild(enableWrap);
+    if (obj.item_budget && typeof obj.item_budget === 'object') {
+        const b = obj.item_budget;
+        body.appendChild(fieldGrid(
+            fieldRow('base', b, 'base', { type: 'number', tip: 'Guaranteed number of budget items spawned each floor.' }),
+            fieldRow('max_extra', b, 'max_extra', { type: 'number', tip: 'Maximum additional items beyond base.' }),
+        ));
+        body.appendChild(sliderRow('extra_chance %', b, 'extra_chance', { min: 0, max: 100, suffix: '%', def: 0,
+            tip: 'Chance to roll each additional item (up to max_extra). Higher = more loot.' }));
+    }
+    return { det };
+}
+
+function sectionSpawns(obj, opts = {}) {
+    const { det, body } = section('Spawns (random_actors / random_items)', opts);
+    body.appendChild(subTitle('random_actors',
+        'Creatures placed on this floor. Each entry has a spawn chance and a count range; “≈ N / floor” shows the expected number placed.'));
+    if (!obj.random_actors) {
+        const add = el('button', { class: 'add-btn' }, '+ enable random_actors');
+        add.addEventListener('click', () => { obj.random_actors = {}; commit(); render(); });
+        body.appendChild(add);
+    } else {
+        body.appendChild(spawnEditor(obj, 'random_actors', 'actor'));
+    }
+    body.appendChild(el('div', { style: 'height:8px;' }));
+    body.appendChild(subTitle('random_items',
+        'Items dropped on this floor. Category ids (potion, scroll, …) marked “ⓘ pool” resolve to a random concrete type at spawn time.'));
+    if (!obj.random_items) {
+        const add = el('button', { class: 'add-btn' }, '+ enable random_items');
+        add.addEventListener('click', () => { obj.random_items = {}; commit(); render(); });
+        body.appendChild(add);
+    } else {
+        body.appendChild(spawnEditor(obj, 'random_items', 'item'));
+    }
+    return { det };
+}
+
+function sectionTrapsSwitches(obj) {
+    const { det, body } = section('Traps & switch puzzles');
+    // traps
+    body.appendChild(toggleLine('traps', !!obj.traps, (on) => {
+        if (on) obj.traps = { min: 0, max: 5 }; else delete obj.traps; commit(); render();
+    }, 'Hidden hazard tiles placed on the floor. Count is a random value in the min–max range.'));
+    if (obj.traps) {
+        body.appendChild(dualRangeRow('count', obj.traps, 'min', 'max', { min: 0, max: 20, tip: 'Min–max number of traps placed on this floor.' }));
+    }
+    // switch_puzzles
+    body.appendChild(toggleLine('switch_puzzles', !!obj.switch_puzzles, (on) => {
+        if (on) obj.switch_puzzles = { min: 0, max: 1, patterns: [] }; else delete obj.switch_puzzles;
+        commit(); render();
+    }, 'Lever/gate puzzles. A random number (min–max) of patterns below are placed, chosen by weight.'));
+    if (obj.switch_puzzles) {
+        const sp = obj.switch_puzzles;
+        body.appendChild(dualRangeRow('count', sp, 'min', 'max', { min: 0, max: 5, tip: 'Min–max number of switch puzzles placed on this floor.' }));
+        body.appendChild(subTitle('patterns', 'Puzzle templates to choose from. Each placed puzzle picks one pattern at random, weighted.'));
+        body.appendChild(patternsEditor(sp));
+    }
+    return { det };
+}
+
+function patternsEditor(sp) {
+    const wrap = el('div', {});
+    if (!Array.isArray(sp.patterns)) sp.patterns = [];
+    function redraw() {
+        wrap.innerHTML = '';
+        const grid = el('div', { class: 'pattern-grid' });
+        sp.patterns.forEach((pat, i) => grid.appendChild(patternBox(pat, i, sp, redraw)));
+        if (sp.patterns.length) wrap.appendChild(grid);
+        const add = el('button', { class: 'add-btn' }, '+ pattern');
+        add.addEventListener('click', () => {
+            sp.patterns.push({ type: 'gated_room', weight: 1, switch_actor: '', target_actor: '', switch_effects: {}, switch_message: '' });
+            commit(); redraw();
+        });
+        wrap.appendChild(add);
+    }
+    redraw();
+    return wrap;
+}
+
+function patternBox(pat, i, sp, redraw) {
+    const box = el('div', { class: 'pattern-box' });
+    const head = el('div', { style: 'display:flex;align-items:center;gap:8px;margin-bottom:4px;' },
+        el('strong', { style: 'font-size:11px;color:var(--accent);' }, 'Pattern ' + (i + 1)));
+    const rm = el('button', { class: 'remove-btn' }, 'remove');
+    rm.addEventListener('click', () => { sp.patterns.splice(i, 1); commit(); redraw(); });
+    head.appendChild(rm);
+    box.appendChild(head);
+    box.appendChild(fieldGrid(
+        selectRow('type', pat, 'type', ['gated_room','gated_corridor'], { allowBlank: false,
+            tip: 'Layout this puzzle gates: a whole room behind the gate, or a corridor segment.' }),
+        fieldRow('weight', pat, 'weight', { type: 'number', tip: 'Relative likelihood this pattern is chosen vs. the others.' }),
+    ));
+    box.appendChild(fieldGrid(
+        selectRow('switch_actor', pat, 'switch_actor', state.mergedActorIds, { blankLabel: '— pick actor —',
+            tip: 'Actor the player interacts with to trigger the puzzle (e.g. a lever or pressure plate).' }),
+        selectRow('target_actor', pat, 'target_actor', state.mergedActorIds, { blankLabel: '— pick actor —',
+            tip: 'Actor that responds when the switch fires (e.g. the gate that opens).' }),
+    ));
+    box.appendChild(fieldRow('switch_message', pat, 'switch_message', { tip: 'Message shown to the player when the switch is activated.' }));
+    box.appendChild(subTitle('switch_effects (state changes applied to target)',
+        'Attribute changes applied to the target actor when triggered, e.g. open:true, locked:false.'));
+    box.appendChild(effectsEditor(pat));
+    return box;
+}
+
+function effectsEditor(pat) {
+    const wrap = el('div', { class: 'dynamic-list' });
+    if (!pat.switch_effects) pat.switch_effects = {};
+    function redraw() {
+        wrap.innerHTML = '';
+        for (const k of Object.keys(pat.switch_effects)) {
+            const v = pat.switch_effects[k];
+            const keyInput = el('input', { type: 'text', value: k, style: 'flex:0 0 120px;',
+                title: 'Attribute name on the target actor (e.g. open, locked, solid).' });
+            keyInput.addEventListener('change', () => {
+                const nv = keyInput.value.trim(); if (!nv || nv === k) return;
+                pat.switch_effects[nv] = pat.switch_effects[k]; delete pat.switch_effects[k]; commit(); redraw();
+            });
+            const valSel = el('select', { style: 'flex:0 0 80px;' });
+            [['true','true'],['false','false']].forEach(([vv, l]) => valSel.appendChild(el('option', { value: vv }, l)));
+            valSel.value = String(!!v);
+            valSel.addEventListener('change', () => { pat.switch_effects[k] = valSel.value === 'true'; commit(); });
+            const rm = el('button', { class: 'remove-btn' }, '×');
+            rm.addEventListener('click', () => { delete pat.switch_effects[k]; commit(); redraw(); });
+            wrap.appendChild(el('div', { class: 'list-item' }, keyInput, valSel, rm));
+        }
+        const add = el('button', { class: 'add-btn' }, '+ effect');
+        add.addEventListener('click', () => {
+            let n = 'open'; if (pat.switch_effects[n] !== undefined) n = 'locked';
+            if (pat.switch_effects[n] !== undefined) n = 'effect' + Object.keys(pat.switch_effects).length;
+            pat.switch_effects[n] = true; commit(); redraw();
+        });
+        wrap.appendChild(add);
+    }
+    redraw();
+    return wrap;
+}
+
+// Advanced / passthrough: cutscene + any unknown top-level keys (preserved verbatim).
+const KNOWN_TOP_KEYS = new Set([
+    'name','description','loaded_sound','depth','turn_speed','next_level','previous_level','intro_cutscene',
+    'mechanics','win_state','win_conditions','map_generator','item_catalog','item_budget',
+    'random_actors','random_items','traps','switch_puzzles','levels','cutscene',
+]);
+function sectionAdvanced() {
+    const { det, body } = section('Advanced / cutscene');
+    const p = state.proto;
+    // cutscene
+    body.appendChild(toggleLine('cutscene (flipbook)', !!p.cutscene, (on) => {
+        if (on) p.cutscene = { flipbook: '', skippable: true }; else delete p.cutscene; commit(); render();
+    }, 'Makes this prototype a flipbook cutscene (a Tiled .tmj played as animated frames) instead of a playable level.'));
+    if (p.cutscene) {
+        body.appendChild(fieldGrid(
+            fieldRow('flipbook', p.cutscene, 'flipbook', { placeholder: 'cutscene.tmj', tip: 'Tiled map file (.tmj) whose tile layers are the cutscene frames.' }),
+            el('div', { class: 'field-row' }, checkboxRow('skippable', p.cutscene, 'skippable', true, 'Allow the player to skip this cutscene.')),
+        ));
+    }
+    // unknown keys preserved
+    const unknown = Object.keys(p).filter(k => !KNOWN_TOP_KEYS.has(k));
+    if (unknown.length) {
+        body.appendChild(subTitle('Preserved (not editable here)', 'Top-level keys this editor doesn’t have a UI for. They’re kept verbatim on export so nothing is lost.'));
+        body.appendChild(el('div', { class: 'unknown-keys' }, unknown.map(k => k + ': ' + JSON.stringify(p[k])).join('\n')));
+    } else {
+        body.appendChild(el('div', { class: 'hint-inline' }, 'No unrecognized top-level keys.'));
+    }
+    return { det };
+}
+
+/* =========================================================================
+   Output / serialize
+   The model IS the output (edits mutate state.proto directly), so serialize =
+   clean-up pass that drops transient empties without losing real data.
+   ========================================================================= */
+function serialize() {
+    const out = JSON.parse(JSON.stringify(state.proto));
+    pruneSpawnDefaults(out);
+    if (Array.isArray(out.levels)) out.levels.forEach(pruneSpawnDefaults);
+    return out;
+}
+
+// Drop min/max when both are 1 (matches how data files write `{ "chance": N }`).
+function pruneSpawnDefaults(scope) {
+    for (const tableKey of ['random_actors', 'random_items']) {
+        const tbl = scope[tableKey];
+        if (!tbl) continue;
+        for (const spec of Object.values(tbl)) {
+            if (spec && typeof spec === 'object') {
+                if (spec.min === 1 && spec.max === 1) { delete spec.min; delete spec.max; }
+                else if (spec.min != null && spec.max == null) { spec.max = spec.min; }
+            }
+        }
+    }
+}
+
+function updateJSONOutput() {
+    if (!state.proto) return;
+    document.getElementById('json-output').value = JSON.stringify(serialize(), null, 2);
+    const lvls = state.proto.levels ? state.proto.levels.length + ' floor(s)' : 'flat';
+    document.getElementById('output-key').textContent =
+        (state.proto.name || '(unnamed)') + ' — ' + lvls
+        + (isFloor() ? ' — editing Floor ' + (state.activeFloor + 1) : ' — editing prototype defaults');
+}
+
+// Called on every model mutation. Keeps JSON output live without a full re-render.
+function commit() { updateJSONOutput(); }
+
+/* =========================================================================
+   Wiring
+   ========================================================================= */
+async function init() {
+    await loadBaseData();
+    document.getElementById('prototype-select').addEventListener('change', async (e) => {
+        const name = e.target.value;
+        document.getElementById('load-status').textContent = name ? 'loading ' + name + '…' : '';
+        await loadPrototype(name);
+        document.getElementById('load-status').textContent = name ? 'loaded ' + name : '';
+    });
+    document.getElementById('btn-blank').addEventListener('click', async () => {
+        document.getElementById('prototype-select').value = '';
+        await loadPrototype('');
+        document.getElementById('load-status').textContent = 'new blank prototype';
+    });
+    document.getElementById('btn-export').addEventListener('click', () => {
+        updateJSONOutput();
+        const out = document.getElementById('json-output');
+        out.focus(); out.select();
+    });
+    document.getElementById('btn-copy').addEventListener('click', async () => {
+        if (!state.proto) return;
+        const txt = JSON.stringify(serialize(), null, 2);
+        try { await navigator.clipboard.writeText(txt); document.getElementById('load-status').textContent = 'copied to clipboard'; }
+        catch { const out = document.getElementById('json-output'); out.focus(); out.select(); document.execCommand('copy'); document.getElementById('load-status').textContent = 'copied'; }
+    });
+}
+
+init();
+</script>
+</body>
+</html>
