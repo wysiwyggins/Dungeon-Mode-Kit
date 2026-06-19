@@ -14,6 +14,7 @@
     "collision_description": "You punch the [attacked_actor_name]!",
     "death_sound": "ouch",
     "attributes": {
+      "flammable": true,
       "controlled": true,
       "sighted": true,
       "sentient": true,
@@ -29,7 +30,10 @@
         "per_turn": 1
       }
     },
-    "default_items": ["torch", "butter_knife"]
+    "default_items": [
+      "torch",
+      "butter_knife"
+    ]
   },
   "skeleton": {
     "name": "Skeleton",
@@ -44,6 +48,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
     "attributes": {
+      "flammable": true,
       "hostile": true,
       "sentient": true,
       "inventory": 1,
@@ -71,6 +76,7 @@
     "split_sound": "step_mud",
     "split_into": "small_pink_jelly",
     "attributes": {
+      "flammable": true,
       "solid": true,
       "hostile": true,
       "sentient": true,
@@ -98,6 +104,7 @@
     "collision_description": "The [actor_name] slimes you!",
     "split_sound": "step_mud",
     "attributes": {
+      "flammable": true,
       "solid": true,
       "hostile": true,
       "sentient": true,
@@ -123,6 +130,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
     "attributes": {
+      "flammable": true,
       "hostile": true,
       "sentient": true,
       "light_source": true,
@@ -176,6 +184,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
+      "flammable": true,
       "hostile": true,
       "sentient": true,
       "accuracy": 60,
@@ -188,10 +197,10 @@
       "chain_base_strength": 5,
       "chain_strength_per_segment": 2.5
     },
-  "stats": {
-    "health": 20
-  }
-},
+    "stats": {
+      "health": 20
+    }
+  },
   "scutigera_body": {
     "name": "Scutigera",
     "description": "A fast moving, enormous centipede with an immense fan of legs.",
@@ -206,6 +215,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] lashes at the [attacked_actor_name]!",
     "attributes": {
+      "flammable": true,
       "hostile": true,
       "sentient": true,
       "inventory": 0,
@@ -234,6 +244,7 @@
     "collision_sound": "hit",
     "collision_description": "[actor_name] [attacks.melee_verbs] [attacked_actor_name]!",
     "attributes": {
+      "flammable": true,
       "hostile": true,
       "sentient": true,
       "strength": 8
@@ -258,6 +269,7 @@
     "facingEnabled": true,
     "collision_description": "The [actor_name] strikes back at [attacked_actor_name]!",
     "attributes": {
+      "flammable": true,
       "sighted": true,
       "sentient": true,
       "inventory": 1,
@@ -315,6 +327,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] strikes back at [attacked_actor_name]!",
     "attributes": {
+      "flammable": true,
       "sighted": true,
       "sentient": true,
       "inventory": 1,
@@ -333,6 +346,7 @@
     "tileIndexTop": "OPAQUE_DARK_SMILING_FACE",
     "personality": "passive_wanderer",
     "attributes": {
+      "flammable": true,
       "sentient": true,
       "inventory": 1,
       "remains": "blood",
@@ -379,6 +393,7 @@
     },
     "collision_sound": "hit",
     "attributes": {
+      "flammable": true,
       "hostile": true,
       "sentient": true,
       "sighted": true,
@@ -403,6 +418,7 @@
     "tileIndexTop": "WHITE_UPWARD_POINTING_TRIANGLE",
     "tint": "#006610",
     "attributes": {
+      "flammable": true,
       "pushable": false,
       "breakable": true,
       "conductive": false,
@@ -616,7 +632,6 @@
       "locked": true
     }
   },
-
   "door": {
     "name": "Door",
     "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
@@ -727,7 +742,9 @@
       "pedestal": true,
       "display_inventory": true
     },
-    "default_items": ["key"],
+    "default_items": [
+      "key"
+    ],
     "collision_description": "The item on the pedestal is held fast."
   },
   "water": {
@@ -959,7 +976,7 @@
       "visible": false,
       "light_source": true,
       "flying": true
-      }
+    }
   },
   "down_stairway": {
     "name": "Stairs Down",
@@ -1176,6 +1193,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] touches the [attacked_actor_name]!",
     "attributes": {
+      "flammable": true,
       "hostile": true,
       "sentient": true
     },
@@ -1194,6 +1212,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
+      "flammable": true,
       "flies": true,
       "hostile": true,
       "sentient": true,
@@ -1218,6 +1237,7 @@
     "facingEnabled": true,
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
+      "flammable": true,
       "hostile": true,
       "dark_vision": true,
       "opaque": false,
@@ -1239,6 +1259,7 @@
       "health": -4
     },
     "attributes": {
+      "flammable": true,
       "hostile": true,
       "sentient": true,
       "aquatic": true,
@@ -1264,6 +1285,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
+      "flammable": true,
       "flies": true,
       "hostile": true,
       "sentient": true,
@@ -1300,6 +1322,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
+      "flammable": true,
       "hostile": true,
       "sentient": true,
       "dark_vision": true,
@@ -1324,6 +1347,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
     "attributes": {
+      "flammable": true,
       "hostile": true,
       "sentient": true,
       "light_source": true,
@@ -1349,6 +1373,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
     "attributes": {
+      "flammable": true,
       "hostile": true,
       "sentient": true,
       "accuracy": 55,
@@ -1407,6 +1432,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
+      "flammable": true,
       "hostile": true,
       "sighted": true,
       "sentient": true,
@@ -1441,6 +1467,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] scratches the [attacked_actor_name]!",
     "attributes": {
+      "flammable": true,
       "hostile": true,
       "sighted": true,
       "sentient": true,
@@ -1473,6 +1500,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] strikes the [attacked_actor_name]!",
     "attributes": {
+      "flammable": true,
       "hostile": true,
       "sentient": true,
       "sighted": true,
@@ -1502,6 +1530,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] strikes [attacked_actor_name] with a crackling fist!",
     "attributes": {
+      "flammable": true,
       "hostile": true,
       "sighted": true,
       "sentient": true,
@@ -1531,6 +1560,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
+      "flammable": true,
       "hostile": true,
       "sentient": true,
       "accuracy": 50,
@@ -1557,6 +1587,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] strikes [attacked_actor_name] with a gnarled staff!",
     "attributes": {
+      "flammable": true,
       "hostile": true,
       "sentient": true,
       "sighted": true,
@@ -1581,6 +1612,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] pecks the [attacked_actor_name]!",
     "attributes": {
+      "flammable": true,
       "flies": true,
       "sentient": true,
       "sighted": true,
@@ -1592,7 +1624,6 @@
       "health": 5
     }
   },
-  
   "phantom_hound": {
     "name": "Phantom Hound",
     "description": "A spectral canine that phases in and out of reality, striking before vanishing.",
@@ -1608,6 +1639,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] lunges at the [attacked_actor_name]!",
     "attributes": {
+      "flammable": true,
       "hostile": true,
       "sentient": true,
       "sighted": true,
@@ -1650,7 +1682,6 @@
       "health": 40
     }
   },
-
   "illusionist": {
     "name": "illusionist",
     "description": "A shimmering cloaked figure, light seems to bend around it.",
@@ -1667,6 +1698,7 @@
     "collision_sound": "hit",
     "death_sound": "ouch",
     "attributes": {
+      "flammable": true,
       "hostile": true,
       "sentient": true,
       "sighted": true,
@@ -1675,7 +1707,9 @@
       "remains": "skull",
       "light_source": true
     },
-    "stats": { "health": 30 }
+    "stats": {
+      "health": 30
+    }
   },
   "illusion": {
     "name": "illusionist",
@@ -1688,6 +1722,7 @@
     "death_description": "The illusion shimmers and fades.",
     "death_sound": "magic",
     "attributes": {
+      "flammable": true,
       "hostile": true,
       "sighted": true,
       "sentient": true,
@@ -1695,6 +1730,8 @@
       "defense": 0,
       "opaque": false
     },
-    "stats": { "health": 1 }
+    "stats": {
+      "health": 1
+    }
   }
 }

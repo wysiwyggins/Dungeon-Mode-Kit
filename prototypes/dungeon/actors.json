@@ -4,11 +4,15 @@
     "tileIndexBase": "WHITE_LEG",
     "tileIndexTop": "OPAQUE_WHITE_SMILING_FACE",
     "vision_range": 20,
-    "collision_effect": { "health": "-{strength}" },
-    "collision_sound": "hit","defaultFacing": "left",
+    "collision_effect": {
+      "health": "-{strength}"
+    },
+    "collision_sound": "hit",
+    "defaultFacing": "left",
     "facingEnabled": true,
     "death_sound": "ouch",
     "attributes": {
+      "flammable": true,
       "controlled": true,
       "sighted": true,
       "inventory": 10,
@@ -31,9 +35,18 @@
         "fatal": true,
         "death_message": "You starve to death!",
         "warnings": [
-          { "threshold": 0.5, "message": "You are getting hungry." },
-          { "threshold": 0.25, "message": "You are very hungry." },
-          { "threshold": 0.1, "message": "You are starving!" }
+          {
+            "threshold": 0.5,
+            "message": "You are getting hungry."
+          },
+          {
+            "threshold": 0.25,
+            "message": "You are very hungry."
+          },
+          {
+            "threshold": 0.1,
+            "message": "You are starving!"
+          }
         ],
         "condition_state": {
           "state": "starving",
@@ -41,17 +54,27 @@
         }
       }
     },
-    "default_items": ["butter_knife", "torch", "spike", "spike", "spike", "spike", "spike"]
+    "default_items": [
+      "butter_knife",
+      "torch",
+      "spike",
+      "spike",
+      "spike",
+      "spike",
+      "spike"
+    ]
   },
-
   "azhdaya_head": {
     "name": "Azhdaya",
     "tileIndexBase": "FULL_BLOCK",
     "tileIndexTop": "SKULL",
     "personality": "stationed_melee",
-    "collision_effect": { "health": "-{strength}"},
+    "collision_effect": {
+      "health": "-{strength}"
+    },
     "collision_sound": "hit",
     "attributes": {
+      "flammable": true,
       "hostile": true,
       "proper_named": true,
       "sentient": true,
@@ -67,17 +90,22 @@
     "stats": {
       "health": 30
     },
-    "default_items": ["extra_skull"]
-
+    "default_items": [
+      "extra_skull"
+    ]
   },
   "azhdaya_tail": {
     "name": "Azhdaya",
     "tileIndexBase": "LEFT_HALF_BLOCK_WITH_LIGHT_SHADE_AND_MEDIUM_SHADE_RIGHT_BLOCKS",
     "tileIndexTop": "RIGHT_ONE_HALF_BLOCK",
     "personality": "azhdaya_tail",
-    "collision_effect": { "health": "-{strength}", "apply_state": "paralyzed" },
+    "collision_effect": {
+      "health": "-{strength}",
+      "apply_state": "paralyzed"
+    },
     "collision_sound": "tap1",
     "attributes": {
+      "flammable": true,
       "hostile": true,
       "proper_named": true,
       "defense": 15

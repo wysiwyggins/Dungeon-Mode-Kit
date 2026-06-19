@@ -2936,7 +2936,7 @@ class Entity {
         this.sprite = null;
         this.tint = 0xFFFFFF;
         this.zIndex = 1;
-        this.setAttribute('flammable', true);
+        this.setAttribute('flammable', false);
     }
     
     setAttribute(key, value) {
