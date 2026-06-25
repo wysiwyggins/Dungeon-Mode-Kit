@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Prototype Editor — Dungeon Mode Kit</title>
 <link rel="stylesheet" href="assets/main.css">
+<script src="lib/handlebars.min.js"></script>
+<script src="lib/editor-template.js"></script>
 </head>
 <body class="editor prototype-editor">
 
@@ -47,6 +49,82 @@
     </div>
   </div>
 </div>
+
+<!-- =========================================================================
+     Editable form templates (Handlebars)
+     -------------------------------------------------------------------------
+     These describe the STRUCTURE of the simple form sections. Edit the markup
+     here (layout wrappers, field order, grouping) to change the editor's
+     layout without touching the JavaScript. Inputs carry data-* attributes
+     that JS uses to two-way-bind them to the prototype model — see the binding
+     convention in lib/editor-template.js. Widgets that aren't templated yet
+     (sliders, color picker, spawn/weight lists) are dropped into the
+     <... data-mount="name"> placeholders by JS.
+     ========================================================================= -->
+
+<!-- ---- Row partials (reused building blocks) ---- -->
+<script type="text/x-handlebars-template" id="tpl-field-row">
+  <div class="field-row">
+    <label {{#if tip}}title="{{tip}}"{{/if}}>{{label}}{{#if tip}}<span class="tip-mark" title="{{tip}}"> ⓘ</span>{{/if}}</label>
+    <input type="{{#if inputType}}{{inputType}}{{else}}text{{/if}}"
+           data-bind="{{bind}}" data-type="{{#if type}}{{type}}{{else}}text{{/if}}"
+           {{#if scope}}data-scope="{{scope}}"{{/if}} data-empty="delete"
+           {{#if placeholder}}placeholder="{{placeholder}}"{{/if}}
+           {{#if tip}}title="{{tip}}"{{/if}}>
+  </div>
+</script>
+
+<script type="text/x-handlebars-template" id="tpl-textarea-row">
+  <div class="field-row">
+    <label {{#if tip}}title="{{tip}}"{{/if}}>{{label}}{{#if tip}}<span class="tip-mark" title="{{tip}}"> ⓘ</span>{{/if}}</label>
+    <textarea data-bind="{{bind}}" data-type="textarea"
+              {{#if scope}}data-scope="{{scope}}"{{/if}} data-empty="delete"
+              {{#if tip}}title="{{tip}}"{{/if}}></textarea>
+  </div>
+</script>
+
+<script type="text/x-handlebars-template" id="tpl-select-row">
+  <div class="field-row">
+    <label {{#if tip}}title="{{tip}}"{{/if}}>{{label}}{{#if tip}}<span class="tip-mark" title="{{tip}}"> ⓘ</span>{{/if}}</label>
+    <select data-bind="{{bind}}" data-type="select"
+            {{#if scope}}data-scope="{{scope}}"{{/if}} data-empty="delete"
+            {{#if tip}}title="{{tip}}"{{/if}}>
+      <option value="">{{#if blankLabel}}{{blankLabel}}{{else}}— none —{{/if}}</option>
+      {{#each options}}<option value="{{this}}">{{this}}</option>{{/each}}
+    </select>
+  </div>
+</script>
+
+<!-- ---- Identity section body ---- -->
+<script type="text/x-handlebars-template" id="tpl-section-identity">
+  {{> fieldRow label="Name" bind="name" tip="Display name of this prototype/level, shown to the player on load."}}
+  {{> textareaRow label="Description" bind="description" tip="Intro text shown when the level loads. Use \n for line breaks."}}
+  <div class="hint-inline">Use \n in description for line breaks (newlines are preserved).</div>
+  {{> selectRow label="Loaded sound" bind="loaded_sound" options=soundIds tip="Sound effect played once when the level finishes loading."}}
+  {{> fieldRow label="Depth" bind="depth" type="number" inputType="number" tip="Dungeon depth for progression tracking/scaling. Higher = deeper."}}
+  {{> fieldRow label="Turn speed (ms)" bind="turn_speed" type="number" inputType="number" tip="Milliseconds per turn tick. Lower = faster animation/AI cadence. Default 50."}}
+  {{> fieldRow label="Next level" bind="next_level" placeholder="prototype name" tip="Prototype loaded when the player exits downward from the final floor."}}
+  {{> fieldRow label="Previous level" bind="previous_level" placeholder="prototype name" tip="Prototype reachable by going back up the entrance stairway."}}
+  {{> fieldRow label="Intro cutscene" bind="intro_cutscene" placeholder="prototype name" tip="Prototype (flipbook cutscene) played before this level begins."}}
+</script>
+
+<!-- ---- Mechanics section body (templated portion) ---- -->
+<!-- The flag checkboxes + viewport/ai_margin fields are templated. The two
+     sliders and the tint color picker are mounted by JS into the placeholders. -->
+<script type="text/x-handlebars-template" id="tpl-section-mechanics">
+  <div class="checkbox-grid">
+    <label title="Tiles you have seen stay remembered but dim when out of view; unseen tiles are hidden."><input type="checkbox" data-bind="fog_of_war" data-type="checkbox" data-scope="mechanics"> fog_of_war<span class="tip-mark" title="Tiles you have seen stay remembered but dim when out of view; unseen tiles are hidden."> ⓘ</span></label>
+    <label title="Level is dark — only lit areas (torches, light sources, player light) are visible."><input type="checkbox" data-bind="darkness" data-type="checkbox" data-scope="mechanics"> darkness<span class="tip-mark" title="Level is dark — only lit areas (torches, light sources, player light) are visible."> ⓘ</span></label>
+    <label title="Player emits their own light automatically, so they can always see nearby tiles even in darkness."><input type="checkbox" data-bind="player_auto_light" data-type="checkbox" data-scope="mechanics"> player_auto_light<span class="tip-mark" title="Player emits their own light automatically, so they can always see nearby tiles even in darkness."> ⓘ</span></label>
+    <label title="No player-controlled actor; the level runs autonomously and you watch (e.g. Game of Life)."><input type="checkbox" data-bind="observer_mode" data-type="checkbox" data-scope="mechanics"> observer_mode<span class="tip-mark" title="No player-controlled actor; the level runs autonomously and you watch (e.g. Game of Life)."> ⓘ</span></label>
+  </div>
+  <div data-mount="treasure_room"></div>
+  <div data-mount="ambient_light"></div>
+  {{> fieldRow label="viewport_width" bind="viewport_width" type="number" inputType="number" scope="mechanics" tip="Visible columns. If smaller than the map, the level scrolls. Leave blank to show the whole map."}}
+  {{> fieldRow label="viewport_height" bind="viewport_height" type="number" inputType="number" scope="mechanics" tip="Visible rows. If smaller than the map, the level scrolls. Leave blank to show the whole map."}}
+  {{> fieldRow label="ai_margin" bind="ai_margin" type="number" inputType="number" scope="mechanics" tip="Scrolling levels only: actors more than this many tiles outside the viewport skip their turn (perf optimization). Default 5; ignored when the whole map is visible."}}
+  <div data-mount="tint"></div>
+</script>
 
 <script>
 "use strict";
@@ -717,52 +795,43 @@ function renderForm() {
 }
 
 /* ---- Sections (prototype-level) ---- */
+// Identity is templated (see #tpl-section-identity). Structure lives in markup;
+// JS only renders it, binds the inputs to state.proto, and returns the section.
 function sectionIdentity() {
     const { det, body } = section('Identity', { open: true });
-    const p = state.proto;
-    body.appendChild(fieldRow('Name', p, 'name', { tip: 'Display name of this prototype/level, shown to the player on load.' }));
-    body.appendChild(textareaRow('Description', p, 'description', { tip: 'Intro text shown when the level loads. Use \\n for line breaks.' }));
-    body.appendChild(el('div', { class: 'hint-inline' }, 'Use \\n in description for line breaks (newlines are preserved).'));
-    body.appendChild(selectRow('Loaded sound', p, 'loaded_sound', state.soundIds, {
-        blankLabel: '— none —', tip: 'Sound effect played once when the level finishes loading.' }));
-    body.appendChild(fieldGrid(
-        fieldRow('Depth', p, 'depth', { type: 'number', tip: 'Dungeon depth for progression tracking/scaling. Higher = deeper.' }),
-        fieldRow('Turn speed (ms)', p, 'turn_speed', { type: 'number', tip: 'Milliseconds per turn tick. Lower = faster animation/AI cadence. Default 50.' }),
-    ));
-    body.appendChild(fieldGrid(
-        fieldRow('Next level', p, 'next_level', { placeholder: 'prototype name', tip: 'Prototype loaded when the player exits downward from the final floor.' }),
-        fieldRow('Previous level', p, 'previous_level', { placeholder: 'prototype name', tip: 'Prototype reachable by going back up the entrance stairway.' }),
-    ));
-    body.appendChild(fieldRow('Intro cutscene', p, 'intro_cutscene', { placeholder: 'prototype name', tip: 'Prototype (flipbook cutscene) played before this level begins.' }));
+    body.innerHTML = EditorTemplate.compileById('tpl-section-identity')({
+        soundIds: state.soundIds,
+    });
+    EditorTemplate.bindSection(body, {
+        resolveScope: () => state.proto,
+        onCommit: commit,
+    });
     return { det };
 }
 
+// Mechanics: the flag checkboxes + viewport/ai_margin fields are templated
+// (#tpl-section-mechanics); the two sliders and the tint color picker keep
+// their JS builders and are mounted into the template's data-mount slots.
 function sectionMechanics(obj, key, opts = {}) {
     const { det, body } = section('Mechanics', { ...opts, inheritKey: opts.inheritKey, defaultValue: {} });
     if (opts.inheritKey && isFloor() && !Object.prototype.hasOwnProperty.call(obj, key)) return { det };
     if (!obj[key]) obj[key] = {};
     const m = obj[key];
-    const grid = el('div', { class: 'checkbox-grid' });
-    grid.append(
-        checkboxRow('fog_of_war', m, 'fog_of_war', false, 'Tiles you have seen stay remembered but dim when out of view; unseen tiles are hidden.'),
-        checkboxRow('darkness', m, 'darkness', false, 'Level is dark — only lit areas (torches, light sources, player light) are visible.'),
-        checkboxRow('player_auto_light', m, 'player_auto_light', false, 'Player emits their own light automatically, so they can always see nearby tiles even in darkness.'),
-        checkboxRow('observer_mode', m, 'observer_mode', false, 'No player-controlled actor; the level runs autonomously and you watch (e.g. Game of Life).'),
-    );
-    body.appendChild(grid);
-    body.appendChild(sliderRow('treasure_room %', m, 'treasure_room', { min: 0, max: 100, suffix: '%', def: 0,
-        tip: 'Chance per floor that a special locked treasure room is generated.' }));
-    body.appendChild(sliderRow('ambient_light', m, 'ambient_light', { min: 0, max: 1, step: 0.05, decimals: 2, def: 1,
-        tip: 'Base brightness applied everywhere (0 = pitch black, 1 = fully lit). Used with darkness.' }));
-    body.appendChild(fieldGrid(
-        fieldRow('viewport_width', m, 'viewport_width', { type: 'number',
-            tip: 'Visible columns. If smaller than the map, the level scrolls. Leave blank to show the whole map.' }),
-        fieldRow('viewport_height', m, 'viewport_height', { type: 'number',
-            tip: 'Visible rows. If smaller than the map, the level scrolls. Leave blank to show the whole map.' }),
-    ));
-    body.appendChild(fieldRow('ai_margin', m, 'ai_margin', { type: 'number',
-        tip: 'Scrolling levels only: actors more than this many tiles outside the viewport skip their turn (perf optimization). Default 5; ignored when the whole map is visible.' }));
-    body.appendChild(colorRow('tint', m, 'tint'));
+
+    body.innerHTML = EditorTemplate.compileById('tpl-section-mechanics')({});
+    EditorTemplate.bindSection(body, {
+        resolveScope: () => m,   // every data-scope="mechanics" input binds to m
+        onCommit: commit,
+    });
+
+    // JS-only widgets: live value formatting / coupled controls.
+    EditorTemplate.mountInto(body, 'treasure_room',
+        sliderRow('treasure_room %', m, 'treasure_room', { min: 0, max: 100, suffix: '%', def: 0,
+            tip: 'Chance per floor that a special locked treasure room is generated.' }));
+    EditorTemplate.mountInto(body, 'ambient_light',
+        sliderRow('ambient_light', m, 'ambient_light', { min: 0, max: 1, step: 0.05, decimals: 2, def: 1,
+            tip: 'Base brightness applied everywhere (0 = pitch black, 1 = fully lit). Used with darkness.' }));
+    EditorTemplate.mountInto(body, 'tint', colorRow('tint', m, 'tint'));
     return { det };
 }
 
@@ -1227,6 +1296,12 @@ function commit() { updateJSONOutput(); }
    Wiring
    ========================================================================= */
 async function init() {
+    // Register the reusable row partials once so section templates can use them.
+    EditorTemplate.registerPartials({
+        fieldRow: 'tpl-field-row',
+        textareaRow: 'tpl-textarea-row',
+        selectRow: 'tpl-select-row',
+    });
     await loadBaseData();
     document.getElementById('prototype-select').addEventListener('change', async (e) => {
         const name = e.target.value;
