@@ -66,7 +66,7 @@
 <script type="text/x-handlebars-template" id="tpl-field-row">
   <div class="field-row">
     <label {{#if tip}}title="{{tip}}"{{/if}}>{{label}}{{#if tip}}<span class="tip-mark" title="{{tip}}"> ⓘ</span>{{/if}}</label>
-    <input type="{{#if inputType}}{{inputType}}{{else}}text{{/if}}"
+    <input type="{{#if type}}{{type}}{{else}}text{{/if}}"
            data-bind="{{bind}}" data-type="{{#if type}}{{type}}{{else}}text{{/if}}"
            {{#if scope}}data-scope="{{scope}}"{{/if}} data-empty="delete"
            {{#if placeholder}}placeholder="{{placeholder}}"{{/if}}
@@ -101,8 +101,8 @@
   {{> textareaRow label="Description" bind="description" tip="Intro text shown when the level loads. Use \n for line breaks."}}
   <div class="hint-inline">Use \n in description for line breaks (newlines are preserved).</div>
   {{> selectRow label="Loaded sound" bind="loaded_sound" options=soundIds tip="Sound effect played once when the level finishes loading."}}
-  {{> fieldRow label="Depth" bind="depth" type="number" inputType="number" tip="Dungeon depth for progression tracking/scaling. Higher = deeper."}}
-  {{> fieldRow label="Turn speed (ms)" bind="turn_speed" type="number" inputType="number" tip="Milliseconds per turn tick. Lower = faster animation/AI cadence. Default 50."}}
+  {{> fieldRow label="Depth" bind="depth" type="number" tip="Dungeon depth for progression tracking/scaling. Higher = deeper."}}
+  {{> fieldRow label="Turn speed (ms)" bind="turn_speed" type="number" tip="Milliseconds per turn tick. Lower = faster animation/AI cadence. Default 50."}}
   {{> fieldRow label="Next level" bind="next_level" placeholder="prototype name" tip="Prototype loaded when the player exits downward from the final floor."}}
   {{> fieldRow label="Previous level" bind="previous_level" placeholder="prototype name" tip="Prototype reachable by going back up the entrance stairway."}}
   {{> fieldRow label="Intro cutscene" bind="intro_cutscene" placeholder="prototype name" tip="Prototype (flipbook cutscene) played before this level begins."}}
@@ -120,9 +120,9 @@
   </div>
   <div data-mount="treasure_room"></div>
   <div data-mount="ambient_light"></div>
-  {{> fieldRow label="viewport_width" bind="viewport_width" type="number" inputType="number" scope="mechanics" tip="Visible columns. If smaller than the map, the level scrolls. Leave blank to show the whole map."}}
-  {{> fieldRow label="viewport_height" bind="viewport_height" type="number" inputType="number" scope="mechanics" tip="Visible rows. If smaller than the map, the level scrolls. Leave blank to show the whole map."}}
-  {{> fieldRow label="ai_margin" bind="ai_margin" type="number" inputType="number" scope="mechanics" tip="Scrolling levels only: actors more than this many tiles outside the viewport skip their turn (perf optimization). Default 5; ignored when the whole map is visible."}}
+  {{> fieldRow label="viewport_width" bind="viewport_width" type="number" scope="mechanics" tip="Visible columns. If smaller than the map, the level scrolls. Leave blank to show the whole map."}}
+  {{> fieldRow label="viewport_height" bind="viewport_height" type="number" scope="mechanics" tip="Visible rows. If smaller than the map, the level scrolls. Leave blank to show the whole map."}}
+  {{> fieldRow label="ai_margin" bind="ai_margin" type="number" scope="mechanics" tip="Scrolling levels only: actors more than this many tiles outside the viewport skip their turn (perf optimization). Default 5; ignored when the whole map is visible."}}
   <div data-mount="tint"></div>
 </script>
 
@@ -298,17 +298,6 @@ function fieldRow(label, obj, key, opts = {}) {
     if (opts.placeholder) input.placeholder = opts.placeholder;
     if (opts.tip) input.setAttribute('title', opts.tip);
     return el('div', { class: 'field-row' }, labelEl(label, opts.tip), input);
-}
-
-function textareaRow(label, obj, key, opts = {}) {
-    const ta = el('textarea', {});
-    ta.value = obj[key] != null ? obj[key] : '';
-    ta.addEventListener('input', () => {
-        if (ta.value === '') delete obj[key]; else obj[key] = ta.value;
-        commit();
-    });
-    if (opts.tip) ta.setAttribute('title', opts.tip);
-    return el('div', { class: 'field-row' }, labelEl(label, opts.tip), ta);
 }
 
 function checkboxRow(label, obj, key, def, tip) {

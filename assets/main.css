@@ -594,31 +594,37 @@ body.editor #personality-key-field {
   color: var(--accent);
 }
 body.editor.actor-editor #form-panel {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  align-content: flex-start;
-  gap: 8px;
+  -moz-column-width: 460px;
+       column-width: 460px;
+  -moz-column-gap: 8px;
+       column-gap: 8px;
 }
 body.editor.actor-editor #form-panel > details.section {
-  flex: 1 1 360px;
+  -moz-column-break-inside: avoid;
+       break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  display: inline-block;
+  width: 100%;
   max-width: 500px;
-  margin-bottom: 0;
+  margin: 0 0 8px;
 }
 body.editor.item-editor .field-row label {
   min-width: 150px;
 }
 body.editor.item-editor #form-panel {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  align-content: flex-start;
-  gap: 8px;
+  -moz-column-width: 460px;
+       column-width: 460px;
+  -moz-column-gap: 8px;
+       column-gap: 8px;
 }
 body.editor.item-editor #form-panel > details.section {
-  flex: 1 1 360px;
+  -moz-column-break-inside: avoid;
+       break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  display: inline-block;
+  width: 100%;
   max-width: 500px;
-  margin-bottom: 0;
+  margin: 0 0 8px;
 }
 body.editor #item-filter-wrap {
   position: relative;
@@ -669,16 +675,19 @@ body.editor.personality-editor .field-row label {
   min-width: 160px;
 }
 body.editor.personality-editor #form-panel {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  align-content: flex-start;
-  gap: 8px;
+  -moz-column-width: 460px;
+       column-width: 460px;
+  -moz-column-gap: 8px;
+       column-gap: 8px;
 }
 body.editor.personality-editor #form-panel > details.section {
-  flex: 1 1 360px;
+  -moz-column-break-inside: avoid;
+       break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  display: inline-block;
+  width: 100%;
   max-width: 500px;
-  margin-bottom: 0;
+  margin: 0 0 8px;
 }
 body.editor #behavior-panel {
   width: 220px;
@@ -839,16 +848,19 @@ body.editor.effects-editor .field-row label {
   min-width: 140px;
 }
 body.editor.effects-editor #form-panel {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  align-content: flex-start;
-  gap: 8px;
+  -moz-column-width: 460px;
+       column-width: 460px;
+  -moz-column-gap: 8px;
+       column-gap: 8px;
 }
 body.editor.effects-editor #form-panel > details.section {
-  flex: 1 1 360px;
+  -moz-column-break-inside: avoid;
+       break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  display: inline-block;
+  width: 100%;
   max-width: 500px;
-  margin-bottom: 0;
+  margin: 0 0 8px;
 }
 body.editor.effects-editor #waveform-canvas {
   background: #111;
@@ -944,18 +956,20 @@ body.editor.prototype-editor #form-panel {
   padding: 12px 16px;
 }
 body.editor.prototype-editor #form-sections {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  align-content: flex-start;
-  gap: 8px;
+  -moz-column-width: 460px;
+       column-width: 460px;
+  -moz-column-gap: 8px;
+       column-gap: 8px;
   max-width: none;
 }
 body.editor.prototype-editor details.section {
-  flex: 1 1 360px;
-  min-width: 300px;
+  -moz-column-break-inside: avoid;
+       break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  display: inline-block;
+  width: 100%;
   max-width: 500px;
-  margin-bottom: 0;
+  margin: 0 0 8px;
 }
 body.editor.prototype-editor .field-grid {
   display: grid;
