@@ -30,15 +30,15 @@
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/default/map.tmj": {
             "expandedObjectLayers": [
-                8,
                 3,
-                6
+                6,
+                8
             ],
             "scale": 0.3155,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 797.1473851030111,
-                "y": 580.0316957210775
+                "x": 800.3169572107765,
+                "y": 599.0491283676704
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/dungeon/map.tmj": {
@@ -48,8 +48,8 @@
             "scale": 0.6069,
             "selectedLayer": 4,
             "viewCenter": {
-                "x": 425.93507991431864,
-                "y": 616.2464985994397
+                "x": 799.9670456417862,
+                "y": 599.769319492503
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/hunger_game/map.tmj": {
@@ -92,9 +92,9 @@
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/sewer/map.tmj": {
             "expandedObjectLayers": [
-                8,
                 3,
-                6
+                6,
+                8
             ],
             "scale": 0.9611,
             "selectedLayer": 2,
@@ -119,8 +119,8 @@
             "scale": 0.6922,
             "selectedLayer": 4,
             "viewCenter": {
-                "x": 477.46316093614564,
-                "y": 856.6888182606184
+                "x": 799.6243860156025,
+                "y": 599.5377058653568
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/underworld/map.tmj": {

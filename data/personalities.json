@@ -10,6 +10,30 @@
     ]
   },
 
+  "goblin": {
+    "name": "Goblin",
+    "hostile": true,
+    "faction": "goblin",
+    "behaviors": [
+      "attack_adjacent",
+      "follow_thread",
+      "pursue_target",
+      "random_walk"
+    ],
+    "taunts": {
+      "on_attack": [
+        "You should not have come here.",
+        "Your bones will join the others.",
+        "Fresh meat!"
+      ],
+      "on_death": [
+        "Impossible...",
+        "The dark... will take you too.",
+        "*death wail*"
+      ]
+    }
+  },
+
   "aquatic_predator": {
     "name": "Aquatic Predator",
     "hostile": true,

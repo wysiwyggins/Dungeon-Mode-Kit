@@ -450,15 +450,37 @@
                  "y":480
                 }, 
                 {
-                 "height":691.99653279399,
-                 "id":105,
+                 "height":30,
+                 "id":107,
                  "name":"",
                  "rotation":0,
-                 "type":"",
+                 "type":"goblin",
                  "visible":true,
-                 "width":20.2253683906386,
-                 "x":882.692863334296,
-                 "y":746.893961282866
+                 "width":40,
+                 "x":840,
+                 "y":720
+                }, 
+                {
+                 "height":30,
+                 "id":108,
+                 "name":"",
+                 "rotation":0,
+                 "type":"goblin",
+                 "visible":true,
+                 "width":40,
+                 "x":800,
+                 "y":690
+                }, 
+                {
+                 "height":30,
+                 "id":109,
+                 "name":"",
+                 "rotation":0,
+                 "type":"goblin",
+                 "visible":true,
+                 "width":40,
+                 "x":1520,
+                 "y":1050
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -584,7 +606,7 @@
          "y":0
         }],
  "nextlayerid":9,
- "nextobjectid":107,
+ "nextobjectid":110,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",

@@ -7,6 +7,11 @@ class Personality {
         this.name = data.name || 'default';
         this.controlled = data.controlled || false;
         this.hostile = data.hostile || false;
+        // Faction tag (e.g. "goblin"). Actors sharing a faction are allies; an
+        // actor with a faction treats everyone else — including the player, who
+        // has none — as an enemy. null = no faction = legacy "attack only the
+        // player" behavior. See Actor.isEnemyOf in engine.js.
+        this.faction = data.faction || null;
         this.behaviors = data.behaviors || [];
         this.data = data;
         this.actor = actor;
@@ -42,8 +47,10 @@ const BehaviorLibrary = {
             const targetY = actor.y + dir.dy;
             const target = actor.engine.entityManager.getActorAt(targetX, targetY);
 
-            // Check if target is valid - only attack controlled actors (players, allies)
-            if (!target || target.isDead || !target.hasAttribute('controlled')) continue;
+            // Attack any adjacent enemy. For unfactioned actors isEnemyOf() means
+            // "the player" (unchanged); for factioned actors (e.g. goblins) it also
+            // means adjacent non-allies like other monsters.
+            if (!target || target.isDead || !actor.isEnemyOf(target)) continue;
 
             // Use unified collision effects system (handles damage, sounds, flash, etc.)
             // An attack attempt (even a miss) consumes the turn

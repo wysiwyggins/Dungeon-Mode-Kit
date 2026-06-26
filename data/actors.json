@@ -320,7 +320,7 @@
     "vision_range": 10,
     "defaultFacing": "left",
     "facingEnabled": true,
-    "personality": "aggressive_melee",
+    "personality": "goblin",
     "collision_effect": {
       "health": -3
     },

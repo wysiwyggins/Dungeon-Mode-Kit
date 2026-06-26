@@ -4137,7 +4137,49 @@ class Actor extends Entity {
 
         return newValue;
     }
-    
+
+    /**
+     * Speak a taunt line. Hostile actors say one of these before their first
+     * attack ('on_attack') and just before dying ('on_death'). Lines are read
+     * from the actor's own `taunts` attribute (a per-actor override) first, then
+     * from the personality's `taunts`. Each is an object keyed by occasion:
+     *   { "on_attack": ["..."], "on_death": ["..."] }
+     *
+     * Shown in two places (the dual-display the dialogue feature uses): a short,
+     * truncated bubble on the canvas next to the actor, and the full untruncated
+     * line in the HTML sidebar. Only fires for actors visible to the player.
+     *
+     * @param {string} occasion - 'on_attack' or 'on_death'
+     * @returns {boolean} true if a taunt was shown
+     */
+    sayTaunt(occasion) {
+        // Only taunt where the player can see it happen.
+        if (this.engine.isTileVisible && !this.engine.isTileVisible(this.x, this.y)) {
+            return false;
+        }
+
+        // Actor-level override wins over the personality's shared lines.
+        const taunts = this.getAttribute('taunts') || this.personality?.data?.taunts;
+        const lines = taunts && taunts[occasion];
+        if (!Array.isArray(lines) || lines.length === 0) return false;
+
+        const line = ROT.RNG.getItem(lines);
+        if (!line) return false;
+
+        // Canvas bubble: truncate to keep it small, auto-dismiss on the next move.
+        const iface = this.engine.interfaceManager;
+        if (iface?.showTextBox) {
+            const CANVAS_TAUNT_LIMIT = 32;
+            const short = iface.truncateText ? iface.truncateText(line, CANVAS_TAUNT_LIMIT) : line;
+            iface.showTextBox(`taunt_${this.x}_${this.y}`, short, { dismissOnMove: true });
+        }
+
+        // Sidebar: the full line, visibility-gated by showMessage's {x,y}.
+        this.engine.inputManager?.showMessage(line, { x: this.x, y: this.y });
+
+        return true;
+    }
+
     /**
      * Kill the actor
      * @param {boolean} spawnRemains - Whether to spawn remains entity (default: true)
@@ -4157,6 +4199,12 @@ class Actor extends Entity {
             const em = this.engine.entityManager;
             if (em[this._emitCounterKey] > 0) em[this._emitCounterKey]--;
             this._emitCounterKey = null;
+        }
+
+        // Hostile actors get a last word before the death message (visibility and
+        // taunt-data checks live in sayTaunt). Players don't taunt themselves.
+        if (this.personality?.hostile && !this.isPlayerControlled()) {
+            this.sayTaunt('on_death');
         }
 
         // Show death message for visible actors (skip for mass nouns like clouds)
@@ -6451,6 +6499,42 @@ class Actor extends Entity {
     }
 
     /**
+     * This actor's faction tag, or null if it has none.
+     * @returns {string|null}
+     */
+    getFaction() {
+        return this.personality?.faction ?? null;
+    }
+
+    /**
+     * Decide whether `other` is an enemy this actor would attack.
+     *
+     * Faction model:
+     *  - If this actor HAS a faction, every actor that does not share it is an
+     *    enemy — including the player (who has no faction) and unfactioned NPCs.
+     *    Same-faction actors are allies.
+     *  - If this actor has NO faction (the default for every existing monster),
+     *    the only enemy is the player. This collapses to the engine's original
+     *    `controlled`-means-enemy rule, so unfactioned actors behave exactly as
+     *    before.
+     *
+     * @param {Actor} other - The candidate target
+     * @returns {boolean}
+     */
+    isEnemyOf(other) {
+        if (!other || other === this || other.isDead) return false;
+
+        const myFaction = this.getFaction();
+        if (myFaction) {
+            // Enemy = anyone not in my faction.
+            return other.getFaction?.() !== myFaction;
+        }
+
+        // No faction: only the player is an enemy (legacy behavior).
+        return other.isPlayerControlled();
+    }
+
+    /**
      * Apply collision effects from actor or held items to a target actor
      * Damage comes from equipped weapon OR actor's collision_effect (not both)
      * Utility effects (like keys unlocking doors) always apply
@@ -6543,6 +6627,12 @@ class Actor extends Entity {
         // - Is breakable (mineable wall — non-mining-tool case already returned early above)
         const targetHasHealth = target.stats?.health !== undefined;
         const isCombatTarget = damageSource && (targetHasHealth || target.hasAttribute('breakable'));
+
+        // A hostile actor's first strike at the player gets a taunt, once per actor.
+        if (isCombatTarget && !this._hasTaunted && this.personality?.hostile && target.isPlayerControlled()) {
+            this._hasTaunted = true;
+            this.sayTaunt('on_attack');
+        }
 
         // Show weapon swing visual only when combat is actually attempted
         if (isCombatTarget && equippedWeapon?.tileIndex && this.engine.renderer) {
