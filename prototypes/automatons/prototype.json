@@ -3,15 +3,28 @@
   "description": "Conway's Game of Life.",
   "loaded_sound": "tone3",
   "depth": 0,
-  "turn_speed": 10,
+  "turn_speed": 40,
   "mechanics": {
     "fog_of_war": false,
     "darkness": false,
     "observer_mode": true
   },
   "random_actors": {
-    "gol_coordinator": { "chance": 100 },
-    "gol_cell": { "chance": 50, "min": 200, "max": 400 }
+    "gol_coordinator": {
+      "chance": 100
+    },
+    "gol_cell": {
+      "chance": 50,
+      "min": 200,
+      "max": 400
+    }
   },
-  "win_conditions": []
+  "win_conditions": [],
+  "map_generator": {
+    "type": "arena",
+    "options": {
+      "map_width": 50,
+      "map_height": 40
+    }
+  }
 }

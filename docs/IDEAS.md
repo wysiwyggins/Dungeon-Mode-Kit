@@ -4,6 +4,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Bugs
 
+prototype editor has lake and abyss checkboxes that create the same forms including a dropdown for either lake or abyss options, consolidate this. also checkbox selection here collapses the section when changed
 ---
 
 ## Feature ideas
