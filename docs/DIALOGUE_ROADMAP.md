@@ -9,13 +9,7 @@ Status: planning · Last updated: 2026-06-26
 
 ## Context
 
-[IDEAS.md](IDEAS.md) sketches a dialogue feature: bumping a non-hostile actor opens
-a conversation instead of attacking, with multiple-choice options; it explicitly
-favors **simplicity** ("a simple version… or more complex- could use an existing
-library like ink… We should strive for simplicity"). This roadmap turns that into a
-concrete, phased plan grounded in the current engine.
-
-**The feature has three parts:**
+[IDEAS.md](IDEAS.md) sketches a dialogue feature: bumping a non-hostile actor opens a conversation instead of attacking, with multiple-choice options; could use an existing library like ink
 
 1. **Bump-to-talk.** When the player bumps a non-hostile actor, open a dialogue
    tree (text + multiple-choice) instead of resolving an attack.
@@ -25,20 +19,12 @@ concrete, phased plan grounded in the current engine.
 3. **Hostile taunts.** Hostile actors say a line from a `taunts` list before their
    first attack and before they die.
 
-The good news from reconnaissance: the engine already has every seam this needs —
-a collision pipeline with a clean pre-attack insertion point, a canonical hostility
-flag, a death function, a stacking canvas textbox with word-wrap, an XSS-safe
-sidebar message API, and a reusable click+keyboard modal pattern. This is mostly
-**wiring into existing systems**, not new infrastructure.
+---
 
-### Decisions taken (drive the design below)
-
-| Decision | Choice |
-|---|---|
-| Dialogue format | **Simple custom JSON tree now, ink-compatible later.** A small node/choice schema with no external runtime; the loader is designed so an `inkjs` adapter could be dropped in later as an alternate source. |
-| Choice input | **Mouse click + keyboard.** Reuse the existing inventory/menu click model (`_hitTestBox` → `_handle*Click`) plus letter/number keys. |
-| Data location | **On the personality** (`personalities.json`), where `hostile` already lives — with an optional per-actor override in `actors.json` for one-off NPCs. |
-| Phase 1 scope | Bump-to-talk + choices, dual display, **and** hostile taunts. Effects/conditions (item give/take, variable gating) deferred to a later phase. |
+- Simple custom JSON tree now, ink-compatible later.** A small node/choice schema with no external runtime; the loader is designed so an `inkjs` adapter could be dropped in later as an alternate source.
+- Mouse click + keyboard: Reuse the existing inventory/menu click model (`_hitTestBox` → `_handle*Click`) plus letter/number keys.
+- Data location: On the personality(`personalities.json`), where `hostile` already lives — with an optional per-actor override in `actors.json` for one-off NPCs.  I'm worried about personality.json getting too big though, which is another argument for ink json exports as the dialogue. Could reuse another parser I made for "textovka"
+- I want engine hooks to be able to check for a global (prototype-level) variable or a level specific variable (neither of these exist yet) and to be able to add or remove items from both conversing actors (shop or trade is an early target for convo)
 
 ---
 
@@ -46,7 +32,7 @@ sidebar message API, and a reusable click+keyboard modal pattern. This is mostly
 
 | Concern | Location | Note |
 |---|---|---|
-| Player bump → attack | `tryMove()` `engine.js` ≈7184–7613; attack at `applyCollisionEffects(actorAtTarget)` ≈7318 | Insert dialogue check after the solid-actor lookup (≈7225), **before** attack resolution. |
+| Player bump → attack | `tryMove()` `engine.js` ≈7184–7613; attack at `applyCollisionEffects(actorAtTarget)` ≈7318 | Insert dialogue check after the solid-actor lookup (≈7225), before attack resolution. |
 | Hostility flag | `Personality` ctor `behaviors.js`:9 `this.hostile = data.hostile \|\| false`; data in `personalities.json` | Non-hostile = `personality.hostile === false`. An informal `friendly` actor attribute also exists (`input.js` ≈714). |
 | Actor death | `die()` `engine.js` ≈4145; death message ≈4162 | Fire before-death taunt just before the death message, while still "alive." |
 | Hostile first attack | `attack_adjacent` behavior `behaviors.js`:38 (calls `applyCollisionEffects`) | Fire first-attack taunt once per actor (guard with a flag). |
@@ -145,26 +131,9 @@ Each phase is independently shippable. Taunts (Phase A) and bump-to-talk
 (Phases B–C) are largely independent and could even land in either order; taunts
 are simpler and make a good warm-up.
 
-### Phase A — Hostile taunts `[simplest; independent]`
-
-- **Goal:** Hostile actors speak a line before their first attack and before death.
-- **Work:**
-  - Read `taunts` from the actor (override) then its personality.
-  - **First-attack taunt:** in `attack_adjacent` (`behaviors.js`:38), if attacker
-    has a flag (e.g. `_hasTaunted` unset) and `taunts.on_attack` exists, show a
-    random line, set the flag, then proceed to `applyCollisionEffects`.
-  - **Before-death taunt:** in `die()` (`engine.js` ≈4162), if `taunts.on_death`
-    exists and the actor was visible, show a random line just before the death
-    message.
-  - Both use the dual-display helper (canvas short + sidebar full); only fire when
-    the actor is visible to the player.
-- **Unlocks:** Immediate flavor with zero new UI; exercises the dual-display helper
-  that bump-to-talk also needs.
-- **Risk/effort:** Low. No modal, no input gating.
-
-### Phase B — Dialogue UI primitive (modal box + choices) `[foundation for talk]`
-
-- **Goal:** A reusable dialogue window: shows a node's text + a list of selectable
+- [x] Hostile taunts
+- Dialogue UI primitive (modal box + choices) `[foundation for talk]`
+  - **Goal:** A reusable dialogue window: shows a node's text + a list of selectable
   choices; supports click and keyboard; gates game input while open.
 - **Work:**
   - Add `showDialogue(node, controller)` to `interface.js`, modeled on
@@ -216,15 +185,14 @@ are simpler and make a good warm-up.
 
 ### Phase E (future) — Authoring `[tooling]`
 
-- A dialogue editor (per the IDEAS.md "Dialogue editor or ink" item) and/or an
-  `inkjs` adapter implementing the conversation-controller interface over compiled
-  ink JSON. The Phase B abstraction is what makes this a drop-in.
+- an `inkjs` adapter implementing the conversation-controller interface over compiled ink JSON. The Phase B abstraction is what makes this a drop-in.
 
 ---
 
 ## Reuse vs. build
 
 **Reuse as-is:**
+
 - Hostility flag (`behaviors.js`:9 / `personalities.json`).
 - Collision seam `tryMove()` / `applyCollisionEffects` (`engine.js`).
 - `die()` taunt point (`engine.js` ≈4162).
@@ -235,10 +203,11 @@ are simpler and make a good warm-up.
 - The supplement/override merge, so dialogue/taunts are per-prototype overridable.
 
 **Must build:**
+
 - `charLimit`/truncation option on `showTextBox()` + a small dual-display helper.
 - Taunt firing in `attack_adjacent` and `die()` (Phase A).
 - `showDialogue()` + `dialogueMode` + `_handleDialogueClick` + `handleDialogueKey`
-  + the JSON-tree conversation controller (Phase B).
+  - the JSON-tree conversation controller (Phase B).
 - The bump→dialogue branch in `tryMove()` (Phase C).
 - (Later) effects/conditions, dialogue registry, authoring/ink adapter (D–E).
 

@@ -8,6 +8,8 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 - dart turret only shoots once, can't be attacked (you bump into a wall)
 
+- should probably deal with too many visible actors in the sidebar on non-dark levels somehow. (show closest 5? have disclosure arrow?)
+
 ---
 
 ## Feature ideas
