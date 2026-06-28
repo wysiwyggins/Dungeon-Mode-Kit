@@ -421,6 +421,9 @@
         "FULL_BLOCK_WITH_EYE": [13,17],
         "WHITE_OTHAL": [14,17],
         "WHITE_OMEGA": [14,17],
-        "TWO_PILLARS": [15,17]
+        "TWO_PILLARS": [15,17],
+        "GLAGOLITIC_CAPITAL_LETTER_AZU": [16,17],
+        "GLAGOLITIC_CAPITAL_LETTER_BUKY": [17,17],
+        "GLAGOLITIC_CAPITAL_LETTER_VEDE": [18,17]
     }
 }
