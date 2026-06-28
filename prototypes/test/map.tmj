@@ -451,28 +451,6 @@
                 }, 
                 {
                  "height":30,
-                 "id":107,
-                 "name":"",
-                 "rotation":0,
-                 "type":"goblin",
-                 "visible":true,
-                 "width":40,
-                 "x":840,
-                 "y":720
-                }, 
-                {
-                 "height":30,
-                 "id":108,
-                 "name":"",
-                 "rotation":0,
-                 "type":"goblin",
-                 "visible":true,
-                 "width":40,
-                 "x":800,
-                 "y":690
-                }, 
-                {
-                 "height":30,
                  "id":109,
                  "name":"",
                  "rotation":0,
@@ -514,28 +492,6 @@
                  "width":40,
                  "x":720,
                  "y":480
-                }, 
-                {
-                 "height":30,
-                 "id":97,
-                 "name":"sword",
-                 "rotation":0,
-                 "type":"sword",
-                 "visible":true,
-                 "width":40,
-                 "x":960,
-                 "y":720
-                }, 
-                {
-                 "height":30,
-                 "id":104,
-                 "name":"",
-                 "rotation":0,
-                 "type":"fire_immunity_potion",
-                 "visible":true,
-                 "width":40,
-                 "x":600,
-                 "y":690
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -606,7 +562,7 @@
          "y":0
         }],
  "nextlayerid":9,
- "nextobjectid":110,
+ "nextobjectid":111,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",

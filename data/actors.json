@@ -337,7 +337,7 @@
       "opaque": false
     },
     "stats": {
-      "health": 15
+      "health": 18
     }
   },
   "deer": {
@@ -1049,6 +1049,7 @@
     "attributes": {
       "flies": true,
       "hazard_immune": true,
+      "flammable": true,
       "mass_noun": true
     },
     "lifetime": 10
@@ -1064,6 +1065,7 @@
       "flies": true,
       "solid": false,
       "mass_noun": true,
+      "flammable": true,
       "hazard_immune": true
     },
     "collision_effect": {},
@@ -1511,19 +1513,15 @@
       "health": 40
     }
   },
-  "lightning_mage": {
-    "name": "Lightning Mage",
-    "description": "A robed figure crackling with static charge.",
-    "tileIndexBase": "LEG",
-    "tileIndexTop": "OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE",
-    "flipTopH": true,
+  "Dynamo": {
+    "name": "Dynamo",
+    "description": "A cone-shaped entity crackling with energy.",
+    "tileIndexBase": "GATE",
+    "tileIndexTop": "EYE_OF_PROVIDENCE",
     "tint": "#AADDFF",
-    "tileIndexSide": "BOX LEFT VERTICAL",
     "vision_range": 10,
     "lightRadius": 3,
     "personality": "lightning_mage",
-    "facingEnabled": true,
-    "defaultFacing": "left",
     "collision_effect": {
       "health": -5
     },

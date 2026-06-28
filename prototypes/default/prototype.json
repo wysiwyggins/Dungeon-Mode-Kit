@@ -1,7 +1,7 @@
 {
   "name": "Default Test Prototype",
   "loaded_sound": "tone3",
-"description": "Welcome to the Dungeon of Doom. \nPress 'i' for info. Use arrow keys or mouse to move.",
+"description": "Welcome to the Dungeon of Doom. \nPress '?' for help. Use arrow keys or mouse to move.",
   "depth": 1,
   "turn_speed": 50,
   "next_level": "test",
