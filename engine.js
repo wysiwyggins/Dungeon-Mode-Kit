@@ -7176,7 +7176,7 @@ class Actor extends Entity {
             // Queue non-player actor to appear on the next floor
             const targetFloor = this.engine.currentFloor + 1;
             const serialized = this.serialize();
-            const fallDamage = Math.floor((this.stats?.health?.max || 20) * 0.3);
+            const fallDamage = Math.floor((this.stats?.health?.max || 30) * 0.3);
             serialized._fallDamage = fallDamage;
 
             if (!this.engine.pendingFallenActors.has(targetFloor)) {
