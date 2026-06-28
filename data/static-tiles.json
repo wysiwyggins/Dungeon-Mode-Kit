@@ -411,12 +411,16 @@
         "STRONG_TORSO": [4,17],
         "THIN_TORSO": [5,17],
         "WHITE_FEMALE_SYMBOL": [6,17],
-        "RUB_EL_HIZB": [6,17],
+        "RUB_EL_HIZB": [7,17],
         "SMALL_HOUSE": [8,17],
+        "DELTA": [8,17],
         "THETA": [9,17],
         "WHITE_UP_POINTING_SMALL_TRIANGLE": [10,17],
         "FOUR_BLACK_SMALL_RIGHT_TRIANGLES": [11,17],
         "BLACK_LOWER_ONE_HALF_WEDGE": [12,17],
-        "FULL_BLOCK_WITH_EYE": [13,17]
+        "FULL_BLOCK_WITH_EYE": [13,17],
+        "WHITE_OTHAL": [14,17],
+        "WHITE_OMEGA": [14,17],
+        "TWO_PILLARS": [15,17]
     }
 }
