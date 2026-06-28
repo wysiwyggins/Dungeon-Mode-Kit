@@ -23,7 +23,7 @@ creation tool where anyone makes a little game and shares it, but oriented towar
 roguelikes. We want to be **surprised by what designers make rather than be
 proscriptive** (see [IDEAS.md](IDEAS.md) → Editor Tools).
 
-**The good news: the hardest part already exists.** The supplement/override model
+The supplement/override model already exists
 the whole vision rests on is already enforced at runtime. Hosting is fundamentally
 a *storage, identity, and tooling* problem layered on an engine that already does
 the data-isolation work. This document lays out an incremental path where each
@@ -35,7 +35,7 @@ phase is independently shippable and the early phases need **no backend at all**
 |---|---|
 | Identity model | **Anonymous-first, accounts soon** — launch with no accounts (shareable bundles), then add named-creator accounts as a near-term phase, not a deferred "someday." |
 | First shippable share | **No backend — URL/file bundle.** Encode a whole prototype into a shareable URL hash and/or downloadable file (Bitsy's "the game *is* the data" model). Validates the create→play→share loop at zero hosting cost. |
-| Custom per-prototype tiles | **Out of scope.** All prototypes keep sharing the single `static-tiles.png` spritesheet. Per-prototype/pixel-art tiles are explicitly deferred to a separate future effort (see Appendix A). |
+| Custom per-prototype tiles | **Out of scope.** All prototypes keep sharing the single `static-tiles.png` spritesheet. Per-prototype/pixel-art tiles are explicitly deferred to a separate future effort (see Appendix A). For this reason I've added a lot of extra tiles to work with. DMK retains a look and feel from the tileset|
 
 ---
 
@@ -50,13 +50,10 @@ mutate it"* — is already true:
 - **The merge:** `Prototype.loadAssets()` (≈2692–2725) does a shallow per-key
   spread — `this.actors = { ...engine.globalActors, ...prototypeActors }`. A
   prototype key that matches a base key **replaces** it; new keys are **added**;
-  the base objects are never mutated (the spread builds a fresh object). This is
-  exactly the "supplement and override, can't change `/data`" rule, already
-  holding for actors, items, personalities, effects, and (nested) keybindings.
+  the base objects are never mutated (the spread builds a fresh object).
 - **A prototype is already a portable bundle:** a folder of small JSON files
   (`prototype.json` + optional `actors.json` / `items.json` / `personalities.json`
   / `effects.json` / `keybindings.json`) plus Tiled maps (`map.tmj`, `2.tmj`, …).
-  This single fact is what makes a no-backend Phase 1 possible.
 - **The editors already emit exactly those files.** `prototype-editor.html` and
   the four entity editors mutate an in-memory copy and export the correct
   per-prototype JSON (today via clipboard / a textarea). They need a *save
@@ -179,8 +176,6 @@ dependency spine is **Phase 0 (bundle abstraction) → everything else**.
     Cloudflare Pages (free).
   - Enforce a bundle-size cap.
 - **Unlocks:** The full create→play→share loop at zero operational cost.
-  Realizes the IDEAS.md "hosted like Bitsy" goal at minimum cost and surfaces real
-  designer behavior before any backend spend.
 - **Risk/effort:** Low–medium. URL-length limits for large bundles — mitigate with
   file-based sharing as the fallback.
 
@@ -293,6 +288,7 @@ the current architecture, so a future effort can pick it up with eyes open.
 no per-prototype texture hook.
 
 **If revived, sequence it as:**
+
 - **(a) Per-prototype tile *aliasing*** over the existing sheet — JSON only, no new
   art. Cheap; could even ride along with the Phase 2 map editor.
 - **(b) Per-prototype *atlas*** — a second BaseTexture loaded per prototype, a
