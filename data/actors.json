@@ -314,9 +314,10 @@
   "goblin": {
     "name": "goblin",
     "description": "A lumpy piglike humanoid",
-    "tileIndexBase": "WHITE_GREAVES",
-    "tileIndexTop": "SKULL",
-    "tint": "#8BFF55",
+    "tileIndexBase": "THIN_TORSO",
+    "tileIndexTop": "FLY",
+    "flipTopV": true,
+    "tint": "#77bb41",
     "vision_range": 10,
     "defaultFacing": "left",
     "facingEnabled": true,
@@ -1141,7 +1142,7 @@
       "trap_type": "fire"
     },
     "trap_effect": {
-      "center": "intense_fire",
+      "center": "fire",
       "radius": 1,
       "outer": "fire"
     },
@@ -1513,8 +1514,8 @@
       "health": 40
     }
   },
-  "Dynamo": {
-    "name": "Dynamo",
+  "dynamo": {
+    "name": "dynamo",
     "description": "A cone-shaped entity crackling with energy.",
     "tileIndexBase": "GATE",
     "tileIndexTop": "EYE_OF_PROVIDENCE",

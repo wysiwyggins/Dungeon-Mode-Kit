@@ -481,17 +481,6 @@
                  "width":40,
                  "x":560,
                  "y":450
-                }, 
-                {
-                 "height":30,
-                 "id":56,
-                 "name":"Potion",
-                 "rotation":0,
-                 "type":"health_potion",
-                 "visible":true,
-                 "width":40,
-                 "x":720,
-                 "y":480
                 }],
          "opacity":1,
          "type":"objectgroup",

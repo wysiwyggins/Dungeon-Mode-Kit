@@ -213,7 +213,8 @@
       "invisibility_potion",
       "fire_immunity_potion",
       "slowness_potion",
-      "telepathy_potion"
+      "telepathy_potion",
+      "mystery_potion"
     ]
   },
   "mystery_potion": {
