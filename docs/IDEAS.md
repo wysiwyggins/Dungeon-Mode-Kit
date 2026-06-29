@@ -18,6 +18,8 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 - a fire trap that shiould have only injured the player for 8 health in the turn it was stepped on instantly killed them (player had 30 health)
 
+- I got rid of auto-wearing wearable items, but it should be an item option, since it would make sense for the crown in test
+
 ---
 
 ## Feature ideas
