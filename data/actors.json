@@ -143,6 +143,34 @@
       "health": 60
     }
   },
+  "vampire": {
+    "name": "vampire",
+    "tileIndexBase": "THIN_TORSO",
+    "tileIndexTop": "HAUNTED_FACE",
+    "tint": "#d4e3fe",
+    "facingEnabled": true,
+    "defaultFacing": "left",
+    "personality": "aggressive_melee",
+    "collision_effect": {
+      "health": -10
+    },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
+    "death_sound": "ouch",
+    "attributes": {
+      "hostile": true,
+      "sentient": true,
+      "flammable": true,
+      "conductive": true,
+      "dark_vision": true,
+      "flies": true,
+      "lode_chance": 50,
+      "lode": "thaler"
+    },
+    "stats": {
+      "health": 40
+    }
+  },
   "turret": {
     "name": "Dart turret",
     "description": "A clockwork blowgun",
@@ -257,26 +285,25 @@
     "name": "kobold",
     "description": "A small humanoid with a stooped back, face hidden beneath a ragged hood.",
     "tileIndexBase": "LEG",
-    "tileIndexTop": "WHITE_GREAVES",
+    "tileIndexTop": "WHITE_HUNTING_ANIMAL_FACE",
     "tint": "#FFBB55",
-    "vision_range": 10,
+    "facingEnabled": true,
+    "defaultFacing": "left",
     "personality": "kobold_miner",
+    "vision_range": 10,
     "collision_effect": {
       "health": -3
     },
     "collision_sound": "hit",
-    "defaultFacing": "left",
-    "facingEnabled": true,
     "collision_description": "The [actor_name] strikes back at [attacked_actor_name]!",
     "attributes": {
-      "flammable": true,
-      "sighted": true,
       "sentient": true,
-      "inventory": 1,
-      "remains": "skull",
+      "sighted": true,
+      "flammable": true,
       "accuracy": 35,
       "defense": 5,
-      "opaque": false
+      "inventory": 1,
+      "remains": "skull"
     },
     "stats": {
       "health": 20
@@ -344,14 +371,20 @@
   "deer": {
     "name": "Deer",
     "tileIndexBase": "DOOR_TOP",
-    "tileIndexTop": "OPAQUE_DARK_SMILING_FACE",
+    "tileIndexTop": "OPAQUE_DARK_SHOCKED_ANIMAL_FACE",
+    "tileIndexSide": "FLIPPED_SMALL_WHITE_LOWER_RIGHT_TRIANGLE",
+    "sideOffset": {
+      "dx": -1,
+      "dy": 0
+    },
+    "flipSideV": true,
+    "tint": "#ffe4a8",
     "personality": "passive_wanderer",
     "attributes": {
-      "flammable": true,
       "sentient": true,
+      "flammable": true,
       "inventory": 1,
-      "remains": "blood",
-      "opaque": false
+      "remains": "blood"
     },
     "stats": {
       "health": 10
@@ -608,10 +641,11 @@
     "name": "portal",
     "tileIndexBase": "FLOATING_LEGS_ON_WHITE_UPPER_GRADIENT",
     "tileIndexTop": "OPAQUE_DOOR_TOP",
+    "tint": "#d4e3fe",
+    "effect": "flicker_tint",
     "attributes": {
       "solid": false,
       "visible": false,
-      "flammable": false,
       "portal": true,
       "hidden": true
     }
@@ -823,14 +857,12 @@
   "drain": {
     "name": "drain",
     "tileIndexBase": "OPAQUE_PRISON_WINDOW",
-    "tileIndexTop": "BLANK",
+    "tileIndexTop": "GATE",
+    "tint": "#CAD49D",
     "animated": true,
     "animation_frames": "fluid",
-    "tint": "#CAD49D",
     "personality": "drain",
     "attributes": {
-      "flammable": false,
-      "spreads": false,
       "entry_sound": "step_mud"
     }
   },
@@ -1392,34 +1424,6 @@
       "club"
     ]
   },
-  "fire_elemental": {
-    "name": "Fire Elemental",
-    "tileIndexBase": "BLANK",
-    "tileIndexTop": "BLANK",
-    "animated": true,
-    "animation_frames": "fire",
-    "tint": "#FF6600",
-    "flickerTint": true,
-    "personality": "aggressive_melee",
-    "collision_effect": {
-      "health": -10,
-      "apply_state": "burning"
-    },
-    "collision_sound": "fireball",
-    "collision_description": "The [actor_name] scorches the [attacked_actor_name]!",
-    "attributes": {
-      "hostile": true,
-      "flammable": false,
-      "sentient": true,
-      "light_source": true,
-      "accuracy": 70,
-      "defense": 15,
-      "strength": 12
-    },
-    "stats": {
-      "health": 50
-    }
-  },
   "jackal": {
     "name": "Jackal",
     "tileIndexBase": "DOOR_TOP",
@@ -1536,7 +1540,7 @@
       "accuracy": 55,
       "defense": 4,
       "light_source": true,
-      "remains": "skull",
+      "remains": "rubble",
       "conductive": false,
       "opaque": false
     },
@@ -1627,10 +1631,10 @@
     "name": "Phantom Hound",
     "description": "A spectral canine that phases in and out of reality, striking before vanishing.",
     "tileIndexBase": "WHITE_DOOR_TOP",
-    "tileIndexTop": "WHITE_REPTILE_HEAD",
+    "tileIndexTop": "WHITE_HUNTING_ANIMAL_FACE",
     "flipTopH": true,
     "tint": "#AADDFF",
-    "flickerTint": true,
+    "effect": "flicker_tint",
     "personality": "blink_stalker",
     "collision_effect": {
       "health": -6
@@ -1638,10 +1642,10 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] lunges at the [attacked_actor_name]!",
     "attributes": {
-      "flammable": true,
       "hostile": true,
       "sentient": true,
       "sighted": true,
+      "flammable": true,
       "light_source": true,
       "accuracy": 70,
       "defense": 12,
@@ -1655,10 +1659,10 @@
     "name": "Hell Hound",
     "description": "A blazing canine that blinks through space, leaving fire in its wake.",
     "tileIndexBase": "WHITE_DOOR_TOP",
-    "tileIndexTop": "WHITE_REPTILE_HEAD",
+    "tileIndexTop": "WHITE_HUNTING_ANIMAL_FACE",
     "flipTopH": true,
     "tint": "#e32400",
-    "flickerTint": true,
+    "effect": "flicker_tint",
     "animationSide": "fire",
     "personality": "hell_hound",
     "collision_effect": {
@@ -1669,7 +1673,6 @@
     "death_sound": "ouch",
     "attributes": {
       "hostile": true,
-      "flammable": false,
       "sentient": true,
       "sighted": true,
       "light_source": true,
