@@ -20,6 +20,8 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 - I got rid of auto-wearing wearable items, but it should be an item option, since it would make sense for the crown in test
 
+- If the player falls to another level while hallucinating, the tiles don't randomize on the new level even though the state is still in effect
+
 ---
 
 ## Feature ideas
