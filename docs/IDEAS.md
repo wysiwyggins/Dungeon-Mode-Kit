@@ -22,6 +22,8 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 - If the player falls to another level while hallucinating, the tiles don't randomize on the new level even though the state is still in effect
 
+- The word "inverse" is used inconsistently in tile names. Some names, like inverse box drawing tiles, should be "white"
+
 ---
 
 ## Feature ideas
