@@ -376,6 +376,7 @@
       "visible": true,
       "stackable": false,
       "wearable": "top",
+      "auto_wear": true,
       "enchantable": true,
       "pickup_sound": "pickup",
       "wear_effect": {

@@ -780,7 +780,8 @@
       "solid": false,
       "switchable": true,
       "toggled": false,
-      "one_shot": true
+      "one_shot": true,
+      "render_layer": "bottom"
     },
     "collision_description": "a pressure plate",
     "switch_message": "A stone depresses as you step on it.",
@@ -899,6 +900,7 @@
     "animation_frames": "fluid",
     "personality": "drain",
     "attributes": {
+      "render_layer": "bottom",
       "entry_sound": "step_mud"
     }
   },
@@ -910,7 +912,8 @@
     "attributes": {
       "solid": false,
       "flammable": true,
-      "platform": true
+      "platform": true,
+      "render_layer": "bottom"
     }
   },
   "collapsing_floor": {
@@ -923,6 +926,7 @@
       "platform": true,
       "visible": true,
       "collapsible": true,
+      "render_layer": "bottom",
       "paint_tile": "DOWN_ARROW"
     }
   },
@@ -1188,7 +1192,8 @@
       "visible": false,
       "flammable": false,
       "trap": true,
-      "trap_type": "poison_gas"
+      "trap_type": "poison_gas",
+      "render_layer": "bottom"
     },
     "trap_spawn": "cloud",
     "trap_spawn_tint": "#55FF55",
@@ -1207,7 +1212,8 @@
       "visible": false,
       "flammable": false,
       "trap": true,
-      "trap_type": "fire"
+      "trap_type": "fire",
+      "render_layer": "bottom"
     },
     "trap_effect": {
       "center": "fire",
@@ -1227,7 +1233,8 @@
       "visible": false,
       "flammable": false,
       "trap": true,
-      "trap_type": "paralysis_gas"
+      "trap_type": "paralysis_gas",
+      "render_layer": "bottom"
     },
     "trap_spawn": "cloud",
     "trap_spawn_tint": "#AADDFF",
@@ -1244,7 +1251,8 @@
       "visible": false,
       "flammable": false,
       "trap": true,
-      "trap_type": "confusion_gas"
+      "trap_type": "confusion_gas",
+      "render_layer": "bottom"
     },
     "trap_spawn": "cloud",
     "trap_spawn_tint": "#FFAAFF",

@@ -4434,13 +4434,26 @@ class Actor extends Entity {
             }
         }
 
-        // Auto-equip wearable items for NPCs only (player must equip manually)
-        if (!this.isPlayerControlled()) {
+        // Auto-equip wearable items. NPCs always auto-equip; the player only
+        // auto-equips items flagged auto_wear (e.g. the crown), otherwise the
+        // player equips manually.
+        if (!this.isPlayerControlled() || item.getAttribute('auto_wear')) {
             const slot = item.getAttribute('wearable');
             if (slot && ['top', 'middle', 'lower'].includes(slot)) {
-                const { canEquip } = this.canEquipItem(item);
+                const { canEquip, reason } = this.canEquipItem(item);
                 if (canEquip) {
                     this.equipToSlot(item, slot);
+                } else if (this.isPlayerControlled()) {
+                    this.engine.inputManager?.showMessage(`You cannot wear the ${item.name}. ${reason}.`);
+                }
+            } else if (slot === 'ring') {
+                const ringSlot = !this.equipment.ring1 ? 'ring1' :
+                                 !this.equipment.ring2 ? 'ring2' : null;
+                const { canEquip, reason } = this.canEquipItem(item);
+                if (ringSlot && canEquip) {
+                    this.equipToSlot(item, ringSlot);
+                } else if (this.isPlayerControlled() && !canEquip) {
+                    this.engine.inputManager?.showMessage(`You cannot wear the ${item.name}. ${reason}.`);
                 }
             }
         }
@@ -10969,12 +10982,33 @@ class RenderSystem {
         return texture;
     }
 
+    /**
+     * Base zIndex for an actor's sprite stack based on its 'render_layer'
+     * attribute: "bottom" sinks below normal actors, "top" rises above them (and
+     * above attached fire at 12/13); anything else uses the normal band. The top
+     * sprite is always baseZ+1, so a whole stack shifts together.
+     * @param {Actor} actor
+     * @returns {number} base zIndex (top sprite uses this + 1)
+     */
+    _actorLayerBaseZ(actor) {
+        switch (actor.getAttribute('render_layer')) {
+            case 'bottom': return 6;
+            case 'top': return 14;
+            default: return 10;
+        }
+    }
+
     createActorSprites(actor) {
         if (!actor.hasAttribute('visible')) return;
 
+        // Within the entity container, base/top sprites default to zIndex 10/11
+        // (attached fire 12/13). The optional 'render_layer' attribute shifts an
+        // actor's whole stack so it reliably sits below or above normal actors
+        // sharing its tile — e.g. a collapsible floor is "bottom" so a creature
+        // (or flying actor) hovering over it renders on top. Absent = normal.
         const isAttachedFire = actor._isAttachedFire;
-        const baseZ = isAttachedFire ? 12 : 10;
-        const topZ = isAttachedFire ? 13 : 11;
+        const baseZ = isAttachedFire ? 12 : this._actorLayerBaseZ(actor);
+        const topZ = baseZ + 1;
 
         // Render base sprite (static or animated)
         actor.spriteBase = this.createActorSprite(
@@ -11007,7 +11041,7 @@ class RenderSystem {
                 actor.animationSide,
                 (actor.x + sideOffset.dx) * globalVars.TILE_WIDTH,
                 (actor.y + sideOffset.dy) * globalVars.TILE_HEIGHT,
-                10,
+                baseZ,
                 { flipH: actor.flipSideH, flipV: actor.flipSideV }
             );
         }
