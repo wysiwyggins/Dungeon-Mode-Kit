@@ -30,15 +30,15 @@
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/default/map.tmj": {
             "expandedObjectLayers": [
+                3,
                 8,
-                6,
-                3
+                6
             ],
             "scale": 0.3155,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 795.5625990491283,
-                "y": 580.0316957210775
+                "x": 798.7321711568939,
+                "y": 599.0491283676704
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/dungeon/map.tmj": {
@@ -67,8 +67,8 @@
             "scale": 0.3355,
             "selectedLayer": 3,
             "viewCenter": {
-                "x": 769.0014903129658,
-                "y": 736.2146050670642
+                "x": 798.8077496274218,
+                "y": 599.1058122205662
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/mine/map.tmj": {
@@ -92,15 +92,15 @@
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/sewer/map.tmj": {
             "expandedObjectLayers": [
+                3,
                 8,
-                6,
-                3
+                6
             ],
             "scale": 0.3185,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": 2445.839874411303,
-                "y": 951.3343799058084
+                "x": 1601.255886970173,
+                "y": 1180.5337519623233
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/2.tmj": {
@@ -113,14 +113,14 @@
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/map.tmj": {
             "expandedObjectLayers": [
-                6,
-                3
+                3,
+                6
             ],
             "scale": 0.3957,
             "selectedLayer": 4,
             "viewCenter": {
-                "x": 775.8402830427092,
-                "y": 646.9547637098814
+                "x": 801.1119535001263,
+                "y": 598.9385898407885
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/underworld/map.tmj": {
@@ -147,7 +147,7 @@
             "scale": 0.5311,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": 421.7661457352664,
+                "x": 419.88326115609107,
                 "y": 510.2617209565053
             }
         },

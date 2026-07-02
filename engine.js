@@ -3986,6 +3986,10 @@ class Actor extends Entity {
     act() {
         this.engine.entityManager.invalidateActorPosCache();
 
+        // Monotonic "my turn number", used to cap fire damage at once per turn
+        // regardless of how many overlapping fires hit this actor.
+        this._turnCount = (this._turnCount || 0) + 1;
+
         // Viewport AI margin: skip entire turn for off-screen actors
         if (this.engine.viewportEnabled && !this.isPlayerControlled()) {
             const ox = this.engine.sectionOriginX;
@@ -4719,13 +4723,19 @@ class Actor extends Entity {
             attachedActor: null
         };
 
-        // Spawn attached actor if defined (e.g., fire for burning)
+        // Spawn attached actor if defined (e.g., fire for burning).
+        // Bypass fire dedupe so the state gets its own dedicated fire that follows
+        // the victim, rather than commandeering a ground fire already on the tile.
         if (stateData.attached_actor) {
-            const attachedActor = this.engine.entityManager.spawnActor(
+            const em = this.engine.entityManager;
+            const prevMergingFire = em._mergingFire;
+            em._mergingFire = true;
+            const attachedActor = em.spawnActor(
                 stateData.attached_actor,
                 this.x,
                 this.y
             );
+            em._mergingFire = prevMergingFire;
             if (attachedActor) {
                 // Mark as attached to this actor so it follows and doesn't apply spawn damage
                 attachedActor._attachedTo = this;
@@ -8108,6 +8118,25 @@ class Actor extends Entity {
     }
 
     /**
+     * Apply fire damage to this actor at most once per its own turn. Overlapping,
+     * spawning, and adjacent fires all funnel through here, so a tile piled with
+     * fire (e.g. a fire trap's center + ring) can't stack into an instant kill —
+     * the victim takes one hit per turn and the window resets when it next acts().
+     * @param {number} amount - Damage to apply (typically the fire's damage_per_turn)
+     * @returns {boolean} True if damage was applied this call, false if already burned this turn
+     */
+    takeFireDamageOncePerTurn(amount) {
+        const turn = this._turnCount || 0;
+        if (this._lastBurnedTurn === turn) return false; // already burned this turn
+        this._lastBurnedTurn = turn;
+        if (!(amount > 0) || !this.stats?.health) return false;
+        this.stats.health.current = Math.max(0, this.stats.health.current - amount);
+        this.flash?.();
+        if (this.stats.health.current <= 0) this.die();
+        return true;
+    }
+
+    /**
      * Flash the actor's sprites with color inversion for visual feedback
      * @param {number} duration - Duration of flash in milliseconds (default 100)
      */
@@ -9674,12 +9703,35 @@ class EntityManager {
         this.applySpawnDamage(actor);
 
         if (actor.hasAttribute('ignites')) {
+            // Consume flammable OBJECTS/terrain (trees, webs, bridges — no health stat)
+            // into fire. Living creatures and the player (health stat) are NOT instantly
+            // incinerated here — they take fire damage over time via applySpawnDamage /
+            // fire_burn_out (capped once per turn), then catch the burning state.
             const flammable = this.getActorsAt(x, y)
-                .filter(a => a !== actor && a.hasAttribute('flammable') && !a.isDead);
+                .filter(a => a !== actor && a.hasAttribute('flammable') && !a.isDead &&
+                             a.stats?.health === undefined);
             for (const target of flammable) {
                 target.die();
                 const newFire = this.spawnActor('fire', x, y);
                 if (newFire) newFire.fireLifetime = newFire.lifetime || 5;
+            }
+        }
+
+        // Prevent fire from stacking: one fire actor per tile. A second fire spawn
+        // refreshes the existing fire's lifetime (never shortens it) and is discarded,
+        // so a fire trap's overlapping center/ring/spread fires collapse to one.
+        if (!this._mergingFire && actor.hasAttribute('ignites') && !actor.isDead) {
+            const existing = this.getActorsAt(x, y).find(
+                a => a !== actor && !a.isDead && a.type === actor.type && a.hasAttribute('ignites')
+            );
+            if (existing) {
+                existing.fireLifetime = Math.max(
+                    existing.fireLifetime ?? existing.lifetime ?? 0,
+                    actor.fireLifetime ?? actor.lifetime ?? 0
+                );
+                actor.die();
+                this.invalidateActorPosCache();
+                return existing;
             }
         }
 
@@ -9846,20 +9898,13 @@ class EntityManager {
                 if (other.hasAttribute('fireproof')) continue;
 
                 if (damagePerTurn > 0 && other.stats?.health) {
-                    const oldHealth = other.stats.health.current;
-                    other.stats.health.current = Math.max(0, oldHealth - damagePerTurn);
+                    // Cap fire damage at once per victim turn so a spawn hit and the
+                    // same-turn fire_burn_out tick (and attached-burning fire) can't stack.
+                    const burned = other.takeFireDamageOncePerTurn(damagePerTurn);
 
-                    // Show damage message
-                    if (other.hasAttribute('visible')) {
+                    // Show damage message (only when the hit actually landed this turn)
+                    if (burned && other.hasAttribute('visible')) {
                         this.engine.inputManager?.showMessage(`The fire burns ${other.name} for ${damagePerTurn} damage!`, { x: other.x, y: other.y });
-                    }
-
-                    // Flash the victim
-                    other.flash?.();
-
-                    // Check for death
-                    if (other.stats.health.current <= 0) {
-                        other.die();
                     }
                 }
             }

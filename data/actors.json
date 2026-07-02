@@ -186,6 +186,9 @@
       "remains": "rubble",
       "accuracy": 70
     },
+    "stats": {
+      "health": 15
+    },
     "default_items": [
       "arrow",
       "arrow",
@@ -788,7 +791,7 @@
     "tileIndexTop": "BLANK",
     "animated": true,
     "animation_frames": "fluid",
-    "tint": "#48639C",
+    "tint": "#00645f",
     "personality": "liquid_pooling",
     "attributes": {
       "solid": false,
@@ -806,7 +809,7 @@
     "tileIndexTop": "BLANK",
     "animated": true,
     "animation_frames": "fluid",
-    "tint": "#283656",
+    "tint": "#00464b",
     "rippleTint": true,
     "personality": "deep_water",
     "attributes": {

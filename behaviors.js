@@ -1607,28 +1607,21 @@ const BehaviorLibrary = {
             .find(a => a !== actor && a.hasAttribute('flammable') && !a.hasAttribute('fireproof') && !a.hasStateProperty('flying'));
 
         if (victim && damagePerTurn > 0 && victim.stats?.health) {
-            const oldHealth = victim.stats.health.current;
-            victim.stats.health.current = Math.max(0, oldHealth - damagePerTurn);
+            // Cap fire damage at once per victim turn so overlapping fires can't stack.
+            const burned = victim.takeFireDamageOncePerTurn(damagePerTurn);
 
-            // Show damage message
-            if (victim.hasAttribute('visible')) {
+            // Show damage message (only when the hit actually landed this turn)
+            if (burned && victim.hasAttribute('visible')) {
                 actor.engine.inputManager?.showMessage(`The fire burns ${victim.name} for ${damagePerTurn} damage!`, { x: actor.x, y: actor.y });
             }
 
-            // Apply burning state if victim isn't already burning
+            // Apply burning state if victim isn't already burning. Runs even when the
+            // damage was capped this turn, so lingering burn is still applied on contact.
             if (!actor._isAttachedFire && victim.applyState && !victim.hasState(burnState)) {
                 const statesData = actor.engine.globalStates;
                 if (statesData?.[burnState]) {
                     victim.applyState(burnState, statesData[burnState]);
                 }
-            }
-
-            // Flash the victim
-            victim.flash?.();
-
-            // Check for death
-            if (victim.stats.health.current <= 0) {
-                victim.die();
             }
         }
 
@@ -1784,6 +1777,12 @@ const BehaviorLibrary = {
     shoot_at_target: (actor, data) => {
         const entityManager = actor.engine.entityManager;
 
+        // Recharge between shots so the turret fires periodically, not every turn.
+        const cooldown = data?.shoot_cooldown ?? 2;
+        if (!actor._shootCooldown) actor._shootCooldown = 0;
+        actor._shootCooldown++;
+        if (actor._shootCooldown < cooldown) return false;
+
         // Get attack range from personality data or default to 8
         const attackRange = data?.attack_range || actor.getAttribute('attack_range') || 8;
 
@@ -1815,17 +1814,15 @@ const BehaviorLibrary = {
 
         if (!target) return false;
 
-        // Get ammunition from inventory (any item with collision_effect)
+        // Shot is committed - start the recharge over.
+        actor._shootCooldown = 0;
+
+        // Ammo item defines the dart's look and damage, but is NOT consumed - a
+        // clockwork turret fires indefinitely (rate-limited only by the cooldown).
         const ammo = actor.inventory.find(item => item.getAttribute('collision_effect'));
         if (!ammo) {
-            // No ammo - turret is empty
+            // No dart definition - can't fire.
             return false;
-        }
-
-        // Remove ammo from inventory
-        const ammoIndex = actor.inventory.indexOf(ammo);
-        if (ammoIndex > -1) {
-            actor.inventory.splice(ammoIndex, 1);
         }
 
         // Calculate hit chance using same formula as melee/throw
@@ -1888,13 +1885,8 @@ const BehaviorLibrary = {
                 // Play miss sound
                 actor.engine.playSound?.(data.miss_sound ?? 'arrow_miss');
 
-                // Drop the ammo near the target (on a random adjacent floor tile)
-                const adjacentTile = BehaviorLibrary._findAdjacentFloor(target.x, target.y, entityManager, actor.engine.mapManager);
-                if (adjacentTile) {
-                    ammo.x = adjacentTile.x;
-                    ammo.y = adjacentTile.y;
-                    entityManager.addEntity(ammo);
-                }
+                // Note: the dart is not dropped - the turret's ammo is not consumed,
+                // so its magazine item stays in inventory and a missed dart just vanishes.
             }
 
             // Update sidebar
