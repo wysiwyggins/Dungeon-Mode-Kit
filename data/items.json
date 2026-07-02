@@ -722,6 +722,35 @@
       ]
     }
   },
+  "long_spear": {
+    "name": "Long spear",
+    "tileIndex": "SOLIDUS",
+    "tint": "#557799",
+    "identified": false,
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": false,
+      "weapon": true,
+      "enchantable": true,
+      "attack_style": "lunge",
+      "lunge_range": 2,
+      "collision_effect": {
+        "health": -7
+      },
+      "attack_sound": "bow",
+      "collision_sound": "hit",
+      "collision_description": "[actor_name] skewers [attacked_actor_name] with [a-an] [weapon_name]!",
+      "wear_effect": {
+        "accuracy": "{strength}"
+      },
+      "description": "[damage] damage. Strikes foes two tiles away.",
+      "enchant_range": [
+        -1,
+        3
+      ]
+    }
+  },
   "mace": {
     "name": "Mace",
     "tileIndex": "WHITE_UPWARDS_ARROW",

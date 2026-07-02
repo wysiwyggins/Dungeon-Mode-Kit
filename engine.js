@@ -7658,9 +7658,13 @@ class Actor extends Entity {
             }
         }
 
-        // Collapse any collapsible platform actors at destination
-        const collapsibles = this.engine.entityManager.getActorsAt(newX, newY)
-            .filter(a => a !== this && !a.isDead && a.hasAttribute('collapsible'));
+        // Collapse any collapsible platform actors at destination.
+        // Flying actors hover above the floor and don't set it off (same as traps
+        // and void-fall, which also skip flying actors).
+        const collapsibles = this.hasStateProperty('flying')
+            ? []
+            : this.engine.entityManager.getActorsAt(newX, newY)
+                .filter(a => a !== this && !a.isDead && a.hasAttribute('collapsible'));
         if (collapsibles.length > 0) {
             const actor = this;
             this.engine.renderer?.effectRunner.apply('collapse_shake');
@@ -9612,6 +9616,45 @@ class EntityManager {
     getSolidActorAt(x, y) {
         const list = this.getActorsAt(x, y);
         return list.find(a => a.hasAttribute('solid'));
+    }
+
+    // --- Geometric tile classification (used by the 'ambush' behavior) ---
+    // Maps carry no room/corridor metadata, so we derive it by counting how many
+    // cardinal neighbors are walkable floor: a corridor/pinch has <=2, a room
+    // interior has >=3.
+
+    /** Count walkable (floor, positive tileId) cardinal neighbors of a tile. */
+    _walkableCardinalCount(x, y) {
+        let n = 0;
+        for (const dir of CARDINAL_DIRS) {
+            if (this.engine.mapManager.floorMap[y + dir.dy]?.[x + dir.dx]?.tileId > 0) n++;
+        }
+        return n;
+    }
+
+    /**
+     * An "entryway" is a room mouth: a door tile, or a pinch point (a floor tile
+     * with <=2 walkable cardinal neighbors — i.e. a corridor/opening).
+     */
+    isEntrywayTile(x, y) {
+        if (!(this.engine.mapManager.floorMap[y]?.[x]?.tileId > 0)) return false;
+        if (this.getActorsAt(x, y).some(a => a.hasAttribute?.('openable'))) return true;
+        return this._walkableCardinalCount(x, y) <= 2;
+    }
+
+    /**
+     * An ambush spot is a room-interior floor tile (>=3 walkable cardinal
+     * neighbors, no solid actor on it) that sits cardinally adjacent to an
+     * entryway — i.e. just inside a room, beside its opening.
+     */
+    isAmbushSpot(x, y) {
+        if (!(this.engine.mapManager.floorMap[y]?.[x]?.tileId > 0)) return false;
+        if (this.getSolidActorAt(x, y)) return false;
+        if (this._walkableCardinalCount(x, y) < 3) return false;
+        for (const dir of CARDINAL_DIRS) {
+            if (this.isEntrywayTile(x + dir.dx, y + dir.dy)) return true;
+        }
+        return false;
     }
 
     getItemAt(x, y) {

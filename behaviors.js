@@ -52,6 +52,12 @@ const BehaviorLibrary = {
             // means adjacent non-allies like other monsters.
             if (!target || target.isDead || !actor.isEnemyOf(target)) continue;
 
+            // Only attack actual combatants (things with health). Otherwise a
+            // factioned monster treats inert scenery — walls, doors, breakable
+            // fixtures, all of which have no faction and no health — as an "enemy"
+            // and would flail at an adjacent wall every turn, never moving.
+            if (target.stats?.health === undefined) continue;
+
             // Use unified collision effects system (handles damage, sounds, flash, etc.)
             // An attack attempt (even a miss) consumes the turn
             actor.applyCollisionEffects(target);
@@ -175,6 +181,50 @@ const BehaviorLibrary = {
         actor._alertTarget = null;
         actor._alertTurns = 0;
         return false;
+    },
+
+    /**
+     * Ambush: lie in wait just inside a room, beside its entryway, and only
+     * spring when the player comes into view. Keeps ambushers out of corridors
+     * and off arbitrary wall corners (which have no tactical value).
+     *
+     * Falls through (returns false) whenever the actor should instead pursue:
+     * the target is visible, or the actor is already alerted (e.g. was hit).
+     * If not on an ambush spot, it walks toward the nearest one within
+     * ambush_radius; if none exists, it falls through to normal pursuit/wander.
+     */
+    ambush: (actor, data) => {
+        const em = actor.engine.entityManager;
+        const target = em.findNearestPlayer(actor);
+
+        // Player in view, or already provoked → pursue instead of waiting.
+        if (target && actor.canSeeTarget(target)) return false;
+        if (actor._alerted) return false;
+
+        // Standing on a good ambush spot with no target in sight → hold as bait.
+        if (em.isAmbushSpot(actor.x, actor.y)) return true; // turn consumed, no move
+
+        // Otherwise seek the nearest ambush spot within range.
+        const radius = data.ambush_radius ?? 6;
+        let best = null;
+        let bestDist = Infinity;
+        for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+                if (dx === 0 && dy === 0) continue;
+                const tx = actor.x + dx;
+                const ty = actor.y + dy;
+                const d = getChebyshevDistance(actor.x, actor.y, tx, ty);
+                if (d > radius) continue;
+                if (!em.isAmbushSpot(tx, ty)) continue;
+                if (d < bestDist) {
+                    bestDist = d;
+                    best = { x: tx, y: ty };
+                }
+            }
+        }
+        if (best) return actor.moveToward(best.x, best.y);
+
+        return false; // no ambush spot found → let pursuit/wander handle it
     },
 
     /**

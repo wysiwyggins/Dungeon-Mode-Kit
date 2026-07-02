@@ -4,6 +4,7 @@
     "hostile": true,
     "behaviors": [
       "attack_adjacent",
+      "defend_self",
       "follow_thread",
       "pursue_target",
       "random_walk"
@@ -16,7 +17,36 @@
     "faction": "goblin",
     "behaviors": [
       "attack_adjacent",
+      "defend_self",
       "follow_thread",
+      "pursue_target",
+      "random_walk"
+    ],
+    "taunts": {
+      "on_attack": [
+        "You should not have come here.",
+        "Your bones will join the others.",
+        "Fresh meat!"
+      ],
+      "on_death": [
+        "Impossible...",
+        "The dark... will take you too.",
+        "*death wail*"
+      ]
+    }
+  },
+
+  "goblin_ambusher": {
+    "name": "Goblin Ambusher",
+    "hostile": true,
+    "faction": "goblin",
+    "vision_range": 8,
+    "memory_duration": 10,
+    "ambush_radius": 6,
+    "behaviors": [
+      "attack_adjacent",
+      "defend_self",
+      "ambush",
       "pursue_target",
       "random_walk"
     ],
@@ -40,6 +70,7 @@
     "behaviors": [
       "requires_liquid",
       "attack_adjacent",
+      "defend_self",
       "follow_thread",
       "pursue_target",
       "random_walk"
@@ -51,6 +82,7 @@
     "hostile": true,
     "behaviors": [
       "attack_adjacent",
+      "defend_self",
       "follow_thread",
       "pursue_target",
       "flee_from_danger"
@@ -68,6 +100,7 @@
     "spray_sound": "gas",
     "behaviors": [
       "attack_adjacent",
+      "defend_self",
       "spray_web",
       "pursue_target",
       "follow_thread",
@@ -113,6 +146,7 @@
       "avoid_crowding",
       "maintain_distance",
       "attack_adjacent",
+      "defend_self",
       "pursue_target",
       "random_walk"
     ]
@@ -360,6 +394,7 @@
     "behaviors": [
       "apply_aura",
       "attack_adjacent",
+      "defend_self",
       "pursue_target",
       "random_walk"
     ]

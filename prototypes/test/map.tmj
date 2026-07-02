@@ -429,14 +429,14 @@
                 }, 
                 {
                  "height":30,
-                 "id":112,
+                 "id":115,
                  "name":"",
                  "rotation":0,
-                 "type":"fire_trap",
+                 "type":"goblin",
                  "visible":true,
                  "width":40,
-                 "x":800,
-                 "y":690
+                 "x":880,
+                 "y":450
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -459,17 +459,6 @@
                  "width":40,
                  "x":560,
                  "y":450
-                }, 
-                {
-                 "height":30,
-                 "id":111,
-                 "name":"",
-                 "rotation":0,
-                 "type":"hallucination_potion",
-                 "visible":true,
-                 "width":40,
-                 "x":840,
-                 "y":720
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -540,7 +529,7 @@
          "y":0
         }],
  "nextlayerid":9,
- "nextobjectid":113,
+ "nextobjectid":116,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",

@@ -371,6 +371,39 @@
       "health": 18
     }
   },
+  "goblin_spearman": {
+    "name": "goblin spearman",
+    "description": "A goblin clutching a long spear, lurking by the doorway",
+    "tileIndexBase": "THIN_TORSO",
+    "tileIndexTop": "FLY",
+    "flipTopV": true,
+    "tint": "#5c9a6b",
+    "vision_range": 10,
+    "defaultFacing": "left",
+    "facingEnabled": true,
+    "personality": "goblin_ambusher",
+    "collision_effect": {
+      "health": -3
+    },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] strikes back at [attacked_actor_name]!",
+    "attributes": {
+      "flammable": true,
+      "sighted": true,
+      "sentient": true,
+      "inventory": 2,
+      "remains": "skull",
+      "accuracy": 35,
+      "defense": 5,
+      "opaque": false
+    },
+    "stats": {
+      "health": 18
+    },
+    "default_items": [
+      "long_spear"
+    ]
+  },
   "deer": {
     "name": "Deer",
     "tileIndexBase": "DOOR_TOP",
