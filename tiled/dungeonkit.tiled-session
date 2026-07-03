@@ -96,11 +96,11 @@
                 8,
                 6
             ],
-            "scale": 0.3185,
-            "selectedLayer": 2,
+            "scale": 0.5154,
+            "selectedLayer": 4,
             "viewCenter": {
-                "x": 1601.255886970173,
-                "y": 1180.5337519623233
+                "x": 1084.5944897167249,
+                "y": 1290.2599922390377
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/2.tmj": {
@@ -114,6 +114,7 @@
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/map.tmj": {
             "expandedObjectLayers": [
                 3,
+                8,
                 6
             ],
             "scale": 0.8925,
@@ -147,7 +148,7 @@
             "scale": 0.5311,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": 419.88326115609107,
+                "x": 421.7661457352664,
                 "y": 510.2617209565053
             }
         },

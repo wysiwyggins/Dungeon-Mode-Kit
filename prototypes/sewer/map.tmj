@@ -564,8 +564,8 @@
                  "type":"telepathy_potion",
                  "visible":true,
                  "width":40,
-                 "x":200,
-                 "y":2250
+                 "x":560,
+                 "y":2010
                 }],
          "opacity":1,
          "type":"objectgroup",

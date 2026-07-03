@@ -430,7 +430,10 @@ class InterfaceManager {
         const cp = char.codePointAt(0);
         if (cp === 0x1041D) return 'DESERET_CAPITAL_LETTER_ES';
         if (cp === 0x10444) return 'DESERET_SMALL_LETTER_THEE';
-
+        if (cp === 0x2C00) return 'GLAGOLITIC_CAPITAL_LETTER_AZU';
+        if (cp === 0x2C01) return 'GLAGOLITIC_CAPITAL_LETTER_BUKY';
+        if (cp === 0x2C02) return 'GLAGOLITIC_CAPITAL_LETTER_VEDE';
+        if (cp === 0x10340) return 'GOTHIC_LETTER_PAIRTHRA';
         return null;
     }
 
