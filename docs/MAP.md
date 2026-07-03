@@ -105,11 +105,13 @@ Paint a region on the `wildcards` layer and the engine fills it with procedural 
 | Cave | ![INVERSE_BULLET](../assets/images/INVERSE_BULLET.png) | 10 | Organic cave shapes |
 | Infernal | ![OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE_AND_OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE](../assets/images/OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE_AND_OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE.png) | 230 | Cave + lava pools |
 | Maze | ![DESERET_CAPITAL_LETTER_ES](../assets/images/DESERET_CAPITAL_LETTER_ES.png) | 210 | Perfect maze corridors |
-| Room | ![BLACK_SQUARE](../assets/images/BLACK_SQUARE.png) | 143 | Single walled room |
+| Room | ![INVERTED_CHECKER_BOARD](../assets/images/INVERTED_CHECKER_BOARD.png) | 143 | Single walled room |
 | Item spawn | ![BLACK_KEY](../assets/images/BLACK_KEY.png) | 12 | Random items from `random_items` config |
 | Actor spawn | ![OPAQUE_WHITE_SMILING_FACE](../assets/images/OPAQUE_WHITE_SMILING_FACE.png) | 3 | Random actors from `random_actors` config |
 
-Tile 16 (`PRISON_WINDOW`) is the recommended dungeon wildcard. Tiles 9 (`OPAQUE_INVERSE_DIAMOND_SUITE`) and 152 (`OPAQUE_PRISON_WINDOW`) also work — all three generate the same dungeon layout. Tile 144 (`INVERTED_CHECKER_BOARD`) is an alternate room tile.
+Tile 16 (`PRISON_WINDOW`) is the recommended dungeon wildcard. Tiles 9 (`OPAQUE_INVERSE_DIAMOND_SUITE`) and 152 (`OPAQUE_PRISON_WINDOW`) also work — all three generate the same dungeon layout. Tile 144 (`CHECKER_BOARD`) is an alternate room tile. There's also an `abyss` generator (tile 218) — see the full list below.
+
+See **[TILED_KEY.md](TILED_KEY.md)** ([printable PDF](TILED_KEY.pdf)) for the complete, authoritative list of generator and actor wildcard tiles.
 
 ### Tips
 
@@ -122,7 +124,7 @@ Tile 16 (`PRISON_WINDOW`) is the recommended dungeon wildcard. Tiles 9 (`OPAQUE_
 
 ## Painting Actors on the Wildcards Layer
 
-Some actors have a `paint_tile` attribute — paint their tile on the `wildcards` layer to spawn them in bulk. This is how you draw walls, water, and lava by hand.
+Some actors have a `paint_tile` attribute — paint their tile on the `wildcards` layer to spawn them in bulk. This is how you draw walls, water, and lava by hand. The common ones are below; see **[TILED_KEY.md](TILED_KEY.md)** ([printable PDF](TILED_KEY.pdf)) for the complete, authoritative list (trees, fungus, quicksand, and more).
 
 | Actor | Tile | Tile ID | Tile Name | Use For |
 |-------|------|---------|-----------|---------|
@@ -132,7 +134,7 @@ Some actors have a `paint_tile` attribute — paint their tile on the `wildcards
 | `wall-bottom-right-corner` | ![LIGHT_SHADE_UPPER_LEFT_TRIANGLE](../assets/images/LIGHT_SHADE_UPPER_LEFT_TRIANGLE.png) | 155 | `LIGHT_SHADE_UPPER_LEFT_TRIANGLE` | Wall corners |
 | `wall-top-right-corner` | ![LIGHT_SHADE_LOWER_LEFT_TRIANGLE](../assets/images/LIGHT_SHADE_LOWER_LEFT_TRIANGLE.png) | 134 | `LIGHT_SHADE_LOWER_LEFT_TRIANGLE` | Wall corners |
 | `wall-top-left-corner` | ![LIGHT_SHADE_LOWER_RIGHT_TRIANGLE](../assets/images/LIGHT_SHADE_LOWER_RIGHT_TRIANGLE.png) | 157 | `LIGHT_SHADE_LOWER_RIGHT_TRIANGLE` | Wall corners |
-| `water` | ![IMPERFECT_DOTTED_LIGHT_SHADE](../assets/images/IMPERFECT_DOTTED_LIGHT_SHADE.png) | 147 | `IMPERFECT_DOTTED_LIGHT_SHADE` | Water terrain |
+| `water` | ![WATER](../assets/images/WATER.png) | 389 | `WATER` | Water terrain |
 | `sewage` | ![OPAQUE_DOTTED_LIGHT_SHADE](../assets/images/OPAQUE_DOTTED_LIGHT_SHADE.png) | 135 | `OPAQUE_DOTTED_LIGHT_SHADE` | Toxic water |
 | `lava` | ![DOUBLE_EXCLAMATION_MARK](../assets/images/DOUBLE_EXCLAMATION_MARK.png) | 20 | `DOUBLE_EXCLAMATION_MARK` | Damaging magma |
 | `fire` | ![BLACK_DIAMOND_SUITE](../assets/images/BLACK_DIAMOND_SUITE.png) | 5 | `BLACK_DIAMOND_SUITE` | Spreading fire |

@@ -217,9 +217,15 @@ const ALL_DIRS = [
     {dx: -1, dy: 1},  {dx: 0, dy: 1},  {dx: 1, dy: 1}
 ];
 
-function isDiagonalBlocked(fromX, fromY, toX, toY, hasFloor) {
+/**
+ * Brogue-style "no cutting corners": a diagonal move is blocked when one of the
+ * two orthogonally-adjacent corner cells is a blocker. `isCornerBlocker(x, y)`
+ * decides what counts as a blocker — pass a wall-aware predicate so that solid
+ * walls block the diagonal but open voids (e.g. maze cells with no floor) do not.
+ */
+function isDiagonalBlocked(fromX, fromY, toX, toY, isCornerBlocker) {
     if (fromX === toX || fromY === toY) return false;
-    return !hasFloor(toX, fromY) || !hasFloor(fromX, toY);
+    return isCornerBlocker(toX, fromY) || isCornerBlocker(fromX, toY);
 }
 
 /** Fisher-Yates shuffle in-place using ROT.RNG for deterministic randomness. */
@@ -388,6 +394,10 @@ function getFirstBlockingPoint(x0, y0, x1, y1, isBlocked, skipStart = true) {
 function findPathAStar(fromX, fromY, toX, toY, isPassable, options = {}) {
     const topology = options.topology ?? 8;
     const hasFloor = options.hasFloor;
+    // What counts as a corner wall for "no cutting corners". Defaults to
+    // "cell lacks floor" (legacy behavior) but callers should pass a wall-aware
+    // predicate so open voids don't block diagonal corner moves.
+    const isCornerBlocker = options.isCornerBlocker ?? ((x, y) => !hasFloor(x, y));
     const path = [];
 
     const astar = new ROT.Path.AStar(toX, toY, isPassable, { topology });
@@ -398,7 +408,7 @@ function findPathAStar(fromX, fromY, toX, toY, isPassable, options = {}) {
 
     if (hasFloor && path.length > 1) {
         for (let i = path.length - 2; i >= 0; i--) {
-            if (isDiagonalBlocked(path[i + 1].x, path[i + 1].y, path[i].x, path[i].y, hasFloor)) {
+            if (isDiagonalBlocked(path[i + 1].x, path[i + 1].y, path[i].x, path[i].y, isCornerBlocker)) {
                 const mid = { x: path[i].x, y: path[i + 1].y };
                 if (hasFloor(mid.x, mid.y)) {
                     path.splice(i + 1, 0, mid);
@@ -7360,8 +7370,10 @@ class Actor extends Entity {
             }
         }
 
-        // Block diagonal movement past wall corners (Brogue-style)
-        if (isDiagonalBlocked(this.x, this.y, newX, newY, (x, y) => (this.hasFloorAt(x, y) || this.hasPlatformAt(x, y)) && !this.engine.entityManager.getSolidActorAt(x, y))) {
+        // Block diagonal movement past wall corners (Brogue-style). Only solid
+        // walls block the corner — open voids (e.g. maze cells with no floor) do
+        // not, so actors can move diagonally around the corner of a void.
+        if (isDiagonalBlocked(this.x, this.y, newX, newY, (x, y) => !!this.engine.entityManager.getSolidActorAt(x, y))) {
             return { moved: false, actionTaken: false };
         }
 
@@ -8510,13 +8522,15 @@ class Actor extends Entity {
         if (this.x === targetX && this.y === targetY) return false;
 
         const hasFloor = (x, y) => this.hasFloorAt(x, y) || this.hasPlatformAt(x, y);
+        // Only solid walls block diagonal corner moves; voids don't.
+        const isCornerWall = (x, y) => !!this.engine.entityManager.getSolidActorAt(x, y);
 
         const isPassable = (x, y) => {
             if (x === targetX && y === targetY) return true;
             return this.isPassableAt(x, y);
         };
 
-        const nextStep = getNextPathStep(this.x, this.y, targetX, targetY, isPassable, { hasFloor });
+        const nextStep = getNextPathStep(this.x, this.y, targetX, targetY, isPassable, { hasFloor, isCornerBlocker: isCornerWall });
 
         if (nextStep) {
             const result = this.tryMove(nextStep.x, nextStep.y);
@@ -8547,9 +8561,11 @@ class Actor extends Entity {
             }
         }
 
-        // Diagonal only if corner tiles are clear
+        // Diagonal only if the destination has floor and no wall corner is being
+        // cut (voids don't block — see isDiagonalBlocked). Reuses isCornerWall
+        // defined above.
         if (dx !== 0 && dy !== 0 && hasFloor(this.x + dx, this.y + dy) &&
-            !isDiagonalBlocked(this.x, this.y, this.x + dx, this.y + dy, hasFloor)) {
+            !isDiagonalBlocked(this.x, this.y, this.x + dx, this.y + dy, isCornerWall)) {
             const result = this.tryMove(this.x + dx, this.y + dy);
             if (result.moved || result.actionTaken) return true;
         }
@@ -10688,9 +10704,12 @@ class RenderSystem {
             const tile = this.engine.mapManager?.floorMap[y]?.[x];
             return tile && tile.tileId > 0;
         };
+        // Only solid walls block diagonal corner moves; voids don't (matches
+        // Actor.tryMove so the drawn path lines up with where actors can walk).
+        const isCornerWall = (x, y) => !!this.engine.entityManager?.getSolidActorAt(x, y);
 
         // Find path using A*
-        const path = findPathAStar(startX, startY, endX, endY, isPassable, { topology: 8, hasFloor });
+        const path = findPathAStar(startX, startY, endX, endY, isPassable, { topology: 8, hasFloor, isCornerBlocker: isCornerWall });
 
         if (path.length === 0) {
             return null; // No path found

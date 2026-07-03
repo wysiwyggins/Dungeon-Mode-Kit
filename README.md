@@ -371,6 +371,7 @@ Use these exact strings in:
 
 - [PROTOTYPE.md](docs/PROTOTYPE.md) — Full prototype config reference, map generation, item catalogs
 - [MAP.md](docs/MAP.md) — Designer's guide to making maps in Tiled
+- [TILED_KEY.md](docs/TILED_KEY.md) — Complete reference of wildcard-layer tiles and the actors/generators they spawn ([printable PDF](docs/TILED_KEY.pdf))
 - [ACTORS.md](docs/ACTORS.md) — Actor attributes, stats, personalities, behaviors
 - [ITEMS.md](docs/ITEMS.md) — Full item attribute reference, use effects, equipment
 - [COMBAT.md](docs/COMBAT.md) — Hit/damage math, weapon types, equipment slots

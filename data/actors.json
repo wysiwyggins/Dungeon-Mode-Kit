@@ -927,7 +927,7 @@
       "visible": true,
       "collapsible": true,
       "render_layer": "bottom",
-      "paint_tile": "DOWN_ARROW"
+      "paint_tile": "DOWNWARDS_ARROW"
     }
   },
   "fungus": {

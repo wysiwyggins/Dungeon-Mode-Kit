@@ -103,7 +103,7 @@ Maps are authored in [Tiled](https://www.mapeditor.org/) or generated procedural
 
 Generator types: digger, cellular, uniform, rogue, brogue, arena, infernal, and several maze variants.
 
-See [MAP.md](MAP.md), [PROTOTYPE.md](PROTOTYPE.md), [Tile Index](/docs/tiles.pdf).
+See [MAP.md](MAP.md), [PROTOTYPE.md](PROTOTYPE.md), [Tile Index](/docs/tiles.pdf), [Wildcard Tile Key](/docs/TILED_KEY.pdf).
 
 ## Prototype System
 
