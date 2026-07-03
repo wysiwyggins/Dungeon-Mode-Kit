@@ -1004,6 +1004,25 @@ class DungeonEngine {
         }
     }
 
+    /**
+     * Re-apply full-scene visual state effects (hallucination, confusion) for the
+     * player after a floor is (re)built. A floor transition destroys and recreates
+     * the RenderSystem, so its effect handles are gone even though the player's
+     * states persist through serialize/deserialize. applyState only fires these on
+     * first application, so without this the new floor renders normally despite an
+     * active state. Mirrors how darkness is re-established on floor load.
+     */
+    reapplyPersistentVisualEffects() {
+        const player = this.entityManager?.player;
+        if (!player?.isPlayerControlled?.()) return;
+        if (player.hasStateProperty?.('hallucinating')) {
+            this.renderer?.applyHallucinationEffect();
+        }
+        if (player.hasStateProperty?.('random_movement')) {
+            this.renderer?.applyConfusionEffect();
+        }
+    }
+
     snapViewportToTile(tileX, tileY) {
         if (!this.viewportEnabled) return false;
 
@@ -1306,6 +1325,9 @@ class DungeonEngine {
             this.updateLighting();
         }
 
+        // Re-establish active full-scene state effects on the fresh renderer.
+        this.reapplyPersistentVisualEffects();
+
         // Apply viewport offset and visibility after all rendering/darkness is set up
         if (this.viewportEnabled) {
             this.applyViewportOffset();
@@ -1579,6 +1601,9 @@ class DungeonEngine {
             this.renderer.initializeDarkness(this.mapManager.width, this.mapManager.height);
             this.updateLighting();
         }
+
+        // Re-establish active full-scene state effects on the fresh renderer.
+        this.reapplyPersistentVisualEffects();
 
         if (this.viewportEnabled) {
             this.applyViewportOffset();

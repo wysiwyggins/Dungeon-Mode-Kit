@@ -465,10 +465,21 @@
                  "id":118,
                  "name":"",
                  "rotation":0,
-                 "type":"levitation_potion",
+                 "type":"hallucination_potion",
                  "visible":true,
                  "width":40,
                  "x":800,
+                 "y":720
+                }, 
+                {
+                 "height":30,
+                 "id":119,
+                 "name":"",
+                 "rotation":0,
+                 "type":"levitation_potion",
+                 "visible":true,
+                 "width":40,
+                 "x":840,
                  "y":720
                 }],
          "opacity":1,
@@ -540,7 +551,7 @@
          "y":0
         }],
  "nextlayerid":9,
- "nextobjectid":119,
+ "nextobjectid":120,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",
