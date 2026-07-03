@@ -379,6 +379,34 @@ class LightingManager {
             // Reveal distant, unobstructed light sources as lone beacons in the dark.
             this.revealDistantLightBeacons(actor);
         }
+
+        // A telepathic player senses every living creature through walls and darkness.
+        this.revealTelepathicSentients();
+    }
+
+    /**
+     * When the player is telepathic, mark every sentient enemy tile visible (and
+     * explored) regardless of walls or distance, and give it a dim "sensed" glow so
+     * the creature renders through the darkness as a faint lit figure rather than a
+     * raw sprite on black. Flows through the normal entity-lighting/darkness path
+     * (getEntityVisibility keys off visibilityMap, getDarknessAlpha off intensity),
+     * so a sensed creature is dimly lit exactly like a distant light beacon.
+     */
+    revealTelepathicSentients() {
+        const player = this.engine.entityManager.player;
+        if (!player?.hasStateProperty?.('telepathic')) return;
+
+        const SENSED_GLOW = 0.7; // revealed and clearly readable, still slightly dimmed vs. full FOV
+        for (const actor of this.engine.entityManager.getSentientActors()) {
+            if (actor.hasAttribute('controlled')) continue;
+            const { x, y } = actor;
+            if (x < 0 || y < 0 || x >= this.width || y >= this.height) continue;
+
+            this.visibilityMap[y][x] = true;
+            this.exploredMap[y][x] = true;
+            const tile = this.lightMap[y][x];
+            if (tile.intensity < SENSED_GLOW) tile.intensity = SENSED_GLOW;
+        }
     }
 
     // On a dark level, reveal any unobstructed light source as a lone point of light,

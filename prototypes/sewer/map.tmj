@@ -558,14 +558,14 @@
                 }, 
                 {
                  "height":30,
-                 "id":94,
-                 "name":"",
+                 "id":95,
+                 "name":"potion",
                  "rotation":0,
                  "type":"telepathy_potion",
                  "visible":true,
                  "width":40,
-                 "x":600,
-                 "y":2040
+                 "x":200,
+                 "y":2250
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -602,7 +602,7 @@
          "y":0
         }],
  "nextlayerid":9,
- "nextobjectid":95,
+ "nextobjectid":97,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",

@@ -11878,17 +11878,19 @@ class RenderSystem {
     }
 
     /**
-     * Reveal sentient enemies to a telepathic player, independent of the lighting
-     * system. On dark/FOV levels updateEntityLighting already reveals them through
-     * walls; this pass covers levels with no lighting manager (where that code path
-     * never runs), so telepathy also exposes an invisible creature on a bright
-     * level. Invisible creatures read as a ghosted impression (0.35 alpha), matching
-     * the dark-level treatment; ordinary enemies render fully. No-op unless the
-     * player is telepathic. Uses getSentientActors() to enumerate candidates.
+     * Reveal sentient enemies to a telepathic player on BRIGHT levels only. Dark
+     * levels are handled authoritatively by LightingManager.revealTelepathicSentients
+     * (which marks the tiles visible + adds a dim "sensed" glow, flowing through the
+     * normal darkness/tint path); running this there too would override that dim glow
+     * with full brightness. On a bright level there's no lighting manager, so this is
+     * the only path that can expose an invisible creature — shown as a ghosted 0.35
+     * impression. No-op unless the player is telepathic. Uses getSentientActors().
      */
     applyTelepathyReveal() {
         const player = this.engine.entityManager.player;
         if (!player || player.isDead) return;
+        // Dark levels: the lighting pass owns telepathy reveal.
+        if (this.engine.lightingManager) return;
         const telepathic = player.hasStateProperty?.('telepathic');
 
         for (const actor of this.engine.entityManager.getSentientActors()) {

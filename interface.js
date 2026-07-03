@@ -4047,16 +4047,24 @@ class InterfaceManager {
             (!a.hasStateProperty?.('invisible') || a.hasAttribute('controlled'))
         );
 
-        // Sort: controllable actors first, then by name
+        // Sort: controlled actors first, then non-controlled by distance to the
+        // player (nearest first) so a crowded level surfaces the closest threats;
+        // fall back to name for ties / when there's no player to measure from.
+        const player = entityManager.player;
+        const distTo = (a) => player
+            ? Math.max(Math.abs(a.x - player.x), Math.abs(a.y - player.y))
+            : 0;
         visibleActors.sort((a, b) => {
             const aControlled = a.hasAttribute('controlled') ? 0 : 1;
             const bControlled = b.hasAttribute('controlled') ? 0 : 1;
             if (aControlled !== bControlled) return aControlled - bControlled;
+            const da = distTo(a), db = distTo(b);
+            if (da !== db) return da - db;
             return a.name.localeCompare(b.name);
         });
 
-        // Build HTML content
-        const actorElements = visibleActors.map(actor => {
+        // Render one actor's entry block.
+        const renderActor = (actor) => {
             let html = `<div class="actor-entry">`;
             html += `<strong class="actor-name">${actor.name}`;
 
@@ -4142,9 +4150,23 @@ class InterfaceManager {
 
             html += '</div>';
             return html;
-        });
+        };
 
-        actorsDiv.innerHTML = actorElements.join('');
+        // Cap the list: show the first N (controlled + nearest), and tuck any
+        // overflow into a collapsible <details> so a crowded level doesn't flood
+        // the sidebar. Short lists render exactly as before (no disclosure).
+        const MAX_SHOWN = 5;
+        if (visibleActors.length <= MAX_SHOWN) {
+            actorsDiv.innerHTML = visibleActors.map(renderActor).join('');
+        } else {
+            const shown = visibleActors.slice(0, MAX_SHOWN);
+            const rest = visibleActors.slice(MAX_SHOWN);
+            const shownHtml = shown.map(renderActor).join('');
+            const restHtml = rest.map(renderActor).join('');
+            actorsDiv.innerHTML =
+                shownHtml +
+                `<details class="actor-overflow"><summary>${rest.length} more…</summary>${restHtml}</details>`;
+        }
     }
 
     /**

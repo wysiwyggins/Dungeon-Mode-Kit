@@ -64,6 +64,17 @@
         margin-right: 0.5em;
     }
 
+    // Collapsible overflow for the actor list on crowded levels: the first few
+    // actors show normally, the rest hide behind this disclosure.
+    .actor-overflow {
+        summary {
+            cursor: pointer;
+            font-size: 0.9em;
+            color: #878787;
+            margin-bottom: $spacing-unit;
+        }
+    }
+
     details {
         max-width: 260px;
     }
