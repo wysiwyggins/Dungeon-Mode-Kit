@@ -504,23 +504,6 @@
                  "width":40,
                  "x":520,
                  "y":630
-                }, 
-                {
-                 "height":30,
-                 "id":61,
-                 "name":"",
-                 "properties":[
-                        {
-                         "name":"walk_description",
-                         "type":"string",
-                         "value":"There's no escape from the dungeon without the amulet of Yendor."
-                        }],
-                 "rotation":0,
-                 "type":"QUESTION_MARK",
-                 "visible":true,
-                 "width":40,
-                 "x":1240,
-                 "y":240
                 }],
          "opacity":1,
          "type":"objectgroup",
