@@ -321,8 +321,8 @@
                  "type":"oculus",
                  "visible":true,
                  "width":40,
-                 "x":488.403361344538,
-                 "y":2058.52941176471
+                 "x":480,
+                 "y":2070
                 }, 
                 {
                  "height":30,
@@ -555,6 +555,17 @@
                  "width":40,
                  "x":3040,
                  "y":1410
+                }, 
+                {
+                 "height":30,
+                 "id":94,
+                 "name":"",
+                 "rotation":0,
+                 "type":"telepathy_potion",
+                 "visible":true,
+                 "width":40,
+                 "x":600,
+                 "y":2040
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -591,7 +602,7 @@
          "y":0
         }],
  "nextlayerid":9,
- "nextobjectid":94,
+ "nextobjectid":95,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",

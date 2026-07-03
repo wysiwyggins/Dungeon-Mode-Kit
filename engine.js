@@ -4914,6 +4914,13 @@ class Actor extends Entity {
         }
 
         delete this.states[stateName];
+
+        // Telepathy ending: refresh the view so enemies revealed through walls/
+        // darkness (and ghosted invisible ones) are re-hidden now that the sense is
+        // gone. Done after the delete so hasStateProperty('telepathic') reads false.
+        if (state.data.telepathic && this.isPlayerControlled()) {
+            this.engine.updateLighting?.();
+        }
     }
 
     _updateInvisibilitySprites() {
@@ -9704,6 +9711,21 @@ class EntityManager {
     }
 
     /**
+     * All living sentient actors on the current level — creatures and the player,
+     * i.e. things that take turns and can hold states (excludes walls, traps,
+     * fire, clouds, etc.). The 'sentient' attribute is the same gate applyState
+     * uses. Pass includeDead: true to include dead ones.
+     * @param {Object} [options]
+     * @param {boolean} [options.includeDead=false]
+     * @returns {Actor[]}
+     */
+    getSentientActors({ includeDead = false } = {}) {
+        return this.actors.filter(a =>
+            a.hasAttribute('sentient') && (includeDead || !a.isDead)
+        );
+    }
+
+    /**
      * Find the nearest controlled actor (player or ally) to a given actor
      * @param {Actor} fromActor - The actor searching for a target
      * @returns {Actor|null} The nearest controlled actor, or null if none found
@@ -11855,6 +11877,41 @@ class RenderSystem {
         }
     }
 
+    /**
+     * Reveal sentient enemies to a telepathic player, independent of the lighting
+     * system. On dark/FOV levels updateEntityLighting already reveals them through
+     * walls; this pass covers levels with no lighting manager (where that code path
+     * never runs), so telepathy also exposes an invisible creature on a bright
+     * level. Invisible creatures read as a ghosted impression (0.35 alpha), matching
+     * the dark-level treatment; ordinary enemies render fully. No-op unless the
+     * player is telepathic. Uses getSentientActors() to enumerate candidates.
+     */
+    applyTelepathyReveal() {
+        const player = this.engine.entityManager.player;
+        if (!player || player.isDead) return;
+        const telepathic = player.hasStateProperty?.('telepathic');
+
+        for (const actor of this.engine.entityManager.getSentientActors()) {
+            if (actor.hasAttribute('controlled')) continue; // don't reveal the player/allies to themselves
+
+            if (!telepathic) {
+                // Not (or no longer) telepathic: make sure a concealed creature that
+                // was revealed is hidden again. Invisible ones revert to their normal
+                // hidden state; anything else is left to the normal lighting path.
+                if (actor.hasStateProperty?.('invisible')) actor._updateInvisibilitySprites();
+                continue;
+            }
+
+            const ghost = actor.hasStateProperty?.('invisible') || actor.isSubmerged;
+            const alpha = ghost ? 0.35 : 1.0;
+
+            if (actor.spriteBase) { actor.spriteBase.visible = true; actor.spriteBase.alpha = alpha; }
+            // Head/top and side stay hidden while submerged (only the body reads through the surface).
+            if (actor.spriteTop) { actor.spriteTop.visible = !actor.isSubmerged; actor.spriteTop.alpha = alpha; }
+            if (actor.spriteSide) actor.spriteSide.visible = !actor.isSubmerged;
+        }
+    }
+
     updateProximityTransparency() {
         const player = this.engine.entityManager.player;
         if (!player || player.isDead) return;
@@ -11903,6 +11960,11 @@ class RenderSystem {
                 southernActor.spriteEquipment.middle.alpha = 0.35;
             }
         }
+
+        // Reveal enemies to a telepathic player (covers bright levels where the
+        // lighting-based reveal in updateEntityLighting doesn't run). Runs last so
+        // it overrides the invisible-actor hide above.
+        this.applyTelepathyReveal();
     }
 
     /**
