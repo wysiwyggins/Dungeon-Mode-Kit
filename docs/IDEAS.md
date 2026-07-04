@@ -4,11 +4,9 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Bugs
 
+- staff of blinking shouldn't reveal its range before it has been identified
+
 - prototype editor has lake and abyss checkboxes that create the same forms including a dropdown for either lake or abyss options, consolidate this. also checkbox selection here collapses the section when changed
-
-- should probably deal with too many visible actors in the sidebar on non-dark levels somehow. (show closest 5? have disclosure arrow?)
-
-- I got rid of auto-wearing wearable items, but it should be an item option, since it would make sense for the crown in test
 
 - The word "inverse" is used inconsistently in tile names. Some names, like inverse box drawing tiles, should be "white"
 
