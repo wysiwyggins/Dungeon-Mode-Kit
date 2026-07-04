@@ -14,6 +14,10 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Feature ideas
 
+### Hero personality
+
+- a personality anmd behaviors that would automate an actor that would normally be playable, for zero player observer prototypes, code could be re-used for an (x)plore action.
+
 ### Game win [b]
 
 - [x] a prototype can have win conditions, similar to levels. when the condition is met, we would fill the canvas with white full block, and write over that in letter tiles all the tracked statistics for the prototype (kills, gold, etc) and run the same color cycle effect on the canvas as the aqua vita potion.
