@@ -7976,6 +7976,9 @@ class Actor extends Entity {
         entity.tileIndex = tileIndex;
         entity.setAttribute('visible', true);
         entity.setAttribute('ignore_darkness', true);
+        // Inherit flammability from the source item (e.g. ball of thread) so a trail
+        // laid through or under fire catches and burns; a fireproof cord would not.
+        if (item?.hasAttribute('flammable')) entity.setAttribute('flammable', true);
 
         // Apply item tint
         if (effect.use_item_tint && item.tint) {
@@ -9822,18 +9825,12 @@ class EntityManager {
         this.applySpawnDamage(actor);
 
         if (actor.hasAttribute('ignites')) {
-            // Consume flammable OBJECTS/terrain (trees, webs, bridges — no health stat)
-            // into fire. Living creatures and the player (health stat) are NOT instantly
-            // incinerated here — they take fire damage over time via applySpawnDamage /
-            // fire_burn_out (capped once per turn), then catch the burning state.
-            const flammable = this.getActorsAt(x, y)
-                .filter(a => a !== actor && a.hasAttribute('flammable') && !a.isDead &&
-                             a.stats?.health === undefined);
-            for (const target of flammable) {
-                target.die();
-                const newFire = this.spawnActor('fire', x, y);
-                if (newFire) newFire.fireLifetime = newFire.lifetime || 5;
-            }
+            // Consume flammable OBJECTS/terrain (trees, webs, bridges, gas, trail
+            // entities — no health stat) into fire. Living creatures and the player
+            // (health stat) are NOT instantly incinerated here — they take fire damage
+            // over time via applySpawnDamage / fire_burn_out (capped once per turn),
+            // then catch the burning state. See consumeFlammableAt for the shared logic.
+            this.consumeFlammableAt(actor, x, y, actor.type, actor.fireLifetime ?? actor.lifetime);
         }
 
         // Prevent fire from stacking: one fire actor per tile. A second fire spawn
@@ -9981,6 +9978,60 @@ class EntityManager {
             if (cloud.spriteTop && tint != null) cloud.spriteTop.tint = tint;
         }
         return cloud;
+    }
+
+    /**
+     * Consume co-located flammable OBJECTS/terrain (trees, webs, bridges, gas, trail
+     * entities — anything with no health stat) on a tile into fire. Shared source of
+     * truth for both same-tile ignition paths: a fire spawning onto flammables (the
+     * ignites block in spawnActor) and a fire sitting on flammables each turn
+     * (fire_burn_out). Living creatures and the player (health stat) are deliberately
+     * NOT consumed here — they take fire damage over time + the burning state instead.
+     *
+     * Victims are collected first, then killed, THEN fire is spawned — so the spawned
+     * fire's own ignites-block re-scan finds nothing left to consume (no recursion),
+     * while the fire dedupe block still runs and collapses the spawned fire into any
+     * fire already on the tile (one fire per tile; lifetime refreshed).
+     * @param {Entity} fireActor - The igniting fire actor (excluded from consumption)
+     * @param {number} x
+     * @param {number} y
+     * @param {string} fireType - Actor type to spawn for the resulting fire
+     * @param {number|null} fireLifetime - Lifetime to stamp on spawned fire(s)
+     * @returns {boolean} True if anything was consumed
+     */
+    consumeFlammableAt(fireActor, x, y, fireType = 'fire', fireLifetime = null) {
+        // Flammable actors with no health stat (gas, terrain props). Never consume
+        // other igniters (fire-into-fire is the dedupe block's job) or fireproof actors.
+        const victimActors = this.getActorsAt(x, y).filter(
+            a => a !== fireActor && a.hasAttribute('flammable') && !a.isDead &&
+                 a.stats?.health === undefined &&
+                 !a.hasAttribute('ignites') && !a.hasAttribute('fireproof')
+        );
+        // Flammable decorative entities on this exact tile (e.g. thread trail).
+        // fire_spread only reaches cardinal neighbors, so same-tile entities need this.
+        const victimEntities = this.entities.filter(
+            e => e.x === x && e.y === y && !e.isDead &&
+                 !(e instanceof Actor) && !(e instanceof Item) &&
+                 e.hasAttribute('flammable')
+        );
+
+        const consumedCount = victimActors.length + victimEntities.length;
+        if (consumedCount === 0) return false;
+
+        // Kill victims first so the spawned fire's ignites-block re-scan finds nothing
+        // (all victims are !isDead-filtered out), preventing recursion. Do NOT set
+        // _mergingFire: we WANT the dedupe block to merge the new fire into any existing
+        // one so fires never stack on a tile.
+        for (const a of victimActors) a.die();
+        for (const e of victimEntities) e.die();
+
+        for (let i = 0; i < consumedCount; i++) {
+            const newFire = this.spawnActor(fireType, x, y);
+            if (newFire) newFire.fireLifetime = fireLifetime ?? newFire.lifetime ?? 5;
+        }
+
+        this.invalidateActorPosCache();
+        return true;
     }
 
     /**

@@ -1604,6 +1604,20 @@ const BehaviorLibrary = {
                 continue;
             }
 
+            // Healthless flammable actors (gas, terrain props) catch deterministically,
+            // like flammable entities — so fire chains through a whole gas cloud like a
+            // fuse rather than crawling one tile per lucky roll. Living creatures/player
+            // (health stat) stay behind the spread_chance gate below.
+            const volatileActor = actorsAtTarget.find(
+                a => a.type !== actor.type && a.hasAttribute('flammable') &&
+                     !a.isDead && a.stats?.health === undefined && !a.hasAttribute('fireproof')
+            );
+            if (volatileActor) {
+                const newFire = entityManager.spawnActor(spawnType, targetX, targetY);
+                if (newFire) newFire.fireLifetime = fireLifetime ?? newFire.lifetime ?? 5;
+                continue;
+            }
+
             if (ROT.RNG.getUniform() > spreadChance) continue;
 
             const targetActor = actorsAtTarget.find(a => a.type !== actor.type);
@@ -1674,6 +1688,11 @@ const BehaviorLibrary = {
                 }
             }
         }
+
+        // Consume co-located healthless flammables (gas drifting onto us, trail entities
+        // laid under us, terrain) into fire. Its own filter spares creatures/the player,
+        // which are handled by the damage-over-time + burning path above instead.
+        entityManager.consumeFlammableAt(actor, actor.x, actor.y, actor.type, actor.fireLifetime);
 
         // Countdown and burn out
         actor.fireLifetime--;
