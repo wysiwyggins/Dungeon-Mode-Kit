@@ -434,6 +434,15 @@
         "OPAQUE_DARK_SHOCKED_ANIMAL_FACE": [1, 18],
         "WHITE_HUNTING_ANIMAL_FACE": [2, 18],
         "WHITE_GLAGOLITIC_CAPITAL_LETTER_IZHE": [3, 18],
-        "WHITE_LOWER_ONE_HALF": [4, 18]
+        "WHITE_LOWER_ONE_HALF": [4, 18],
+        "QUARTER_NOTE": [5, 18],
+        "WHITE_CAPITAL_SIGMA": [6, 18],
+        "WHITE_HEART_SUITE": [7,18],
+        "WHITE_CLUB_SUITE": [8,18],
+        "FIRST_QUARTER_MOON": [9,18],
+        "HALF_MOON": [10,18],
+        "FULL_MOON": [11,18],
+        "WANING_GIBBOUS_MOON":[12,18],
+        "LAST_QUARTER_MOON":[13,18]
     }
 }

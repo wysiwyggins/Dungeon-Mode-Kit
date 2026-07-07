@@ -637,6 +637,16 @@
       "paint_tile": "DARK_SHADE"
     }
   },
+  "statue": {
+    "name": "statue",
+    "tileIndexBase": "CANDLE_STICK",
+    "tileIndexTop": "FULL_MOON",
+    "attributes": {
+      "breakable": true,
+      "opaque": false,
+      "remains": "rubble"
+    }
+  },
   "pitchblende_wall": {
     "name": "pitchblende",
     "tileIndexBase": "OPAQUE_DOTTED_LIGHT_SHADE",
