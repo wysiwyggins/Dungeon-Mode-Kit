@@ -40,8 +40,8 @@
       "loopMinDistance": 20, "maxLoops": 5,
       "roomWeights": { "rectangle": 40, "cross": 25, "circular": 20, "cavern": 10 },
       "lakes": { "count": [1, 3], "types": ["water", "water", "water", "water", "water", "water", "lava"], "minSize": 15, "maxSize": 80 },
-      "abyss": { "count": [0, 2], "types": ["abyss"], "minSize": 10, "maxSize": 60 },
-      "bridges": { "max": 1 },
+      "abyss": { "count": [0, 4], "types": ["abyss"], "minSize": 10, "maxSize": 60 },
+      "bridges": { "max": 4 },
       "collapsing_floors": { "max": 2, "minSize": 2, "maxSize": 4 }
     }
   },
@@ -72,7 +72,8 @@
       "random_actors": {
         "rat": { "chance": 100, "min": 3, "max": 5 },
         "bat": { "chance": 80, "min": 1, "max": 2 },
-        "goblin": { "chance": 100, "min": 1, "max": 3 },
+        "goblin": { "chance": 60, "min": 1, "max": 2 },
+        "goblin_spearman": { "chance": 60, "min": 1, "max": 3 },
         "jackal": { "chance": 50, "min": 3, "max": 5 }
       },
       "random_items": {
@@ -429,7 +430,7 @@
       "win_conditions": [],
       "map_generator": {
         "type": "infernal",
-        "options": { "map_width": 65, "map_height": 55, "lakes": { "count": [2, 4], "types": ["lava"], "minSize": 15, "maxSize": 60 }, "abyss": { "count": [1, 2], "types": ["abyss"], "minSize": 15, "maxSize": 50 } }
+        "options": { "map_width": 65, "map_height": 55, "lakes": { "count": [2, 4], "types": ["lava"], "minSize": 15, "maxSize": 60 }, "abyss": { "count": [1, 2], "types": ["abyss"], "minSize": 15, "maxSize": 50 }, "bridges": { "max": 2 } }
       },
       "traps": { "min": 3, "max": 35 },
       "random_actors": {
@@ -446,7 +447,7 @@
       "win_conditions": [],
       "map_generator": {
         "type": "infernal",
-        "options": { "map_width": 70, "map_height": 60, "lakes": { "count": [2, 4], "types": ["lava"], "minSize": 20, "maxSize": 80 }, "abyss": { "count": [1, 3], "types": ["abyss"], "minSize": 20, "maxSize": 60 } }
+        "options": { "map_width": 70, "map_height": 60, "lakes": { "count": [2, 4], "types": ["lava"], "minSize": 20, "maxSize": 80 }, "abyss": { "count": [1, 3], "types": ["abyss"], "minSize": 20, "maxSize": 60 }, "bridges": { "max": 3 } }
       },
       "traps": { "min": 3, "max": 35 },
       "random_actors": {
@@ -463,7 +464,7 @@
       "win_conditions": [],
       "map_generator": {
         "type": "infernal",
-        "options": { "map_width": 70, "map_height": 60, "lakes": { "count": [3, 5], "types": ["lava"], "minSize": 20, "maxSize": 100 }, "abyss": { "count": [2, 3], "types": ["abyss"], "minSize": 20, "maxSize": 70 } }
+        "options": { "map_width": 70, "map_height": 60, "lakes": { "count": [3, 5], "types": ["lava"], "minSize": 20, "maxSize": 100 }, "abyss": { "count": [2, 3], "types": ["abyss"], "minSize": 20, "maxSize": 70 }, "bridges": { "max": 3 } }
       },
       "traps": { "min": 4, "max": 35 },
       "random_actors": {
@@ -480,7 +481,7 @@
       "win_conditions": [],
       "map_generator": {
         "type": "infernal",
-        "options": { "map_width": 75, "map_height": 60, "lakes": { "count": [3, 5], "types": ["lava"], "minSize": 25, "maxSize": 120 }, "abyss": { "count": [2, 4], "types": ["abyss"], "minSize": 25, "maxSize": 80 } }
+        "options": { "map_width": 75, "map_height": 60, "lakes": { "count": [3, 5], "types": ["lava"], "minSize": 25, "maxSize": 120 }, "abyss": { "count": [2, 4], "types": ["abyss"], "minSize": 25, "maxSize": 80 }, "bridges": { "max": 4 } }
       },
       "traps": { "min": 4, "max": 35 },
       "random_actors": {
@@ -497,7 +498,7 @@
       "win_conditions": ["killed:demon"],
       "map_generator": {
         "type": "infernal",
-        "options": { "map_width": 75, "map_height": 60, "lakes": { "count": [3, 6], "types": ["lava"], "minSize": 25, "maxSize": 120 }, "abyss": { "count": [3, 5], "types": ["abyss"], "minSize": 25, "maxSize": 80 } }
+        "options": { "map_width": 75, "map_height": 60, "lakes": { "count": [3, 6], "types": ["lava"], "minSize": 25, "maxSize": 120 }, "abyss": { "count": [3, 5], "types": ["abyss"], "minSize": 25, "maxSize": 80 }, "bridges": { "max": 5 } }
       },
       "traps": { "min": 4, "max": 40 },
       "random_actors": {
@@ -514,7 +515,7 @@
       "win_conditions": [],
       "map_generator": {
         "type": "infernal",
-        "options": { "map_width": 80, "map_height": 65, "lakes": { "count": [4, 6], "types": ["lava"], "minSize": 25, "maxSize": 140 }, "abyss": { "count": [3, 5], "types": ["abyss"], "minSize": 30, "maxSize": 100 } }
+        "options": { "map_width": 80, "map_height": 65, "lakes": { "count": [4, 6], "types": ["lava"], "minSize": 25, "maxSize": 140 }, "abyss": { "count": [3, 5], "types": ["abyss"], "minSize": 30, "maxSize": 100 }, "bridges": { "max": 5 } }
       },
       "traps": { "min": 5, "max": 40 },
       "random_actors": {
@@ -531,7 +532,7 @@
       "win_conditions": ["killed:azhdaya_head"],
       "map_generator": {
         "type": "infernal",
-        "options": { "map_width": 80, "map_height": 65, "lakes": { "count": [4, 7], "types": ["lava"], "minSize": 30, "maxSize": 150 }, "abyss": { "count": [3, 6], "types": ["abyss"], "minSize": 30, "maxSize": 100 } }
+        "options": { "map_width": 80, "map_height": 65, "lakes": { "count": [4, 7], "types": ["lava"], "minSize": 30, "maxSize": 150 }, "abyss": { "count": [3, 6], "types": ["abyss"], "minSize": 30, "maxSize": 100 }, "bridges": { "max": 6 } }
       },
       "traps": { "min": 5, "max": 40 },
       "random_actors": {

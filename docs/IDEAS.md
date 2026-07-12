@@ -4,9 +4,25 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Bugs
 
+- burned rope bridges leave a new void tile instead of just a blank space showing the background tile that was already there
+
+- you can currently throw an item onto a void tile and it does not fall to the next level
+
+- when an opaque actor dies, the shadow it casts remains until the next turn. likewise, when a fire actor is spawned, it does not generate light until the next turn
+
+- rings should have material names not color names
+
 - staff of blinking shouldn't reveal its range before it has been identified
 
+- walking into a locked door displays both 'the door is locked' and you 'bump into a wall' messages.
+
 - prototype editor has lake and abyss checkboxes that create the same forms including a dropdown for either lake or abyss options, consolidate this. also checkbox selection here collapses the section when changed
+
+- jackals should be aligned
+
+- don't use up keys on unlocked doors, don't distribute generic (unpaired) keys on levels without generic locked doors
+
+- mass noun attribute for items in addition to actors. (meat)
 
 - The word "inverse" is used inconsistently in tile names. Some names, like inverse box drawing tiles, should be "white"
 

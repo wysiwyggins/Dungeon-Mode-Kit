@@ -104,7 +104,7 @@
         "maxSize": 60
       },
       "bridges": {
-        "max": 1
+        "max": 2
       },
       "collapsing_floors": {
         "max": 2,

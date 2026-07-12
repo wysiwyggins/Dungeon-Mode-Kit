@@ -1570,6 +1570,7 @@
     "tileIndex": "MEAT",
     "tint": "#FF4513",
     "attributes": {
+      "mass_noun": true,
       "pickupable": true,
       "visible": true,
       "stackable": true,

@@ -709,6 +709,7 @@
       "openable": true,
       "lockable": true,
       "gate": true,
+      "opaque": false,
       "open": false,
       "locked": true
     }
@@ -966,6 +967,7 @@
     "animation_frames": "fluid",
     "tint": "#FF2200",
     "personality": "lava",
+    "lightRadius": 5,
     "attributes": {
       "solid": false,
       "flammable": false,
@@ -1044,6 +1046,7 @@
     "animationTop": "fire",
     "tint": "#EC7505",
     "flickerTint": true,
+    "lightRadius": 12,
     "attributes": {
       "opaque": true,
       "flammable": false,

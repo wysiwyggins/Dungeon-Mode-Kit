@@ -961,53 +961,211 @@ class Architect {
 
         const wallSet = new Set(this.pendingWallSpawns.map(p => `${p.x},${p.y}`));
         const isLandable = (x, y) => hasFloor(x, y) && !wallSet.has(`${x},${y}`);
+        // A boundary wall (added around abyss blobs) always has true floor under it,
+        // so it can be "punched" into a landing by removing it from the wall spawns.
+        const isBoundaryWall = (x, y) => hasFloor(x, y) && wallSet.has(`${x},${y}`);
 
-        const crossings = [];
+        const cardinalDirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
 
+        // 1. Flood-fill abyss cells into connected components (blobs).
+        const blobId = new Map();
+        const blobs = [];
         for (let y = 1; y < this.height - 1; y++) {
-            let x = 0;
-            while (x < this.width) {
-                if (!isAbyss(x, y)) { x++; continue; }
-                const startX = x;
-                while (x < this.width && isAbyss(x, y)) x++;
-                const endX = x;
-                if (isLandable(startX - 1, y) && isLandable(endX, y)) {
-                    const cells = [];
-                    for (let bx = startX; bx < endX; bx++) cells.push({ x: bx, y });
-                    crossings.push({ cells, dir: 'h', length: cells.length });
+            for (let x = 1; x < this.width - 1; x++) {
+                const key = `${x},${y}`;
+                if (!isAbyss(x, y) || blobId.has(key)) continue;
+                const id = blobs.length;
+                const cells = [];
+                let minX = x, maxX = x, minY = y, maxY = y;
+                const stack = [{ x, y }];
+                blobId.set(key, id);
+                while (stack.length > 0) {
+                    const cell = stack.pop();
+                    cells.push(cell);
+                    if (cell.x < minX) minX = cell.x;
+                    if (cell.x > maxX) maxX = cell.x;
+                    if (cell.y < minY) minY = cell.y;
+                    if (cell.y > maxY) maxY = cell.y;
+                    for (const [dx, dy] of cardinalDirs) {
+                        const nx = cell.x + dx, ny = cell.y + dy;
+                        const nk = `${nx},${ny}`;
+                        if (isAbyss(nx, ny) && !blobId.has(nk)) {
+                            blobId.set(nk, id);
+                            stack.push({ x: nx, y: ny });
+                        }
+                    }
                 }
+                blobs.push({ id, cells, minX, maxX, minY, maxY });
             }
         }
 
-        for (let x = 1; x < this.width - 1; x++) {
-            let y = 0;
-            while (y < this.height) {
-                if (!isAbyss(x, y)) { y++; continue; }
-                const startY = y;
-                while (y < this.height && isAbyss(x, y)) y++;
-                const endY = y;
-                if (isLandable(x, startY - 1) && isLandable(x, endY)) {
-                    const cells = [];
-                    for (let by = startY; by < endY; by++) cells.push({ x, y: by });
-                    crossings.push({ cells, dir: 'v', length: cells.length });
+        if (blobs.length === 0) return;
+
+        const belongsTo = (x, y, id) => blobId.get(`${x},${y}`) === id;
+
+        // Resolve a landing just outside an abyss run. Returns null if there is no
+        // walkable shore. Otherwise returns { punch, stand } where `punch` is the
+        // boundary-wall cell to open (or null when the shore is already floor) and
+        // `stand` is the walkable floor cell the bridge actually connects to.
+        const resolveLanding = (x, y, dx, dy) => {
+            if (isLandable(x, y)) return { punch: null, stand: { x, y } };
+            if (isBoundaryWall(x, y) && isLandable(x + dx, y + dy)) {
+                // One wall between the abyss and real floor: punchable.
+                return { punch: { x, y }, stand: { x: x + dx, y: y + dy } };
+            }
+            return null;
+        };
+
+        // Brogue-style connectivity gate: a bridge is only worth building if walking
+        // AROUND the abyss (over existing floor, treating abyss + walls as blockers)
+        // is much longer than crossing it. Bounded BFS from one shore to the other;
+        // if the far shore is unreachable within `cap` steps (or at all), the detour
+        // is long enough and the bridge earns its place.
+        const minDetourRatio = config.minDetourRatio != null ? config.minDetourRatio : 3;
+        const isWalkAroundOpen = (x, y) => isLandable(x, y) && !isAbyss(x, y);
+        const detourExceeds = (fromCell, toCell, bridgeLength) => {
+            if (minDetourRatio <= 0) return true; // gate disabled
+            const cap = Math.ceil(bridgeLength * minDetourRatio);
+            const startKey = `${fromCell.x},${fromCell.y}`;
+            const goalKey = `${toCell.x},${toCell.y}`;
+            const visited = new Set([startKey]);
+            let frontier = [fromCell];
+            let dist = 0;
+            while (frontier.length > 0) {
+                if (dist > cap) return true; // walk-around already too long -> build
+                const next = [];
+                for (const cell of frontier) {
+                    if (`${cell.x},${cell.y}` === goalKey) return false; // cheap walk exists -> skip
+                    for (const [dx, dy] of cardinalDirs) {
+                        const nx = cell.x + dx, ny = cell.y + dy;
+                        const nk = `${nx},${ny}`;
+                        if (visited.has(nk)) continue;
+                        if (!isWalkAroundOpen(nx, ny)) continue;
+                        visited.add(nk);
+                        next.push({ x: nx, y: ny });
+                    }
+                }
+                frontier = next;
+                dist++;
+            }
+            return true; // far shore unreachable on foot -> definitely bridge
+        };
+
+        // 2. Find the best full-width/full-height crossing for a single blob.
+        const chooseCrossing = (blob) => {
+            const blobWidth = blob.maxX - blob.minX + 1;
+            const blobHeight = blob.maxY - blob.minY + 1;
+            const candidates = [];
+
+            // Horizontal crossings: for each row, the run must equal the blob's
+            // full horizontal cross-section on that row (shore-to-shore).
+            for (let y = blob.minY; y <= blob.maxY; y++) {
+                let rowMinX = Infinity, rowMaxX = -Infinity;
+                for (let x = blob.minX; x <= blob.maxX; x++) {
+                    if (belongsTo(x, y, blob.id)) {
+                        if (x < rowMinX) rowMinX = x;
+                        if (x > rowMaxX) rowMaxX = x;
+                    }
+                }
+                if (rowMinX === Infinity) continue;
+                // Reject rows where the blob is not one solid band (interior floor island).
+                let solid = true;
+                for (let x = rowMinX; x <= rowMaxX; x++) {
+                    if (!belongsTo(x, y, blob.id)) { solid = false; break; }
+                }
+                if (!solid) continue;
+                const length = rowMaxX - rowMinX + 1;
+                if (length < Math.max(2, Math.ceil(blobWidth * 0.4))) continue;
+                const west = resolveLanding(rowMinX - 1, y, -1, 0);
+                const east = resolveLanding(rowMaxX + 1, y, 1, 0);
+                if (!west || !east) continue;
+                const cells = [];
+                for (let x = rowMinX; x <= rowMaxX; x++) cells.push({ x, y });
+                candidates.push({
+                    cells, dir: 'h', length,
+                    punches: [west.punch, east.punch].filter(Boolean),
+                    standA: west.stand, standB: east.stand
+                });
+            }
+
+            // Vertical crossings: symmetric, per column.
+            for (let x = blob.minX; x <= blob.maxX; x++) {
+                let colMinY = Infinity, colMaxY = -Infinity;
+                for (let y = blob.minY; y <= blob.maxY; y++) {
+                    if (belongsTo(x, y, blob.id)) {
+                        if (y < colMinY) colMinY = y;
+                        if (y > colMaxY) colMaxY = y;
+                    }
+                }
+                if (colMinY === Infinity) continue;
+                let solid = true;
+                for (let y = colMinY; y <= colMaxY; y++) {
+                    if (!belongsTo(x, y, blob.id)) { solid = false; break; }
+                }
+                if (!solid) continue;
+                const length = colMaxY - colMinY + 1;
+                if (length < Math.max(2, Math.ceil(blobHeight * 0.4))) continue;
+                const north = resolveLanding(x, colMinY - 1, 0, -1);
+                const south = resolveLanding(x, colMaxY + 1, 0, 1);
+                if (!north || !south) continue;
+                const cells = [];
+                for (let y = colMinY; y <= colMaxY; y++) cells.push({ x, y });
+                candidates.push({
+                    cells, dir: 'v', length,
+                    punches: [north.punch, south.punch].filter(Boolean),
+                    standA: north.stand, standB: south.stand
+                });
+            }
+
+            if (candidates.length === 0) return null;
+
+            // Prefer the narrowest neck, then the crossing that needs no punches,
+            // then a little randomness for variety.
+            candidates.sort((a, b) =>
+                a.length - b.length ||
+                a.punches.length - b.punches.length ||
+                (ROT.RNG.getUniform() - 0.5)
+            );
+
+            // Connectivity gate: only keep a crossing whose two shores are not already
+            // cheaply connected on foot (Brogue's bridgeRatio test). Take the narrowest
+            // crossing that earns its place; skip ones that are merely convenient.
+            for (const candidate of candidates) {
+                if (detourExceeds(candidate.standA, candidate.standB, candidate.length)) {
+                    return candidate;
                 }
             }
-        }
+            return null;
+        };
 
-        if (crossings.length === 0) return;
-
-        crossings.sort((a, b) => a.length - b.length);
+        // 3. Place one bridge per blob, largest abyss first, up to the global cap.
+        blobs.sort((a, b) => b.cells.length - a.cells.length);
 
         const usedCells = new Set();
         let placed = 0;
 
-        for (const crossing of crossings) {
+        for (const blob of blobs) {
             if (placed >= maxBridges) break;
+            const crossing = chooseCrossing(blob);
+            if (!crossing) continue;
             if (crossing.cells.some(c => usedCells.has(`${c.x},${c.y}`))) continue;
 
+            // Open any boundary walls the bridge lands on so the shore is walkable.
+            for (const punch of crossing.punches) {
+                this.pendingWallSpawns = this.pendingWallSpawns.filter(p => !(p.x === punch.x && p.y === punch.y));
+                wallSet.delete(`${punch.x},${punch.y}`);
+            }
+
             for (const c of crossing.cells) {
-                this.floorMap[c.y][c.x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
-                this.pendingBridgeSpawns.push(c);
+                // Leave the cell as abyss (floorMap null, void background) and let the
+                // rope_bridge platform actor provide footing — exactly like a
+                // collapsing_floor. Do NOT lay real floor here: that would (a) make
+                // addBaseAndShadows treat the cell as floor and skip the cliffside
+                // shadow it gives the rest of the abyss, and (b) leave a floor tile
+                // behind when the bridge burns instead of revealing the void below.
+                // Carry the crossing orientation so the spawned actor can pick the
+                // matching box-drawing tile (vertical vs horizontal).
+                this.pendingBridgeSpawns.push({ x: c.x, y: c.y, dir: crossing.dir });
                 usedCells.add(`${c.x},${c.y}`);
             }
             placed++;
@@ -1843,8 +2001,14 @@ class Architect {
             return;
         }
 
+        // Vertical bridges use the vertical box-drawing tile; the actor default
+        // (INVERSE_BOX_HORIZONTAL) already covers horizontal bridges. Clone the
+        // shared actorData so we never mutate the catalog entry.
+        const verticalData = { ...actorData, tileIndexBase: 'INVERSE_BOX_VERTICAL' };
+
         for (const pos of this.pendingBridgeSpawns) {
-            context.createActor(pos.x, pos.y, 'rope_bridge', actorData);
+            const data = pos.dir === 'v' ? verticalData : actorData;
+            context.createActor(pos.x, pos.y, 'rope_bridge', data);
         }
 
         console.log(`Spawned ${this.pendingBridgeSpawns.length} rope bridge actors`);
