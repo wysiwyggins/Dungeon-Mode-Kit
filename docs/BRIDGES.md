@@ -69,7 +69,7 @@ For each blob, candidate crossings are found by scanning within its bounding box
 - **Horizontal:** for each row, the abyss run must equal the blob's **full horizontal cross-section on that row** (`startX === rowMinX && endX === rowMaxX`, one solid band).
 - **Vertical:** symmetric, per column.
 
-Requiring the run to be the *full* cross-section is the key defense against the old "short line along one edge" bug: it forces the two landings onto genuinely **opposite shores** rather than clipping a corner. A minimum length of `max(2, ceil(blobWidth * 0.4))` rejects thin corner rows.
+A minimum length of `max(2, ceil(blobWidth * 0.4))` rejects thin corner rows.
 
 ### 3. Resolve landings (wall-punching)
 

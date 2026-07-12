@@ -352,6 +352,7 @@
     "defaultFacing": "left",
     "facingEnabled": true,
     "personality": "goblin",
+    "remains": "blood",
     "collision_effect": {
       "health": -3
     },
@@ -382,6 +383,7 @@
     "defaultFacing": "left",
     "facingEnabled": true,
     "personality": "goblin_ambusher",
+    "remains": "blood",
     "collision_effect": {
       "health": -3
     },
@@ -415,12 +417,15 @@
     },
     "flipSideV": true,
     "tint": "#ffe4a8",
+    "defaultFacing": "right",
+    "facingEnabled": true,
     "personality": "passive_wanderer",
     "attributes": {
       "sentient": true,
       "flammable": true,
       "inventory": 1,
-      "remains": "blood"
+      "remains": "blood",
+      "opaque": false
     },
     "stats": {
       "health": 10
@@ -440,6 +445,7 @@
     "attributes": {
       "sentient": true,
       "flammable": true,
+      "opaque": false,
       "inventory": 1,
       "remains": "blood"
     },
@@ -773,7 +779,8 @@
     "attributes": {
       "solid": true,
       "switchable": true,
-      "toggled": false
+      "toggled": false,
+      "opaque": false
     },
     "collision_description": "a lever",
     "switch_message": "You pull the lever.",
@@ -1287,7 +1294,8 @@
     "attributes": {
       "flammable": true,
       "hostile": true,
-      "sentient": true
+      "sentient": true,
+      "opaque": false
     },
     "stats": {
       "health": 10
@@ -1309,6 +1317,7 @@
       "hostile": true,
       "sentient": true,
       "dark_vision": true,
+      "opaque": false,
       "defense": 20
     },
     "stats": {
@@ -1490,6 +1499,7 @@
     "personality": "aggressive_melee",
     "vision_range": 10,
     "death_sound": "hit",
+    "remains": "blood",
     "collision_effect": {
       "health": -2
     },

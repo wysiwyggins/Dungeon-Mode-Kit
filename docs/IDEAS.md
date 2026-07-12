@@ -4,7 +4,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Bugs
 
-- burned rope bridges leave a new void tile instead of just a blank space showing the background tile that was already there
+- overlay tile layer shouldn't be affected by line of sight blocking?
 
 - you can currently throw an item onto a void tile and it does not fall to the next level
 
