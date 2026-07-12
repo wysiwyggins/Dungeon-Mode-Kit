@@ -4,6 +4,8 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Bugs
 
+- don't float away items that are worn or equipped in deep liquid actors
+
 - overlay tile layer shouldn't be affected by line of sight blocking?
 
 - you can currently throw an item onto a void tile and it does not fall to the next level

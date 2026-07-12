@@ -352,7 +352,6 @@
     "defaultFacing": "left",
     "facingEnabled": true,
     "personality": "goblin",
-    "remains": "blood",
     "collision_effect": {
       "health": -3
     },
@@ -383,7 +382,6 @@
     "defaultFacing": "left",
     "facingEnabled": true,
     "personality": "goblin_ambusher",
-    "remains": "blood",
     "collision_effect": {
       "health": -3
     },
@@ -1499,7 +1497,6 @@
     "personality": "aggressive_melee",
     "vision_range": 10,
     "death_sound": "hit",
-    "remains": "blood",
     "collision_effect": {
       "health": -2
     },
@@ -1512,14 +1509,19 @@
       "sentient": true,
       "pack": true,
       "inventory": 0,
-      "remains": "meat",
+      "remains": "blood",
       "accuracy": 80,
       "defense": 5,
       "strength": 3
+      
     },
     "stats": {
       "health": 5
-    }
+    },
+    "default_items": [
+      "meat"
+    ]
+    
   },
   "monkey": {
     "name": "Monkey",

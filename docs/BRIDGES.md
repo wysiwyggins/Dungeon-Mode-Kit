@@ -19,7 +19,7 @@ A rope bridge is a straight line of walkable tiles that spans an **abyss** from 
 
 A bridge cell keeps `floorMap === null` — the crossing is **purely** the platform actor sitting over the void, exactly like a `collapsing_floor`. No real floor tile is laid beneath it. This is what makes it walk correctly *and* burn correctly: movement and fire code check `hasPlatformAt` alongside `hasFloorAt` (see `behaviors.js`), so while the bridge exists the cell is walkable, and when it burns the platform vanishes and the void (with its cliffside background) is revealed rather than a leftover floor tile. See [Burning and destruction](#burning-and-destruction).
 
-Rope bridge actors use connected box-drawing tiles, like the thread trail left by the ball of thread item.
+Rope bridge actors should use connected box-drawing tiles, like the thread trail left by the ball of thread item.
 
 ---
 
@@ -134,9 +134,7 @@ A floor's own `map_generator` **fully replaces** the prototype-level one (the en
 
 ## Comparison to Brogue's `buildABridge`
 
-Both solve the same problem — bridge a chasm shore-to-shore, only where it's worthwhile — but structurally differ. (Brogue source: `Architect.c`, `buildABridge`.)
-
-| | This kit | Brogue |
+| | DMK | Brogue |
 |---|----------|--------|
 | **Unit of work** | Whole abyss blob (flood-filled), one bridge per blob | Single candidate cell, scanned in random order; one bridge per call, looped `while (buildABridge())` |
 | **Shore guarantee** | Run must be the blob's **full cross-section** (geometric opposite-shores proof) | Straight chasm run with solid land at both ends + an "exposure" check that it isn't a walled corridor |
@@ -145,7 +143,7 @@ Both solve the same problem — bridge a chasm shore-to-shore, only where it's w
 | **Distribution** | Explicit one-per-abyss, largest first, `max` cap | Greedy; may stack several bridges on one big chasm |
 | **Min length** | `max(2, ceil(blobWidth·0.4))` | `> 3` spaces |
 
-The **connectivity gate is directly inspired by Brogue's `bridgeRatio` test** — the core insight that a bridge should only exist where it meaningfully shortens travel, not merely wherever a gap happens to be crossable. The main divergence is that this kit reasons about whole abyss blobs and their full cross-sections (guaranteeing opposite shores geometrically), whereas Brogue reasons per-cell and leans on its pathing-distance test to reject bad placements.
+The **connectivity gate is directly inspired by Brogue's `bridgeRatio` test** — a bridge should only exist where it meaningfully shortens travel, not merely wherever a gap happens to be crossable. The main divergence is that this kit reasons about whole abyss blobs and their full cross-sections (guaranteeing opposite shores geometrically), whereas Brogue reasons per-cell and leans on its pathing-distance test to reject bad placements.
 
 ---
 
