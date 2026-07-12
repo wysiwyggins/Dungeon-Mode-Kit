@@ -348,13 +348,16 @@
       "win_conditions": [],
       "traps": { "min": 3, "max": 30 },
       "random_actors": {
-        "basilisk": { "chance": 100, "min": 1, "max": 2 },
+        "basilisk": { "chance": 100, "min": 1, "max": 1 },
         "ogre": { "chance": 100, "min": 2, "max": 3 }
       },
       "random_items": {
         "key": { "chance": 100 },
         "potion": { "chance": 60, "min": 2, "max": 4 },
-        "warhammer": { "chance": 30 }
+        "weapon": { "chance": 30 },
+        "staff": { "chance": 30 },
+        "torch": { "chance": 30 },
+        "scroll": { "chance": 30 }
       }
     },
     {
@@ -417,8 +420,7 @@
       "traps": { "min": 3, "max": 35 },
       "random_actors": {
         "wraith": { "chance": 100, "min": 2, "max": 3 },
-        "ogre": { "chance": 100, "min": 2, "max": 3 },
-        "fire_elemental": { "chance": 80, "min": 1, "max": 1 }
+        "ogre": { "chance": 100, "min": 2, "max": 3 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -434,7 +436,6 @@
       },
       "traps": { "min": 3, "max": 35 },
       "random_actors": {
-        "fire_elemental": { "chance": 100, "min": 2, "max": 3 },
         "basilisk": { "chance": 80, "min": 1, "max": 2 }
       },
       "random_items": {
@@ -451,8 +452,8 @@
       },
       "traps": { "min": 3, "max": 35 },
       "random_actors": {
-        "fire_elemental": { "chance": 100, "min": 3, "max": 4 },
-        "demon": { "chance": 80, "min": 1, "max": 2 }
+        "rat": { "chance": 100, "min": 3, "max": 90 },
+        "vampire": { "chance": 80, "min": 0, "max": 1 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -468,8 +469,7 @@
       },
       "traps": { "min": 4, "max": 35 },
       "random_actors": {
-        "demon": { "chance": 100, "min": 2, "max": 3 },
-        "fire_elemental": { "chance": 80, "min": 1, "max": 2 }
+        "rat": { "chance": 100, "min": 2, "max": 80 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -485,7 +485,6 @@
       },
       "traps": { "min": 4, "max": 35 },
       "random_actors": {
-        "demon": { "chance": 100, "min": 3, "max": 4 },
         "basilisk": { "chance": 80, "min": 1, "max": 1 }
       },
       "random_items": {
@@ -495,15 +494,14 @@
       }
     },
     {
-      "win_conditions": ["killed:demon"],
+      "win_conditions": ["killed:minotaur"],
       "map_generator": {
         "type": "infernal",
         "options": { "map_width": 75, "map_height": 60, "lakes": { "count": [3, 6], "types": ["lava"], "minSize": 25, "maxSize": 120 }, "abyss": { "count": [3, 5], "types": ["abyss"], "minSize": 25, "maxSize": 80 }, "bridges": { "max": 5 } }
       },
       "traps": { "min": 4, "max": 40 },
       "random_actors": {
-        "demon": { "chance": 100, "min": 3, "max": 4 },
-        "fire_elemental": { "chance": 100, "min": 2, "max": 3 }
+        "minotaur": { "chance": 100, "min": 3, "max": 4 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -519,8 +517,7 @@
       },
       "traps": { "min": 5, "max": 40 },
       "random_actors": {
-        "demon": { "chance": 100, "min": 4, "max": 5 },
-        "fire_elemental": { "chance": 100, "min": 2, "max": 3 }
+        "rat": { "chance": 80, "min": 1, "max": 80 }
       },
       "random_items": {
         "key": { "chance": 100 },
@@ -536,9 +533,7 @@
       },
       "traps": { "min": 5, "max": 40 },
       "random_actors": {
-        "azhdaya_head": { "chance": 100, "min": 1, "max": 1 },
-        "demon": { "chance": 100, "min": 3, "max": 4 },
-        "fire_elemental": { "chance": 100, "min": 2, "max": 2 }
+        "azhdaya_head": { "chance": 100, "min": 1, "max": 1 }
       },
       "random_items": {
         "amulet": { "chance": 100 },

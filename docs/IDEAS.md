@@ -12,6 +12,8 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 - you can currently throw an item onto a void tile and it does not fall to the next level
 
+- scroll of shattering should check to make sure there isn't an abyss already where it creates floor under the areas it "destroys"
+
 - when an opaque actor dies, the shadow it casts remains until the next turn. likewise, when a fire actor is spawned, it does not generate light until the next turn
 
 - rings should have material names not color names
