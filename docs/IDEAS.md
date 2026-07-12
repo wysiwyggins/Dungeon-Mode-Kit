@@ -4,6 +4,8 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Bugs
 
+- on dark levels collapsable floors can be detected because they are lit like other actors rather than like floor tiles
+
 - don't float away items that are worn or equipped in deep liquid actors
 
 - overlay tile layer shouldn't be affected by line of sight blocking?
