@@ -445,6 +445,11 @@
         "WANING_GIBBOUS_MOON":[12,18],
         "LAST_QUARTER_MOON":[13,18],
         "THREE_MUSHROOM_STALKS":[14,18],
-        "THREE_MUSHROOM_CAPS":[15,18]
+        "THREE_MUSHROOM_CAPS":[15,18],
+        "OPAQUE_DOTTED_FULL_BLOCK": [16,18],
+        "SMALL_FLAG": [17,18],
+        "JUPITER": [18,18],
+        "PLUTO": [19,18],
+        "WHITE_KOPPA": [20,18]
     }
 }
