@@ -420,9 +420,9 @@ const EffectPrimitives = {
         const parseColor = (c) => (typeof c === 'string' ? parseInt(c, 16) : c);
         let palette = Array.isArray(params.colors) && params.colors.length >= 2
             ? params.colors.map(parseColor)
-            : [parseColor(params.color_a ?? 0xFF0000), parseColor(params.color_b ?? 0xFFD000)];
+            : [parseColor(params.color_a ?? 0xFF0000), parseColor(params.color_b ?? 0xFFDD00)];
         // Pre-split into RGB stops for the ticker.
-        const stops = palette.map(c => [(c >> 16) & 0xFF, (c >> 8) & 0xFF, c & 0xFF]);
+        const stops = palette.map(c => [(c >> 16) & 0xFF, (c >> 8) & 0xFF]);
         const speed = params.speed ?? 0.0015;
 
         let entry = null;

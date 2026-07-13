@@ -5,48 +5,33 @@
   "depth": 1,
   "turn_speed": 50,
   "next_level": "labyrinth",
+  "win_state": {
+    "via": "escape",
+    "exit_floor": 1,
+    "conditions": ["wearing:crown"],
+    "message": "You have escaped with the Crown of Testing"
+  },
   "mechanics": {
     "fog_of_war": false,
     "darkness": false
   },
   "traps": { "min": 2, "max": 5 },
-  "levels": [
-    {
-      "win_conditions": ["wearing:crown"],
-      "random_actors": {
-        "skeleton": { "chance": 30, "min": 0, "max": 2 },
-        "bat": { "chance": 600, "min": 0, "max": 3 },
-        "monkey": { "chance": 30, "min": 0, "max": 1 },
-        "goblin": { "chance": 30, "min": 0, "max": 2 },
-        "dynamo": { "chance": 10, "min": 0, "max": 1 }
+  "random_actors": {
+      "skeleton": { "chance": 30, "min": 0, "max": 2 },
+      "bat": { "chance": 600, "min": 0, "max": 3 },
+      "monkey": { "chance": 30, "min": 0, "max": 1 },
+      "goblin": { "chance": 30, "min": 0, "max": 2 },
+      "dynamo": { "chance": 10, "min": 0, "max": 1 }
 
-      },
-      "random_items": {
-        "staff": { "chance": 100, "min": 1, "max": 2 },
-        "potion": { "chance": 100, "min": 1, "max": 1 },
-        "potion": { "chance": 100, "min": 1, "max": 1 },
-        "potion": { "chance": 70, "min": 1, "max": 1 },
-        "potion": { "chance": 70, "min": 1, "max": 1 },
-        "scroll": { "chance": 100, "min": 0, "max": 1 },
-        "scroll": { "chance": 100, "min": 0, "max": 1 },
-        "scroll": { "chance": 60, "min": 0, "max": 1 }
-      }
     },
-    {
-      "win_conditions": ["killed:scutigera_head"],
-      "mechanics": {
-        "darkness": true,
-        "player_auto_light": false,
-        "viewport_width": 40,
-        "viewport_height": 40,
-        "ai_margin": 5
-      },
-      "random_items": {
-        "sword": { "chance": 100, "min": 1, "max": 2 },
-        "staff": { "chance": 100, "min": 1, "max": 1 },
-        "potion": { "chance": 50, "min": 1, "max": 2 },
-        "scroll": { "chance": 50, "min": 1, "max": 2 }
-      }
+    "random_items": {
+      "staff": { "chance": 100, "min": 1, "max": 2 },
+      "potion": { "chance": 100, "min": 1, "max": 1 },
+      "potion": { "chance": 100, "min": 1, "max": 1 },
+      "potion": { "chance": 70, "min": 1, "max": 1 },
+      "potion": { "chance": 70, "min": 1, "max": 1 },
+      "scroll": { "chance": 100, "min": 0, "max": 1 },
+      "scroll": { "chance": 100, "min": 0, "max": 1 },
+      "scroll": { "chance": 60, "min": 0, "max": 1 }
     }
-  ]
 }

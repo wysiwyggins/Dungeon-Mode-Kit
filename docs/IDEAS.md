@@ -4,7 +4,13 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Bugs
 
+- level win conditions currently only unlock a locked down staircase, they should ulock an up staircase when there is only one level and no next-prototype setting
+
 - on dark levels collapsable floors can be detected because they are lit like other actors rather than like floor tiles
+
+- win message needs to line wrap if it's longer than view width
+
+- don't close previously locked doors behind the player the way we close generic unlocked doors behind them as they walk through. leave the previously locked doors open.
 
 - don't float away items that are worn or equipped in deep liquid actors
 
@@ -38,20 +44,11 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ### Hero personality
 
-- a personality anmd behaviors that would automate an actor that would normally be playable, for zero player observer prototypes, code could be re-used for an (x)plore action.
+- a personality and behaviors that would automate an actor that would normally be playable, for zero player observer prototypes, behaviors could be re-used for an (x)plore action.
 
-### Game win [b]
+### Infrastructure
 
-- [x] a prototype can have win conditions, similar to levels. when the condition is met, we would fill the canvas with white full block, and write over that in letter tiles all the tracked statistics for the prototype (kills, gold, etc) and run the same color cycle effect on the canvas as the aqua vita potion.
-- the basic win conditions would be getting an object on the lowest floor to a locked exit on the top floor or killing a monster on the lowest floor. Another win condition would be being the only remaining controllable actor in a pvp game
-
-### Stepping stones
-
-If you push a pushable actor (like pushable wall) onto a deep actor like deep sewage, it appears to sink (top tile moves to base tile and is replaced by null). This also visually suggests that the actor could serve as a platform to walk on if it is next to a floor tile with no deep actor there. A desired behavior would then be, if a solid actor is on a deep tile and another actor approaches it from a tile with no deep actors, treat the "sunken" actor as platform: true and walk on it without sinking too. If an actor approaches the sunken actor from another deep tile, behave as before. This means inside the deep liquid an actor would push the pushable wall, but approching from the shore, the moving actor would visually "walk on top" of it. This might be an overcomplicated, bad idea!
-
-### PVP
-
-- A prototype should allow for mutliple player controlled actors and become a turn based mutliplayer game as a reuslt. Test this with a Chaos style vs strategy prototype
+- a hidden tile layer would use tinted, connected box drawing tiles (like the ball of thread trail) to connect actors with the same machine id. A potion would make this layer visible temporarily. Tinted box drawing lines would match the tint of the machine-id linked actors.
 
 ### Dialogue
 
@@ -63,6 +60,10 @@ If you push a pushable actor (like pushable wall) onto a deep actor like deep se
 - [ ] NPC interaction on bump — non-hostile actors open dialogue instead of attacking
 - [ ] Ending triggers — dialogue or events that trigger win/loss conditions
 - [ ] Multi-page dialogue — pagination for longer conversations
+
+### Stepping stones
+
+If you push a pushable actor (like pushable wall) onto a deep actor like deep sewage, it appears to sink (top tile moves to base tile and is replaced by null). This also visually suggests that the actor could serve as a platform to walk on if it is next to a floor tile with no deep actor there. A desired behavior would then be, if a solid actor is on a deep tile and another actor approaches it from a tile with no deep actors, treat the "sunken" actor as platform: true and walk on it without sinking too. If an actor approaches the sunken actor from another deep tile, behave as before. This means inside the deep liquid an actor would push the pushable wall, but approching from the shore, the moving actor would visually "walk on top" of it. This might be an overcomplicated, bad idea!
 
 ## Variables & Game State [b][Z]
 
@@ -92,35 +93,31 @@ If you push a pushable actor (like pushable wall) onto a deep actor like deep se
 
 ### Actors & Creatures
 
-- [ ] Auto-explore — pathfind through safe explored areas, stop on encounter [B]
+- [ ] Auto-explore — pathfind through safe explored areas, stop on encounter (see hero personality) [B]
 - [ ] Searching action to discover traps and eventually hidden doors
-- [ ] Aquatic creatures — actors restricted to water tiles, can't be pushed onto land
+- [x] Aquatic creatures — actors restricted to water tiles, can't be pushed onto land
 - [ ] Burrowing creatures — can move through wall tiles, leave tunnels behind
-- [ ] Splitting creatures — on death, spawn smaller versions (slimes, oozes) [B]
-- [ ] Invisible creatures — only visible via telepathy or adjacency (visible: false exists, but needs telepathy build-out) [B]
+- [x] Splitting creatures — on death, spawn smaller versions (slimes, oozes) [B]
+- [x] Invisible creatures — only visible via telepathy or adjacency (visible: false exists, but needs telepathy build-out) [B]
 - [ ] Creature mutations — random bonus traits applied at spawn (agile, poisonous, fire-immune) [B]
 
 ### Ally System
 
 - [ ] Ally recruitment — wand of domination or freeing imprisoned creatures [B]
-- [ ] Ally commands — follow, wait, attack target, guard area
-- [ ] Ally empowerment — spend charges to permanently increase ally stats [B]
-- [ ] Ally trait learning — allies absorb abilities from defeated enemies [B]
-- [ ] Faction system — actors with faction tags, hostility determined by faction relationships
+- [x] Faction system — actors with faction tags, hostility determined by faction relationships
 
 ### Combat
 
 - [x] Backstab — attacking unaware/sleeping enemies for bonus damage [B] (3x vs. sleeping/stunned/paralyzed or unalerted AI; engine.js `BACKSTAB_MULTIPLIER`)
 - [ ] Weapon runic enchantments — special procs beyond the existing weapon_proc system (vampiric, slowing, quietus, paralysis) [B]
 - [ ] Armor runic enchantments — defensive procs (reflection, reprisal, immunity, absorption) [B]
-- [ ] Grappling — creature seizes target, preventing movement until broken free [B]
+- [ ] Grappling — creature seizes target, preventing movement until broken free (started working on this for quicksand and an early version of jelllies, test quicksand) [B]
 
 ### Items
 
 - [ ] Charms — new item category: single charge, periodic recharge, area/self effects [B]
 - [ ] Item polarity — items classified as positive/negative, revealed before full ID [B]
 - [ ] Wand of domination — tame a wounded enemy [B]
-- [ ] Wand of empowerment — buff an ally [B]
 - [ ] Wand of plenty — clone a creature [B]
 - [ ] Containers — chests, bags that hold multiple items
 

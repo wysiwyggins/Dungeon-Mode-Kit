@@ -511,6 +511,18 @@
       "flammable": true
     }
   },
+  "tall_mushrooms": {
+    "name": "mushrooms",
+    "description": "A tall cluster of [fungi_types]",
+    "tileIndexBase": "THREE_MUSHROOM_STALKS",
+    "tileIndexTop": "THREE_MUSHROOM_CAPS",
+    "tint": "#371a94",
+    "attributes": {
+      "opaque": true,
+      "flammable": true,
+      "breakable": true
+    }
+  },
   "wall": {
     "name": "Wall",
     "tileIndexBase": "OPAQUE_DARK_SHADE",
