@@ -2557,12 +2557,12 @@ class InterfaceManager {
                 const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
                 this.engine.inputManager?.showMessage(`You throw the ${displayName}. It shatters! Its contents leak out harmlessly on the ground.`);
             } else {
-                this.engine.playSound('arrow_miss');
-                item.x = landingPoint.x;
-                item.y = landingPoint.y;
-                this.engine.entityManager.addEntity(item);
-                const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
-                this.engine.inputManager?.showMessage(`You throw the ${displayName}.`);
+                const fell = this.placeThrownItem(item, landingPoint.x, landingPoint.y);
+                if (!fell) {
+                    this.engine.playSound('arrow_miss');
+                    const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
+                    this.engine.inputManager?.showMessage(`You throw the ${displayName}.`);
+                }
             }
         }
 
@@ -2594,6 +2594,50 @@ class InterfaceManager {
 
         // This counts as a player action
         this.engine.inputManager?.onPlayerAction();
+    }
+
+    /**
+     * True if (x,y) is a void tile: no floor tile and no platform actor there.
+     * A thrown/dropped item on such a tile should fall to the floor below.
+     * @param {number} x - Tile X
+     * @param {number} y - Tile Y
+     * @returns {boolean}
+     */
+    isVoidLanding(x, y) {
+        const mapManager = this.engine.mapManager;
+        if (!mapManager) return false;
+        const hasFloor = !!mapManager.floorMap?.[y]?.[x]?.tileId;
+        if (hasFloor) return false;
+        const hasPlatform = this.engine.entityManager?.getActorsAt(x, y)
+            .some(a => !a.isDead && a.hasAttribute('platform') && a.hasAttribute('visible'));
+        return !hasPlatform;
+    }
+
+    /**
+     * Place a thrown/landed item at (x,y). If that tile is void, the item falls to
+     * the next floor instead of resting mid-air; otherwise it is added normally.
+     * Returns true if the item fell through (so the caller can adjust messaging).
+     * @param {Item} item - The item to place
+     * @param {number} x - Landing tile X
+     * @param {number} y - Landing tile Y
+     * @returns {boolean} True if the item fell to a lower floor / was lost to the void
+     */
+    placeThrownItem(item, x, y) {
+        if (this.isVoidLanding(x, y)) {
+            const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
+            const fell = this.engine.itemFallsToNextFloor(item);
+            this.engine.playSound('arrow_miss');
+            this.engine.inputManager?.showMessage(
+                fell
+                    ? `The ${displayName} plunges into the depths!`
+                    : `The ${displayName} vanishes into the void.`
+            );
+            return true;
+        }
+        item.x = x;
+        item.y = y;
+        this.engine.entityManager.addEntity(item);
+        return false;
     }
 
     /**

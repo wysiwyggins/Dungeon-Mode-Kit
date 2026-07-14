@@ -620,6 +620,7 @@ class DungeonEngine {
         this.currentFloor = 1;           // 1-indexed
         this.floorStates = new Map();    // floor# → { entities: [...], map: {...} }
         this.pendingFallenActors = new Map(); // floor# → [serialized actor data]
+        this.pendingFallenItems = new Map();  // floor# → [serialized item data] (items that fell through void/collapse)
         this.sealedDownFloors = new Set(); // floor#s whose down-stairway is sealed (win conditions unmet) → that floor's N+1 up-stairway must be locked
         this.gameplayStarted = false;    // false during the load sequence; gates sounds/messages so load-time state changes don't leak feedback before the player begins play
 
@@ -1352,6 +1353,7 @@ class DungeonEngine {
         }
 
         this.spawnPendingFallenActors();
+        this.spawnPendingFallenItems();
 
         const startGameplay = () => {
             // Play has begun — feedback (sounds/messages) is allowed from here on,
@@ -1628,6 +1630,7 @@ class DungeonEngine {
         }
 
         this.spawnPendingFallenActors();
+        this.spawnPendingFallenItems();
 
         // Restoring a cached floor has no splash/click step — play resumes immediately,
         // so allow feedback before showing the floor banner below.
@@ -2583,6 +2586,68 @@ class DungeonEngine {
         }
 
         this.pendingFallenActors.delete(this.currentFloor);
+    }
+
+    /**
+     * Send a loose (thrown/dropped) item through a void tile to the floor below.
+     * Mirrors Actor.fall: if a floor exists below, the item is queued to reappear
+     * on that floor's ground (spawnPendingFallenItems); otherwise it is lost.
+     * The item is NOT added to the current floor.
+     * @param {Item} item - The item that landed on a void tile
+     * @returns {boolean} True if the item fell to a floor below; false if lost to the void
+     */
+    itemFallsToNextFloor(item) {
+        const config = this.currentPrototype?.config;
+        const totalFloors = config?.levels ? config.levels.length : 1;
+        const hasFloorBelow = totalFloors > 1 && this.currentFloor < totalFloors;
+
+        if (!hasFloorBelow) {
+            const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
+            console.log(`${displayName} was lost to the void`);
+            return false;
+        }
+
+        const targetFloor = this.currentFloor + 1;
+        const serialized = item.serialize();
+        if (!this.pendingFallenItems.has(targetFloor)) {
+            this.pendingFallenItems.set(targetFloor, []);
+        }
+        this.pendingFallenItems.get(targetFloor).push(serialized);
+        return true;
+    }
+
+    /**
+     * Place items that fell from the floor above onto the newly-loaded floor's ground.
+     * Mirrors spawnPendingFallenActors. Called right after it during floor load.
+     */
+    spawnPendingFallenItems() {
+        const pending = this.pendingFallenItems.get(this.currentFloor);
+        if (!pending || pending.length === 0) return;
+
+        const walkableTiles = this.mapManager.walkableTiles;
+
+        for (const data of pending) {
+            const itemData = this.currentPrototype?.getItemData(data.type);
+            if (!itemData) continue;
+
+            // Prefer a walkable tile with no item already on it; fall back to any walkable tile.
+            const available = walkableTiles.filter(t =>
+                !this.entityManager.items.some(i => i.x === t.x && i.y === t.y)
+            );
+            const pool = available.length > 0 ? available : walkableTiles;
+            if (pool.length === 0) continue;
+
+            const tile = pool[Math.floor(ROT.RNG.getUniform() * pool.length)];
+            const item = new Item(tile.x, tile.y, data.type, itemData, this);
+            item.deserialize(data);
+            item.x = tile.x;
+            item.y = tile.y;
+            this.entityManager.addEntity(item);
+
+            console.log(`${item.getDisplayName ? item.getDisplayName() : item.name} landed from above at (${tile.x}, ${tile.y})`);
+        }
+
+        this.pendingFallenItems.delete(this.currentFloor);
     }
 
     /**
