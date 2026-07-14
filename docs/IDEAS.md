@@ -8,9 +8,9 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Feature ideas
 
-## Random fungus as a feature in some dungeon generators
+## Keybinding changes
 
-- adapt the tall_fungus and fungus actors to use randomized names and colors from /data/colors.json and /data/fungi_types.json. Implement a new attribute for actors that destroys them when an actor tries to move onto them. the non-tall fungus could be destroyed this way and release a new spore actor, which behaves like the existing gasses released by traps, but in a smaller amount and with a random effect that could be beneficial, similar to random potion.
+- movement keys should also be defined in keybindings.json along with actions so we can reclaim wasd for actions if needed
 
 ### Hero personality
 

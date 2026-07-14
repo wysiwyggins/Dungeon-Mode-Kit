@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>A Dungeon</title>
+    <link rel="stylesheet" href="assets/main.css" type="text/css" media="screen" charset="utf-8">
+</head>
+<body>
+    <div id="info" class="info-container">
+        <h2 id="info-name"></h2>
+        <p id="info-floor"></p>
+    </div>
+    <div class="game-container">
+        <div id="game" data-prototype="mine">
+        </div>
+        <div class="game-sidebar-text">
+            <div id="actors" class="actor-list">
+            </div>
+            <div id="items" class="item-list">
+            </div>
+            <details id="description">
+                <summary><strong>Description</strong></summary>
+                The Description of the Dungeon
+            </details>
+        </div>
+    </div>
+
+    <!-- Libraries -->
+    <script src="lib/rot.js"></script>
+    <script src="lib/pixi.min.js"></script>
+    <script src="lib/tweenjs.js"></script>
+    <script src="lib/howler.js"></script>
+    <script src="globals.js"></script>
+    <script src="architect.js"></script>
+    <script src="lighting.js"></script>
+    <script src="sound.js"></script>
+    <script src="interface.js"></script>
+    <script src="input.js"></script>
+    <script src="effects.js"></script>
+    <script src="engine.js"></script>
+    <script src="behaviors.js"></script>
+
+    <script>
+        async function startGame() {
+            try {
+                await initializeGame();
+            } catch (e) {
+                const nameEl = document.getElementById('info-name');
+                if (nameEl) {
+                    nameEl.textContent = `Error: ${e.message}`;
+                    nameEl.className = 'error';
+                }
+                console.error(e);
+            }
+        }
+
+        window.addEventListener('load', () => {
+            setTimeout(startGame, 500);
+        });
+    </script>
+</body>
+</html>

@@ -13,6 +13,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Web frontend editors for actors, items and personalities
 
+## [1.14b] 2026-07-14
+
+### Added
+
+- **Random fungus + spore clouds**: an opt-in `fungus` generation block (`{ min, max, tall_chance? }`, per prototype or per floor) scatters clustered fungus patches, each with a random name (from `fungi_types.json`) and color. Short `fungus` is walkable and glowing; walking onto it crushes it and puffs out a small spore cloud tinted to match, applying a random, usually-beneficial potion-style effect. `tall_fungus` is a solid, flammable, sight-blocking cluster. Enabled on every non-infernal dungeon floor.
+- **`crushable` actor attribute**: a general "destroyed when an actor walks onto it" attribute for non-solid actors, decoupled from the separate `spore_release` add-on (which makes a crushed actor also release a spore cloud).
+- **Consolidated terrain-regions editor**: the prototype editor's separate Lakes and Abyss checkboxes (which built duplicate forms, including an irrelevant liquid-type dropdown for abyss) are merged into one region editor; toggling a section no longer collapses it, since the editor now preserves open sections across re-renders.
+
+### Fixed
+
+- **Ascend-to-win on single-level prototypes**: a prototype can now be won by walking *onto* an up-stairway that a `win_conditions` unlock opened (e.g. wear the crown → the sealed stairs open → step onto them to win), a clean two-step flow distinct from the dungeon's bump-the-sealed-exit escape.
+- **Named bump message**: bumping a solid actor now reads "You bump into the wall." / "You bump into mushrooms." using the actor's own name, instead of always saying "a wall" (and no longer doubles up the generic message).
+
 ## [1.13b] 2026-07-02
 
 ### Added
