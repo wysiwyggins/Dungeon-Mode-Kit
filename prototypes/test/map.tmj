@@ -415,17 +415,6 @@
                  "width":40,
                  "x":880,
                  "y":450
-                }, 
-                {
-                 "height":30,
-                 "id":120,
-                 "name":"door",
-                 "rotation":0,
-                 "type":"door",
-                 "visible":true,
-                 "width":40,
-                 "x":920,
-                 "y":690
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -448,17 +437,6 @@
                  "width":40,
                  "x":560,
                  "y":450
-                }, 
-                {
-                 "height":30,
-                 "id":121,
-                 "name":"key",
-                 "rotation":0,
-                 "type":"key",
-                 "visible":true,
-                 "width":40,
-                 "x":840,
-                 "y":780
                 }],
          "opacity":1,
          "type":"objectgroup",
