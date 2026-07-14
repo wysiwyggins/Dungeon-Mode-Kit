@@ -708,6 +708,39 @@ class LightingManager {
         return { tint: 0xFFFFFF, alpha: 0 };
     }
 
+    /**
+     * The tint a floor tile visually ends up with once the darkness overlay
+     * (black, alpha from getDarknessAlpha) and light-color overlay (light hue,
+     * multiply blend) are composited over it. Used to light floor-disguised
+     * actors (render_layer:"bottom") directly on their sprite, so they read
+     * exactly like the floor tile beneath them instead of like a terrain actor.
+     * Returns a tint in 0xRRGGBB to multiply into the sprite's native tint.
+     */
+    getFloorTint(x, y, fogOfWar = false) {
+        const light = this.getLightLevel(x, y);
+        const lightTint = this.getLightTint(light);
+        const darkness = this.getDarknessAlpha(x, y, fogOfWar);
+
+        // Light-color overlay: multiply toward the light hue by its alpha.
+        let r = (lightTint >> 16) & 0xFF;
+        let g = (lightTint >> 8) & 0xFF;
+        let b = lightTint & 0xFF;
+        const colorAlpha = (light.intensity > 0 && lightTint !== 0xFFFFFF)
+            ? Math.min(0.5, light.intensity * 0.5)
+            : 0;
+        r = Math.round(255 * (1 - colorAlpha) + r * colorAlpha);
+        g = Math.round(255 * (1 - colorAlpha) + g * colorAlpha);
+        b = Math.round(255 * (1 - colorAlpha) + b * colorAlpha);
+
+        // Darkness overlay: black at `darkness.alpha` scales brightness down.
+        const dim = 1 - darkness.alpha;
+        r = Math.round(r * dim);
+        g = Math.round(g * dim);
+        b = Math.round(b * dim);
+
+        return (r << 16) | (g << 8) | b;
+    }
+
     reset() {
         // Clean up shadow entities
         for (const entity of this.shadowEntities.values()) {

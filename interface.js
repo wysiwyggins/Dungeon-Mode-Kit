@@ -2589,6 +2589,10 @@ class InterfaceManager {
             }
         }
 
+        // If the item landed on a collapsible floor, collapse it first and let the
+        // item fall through (may remove the item, so run before the trap check).
+        this.checkCollapseTrigger(landingPoint.x, landingPoint.y, item);
+
         // Check if item landed on a trap and trigger it
         this.checkTrapTrigger(landingPoint.x, landingPoint.y, item);
 
@@ -2748,6 +2752,48 @@ class InterfaceManager {
         }
 
         // Trap remains on tile (Brogue-style) - no die() call
+    }
+
+    /**
+     * If a thrown item landed on a collapsible floor actor, activate the collapse
+     * first (matching what happens when an actor steps onto it), then let the item
+     * fall through the resulting void to the floor below.
+     *
+     * The item is placed by placeThrownItem before this runs (a collapsible floor is
+     * a platform, so it is not "void" until collapsed). If the item is still a live,
+     * placed entity when the floor gives way, it drops to the next floor.
+     * @param {number} x - Landing tile X
+     * @param {number} y - Landing tile Y
+     * @param {Item} item - The item that landed
+     */
+    checkCollapseTrigger(x, y, item) {
+        const entityManager = this.engine.entityManager;
+        if (!entityManager) return;
+
+        const collapsibles = entityManager.getActorsAt(x, y)
+            .filter(a => !a.isDead && a.hasAttribute('collapsible'));
+        if (collapsibles.length === 0) return;
+
+        // Activate the collapse first (same feedback as an actor stepping on it).
+        this.engine.renderer?.effectRunner?.apply('collapse_shake');
+        this.engine.playSound('push1');
+        for (const floor of collapsibles) {
+            floor.collapse();
+        }
+
+        // If the item is still on this floor (not shattered/burned up), it now has
+        // no floor beneath it — send it down through the fresh void.
+        const stillPlaced = entityManager.items.includes(item) && !item.isDead;
+        if (stillPlaced) {
+            const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
+            const fell = this.engine.itemFallsToNextFloor(item);
+            entityManager.removeEntity(item);
+            this.engine.inputManager?.showMessage(
+                fell
+                    ? `The floor gives way and the ${displayName} plunges into the depths!`
+                    : `The floor gives way and the ${displayName} vanishes into the void.`
+            );
+        }
     }
 
     /**

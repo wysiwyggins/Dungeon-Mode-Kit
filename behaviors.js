@@ -1354,9 +1354,15 @@ const BehaviorLibrary = {
         const other = entityManager._getSolidActorAt(actor.x, actor.y);
         if (!other || other === actor) return false;
         if (!other.inventory || other.inventory.length === 0) return false;
+
+        // Only loose (unequipped) items can be swept away — worn/wielded gear stays put.
+        const looseItems = other.isItemEquipped
+            ? other.inventory.filter(i => !other.isItemEquipped(i))
+            : other.inventory;
+        if (looseItems.length === 0) return false;
         if (ROT.RNG.getUniform() >= dropChance) return false;
 
-        const item = randomElement(other.inventory);
+        const item = randomElement(looseItems);
 
         const validPositions = [];
         for (const dir of CARDINAL_DIRS) {
@@ -1376,10 +1382,6 @@ const BehaviorLibrary = {
             const dropPos = randomElement(validPositions);
             dropX = dropPos.x;
             dropY = dropPos.y;
-        }
-
-        if (other.isItemEquipped && other.isItemEquipped(item)) {
-            other.unequipItem(item);
         }
 
         const itemIndex = other.inventory.indexOf(item);

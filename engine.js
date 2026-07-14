@@ -11960,6 +11960,26 @@ class RenderSystem {
             const playerTelepathic = this.engine.entityManager?.player?.hasStateProperty?.('telepathic');
             const revealedByTelepathy = playerTelepathic && actor.hasAttribute('sentient') && !actor.hasAttribute('controlled');
 
+            // Bottom-layer actors (collapsing floors, etc.) sit in the floor plane
+            // and must read exactly like the floor tile they cover, not like a
+            // terrain actor. The static-actor path tints them with the raw light hue
+            // (and a fixed 0x333333 dim in remembered areas), so on dark levels they
+            // pop out from the surrounding floor. Instead, bake the floor's composited
+            // appearance (intensity dimming + light-color hue) straight onto the
+            // sprite's tint via getFloorTint, matching the floor's overlay result.
+            if (actor.getAttribute('render_layer') === 'bottom') {
+                if (actor.spriteBase) {
+                    actor.spriteBase.visible = true;
+                    actor.spriteBase.alpha = 1.0;
+                    const floorTint = lightingManager.getFloorTint(actor.x, actor.y, fogOfWar);
+                    actor.spriteBase.tint = this.blendTints(this.getEffectiveTint(actor), floorTint);
+                    this.setAnimationPlaying(actor.spriteBase, true);
+                }
+                if (actor.spriteTop) actor.spriteTop.visible = false;
+                if (actor.spriteSide) actor.spriteSide.visible = false;
+                continue;
+            }
+
             // Invisible actors: translucent for player, hidden for others
             if (actor.hasStateProperty?.('invisible')) {
                 if (actor.hasAttribute('controlled')) {

@@ -8,13 +8,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 - on dark levels collapsable floors can be detected because they are lit like other actors rather than like floor tiles, making them stand out
 
-- throwing an item onto a collapsable floor actor currently drops the item to the next level but doesn't activate the floor collapse first. Activate the collapse first
-
-- don't float away items that are worn or equipped in deep liquid actors
-
 - overlay tile layer shouldn't be affected by line of sight blocking?
-
-- you can currently throw an item onto a void tile and it does not fall to the next level
 
 - scroll of shattering should check to make sure there isn't an abyss already where it creates floor under the areas it "destroys"
 
