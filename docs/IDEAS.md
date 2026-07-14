@@ -10,7 +10,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Random fungus as a feature in some dungeon generators
 
-- use the tall fungus and fungus actors with randomized names and colors from /data/colors.json and /data/fungi_types.json. Implement a new attribute for actors that destroys them when an actor tries to move onto them. the non-tall fungus could be destroyed this way and release a new spore actor, which behaves like the existing gasses released by traps, but in a smaller amount and with a random effect that could be beneficial, similar to random potion.
+- adapt the tall_fungus and fungus actors to use randomized names and colors from /data/colors.json and /data/fungi_types.json. Implement a new attribute for actors that destroys them when an actor tries to move onto them. the non-tall fungus could be destroyed this way and release a new spore actor, which behaves like the existing gasses released by traps, but in a smaller amount and with a random effect that could be beneficial, similar to random potion.
 
 ### Hero personality
 

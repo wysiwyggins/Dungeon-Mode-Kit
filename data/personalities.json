@@ -218,6 +218,25 @@
   },
   "mist_behavior": { "$alias": "mist" },
 
+  "spore": {
+    "name": "Cloud",
+    "hostile": false,
+    "behaviors": [
+      "merge_clouds",
+      "cloud_spread",
+      "cloud_disperse",
+      "cloud_affect_actors",
+      "cloud_lifetime"
+    ],
+    "spread_radius": 1,
+    "spread_turns": 1,
+    "disperse_to": "mist",
+    "disperse_threshold": 5,
+    "disperse_chance": 0.5,
+    "spawn_mist_chance": 0.4
+  },
+  "spore_behavior": { "$alias": "spore" },
+
   "liquid_pooling": {
     "name": "Liquid Pooling",
     "hostile": false,

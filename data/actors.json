@@ -511,7 +511,7 @@
       "flammable": true
     }
   },
-  "tall_mushrooms": {
+  "tall_fungus": {
     "name": "mushrooms",
     "description": "A tall cluster of [fungi_types]",
     "tileIndexBase": "THREE_MUSHROOM_STALKS",
@@ -523,6 +523,7 @@
       "breakable": true
     }
   },
+  
   "wall": {
     "name": "Wall",
     "tileIndexBase": "OPAQUE_DARK_SHADE",
@@ -971,6 +972,7 @@
   },
   "fungus": {
     "name": "fungus",
+    "description": "A glowing patch of [fungi_types]",
     "tileIndexBase": {
       "x": 11,
       "y": 16
@@ -980,6 +982,9 @@
     "tint": "#33AA77",
     "lightRadius": 1,
     "attributes": {
+      "solid": false,
+      "crushable": true,
+      "spore_release": true,
       "flammable": true,
       "light_source": true,
       "mass_noun": true,
@@ -1221,6 +1226,24 @@
     },
     "collision_effect": {},
     "lifetime": 6
+  },
+  "spore": {
+    "name": "spores",
+    "tileIndexBase": "BLANK",
+    "tileIndexTop": "BLANK",
+    "animated": true,
+    "animation_frames": "mist",
+    "tint": "#88DD66",
+    "personality": "spore",
+    "attributes": {
+      "flies": true,
+      "solid": false,
+      "flammable": true,
+      "mass_noun": true,
+      "hazard_immune": true
+    },
+    "collision_effect": {},
+    "lifetime": 4
   },
   "poison_gas_trap": {
     "name": "Poison Gas Trap",

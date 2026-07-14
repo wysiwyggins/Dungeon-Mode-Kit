@@ -49,6 +49,7 @@
     {
       "win_conditions": [],
       "item_budget": false,
+      "fungus": { "min": 3, "max": 6, "tall_chance": 0.2 },
       "mechanics": {
         "fog_of_war": true,
         "darkness": true,
@@ -69,6 +70,7 @@
     {
       "win_conditions": [],
       "traps": { "min": 0, "max": 10 },
+      "fungus": { "min": 3, "max": 6, "tall_chance": 0.2 },
       "random_actors": {
         "rat": { "chance": 100, "min": 3, "max": 5 },
         "bat": { "chance": 80, "min": 1, "max": 2 },
@@ -88,6 +90,7 @@
     {
       "win_conditions": [],
       "traps": { "min": 1, "max": 10 },
+      "fungus": { "min": 4, "max": 7, "tall_chance": 0.25 },
       "switch_puzzles": {
         "min": 0, "max": 1,
         "patterns": [
@@ -119,6 +122,7 @@
     {
       "win_conditions": [],
       "traps": { "min": 1, "max": 10 },
+      "fungus": { "min": 4, "max": 7, "tall_chance": 0.25 },
       "switch_puzzles": {
         "min": 1, "max": 2,
         "patterns": [
@@ -160,6 +164,7 @@
     {
       "win_conditions": [],
       "traps": { "min": 1, "max": 20 },
+      "fungus": { "min": 4, "max": 8, "tall_chance": 0.25 },
       "switch_puzzles": {
         "min": 1, "max": 2,
         "patterns": [
@@ -199,6 +204,7 @@
     {
       "win_conditions": ["killed:ghast"],
       "traps": { "min": 2, "max": 20 },
+      "fungus": { "min": 4, "max": 8, "tall_chance": 0.3 },
       "switch_puzzles": {
         "min": 1, "max": 3,
         "patterns": [
@@ -239,6 +245,7 @@
     {
       "win_conditions": [],
       "traps": { "min": 2, "max": 20 },
+      "fungus": { "min": 4, "max": 8, "tall_chance": 0.3 },
       "random_actors": {
         "spider": { "chance": 100, "min": 2, "max": 3 },
         "skeleton": { "chance": 100, "min": 2, "max": 4 },
@@ -256,6 +263,7 @@
     {
       "win_conditions": [],
       "traps": { "min": 2, "max": 30 },
+      "fungus": { "min": 5, "max": 9, "tall_chance": 0.3 },
       "random_actors": {
         "spider": { "chance": 100, "min": 3, "max": 5 },
         "ghast": { "chance": 80, "min": 1, "max": 2 },
@@ -274,6 +282,7 @@
     {
       "win_conditions": [],
       "traps": { "min": 2, "max": 30 },
+      "fungus": { "min": 5, "max": 9, "tall_chance": 0.3 },
       "random_actors": {
         "scutigera_head": { "chance": 100, "min": 1, "max": 1 },
         "spider": { "chance": 100, "min": 3, "max": 4 }
@@ -289,6 +298,7 @@
     {
       "win_conditions": [],
       "traps": { "min": 2, "max": 30 },
+      "fungus": { "min": 5, "max": 9, "tall_chance": 0.3 },
       "random_actors": {
         "ghast": { "chance": 100, "min": 2, "max": 3 },
         "wraith": { "chance": 80, "min": 1, "max": 2 },
@@ -304,6 +314,7 @@
     {
       "win_conditions": [],
       "traps": { "min": 2, "max": 30 },
+      "fungus": { "min": 5, "max": 10, "tall_chance": 0.3 },
       "random_actors": {
         "wraith": { "chance": 100, "min": 2, "max": 3 },
         "skeleton": { "chance": 100, "min": 2, "max": 4 }
@@ -319,6 +330,7 @@
     {
       "win_conditions": ["killed:scutigera_head"],
       "traps": { "min": 2, "max": 30 },
+      "fungus": { "min": 5, "max": 10, "tall_chance": 0.3 },
       "random_actors": {
         "scutigera_head": { "chance": 100, "min": 1, "max": 1 },
         "wraith": { "chance": 100, "min": 2, "max": 3 },
@@ -334,6 +346,7 @@
     {
       "win_conditions": [],
       "traps": { "min": 2, "max": 30 },
+      "fungus": { "min": 5, "max": 10, "tall_chance": 0.35 },
       "random_actors": {
         "ogre": { "chance": 100, "min": 2, "max": 3 },
         "ghast": { "chance": 100, "min": 2, "max": 3 }
@@ -347,6 +360,7 @@
     {
       "win_conditions": [],
       "traps": { "min": 3, "max": 30 },
+      "fungus": { "min": 5, "max": 10, "tall_chance": 0.35 },
       "random_actors": {
         "basilisk": { "chance": 100, "min": 1, "max": 1 },
         "ogre": { "chance": 100, "min": 2, "max": 3 }
@@ -363,6 +377,7 @@
     {
       "win_conditions": [],
       "traps": { "min": 3, "max": 30 },
+      "fungus": { "min": 6, "max": 11, "tall_chance": 0.35 },
       "random_actors": {
         "turret": { "chance": 100, "min": 1, "max": 2 },
         "ogre": { "chance": 100, "min": 2, "max": 3 },
@@ -377,6 +392,7 @@
     {
       "win_conditions": [],
       "traps": { "min": 3, "max": 35 },
+      "fungus": { "min": 6, "max": 11, "tall_chance": 0.35 },
       "random_actors": {
         "basilisk": { "chance": 100, "min": 2, "max": 3 },
         "ogre": { "chance": 80, "min": 1, "max": 2 }
@@ -390,6 +406,7 @@
     {
       "win_conditions": [],
       "traps": { "min": 3, "max": 35 },
+      "fungus": { "min": 6, "max": 11, "tall_chance": 0.35 },
       "random_actors": {
         "turret": { "chance": 100, "min": 1, "max": 2 },
         "wraith": { "chance": 100, "min": 2, "max": 4 }
@@ -403,6 +420,7 @@
     {
       "win_conditions": ["killed:basilisk"],
       "traps": { "min": 4, "max": 35 },
+      "fungus": { "min": 6, "max": 12, "tall_chance": 0.4 },
       "random_actors": {
         "basilisk": { "chance": 100, "min": 2, "max": 2 },
         "ogre": { "chance": 100, "min": 2, "max": 3 },
@@ -418,6 +436,7 @@
     {
       "win_conditions": [],
       "traps": { "min": 3, "max": 35 },
+      "fungus": { "min": 6, "max": 12, "tall_chance": 0.4 },
       "random_actors": {
         "wraith": { "chance": 100, "min": 2, "max": 3 },
         "ogre": { "chance": 100, "min": 2, "max": 3 }

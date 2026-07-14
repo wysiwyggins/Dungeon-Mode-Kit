@@ -1203,6 +1203,14 @@ function sectionTrapsSwitches(obj) {
     if (obj.traps) {
         body.appendChild(dualRangeRow('count', obj.traps, 'min', 'max', { min: 0, max: 20, tip: 'Min–max number of traps placed on this floor.' }));
     }
+    // fungus
+    body.appendChild(toggleLine('fungus', !!obj.fungus, (on) => {
+        if (on) obj.fungus = { min: 3, max: 8, tall_chance: 0.25 }; else delete obj.fungus; commit(); render();
+    }, 'Scatter randomly-named/colored fungus patches. Short fungus is walkable and pops into a small spore cloud (random, usually-beneficial effect) when stepped on; tall fungus is a solid, sight-blocking, flammable cluster.'));
+    if (obj.fungus) {
+        body.appendChild(dualRangeRow('patches', obj.fungus, 'min', 'max', { min: 0, max: 20, tip: 'Min–max number of fungus patches placed on this floor. Each patch is an anchor plus a few clustered neighbors.' }));
+        body.appendChild(fieldRow('tall_chance', obj.fungus, 'tall_chance', { type: 'number', tip: 'Probability (0–1) that a given fungus is the tall, solid, sight-blocking variant instead of short walkable fungus. Default 0 (all short).' }));
+    }
     // switch_puzzles
     body.appendChild(toggleLine('switch_puzzles', !!obj.switch_puzzles, (on) => {
         if (on) obj.switch_puzzles = { min: 0, max: 1, patterns: [] }; else delete obj.switch_puzzles;

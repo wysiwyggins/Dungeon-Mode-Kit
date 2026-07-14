@@ -243,6 +243,58 @@ function randomElement(arr) {
 }
 
 /**
+ * Roll a random "potion-style" effect: 50/50 a state (from globalStates, excluding
+ * attached-actor states like burning) vs a stat change (70% positive), with stat
+ * magnitude scaled by the stat's max. Returns a normalized shape consumed by both
+ * random potions (Item.generateRandomEffect) and released fungus spores:
+ *   { apply_state: string|null, collision_effect: {stat:delta}|null, effect_description: string }
+ * Exactly one of apply_state / collision_effect is set (or neither, if no pools exist).
+ */
+function rollRandomEffect(engine) {
+    const playerData = engine.currentPrototype?.getActorData('player');
+    const statNames = (playerData?.stats) ? Object.keys(playerData.stats) : [];
+
+    // Build pool of applicable states (exclude those with attached_actor like burning)
+    const stateEntries = Object.entries(engine.globalStates || {})
+        .filter(([_, data]) => !data.attached_actor);
+
+    if (statNames.length === 0 && stateEntries.length === 0) {
+        return { apply_state: null, collision_effect: null, effect_description: 'It has no effect' };
+    }
+
+    // Decide: state effect vs stat effect. If only one pool exists, use that; otherwise 50/50.
+    const useStateEffect = statNames.length === 0 ? true
+        : stateEntries.length === 0 ? false
+        : ROT.RNG.getUniform() < 0.5;
+
+    if (useStateEffect) {
+        const [stateName, stateData] = randomElement(stateEntries);
+        return {
+            apply_state: stateName,
+            collision_effect: null,
+            effect_description: stateData.effect_description || stateData.name
+        };
+    }
+
+    // Pick a random stat to modify — 70% positive, 30% negative.
+    const randomStat = randomElement(statNames);
+    const isPositive = ROT.RNG.getUniform() < 0.7;
+    const statValue = playerData.stats[randomStat];
+    const maxStat = typeof statValue === 'object' ? statValue.max : statValue;
+    const magnitude = maxStat >= 50
+        ? Math.floor(ROT.RNG.getUniform() * 21) + 5  // 5-25
+        : Math.floor(ROT.RNG.getUniform() * 5) + 1;  // 1-5
+    const effectValue = isPositive ? magnitude : -magnitude;
+
+    const statCapitalized = randomStat.charAt(0).toUpperCase() + randomStat.slice(1);
+    return {
+        apply_state: null,
+        collision_effect: { [randomStat]: effectValue },
+        effect_description: effectValue > 0 ? `It restores ${statCapitalized}` : `It drains ${statCapitalized}`
+    };
+}
+
+/**
  * Parse an item-list value from a Tiled object property into an array of item-type strings.
  * Accepts a JSON array (e.g. '["crown", "torch"]'), a comma-separated string (e.g. 'crown, torch'),
  * an already-parsed array, or an empty value (→ []). Used for per-object default_items overrides.
@@ -662,7 +714,7 @@ class DungeonEngine {
     async loadGlobalData() {
         try {
             // Load global entity definitions
-            const [actorsRes, itemsRes, personalitiesRes, entitiesRes, colorsRes, adjectivesRes, attacksRes, reagentsRes, substancesRes, statesRes, wordsRes, effectsRes, keybindingsRes] = await Promise.all([
+            const [actorsRes, itemsRes, personalitiesRes, entitiesRes, colorsRes, adjectivesRes, attacksRes, reagentsRes, substancesRes, statesRes, wordsRes, effectsRes, keybindingsRes, fungiTypesRes] = await Promise.all([
                 fetch(`${globalVars.BASE_PATH}/data/actors.json`),
                 fetch(`${globalVars.BASE_PATH}/data/items.json`),
                 fetch(`${globalVars.BASE_PATH}/data/personalities.json`),
@@ -675,7 +727,8 @@ class DungeonEngine {
                 fetch(`${globalVars.BASE_PATH}/data/states.json`),
                 fetch(`${globalVars.BASE_PATH}/data/words.json`),
                 fetch(`${globalVars.BASE_PATH}/data/effects.json`),
-                fetch(`${globalVars.BASE_PATH}/data/keybindings.json`)
+                fetch(`${globalVars.BASE_PATH}/data/keybindings.json`),
+                fetch(`${globalVars.BASE_PATH}/data/fungi_types.json`)
             ]);
 
             this.globalActors = await actorsRes.json();
@@ -706,6 +759,9 @@ class DungeonEngine {
             // Load keybindings
             this.globalKeybindings = await keybindingsRes.json();
 
+            // Load flavor fungus names (used to randomize scattered fungus appearances)
+            this.globalFungiTypes = await fungiTypesRes.json();
+
             console.log('Global data loaded:', {
                 actors: Object.keys(this.globalActors).length,
                 items: Object.keys(this.globalItems).length,
@@ -717,7 +773,8 @@ class DungeonEngine {
                 reagents: Object.keys(this.globalReagents).length,
                 substances: this.globalSubstances?.substances?.length || 0,
                 states: Object.keys(this.globalStates).length,
-                effects: Object.keys(this.globalEffects).length
+                effects: Object.keys(this.globalEffects).length,
+                fungiTypes: this.globalFungiTypes?.length || 0
             });
         } catch (error) {
             console.error('Failed to load global data:', error);
@@ -732,6 +789,7 @@ class DungeonEngine {
             this.globalSubstances = { substances: [] };
             this.globalStates = {};
             this.globalEffects = {};
+            this.globalFungiTypes = [];
         }
     }
 
@@ -1797,6 +1855,7 @@ class DungeonEngine {
             random_actors: floorOverride.random_actors ?? config.random_actors ?? {},
             random_items: floorOverride.random_items ?? config.random_items ?? {},
             traps: floorOverride.traps ?? config.traps ?? null,
+            fungus: floorOverride.fungus ?? config.fungus ?? null,
             map_generator: floorOverride.map_generator ?? config.map_generator,
             mechanics: { ...(config.mechanics || {}), ...(floorOverride.mechanics || {}) },
             switch_puzzles: floorOverride.switch_puzzles ?? config.switch_puzzles ?? null,
@@ -3449,49 +3508,15 @@ class Item extends Entity {
      * @param {DungeonEngine} engine - The game engine
      */
     generateRandomEffect(engine) {
-        const playerData = engine.currentPrototype.getActorData('player');
-        const statNames = (playerData?.stats) ? Object.keys(playerData.stats) : [];
-
-        // Build pool of applicable states (exclude those with attached_actor like burning)
-        const stateEntries = Object.entries(engine.globalStates || {})
-            .filter(([_, data]) => !data.attached_actor);
-
-        if (statNames.length === 0 && stateEntries.length === 0) {
-            this.templateVars.effect_description = 'It has no effect';
-            return;
-        }
-
-        // Decide: state effect vs stat effect
-        // If only one pool exists, use that; otherwise 50/50
-        const useStateEffect = statNames.length === 0 ? true
-            : stateEntries.length === 0 ? false
-            : ROT.RNG.getUniform() < 0.5;
-
-        if (useStateEffect) {
-            // Pick a random state to apply
-            const [stateName, stateData] = randomElement(stateEntries);
-            this.setAttribute('use_effect', { apply_state: stateName });
-            this.templateVars.effect_description = stateData.effect_description || stateData.name;
-        } else {
-            // Pick a random stat to modify
-            const randomStat = randomElement(statNames);
-            // 70% chance positive, 30% chance negative
-            const isPositive = ROT.RNG.getUniform() < 0.7;
-            const statValue = playerData.stats[randomStat];
-            const maxStat = typeof statValue === 'object' ? statValue.max : statValue;
-            let magnitude;
-            if (maxStat >= 50) {
-                magnitude = Math.floor(ROT.RNG.getUniform() * 21) + 5; // 5-25
-            } else {
-                magnitude = Math.floor(ROT.RNG.getUniform() * 5) + 1; // 1-5
-            }
-            const effectValue = isPositive ? magnitude : -magnitude;
-            this.setAttribute('use_effect', { [randomStat]: effectValue });
-
-            const statCapitalized = randomStat.charAt(0).toUpperCase() + randomStat.slice(1);
-            this.templateVars.effect_description = effectValue > 0
-                ? `It restores ${statCapitalized}`
-                : `It drains ${statCapitalized}`;
+        // Shared potion-style roll (also used by fungus spores). Map the normalized
+        // result back onto this item's use_effect: a state → { apply_state }, a stat
+        // change → { [stat]: delta } (identical to the prior inline behavior).
+        const roll = rollRandomEffect(engine);
+        this.templateVars.effect_description = roll.effect_description;
+        if (roll.apply_state) {
+            this.setAttribute('use_effect', { apply_state: roll.apply_state });
+        } else if (roll.collision_effect) {
+            this.setAttribute('use_effect', roll.collision_effect);
         }
     }
 
@@ -7527,6 +7552,56 @@ class Actor extends Entity {
         this.inventory = [];
     }
 
+    /**
+     * Puff out a small spore cloud (used when a `spore_release` actor is crushed).
+     * The cloud takes a random potion-style effect (see rollRandomEffect), inherits
+     * the source's tint, and is applied immediately to `this` (the trampler) — matching
+     * the trap gas-release path, since spawnActor's applySpawnDamage runs before the
+     * effect is set. Reuses the `spore` (cloud) actor + personality for spread/dissipation.
+     * @param {Actor} source - The crushed actor supplying the cloud's color.
+     * @param {number} x
+     * @param {number} y
+     */
+    releaseSporeCloud(source, x, y) {
+        const roll = rollRandomEffect(this.engine);
+        const spore = this.engine.entityManager.spawnActor('spore', x, y);
+        if (spore) {
+            if (roll.apply_state) spore.setAttribute('apply_state', roll.apply_state);
+            if (roll.collision_effect) spore.setAttribute('collision_effect', roll.collision_effect);
+            // Match the spore cloud to the source's (randomized) color. cloud_spread
+            // copies actor.tint to every puff it spawns, so setting the origin tint
+            // colors the whole cloud. The sprites already exist (spawnActor made them
+            // with the default tint), so re-tint them directly too.
+            spore.tint = source.tint;
+            spore.originalTint = source.tint;
+            if (spore.spriteBase) spore.spriteBase.tint = source.tint;
+            if (spore.spriteTop) spore.spriteTop.tint = source.tint;
+            // Mark as the spreading origin so cloud_spread produces a small puff.
+            spore.isCloudOrigin = true;
+            spore.cloudOriginX = x;
+            spore.cloudOriginY = y;
+            spore.cloudLifetime = 4;
+        }
+
+        // spawnActor's applySpawnDamage ran before we set the effect, so apply the
+        // rolled effect to the trampler now (matches the trap victim path).
+        if (roll.apply_state) {
+            const stateData = this.engine.globalStates?.[roll.apply_state];
+            if (stateData && this.applyState) this.applyState(roll.apply_state, stateData);
+        } else if (roll.collision_effect && this.stats) {
+            for (const [stat, delta] of Object.entries(roll.collision_effect)) {
+                const s = this.stats[stat];
+                if (typeof s === 'object' && s.current !== undefined) {
+                    const capped = Math.max(0, s.current + delta);
+                    s.current = s.max !== undefined ? Math.min(s.max, capped) : capped;
+                    if (stat === 'health' && s.current <= 0) this.die();
+                }
+            }
+        }
+
+        this.playSound('gas');
+    }
+
     // Movement methods
     /**
      * Attempt to move to a new position
@@ -7747,7 +7822,15 @@ class Actor extends Entity {
 
             if (!collisionResult.attackAttempted) {
                 if (this.isPlayerControlled()) {
-                    this.engine.inputManager?.showMessage(`The ${actorAtTarget.name} blocks your way.`);
+                    // Name the thing actually blocking the move (a wall, a boulder, tall
+                    // fungus, …) instead of a generic "wall". getNameWithArticle handles
+                    // mass_noun / proper_named actors; lowercase it for the inline phrasing.
+                    const blockerName = actorAtTarget.getNameWithArticle().toLowerCase();
+                    this.engine.playSound?.('tap1');
+                    this.engine.inputManager?.showMessage(`You bump into ${blockerName}.`);
+                    // feedbackShown: we played the bump sound + a named message here, so the
+                    // input layer must not also emit its generic "You bump into a wall".
+                    return { moved: false, actionTaken: false, feedbackShown: true };
                 }
             }
             // Attack attempted (hit or miss) = action taken, even though we didn't move
@@ -7918,6 +8001,25 @@ class Actor extends Entity {
             if (other.hasAttribute('switchable') && !other.hasAttribute('toggled')) {
                 other.toggle();
             }
+        }
+
+        // Walking onto a `crushable` (non-solid) actor destroys it. `crushable` is the
+        // general "trampled when stepped on" attribute; `spore_release` is a separate,
+        // optional add-on that makes a crushed actor also puff out a small spore cloud
+        // with a random, usually-beneficial potion-style effect (see rollRandomEffect).
+        for (const other of this.engine.entityManager.getActorsAt(newX, newY)) {
+            if (other === this || other.isDead) continue;
+            if (!other.hasAttribute('crushable')) continue;
+
+            if (other.hasAttribute('spore_release')) {
+                this.releaseSporeCloud(other, newX, newY);
+                this.showMessage(`You crush ${other.getNameWithArticle()}, releasing a cloud of spores.`);
+            } else {
+                this.playSound('tap1');
+                this.showMessage(`You crush ${other.getNameWithArticle()}.`);
+            }
+            this.flash?.();
+            other.die();
         }
 
         // Collapse any collapsible platform actors at destination.
@@ -9172,8 +9274,79 @@ class EntityManager {
 
         this.spawnRandomActors(getAvailableTiles, floorConfig);
         this.spawnRandomTraps(getAvailableTiles, floorConfig);
+        this.spawnRandomFungus(getAvailableTiles, floorConfig);
         this.spawnRandomItems(getAvailableTiles, floorConfig);
         this.spawnBudgetItems(getAvailableTiles, floorConfig);
+    }
+
+    /**
+     * Give a freshly-spawned fungus actor a random appearance: a flavor name from
+     * fungi_types.json (surfaced by the look UI, which reads actor.name) and a random
+     * color from colors.json (hex → sprite tint). Each instance is randomized
+     * independently — no learnable per-run "species". The tile's mass_noun attribute
+     * means the name shows article-free ("you see puffballs").
+     */
+    randomizeFungusAppearance(actor) {
+        const engine = this.engine;
+        if (engine.globalFungiTypes?.length) {
+            actor.name = randomElement(engine.globalFungiTypes);
+        }
+        if (engine.globalColors?.length) {
+            actor.tint = parseTint(randomElement(engine.globalColors).hex);
+            actor.originalTint = actor.tint;
+        }
+    }
+
+    /**
+     * Scatter fungus during generation for prototypes that opt in via a `fungus`
+     * config block: { min, max, tall_chance?, cluster? }. Places short glowing
+     * `fungus` (spore-releasing, walkable) and, per `tall_chance`, solid sight-blocking
+     * `tall_fungus`. Modeled on spawnRandomTraps; clusters patches like pack actors.
+     */
+    spawnRandomFungus(getAvailableTiles, floorConfig) {
+        const fungusConfig = floorConfig?.fungus;
+        if (!fungusConfig) return;
+
+        const prototype = this.engine.currentPrototype;
+        const min = fungusConfig.min ?? 1;
+        const max = fungusConfig.max ?? min;
+        const tallChance = fungusConfig.tall_chance ?? 0;
+        const cluster = fungusConfig.cluster !== false; // default: clustered patches
+        const patches = min + Math.floor(ROT.RNG.getUniform() * (max - min + 1));
+
+        const placeFungus = (tile) => {
+            const type = ROT.RNG.getUniform() < tallChance ? 'tall_fungus' : 'fungus';
+            const data = prototype.getActorData(type);
+            if (!data) return null;
+            const actor = new Actor(tile.x, tile.y, type, data, this.engine);
+            this.addEntity(actor);
+            this.randomizeFungusAppearance(actor);
+            return actor;
+        };
+
+        for (let p = 0; p < patches; p++) {
+            const availableTiles = getAvailableTiles();
+            if (availableTiles.length === 0) {
+                console.warn('fungus: No tiles available');
+                break;
+            }
+
+            const anchorTile = availableTiles[Math.floor(ROT.RNG.getUniform() * availableTiles.length)];
+            placeFungus(anchorTile);
+
+            if (cluster) {
+                // A patch is the anchor plus 1-3 neighbors within Manhattan distance <= 2.
+                const extra = 1 + Math.floor(ROT.RNG.getUniform() * 3);
+                for (let i = 0; i < extra; i++) {
+                    const nearby = getAvailableTiles().filter(t =>
+                        Math.abs(t.x - anchorTile.x) + Math.abs(t.y - anchorTile.y) <= 2
+                    );
+                    if (nearby.length === 0) break;
+                    placeFungus(nearby[Math.floor(ROT.RNG.getUniform() * nearby.length)]);
+                }
+            }
+        }
+        console.log(`fungus: Spawned ${patches} patch(es)`);
     }
 
     spawnRandomTraps(getAvailableTiles, floorConfig) {
