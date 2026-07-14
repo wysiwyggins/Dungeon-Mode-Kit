@@ -255,7 +255,7 @@
                  "id":20,
                  "name":"stairs up",
                  "rotation":0,
-                 "type":"up_stairway",
+                 "type":"locked_up_stairway",
                  "visible":true,
                  "width":40,
                  "x":800,

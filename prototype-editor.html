@@ -148,7 +148,6 @@ const state = {
 
 const CATEGORY_KEYS = ['potion','scroll','staff','weapon','armor','ring','wand'];
 const GEN_TYPES = ['brogue','digger','arena','infernal'];
-const LAKE_TYPES = ['water','sewage','lava','abyss'];
 
 /* =========================================================================
    Data loading
@@ -712,8 +711,24 @@ function subTitle(t, tip) {
    Render
    ========================================================================= */
 function render() {
+    // Preserve which <details> sections the user had open. renderForm() rebuilds
+    // every section from scratch, so without this any toggle that calls render()
+    // (e.g. the carved-regions checkbox) would collapse the section the user was
+    // working in — only sections flagged open:true survived. Key off the section
+    // title text (the .sec-title span set in section()).
+    const openTitles = new Set(
+        Array.from(document.querySelectorAll('#form-sections details.section[open]'))
+            .map(d => d.querySelector('.sec-title')?.textContent)
+            .filter(Boolean)
+    );
     renderFloorTabs();
     renderForm();
+    if (openTitles.size) {
+        for (const d of document.querySelectorAll('#form-sections details.section')) {
+            const title = d.querySelector('.sec-title')?.textContent;
+            if (title && openTitles.has(title)) d.setAttribute('open', '');
+        }
+    }
     updateJSONOutput();
 }
 
@@ -911,8 +926,7 @@ function sectionMapGenerator(obj, opts = {}) {
             body.appendChild(el('div', { class: 'sub-section' }, subTitle('roomWeights', 'Relative likelihood of each room shape. Bars show each shape’s share of the total.'),
                 weightEditor(o, 'roomWeights', { choices: ['rectangle','cross','circular','cavern'] })));
         }
-        body.appendChild(lakeEditor(o, 'lakes', 'lakes'));
-        body.appendChild(lakeEditor(o, 'abyss', 'abyss'));
+        body.appendChild(carvedRegionsEditor(o));
         if (t === 'brogue') {
             body.appendChild(objNumRow('bridges.max', o, 'bridges', 'max', { tip: 'Maximum bridges placed across lakes/abyss so the player can cross.' }));
             body.appendChild(collapsingEditor(o));
@@ -951,33 +965,101 @@ function objNumRow(label, obj, parentKey, childKey, opts = {}) {
     return fieldRow(label, obj[parentKey], childKey, { type: 'number', tip: opts.tip });
 }
 
-function lakeEditor(o, key, label) {
-    const lakeTip = key === 'abyss'
-        ? 'Bottomless-pit zones carved into the map. Toggle to add abyss regions.'
-        : 'Liquid regions (water/sewage/lava) carved into the map. Toggle to add lakes.';
+// Liquid types available to a lakes group (no 'abyss' — void is its own group,
+// stored under options.abyss, not mixed into the liquid pool).
+const LIQUID_TYPES = ['water', 'sewage', 'lava'];
+
+// Consolidated "carved regions" editor. The engine (architect.js
+// generateOverlayBlobs) reads two blob-config keys: options.lakes (liquid pool)
+// and options.abyss (void). Previously each got its own near-identical form via
+// lakeEditor, and abyss's form showed an irrelevant liquid-types dropdown that
+// even listed 'abyss' as a liquid. Here they're presented as one section listing
+// the region groups that exist — a liquid group (→ options.lakes) and/or an abyss
+// group (→ options.abyss) — each with its own count/size, and the liquid group
+// with a real liquid-type pool. The data shape written is unchanged, so no
+// engine or prototype.json changes are needed.
+function carvedRegionsEditor(o) {
+    const tip = 'Regions carved into the map: liquid lakes (water/sewage/lava) and/or bottomless abyss pits. Bridges can span either so the player can cross.';
     const wrap = el('div', { class: 'sub-section' });
-    const enable = el('label', { class: 'toggle-line', title: lakeTip });
+    const enable = el('label', { class: 'toggle-line', title: tip });
     const cb = el('input', { type: 'checkbox' });
-    cb.checked = !!o[key];
+    cb.checked = !!(o.lakes || o.abyss);
     cb.addEventListener('change', () => {
-        if (cb.checked) o[key] = { count: [1, 2], types: ['water'], minSize: 15, maxSize: 60 };
-        else delete o[key];
+        if (cb.checked) o.lakes = { count: [1, 2], types: ['water'], minSize: 15, maxSize: 60 };
+        else { delete o.lakes; delete o.abyss; }
         commit(); render();
     });
-    enable.append(cb, ' ' + label);
-    enable.appendChild(el('span', { class: 'tip-mark', title: lakeTip }, ' ⓘ'));
+    enable.append(cb, ' carved regions');
+    enable.appendChild(el('span', { class: 'tip-mark', title: tip }, ' ⓘ'));
     wrap.appendChild(enable);
-    if (o[key]) {
-        const lk = o[key];
-        wrap.appendChild(dualRangeArrayRow('count', lk, 'count', { min: 0, max: 6, tip: 'Min–max number of separate ' + label + ' regions per floor.' }));
-        wrap.appendChild(subTitle('types (weighted pool)', 'Which liquid types these regions use. Each type’s weight is its share of the random pick.'));
-        wrap.appendChild(weightEditor(lk, 'types', { mode: 'pool', choices: LAKE_TYPES }));
-        wrap.appendChild(fieldGrid(
-            fieldRow('minSize', lk, 'minSize', { type: 'number', tip: 'Smallest size (in tiles) of a single ' + label + ' region.' }),
-            fieldRow('maxSize', lk, 'maxSize', { type: 'number', tip: 'Largest size (in tiles) of a single ' + label + ' region.' }),
-        ));
+
+    if (o.lakes || o.abyss) {
+        // Liquid group (options.lakes)
+        if (o.lakes) {
+            wrap.appendChild(regionGroup(o, 'lakes', 'Lakes (liquid)', {
+                countTip: 'Min–max number of separate liquid regions per floor.',
+                sizeTip: 'size (in tiles) of a single liquid region.',
+                liquid: true,
+            }));
+        } else {
+            wrap.appendChild(addRegionBtn('+ add liquid lakes', () => {
+                o.lakes = { count: [1, 2], types: ['water'], minSize: 15, maxSize: 60 };
+                commit(); render();
+            }));
+        }
+        // Abyss group (options.abyss) — void, no liquid-type picker.
+        if (o.abyss) {
+            wrap.appendChild(regionGroup(o, 'abyss', 'Abyss (bottomless void)', {
+                countTip: 'Min–max number of separate abyss regions per floor.',
+                sizeTip: 'size (in tiles) of a single abyss region.',
+                liquid: false,
+            }));
+        } else {
+            wrap.appendChild(addRegionBtn('+ add abyss pits', () => {
+                o.abyss = { count: [1, 2], types: ['abyss'], minSize: 15, maxSize: 50 };
+                commit(); render();
+            }));
+        }
     }
     return wrap;
+}
+
+function addRegionBtn(label, onClick) {
+    const b = el('button', { class: 'add-btn' }, label);
+    b.addEventListener('click', onClick);
+    return el('div', { class: 'sub' }, b);
+}
+
+// One carved-region group bound to o[key] ({count,types,minSize,maxSize}).
+// A liquid group gets a weighted liquid-type pool; the abyss group is always
+// type ['abyss'] so it shows no type picker. Each group has a remove (×) button.
+function regionGroup(o, key, title, opts) {
+    const g = el('div', { class: 'sub-section' });
+    const head = el('div', { class: 'sub-section-title' }, title);
+    const rm = el('button', { class: 'remove-btn', title: 'remove ' + title }, '×');
+    rm.addEventListener('click', () => {
+        delete o[key];
+        // Removing the last group turns the whole feature off; keep the shape sane.
+        commit(); render();
+    });
+    head.appendChild(rm);
+    g.appendChild(head);
+
+    const grp = o[key];
+    if (!Array.isArray(grp.count)) grp.count = [1, 2];
+    g.appendChild(dualRangeArrayRow('count', grp, 'count', { min: 0, max: 6, tip: opts.countTip }));
+    if (opts.liquid) {
+        if (!Array.isArray(grp.types) || !grp.types.length) grp.types = ['water'];
+        g.appendChild(subTitle('types (weighted pool)', 'Which liquid types these lakes use. Each type’s weight is its share of the random pick.'));
+        g.appendChild(weightEditor(grp, 'types', { mode: 'pool', choices: LIQUID_TYPES }));
+    } else {
+        grp.types = ['abyss'];
+    }
+    g.appendChild(fieldGrid(
+        fieldRow('minSize', grp, 'minSize', { type: 'number', tip: 'Smallest ' + opts.sizeTip }),
+        fieldRow('maxSize', grp, 'maxSize', { type: 'number', tip: 'Largest ' + opts.sizeTip }),
+    ));
+    return g;
 }
 
 function collapsingEditor(o) {

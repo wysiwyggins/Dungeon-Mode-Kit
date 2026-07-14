@@ -2221,6 +2221,12 @@ class DungeonEngine {
                 console.log(`Using stairway ${direction} to ${targetLevel}`);
                 const entryDirection = direction === 'down' ? 'from_above' : 'from_below';
                 await this.transitionToPrototype(targetLevel, true, entryDirection);
+            } else if (direction === 'up' && config.win_state) {
+                // Dead-end up-stairway on a single-level prototype IS the exit. It only
+                // became walkable because unlockWinConditionStairways() opened it, which
+                // only happens once the win condition held (and unequipping re-seals it),
+                // so reaching it is proof of victory — no need to re-check conditions.
+                this.triggerGameWin();
             } else {
                 console.log(`No ${direction === 'down' ? 'next' : 'previous'} level configured`);
             }
@@ -2236,6 +2242,13 @@ class DungeonEngine {
                 await this.transitionToFloor(this.currentFloor - 1, 'from_below');
             } else if (config.previous_level) {
                 await this.transitionToPrototype(config.previous_level, true, 'from_below');
+            } else if (config.win_state) {
+                // Top floor with nowhere above and a win_state: the up-stairway is the
+                // exit. Entering it wins (same rationale as the single-level branch — the
+                // stairway is only walkable because the win condition unlocked it). The
+                // dungeon's floor-1 escape exit stays solid/locked, so it's bumped (see
+                // the locked-stairway path), never walked onto, and never reaches here.
+                this.triggerGameWin();
             }
         }
     }

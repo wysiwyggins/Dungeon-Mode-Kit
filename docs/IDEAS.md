@@ -4,14 +4,6 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Bugs
 
-- level win conditions currently only unlock a locked down staircase, they should ulock an up staircase when there is only one level and no next-prototype setting
-
-- when an opaque actor dies, the shadow it casts remains until the next turn. likewise, when a fire actor is spawned, it does not generate light until the next turn
-
-- prototype editor has lake and abyss checkboxes that create the same forms including a dropdown for either lake or abyss options, consolidate this. also checkbox selection here collapses the section when changed
-
-- mass noun attribute for items in addition to actors. ("meat" rather that "A meat")
-
 ---
 
 ## Feature ideas

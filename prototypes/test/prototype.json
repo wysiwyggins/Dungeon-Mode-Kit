@@ -4,11 +4,8 @@
   "description": "Welcome to the Dungeon of Doom. \nFind the crown and wear it to clear the way downward. \nPress '?' for help. Use arrow keys or mouse to move.",
   "depth": 1,
   "turn_speed": 50,
-  "next_level": "labyrinth",
+  "win_conditions": ["wearing:crown"],
   "win_state": {
-    "via": "escape",
-    "exit_floor": 1,
-    "conditions": ["wearing:crown"],
     "message": "You have escaped with the Crown of Testing"
   },
   "mechanics": {
