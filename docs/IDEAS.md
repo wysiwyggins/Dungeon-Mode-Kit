@@ -6,8 +6,6 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 - level win conditions currently only unlock a locked down staircase, they should ulock an up staircase when there is only one level and no next-prototype setting
 
-- scroll of shattering should check to make sure there isn't an abyss already where it creates floor under the areas it "destroys." Currently it assumes it is exploding solid rock, since we don't actually create wall actors for all the areas in between walls of generated areas, we create floor sometimes when mining or shattering. It's possible that there was intentionally no floor, however.
-
 - when an opaque actor dies, the shadow it casts remains until the next turn. likewise, when a fire actor is spawned, it does not generate light until the next turn
 
 - prototype editor has lake and abyss checkboxes that create the same forms including a dropdown for either lake or abyss options, consolidate this. also checkbox selection here collapses the section when changed

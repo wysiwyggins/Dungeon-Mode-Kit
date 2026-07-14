@@ -9772,10 +9772,25 @@ class EntityManager {
         if (!wallData) return;
 
         const DUG_FLOOR_TILE = 135;
+        // Void backgrounds: flat black (217) plus the cliffside shading tiles that
+        // addBaseAndShadows (architect.js) paints ALONG abyss edges — SHADOW_DIAGONAL
+        // (128) and DARK_SHADE (178). Those are only ever set on floorless 217 cells,
+        // so all three still mean "bottomless void", just rendered as a shaded cliff.
+        const VOID_BG_TILES = new Set([217, 178, 128]);
         const clearedSet = new Set(clearedPositions.map(p => `${p.x},${p.y}`));
+
+        // An abyss cell (void background, no floor) is a deliberate bottomless pit —
+        // NOT missing floor to be filled in. Digging must leave it as the void rather
+        // than paving it over, otherwise shattering next to an abyss erases the pit
+        // (including its shaded cliff edges, which read as void too).
+        const isAbyss = (x, y) => {
+            const bg = mapManager.backgroundMap[y]?.[x];
+            return bg && VOID_BG_TILES.has(bg.tileId) && mapManager.floorMap[y]?.[x] == null;
+        };
 
         for (const { x, y } of clearedPositions) {
             if (x < 0 || x >= mapManager.width || y < 0 || y >= mapManager.height) continue;
+            if (isAbyss(x, y)) continue;
             if (!mapManager.floorMap[y][x]) {
                 mapManager.floorMap[y][x] = { tileId: DUG_FLOOR_TILE, layer: 'floor' };
                 this.engine.renderer?.renderTileAt('floor', x, y, mapManager);
@@ -9793,6 +9808,7 @@ class EntityManager {
 
                 if (nx < 0 || nx >= mapManager.width || ny < 0 || ny >= mapManager.height) continue;
                 if (clearedSet.has(`${nx},${ny}`)) continue;
+                if (isAbyss(nx, ny)) continue;
                 if (mapManager.floorMap[ny]?.[nx]) continue;
                 if (this.getActorAt(nx, ny)) continue;
 
