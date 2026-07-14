@@ -820,7 +820,8 @@
     "name": "Staff of Fireball",
     "tileIndex": "SOLIDUS",
     "identified": false,
-    "unidentified_template": "[substances.substances] staff",
+    "random_material": true,
+    "unidentified_template": "[material] staff",
     "identified_template": "Staff of Fireball",
     "attributes": {
       "pickupable": true,
@@ -841,7 +842,7 @@
       "projectile_tint": "#FF6600",
       "spell_name": "Fireball",
       "cast_sound": "fireball",
-      "description": "A [substances.substances] staff."
+      "description": "A [material] staff."
     },
     "stats": {
       "pow": {
@@ -857,7 +858,8 @@
     "tileIndex": "SOLIDUS",
     "tint": "#AADDFF",
     "identified": false,
-    "unidentified_template": "[substances.substances] staff",
+    "random_material": true,
+    "unidentified_template": "[material] staff",
     "identified_template": "Staff of Lightning",
     "attributes": {
       "pickupable": true,
@@ -877,7 +879,7 @@
       "projectile_tint": "#FFFF44",
       "spell_name": "Lightning",
       "cast_sound": "squarewave",
-      "description": "A [substances.substances] staff."
+      "description": "A [material] staff."
     },
     "stats": {
       "pow": {
@@ -893,7 +895,8 @@
     "tileIndex": "SOLIDUS",
     "tint": "#44CC44",
     "identified": false,
-    "unidentified_template": "[substances.substances] staff",
+    "random_material": true,
+    "unidentified_template": "[material] staff",
     "identified_template": "Staff of Poison",
     "attributes": {
       "pickupable": true,
@@ -912,7 +915,7 @@
       "projectile_tint": "#44CC44",
       "spell_name": "Poison",
       "cast_sound": "magic",
-      "description": "A [substances.substances] staff."
+      "description": "A [material] staff."
     },
     "stats": {
       "pow": {
@@ -928,7 +931,8 @@
     "tileIndex": "SOLIDUS",
     "tint": "#AADDFF",
     "identified": false,
-    "unidentified_template": "[substances.substances] staff",
+    "random_material": true,
+    "unidentified_template": "[material] staff",
     "identified_template": "Staff of Blinking",
     "attributes": {
       "pickupable": true,
@@ -946,7 +950,7 @@
       "projectile_tint": "#AADDFF",
       "spell_name": "Blinking",
       "cast_sound": "magic",
-      "description": "A [substances.substances] staff."
+      "description": "A [material] staff."
     },
     "stats": {
       "pow": {
@@ -1620,9 +1624,9 @@
   "ring_of_regeneration": {
     "name": "Ring",
     "tileIndex": "WHITE_RING",
-    "random_color": true,
+    "random_material": true,
     "identified": false,
-    "unidentified_template": "[color] ring",
+    "unidentified_template": "[material] ring",
     "identified_template": "Ring of Regeneration",
     "effect_description": "Your wounds mend slowly",
     "attributes": {
@@ -1639,9 +1643,9 @@
   "ring_of_protection": {
     "name": "Ring",
     "tileIndex": "WHITE_RING",
-    "random_color": true,
+    "random_material": true,
     "identified": false,
-    "unidentified_template": "[color] ring",
+    "unidentified_template": "[material] ring",
     "identified_template": "Ring of Protection",
     "effect_description": "You feel shielded",
     "attributes": {
@@ -1658,9 +1662,9 @@
   "ring_of_strength": {
     "name": "Ring",
     "tileIndex": "WHITE_RING",
-    "random_color": true,
+    "random_material": true,
     "identified": false,
-    "unidentified_template": "[color] ring",
+    "unidentified_template": "[material] ring",
     "identified_template": "Ring of Strength",
     "effect_description": "Power courses through you",
     "attributes": {
@@ -1677,9 +1681,9 @@
   "ring_of_awareness": {
     "name": "Ring",
     "tileIndex": "WHITE_RING",
-    "random_color": true,
+    "random_material": true,
     "identified": false,
-    "unidentified_template": "[color] ring",
+    "unidentified_template": "[material] ring",
     "identified_template": "Ring of Awareness",
     "effect_description": "Your senses sharpen",
     "attributes": {
@@ -1696,9 +1700,9 @@
   "ring_of_sustenance": {
     "name": "Ring",
     "tileIndex": "WHITE_RING",
-    "random_color": true,
+    "random_material": true,
     "identified": false,
-    "unidentified_template": "[color] ring",
+    "unidentified_template": "[material] ring",
     "identified_template": "Ring of Sustenance",
     "effect_description": "Hunger fades",
     "attributes": {
@@ -1715,9 +1719,9 @@
   "ring_of_light": {
     "name": "Ring",
     "tileIndex": "WHITE_RING",
-    "random_color": true,
+    "random_material": true,
     "identified": false,
-    "unidentified_template": "[color] ring",
+    "unidentified_template": "[material] ring",
     "identified_template": "Ring of Light",
     "effect_description": "A warm glow surrounds you",
     "attributes": {

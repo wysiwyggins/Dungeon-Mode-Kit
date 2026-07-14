@@ -3082,11 +3082,13 @@ class InterfaceManager {
             return;
         }
 
-        // Check spell range (only if defined)
+        // Check spell range (only if defined). Don't reveal the range boundary for an
+        // unidentified item — the gray out-of-range flip would let the player read off
+        // the exact range (and thus narrow down the item) before identifying it.
         const range = this.spellItem?.getAttribute('spell_range');
         let pathColor = 0xFF6600; // Default orange for spells
 
-        if (range) {
+        if (range && this.spellItem?.identified) {
             const dx = targetX - this.spellCaster.x;
             const dy = targetY - this.spellCaster.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
@@ -3133,7 +3135,9 @@ class InterfaceManager {
             return;
         }
 
-        // Check spell range (only if spell_range is defined)
+        // Check spell range (only if spell_range is defined). Tiles actually cast to.
+        let castX = targetX;
+        let castY = targetY;
         const range = this.spellItem.getAttribute('spell_range');
         if (range) {
             const dx = targetX - this.spellCaster.x;
@@ -3141,9 +3145,27 @@ class InterfaceManager {
             const distance = Math.sqrt(dx * dx + dy * dy);
 
             if (distance > range) {
-                const displayName = this.spellItem.getDisplayName ? this.spellItem.getDisplayName() : this.spellItem.name;
-                this.engine.inputManager?.showMessage(`Target is out of range for ${displayName}.`);
-                return;
+                if (this.spellItem.identified) {
+                    // Identified item: enforce the known range with a clear message.
+                    const displayName = this.spellItem.getDisplayName ? this.spellItem.getDisplayName() : this.spellItem.name;
+                    this.engine.inputManager?.showMessage(`Target is out of range for ${displayName}.`);
+                    return;
+                }
+                // Unidentified item: don't reveal the range by rejecting the cast (that
+                // would let the player fish for the exact range). Silently clamp the
+                // target to the last in-range tile along the aim line so the effect can't
+                // reach farther than the true range either.
+                const clamped = getLinePath(this.spellCaster.x, this.spellCaster.y, targetX, targetY)
+                    .filter(p => {
+                        const pdx = p.x - this.spellCaster.x;
+                        const pdy = p.y - this.spellCaster.y;
+                        return Math.sqrt(pdx * pdx + pdy * pdy) <= range;
+                    });
+                const endpoint = clamped[clamped.length - 1];
+                if (endpoint) {
+                    castX = endpoint.x;
+                    castY = endpoint.y;
+                }
             }
         }
 
@@ -3155,8 +3177,8 @@ class InterfaceManager {
         const pathResult = this.engine.renderer?.showLinePath(
             this.spellCaster.x,
             this.spellCaster.y,
-            targetX,
-            targetY,
+            castX,
+            castY,
             undefined,
             null,
             isBolt ? { passThrough: true } : {}

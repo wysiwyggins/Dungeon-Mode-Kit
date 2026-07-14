@@ -450,6 +450,7 @@
         "SMALL_FLAG": [17,18],
         "JUPITER": [18,18],
         "PLUTO": [19,18],
-        "WHITE_KOPPA": [20,18]
+        "WHITE_KOPPA": [20,18],
+        "INVERSE_BOX_LEFT_VERTICAL": [21,18]
     }
 }

@@ -2710,6 +2710,10 @@ class Prototype {
         // This ensures all instances of the same item type get the same random color
         this.itemColorAssignments = new Map();
 
+        // Random material assignments: maps item type -> material name string (e.g. "iron")
+        // Used by rings, which are named by material rather than color
+        this.itemMaterialAssignments = new Map();
+
         // Glyph name assignments: maps item type -> runic two-word string (e.g. "KZAMRN BIVUHL")
         // Ensures all instances of the same scroll type show the same unidentified name
         this.glyphNameAssignments = new Map();
@@ -2852,6 +2856,30 @@ class Prototype {
             this.itemColorAssignments.set(itemType, randomColor);
             console.log(`Assigned color '${randomColor.color}' (${randomColor.hex}) to item type '${itemType}'`);
             return randomColor;
+        }
+
+        return null;
+    }
+
+    /**
+     * Get or assign a random material name for an item type (e.g. rings).
+     * Mirrors getColorForItemType: all instances of the same type share the
+     * same material within this prototype, so the unidentified name (e.g.
+     * "iron ring") is a stable, learnable label. Materials come from
+     * substances.json (minerals, woods, metals) rather than colors.
+     * @returns {string|null}
+     */
+    getMaterialForItemType(itemType) {
+        if (this.itemMaterialAssignments.has(itemType)) {
+            return this.itemMaterialAssignments.get(itemType);
+        }
+
+        const materials = this.engine.globalSubstances?.substances;
+        if (materials && materials.length > 0) {
+            const material = randomElement(materials);
+            this.itemMaterialAssignments.set(itemType, material);
+            console.log(`Assigned material '${material}' to item type '${itemType}'`);
+            return material;
         }
 
         return null;
@@ -3110,6 +3138,16 @@ class Item extends Entity {
             }
         } else {
             this.tint = parseTint(data.tint);
+        }
+
+        // Handle random material assignment for items with random_material flag (rings).
+        // Rings are named by material ("iron ring") rather than color; the material is
+        // memoized per type so all rings of one kind share a stable unidentified name.
+        if (data.random_material && engine.currentPrototype) {
+            const material = engine.currentPrototype.getMaterialForItemType(type);
+            if (material) {
+                this.templateVars.material = material;
+            }
         }
 
         // Handle glyph name assignment for items with random_glyph_name flag (scrolls)
@@ -3933,7 +3971,12 @@ class Actor extends Entity {
             if (target.hasAttribute('openable') && effects.open !== undefined) {
                 const shouldOpen = activated ? effects.open : !effects.open;
                 if (shouldOpen) {
-                    if (target.hasAttribute('locked')) target.setAttribute('locked', false);
+                    if (target.hasAttribute('locked')) {
+                        target.setAttribute('locked', false);
+                        // A switch-unlocked door/gate is "previously locked" too — don't
+                        // auto-close it behind the player.
+                        target.setAttribute('was_locked', true);
+                    }
                     target.open();
                 } else {
                     target.close(true);
@@ -7012,6 +7055,9 @@ class Actor extends Entity {
 
                     if (targetLockColor && sourceLockColor && targetLockColor === sourceLockColor) {
                         target.setAttribute(key, value);
+                        // Remember it was locked so we don't auto-close it behind the
+                        // player the way we do generic (never-locked) doors.
+                        target.setAttribute('was_locked', true);
                         console.log(`${source.name} (${sourceLockColor}) unlocks ${target.name} (${targetLockColor})!`);
                         sourceApplied = true;
                         this.engine.playSound?.('lock');
@@ -7048,6 +7094,9 @@ class Actor extends Entity {
                             !target.hasAttribute('gate');
                         if (isGenericLockableDoor) {
                             target.setAttribute(key, value);
+                            // Remember it was locked so we don't auto-close it behind the
+                            // player the way we do generic (never-locked) doors.
+                            target.setAttribute('was_locked', true);
                             console.log(`${source.name} unlocks ${target.name} (generic lock)`);
                             sourceApplied = true;
                             this.engine.playSound?.('lock');
@@ -7504,7 +7553,9 @@ class Actor extends Entity {
                             `The ${actorAtTarget.name} is jammed shut with a spike.`
                         );
                     }
-                    return { moved: false, actionTaken: false };
+                    // feedbackShown: we already played a sound + messaged, so the
+                    // input layer must not also emit its generic "bump into a wall".
+                    return { moved: false, actionTaken: false, feedbackShown: true };
                 }
                 // Check if locked - play rejection sound and block
                 if (actorAtTarget.hasAttribute('locked')) {
@@ -7527,7 +7578,9 @@ class Actor extends Entity {
                             || `The ${actorAtTarget.name} is locked.`;
                         this.engine.inputManager?.showMessage(lockedMsg);
                     }
-                    return { moved: false, actionTaken: false };
+                    // feedbackShown: the plunk3 + "is locked" message above is the
+                    // player's feedback; suppress the input layer's "bump into a wall".
+                    return { moved: false, actionTaken: false, feedbackShown: true };
                 }
                 actorAtTarget.open();
                 this.engine.updateLighting();
@@ -7643,7 +7696,10 @@ class Actor extends Entity {
                 this._lastPosition.x, this._lastPosition.y
             );
             for (const actor of actorsAtOldPos) {
-                if (actor.hasAttribute('openable') && actor.getAttribute('open') && !actor.hasAttribute('spiked')) {
+                // Leave previously-locked doors open once unlocked — only auto-close
+                // generic (never-locked) doors behind the player.
+                if (actor.hasAttribute('openable') && actor.getAttribute('open') &&
+                    !actor.hasAttribute('spiked') && !actor.getAttribute('was_locked')) {
                     actor.close(true);
                 }
             }

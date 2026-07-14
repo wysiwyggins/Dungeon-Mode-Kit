@@ -6,11 +6,11 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 - level win conditions currently only unlock a locked down staircase, they should ulock an up staircase when there is only one level and no next-prototype setting
 
-- on dark levels collapsable floors can be detected because they are lit like other actors rather than like floor tiles
+- on dark levels collapsable floors can be detected because they are lit like other actors rather than like floor tiles, making them stand out
+
+- throwing an item onto a collapsable floor actor currently drops the item to the next level but doesn't activate the floor collapse first. Activate the collapse first
 
 - win message needs to line wrap if it's longer than view width
-
-- don't close previously locked doors behind the player the way we close generic unlocked doors behind them as they walk through. leave the previously locked doors open.
 
 - don't float away items that are worn or equipped in deep liquid actors
 
@@ -22,25 +22,21 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 - when an opaque actor dies, the shadow it casts remains until the next turn. likewise, when a fire actor is spawned, it does not generate light until the next turn
 
-- rings should have material names not color names
-
-- staff of blinking shouldn't reveal its range before it has been identified
-
-- walking into a locked door displays both 'the door is locked' and you 'bump into a wall' messages.
-
 - prototype editor has lake and abyss checkboxes that create the same forms including a dropdown for either lake or abyss options, consolidate this. also checkbox selection here collapses the section when changed
 
-- jackals should be aligned
-
-- don't use up keys on unlocked doors, don't distribute generic (unpaired) keys on levels without generic locked doors
+- jackals should be aligned with each other
 
 - mass noun attribute for items in addition to actors. (meat)
 
-- The word "inverse" is used inconsistently in tile names. Some names, like inverse box drawing tiles, should be "white"
+- The word "inverse" is used inconsistently in tile names. Some names, like inverse box drawing tiles, should be "white." Inverse bullet, for example, should stay the same.
 
 ---
 
 ## Feature ideas
+
+## Random fungus as a feature in some dungeon generators
+
+- use the tall fungus and fungus actors with randomized names and colors from /data/colors.json and /data/fungi_types.json. Implement a new attribute for actors that destroys them when an actor tries to move onto them. the non-tall fungus could be destroyed this way and release a new spore actor, which behaves like the existing gasses released by traps, but in a smaller amount and with a random effect that could be beneficial, similar to random potion.
 
 ### Hero personality
 

@@ -509,7 +509,8 @@ class InputManager {
                 const result = player.moveBy(dx, dy);
                 if (result.moved) {
                     this.engine.playSoundVaried(result.entrySound || 'feets', 0.4, 0.1, 1.0, 0.06);
-                } else if (!result.actionTaken) {
+                } else if (!result.actionTaken && !result.feedbackShown) {
+                    // tryMove already played its own rejection sound when feedbackShown.
                     this.engine.playSound('tap1');
                 }
                 if (result.actionTaken) this.onPlayerAction();
@@ -666,7 +667,8 @@ class InputManager {
             }
         } else {
             // Movement blocked - stop auto-walk
-            if (!result.actionTaken) {
+            if (!result.actionTaken && !result.feedbackShown) {
+                // tryMove already played its own rejection sound when feedbackShown.
                 this.engine.playSound('tap1');
             }
             this.stopAutoWalk();
@@ -1277,8 +1279,10 @@ class InputManager {
             if (result.moved) {
                 const sound = result.entrySound || 'feets';
                 this.engine.playSoundVaried(sound, 0.4, 0.1, 1.0, 0.06);
-            } else if (!result.actionTaken) {
-                // Bumped into a wall or obstacle with no effect
+            } else if (!result.actionTaken && !result.feedbackShown) {
+                // Bumped into a wall or obstacle with no effect. If tryMove already
+                // played a sound + showed a message (e.g. locked/spiked door), it sets
+                // feedbackShown so we don't double up with a generic wall-bump.
                 this.engine.playSound('tap1');
                 this.showMessage("You bump into a wall.");
             }

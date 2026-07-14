@@ -8,7 +8,7 @@ Bridge generation lives entirely in `architect.js` (`generateBridges`), runs dur
 
 ## What a bridge is
 
-A rope bridge is a straight line of walkable tiles that spans an **abyss** from one solid shore to the opposite shore — `walkable floor → bridge tiles → walkable floor`. Each bridge tile becomes a `rope_bridge` actor (see `data/actors.json`), which is:
+A rope bridge is a straight line of walkable tiles that spans an **abyss** from one solid shore to the opposite shore — `walkable floor → bridge tiles → walkable floor`. A single abyss can carry two crossings on opposite axes that meet in a `+` **intersection** (see [Intersecting crossings](#intersecting-crossings)). Each bridge tile becomes a `rope_bridge` actor (see `data/actors.json`), which is:
 
 | Attribute | Value | Meaning |
 |-----------|-------|---------|
@@ -18,8 +18,7 @@ A rope bridge is a straight line of walkable tiles that spans an **abyss** from 
 | `render_layer` | `bottom` | drawn under actors standing on it |
 
 A bridge cell keeps `floorMap === null` — the crossing is **purely** the platform actor sitting over the void, exactly like a `collapsing_floor`. No real floor tile is laid beneath it. This is what makes it walk correctly *and* burn correctly: movement and fire code check `hasPlatformAt` alongside `hasFloorAt` (see `behaviors.js`), so while the bridge exists the cell is walkable, and when it burns the platform vanishes and the void (with its cliffside background) is revealed rather than a leftover floor tile. See [Burning and destruction](#burning-and-destruction).
-
-Rope bridge actors should use connected box-drawing tiles, like the thread trail left by the ball of thread item.
+Rope bridge actors use connected box-drawing tiles, like the thread trail left by the ball of thread item.
 
 ---
 
@@ -90,9 +89,19 @@ A crossing is only built if walking **around** the abyss is much longer than cro
 
 This means a big abyss sitting in wide-open floor that you can simply circle gets **no** bridge, while an abyss that genuinely partitions two areas does. `minDetourRatio` defaults to **3** (Brogue's shallow-level behavior).
 
+### Intersecting crossings
+
+`chooseCrossing` evaluates each axis **independently** and returns `{ h, v }` — the best horizontal crossing *and* the best vertical crossing, each of which must separately pass the connectivity gate (either may be `null`). When a blob yields **both**, both are placed, forming a `+`-shaped **intersection** where the two crossings share one cell. This mirrors Brogue's greedy behaviour, where multiple `buildABridge` calls can independently bridge the same chasm: a crossing appears wherever the geometry supports one and it earns its place, without a special rule.
+
+The shared intersection cell is queued in `pendingBridgeSpawns` only **once** (a `usedCells` guard prevents stacking two `rope_bridge` actors on one tile). A crossed abyss still counts as **one** against the `max` cap — `max` remains a per-abyss budget, so a level with `max: 4` bridges up to four distinct abysses, any of which may be a crossing.
+
 ### Placement
 
-Blobs are processed **largest-first**. For each, the **narrowest** valid crossing (tie-broken toward zero-punch, then randomness) that passes the gate is placed, up to the global `max` cap. Bridge cells are queued in `pendingBridgeSpawns` (and their `floorMap` is left `null` — see below); `spawnPendingBridges` later turns them into `rope_bridge` actors.
+Blobs are processed **largest-first**. For each, the **narrowest** valid crossing per axis (tie-broken toward zero-punch, then randomness) that passes the gate is placed, up to the global `max` cap. Each bridge cell is queued in `pendingBridgeSpawns` as `{ x, y, dir }` — `dir` is that crossing's orientation (`'h'` or `'v'`) — and its `floorMap` is left `null` (see [Burning and destruction](#burning-and-destruction)). `spawnPendingBridges` later turns them into `rope_bridge` actors.
+
+### Sprite orientation
+
+`spawnPendingBridges` chooses each cell's box-drawing tile from **which of its four neighbours are also bridge cells** (the same connection-aware approach as `getTrailTileName` in `engine.js`), not from `dir` alone. A straight run stays straight; a `+` intersection cell (all four neighbours are bridge cells) becomes `INVERSE_BOX_VERTICAL_HORIZONTAL`; a cell with three connections becomes the matching T (`INVERSE_BOX_UP_/DOWN_HORIZONTAL`, `INVERSE_BOX_LEFT_/RIGHT_VERTICAL`); a two-connection bend becomes the matching corner (`INVERSE_BOX_TOP_LEFT` etc.); and an endpoint (0–1 connections) falls back to the straight tile for its `dir`. Every pattern maps to a tile in `data/static-tiles.json` — the full inverse-box junction set (`+`, all four `T`s, all four corners) is present. The actor's catalog entry is never mutated; each spawn uses a shallow-cloned `actorData` with the resolved `tileIndexBase`.
 
 ---
 
@@ -140,7 +149,7 @@ A floor's own `map_generator` **fully replaces** the prototype-level one (the en
 | **Shore guarantee** | Run must be the blob's **full cross-section** (geometric opposite-shores proof) | Straight chasm run with solid land at both ends + an "exposure" check that it isn't a walled corridor |
 | **Worthwhile check** | Bounded BFS detour gate (`minDetourRatio`, default 3) | `pathingDistance / bridgeLength > bridgeRatio` (depth-scaled ~3–5×) |
 | **Wall handling** | Punches ≤1 boundary wall per side to reach floor (our abysses are wall-ringed) | Not needed; Brogue chasms aren't wall-ringed |
-| **Distribution** | Explicit one-per-abyss, largest first, `max` cap | Greedy; may stack several bridges on one big chasm |
+| **Distribution** | One *abyss* per `max` slot, largest first; a blob passing both axes' gates gets a crossing (`+`) counting as one slot | Greedy; may stack several bridges on one big chasm |
 | **Min length** | `max(2, ceil(blobWidth·0.4))` | `> 3` spaces |
 
 The **connectivity gate is directly inspired by Brogue's `bridgeRatio` test** — a bridge should only exist where it meaningfully shortens travel, not merely wherever a gap happens to be crossable. The main divergence is that this kit reasons about whole abyss blobs and their full cross-sections (guaranteeing opposite shores geometrically), whereas Brogue reasons per-cell and leans on its pathing-distance test to reject bad placements.
@@ -149,8 +158,9 @@ The **connectivity gate is directly inspired by Brogue's `bridgeRatio` test** �
 
 ## Known limitations / follow-ups
 
-- **Sprite orientation is cosmetic-only.** The `rope_bridge` actor hardcodes the `INVERSE_BOX_HORIZONTAL` tile, so a correct *vertical* bridge still renders with a horizontal-looking sprite. The engine already has connection-aware tile selection (`getTrailTileName` in `engine.js`, which produces `INVERSE_BOX_VERTICAL` and corner tiles); wiring bridges to it — by passing per-cell orientation into `createActor` — is a future cosmetic improvement, not a walkability issue.
 - **Very-thin chasms (1 tile wide) are never bridged** — the minimum-length rule forbids a single-tile bridge. In practice abysses come from `generateOverlayBlobs` with `minSize ≥ 10`, so they're always fat blobs; a 1-wide gap doesn't occur naturally.
+- **Crossings are limited to one horizontal + one vertical per abyss.** A blob gets at most a single `+` intersection (the best crossing on each axis); it never grows a lattice of multiple parallel bridges. The tile selection (`spawnPendingBridges`) already handles arbitrary adjacency (corners, all four Ts, the `+`), so richer bridge shapes would only require the placement loop to emit more cells — no new tile work.
+- **Individual bridges are still straight lines.** Each crossing is a single row or column; a bridge never bends mid-span. Bends/corners only appear where two straight crossings meet at an intersection.
 
 ---
 

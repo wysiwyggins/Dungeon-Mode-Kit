@@ -1052,10 +1052,14 @@ class Architect {
         };
 
         // 2. Find the best full-width/full-height crossing for a single blob.
+        // Returns { h, v } — the best horizontal and best vertical crossing that
+        // each pass the connectivity gate (either may be null). Placing both forms
+        // an intersection where they share a cell.
         const chooseCrossing = (blob) => {
             const blobWidth = blob.maxX - blob.minX + 1;
             const blobHeight = blob.maxY - blob.minY + 1;
-            const candidates = [];
+            const hCandidates = [];
+            const vCandidates = [];
 
             // Horizontal crossings: for each row, the run must equal the blob's
             // full horizontal cross-section on that row (shore-to-shore).
@@ -1081,7 +1085,7 @@ class Architect {
                 if (!west || !east) continue;
                 const cells = [];
                 for (let x = rowMinX; x <= rowMaxX; x++) cells.push({ x, y });
-                candidates.push({
+                hCandidates.push({
                     cells, dir: 'h', length,
                     punches: [west.punch, east.punch].filter(Boolean),
                     standA: west.stand, standB: east.stand
@@ -1110,32 +1114,35 @@ class Architect {
                 if (!north || !south) continue;
                 const cells = [];
                 for (let y = colMinY; y <= colMaxY; y++) cells.push({ x, y });
-                candidates.push({
+                vCandidates.push({
                     cells, dir: 'v', length,
                     punches: [north.punch, south.punch].filter(Boolean),
                     standA: north.stand, standB: south.stand
                 });
             }
 
-            if (candidates.length === 0) return null;
-
-            // Prefer the narrowest neck, then the crossing that needs no punches,
-            // then a little randomness for variety.
-            candidates.sort((a, b) =>
-                a.length - b.length ||
-                a.punches.length - b.punches.length ||
-                (ROT.RNG.getUniform() - 0.5)
-            );
-
-            // Connectivity gate: only keep a crossing whose two shores are not already
-            // cheaply connected on foot (Brogue's bridgeRatio test). Take the narrowest
-            // crossing that earns its place; skip ones that are merely convenient.
-            for (const candidate of candidates) {
-                if (detourExceeds(candidate.standA, candidate.standB, candidate.length)) {
-                    return candidate;
+            // For each axis independently: prefer the narrowest neck, then the
+            // crossing that needs no punches, then a little randomness for variety;
+            // and keep only a crossing whose two shores are not already cheaply
+            // connected on foot (Brogue's bridgeRatio test). Returns the narrowest
+            // crossing on that axis that earns its place, or null.
+            const pickBest = (candidates) => {
+                candidates.sort((a, b) =>
+                    a.length - b.length ||
+                    a.punches.length - b.punches.length ||
+                    (ROT.RNG.getUniform() - 0.5)
+                );
+                for (const candidate of candidates) {
+                    if (detourExceeds(candidate.standA, candidate.standB, candidate.length)) {
+                        return candidate;
+                    }
                 }
-            }
-            return null;
+                return null;
+            };
+
+            // A horizontal and a vertical crossing that each pass the gate are placed
+            // together as an intersection (they share a cell). Either may be null.
+            return { h: pickBest(hCandidates), v: pickBest(vCandidates) };
         };
 
         // 3. Place one bridge per blob, largest abyss first, up to the global cap.
@@ -1146,30 +1153,45 @@ class Architect {
 
         for (const blob of blobs) {
             if (placed >= maxBridges) break;
-            const crossing = chooseCrossing(blob);
-            if (!crossing) continue;
-            if (crossing.cells.some(c => usedCells.has(`${c.x},${c.y}`))) continue;
+            const { h, v } = chooseCrossing(blob);
+            // Take whichever crossings earned their place. When both exist they cross
+            // this blob on opposite axes and are placed together as an intersection;
+            // they may share one cell (the crossing point), rendered as a "+" tile.
+            const crossings = [h, v].filter(Boolean);
+            if (crossings.length === 0) continue;
+            // Only reject a crossing if it collides with an ALREADY-placed bridge from
+            // another blob. The two crossings of THIS blob are allowed to overlap each
+            // other (that overlap is the intersection).
+            if (crossings.some(cr => cr.cells.some(c => usedCells.has(`${c.x},${c.y}`)))) continue;
 
-            // Open any boundary walls the bridge lands on so the shore is walkable.
-            for (const punch of crossing.punches) {
-                this.pendingWallSpawns = this.pendingWallSpawns.filter(p => !(p.x === punch.x && p.y === punch.y));
-                wallSet.delete(`${punch.x},${punch.y}`);
-            }
+            for (const crossing of crossings) {
+                // Open any boundary walls the bridge lands on so the shore is walkable.
+                for (const punch of crossing.punches) {
+                    this.pendingWallSpawns = this.pendingWallSpawns.filter(p => !(p.x === punch.x && p.y === punch.y));
+                    wallSet.delete(`${punch.x},${punch.y}`);
+                }
 
-            for (const c of crossing.cells) {
-                // Leave the cell as abyss (floorMap null, void background) and let the
-                // rope_bridge platform actor provide footing — exactly like a
-                // collapsing_floor. Do NOT lay real floor here: that would (a) make
-                // addBaseAndShadows treat the cell as floor and skip the cliffside
-                // shadow it gives the rest of the abyss, and (b) leave a floor tile
-                // behind when the bridge burns instead of revealing the void below.
-                // Carry the crossing orientation so the spawned actor can pick the
-                // matching box-drawing tile (vertical vs horizontal).
-                this.pendingBridgeSpawns.push({ x: c.x, y: c.y, dir: crossing.dir });
-                usedCells.add(`${c.x},${c.y}`);
+                for (const c of crossing.cells) {
+                    // The intersection cell is shared by both crossings; only queue it
+                    // once so we don't stack two rope_bridge actors on one tile.
+                    const ck = `${c.x},${c.y}`;
+                    if (usedCells.has(ck)) continue;
+                    // Leave the cell as abyss (floorMap null, void background) and let the
+                    // rope_bridge platform actor provide footing — exactly like a
+                    // collapsing_floor. Do NOT lay real floor here: that would (a) make
+                    // addBaseAndShadows treat the cell as floor and skip the cliffside
+                    // shadow it gives the rest of the abyss, and (b) leave a floor tile
+                    // behind when the bridge burns instead of revealing the void below.
+                    // Orientation (dir) is recorded per cell, but the final box-drawing
+                    // tile is chosen from bridge-cell adjacency in spawnPendingBridges so
+                    // the intersection cell becomes a proper "+" junction.
+                    this.pendingBridgeSpawns.push({ x: c.x, y: c.y, dir: crossing.dir });
+                    usedCells.add(ck);
+                }
+                console.log(`  Bridge: ${crossing.length} tiles (${crossing.dir === 'h' ? 'horizontal' : 'vertical'})`);
             }
+            // One abyss consumes one slot even when it gets a crossing on both axes.
             placed++;
-            console.log(`  Bridge: ${crossing.length} tiles (${crossing.dir === 'h' ? 'horizontal' : 'vertical'})`);
         }
 
         if (placed > 0) {
@@ -2001,13 +2023,43 @@ class Architect {
             return;
         }
 
-        // Vertical bridges use the vertical box-drawing tile; the actor default
-        // (INVERSE_BOX_HORIZONTAL) already covers horizontal bridges. Clone the
-        // shared actorData so we never mutate the catalog entry.
-        const verticalData = { ...actorData, tileIndexBase: 'INVERSE_BOX_VERTICAL' };
+        // Choose each cell's box-drawing tile from which of its four neighbours are
+        // also bridge cells. Straight runs stay straight; where a horizontal and a
+        // vertical crossing meet, the shared cell becomes a "+" (or a T at a wall)
+        // junction. Endpoints (one connection) fall back to the straight tile for
+        // their axis. Every pattern maps to a tile in data/static-tiles.json.
+        const cellSet = new Set(this.pendingBridgeSpawns.map(p => `${p.x},${p.y}`));
+        const has = (x, y) => cellSet.has(`${x},${y}`);
+        const tileNameFor = (pos) => {
+            const n = has(pos.x, pos.y - 1);
+            const s = has(pos.x, pos.y + 1);
+            const e = has(pos.x + 1, pos.y);
+            const w = has(pos.x - 1, pos.y);
+            const count = (n ? 1 : 0) + (s ? 1 : 0) + (e ? 1 : 0) + (w ? 1 : 0);
+            if (count >= 3) {
+                if (n && s && e && w) return 'INVERSE_BOX_VERTICAL_HORIZONTAL'; // +
+                if (e && w && s) return 'INVERSE_BOX_DOWN_HORIZONTAL';  // T pointing down
+                if (e && w && n) return 'INVERSE_BOX_UP_HORIZONTAL';    // T pointing up
+                if (n && s && e) return 'INVERSE_BOX_RIGHT_VERTICAL';   // T pointing right
+                return 'INVERSE_BOX_LEFT_VERTICAL';                     // n && s && w -> T pointing left
+            }
+            if (count === 2) {
+                if (e && w) return 'INVERSE_BOX_HORIZONTAL';
+                if (n && s) return 'INVERSE_BOX_VERTICAL';
+                // Corners — named by where the corner sits; lines extend the two
+                // connected directions.
+                if (n && e) return 'INVERSE_BOX_BOTTOM_LEFT';   // lines up + right
+                if (n && w) return 'INVERSE_BOX_BOTTOM_RIGHT';  // lines up + left
+                if (s && e) return 'INVERSE_BOX_TOP_LEFT';      // lines down + right
+                return 'INVERSE_BOX_TOP_RIGHT';                 // s && w -> lines down + left
+            }
+            // 0 or 1 connection (endpoint / lone cell): straight tile for the axis.
+            return pos.dir === 'v' ? 'INVERSE_BOX_VERTICAL' : 'INVERSE_BOX_HORIZONTAL';
+        };
 
+        // Clone the shared actorData per-tile so we never mutate the catalog entry.
         for (const pos of this.pendingBridgeSpawns) {
-            const data = pos.dir === 'v' ? verticalData : actorData;
+            const data = { ...actorData, tileIndexBase: tileNameFor(pos) };
             context.createActor(pos.x, pos.y, 'rope_bridge', data);
         }
 
