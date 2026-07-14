@@ -8074,17 +8074,17 @@ class Actor extends Entity {
     getTrailTileName(entryDir, exitDir) {
         // If no entry (first segment) or no exit (endpoint), show based on the available direction
         if (!entryDir && !exitDir) {
-            return 'INVERSE_BOX_HORIZONTAL';
+            return 'WHITE_BOX_HORIZONTAL';
         }
         if (!entryDir) {
             return (exitDir === 'up' || exitDir === 'down')
-                ? 'INVERSE_BOX_VERTICAL'
-                : 'INVERSE_BOX_HORIZONTAL';
+                ? 'WHITE_BOX_VERTICAL'
+                : 'WHITE_BOX_HORIZONTAL';
         }
         if (!exitDir) {
             return (entryDir === 'up' || entryDir === 'down')
-                ? 'INVERSE_BOX_VERTICAL'
-                : 'INVERSE_BOX_HORIZONTAL';
+                ? 'WHITE_BOX_VERTICAL'
+                : 'WHITE_BOX_HORIZONTAL';
         }
 
         // Convert movement directions to connection directions
@@ -8104,16 +8104,16 @@ class Actor extends Entity {
         // TOP_LEFT corner = lines extend DOWN and RIGHT
         const tileMap = {
             // Straight lines
-            'down-up': 'INVERSE_BOX_VERTICAL',
-            'left-right': 'INVERSE_BOX_HORIZONTAL',
+            'down-up': 'WHITE_BOX_VERTICAL',
+            'left-right': 'WHITE_BOX_HORIZONTAL',
             // Corners - named by corner position, connects the two OTHER directions
-            'left-up': 'INVERSE_BOX_BOTTOM_RIGHT',    // corner at bottom-right, lines go up and left
-            'right-up': 'INVERSE_BOX_BOTTOM_LEFT',    // corner at bottom-left, lines go up and right
-            'down-left': 'INVERSE_BOX_TOP_RIGHT',     // corner at top-right, lines go down and left
-            'down-right': 'INVERSE_BOX_TOP_LEFT'      // corner at top-left, lines go down and right
+            'left-up': 'WHITE_BOX_BOTTOM_RIGHT',    // corner at bottom-right, lines go up and left
+            'right-up': 'WHITE_BOX_BOTTOM_LEFT',    // corner at bottom-left, lines go up and right
+            'down-left': 'WHITE_BOX_TOP_RIGHT',     // corner at top-right, lines go down and left
+            'down-right': 'WHITE_BOX_TOP_LEFT'      // corner at top-left, lines go down and right
         };
 
-        return tileMap[connections] || 'INVERSE_BOX_HORIZONTAL';
+        return tileMap[connections] || 'WHITE_BOX_HORIZONTAL';
     }
 
     /**

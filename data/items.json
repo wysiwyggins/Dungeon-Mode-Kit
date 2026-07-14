@@ -46,7 +46,7 @@
   },
   "torch": {
   "name": "Torch",
-  "tileIndex": "BOX_VERTICAL_INVERSE_TOP",
+  "tileIndex": "BOX_VERTICAL_WHITE_TOP",
   "tint": "#EC7505",
   "flickerTint": true,
   "identified": false,
@@ -79,7 +79,7 @@
   },
   "torch_unlit": {
     "name": "Unlit Torch",
-    "tileIndex": "BOX_VERTICAL_INVERSE_TOP",
+    "tileIndex": "BOX_VERTICAL_WHITE_TOP",
     "tint": "#555555",
     "attributes": {
       "pickupable": true,
@@ -93,7 +93,7 @@
   },
   "torch_spent": {
     "name": "Spent Torch",
-    "tileIndex": "BOX_VERTICAL_INVERSE_TOP",
+    "tileIndex": "BOX_VERTICAL_WHITE_TOP",
     "tint": "#333333",
     "attributes": {
       "pickupable": true,
@@ -420,7 +420,7 @@
   },
   "gold_nugget": {
     "name": "gold nugget",
-    "tileIndex": "INVERSE_THALER_SIGN",
+    "tileIndex": "WHITE_THALER_SIGN",
     "tint": "#FFD700",
     "ignore_darkness": true,
     "random_value": [
@@ -440,7 +440,7 @@
   },
   "uranium_nugget": {
   "name": "uranium nugget",
-  "tileIndex": "INVERSE_THALER_SIGN",
+  "tileIndex": "WHITE_THALER_SIGN",
   "tint": "#cce8b5",
   "flickerTint": true,
   "ignore_darkness": true,
@@ -838,7 +838,7 @@
         "radius": 1,
         "outer": "fire"
       },
-      "projectile_tile": "OPAQUE_INVERSE_DIAMOND_SUITE",
+      "projectile_tile": "OPAQUE_WHITE_DIAMOND_SUITE",
       "projectile_tint": "#FF6600",
       "spell_name": "Fireball",
       "cast_sound": "fireball",
@@ -911,7 +911,7 @@
       "spell_effect": {
         "apply_state": "poisoned"
       },
-      "projectile_tile": "OPAQUE_INVERSE_DIAMOND_SUITE",
+      "projectile_tile": "OPAQUE_WHITE_DIAMOND_SUITE",
       "projectile_tint": "#44CC44",
       "spell_name": "Poison",
       "cast_sound": "magic",
@@ -946,7 +946,7 @@
       "uses": 2,
       "spell_range": 8,
       "spell_effect": { "blink_self": true },
-      "projectile_tile": "OPAQUE_INVERSE_DIAMOND_SUITE",
+      "projectile_tile": "OPAQUE_WHITE_DIAMOND_SUITE",
       "projectile_tint": "#AADDFF",
       "spell_name": "Blinking",
       "cast_sound": "magic",
@@ -1767,7 +1767,7 @@
       "spell_effect": {
         "apply_state": "slowed"
       },
-      "projectile_tile": "OPAQUE_INVERSE_DIAMOND_SUITE",
+      "projectile_tile": "OPAQUE_WHITE_DIAMOND_SUITE",
       "projectile_tint": "#8888FF",
       "spell_name": "Slowness",
       "cast_sound": "magic",
@@ -1804,7 +1804,7 @@
       "spell_effect": {
         "remove_states": true
       },
-      "projectile_tile": "OPAQUE_INVERSE_DIAMOND_SUITE",
+      "projectile_tile": "OPAQUE_WHITE_DIAMOND_SUITE",
       "projectile_tint": "#CCCCCC",
       "spell_name": "Negation",
       "cast_sound": "magic",
@@ -1841,7 +1841,7 @@
       "spell_effect": {
         "teleport_target": true
       },
-      "projectile_tile": "OPAQUE_INVERSE_DIAMOND_SUITE",
+      "projectile_tile": "OPAQUE_WHITE_DIAMOND_SUITE",
       "projectile_tint": "#FF44FF",
       "spell_name": "Teleportation",
       "cast_sound": "magic",
@@ -1878,7 +1878,7 @@
       "spell_effect": {
         "beckon_target": true
       },
-      "projectile_tile": "OPAQUE_INVERSE_DIAMOND_SUITE",
+      "projectile_tile": "OPAQUE_WHITE_DIAMOND_SUITE",
       "projectile_tint": "#FFAA00",
       "spell_name": "Beckoning",
       "cast_sound": "magic",

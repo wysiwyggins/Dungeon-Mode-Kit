@@ -2037,24 +2037,24 @@ class Architect {
             const w = has(pos.x - 1, pos.y);
             const count = (n ? 1 : 0) + (s ? 1 : 0) + (e ? 1 : 0) + (w ? 1 : 0);
             if (count >= 3) {
-                if (n && s && e && w) return 'INVERSE_BOX_VERTICAL_HORIZONTAL'; // +
-                if (e && w && s) return 'INVERSE_BOX_DOWN_HORIZONTAL';  // T pointing down
-                if (e && w && n) return 'INVERSE_BOX_UP_HORIZONTAL';    // T pointing up
-                if (n && s && e) return 'INVERSE_BOX_RIGHT_VERTICAL';   // T pointing right
-                return 'INVERSE_BOX_LEFT_VERTICAL';                     // n && s && w -> T pointing left
+                if (n && s && e && w) return 'WHITE_BOX_VERTICAL_HORIZONTAL'; // +
+                if (e && w && s) return 'WHITE_BOX_DOWN_HORIZONTAL';  // T pointing down
+                if (e && w && n) return 'WHITE_BOX_UP_HORIZONTAL';    // T pointing up
+                if (n && s && e) return 'WHITE_BOX_RIGHT_VERTICAL';   // T pointing right
+                return 'WHITE_BOX_LEFT_VERTICAL';                     // n && s && w -> T pointing left
             }
             if (count === 2) {
-                if (e && w) return 'INVERSE_BOX_HORIZONTAL';
-                if (n && s) return 'INVERSE_BOX_VERTICAL';
+                if (e && w) return 'WHITE_BOX_HORIZONTAL';
+                if (n && s) return 'WHITE_BOX_VERTICAL';
                 // Corners — named by where the corner sits; lines extend the two
                 // connected directions.
-                if (n && e) return 'INVERSE_BOX_BOTTOM_LEFT';   // lines up + right
-                if (n && w) return 'INVERSE_BOX_BOTTOM_RIGHT';  // lines up + left
-                if (s && e) return 'INVERSE_BOX_TOP_LEFT';      // lines down + right
-                return 'INVERSE_BOX_TOP_RIGHT';                 // s && w -> lines down + left
+                if (n && e) return 'WHITE_BOX_BOTTOM_LEFT';   // lines up + right
+                if (n && w) return 'WHITE_BOX_BOTTOM_RIGHT';  // lines up + left
+                if (s && e) return 'WHITE_BOX_TOP_LEFT';      // lines down + right
+                return 'WHITE_BOX_TOP_RIGHT';                 // s && w -> lines down + left
             }
             // 0 or 1 connection (endpoint / lone cell): straight tile for the axis.
-            return pos.dir === 'v' ? 'INVERSE_BOX_VERTICAL' : 'INVERSE_BOX_HORIZONTAL';
+            return pos.dir === 'v' ? 'WHITE_BOX_VERTICAL' : 'WHITE_BOX_HORIZONTAL';
         };
 
         // Clone the shared actorData per-tile so we never mutate the catalog entry.

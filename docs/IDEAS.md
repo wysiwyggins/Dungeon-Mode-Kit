@@ -24,8 +24,6 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 - mass noun attribute for items in addition to actors. ("meat" rather that "A meat")
 
-- The word "inverse" is used inconsistently in tile names. Some names, like inverse box drawing tiles, should be "white." Inverse bullet, for example, should stay the same.
-
 ---
 
 ## Feature ideas

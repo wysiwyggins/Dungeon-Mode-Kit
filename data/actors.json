@@ -688,7 +688,7 @@
   },
   "torch": {
     "name": "Torch",
-    "tileIndexBase": "OPAQUE_INVERSE_DIAMOND_SUITE",
+    "tileIndexBase": "OPAQUE_WHITE_DIAMOND_SUITE",
     "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
     "tint": "#EC7505",
     "flickerTint": true,
@@ -847,7 +847,7 @@
   "pedestal": {
     "name": "pedestal",
     "tileIndexBase": "WHITE_DOOR_TOP",
-    "tileIndexTop": "INVERSE_DIAMOND_SUITE",
+    "tileIndexTop": "WHITE_DIAMOND_SUITE",
     "attributes": {
       "solid": true,
       "pedestal": true,
@@ -945,7 +945,7 @@
   },
   "rope_bridge": {
     "name": "rope bridge",
-    "tileIndexBase": "INVERSE_BOX_HORIZONTAL",
+    "tileIndexBase": "WHITE_BOX_HORIZONTAL",
     "tileIndexTop": "BLANK",
     "tint": "#8B6914",
     "attributes": {

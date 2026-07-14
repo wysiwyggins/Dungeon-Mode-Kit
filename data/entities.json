@@ -51,7 +51,7 @@
   },
   "thread_trail": {
     "name": "Thread",
-    "tileIndex": "INVERSE_BOX_HORIZONTAL",
+    "tileIndex": "WHITE_BOX_HORIZONTAL",
     "attributes": {
       "visible": true,
       "ignore_darkness": true
