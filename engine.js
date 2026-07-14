@@ -10560,9 +10560,13 @@ class RenderSystem {
         this.backgroundContainer.zIndex = 0;
         this.floorContainer.zIndex = 1;
         this.entityContainer.zIndex = 2;
-        this.overlayContainer.zIndex = 3;
         this.lightColorContainer.zIndex = 4;
         this.darknessContainer.zIndex = 5;
+        // Overlay (decorative tiles above entities) renders ABOVE the darkness layer so
+        // line-of-sight blocking never hard-clips it to solid black. It carries its own
+        // floor-consistent darkness instead — see updateDarkness / getOverlayTint. Kept
+        // below the UI (6) so windows/menus still draw over decorative tiles.
+        this.overlayContainer.zIndex = 5.5;
         this.uiContainer.zIndex = 6;
         this.splashContainer.zIndex = 7;
         this.winContainer.zIndex = 8;

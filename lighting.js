@@ -741,6 +741,74 @@ class LightingManager {
         return (r << 16) | (g << 8) | b;
     }
 
+    /**
+     * Darkness alpha for the decorative overlay tile layer. Unlike getDarknessAlpha,
+     * this does NOT hard-clip an out-of-line-of-sight tile to solid black: an already
+     * EXPLORED overlay tile stays visible (fog-dimmed by its light level) even when the
+     * player has no current line of sight to the tile beneath it. Never-explored tiles
+     * are still fully black. This is what makes overlay decor (canopies, arches, hanging
+     * decoration) read as part of the remembered scene instead of winking out with LOS.
+     * Mirrors the light-level scaling of getDarknessAlpha so overlay dims consistently
+     * with the floor beneath it.
+     */
+    getOverlayDarknessAlpha(x, y, fogOfWar = false) {
+        const hasControlled = this.hasControlledActors();
+        const light = this.getLightLevel(x, y);
+
+        // Observer mode (no controlled actor): no LOS restriction at all — dim purely by
+        // light level, matching getDarknessAlpha's !hasControlled branch.
+        if (!hasControlled) {
+            if (light.intensity >= 1) return { alpha: 0 };
+            if (light.intensity > 0) return { alpha: 1.0 - light.intensity };
+            return { alpha: 1.0 };
+        }
+
+        // With a controlled actor, treat visible OR explored the same — the defining
+        // difference from getDarknessAlpha, which would black out !visible tiles.
+        const seen = this.isVisible(x, y) || this.isExplored(x, y);
+        if (seen) {
+            if (light.intensity >= 1) return { alpha: 0 };
+            if (light.intensity > 0) return { alpha: 0.85 * (1.0 - light.intensity) };
+            // Explored-but-currently-unlit reads as fog rather than pitch black.
+            return { alpha: fogOfWar ? 0.92 : 0.85 };
+        }
+
+        // Never seen: fully black, same as the floor beneath it.
+        return { alpha: 1.0 };
+    }
+
+    /**
+     * The tint an overlay decorative tile should end up with. Same light-color +
+     * darkness compositing as getFloorTint, but using getOverlayDarknessAlpha so
+     * line-of-sight blocking doesn't clip explored overlay tiles to black. Returns
+     * a tint in 0xRRGGBB to set directly on the overlay sprite (which renders above
+     * the darkness layer). 0xFFFFFF means full brightness (no dimming).
+     */
+    getOverlayTint(x, y, fogOfWar = false) {
+        const light = this.getLightLevel(x, y);
+        const lightTint = this.getLightTint(light);
+        const darkness = this.getOverlayDarknessAlpha(x, y, fogOfWar);
+
+        // Light-color overlay: multiply toward the light hue by its alpha.
+        let r = (lightTint >> 16) & 0xFF;
+        let g = (lightTint >> 8) & 0xFF;
+        let b = lightTint & 0xFF;
+        const colorAlpha = (light.intensity > 0 && lightTint !== 0xFFFFFF)
+            ? Math.min(0.5, light.intensity * 0.5)
+            : 0;
+        r = Math.round(255 * (1 - colorAlpha) + r * colorAlpha);
+        g = Math.round(255 * (1 - colorAlpha) + g * colorAlpha);
+        b = Math.round(255 * (1 - colorAlpha) + b * colorAlpha);
+
+        // Darkness: black at `darkness.alpha` scales brightness down.
+        const dim = 1 - darkness.alpha;
+        r = Math.round(r * dim);
+        g = Math.round(g * dim);
+        b = Math.round(b * dim);
+
+        return (r << 16) | (g << 8) | b;
+    }
+
     reset() {
         // Clean up shadow entities
         for (const entity of this.shadowEntities.values()) {

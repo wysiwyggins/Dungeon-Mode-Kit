@@ -1157,8 +1157,7 @@
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
     "animated": true,
-    "animation_frames": "mist",
-    "animationTop": "smoke",
+    "animation_frames": "smoke",
     "personality": "cloud",
     "attributes": {
       "flies": true,
