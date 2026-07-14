@@ -44,7 +44,13 @@
   "victory_wave": {
     "target": "sprite",
     "layers": [
-      { "primitive": "gradient_wave", "params": { "colors": ["0xCC1111", "0xFFCC22", "0x2255CC"], "speed": 0.0016 } }
+      { "primitive": "gradient_wave", "params": { "colors": ["0xCC1111", "0xFFCC22"], "speed": 0.0016 } }
+    ]
+  },
+  "victory_radial": {
+    "target": "sprite",
+    "layers": [
+      { "primitive": "radial_gradient", "params": { "colors": ["0xCC1111", "0xFFCC22"], "speed": 0.0003, "rings": 1 } }
     ]
   },
   "damage_shake": {

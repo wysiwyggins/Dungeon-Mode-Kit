@@ -10,8 +10,6 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 - throwing an item onto a collapsable floor actor currently drops the item to the next level but doesn't activate the floor collapse first. Activate the collapse first
 
-- win message needs to line wrap if it's longer than view width
-
 - don't float away items that are worn or equipped in deep liquid actors
 
 - overlay tile layer shouldn't be affected by line of sight blocking?
@@ -24,9 +22,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 - prototype editor has lake and abyss checkboxes that create the same forms including a dropdown for either lake or abyss options, consolidate this. also checkbox selection here collapses the section when changed
 
-- jackals should be aligned with each other
-
-- mass noun attribute for items in addition to actors. (meat)
+- mass noun attribute for items in addition to actors. ("meat" rather that "A meat")
 
 - The word "inverse" is used inconsistently in tile names. Some names, like inverse box drawing tiles, should be "white." Inverse bullet, for example, should stay the same.
 

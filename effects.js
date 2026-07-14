@@ -418,11 +418,17 @@ const EffectPrimitives = {
      */
     gradient_wave(ctx, params) {
         const parseColor = (c) => (typeof c === 'string' ? parseInt(c, 16) : c);
+        // `colors` is a cyclic PALETTE RING: the wave sweeps a 0..1 position that
+        // maps onto the stops in order and interpolates between each consecutive
+        // pair, wrapping from the last stop back to the first (see the ticker's
+        // `i1 = (i0 + 1) % n`). So a 3-stop palette cycles A -> B -> C -> A.
         let palette = Array.isArray(params.colors) && params.colors.length >= 2
             ? params.colors.map(parseColor)
             : [parseColor(params.color_a ?? 0xFF0000), parseColor(params.color_b ?? 0xFFDD00)];
-        // Pre-split into RGB stops for the ticker.
-        const stops = palette.map(c => [(c >> 16) & 0xFF, (c >> 8) & 0xFF]);
+        // Pre-split each stop into its [R, G, B] channels for the ticker.
+        // (Previously this dropped the B channel, so any stop's blue silently
+        // interpolated from undefined -> NaN and a blue stop rendered green.)
+        const stops = palette.map(c => [(c >> 16) & 0xFF, (c >> 8) & 0xFF, c & 0xFF]);
         const speed = params.speed ?? 0.0015;
 
         let entry = null;
@@ -468,6 +474,87 @@ const EffectPrimitives = {
             remove() {
                 if (entry) {
                     const list = ctx.renderer._gradientWaveSprites;
+                    const idx = list ? list.indexOf(entry) : -1;
+                    if (idx >= 0) list.splice(idx, 1);
+                    entry = null;
+                }
+            }
+        };
+    },
+
+    /**
+     * Animated RADIAL gradient — continuously EXPANDING rings. Each sprite's tint is
+     * chosen from the same cyclic palette ring as gradient_wave, but the sample
+     * position comes from the sprite's normalized distance from a center combined with
+     * a monotonically advancing time phase: pos = frac(time*speed - dist). Because the
+     * phase keeps increasing, color bands are born at the center and travel outward to
+     * the edge forever (a repeating shockwave/ripple), never reversing. The `rings`
+     * param sets how many full palette cycles span center->edge at once.
+     *
+     * Per-sprite runtime params (set by the caller, e.g. showWinScreen):
+     *   radial_dist — this sprite's grid distance from the chosen center
+     *   radial_max  — the largest such distance in the field (for normalization)
+     * Effect params:
+     *   colors — palette ring (0xRRGGBB ints or "0x.." strings); like gradient_wave
+     *            falls back to [color_a, color_b]
+     *   speed  — expansion speed (palette cycles per ms)
+     *   rings  — how many palette cycles fit between center and edge (default 2)
+     */
+    radial_gradient(ctx, params) {
+        const parseColor = (c) => (typeof c === 'string' ? parseInt(c, 16) : c);
+        const palette = Array.isArray(params.colors) && params.colors.length >= 2
+            ? params.colors.map(parseColor)
+            : [parseColor(params.color_a ?? 0xFF0000), parseColor(params.color_b ?? 0xFFDD00)];
+        // [R, G, B] per stop, same as gradient_wave (all three channels kept).
+        const stops = palette.map(c => [(c >> 16) & 0xFF, (c >> 8) & 0xFF, c & 0xFF]);
+        const speed = params.speed ?? 0.0009;
+        const rings = params.rings ?? 2;
+
+        let entry = null;
+
+        return {
+            apply(runtimeParams) {
+                const sprite = runtimeParams?._target;
+                if (!sprite) return;
+
+                const max = runtimeParams?.radial_max || 1;
+                // Normalized 0..1 distance of this sprite from the center.
+                const dist = Math.min(1, (runtimeParams?.radial_dist ?? 0) / max);
+
+                entry = { sprite, speed, stops, rings, dist };
+                if (!ctx.renderer._radialGradientSprites) ctx.renderer._radialGradientSprites = [];
+                ctx.renderer._radialGradientSprites.push(entry);
+
+                if (!ctx.renderer._radialGradientTickerFn) {
+                    ctx.renderer._radialGradientTickerFn = () => {
+                        const t = Date.now();
+                        for (const e of ctx.renderer._radialGradientSprites) {
+                            if (e.sprite.destroyed) continue;
+                            const n = e.stops.length;
+                            // Monotonic phase minus distance: subtracting the (ring-scaled)
+                            // distance makes farther tiles lag behind, so as the phase grows
+                            // each color band moves from center outward. frac() keeps it in 0..1
+                            // and wraps the palette ring, so rings emerge and expand endlessly.
+                            const raw = t * e.speed - e.dist * e.rings;
+                            const pos = raw - Math.floor(raw); // frac(), always 0..1
+                            // Map position onto the palette ring and lerp between stops.
+                            const scaled = pos * n;
+                            const i0 = Math.floor(scaled) % n;
+                            const i1 = (i0 + 1) % n;
+                            const f = scaled - Math.floor(scaled);
+                            const a = e.stops[i0], b = e.stops[i1];
+                            const r = Math.round(a[0] + (b[0] - a[0]) * f);
+                            const g = Math.round(a[1] + (b[1] - a[1]) * f);
+                            const bl = Math.round(a[2] + (b[2] - a[2]) * f);
+                            e.sprite.tint = (r << 16) | (g << 8) | bl;
+                        }
+                    };
+                    ctx.ticker.add(ctx.renderer._radialGradientTickerFn);
+                }
+            },
+            remove() {
+                if (entry) {
+                    const list = ctx.renderer._radialGradientSprites;
                     const idx = list ? list.indexOf(entry) : -1;
                     if (idx >= 0) list.splice(idx, 1);
                     entry = null;

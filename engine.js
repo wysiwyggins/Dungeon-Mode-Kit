@@ -11625,6 +11625,24 @@ class RenderSystem {
 
         this.winActive = true;
 
+        // Word-wrap each supplied line to the viewport width so a long custom
+        // win_state.message doesn't spill past both edges of the view (a wider
+        // message made textX go negative below and rendered as one clipped row).
+        // Fall back to a hard character break for any single "word" still wider
+        // than the viewport, so no laid-out line can ever exceed the width.
+        const im = this.engine.interfaceManager;
+        lines = lines.flatMap(line => {
+            const wrapped = im ? im.wrapText(line, viewportWidth) : [line];
+            return wrapped.flatMap(w => {
+                if (w.length <= viewportWidth) return [w];
+                const chunks = [];
+                for (let c = 0; c < w.length; c += viewportWidth) {
+                    chunks.push(w.slice(c, c + viewportWidth));
+                }
+                return chunks;
+            });
+        });
+
         const blockCoords = this.engine.spriteLibrary.getTileByName('WHITE_FULL_BLOCK');
         const rect = new PIXI.Rectangle(
             blockCoords.x * globalVars.TILE_WIDTH,
@@ -11636,6 +11654,11 @@ class RenderSystem {
 
         this.winSprites = [];
         this.winEffectHandles = [];
+        // Center + max radius for the radial "breathing glow": distance is measured
+        // from the middle of the field, normalized by the far-corner distance.
+        const cx = (viewportWidth - 1) / 2;
+        const cy = (viewportHeight - 1) / 2;
+        const radialMax = Math.hypot(cx, cy) || 1;
         for (let y = 0; y < viewportHeight; y++) {
             for (let x = 0; x < viewportWidth; x++) {
                 const sprite = new PIXI.Sprite(blockTexture);
@@ -11647,10 +11670,11 @@ class RenderSystem {
                 sprite.tint = 0xFFFFFF;
                 this.winContainer.addChild(sprite);
                 this.winSprites.push(sprite);
-                // Red/gold gradient wave in horizontal bands (phase from row only) that
-                // scroll upward; spatial_phase increasing with y makes bands move up.
-                const handle = this.effectRunner?.apply('victory_wave', sprite, {
-                    spatial_phase: y * 0.5
+                // Red/gold radial gradient that breathes in and out from the center.
+                // (The banded scrolling 'victory_wave' effect is still available.)
+                const handle = this.effectRunner?.apply('victory_radial', sprite, {
+                    radial_dist: Math.hypot(x - cx, y - cy),
+                    radial_max: radialMax
                 });
                 if (handle) this.winEffectHandles.push(handle);
             }
@@ -11734,6 +11758,11 @@ class RenderSystem {
             this._gradientWaveTickerFn = null;
         }
         this._gradientWaveSprites = [];
+        if (this._radialGradientTickerFn) {
+            this.app.ticker.remove(this._radialGradientTickerFn);
+            this._radialGradientTickerFn = null;
+        }
+        this._radialGradientSprites = [];
 
         // Clean up all active effects
         this.effectRunner.removeAll();
@@ -12313,5 +12342,26 @@ window.goToFloor = async (floorNumber) => {
     console.log(`Jumped to floor ${floorNumber}/${totalFloors}`);
 };
 
+// Debug: render the win screen directly with an arbitrary message, without
+// having to satisfy any win conditions. Routes through the same
+// RenderSystem.showWinScreen() path the real win uses, so it exercises the
+// line-wrapping. Pass a long string to test wrapping; omit for a default one.
+window.testWinScreen = (message) => {
+    if (!engine) {
+        console.error('Engine not initialized.');
+        return;
+    }
+    if (!engine.renderer) {
+        console.error('Renderer not ready.');
+        return;
+    }
+    const text = message ??
+        'You have triumphed over the endless dark and carried the amulet of yendor back into the light of day, and this sentence is deliberately far wider than the viewport so the wrapping can be seen.';
+    // Mirror buildWinScreenLines: a single message line (wrapping happens in showWinScreen).
+    engine.renderer.showWinScreen(engine.viewportWidth, engine.viewportHeight, [text]);
+    console.log(`Win screen rendered with message (${text.length} chars). Call location.reload() to dismiss.`);
+};
+
 console.log('Dungeon Mode Kit loaded. Call initializeGame() to start.');
 console.log('Level utilities: listLevels(), loadLevel("prototypeName"), giveItem("itemType", count), goToFloor(n)');
+console.log('Debug: testWinScreen("optional custom message") — render the win screen to test line-wrapping.');
