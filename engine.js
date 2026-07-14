@@ -12033,6 +12033,15 @@ class RenderSystem {
                     darkSprite.texture = darkness.useSolidTexture ? this.solidDarkTexture : this.darkTexture;
                     darkSprite.alpha = darkness.alpha;
                 }
+
+                // Decorative overlay tiles render ABOVE the darkness layer, so they carry
+                // their own dimming as a sprite tint. getOverlayTint keys off explored (not
+                // raw LOS), so an explored overlay tile stays visible/fog-dimmed instead of
+                // being clipped to black when the player loses line of sight to it.
+                const overlaySprite = this.overlaySprites[y]?.[x];
+                if (overlaySprite) {
+                    overlaySprite.tint = lightingManager.getOverlayTint(x, y, fogOfWar);
+                }
             }
         }
 
