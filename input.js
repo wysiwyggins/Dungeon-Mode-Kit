@@ -1080,16 +1080,35 @@ class InputManager {
     }
 
     getEntityDescription(entity) {
-        // Returns the entity name with appropriate article
-        // Use getDisplayName() for items (identification-aware), fall back to name
-        const displayName = entity.getDisplayName ? entity.getDisplayName() : entity.name;
+        // Returns the entity name with appropriate article, lowercased for
+        // inline "you see …" style descriptions.
+        return this.getEntityNameWithArticle(entity, { lowercase: true });
+    }
 
-        // Check for 'mass_noun' attribute (lava, sewage, water, etc.) - no article needed
-        if (entity.hasAttribute('mass_noun')) {
-            return displayName.toLowerCase();
+    /**
+     * Entity name prefixed with the correct indefinite article ("a"/"an"), or
+     * no article at all for mass nouns ("meat", not "a meat"). Uses the item's
+     * identification-aware getDisplayName() when present. Single source of truth
+     * for the mass-noun rule so pickup/throw/inventory messages stay consistent.
+     * @param {object} entity
+     * @param {{lowercase?: boolean, capitalize?: boolean}} [opts] - lowercase the
+     *   name; or capitalize the leading article/name for sentence-initial use
+     *   ("A meat"/"Meat" vs "a meat"/"meat"). capitalize wins over lowercase.
+     * @returns {string}
+     */
+    getEntityNameWithArticle(entity, { lowercase = false, capitalize = false } = {}) {
+        let displayName = entity.getDisplayName ? entity.getDisplayName() : entity.name;
+        if (lowercase && !capitalize) displayName = displayName.toLowerCase();
+
+        // Mass nouns (meat, water, sewage, gold dust…) take no article.
+        if (entity.hasAttribute && entity.hasAttribute('mass_noun')) {
+            if (capitalize) {
+                return displayName.charAt(0).toUpperCase() + displayName.slice(1);
+            }
+            return displayName;
         }
         const article = this.getIndefiniteArticle(displayName);
-        return `${article} ${displayName}`;
+        return `${capitalize ? article.charAt(0).toUpperCase() + article.slice(1) : article} ${displayName}`;
     }
 
     getIndefiniteArticle(name) {

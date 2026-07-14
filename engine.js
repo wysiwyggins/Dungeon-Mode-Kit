@@ -958,6 +958,57 @@ class DungeonEngine {
     }
 
     /**
+     * Coalesced lighting recompute. Multiple callers within the same frame (e.g. a fire
+     * trap spawning a burst of fire actors, or an explosion killing several shadow-casters)
+     * collapse to a SINGLE updateLighting() on the next animation frame, instead of one
+     * expensive shadowcasting pass per spawn/death. The rAF flush lands before the next
+     * paint, so the light/shadow change is visible within the same turn — fixing the
+     * one-turn lag where a dead actor's shadow lingered or a new fire's light was late.
+     * Falls back to a synchronous recompute if requestAnimationFrame is unavailable.
+     *
+     * Pass the event's (x, y) so an off-screen lighting change on a large scrolling dark
+     * level (fire spreading / lava churning many screens away, an out-of-view mob dying)
+     * is skipped — computeLighting() does full-map shadowcasting, so recomputing for a
+     * change the player can't possibly see is pure waste. When x/y are omitted the update
+     * is never gated (used by callers that must always recompute, e.g. viewport changes).
+     */
+    requestLightingUpdate(x = null, y = null) {
+        if (!this.lightingManager) return;
+        if (x !== null && !this._lightingEventRelevant(x, y)) return;
+        if (this._lightingUpdateQueued) return;
+        this._lightingUpdateQueued = true;
+
+        const flush = () => {
+            this._lightingUpdateQueued = false;
+            if (this.lightingManager) this.updateLighting();
+        };
+
+        if (typeof requestAnimationFrame === 'function') {
+            requestAnimationFrame(flush);
+        } else {
+            this._lightingUpdateQueued = false;
+            this.updateLighting();
+        }
+    }
+
+    /**
+     * Would a lighting change at (x, y) plausibly affect what's rendered right now?
+     * Only meaningful on viewport (multi-screen) levels, where most of the map is
+     * off-screen: a change well outside the current section — beyond a light-bleed
+     * margin (max sane light radius) — can't influence any visible tile, so its
+     * recompute is skipped. On single-screen levels the whole map is on-screen, so
+     * this always returns true (the coalescer alone bounds the cost there).
+     */
+    _lightingEventRelevant(x, y) {
+        if (!this.viewportEnabled) return true;
+        const margin = 12; // > largest light radius, so light bleeding into view still counts
+        return x >= this.sectionOriginX - margin &&
+               x <  this.sectionOriginX + this.viewportWidth + margin &&
+               y >= this.sectionOriginY - margin &&
+               y <  this.sectionOriginY + this.viewportHeight + margin;
+    }
+
+    /**
      * Enable the lighting/darkness system at runtime on a level that doesn't normally have it.
      * Used by the "blinded" state to create visual darkness on bright levels.
      */
@@ -3081,8 +3132,13 @@ class Entity {
     }
 
     die() {
+        // Capture lighting relevance before removal — a light_source (e.g. a burnt-out
+        // ground torch) or solid blocker stops affecting the scene the moment it dies.
+        const affectedLighting = this.hasAttribute('light_source') || this.hasAttribute('solid');
         this.isDead = true;
         this.engine.entityManager?.removeEntity(this);
+        // Coalesced + position-gated recompute so its light/shadow clears this turn.
+        if (affectedLighting) this.engine.requestLightingUpdate?.(this.x, this.y);
     }
 
     /**
@@ -4332,6 +4388,11 @@ class Actor extends Entity {
      * @param {boolean} spawnRemains - Whether to spawn remains entity (default: true)
      */
     die(spawnRemains = true) {
+        // Capture whether this actor affected lighting BEFORE clearing `solid` below —
+        // a solid actor casts shadows and blocks light, so its death must trigger a
+        // lighting recompute (see the guarded updateLighting() at the end of die()).
+        const affectedLighting = this.hasAttribute('solid') || this.hasAttribute('light_source');
+
         this.isDead = true;
         this.setAttribute('solid', false);
 
@@ -4400,8 +4461,8 @@ class Actor extends Entity {
                     if (droppedItem) {
                         console.log(`${this.name} dropped ${droppedItem.name}!`);
                         if (this.engine.inputManager) {
-                            const displayName = droppedItem.getDisplayName ? droppedItem.getDisplayName() : droppedItem.name;
-                            this.engine.inputManager.showMessage(`A ${displayName} falls from the rubble!`, { x: this.x, y: this.y });
+                            const named = this.engine.inputManager.getEntityNameWithArticle(droppedItem, { capitalize: true });
+                            this.engine.inputManager.showMessage(`${named} falls from the rubble!`, { x: this.x, y: this.y });
                         }
                     }
                 }
@@ -4446,6 +4507,16 @@ class Actor extends Entity {
 
         // Update sidebar to reflect death
         this.engine.interfaceManager?.updateSidebar();
+
+        // Recompute lighting this turn if this actor affected it. A solid actor casts
+        // shadows (via updateShadows) and blocks light/vision; a light_source emits
+        // light. Without this, a dead actor's shadow — or the light it was emitting —
+        // lingers until the next incidental updateLighting() (i.e. one turn late).
+        // Coalesced so a burst of deaths (e.g. an explosion) triggers one recompute,
+        // and position-gated so an off-screen death on a scrolling level is skipped.
+        if (affectedLighting) {
+            this.engine.requestLightingUpdate(this.x, this.y);
+        }
     }
 
     /**
@@ -4515,10 +4586,10 @@ class Actor extends Entity {
                 this.engine.entityManager.removeEntity(item);
                 if (this.isPlayerControlled()) {
                     this.engine.playSound(item.getAttribute('pickup_sound') || 'tone3');
-                    const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
-                    const article = this.engine.inputManager?.getIndefiniteArticle(displayName) || 'a';
+                    const named = this.engine.inputManager?.getEntityNameWithArticle(item)
+                        || (item.getDisplayName ? item.getDisplayName() : item.name);
                     this.engine.inputManager?.showMessage(
-                        `You pick up ${article} ${displayName}. (${existing.count} total)`
+                        `You pick up ${named}. (${existing.count} total)`
                     );
                 }
                 return true;
@@ -4528,9 +4599,9 @@ class Actor extends Entity {
         if (this.inventory.length >= maxInventory) {
             console.log(`${this.name}'s inventory is full`);
             if (this.isPlayerControlled()) {
-                const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
-                const article = this.engine.inputManager?.getIndefiniteArticle(displayName) || 'a';
-                this.engine.inputManager?.showMessage(`Your inventory is full. You can't pick up ${article} ${displayName}.`, { style: 'warning' });
+                const named = this.engine.inputManager?.getEntityNameWithArticle(item)
+                    || (item.getDisplayName ? item.getDisplayName() : item.name);
+                this.engine.inputManager?.showMessage(`Your inventory is full. You can't pick up ${named}.`, { style: 'warning' });
             }
             return false;
         }
@@ -4566,14 +4637,14 @@ class Actor extends Entity {
             this.engine.playSound(pickupSound);
 
             // Show pickup message in description element
-            const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
-            const article = this.engine.inputManager?.getIndefiniteArticle(displayName) || 'a';
+            const named = this.engine.inputManager?.getEntityNameWithArticle(item)
+                || (item.getDisplayName ? item.getDisplayName() : item.name);
 
             // Show value if item had one
             if (pickupEffect && item.value) {
-                this.engine.inputManager?.showMessage(`You pick up ${article} ${displayName} worth ${item.value}.`, { style: 'discovery' });
+                this.engine.inputManager?.showMessage(`You pick up ${named} worth ${item.value}.`, { style: 'discovery' });
             } else {
-                this.engine.inputManager?.showMessage(`You pick up ${article} ${displayName}.`, { style: 'discovery' });
+                this.engine.inputManager?.showMessage(`You pick up ${named}.`, { style: 'discovery' });
             }
         }
 
@@ -9981,6 +10052,15 @@ class EntityManager {
             if (actor.isDead) return survivor;
         }
 
+        // A newly-spawned light source (e.g. fire) or solid shadow-caster changes the
+        // scene's lighting; recompute so its light/shadow appears this turn rather than
+        // one turn late. Coalesced (see requestLightingUpdate): a fire trap's center +
+        // ring + spread burst collapses to a single recompute. Merge/early-return paths
+        // above didn't create new light — the surviving actor already contributes.
+        if (actor.hasAttribute('light_source') || actor.hasAttribute('solid')) {
+            this.engine.requestLightingUpdate(x, y);
+        }
+
         return actor;
     }
 
@@ -10711,11 +10791,22 @@ class RenderSystem {
                     if (actor.spriteEquipment[slot]) actor.spriteEquipment[slot].visible = inView && !actor.isSubmerged;
                 }
             }
+            // Pause the animation of any sprite that just went invisible so PIXI stops
+            // ticking it — a hidden AnimatedSprite still advances frames every tick
+            // otherwise (the per-frame cost on bright scrolling levels crowded with
+            // animated water/gas). Keyed off each sprite's own .visible (set above), so a
+            // peeking top sprite whose base is off-screen keeps animating correctly. Runs
+            // on section change, not per-frame — a once-per-scroll cost.
+            for (const s of [actor.spriteBase, actor.spriteTop, actor.spriteSide]) {
+                if (s && !s.visible) this.setAnimationPlaying(s, false);
+            }
         }
         for (const item of this.engine.entityManager.items) {
             if (item.sprite) {
-                item.sprite.visible = item.x >= originX && item.x < originX + vpW &&
-                                      item.y >= originY && item.y < originY + vpH;
+                const inView = item.x >= originX && item.x < originX + vpW &&
+                               item.y >= originY && item.y < originY + vpH;
+                item.sprite.visible = inView;
+                if (!inView) this.setAnimationPlaying(item.sprite, false);
             }
         }
     }
@@ -11945,12 +12036,59 @@ class RenderSystem {
         this.updateEntityLighting(lightingManager);
     }
 
+    /**
+     * True if a tile is far enough outside the current viewport section that its
+     * sprite can't be on-screen — so per-actor lighting math for it is wasted work.
+     * Only meaningful when a viewport is active (multi-screen scrolling levels); on
+     * single-screen levels the whole map is drawn, so nothing is ever off-screen.
+     * Margin covers two-tile actors (top sprite at y-2) and the darkness overlay's own
+     * 2-tile bleed margin, so an actor whose body is just off-screen but whose top/shadow
+     * could reach a rendered tile is still processed.
+     */
+    _spriteOffscreen(x, y) {
+        const engine = this.engine;
+        if (!engine.viewportEnabled) return false;
+        const margin = 3;
+        return x < engine.sectionOriginX - margin ||
+               x >= engine.sectionOriginX + engine.viewportWidth + margin ||
+               y < engine.sectionOriginY - margin ||
+               y >= engine.sectionOriginY + engine.viewportHeight + margin;
+    }
+
+    /**
+     * Hide an entity's sprites and stop their animations — idempotent and cheap.
+     * Used to cull off-screen actors from the per-frame lighting/animation work:
+     * a stopped, invisible PIXI.AnimatedSprite costs the ticker nothing, which is the
+     * main win on dark levels crowded with animated water/gas actors many screens away.
+     */
+    _hideEntitySprites(actor) {
+        for (const s of [actor.spriteBase, actor.spriteTop, actor.spriteSide]) {
+            if (s) { s.visible = false; this.setAnimationPlaying(s, false); }
+        }
+        if (actor.spriteEquipment) {
+            for (const slot of ['top', 'middle', 'lower']) {
+                const s = actor.spriteEquipment[slot];
+                if (s) { s.visible = false; this.setAnimationPlaying(s, false); }
+            }
+        }
+    }
+
     updateEntityLighting(lightingManager) {
         const fogOfWar = this.engine.currentPrototype?.config?.mechanics?.fog_of_war;
 
         for (const actor of this.engine.entityManager.actors) {
             // Skip dead actors - their sprites should stay hidden
             if (actor.isDead) continue;
+
+            // Viewport cull: an actor whose sprite can't be on-screen gets its sprites
+            // hidden + animations stopped (so PIXI stops ticking them) and skips all the
+            // per-actor lighting math below. Never cull the controlled actor (the player
+            // sprite must always render). Off-screen light still reaches visible tiles —
+            // computeLighting() shadowcasts the whole map into the light map regardless.
+            if (this._spriteOffscreen(actor.x, actor.y) && !actor.hasAttribute('controlled')) {
+                this._hideEntitySprites(actor);
+                continue;
+            }
 
             // Static actors (walls, doors, terrain) stay visible in remembered areas
             // Mobile actors (with personality or controlled) only visible in line of sight
@@ -12086,6 +12224,12 @@ class RenderSystem {
         this.updateProximityTransparency();
 
         for (const item of this.engine.entityManager.items) {
+            // Viewport cull: off-screen ground items get hidden + paused, skip the rest.
+            if (this._spriteOffscreen(item.x, item.y)) {
+                if (item.sprite) { item.sprite.visible = false; this.setAnimationPlaying(item.sprite, false); }
+                continue;
+            }
+
             const vis = lightingManager.getEntityVisibility(item.x, item.y, fogOfWar);
 
             if (item.sprite) item.sprite.visible = vis.showBase;
@@ -12101,6 +12245,15 @@ class RenderSystem {
         // Update decorative entities (thread trails, etc.)
         for (const entity of this.engine.entityManager.entities) {
             if (!entity.sprite) continue;
+
+            // Viewport cull: off-screen decorative entities get hidden + paused.
+            // ignore_darkness entities are still culled by viewport — off-screen means
+            // off-screen regardless of whether they ignore the darkness overlay.
+            if (this._spriteOffscreen(entity.x, entity.y)) {
+                entity.sprite.visible = false;
+                this.setAnimationPlaying(entity.sprite, false);
+                continue;
+            }
 
             if (entity.hasAttribute('ignore_darkness')) {
                 // Always visible with original tint
