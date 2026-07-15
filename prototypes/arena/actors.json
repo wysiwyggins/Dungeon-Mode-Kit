@@ -21,28 +21,6 @@
     "default_items": ["butter_knife"]
   },
 
-  "minotaur": {
-    "name": "Asterion",
-    "tileIndexBase": "DOOR_TOP",
-    "tileIndexTop": "CABESA_DE_VACA",
-    "personality": "stationed_melee",
-    "collision_effect": { "health": "-{strength}" },
-    "collision_sound": "hit",
-    "death_sound": "ouch",
-    "attributes": {
-      "hostile": true,
-      "proper_named": true,
-      "inventory": 1,
-      "remains": "skull",
-      "strength": 10,
-      "accuracy": 40,
-      "defense": 15
-    },
-    "stats": {
-      "health": 80
-    }
-  },
-
   "training_dummy": {
     "name": "Training Dummy",
     "tileIndexBase": "CROSS",
