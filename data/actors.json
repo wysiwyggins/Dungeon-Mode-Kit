@@ -523,7 +523,17 @@
       "breakable": true
     }
   },
-  
+  "column": {
+    "name": "column",
+    "tileIndexBase": "CANDLE_STICK",
+    "tileIndexTop": "CANDLE_STICK",
+    "flipTopV": true,
+    "attributes": {
+      "breakable": true,
+      "remains": "rubble",
+      "paint_tile": "CANDLE_STICK"
+    }
+  },
   "wall": {
     "name": "Wall",
     "tileIndexBase": "OPAQUE_DARK_SHADE",
@@ -574,18 +584,6 @@
       "flammable": false,
       "pushable": false,
       "breakable": false,
-      "conductive": false,
-      "remains": "rubble"
-    }
-  },
-  "column": {
-    "name": "Column",
-    "tileIndexBase": "CANDLE_STICK",
-    "tileIndexTop": "MEDIUM_SHADE_LOWER_ONE_HALF_BLOCK",
-    "attributes": {
-      "flammable": false,
-      "pushable": false,
-      "breakable": true,
       "conductive": false,
       "remains": "rubble"
     }

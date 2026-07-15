@@ -1,15 +1,6 @@
 // Shared styles for all editor pages (actor, item, personality).
 // Scoped under body.editor so they don't affect game pages.
 
-// Flow an editor's <details class="section"> children into a masonry-style
-// layout using CSS multi-columns: each column is ~$col wide (so wide screens get
-// 2+ columns, narrow collapses to one), and sections pack TOP-TO-BOTTOM within a
-// column then wrap to the next. Unlike flex-wrap this leaves no ragged gaps when
-// sections have variable height or collapse/expand — multicol reflows for free,
-// no JS. `break-inside: avoid` keeps a section whole; `display: inline-block` +
-// `width: 100%` makes that reliable across browsers. Any #preview-panel /
-// #behavior-panel sibling lives in #workspace (not #form-panel), so it's
-// unaffected. @include inside an &.<name>-editor block to opt that editor in.
 @mixin section-wrap($col: 460px, $max: 500px, $gap: 8px) {
     #form-panel {
         column-width: $col;
@@ -1013,6 +1004,24 @@ body.editor {
         .status-text {
             font-size: 11px;
             color: var(--text-dim);
+        }
+    }
+}
+// arena has it's own extra ui
+
+body.arena {
+    .controls-panel {
+        font-size: x-small;
+        h2, h3 {
+            font-size: smaller;
+        }
+        font-family: 'Courier New', Courier, monospace;
+        display: flex;
+        .stat-row {
+            padding:2px;
+        }
+        > div {
+            padding: 5px;
         }
     }
 }

@@ -17,15 +17,12 @@
   },
   "random_actors": {
     "minotaur": { "chance": 100, "min": 1, "max": 1 },
-    "training_dummy": { "chance": 100, "min": 2, "max": 2 },
-    "skeleton": { "chance": 100, "min": 2, "max": 2 }
+    "training_dummy": { "chance": 100, "min": 2, "max": 2 }
   },
   "random_items": {
     "strength_potion": { "chance": 100, "min": 2, "max": 3 },
     "health_potion": { "chance": 100, "min": 3, "max": 3 },
     "warhammer": { "chance": 100, "min": 1, "max": 1 },
-    "vampiric_blade": { "chance": 100, "min": 1, "max": 1 },
-    "assassin_dagger": { "chance": 100, "min": 1, "max": 1 },
     "rapier": { "chance": 100, "min": 1, "max": 1 },
     "axe": { "chance": 100, "min": 1, "max": 1 },
     "spear": { "chance": 100, "min": 1, "max": 1 },

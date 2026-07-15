@@ -10,14 +10,14 @@
     "fileStates": {
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/arena/map.tmj": {
             "expandedObjectLayers": [
-                8,
-                3
+                3,
+                8
             ],
             "scale": 0.3821,
-            "selectedLayer": 5,
+            "selectedLayer": 2,
             "viewCenter": {
                 "x": 800.8374771002357,
-                "y": 599.3195498560586
+                "y": 599.3195498560588
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/catacombs/map.tmj": {
@@ -45,11 +45,11 @@
             "expandedObjectLayers": [
                 3
             ],
-            "scale": 1.44,
+            "scale": 0.7624,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": 793.0555555555555,
-                "y": 426.3888888888888
+                "x": 705.6663168940189,
+                "y": 574.5015739769151
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/hunger_game/map.tmj": {
@@ -176,6 +176,8 @@
     "project": "dungeonkit.tiled-project",
     "property.type": "bool",
     "recentFiles": [
+        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/morass/map.tmj",
+        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/arena/map.tmj",
         "tower.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/dungeon/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/labyrinth/map.tmj",
@@ -184,9 +186,7 @@
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/sewer/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/2.tmj",
         "keys.tmj",
-        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/arena/map.tmj",
         "static-tiles.tsj",
-        "vault.tmj",
-        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/catacombs/map.tmj"
+        "vault.tmj"
     ]
 }
