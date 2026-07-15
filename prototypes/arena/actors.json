@@ -26,7 +26,8 @@
     "tileIndexBase": "CROSS",
     "tileIndexTop": "BULLET",
     "attributes": {
-      "remains": "rubble"
+      "remains": "rubble",
+      "flammable": "true"
     },
     "stats": {
       "health": 50
