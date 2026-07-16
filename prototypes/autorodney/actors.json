@@ -1,7 +1,7 @@
 {
-  "hero_explorer": {
-    "name": "The Hero",
-    "description": "An adventurer exploring the dungeon on their own. You watch through their eyes.",
+  "Rodney": {
+    "name": "Rodney",
+    "description": "A self-sufficient adventurer",
     "tileIndexBase": "LEG",
     "tileIndexTop": "OPAQUE_DARK_SMILING_FACE",
     "tint": "#ffe9a0",
@@ -13,9 +13,9 @@
     "collision_sound": "hit",
     "defaultFacing": "left",
     "facingEnabled": true,
-    "collision_description": "The Hero strikes the [attacked_actor_name]!",
+    "collision_description": "Rodney strikes the [attacked_actor_name]!",
     "death_sound": "ouch",
-    "death_description": "The Hero falls.",
+    "death_description": "Rodney has fallen.",
     "attributes": {
       "flammable": true,
       "pov": true,
@@ -34,7 +34,7 @@
       }
     },
     "default_items": [
-      "torch",
+      "sword",
       "butter_knife"
     ]
   }
