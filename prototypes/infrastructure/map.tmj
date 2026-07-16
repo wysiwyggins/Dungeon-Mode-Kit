@@ -252,14 +252,14 @@
                         {
                          "name":"machine_id",
                          "type":"string",
-                         "value":"1"
+                         "value":"3"
                         }],
                  "rotation":0,
                  "type":"gate",
                  "visible":true,
                  "width":40,
                  "x":1160,
-                 "y":450
+                 "y":420
                 }, 
                 {
                  "height":30,
@@ -274,14 +274,14 @@
                         {
                          "name":"machine_id",
                          "type":"string",
-                         "value":"1"
+                         "value":"3"
                         }],
                  "rotation":0,
                  "type":"gate",
                  "visible":true,
                  "width":40,
                  "x":1240,
-                 "y":300
+                 "y":270
                 }, 
                 {
                  "height":30,
@@ -541,6 +541,89 @@
                  "width":40,
                  "x":1320,
                  "y":90
+                }, 
+                {
+                 "height":30,
+                 "id":85,
+                 "name":"lever",
+                 "properties":[
+                        {
+                         "name":"machine_id",
+                         "type":"string",
+                         "value":"3"
+                        }],
+                 "rotation":0,
+                 "type":"lever",
+                 "visible":true,
+                 "width":40,
+                 "x":880,
+                 "y":660
+                }, 
+                {
+                 "height":30,
+                 "id":86,
+                 "name":"gate",
+                 "properties":[
+                        {
+                         "name":"locked",
+                         "type":"bool",
+                         "value":true
+                        }, 
+                        {
+                         "name":"machine_id",
+                         "type":"string",
+                         "value":"1"
+                        }],
+                 "rotation":0,
+                 "type":"gate",
+                 "visible":true,
+                 "width":40,
+                 "x":1156.32552404439,
+                 "y":446.159062885327
+                }, 
+                {
+                 "height":30,
+                 "id":87,
+                 "name":"gate",
+                 "properties":[
+                        {
+                         "name":"locked",
+                         "type":"bool",
+                         "value":true
+                        }, 
+                        {
+                         "name":"machine_id",
+                         "type":"string",
+                         "value":"1"
+                        }],
+                 "rotation":0,
+                 "type":"gate",
+                 "visible":true,
+                 "width":40,
+                 "x":1240,
+                 "y":300
+                }, 
+                {
+                 "height":30,
+                 "id":88,
+                 "name":"gate",
+                 "properties":[
+                        {
+                         "name":"locked",
+                         "type":"bool",
+                         "value":true
+                        }, 
+                        {
+                         "name":"machine_id",
+                         "type":"string",
+                         "value":"3"
+                        }],
+                 "rotation":0,
+                 "type":"gate",
+                 "visible":true,
+                 "width":40,
+                 "x":1280,
+                 "y":90
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -588,7 +671,7 @@
          "y":0
         }],
  "nextlayerid":10,
- "nextobjectid":85,
+ "nextobjectid":89,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",
