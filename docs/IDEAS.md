@@ -4,7 +4,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Bugs
 
-no currently tracked bugs
+- no dark actor tints for states. it seems like torch light tint is coming from player tint, not the torch. fix both if possible
 
 ---
 
