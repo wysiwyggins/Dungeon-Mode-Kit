@@ -8,6 +8,11 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Feature ideas
 
+## Actor info
+
+- clicking on an actor should show an info window instead of pathing to them with click to walk. This should show the monster name and description, later we can build out more procedural info like brogue.
+- In addition to clicking we should have a keyboard-only way to select actors and items and getting info (probably tab to cycle through all visible actors and items and enter to view info, this could also be used for keyboard only targeting for throw/zap)
+
 ## Keybinding changes
 
 - movement keys should also be defined in keybindings.json along with actions so we can reclaim wasd for actions if needed
@@ -15,10 +20,6 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 ### Hero personality
 
 - a personality and behaviors that would automate an actor that would normally be playable, for zero player observer prototypes, behaviors could be re-used for an (x)plore action.
-
-### Infrastructure
-
-- a hidden tile layer would use tinted, connected box drawing tiles (like the ball of thread trail) to connect actors with the same machine id. A potion would make this layer visible temporarily. Tinted box drawing lines would match the tint of the machine-id linked actors.
 
 ### Dialogue
 
@@ -93,11 +94,7 @@ If you push a pushable actor (like pushable wall) onto a deep actor like deep se
 
 ### Terrain & Environment
 
-- [ ] Tall fungus — blocks line of sight, can be trampled flat, flammable [B]
-- [ ] Conveyor belts — tiles that push actors/items in a direction each turn [Z]
-- [ ] Cobwebs — slow movement, flammable, spiders immune [B]
 - [ ] Sunlight tiles — upper-level areas with natural light [B]
-- [ ] Brimstone — hot ground near lava, damages non-fire-immune actors [B]
 - [ ] Steam vents - periodic scalding clouds [B]
 
 ### Dungeon Generation
