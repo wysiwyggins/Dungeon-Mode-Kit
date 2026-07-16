@@ -11,6 +11,30 @@
     ]
   },
 
+  "hero": {
+    "name": "Hero",
+    "hostile": false,
+    "behaviors": [
+      "attack_adjacent",
+      "defend_self",
+      "seek_item",
+      "explore",
+      "random_walk"
+    ]
+  },
+
+  "hunter_melee": {
+    "name": "Hunter",
+    "hostile": true,
+    "behaviors": [
+      "attack_adjacent",
+      "defend_self",
+      "hunt",
+      "pursue_target",
+      "random_walk"
+    ]
+  },
+
   "goblin": {
     "name": "Goblin",
     "hostile": true,

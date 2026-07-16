@@ -9,7 +9,8 @@
     "q": "quaff",
     "r": "read_scroll",
     "j": "jam_spike",
-    "c": "catalog"
+    "c": "catalog",
+    "x": "explore"
   },
 
   "global": {
@@ -25,6 +26,7 @@
     "quaff":          "Quaff a potion",
     "read_scroll":    "Read a scroll",
     "jam_spike":      "Jam a spike into a door",
+    "explore":        "Auto-explore until something happens",
     "discovery":      "Discovery progress",
     "toggle_pause":   "Toggle pause",
     "reload":         "Reload / restart"

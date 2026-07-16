@@ -110,7 +110,7 @@ class LightingManager {
                 });
             }
 
-            if (actor.hasAttribute('controlled') && this.playerAutoLight) {
+            if ((actor.hasAttribute('controlled') || actor.hasAttribute('pov')) && this.playerAutoLight) {
                 sources.push({
                     x: actor.x,
                     y: actor.y,
@@ -185,9 +185,11 @@ class LightingManager {
             }
         }
 
-        // Cache whether we have controlled actors (used heavily in getDarknessAlpha/getEntityVisibility)
+        // Cache whether we have a viewpoint actor (controlled player OR a `pov`
+        // actor). Drives the fog-of-war branch in getDarknessAlpha/
+        // getEntityVisibility — a pov-only observer level must fog correctly too.
         this._hasControlledActors = this.engine.entityManager.actors.some(
-            a => a.hasAttribute('controlled') && !a.isDead
+            a => (a.hasAttribute('controlled') || a.hasAttribute('pov')) && !a.isDead
         );
 
         // Compute lighting from all light sources BEFORE visibility,
@@ -357,11 +359,12 @@ class LightingManager {
     }
 
     computeVisibility() {
-        const controlledActors = this.engine.entityManager.actors.filter(
-            a => a.hasAttribute('controlled') && !a.isDead
-        );
+        // FOV is cast from every viewpoint actor: the controlled player AND any
+        // `pov`-tagged actor (e.g. an AI hero in an observer prototype), so a
+        // dark/fog level renders around whatever we're seeing through.
+        const viewpointActors = this.engine.entityManager.getViewpointActors();
 
-        for (const actor of controlledActors) {
+        for (const actor of viewpointActors) {
             const baseRange = actor.getEffectiveVisionRange();
             const lightRange = this.getActorLightRange(actor);
             const effectiveRange = Math.min(baseRange, lightRange);
@@ -464,7 +467,7 @@ class LightingManager {
             return actor.getEffectiveVisionRange();
         }
 
-        if (actor.hasAttribute('controlled') && this.playerAutoLight) {
+        if ((actor.hasAttribute('controlled') || actor.hasAttribute('pov')) && this.playerAutoLight) {
             return this.playerLightRadius;
         }
 
@@ -575,12 +578,13 @@ class LightingManager {
     }
 
     hasControlledActors() {
-        // Use cached value from computeLighting() if available
+        // Use cached value from computeLighting() if available. "Controlled" here
+        // means "we have a viewpoint" — controlled player OR a `pov` actor.
         if (this._hasControlledActors !== undefined) {
             return this._hasControlledActors;
         }
         return this.engine.entityManager.actors.some(
-            a => a.hasAttribute('controlled') && !a.isDead
+            a => (a.hasAttribute('controlled') || a.hasAttribute('pov')) && !a.isDead
         );
     }
 

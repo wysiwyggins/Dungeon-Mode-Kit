@@ -37,6 +37,16 @@ class InputManager {
         this.autoWalking = false; // Whether auto-walk is in progress
         this.autoWalkDelay = 100; // Milliseconds between steps (2 steps per second)
 
+        // Auto-explore state (the (x)plore action). Reuses the auto-walk stepper
+        // machinery but computes its own destination each leg (nearest unexplored
+        // frontier / loot) instead of walking to a clicked tile.
+        this.exploring = false;        // Whether auto-explore is in progress
+        this.exploreLegPath = null;    // Current leg's path toward the chosen target
+        this.exploreLegIndex = 0;      // Position within the current leg
+        this.exploreStepsTaken = 0;    // Steps taken this whole explore session
+        this.exploreHpSnapshot = null; // Player HP at the last step (stop-on-damage)
+        this.exploreStateSnapshot = null; // Harmful-state set at last step (stop-on-bad-state)
+
         // Turn history - stores all past turns for future history viewer
         // Each entry is an array of messages from that turn
         this.turnHistory = [];
@@ -675,15 +685,175 @@ class InputManager {
         }
     }
 
+    // ------------------------------------------------------------------
+    // Auto-explore ( (x)plore ) — player-facing auto-exploration.
+    // Reuses the auto-walk stepper's shape but chooses its own destination
+    // each leg via the shared computeExploreTarget core (nearest unexplored
+    // frontier / reachable loot). Stops on: a hostile approaching, taking
+    // damage / gaining a new state, or a new item coming into view.
+    // ------------------------------------------------------------------
+
+    /**
+     * Start (or toggle off) auto-explore for the player.
+     */
+    startExplore() {
+        if (this.exploring) {   // pressing explore again cancels it
+            this.stopExplore();
+            return;
+        }
+        const player = this.engine.entityManager?.player;
+        if (!player || player.isDead) return;
+        if (player.hasStateProperty('random_movement')) {
+            this.showMessage("You're too confused to explore.");
+            return;
+        }
+
+        // Nothing to head toward → report and bail.
+        const target = computeExploreTarget(this.engine, player, this._exploreOpts(player));
+        if (!target) {
+            this.showMessage('Nothing left to explore.');
+            return;
+        }
+
+        this.exploring = true;
+        this.exploreLegPath = null;
+        this.exploreLegIndex = 0;
+        this.exploreStepsTaken = 0; // steps taken this whole session (not per-leg)
+        this.exploreHpSnapshot = player.stats?.health?.current ?? null;
+        this.exploreStateSnapshot = new Set(Object.keys(player.states || {}));
+
+        // Enable item-in-view stopping for explore only; seed encounter tracking.
+        this._exploreStopOnItem = true;
+        this.resetNotableEventTracking();
+        this.checkNotableEvents();
+
+        this.exploreStep();
+    }
+
+    /**
+     * Take one step of auto-explore. Modeled on autoWalkStep, but recomputes the
+     * destination whenever the current leg is finished or missing.
+     */
+    exploreStep() {
+        if (!this.exploring) return;
+
+        const player = this.engine.entityManager?.player;
+        if (!player || player.isDead) { this.stopExplore(); return; }
+        if (player.hasStateProperty('random_movement')) {
+            this.showMessage('You lose your focus.');
+            this.stopExplore();
+            return;
+        }
+
+        // (Re)compute a leg toward the next explore target if needed.
+        if (!this.exploreLegPath || this.exploreLegIndex >= this.exploreLegPath.length) {
+            const target = computeExploreTarget(this.engine, player, this._exploreOpts(player));
+            if (!target) {
+                this.showMessage('Done exploring.');
+                this.stopExplore();
+                return;
+            }
+            const path = this.engine.renderer?.showWalkPath(player.x, player.y, target.x, target.y);
+            if (!path || path.length <= 1) {
+                // Target unreachable from here — give up rather than spin.
+                this.showMessage('Nothing left to reach.');
+                this.stopExplore();
+                return;
+            }
+            this.exploreLegPath = path;
+            this.exploreLegIndex = 1; // skip the actor's current tile
+        }
+
+        // Stop-on-encounter check before stepping. Skip only the very first move
+        // of the whole session (seeded by startExplore's checkNotableEvents) so we
+        // don't instantly abort on an already-visible monster; every later step —
+        // including the first step of a freshly-recomputed leg — is checked.
+        if (this.exploreStepsTaken > 0) {
+            const event = this.checkNotableEvents();
+            if (event) { this.showMessage(event); this.stopExplore(); return; }
+        }
+
+        const nextPoint = this.exploreLegPath[this.exploreLegIndex];
+        const dx = nextPoint.x - player.x;
+        const dy = nextPoint.y - player.y;
+
+        this.clearMessageStack();
+        const result = player.moveBy(dx, dy);
+
+        if (!result.moved) {
+            // Blocked (e.g. a door closed, a monster stepped in). Drop this leg and
+            // recompute next tick rather than hammering the same tile.
+            this.exploreLegPath = null;
+            if (result.actionTaken) {
+                // A bump-attack or other turn-consuming action happened; let AI act
+                // and stop — combat means "something interesting."
+                this.onPlayerAction();
+                this.stopExplore();
+            } else {
+                this.stopExplore();
+            }
+            return;
+        }
+
+        const sound = result.entrySound || 'feets';
+        this.engine.playSoundVaried(sound, 0.4, 0.1, 1.0, 0.06);
+        this.exploreLegIndex++;
+        this.exploreStepsTaken++;
+
+        // Advance AI turns.
+        this.onPlayerAction();
+
+        // Stop-on-damage / stop-on-new-state, evaluated after AI has acted.
+        const hpNow = player.stats?.health?.current ?? null;
+        if (this.exploreHpSnapshot !== null && hpNow !== null && hpNow < this.exploreHpSnapshot) {
+            this.showMessage('You take damage — stopping.');
+            this.stopExplore();
+            return;
+        }
+        const statesNow = new Set(Object.keys(player.states || {}));
+        for (const s of statesNow) {
+            if (!this.exploreStateSnapshot.has(s)) {
+                this.showMessage('Something affects you — stopping.');
+                this.stopExplore();
+                return;
+            }
+        }
+        this.exploreHpSnapshot = hpNow;
+        this.exploreStateSnapshot = statesNow;
+
+        // Post-move encounter check (a monster may have moved into view/range).
+        const postEvent = this.checkNotableEvents();
+        if (postEvent) { this.showMessage(postEvent); this.stopExplore(); return; }
+
+        if (player.isDead) { this.stopExplore(); return; }
+
+        setTimeout(() => this.exploreStep(), this.autoWalkDelay);
+    }
+
+    /**
+     * Stop auto-explore and clean up its overlay/state.
+     */
+    stopExplore() {
+        this.exploring = false;
+        this.exploreLegPath = null;
+        this.exploreLegIndex = 0;
+        this.exploreStepsTaken = 0;
+        this.exploreHpSnapshot = null;
+        this.exploreStateSnapshot = null;
+        this._exploreStopOnItem = false;
+        this.engine.renderer?.hideWalkPath();
+    }
+
     /**
      * Check for notable events that should interrupt auto-walk
      * @returns {string|null} Description of the notable event, or null if none
      */
     checkNotableEvents() {
-        // Flags to enable/disable each condition
+        // Flags to enable/disable each condition. Item-in-view stopping is on only
+        // during auto-explore (the (x)plore action), off for click-to-walk.
         const STOP_ON_HOSTILE_COMES_INTO_VIEW = false;
         const STOP_ON_HOSTILE_APPROACHES = true;
-        const STOP_ON_ITEM_COMES_INTO_VIEW = false;
+        const STOP_ON_ITEM_COMES_INTO_VIEW = !!this._exploreStopOnItem;
 
         const player = this.engine.entityManager?.player;
         if (!player) return null;
@@ -784,14 +954,21 @@ class InputManager {
     }
 
     /**
-     * Cancel auto-walk (called on keyboard input or other interruption)
+     * Cancel auto-walk OR auto-explore (called on keyboard input or other
+     * interruption). Returns true if either was in progress so the caller can
+     * swallow the key that stopped it.
      */
     cancelAutoWalk() {
+        let cancelled = false;
         if (this.autoWalking) {
             this.stopAutoWalk();
-            return true;
+            cancelled = true;
         }
-        return false;
+        if (this.exploring) {
+            this.stopExplore();
+            cancelled = true;
+        }
+        return cancelled;
     }
 
     updateDescription(tileX, tileY) {
@@ -1379,6 +1556,12 @@ class InputManager {
                 if (this.engine.interfaceManager) {
                     this.engine.interfaceManager.toggleDiscoveryPanel();
                 }
+                break;
+
+            case 'explore':
+                // Auto-explore drives its own turns via the stepper; don't consume
+                // a manual turn just for pressing the key.
+                this.startExplore();
                 break;
         }
     }

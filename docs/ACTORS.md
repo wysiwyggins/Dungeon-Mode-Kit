@@ -74,6 +74,8 @@ When `facingEnabled` is `true`, the actor's sprites (base, top, side, and equipm
 | `hostile` | boolean | AI will attack the player. Default `false`. |
 | `sentient` | boolean | Can have states (burning, poisoned, etc.) applied. Default `false`. |
 | `controlled` | boolean | This is the player character |
+| `pov` | boolean | Point-of-view actor: acts as the field-of-view and camera-follow origin even though it is **not** player-controlled. Use for an AI "hero" in a zero-player observer prototype so a dark/fog level renders around it (it carries the auto-light and the camera follows it). Turn/input logic still keys on `controlled`, not `pov`. |
+| `hunts` | string | Names a quarry the `hunt` behavior pursues: an actor **type** to kill (e.g. `"rat"`) or an item **type** to collect (e.g. `"meat"`). Independent of faction/hostility, so a hunter can chase quarry it isn't otherwise hostile to while still attacking its normal enemies. Requires the `hunt` behavior in the actor's personality. |
 | `sighted` | boolean | Uses vision range for AI line-of-sight checks |
 | `dark_vision` | boolean | Actor can see and act normally without light (bypasses darkness AI penalties) |
 | `opaque` | boolean | Actor blocks line of sight for vision checks. Default `false` for most actors. |
@@ -546,6 +548,8 @@ Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a fu
 |----------|-------------|------------|
 | `random_walk` | Move in a random cardinal direction. Sighted actors avoid pits. | — |
 | `pursue_target` | Pathfind toward nearest visible controlled actor. | — |
+| `explore` | Auto-explore toward the nearest unvisited area (or nearby item), like a player pressing (x)plore. Keeps its own visited-tile memory (`actor._exploreVisited`), so it works with no player/fog-of-war. Returns false when nothing is left, falling through to `random_walk`. Used by the `hero` personality; shares the engine `computeExploreTarget` core with the player action. | `explore_mark_radius` (default: 1) |
+| `hunt` | Pursue the quarry named by the actor's `hunts` attribute — an actor type to kill (moves onto it, biting via attack-on-bump) or an item type to collect. Nearest visible match wins. Independent of faction, so pair it with `attack_adjacent` (kept before it) to also fight normal enemies like the player. Returns false when no quarry is in sight, falling through to `pursue_target`/`random_walk`. | reads `hunts`; item-hunt respects `inventory` capacity |
 | `avoid_crowding` | When another same-type actor shares this tile, step to the least-crowded adjacent tile. | — |
 | `maintain_distance` | Keep `preferred_distance` tiles from target. Move away if too close, toward if too far. | `preferred_distance` (default: 3) |
 | `patrol` | Wander within `patrol_range` of home position. | `patrol_range` |

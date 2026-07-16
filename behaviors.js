@@ -620,6 +620,147 @@ const BehaviorLibrary = {
         return actor.moveToward(nearest.x, nearest.y);
     },
 
+    /**
+     * Auto-explore: head toward the nearest place this actor hasn't been yet
+     * (or a nearby item), like a player pressing (x)plore. Used by the "hero"
+     * personality to drive an actor through a level on its own. Shares the
+     * engine-level computeExploreTarget core with the player's (x)plore action;
+     * differs only in its notion of "explored": since a personality-driven actor
+     * has no player fog-of-war, it keeps its OWN visited-tile memory on
+     * actor._exploreVisited. Returns true if it moved toward a target, false if
+     * there's nothing left to explore (so the chain falls through to random_walk).
+     * @param {Actor} actor - The actor executing the behavior
+     * @param {Object} data - Behavior parameters
+     * @param {number} [data.explore_mark_radius=1] - How far around the actor to mark "visited" each turn
+     */
+    explore: (actor, data) => {
+        const markRadius = data?.explore_mark_radius ?? 1;
+        const engine = actor.engine;
+        const em = engine.entityManager;
+
+        // Per-actor visited memory (independent of any player fog-of-war).
+        if (!actor._exploreVisited) actor._exploreVisited = new Set();
+        // Frontier tiles we've given up on (unreachable / stuck) so we stop
+        // re-picking them and oscillating.
+        if (!actor._exploreGivenUp) actor._exploreGivenUp = new Set();
+        const visited = actor._exploreVisited;
+        const givenUp = actor._exploreGivenUp;
+        for (let dy = -markRadius; dy <= markRadius; dy++) {
+            for (let dx = -markRadius; dx <= markRadius; dx++) {
+                visited.add(`${actor.x + dx},${actor.y + dy}`);
+            }
+        }
+
+        // Stuck detector: if we haven't moved since last explore turn while
+        // pursuing the same target, that target is unreachable in practice —
+        // blacklist it and pick a different one this turn.
+        const posKey = `${actor.x},${actor.y}`;
+        if (actor._exploreLastPos === posKey && actor._exploreLastTarget) {
+            givenUp.add(actor._exploreLastTarget);
+        }
+
+        const visionRange = actor.getAttribute('vision_range') || 10;
+        const target = computeExploreTarget(engine, actor, {
+            isExplored: (x, y) => visited.has(`${x},${y}`) || givenUp.has(`${x},${y}`),
+            canSeeItem: (item) => getChebyshevDistance(actor.x, actor.y, item.x, item.y) <= visionRange
+        });
+        if (!target) {
+            actor._exploreLastPos = posKey;
+            actor._exploreLastTarget = null;
+            return false;
+        }
+
+        actor._exploreLastPos = posKey;
+        actor._exploreLastTarget = target.kind === 'frontier' ? `${target.x},${target.y}` : null;
+
+        // Adjacent item → grab it, mirroring seek_item.
+        if (target.kind === 'item' &&
+            getChebyshevDistance(actor.x, actor.y, target.x, target.y) <= 1) {
+            const item = em.getItemAt(target.x, target.y);
+            if (item) { actor.pickUpItem?.(item); return true; }
+        }
+
+        // Find the next step toward the target using the explore-passable
+        // predicate (which routes THROUGH pushable walls the actor can shove).
+        // If that step lands on a pushable wall, step onto it so tryMove pushes it
+        // aside; otherwise defer to moveToward's normal A*.
+        const passable = buildExplorePassable(engine, actor);
+        const hasFloor = (x, y) => actor.hasFloorAt(x, y) || actor.hasPlatformAt(x, y);
+        const isCornerWall = (x, y) => !!em.getSolidActorAt(x, y);
+        const step = getNextPathStep(actor.x, actor.y, target.x, target.y, passable,
+            { hasFloor, isCornerBlocker: isCornerWall });
+
+        if (step) {
+            const solidAtStep = em.getSolidActorAt(step.x, step.y);
+            if (solidAtStep && solidAtStep.hasAttribute('pushable')) {
+                // tryMove onto a pushable wall performs the push (attack-on-bump
+                // path handles it). If the push fails, fall through to moveToward.
+                const result = actor.tryMove(step.x, step.y);
+                if (result.moved || result.actionTaken) return true;
+            }
+        }
+
+        return actor.moveToward(target.x, target.y);
+    },
+
+    /**
+     * Hunt a specific quarry named by the actor's `hunts` attribute — an actor
+     * TYPE to kill (e.g. "rat") or an item TYPE to collect (e.g. "meat"). The
+     * actor pursues the nearest matching, visible quarry and moves onto it;
+     * moving onto a hunted actor triggers the normal attack-on-bump (a kill over
+     * repeated turns), and moving onto a hunted item picks it up. This is
+     * independent of the faction/`isEnemyOf` system, so a hunter can chase quarry
+     * it is not otherwise hostile to while a preceding `attack_adjacent` keeps its
+     * normal enemies (e.g. the player). Returns true if it acted toward the
+     * quarry, false if none is in sight (chain falls through to pursue/wander).
+     *
+     * Place AFTER attack_adjacent/defend_self (so it defends itself first) and
+     * BEFORE pursue_target/random_walk (so hunting outranks idle wandering).
+     * @param {Actor} actor - The actor executing the behavior
+     */
+    hunt: (actor) => {
+        const quarry = actor.getAttribute('hunts');
+        if (!quarry) return false;
+
+        const em = actor.engine.entityManager;
+
+        // 1) Hunt an actor type → pursue & attack the nearest visible one.
+        let bestActor = null, bestActorDist = Infinity;
+        for (const other of em.actors) {
+            if (other === actor || other.isDead) continue;
+            if (other.type !== quarry) continue;
+            if (!actor.canSeeTarget(other)) continue;
+            const dist = getChebyshevDistance(actor.x, actor.y, other.x, other.y);
+            if (dist < bestActorDist) { bestActor = other; bestActorDist = dist; }
+        }
+        if (bestActor) {
+            // moveToward the quarry's tile; when adjacent, tryMove's attack-on-bump
+            // bites it (kills over repeated turns). Same mechanism as pursue_target.
+            return actor.moveToward(bestActor.x, bestActor.y);
+        }
+
+        // 2) Hunt an item type → seek & collect the nearest visible one (only if
+        // the hunter has room to carry it, mirroring seek_item).
+        const maxInventory = actor.getAttribute('inventory') || 0;
+        if (actor.inventory.length >= maxInventory) return false;
+
+        const visionRange = actor.getAttribute('vision_range') || 10;
+        let bestItem = null, bestItemDist = Infinity;
+        for (const item of em.items) {
+            if (item.isDead) continue;
+            if (item.type !== quarry) continue;
+            const dist = getChebyshevDistance(actor.x, actor.y, item.x, item.y);
+            if (dist > visionRange || dist >= bestItemDist) continue;
+            bestItem = item; bestItemDist = dist;
+        }
+        if (bestItem) {
+            if (bestItemDist <= 1) { actor.pickUpItem?.(bestItem); return true; }
+            return actor.moveToward(bestItem.x, bestItem.y);
+        }
+
+        return false;
+    },
+
     mine_nearby_wall: (actor) => {
         const equippedWeapon = actor.getEquippedWeapon?.();
         if (!equippedWeapon || !equippedWeapon.hasAttribute('mining')) {

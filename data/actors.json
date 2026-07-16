@@ -1537,7 +1537,7 @@
     "tileIndexTop": "REPTILE_HEAD",
     "tint": "#C4A035",
     "flipTopH": true,
-    "personality": "aggressive_melee",
+    "personality": "hunter_melee",
     "vision_range": 10,
     "death_sound": "hit",
     "collision_effect": {
@@ -1555,8 +1555,8 @@
       "remains": "blood",
       "accuracy": 80,
       "defense": 5,
-      "strength": 3
-      
+      "strength": 3,
+      "hunts": "rat"
     },
     "stats": {
       "health": 5

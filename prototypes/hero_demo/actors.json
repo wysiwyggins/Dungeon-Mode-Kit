@@ -1,0 +1,41 @@
+{
+  "hero_explorer": {
+    "name": "The Hero",
+    "description": "An adventurer exploring the dungeon on their own. You watch through their eyes.",
+    "tileIndexBase": "LEG",
+    "tileIndexTop": "OPAQUE_DARK_SMILING_FACE",
+    "tint": "#ffe9a0",
+    "vision_range": 12,
+    "personality": "hero",
+    "collision_effect": {
+      "health": -3
+    },
+    "collision_sound": "hit",
+    "defaultFacing": "left",
+    "facingEnabled": true,
+    "collision_description": "The Hero strikes the [attacked_actor_name]!",
+    "death_sound": "ouch",
+    "death_description": "The Hero falls.",
+    "attributes": {
+      "flammable": true,
+      "pov": true,
+      "sighted": true,
+      "sentient": true,
+      "inventory": 5,
+      "remains": "skull",
+      "accuracy": 55,
+      "opaque": false,
+      "strength": 2
+    },
+    "stats": {
+      "health": {
+        "max": 60,
+        "per_turn": 1
+      }
+    },
+    "default_items": [
+      "torch",
+      "butter_knife"
+    ]
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "name": "Hero Demo",
+  "description": "A zero-player observer level: an AI hero (with a `hero` personality and the `pov` attribute) explores a dark, branching dungeon on its own while you watch through its eyes.",
+  "loaded_sound": "levelout",
+  "depth": 0,
+  "turn_speed": 90,
+  "mechanics": {
+    "fog_of_war": true,
+    "darkness": true,
+    "player_auto_light": true,
+    "ambient_light": 0.15,
+    "viewport_width": 40,
+    "viewport_height": 34,
+    "observer_mode": true
+  },
+  "win_conditions": [],
+  "map_generator": {
+    "type": "brogue",
+    "options": {
+      "map_width": 80, "map_height": 70,
+      "maxRooms": 30, "maxAttempts": 50,
+      "corridorChance": 45, "corridorLength": [2, 6],
+      "loopMinDistance": 18, "maxLoops": 4,
+      "roomWeights": { "rectangle": 40, "cross": 25, "circular": 20, "cavern": 15 }
+    }
+  },
+  "random_actors": {
+    "hero_explorer": { "chance": 100, "min": 1, "max": 1 },
+    "rat": { "chance": 100, "min": 2, "max": 4 },
+    "bat": { "chance": 80, "min": 1, "max": 3 },
+    "goblin": { "chance": 70, "min": 1, "max": 3 },
+    "skeleton": { "chance": 60, "min": 1, "max": 2 }
+  },
+  "random_items": {
+    "apple": { "chance": 100, "min": 2, "max": 4 },
+    "potion": { "chance": 80, "min": 1, "max": 3 },
+    "torch_unlit": { "chance": 60, "min": 1, "max": 2 },
+    "weapon": { "chance": 40, "min": 1, "max": 1 },
+    "armor": { "chance": 40, "min": 1, "max": 1 }
+  }
+}

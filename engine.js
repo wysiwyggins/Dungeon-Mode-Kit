@@ -543,6 +543,158 @@ function getNextPathStep(fromX, fromY, toX, toY, isPassable, options = {}) {
 }
 
 /**
+ * Build the passability predicate used for auto-explore routing. Mirrors the
+ * predicate Renderer.showWalkPath uses (floor present, no blocking solid actor,
+ * avoid hazardous actors unless the mover is immune) so the explore preview, the
+ * hotkey stepper, and the hero personality all agree on where the actor can walk.
+ * @param {object} engine
+ * @param {Actor} actor - the exploring actor (its immunities gate hazards)
+ * @returns {function(number, number): boolean}
+ */
+function buildExplorePassable(engine, actor) {
+    const mm = engine.mapManager;
+    const em = engine.entityManager;
+    const pusherStrength = actor.getAttribute('strength') || 0;
+    return (x, y) => {
+        if (x < 0 || y < 0 || x >= mm.width || y >= mm.height) return false;
+        // Own tile is always "passable" (it's the flood root).
+        if (x === actor.x && y === actor.y) {
+            const f = mm.floorMap[y]?.[x];
+            return !!(f && f.tileId > 0);
+        }
+        const solid = em.getSolidActorAt(x, y);
+        if (solid && solid !== actor) {
+            // A pushable wall the actor can shove is treated as passable so explore
+            // routes THROUGH it (the actor steps in and pushes it aside). "Can
+            // shove" = the actor has strength AND at least one cardinal direction
+            // has open floor on the far side to push the wall into. A wall the
+            // actor could never budge (every far side blocked) stays impassable, so
+            // computeExploreTarget won't strand a frontier behind it. This is
+            // direction-agnostic on purpose — the actual arrival direction is
+            // resolved at step time by the explore behavior; here we only decide
+            // "is this wall a shovable gap or a real wall."
+            if (pusherStrength > 0 && solid.hasAttribute('pushable')) {
+                for (const d of CARDINAL_DIRS) {
+                    const px = x + d.dx, py = y + d.dy;
+                    if (px < 0 || py < 0 || px >= mm.width || py >= mm.height) continue;
+                    const farFloor = mm.floorMap[py]?.[px];
+                    if (farFloor && farFloor.tileId > 0 && !em.getSolidActorAt(px, py)) {
+                        return true; // can be pushed clear in some direction → routable
+                    }
+                }
+            }
+            return false;
+        }
+        // Avoid hazardous actors unless the mover has matching immunity.
+        const at = em.getActorAt(x, y);
+        const damageType = at?.getAttribute('damage_type');
+        if (damageType && !at.isDead && !actor.hasAttribute(`${damageType}_immune`)) {
+            return false;
+        }
+        const floor = mm.floorMap[y]?.[x];
+        return !!(floor && floor.tileId > 0);
+    };
+}
+
+/**
+ * Find the exploration frontier: walkable tiles that are NOT "explored" yet but
+ * border at least one explored, walkable tile (so they're reachable from known
+ * space). "Explored" is supplied by the caller, because the two consumers have
+ * different notions of it:
+ *   - the player (x)plore action passes engine.isTileExplored (fog-of-war memory);
+ *   - the AI hero personality passes its own per-actor visited-tile memory
+ *     (there is no player/FOV in an observer prototype).
+ * When everything is already explored (fully-lit level with fog-of-war memory,
+ * or the hero has walked everywhere), this returns [] → "nothing left."
+ * @param {object} engine
+ * @param {function(number,number):boolean} isExplored
+ * @returns {Array<{x:number,y:number}>}
+ */
+function findFrontierTiles(engine, isExplored) {
+    const mm = engine.mapManager;
+    const frontier = [];
+    const hasFloor = (x, y) => {
+        const f = mm.floorMap[y]?.[x];
+        return !!(f && f.tileId > 0);
+    };
+    for (let y = 0; y < mm.height; y++) {
+        for (let x = 0; x < mm.width; x++) {
+            if (!hasFloor(x, y)) continue;
+            if (isExplored(x, y)) continue;
+            // Unexplored floor tile — is it adjacent to explored, walkable space?
+            let bordersKnown = false;
+            for (const d of ALL_DIRS) {
+                const nx = x + d.dx, ny = y + d.dy;
+                if (hasFloor(nx, ny) && isExplored(nx, ny)) {
+                    bordersKnown = true;
+                    break;
+                }
+            }
+            if (bordersKnown) frontier.push({ x, y });
+        }
+    }
+    return frontier;
+}
+
+/**
+ * Compute where an auto-exploring actor should head next. Uses a single
+ * ROT.Path.Dijkstra flood rooted at the actor (target = actor position; ROT's
+ * Dijkstra floods to find any source, and caches per (fromX,fromY) so repeated
+ * compute() calls to the same root are cheap). Reachable pickable items the actor
+ * can currently perceive are preferred over raw frontier tiles (loot bias, à la
+ * Brogue's item weighting); within a kind, the nearest reachable candidate wins.
+ *
+ * The two "sense" inputs are injected so one core serves both consumers:
+ *   - opts.isExplored(x,y): what counts as already-seen (fog-of-war vs. hero memory).
+ *   - opts.canSeeItem(item): whether the actor perceives a given ground item.
+ * @param {object} engine
+ * @param {Actor} actor
+ * @param {object} opts
+ * @param {function(number,number):boolean} opts.isExplored
+ * @param {function(object):boolean} [opts.canSeeItem] - default: item tile is visible to the player
+ * @param {function(number,number):boolean} [opts.isPassable] - default: buildExplorePassable
+ * @returns {{x:number,y:number,kind:'item'|'frontier'}|null} target, or null if nothing to explore
+ */
+function computeExploreTarget(engine, actor, opts = {}) {
+    const isExplored = opts.isExplored || ((x, y) => engine.isTileExplored(x, y));
+    const canSeeItem = opts.canSeeItem || ((item) => engine.isTileVisible(item.x, item.y));
+    const passable = opts.isPassable || buildExplorePassable(engine, actor);
+    const em = engine.entityManager;
+
+    // ROT Dijkstra rooted at the actor's tile. We only need reachability + hop
+    // count, read off the number of points the path callback emits.
+    const dijkstra = new ROT.Path.Dijkstra(actor.x, actor.y, passable, { topology: 8 });
+    const reachDist = (tx, ty) => {
+        if (tx === actor.x && ty === actor.y) return null; // already there
+        let steps = 0;
+        dijkstra.compute(tx, ty, () => { steps++; });
+        // A path of length > 1 (start + at least one step) means reachable.
+        return steps > 1 ? steps : null;
+    };
+
+    // 1) Nearest reachable perceivable pickable item (loot bias).
+    let bestItem = null, bestItemDist = Infinity;
+    for (const item of em.items) {
+        if (item.isDead) continue;
+        if (!canSeeItem(item)) continue;
+        const d = reachDist(item.x, item.y);
+        if (d != null && d < bestItemDist) { bestItem = item; bestItemDist = d; }
+    }
+    if (bestItem) return { x: bestItem.x, y: bestItem.y, kind: 'item' };
+
+    // 2) Nearest reachable frontier tile.
+    const frontier = findFrontierTiles(engine, isExplored);
+    let bestF = null, bestFDist = Infinity;
+    for (const cell of frontier) {
+        const d = reachDist(cell.x, cell.y);
+        if (d != null && d < bestFDist) { bestF = cell; bestFDist = d; }
+    }
+    if (bestF) return { x: bestF.x, y: bestF.y, kind: 'frontier' };
+
+    return null;
+}
+
+/**
  * Calculate Manhattan distance between two points
  * @param {number} x0
  * @param {number} y0
@@ -1394,13 +1546,22 @@ class DungeonEngine {
             }
         }
 
-        // Snap viewport to player's spawn position before rendering
-        if (this.viewportEnabled && this.entityManager.player) {
-            this.snapViewportToTile(this.entityManager.player.x, this.entityManager.player.y);
+        // Snap viewport to the viewpoint's spawn position before rendering
+        const spawnViewpoint = this.entityManager.getPrimaryViewpoint();
+        if (this.viewportEnabled && spawnViewpoint) {
+            this.snapViewportToTile(spawnViewpoint.x, spawnViewpoint.y);
         }
 
         // Spawn random actors/items using floor-specific config
         this.entityManager.spawnRandomActorsFromConfig(floorConfig);
+
+        // A pov actor (e.g. an observer-prototype hero) is spawned via
+        // random_actors above, so the viewpoint may only exist now. Re-snap so
+        // the camera starts centered on it.
+        if (this.viewportEnabled && !spawnViewpoint) {
+            const vp = this.entityManager.getPrimaryViewpoint();
+            if (vp) this.snapViewportToTile(vp.x, vp.y);
+        }
 
         // Spawn body segment chains for any chain_head actors
         this.entityManager.spawnChainCreatures();
@@ -1699,9 +1860,10 @@ class DungeonEngine {
         // Corrects a cached floor whose paired seal changed while the player was away.
         this.reconcileUpStairwayLock();
 
-        // Snap viewport to player
-        if (this.viewportEnabled && this.entityManager.player) {
-            this.snapViewportToTile(this.entityManager.player.x, this.entityManager.player.y);
+        // Snap viewport to the viewpoint actor
+        const vp = this.entityManager.getPrimaryViewpoint();
+        if (this.viewportEnabled && vp) {
+            this.snapViewportToTile(vp.x, vp.y);
         }
 
         if (!mechanics.darkness) {
@@ -3233,6 +3395,16 @@ class Entity {
      */
     isPlayerControlled() {
         return this.hasAttribute('controlled');
+    }
+
+    /**
+     * Whether this actor is a viewpoint — the FOV/camera origin. True for the
+     * controlled player, or any actor tagged `pov` (e.g. an AI hero in an
+     * observer prototype). Distinct from isPlayerControlled(), which governs
+     * input/turn-locking and must stay controlled-only.
+     */
+    isViewpoint() {
+        return this.hasAttribute('controlled') || this.hasAttribute('pov');
     }
 
     /**
@@ -7727,7 +7899,7 @@ class Actor extends Entity {
                     this.updateSpritePosition();
 
                     // Viewport snap check after push-move
-                    if (this.isPlayerControlled() && this.engine.viewportEnabled) {
+                    if (this.isViewpoint() && this.engine.viewportEnabled) {
                         if (this.engine.snapViewportToTile(this.x, this.y)) {
                             this.engine.onSectionChange();
                         }
@@ -7863,7 +8035,7 @@ class Actor extends Entity {
             this.y = newY;
             this.updateSpritePosition();
             // Viewport snap check before fall
-            if (this.isPlayerControlled() && this.engine.viewportEnabled) {
+            if (this.isViewpoint() && this.engine.viewportEnabled) {
                 if (this.engine.snapViewportToTile(this.x, this.y)) {
                     this.engine.onSectionChange();
                 }
@@ -7922,7 +8094,7 @@ class Actor extends Entity {
         }
 
         // Viewport snap check after successful move
-        if (this.isPlayerControlled() && this.engine.viewportEnabled) {
+        if (this.isViewpoint() && this.engine.viewportEnabled) {
             if (this.engine.snapViewportToTile(this.x, this.y)) {
                 this.engine.onSectionChange();
             }
@@ -7987,8 +8159,10 @@ class Actor extends Entity {
             }
         }
 
-        // Update lighting if this actor affects it
-        if (this.isPlayerControlled() || this.hasAttribute('light_source')) {
+        // Update lighting if this actor affects it. A viewpoint actor (controlled
+        // player or a `pov` observer hero) drives the FOV, so its moves must
+        // recompute lighting/visibility too.
+        if (this.isViewpoint() || this.hasAttribute('light_source')) {
             this.engine.updateLighting();
         }
 
@@ -10146,6 +10320,30 @@ class EntityManager {
         return this.actors.filter(a =>
             a.hasAttribute('sentient') && (includeDead || !a.isDead)
         );
+    }
+
+    /**
+     * Actors that act as the field-of-view / camera origin: the player-controlled
+     * actor(s) OR any actor tagged `pov` (point of view). The `pov` attribute lets
+     * a non-player actor — e.g. an AI "hero" in a zero-player observer prototype —
+     * be the eyes we see through, so a dark/fog level renders around it. Used by
+     * the lighting FOV pass; a single primary viewpoint is picked for the camera.
+     * @returns {Array<Actor>}
+     */
+    getViewpointActors() {
+        return this.actors.filter(a =>
+            (a.hasAttribute('controlled') || a.hasAttribute('pov')) && !a.isDead
+        );
+    }
+
+    /**
+     * The single actor the camera should follow / center on: the controlled player
+     * if present, else the first live `pov` actor, else null.
+     * @returns {Actor|null}
+     */
+    getPrimaryViewpoint() {
+        if (this.player && !this.player.isDead) return this.player;
+        return this.actors.find(a => a.hasAttribute('pov') && !a.isDead) || null;
     }
 
     /**
@@ -12697,7 +12895,7 @@ class RenderSystem {
      * impression. No-op unless the player is telepathic. Uses getSentientActors().
      */
     applyTelepathyReveal() {
-        const player = this.engine.entityManager.player;
+        const player = this.engine.entityManager.getPrimaryViewpoint();
         if (!player || player.isDead) return;
         // Dark levels: the lighting pass owns telepathy reveal.
         if (this.engine.lightingManager) return;
@@ -12725,7 +12923,9 @@ class RenderSystem {
     }
 
     updateProximityTransparency() {
-        const player = this.engine.entityManager.player;
+        // Anchor proximity fades on the viewpoint actor (controlled player or a
+        // `pov` observer hero) so tall-structure fading tracks whatever we see through.
+        const player = this.engine.entityManager.getPrimaryViewpoint();
         if (!player || player.isDead) return;
 
         for (const actor of this.engine.entityManager.actors) {
