@@ -14,6 +14,10 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Feature ideas
 
+### (x)plore
+
+- 'this._exploreOpts' is undefined still
+
 ### Actor info
 
 - clicking on an actor should show an info window instead of pathing to them with click to walk. This should show the monster name and description, later we can build out more procedural info like brogue.
