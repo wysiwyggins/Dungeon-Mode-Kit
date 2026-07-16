@@ -20,7 +20,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ### Actor info
 
-- clicking on an actor should show an info window instead of pathing to them with click to walk. This should show the monster name and description, later we can build out more procedural info like brogue.
+- clicking on an actor could show an info window instead of pathing to them with click to walk. This should show the monster name and description, later we can build out more procedural info like brogue.
 - In addition to clicking we should have a keyboard-only way to select actors and items and getting info (probably tab to cycle through all visible actors and items and enter to view info, this could also be used for keyboard only targeting for throw/zap)
 - because the canvas viewport is prototype definable, could this be too much text for the canvas? we might need to implement paging in ui windows for overflow (paging is more desirable than scrolling)
 

@@ -46,6 +46,14 @@ class InputManager {
         this.exploreStepsTaken = 0;    // Steps taken this whole explore session
         this.exploreHpSnapshot = null; // Player HP at the last step (stop-on-damage)
         this.exploreStateSnapshot = null; // Harmful-state set at last step (stop-on-bad-state)
+        // Two-step (Brogue-style) targeting: first (x)plore press previews the
+        // path to the next target and "arms" it; a second press commits to walking.
+        this.exploreArmed = false;     // Whether a target is previewed & awaiting confirm
+        this.exploreArmedTarget = null; // The previewed target {x, y, kind}
+        // Tab target-cycling: index into the last-built candidate list, so repeated
+        // presses walk through reachable points of interest. Reset when the preview
+        // is disarmed so the next cycle starts fresh from the nearest target.
+        this.targetCycleIndex = -1;
 
         // Turn history - stores all past turns for future history viewer
         // Each entry is an array of messages from that turn
@@ -213,6 +221,10 @@ class InputManager {
                 // Update spell path if in spell aiming mode
                 this.engine.interfaceManager.updateSpellPath();
             } else if (!this.autoWalking) {
+                // Mousing over the map replaces any armed explore preview with the
+                // hover path, so disarm the pending (x)plore travel to keep the
+                // on-screen path and the armed target in sync.
+                this.cancelExplorePreview();
                 // Show walk path when not in special modes
                 this.updateWalkPath(tileX, tileY);
             }
@@ -229,6 +241,9 @@ class InputManager {
         this.engine.renderer?.hideTileHighlight();
         // Hide throw path if in aiming mode
         this.engine.renderer?.hideLinePath();
+        // Disarm any pending (x)plore preview so its state doesn't outlive the
+        // path we're about to hide.
+        this.cancelExplorePreview();
         // Hide walk path
         this.engine.renderer?.hideWalkPath();
     }
@@ -272,6 +287,9 @@ class InputManager {
                 return;
             }
         }
+
+        // Clicking to travel supersedes any pending (x)plore preview.
+        this.cancelExplorePreview();
 
         // Start auto-walk if there's a valid path
         this.startAutoWalk();
@@ -694,13 +712,45 @@ class InputManager {
     // ------------------------------------------------------------------
 
     /**
-     * Start (or toggle off) auto-explore for the player.
+     * Build the sense options passed to computeExploreTarget for the PLAYER.
+     * Unlike a personality-driven "hero" actor (which keeps its own visited
+     * memory), the player explores against the real fog-of-war: a tile counts
+     * as explored once it's been revealed, and a ground item is perceivable
+     * only when its tile is currently visible. These match computeExploreTarget's
+     * built-in defaults, but we pass them explicitly so the player's notion of
+     * "explored"/"seen" is unambiguous and independent of any future default change.
+     * @param {Actor} player
+     * @returns {object} opts for computeExploreTarget
+     */
+    _exploreOpts(player) {
+        return {
+            isExplored: (x, y) => this.engine.isTileExplored(x, y),
+            canSeeItem: (item) => this.engine.isTileVisible(item.x, item.y),
+        };
+    }
+
+    /**
+     * The (x)plore action, Brogue-style two-step targeting:
+     *   1st press → compute the next explore target and preview the path to it
+     *               (like a mouseover), arming it but NOT moving.
+     *   2nd press → commit: begin auto-exploring along that path.
+     *   while walking → cancel.
+     * Any other input (a movement key, a menu, etc.) disarms the preview via
+     * cancelExplorePreview() so a stale path never lingers.
      */
     startExplore() {
-        if (this.exploring) {   // pressing explore again cancels it
+        if (this.exploring) {   // pressing explore while walking cancels it
             this.stopExplore();
             return;
         }
+
+        // Second press: a target is already previewed → commit and walk.
+        if (this.exploreArmed) {
+            this.commitExplore();
+            return;
+        }
+
+        // First press: compute & preview the next target, then arm it.
         const player = this.engine.entityManager?.player;
         if (!player || player.isDead) return;
         if (player.hasStateProperty('random_movement')) {
@@ -712,6 +762,48 @@ class InputManager {
         const target = computeExploreTarget(this.engine, player, this._exploreOpts(player));
         if (!target) {
             this.showMessage('Nothing left to explore.');
+            return;
+        }
+
+        // Preview the path to the target (mouseover-style). If it isn't actually
+        // reachable from here, don't arm — report and bail.
+        const path = this.engine.renderer?.showWalkPath(player.x, player.y, target.x, target.y);
+        if (!path || path.length <= 1) {
+            this.showMessage('Nothing left to reach.');
+            this.engine.renderer?.hideWalkPath();
+            return;
+        }
+
+        this.exploreArmed = true;
+        this.exploreArmedTarget = target;
+        this.showMessage('Explore: press again to travel.');
+    }
+
+    /**
+     * Commit an armed explore preview: start auto-exploring for real.
+     * A Tab-selected target (marked `travel`) instead walks straight to that fixed
+     * destination via the auto-walk machinery, which already handles solid
+     * doors/stairways/monsters (collide when adjacent, route to an adjacent tile
+     * otherwise) and hazard confirmations.
+     */
+    commitExplore() {
+        const player = this.engine.entityManager?.player;
+        const armed = this.exploreArmedTarget;
+        this.exploreArmed = false;
+        this.exploreArmedTarget = null;
+        this.targetCycleIndex = -1;
+        if (!player || player.isDead) return;
+        if (player.hasStateProperty('random_movement')) {
+            this.showMessage("You're too confused to explore.");
+            this.engine.renderer?.hideWalkPath();
+            return;
+        }
+
+        // Fixed-destination travel (a Tab pick) → reuse click-to-walk.
+        if (armed && armed.travel) {
+            this.hoveredTile.x = armed.x;
+            this.hoveredTile.y = armed.y;
+            this.startAutoWalk();
             return;
         }
 
@@ -728,6 +820,114 @@ class InputManager {
         this.checkNotableEvents();
 
         this.exploreStep();
+    }
+
+    /**
+     * Disarm a pending explore preview (first-press state) without walking.
+     * Called when the player does anything other than press (x)plore again.
+     * @returns {boolean} true if a preview was actually pending (and cleared)
+     */
+    cancelExplorePreview() {
+        if (!this.exploreArmed) return false;
+        this.exploreArmed = false;
+        this.exploreArmedTarget = null;
+        this.targetCycleIndex = -1; // next Tab cycle restarts from the nearest target
+        this.engine.renderer?.hideWalkPath();
+        return true;
+    }
+
+    /**
+     * Gather the reachable points of interest the player can travel to, nearest
+     * first. Candidates are:
+     *   - ground items the player can currently perceive, and
+     *   - "important" actors (doors/openables, stairways, gateways, and any actor
+     *     with a personality), excluding the player and controlled allies.
+     * Reachability is probed with renderer.computeWalkPath, which paths to an
+     * occupied end tile (so a solid door/stairway/monster tile is a valid
+     * destination) and returns null when unreachable — the same rules the drawn
+     * preview uses. We reuse the returned path's length for distance sorting so we
+     * only path once per candidate.
+     * @returns {Array<{x:number, y:number, kind:string, entity:object, path:Array, dist:number}>}
+     */
+    collectTargets() {
+        const engine = this.engine;
+        const player = engine.entityManager?.player;
+        if (!player || player.isDead) return [];
+        const em = engine.entityManager;
+
+        const seen = new Set();          // dedupe by tile so overlapping entities don't double up
+        const candidates = [];
+        const consider = (entity, kind, canPerceive) => {
+            if (!entity || entity.isDead) return;
+            if (!canPerceive) return;
+            const key = `${entity.x},${entity.y}`;
+            if (seen.has(key)) return;
+            // computeWalkPath paths to the (possibly occupied) end tile without
+            // drawing sprites; null = unreachable. Same rules as the drawn preview.
+            const path = engine.renderer?.computeWalkPath(player.x, player.y, entity.x, entity.y);
+            if (!path || path.length <= 1) return;
+            seen.add(key);
+            candidates.push({ x: entity.x, y: entity.y, kind, entity, path, dist: path.length });
+        };
+
+        // Ground items the player can perceive (visible tile).
+        for (const item of (em.items || [])) {
+            consider(item, 'item', engine.isTileVisible(item.x, item.y));
+        }
+
+        // Important actors on tiles the player has seen (visible or remembered),
+        // excluding the player and any controlled ally.
+        for (const actor of (em.actors || [])) {
+            if (actor === player) continue;
+            if (actor.hasAttribute?.('controlled')) continue;
+            if (!isImportantActor(actor)) continue;
+            const known = engine.isTileVisible(actor.x, actor.y) || engine.isTileExplored(actor.x, actor.y);
+            consider(actor, 'actor', known);
+        }
+
+        candidates.sort((a, b) => a.dist - b.dist);
+        return candidates;
+    }
+
+    /**
+     * Tab: cycle through reachable targets, previewing the path to each and arming
+     * it so a subsequent (x)plore/confirm press travels there. Repeated Tab presses
+     * advance to the next-farther candidate, wrapping around. With no candidates,
+     * falls through to a plain explore preview so Tab is never a dead key.
+     */
+    cycleTarget() {
+        if (this.exploring) return; // don't retarget mid-travel
+
+        const player = this.engine.entityManager?.player;
+        if (!player || player.isDead) return;
+        if (player.hasStateProperty('random_movement')) {
+            this.showMessage("You're too confused to explore.");
+            return;
+        }
+
+        const targets = this.collectTargets();
+        if (targets.length === 0) {
+            // Nothing specific to target — behave like a first (x)plore press so Tab
+            // still previews the explore frontier.
+            this.targetCycleIndex = -1;
+            this.startExplore();
+            return;
+        }
+
+        // Advance the cycle (wrapping). A disarmed preview resets the index to -1,
+        // so the first Tab lands on index 0 (nearest).
+        this.targetCycleIndex = (this.targetCycleIndex + 1) % targets.length;
+        const target = targets[this.targetCycleIndex];
+
+        // Preview the path and arm it (reuse the two-step commit machinery).
+        // `travel: true` marks this as a fixed-destination target (a Tab pick) so
+        // commitExplore walks straight to it rather than recomputing an explore leg.
+        this.engine.renderer?.showWalkPath(player.x, player.y, target.x, target.y);
+        this.exploreArmed = true;
+        this.exploreArmedTarget = { ...target, travel: true };
+
+        const label = target.entity?.name || (target.kind === 'item' ? 'item' : 'target');
+        this.showMessage(`Target: ${label} (${this.targetCycleIndex + 1}/${targets.length}) — press travel to go.`);
     }
 
     /**
@@ -840,6 +1040,8 @@ class InputManager {
         this.exploreStepsTaken = 0;
         this.exploreHpSnapshot = null;
         this.exploreStateSnapshot = null;
+        this.exploreArmed = false;
+        this.exploreArmedTarget = null;
         this._exploreStopOnItem = false;
         this.engine.renderer?.hideWalkPath();
     }
@@ -1420,6 +1622,12 @@ class InputManager {
         // Clear message stack at the start of each player action
         this.clearMessageStack();
 
+        // Any input other than (x)plore or Tab-cycling disarms a pending explore
+        // preview (the first-press "press again to travel" state), so a stale path
+        // never lingers behind the next thing the player does. (x)plore commits it
+        // and Tab advances it, so neither should cancel it here.
+        if (action !== 'explore' && action !== 'cycle_target') this.cancelExplorePreview();
+
         // Handle movement actions
         if (this.directions[action]) {
             let dir = this.directions[action];
@@ -1562,6 +1770,12 @@ class InputManager {
                 // Auto-explore drives its own turns via the stepper; don't consume
                 // a manual turn just for pressing the key.
                 this.startExplore();
+                break;
+
+            case 'cycle_target':
+                // Tab: preview/advance through reachable targets (arms one for the
+                // (x)plore/confirm press). No turn consumed — it's just targeting.
+                this.cycleTarget();
                 break;
         }
     }

@@ -10,7 +10,8 @@
     "r": "read_scroll",
     "j": "jam_spike",
     "c": "catalog",
-    "x": "explore"
+    "x": "explore",
+    "Tab": "cycle_target"
   },
 
   "global": {
@@ -27,6 +28,7 @@
     "read_scroll":    "Read a scroll",
     "jam_spike":      "Jam a spike into a door",
     "explore":        "Auto-explore",
+    "cycle_target":   "Cycle travel targets",
     "discovery":      "Discovery progress",
     "toggle_pause":   "Toggle pause",
     "reload":         "Reload / restart"

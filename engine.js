@@ -11531,13 +11531,15 @@ class RenderSystem {
      * @param {number} endY - Target tile Y
      * @returns {Array|null} The path array or null if no path exists
      */
-    showWalkPath(startX, startY, endX, endY) {
-        // Clear any existing walk path highlight
-        this.hideWalkPath();
-
-        const tileWidth = this.engine.config.tileWidth;
-        const tileHeight = this.engine.config.tileHeight;
-
+    /**
+     * Compute the walk path from (startX,startY) to (endX,endY) WITHOUT drawing
+     * anything. Shares the exact passability rules the drawn preview uses (start &
+     * end tiles exempt from solid-actor blocking, hazards avoided unless immune,
+     * corner-cut rules), so callers that only need to test reachability or read a
+     * path (e.g. Tab target-cycling) stay in sync with showWalkPath.
+     * @returns {Array<{x:number,y:number}>|null} the path (incl. endpoints), or null if unreachable
+     */
+    computeWalkPath(startX, startY, endX, endY) {
         // Create passability callback
         const isPassable = (x, y) => {
             // Check map boundaries
@@ -11580,7 +11582,18 @@ class RenderSystem {
         // Find path using A*
         const path = findPathAStar(startX, startY, endX, endY, isPassable, { topology: 8, hasFloor, isCornerBlocker: isCornerWall });
 
-        if (path.length === 0) {
+        return path.length === 0 ? null : path;
+    }
+
+    showWalkPath(startX, startY, endX, endY) {
+        // Clear any existing walk path highlight
+        this.hideWalkPath();
+
+        const tileWidth = this.engine.config.tileWidth;
+        const tileHeight = this.engine.config.tileHeight;
+
+        const path = this.computeWalkPath(startX, startY, endX, endY);
+        if (!path) {
             return null; // No path found
         }
 
