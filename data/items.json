@@ -1625,7 +1625,7 @@
       "use_effect": {
         "nutrition": 400
       },
-      "use_sound": "pickup",
+      "use_sound": "Drink",
       "description": "A hunk of bloody meat."
     }
   },
