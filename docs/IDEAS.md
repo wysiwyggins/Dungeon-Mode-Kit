@@ -8,21 +8,21 @@ no currently tracked bugs
 
 ---
 
+## Tweaks
+
+- use the color name when referring to paired doors, keys levers etc. "the orange gate is locked" etc
+
 ## Feature ideas
 
-## Actor info
+### Actor info
 
 - clicking on an actor should show an info window instead of pathing to them with click to walk. This should show the monster name and description, later we can build out more procedural info like brogue.
 - In addition to clicking we should have a keyboard-only way to select actors and items and getting info (probably tab to cycle through all visible actors and items and enter to view info, this could also be used for keyboard only targeting for throw/zap)
 - because the canvas viewport is prototype definable, could this be too much text for the canvas? we might need to implement paging in ui windows for overflow (paging is more desirable than scrolling)
 
-## Keybinding changes
+### Keybinding changes
 
 - movement keys should also be defined in keybindings.json along with actions so we can reclaim wasd for actions if needed
-
-### Hero personality
-
-- a personality and behaviors that would automate an actor that would normally be playable, for zero player observer prototypes, behaviors could be re-used for an (x)plore action. Usually in roguelikes explore is motivated to explore all the unknown areas of the map and collect all items before running out of targets. Because levels can also be darkness: false, in some situations the only motivation would be collecting items. both behaviors would not be enough for full zero player mode, which would also need to have attacking enemies and seeking stairs down as additional goals.
 
 ### Dialogue
 
@@ -35,7 +35,7 @@ no currently tracked bugs
 - [ ] Ending triggers — dialogue or events that trigger win/loss conditions
 - [ ] Multi-page dialogue — pagination for longer conversations
 
-## Variables & Game State [b][Z]
+### Variables & Game State [b][Z]
 
 - Arbitrary variables like bools could be added to prototypes that could be changed by events like actor attributes currently are. This would be a tool for designers to add persistent states across levels that can be changed by the player. Can also be a per level "win condition" (stairway unlock).
 - [ ] Prototype variables — persistent key-value state across floors (booleans, numbers, strings)
