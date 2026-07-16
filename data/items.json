@@ -228,6 +228,7 @@
       "fire_immunity_potion",
       "slowness_potion",
       "telepathy_potion",
+      "infrastructure_potion",
       "mystery_potion"
     ]
   },
@@ -1305,6 +1306,32 @@
       },
       "use_sound": "swallow",
       "description": "Reveals nearby creatures through walls."
+    }
+  },
+  "infrastructure_potion": {
+    "name": "Potion",
+    "tileIndex": "FEMALE_SYMBOL",
+    "flipV": true,
+    "random_color": true,
+    "identified": false,
+    "unidentified_template": "[color] potion",
+    "identified_template": "Potion of Infrastructure",
+    "effect_description": "You perceive the hidden works",
+    "use_description": "The [item_name] tastes [adjectives.wine_descriptions]. Hidden connections shimmer into view.",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": true,
+      "flammable": false,
+      "consumable": true,
+      "breakable": true,
+      "break_sound": "glass",
+      "use_verb": "Drink",
+      "use_effect": {
+        "apply_state": "infrastructure_sight"
+      },
+      "use_sound": "swallow",
+      "description": "Reveals the hidden links between machines and their triggers."
     }
   },
   "scroll_of_identify": {

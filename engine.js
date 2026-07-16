@@ -5148,6 +5148,16 @@ class Actor extends Entity {
         if (state.data.telepathic && this.isPlayerControlled()) {
             this.engine.updateLighting?.();
         }
+
+        // Infrastructure sight ending: hide the machine-id link overlay. Done after
+        // the delete so hasStateProperty('reveal_infrastructure') reads false; hide
+        // directly (not just via updateLighting) so it clears even if the debug
+        // toggle isn't holding it open.
+        if (state.data.reveal_infrastructure && this.isPlayerControlled()) {
+            if (!this.engine.renderer?.infrastructureDebugForced) {
+                this.engine.renderer?.hideInfrastructureLayer?.();
+            }
+        }
     }
 
     _updateInvisibilitySprites() {
@@ -10808,6 +10818,10 @@ class RenderSystem {
         // Line path highlight for throwing/aiming
         this.linePathSprites = [];
 
+        // Infrastructure overlay: machine-id link lines (hidden until revealed)
+        this.infrastructureSprites = [];
+        this.infrastructureDebugForced = false;
+
         // Walk path highlight for click-to-walk
         this.walkPathSprites = [];
 
@@ -11120,6 +11134,194 @@ class RenderSystem {
             }
         }
         this.linePathSprites = [];
+    }
+
+    /**
+     * Infrastructure overlay: tinted box-drawing lines connecting each machine's
+     * hub (a switch/lever) to the targets (gates/doors/pedestals) it controls,
+     * grouped by shared machine_id. Normally hidden; revealed by the
+     * infrastructure_sight state (Potion of Infrastructure) or the debug toggle.
+     * Modeled on the hideLinePath()/linePathSprites overlay lifecycle above.
+     *
+     * Routing is L-shaped (horizontal then vertical) and ignores walls by design —
+     * the lines are diagrammatic, not physical conduit. Proximity-linked machines
+     * (no shared machine_id) are intentionally not drawn; the feature is scoped to
+     * "same machine id" per docs/IDEAS.md.
+     */
+    renderInfrastructureLayer() {
+        this.hideInfrastructureLayer();
+
+        const em = this.engine.entityManager;
+        if (!em) return;
+
+        const tileWidth = globalVars.TILE_WIDTH;
+        const tileHeight = globalVars.TILE_HEIGHT;
+
+        // Group members already visited as a hub or target, so each machine draws once.
+        const seen = new Set();
+
+        for (const hub of em.actors) {
+            if (hub.isDead || seen.has(hub)) continue;
+            // A hub is a switch/lever/plate: it drives switch_effects (or is switchable).
+            if (!hub.hasAttribute('switchable') && !hub.data?.switch_effects) continue;
+
+            const machineId = hub.getAttribute('machine_id');
+            if (!machineId) continue; // proximity-only groups are out of scope
+
+            const targets = em.actors.filter(
+                a => a !== hub && !a.isDead && a.getAttribute('machine_id') === machineId
+            );
+            if (targets.length === 0) continue;
+
+            seen.add(hub);
+            for (const t of targets) seen.add(t);
+
+            const tint = (hub.tint !== undefined && hub.tint !== null) ? hub.tint : 0xFFFFFF;
+
+            // Collect every cell each L-bend passes through, recording which of
+            // up/down/left/right that cell connects to, so overlapping lines form
+            // proper T/cross junctions rather than broken straights.
+            const cells = new Map(); // "x,y" -> Set of 'up'|'down'|'left'|'right'
+            for (const target of targets) {
+                this._addInfrastructureLBend(cells, hub.x, hub.y, target.x, target.y);
+            }
+
+            // Node cells: the hub and each target sit on their actor's tile. Mark
+            // them with a white bullet instead of a line glyph so the connection
+            // endpoints read as nodes.
+            const nodes = new Set([`${hub.x},${hub.y}`]);
+            for (const target of targets) nodes.add(`${target.x},${target.y}`);
+
+            for (const [key, dirs] of cells) {
+                const [cx, cy] = key.split(',').map(Number);
+                const tileName = nodes.has(key)
+                    ? 'WHITE_BULLET'
+                    : this._infrastructureGlyph(dirs);
+                const tileIndex = this.engine.spriteLibrary.resolveTile(tileName);
+                if (!tileIndex) continue;
+
+                const texture = this.getTileTexture(
+                    tileIndex.x * tileWidth,
+                    tileIndex.y * tileHeight
+                );
+                const sprite = new PIXI.Sprite(texture);
+                sprite.x = cx * tileWidth;
+                sprite.y = cy * tileHeight;
+                sprite.tint = tint;
+                // Low zIndex in uiContainer so the wiring sits below UI windows
+                // (matches the thread trail's placement in this container).
+                sprite.zIndex = 2;
+
+                this.uiContainer.addChild(sprite);
+                this.infrastructureSprites.push(sprite);
+            }
+        }
+    }
+
+    /**
+     * Walk an L-shaped path (horizontal leg first, then vertical) from (x0,y0) to
+     * (x1,y1), recording per-cell connection directions into `cells`. Each step
+     * marks both the current cell (toward the next) and the next cell (back toward
+     * the current) so adjacent cells agree on their shared edge.
+     */
+    _addInfrastructureLBend(cells, x0, y0, x1, y1) {
+        const opp = { up: 'down', down: 'up', left: 'right', right: 'left' };
+        const mark = (x, y, dir) => {
+            const key = `${x},${y}`;
+            let set = cells.get(key);
+            if (!set) { set = new Set(); cells.set(key, set); }
+            if (dir) set.add(dir);
+        };
+        // Ensure endpoints exist even for a zero-length path (hub === target tile).
+        mark(x0, y0, null);
+        mark(x1, y1, null);
+
+        let cx = x0, cy = y0;
+        const stepTo = (nx, ny, dir) => {
+            mark(cx, cy, dir);
+            mark(nx, ny, opp[dir]);
+            cx = nx; cy = ny;
+        };
+
+        // Horizontal leg
+        while (cx !== x1) {
+            const dir = cx < x1 ? 'right' : 'left';
+            stepTo(cx + (cx < x1 ? 1 : -1), cy, dir);
+        }
+        // Vertical leg
+        while (cy !== y1) {
+            const dir = cy < y1 ? 'down' : 'up';
+            stepTo(cx, cy + (cy < y1 ? 1 : -1), dir);
+        }
+    }
+
+    /**
+     * Pick the WHITE_BOX_* glyph for a cell given its set of connection directions.
+     * Handles endpoints (1 dir), straights + corners (2), T-junctions (3), cross (4).
+     * Corner names describe where the corner sits (BOTTOM_RIGHT = lines go up+left).
+     * T names: <stub>_<bar> (UP_HORIZONTAL = horizontal bar with an upward stub).
+     */
+    _infrastructureGlyph(dirs) {
+        const u = dirs.has('up'), d = dirs.has('down'), l = dirs.has('left'), r = dirs.has('right');
+        const key = [u ? 'up' : '', d ? 'down' : '', l ? 'left' : '', r ? 'right' : '']
+            .filter(Boolean).sort().join('-');
+
+        const map = {
+            // Cross
+            'down-left-right-up': 'WHITE_BOX_VERTICAL_HORIZONTAL',
+            // T-junctions (missing one side)
+            'left-right-up':   'WHITE_BOX_UP_HORIZONTAL',    // horizontal bar + up stub (no down)
+            'down-left-right': 'WHITE_BOX_DOWN_HORIZONTAL',  // horizontal bar + down stub (no up)
+            'down-right-up':   'WHITE_BOX_RIGHT_VERTICAL',   // vertical bar + right stub (no left)
+            'down-left-up':    'WHITE_BOX_LEFT_VERTICAL',    // vertical bar + left stub (no right)
+            // Straights
+            'down-up':    'WHITE_BOX_VERTICAL',
+            'left-right': 'WHITE_BOX_HORIZONTAL',
+            // Corners (named by corner position, connecting the two listed sides)
+            'left-up':    'WHITE_BOX_BOTTOM_RIGHT',
+            'right-up':   'WHITE_BOX_BOTTOM_LEFT',
+            'down-left':  'WHITE_BOX_TOP_RIGHT',
+            'down-right': 'WHITE_BOX_TOP_LEFT',
+            // Endpoint stubs (single direction) — draw the straight along that axis
+            'up':    'WHITE_BOX_VERTICAL',
+            'down':  'WHITE_BOX_VERTICAL',
+            'left':  'WHITE_BOX_HORIZONTAL',
+            'right': 'WHITE_BOX_HORIZONTAL'
+        };
+        return map[key] || 'WHITE_BOX_HORIZONTAL';
+    }
+
+    /**
+     * Remove the infrastructure overlay sprites (mirrors hideLinePath).
+     */
+    hideInfrastructureLayer() {
+        if (this.infrastructureSprites) {
+            for (const sprite of this.infrastructureSprites) {
+                this.uiContainer.removeChild(sprite);
+                sprite.destroy();
+            }
+        }
+        this.infrastructureSprites = [];
+    }
+
+    /**
+     * Drive the infrastructure layer's visibility each render refresh. Shown when
+     * the player has the reveal_infrastructure state or the author debug toggle is
+     * on; hidden otherwise. Rebuilt every refresh while visible so it self-heals if
+     * a gate opens/moves/dies mid-reveal. Called from updateProximityTransparency
+     * (the single funnel both the dark and bright render paths pass through).
+     */
+    updateInfrastructureVisibility() {
+        const player = this.engine.entityManager?.player;
+        const revealed = !!player && !player.isDead &&
+            player.hasStateProperty?.('reveal_infrastructure');
+        const shouldShow = revealed || this.infrastructureDebugForced;
+
+        if (shouldShow) {
+            this.renderInfrastructureLayer();
+        } else if (this.infrastructureSprites && this.infrastructureSprites.length) {
+            this.hideInfrastructureLayer();
+        }
     }
 
     /**
@@ -12575,6 +12777,11 @@ class RenderSystem {
         // lighting-based reveal in updateEntityLighting doesn't run). Runs last so
         // it overrides the invisible-actor hide above.
         this.applyTelepathyReveal();
+
+        // Show/hide the machine-id infrastructure overlay. This runs on both the
+        // dark path (updateDarkness calls updateProximityTransparency) and the
+        // bright path (updateLighting calls it directly), so it's the single funnel.
+        this.updateInfrastructureVisibility();
     }
 
     /**

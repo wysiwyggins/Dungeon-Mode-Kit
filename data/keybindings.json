@@ -14,7 +14,8 @@
 
   "global": {
     " ": "toggle_pause",
-    "R": "reload"
+    "R": "reload",
+    "I": "toggle_infrastructure"
   },
 
   "descriptions": {
@@ -27,6 +28,7 @@
     "jam_spike":      "Jam a spike into a door",
     "discovery":      "Discovery progress",
     "toggle_pause":   "Toggle pause",
-    "reload":         "Reload / restart"
+    "reload":         "Reload / restart",
+    "toggle_infrastructure": "Toggle machine link overlay (debug)"
   }
 }

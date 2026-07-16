@@ -175,6 +175,17 @@
     "on_remove_message": "The telepathic awareness fades."
   },
 
+  "infrastructure_sight": {
+    "name": "Infrastructure Sight",
+    "duration": 60,
+    "tint": "#88ccaa",
+    "reveal_infrastructure": true,
+    "player_only": true,
+    "effect_description": "You perceive the hidden works",
+    "on_apply_message": "Hidden connections glimmer into view.",
+    "on_remove_message": "The hidden connections fade from sight."
+  },
+
   "stuck": {
     "name": "Stuck",
     "duration": -1,

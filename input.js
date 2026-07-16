@@ -1236,6 +1236,25 @@ class InputManager {
             case 'reload':
                 this.engine.reloadPrototype();
                 break;
+
+            case 'toggle_infrastructure': {
+                // Author/debug: toggle the machine-id link overlay without spending
+                // a turn. Independent of the Potion of Infrastructure state.
+                const renderer = this.engine.renderer;
+                if (renderer) {
+                    renderer.infrastructureDebugForced = !renderer.infrastructureDebugForced;
+                    if (renderer.infrastructureDebugForced) {
+                        renderer.renderInfrastructureLayer();
+                    } else {
+                        // Keep it shown if the player still has the reveal state.
+                        const player = this.engine.entityManager?.player;
+                        if (!player || !player.hasStateProperty?.('reveal_infrastructure')) {
+                            renderer.hideInfrastructureLayer();
+                        }
+                    }
+                }
+                break;
+            }
         }
     }
 
