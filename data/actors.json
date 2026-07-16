@@ -368,7 +368,7 @@
       "opaque": false
     },
     "stats": {
-      "health": 18
+      "health": 25
     }
   },
   "goblin_spearman": {
@@ -398,7 +398,7 @@
       "opaque": false
     },
     "stats": {
-      "health": 18
+      "health": 25
     },
     "default_items": [
       "long_spear"
@@ -978,7 +978,7 @@
     "tileIndexTop": "BLANK",
     "tileIndexSide": "IMPERFECT_DOTTED_WHITE_SHADE",
     "tint": "#33AA77",
-    "lightRadius": 1,
+    "lightRadius": 2,
     "attributes": {
       "solid": false,
       "crushable": true,

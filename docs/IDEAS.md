@@ -5,6 +5,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 ## Bugs
 
 - no dark actor tints for states. it seems like torch light tint is coming from player tint, not the torch. fix both if possible
+- need to extend the explore action to open unlocked doors
 
 ---
 
@@ -67,7 +68,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ### Actors & Creatures
 
-- [ ] Auto-explore — pathfind through safe explored areas, stop on encounter (see hero personality) [B]
+- [x] Auto-explore — pathfind through safe explored areas, stop on encounter [B]
 - [ ] Searching action to discover traps and eventually hidden doors
 - [x] Aquatic creatures — actors restricted to water tiles, can't be pushed onto land
 - [ ] Burrowing creatures — can move through wall tiles, leave tunnels behind
@@ -113,7 +114,6 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ### Map & World Structure
 
-- [ ] use white box drawing tiles to draw a perimeter around the map, giving a visual clue for which parts of the viewport can be crossed over to a new screen. Perimeter should block movement.
 - [ ] Persistent floor state — items dropped on a floor remain when you return (partially exists)
 - [ ] Hub areas — safe zones between dungeon levels for shops, NPCs, storage (runes of protection could use the existing evil eye tile)
 
@@ -143,4 +143,3 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 - [ ] Variable editor — define and manage prototype variables
 - [ ] Event wiring editor — visually connect actors, events, and responses
 - [ ] State editor — create/edit states.json entries with duration, effects, immunities
-- [ ] Sound composer — simple tone sequencer for creating sound effects and music

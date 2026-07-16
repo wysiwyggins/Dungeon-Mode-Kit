@@ -85,11 +85,11 @@
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/mine/map.tmj": {
-            "scale": 0.294025,
-            "selectedLayer": 0,
+            "scale": 0.3157,
+            "selectedLayer": 2,
             "viewCenter": {
-                "x": 976.1074738542643,
-                "y": 726.1287305501234
+                "x": 950.2692429521699,
+                "y": 1121.3177066835603
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/morass/map.tmj": {
@@ -189,17 +189,17 @@
     "project": "dungeonkit.tiled-project",
     "property.type": "string",
     "recentFiles": [
+        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/arena/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/infrastructure/map.tmj",
+        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/mine/map.tmj",
         "tower.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/default/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/labyrinth/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/dungeon/map.tmj",
-        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/arena/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/morass/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/sewer/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/2.tmj",
-        "keys.tmj",
-        "static-tiles.tsj"
+        "keys.tmj"
     ]
 }
