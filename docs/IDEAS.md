@@ -4,6 +4,8 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Bugs
 
+no currently tracked bugs
+
 ---
 
 ## Feature ideas
@@ -12,6 +14,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 - clicking on an actor should show an info window instead of pathing to them with click to walk. This should show the monster name and description, later we can build out more procedural info like brogue.
 - In addition to clicking we should have a keyboard-only way to select actors and items and getting info (probably tab to cycle through all visible actors and items and enter to view info, this could also be used for keyboard only targeting for throw/zap)
+- because the canvas viewport is prototype definable, could this be too much text for the canvas? we might need to implement paging in ui windows for overflow (paging is more desirable than scrolling)
 
 ## Keybinding changes
 
@@ -19,7 +22,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ### Hero personality
 
-- a personality and behaviors that would automate an actor that would normally be playable, for zero player observer prototypes, behaviors could be re-used for an (x)plore action.
+- a personality and behaviors that would automate an actor that would normally be playable, for zero player observer prototypes, behaviors could be re-used for an (x)plore action. Usually in roguelikes explore is motivated to explore all the unknown areas of the map and collect all items before running out of targets. Because levels can also be darkness: false, in some situations the only motivation would be collecting items. both behaviors would not be enough for full zero player mode, which would also need to have attacking enemies and seeking stairs down as additional goals.
 
 ### Dialogue
 
@@ -31,10 +34,6 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 - [ ] NPC interaction on bump — non-hostile actors open dialogue instead of attacking
 - [ ] Ending triggers — dialogue or events that trigger win/loss conditions
 - [ ] Multi-page dialogue — pagination for longer conversations
-
-### Stepping stones
-
-If you push a pushable actor (like pushable wall) onto a deep actor like deep sewage, it appears to sink (top tile moves to base tile and is replaced by null). This also visually suggests that the actor could serve as a platform to walk on if it is next to a floor tile with no deep actor there. A desired behavior would then be, if a solid actor is on a deep tile and another actor approaches it from a tile with no deep actors, treat the "sunken" actor as platform: true and walk on it without sinking too. If an actor approaches the sunken actor from another deep tile, behave as before. This means inside the deep liquid an actor would push the pushable wall, but approching from the shore, the moving actor would visually "walk on top" of it. This might be an overcomplicated, bad idea!
 
 ## Variables & Game State [b][Z]
 
