@@ -459,18 +459,37 @@ function findPathAStar(fromX, fromY, toX, toY, isPassable, options = {}) {
     });
 
     if (hasFloor && path.length > 1) {
+        // ROT's A* cuts corners freely (it only knows per-tile passability, not the
+        // "no diagonal past a wall corner" edge rule). Repair each illegal diagonal
+        // by inserting an orthogonal detour tile — but the detour must itself be
+        // walkable (floor AND passable), or the followed path would just bump into
+        // the detour tile. If neither orthogonal side is walkable the diagonal
+        // can't be legalized here, so replan cardinally to guarantee a bump-free
+        // path the stepper can follow blindly.
+        const walkable = (x, y) => hasFloor(x, y) && isPassable(x, y);
+        let needsCardinalReplan = false;
         for (let i = path.length - 2; i >= 0; i--) {
             if (isDiagonalBlocked(path[i + 1].x, path[i + 1].y, path[i].x, path[i].y, isCornerBlocker)) {
                 const mid = { x: path[i].x, y: path[i + 1].y };
-                if (hasFloor(mid.x, mid.y)) {
+                const alt = { x: path[i + 1].x, y: path[i].y };
+                if (walkable(mid.x, mid.y)) {
                     path.splice(i + 1, 0, mid);
+                } else if (walkable(alt.x, alt.y)) {
+                    path.splice(i + 1, 0, alt);
                 } else {
-                    const alt = { x: path[i + 1].x, y: path[i].y };
-                    if (hasFloor(alt.x, alt.y)) {
-                        path.splice(i + 1, 0, alt);
-                    }
+                    needsCardinalReplan = true;
+                    break;
                 }
             }
+        }
+        // Fall back to a cardinal-only (topology 4) path, which has no diagonals and
+        // therefore no corner-cuts to repair. Only done when the diagonal path
+        // couldn't be legalized, so the common case still uses shorter diagonals.
+        if (needsCardinalReplan && topology === 8) {
+            const cardinal = [];
+            const astar4 = new ROT.Path.AStar(toX, toY, isPassable, { topology: 4 });
+            astar4.compute(fromX, fromY, (x, y) => { cardinal.push({ x, y }); });
+            if (cardinal.length > 1) return cardinal;
         }
     }
 
@@ -543,6 +562,23 @@ function getNextPathStep(fromX, fromY, toX, toY, isPassable, options = {}) {
 }
 
 /**
+ * Whether a solid actor is a closed door an actor can open just by walking into
+ * it — i.e. openable, currently closed, not locked, not spiked. Auto-routing
+ * (explore + click-to-walk) treats these tiles as passable because the mover
+ * bumps them open and steps through; locked/spiked doors need a key or attacking
+ * and stay impassable.
+ * @param {Actor} solid - the solid actor occupying the tile
+ * @returns {boolean}
+ */
+function isOpenableDoorTile(solid) {
+    return !!solid &&
+           solid.hasAttribute?.('openable') &&
+           !solid.hasAttribute('open') &&
+           !solid.hasAttribute('locked') &&
+           !solid.hasAttribute('spiked');
+}
+
+/**
  * Build the passability predicate used for auto-explore routing. Mirrors the
  * predicate Renderer.showWalkPath uses (floor present, no blocking solid actor,
  * avoid hazardous actors unless the mover is immune) so the explore preview, the
@@ -564,6 +600,11 @@ function buildExplorePassable(engine, actor) {
         }
         const solid = em.getSolidActorAt(x, y);
         if (solid && solid !== actor) {
+            // A closed but unlocked door is routable: the actor bumps it open, then
+            // steps through on the next tick (the stepper retries on an `opened`
+            // result). Locked or spiked doors can't be opened by walking, so they
+            // stay impassable and explore won't strand a target behind them.
+            if (isOpenableDoorTile(solid)) return true;
             // A pushable wall the actor can shove is treated as passable so explore
             // routes THROUGH it (the actor steps in and pushes it aside). "Can
             // shove" = the actor has strength AND at least one cardinal direction
@@ -7990,7 +8031,10 @@ class Actor extends Entity {
                 }
                 actorAtTarget.open();
                 this.engine.updateLighting();
-                return { moved: false, actionTaken: true };
+                // `opened` lets auto-walk/explore know this "didn't move" was just a
+                // door swinging open, so they retry the same step (and pass through)
+                // instead of treating it as a hard block and stopping.
+                return { moved: false, actionTaken: true, opened: true };
             }
 
             // Check for collision_description attribute (for non-combat interactions like locked stairways)
@@ -8120,9 +8164,10 @@ class Actor extends Entity {
         }
 
         // Check for items to pick up
+        let pickedUp = false;
         const itemAtTarget = this.engine.entityManager.getItemAt(newX, newY);
         if (itemAtTarget && itemAtTarget.hasAttribute('pickupable')) {
-            this.pickUpItem(itemAtTarget);
+            pickedUp = this.pickUpItem(itemAtTarget) || pickedUp;
         }
 
         // Check for entity walk descriptions (only for player-controlled actors)
@@ -8256,12 +8301,15 @@ class Actor extends Entity {
             for (const item of items) {
                 if (this.pickUpItem(item)) {
                     other.inventory.splice(other.inventory.indexOf(item), 1);
+                    pickedUp = true;
                 }
             }
             other.updateInventoryDisplay();
         }
 
-        return { moved: true, actionTaken: true, entrySound };
+        // `pickedUp` lets auto-explore treat grabbing loot as a natural stopping
+        // point (walk to the item, pick it up, then stop so the player re-plans).
+        return { moved: true, actionTaken: true, entrySound, pickedUp };
     }
 
     moveBy(dx, dy) {
@@ -11552,9 +11600,10 @@ class RenderSystem {
                 const floorTile = this.engine.mapManager?.floorMap[y]?.[x];
                 return floorTile && floorTile.tileId > 0;
             }
-            // Check for solid actors
+            // Check for solid actors. A closed, unlocked door is routable — the
+            // walker bumps it open and steps through — so it doesn't block a path.
             const solidActor = this.engine.entityManager?.getSolidActorAt(x, y);
-            if (solidActor) {
+            if (solidActor && !isOpenableDoorTile(solidActor)) {
                 return false;
             }
             // Check for hazardous actors - avoid unless player has matching immunity

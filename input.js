@@ -693,6 +693,18 @@ class InputManager {
                     }
                 }
             }
+        } else if (result.opened) {
+            // We just bumped a closed door open (it cost a turn but we didn't move).
+            // Don't advance the path index — retry the same tile next tick to step
+            // through the now-open doorway. Let AI act first, then re-check events.
+            this.onPlayerAction();
+            const postOpenEvent = this.checkNotableEvents();
+            if (postOpenEvent) {
+                this.showMessage(postOpenEvent);
+                this.stopAutoWalk();
+                return;
+            }
+            setTimeout(() => this.autoWalkStep(), this.autoWalkDelay);
         } else {
             // Movement blocked - stop auto-walk
             if (!result.actionTaken && !result.feedbackShown) {
@@ -980,6 +992,16 @@ class InputManager {
         this.clearMessageStack();
         const result = player.moveBy(dx, dy);
 
+        if (!result.moved && result.opened) {
+            // Opening a door is a natural stopping point: the door swings open (a
+            // turn passes) and we stop so the player can survey the newly revealed
+            // space and press explore again to plan a fresh path through it. The
+            // door's own open() already showed "The <door> opens." — don't overwrite it.
+            this.onPlayerAction();
+            this.stopExplore();
+            return;
+        }
+
         if (!result.moved) {
             // Blocked (e.g. a door closed, a monster stepped in). Drop this leg and
             // recompute next tick rather than hammering the same tile.
@@ -1002,6 +1024,11 @@ class InputManager {
 
         // Advance AI turns.
         this.onPlayerAction();
+
+        // Picking up an item is a natural stopping point: we've walked onto the loot
+        // and grabbed it, so stop (pickUpItem already showed its own message) and let
+        // the player press explore again to head for the next thing.
+        if (result.pickedUp) { this.stopExplore(); return; }
 
         // Stop-on-damage / stop-on-new-state, evaluated after AI has acted.
         const hpNow = player.stats?.health?.current ?? null;

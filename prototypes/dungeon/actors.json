@@ -57,9 +57,9 @@
     "default_items": [
       "butter_knife",
       "torch",
-      "torch",
-      "torch",
-      "torch",
+      "torch_unlit",
+      "torch_unlit",
+      "torch_unlit",
       "spike",
       "spike",
       "spike"
