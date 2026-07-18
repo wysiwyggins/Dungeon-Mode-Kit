@@ -19,6 +19,23 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 Thinking through how the parametric ui for making prototypes requires thinking through how multi level prototypes are balanced. We could have two separate modes for single level and multi-level prototypes to hide unneeded complexity. Are there situations where moving a slider up should move another down? (a 'balance' toggle, similar to a preserve aspect ratio checkbox, which could be turned off.) Studying how brogue balances its distribution of monsters, items and hazards over its levels could help in coming up with the best ui with the least amount of visual complexity and most amount of control (think sliders, hiding and showing elementd that depend on others, ui elements that affect one another, visualizations)
 
+- eliminate clutter, implicit attributes etc, don't be afraid to change how prototypes work themselves:
+  - we don't need "depth" as an attribute any more, it's an artifact from when all prototypes were one level, infer depth from level.
+  - turn speed is only important on observer mode prototypes (it's framerate). Observer mode is implicit when there's no playable controlled actors in a level. these are examples of settings that can be removed as implicit from other conditions or hidden.
+  - the advanced/ cutscene section shold be a top-level option that would supercede everything else. if a prototype is a cutscene then everything else is invalid and hidden.
+  -item budget section is confusing, why is it separate from item catalog? are any of its settings implicit based on item catalog? this could be one section.
+  - are any whole sections optional? they could have a toggle switch that hides them and reduces complexity.
+  - info icon tooltips are a little confusing because you have to know to hover to show them, the instinct is to click the i icon as if its a button. the question mark cursor doesn't make this interaction any clearer. the hovers appear fast enough for us to just get rid of the icon and cursor change, or we could change it into a button that shows an info tip as expected.
+  - next level and previous level attributes should be renamed "next prototype/last prototype." prototype connections are not as important now that prototypes can have multiple levels and we need to make sure the words "level" and "prototype" are now used correctly.
+  - in the mechanics section, the tint and ambient light settings need to be next to one another and use the same language so that we know they are two aspects of the same thing. there should be a clear toggle that shows or hides them both, "ambient level light".
+  - max rooms isn't useful, there should always be enough rooms to fill the map size. currently there are often too few rooms because this is a value that must be guessed.  I also want the engine to fill the surrounding space with enough hallways so that the map is mostly filled. Brogue is good at this.
+  - there is a useless confusing dropdown that has "add +" as an option that does nothing in room weights when all the room types have been added. hide it when there are no more additions possible
+  - add a toggle for bridges like the collapsing floors toggle
+  - for the traps and switch puzzles section, this should be integrated into map generator section
+  - in the switch pattern ui, picking a switch actor shows every single actor in a list, it should just show switchable actors and let us set whether or not they are toggleable or only activate once.
+  - if we are going to allow any actor to be set as the switch target, we should have access to any attribute that actor has that can be changed by the switch. This is one case where showing all the actors could be useful in unexpected ways.
+  - in the spawns section, the "+ enable random ..." buttons are a different pattern than the toggle boxes we have seen elsewhere. be consistent unless there is a reason to use a different pattern in some places
+
 ### Actor info
 
 - clicking on an actor could show an info window instead of pathing to them with click to walk. This should show the monster name and description, later we can build out more procedural info like brogue.

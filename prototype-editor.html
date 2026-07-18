@@ -550,7 +550,7 @@ function spawnRow(obj, key, id, spec, kind, ids, redraw) {
         head.appendChild(el('span', { class: 'pool-hint', title: 'This id is a category pool; spawns a random concrete type.' }, 'ⓘ pool'));
     }
     head.appendChild(expected);
-    const rm = el('button', { class: 'remove-btn' }, 'remove');
+    const rm = el('button', { class: 'remove-btn' }, '×');
     rm.addEventListener('click', () => { delete obj[key][id]; commit(); redraw(); });
     head.appendChild(rm);
     row.appendChild(head);
