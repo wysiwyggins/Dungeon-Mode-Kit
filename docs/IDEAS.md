@@ -35,6 +35,7 @@ Thinking through how the parametric ui for making prototypes requires thinking t
   - in the switch pattern ui, picking a switch actor shows every single actor in a list, it should just show switchable actors and let us set whether or not they are toggleable or only activate once.
   - if we are going to allow any actor to be set as the switch target, we should have access to any attribute that actor has that can be changed by the switch. This is one case where showing all the actors could be useful in unexpected ways.
   - in the spawns section, the "+ enable random ..." buttons are a different pattern than the toggle boxes we have seen elsewhere. be consistent unless there is a reason to use a different pattern in some places
+- I still find the contents of prototype-editor.html to be mostly unreadable. Theres no reason for a lot of inline javascript. If a script is complex and is not going to be changed by a designer, it should be off the page and in a library. What we want in in the page contents is a human-readable template, were we can add and remove ui elements with regognizable names, edit text and move things around. Complex permanent artifacts are removed from view.
 
 ### Actor info
 
