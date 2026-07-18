@@ -17,7 +17,8 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ### Prototype editor ui
 
-Thinking through how the parametric ui for making prototypes requires thinking through how multi level prototypes are balanced. We could have two separate modes for single level and multi-level prototypes to hide unneeded complexity. Are there situations where moving a slider up should move another down? (a 'balance' toggle, similar to a preserve aspect ratio checkbox, which could be turned off.) Studying how brogue balances its distribution of monsters, items and hazards over its levels could help in coming up with the best ui with the least amount of visual complexity and most amount of control (think sliders, hiding and showing elementd that depend on others, ui elements that affect one another, visualizations)
+Thinking through how the parametric ui for making prototypes requires thinking through how multi level prototypes are balanced. We could have two separate modes for single level and multi-level prototypes to hide unneeded complexity.
+Is it really valuable to have to define every individual level? wouldn't most roguelikes have at most two levels that might have a user created map.tmj and special rules and then all the levels in-between which have ramping difficulty in terms of monsters, traps, map features and item distributions? It would be more useful to define a 'biome' whith its features and then say which level sequences use each biome rther than all the controls for each individual level. Studying how Brogue balances its distribution of monsters, items and hazards over its levels could help in coming up with the best ui with the least amount of visual complexity and most amount of control (think sliders, hiding and showing elementd that depend on others, ui elements that affect one another. we already do this to some extent.)
 
 - eliminate clutter, implicit attributes etc, don't be afraid to change how prototypes work themselves:
   - we don't need "depth" as an attribute any more, it's an artifact from when all prototypes were one level, infer depth from level.
@@ -35,7 +36,8 @@ Thinking through how the parametric ui for making prototypes requires thinking t
   - in the switch pattern ui, picking a switch actor shows every single actor in a list, it should just show switchable actors and let us set whether or not they are toggleable or only activate once.
   - if we are going to allow any actor to be set as the switch target, we should have access to any attribute that actor has that can be changed by the switch. This is one case where showing all the actors could be useful in unexpected ways.
   - in the spawns section, the "+ enable random ..." buttons are a different pattern than the toggle boxes we have seen elsewhere. be consistent unless there is a reason to use a different pattern in some places
-- I still find the contents of prototype-editor.html to be mostly unreadable. Theres no reason for a lot of inline javascript. If a script is complex and is not going to be changed by a designer, it should be off the page and in a library. What we want in in the page contents is a human-readable template, were we can add and remove ui elements with regognizable names, edit text and move things around. Complex permanent artifacts are removed from view.
+  - add toggle to hide and show the json-output-panel on all of the editors starting with prototype editor
+- I still find the markup of prototype-editor.html to be mostly unreadable and unservicable. There's no reason for a lot of inline javascript to be here. If a script is complex and is not going to be changed by a designer, it should be off the page and in lib in an editors folder. What we want in in the page contents is a human-readable template, were we can add and remove ui elements with regognizable names, edit text and move things around. Complex permanent artifacts are removed from view.
 
 ### Actor info
 
