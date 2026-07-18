@@ -4,8 +4,8 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Bugs
 
-- no dark actor tints for states. it seems like torch light tint is coming from player tint, not the torch. fix both if possible
-- need to extend the explore action to open unlocked doors
+- I don't like styling css on id's and I've let some of that creep in. Clean scss to only use classes for styles (add classes when needed,) id's are for js
+- tints for actor states shouldn't be so dark that the actor tiles look like a dark block. it also seems like torch light tint is coming from player tint, not the torch tint. fix both if possible
 
 ---
 
@@ -15,19 +15,20 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Feature ideas
 
-### (x)plore
+### Prototype editor ui
 
-- 'this._exploreOpts' is undefined still
+Thinking through how the parametric ui for making prototypes requires thinking through how multi level prototypes are balanced. We could have two separate modes for single level and multi-level prototypes to hide unneeded complexity. Are there situations where moving a slider up should move another down? (a 'balance' toggle, similar to a preserve aspect ratio checkbox, which could be turned off.) Studying how brogue balances its distribution of monsters, items and hazards over its levels could help in coming up with the best ui with the least amount of visual complexity and most amount of control (think sliders, hiding and showing elementd that depend on others, ui elements that affect one another, visualizations)
 
 ### Actor info
 
 - clicking on an actor could show an info window instead of pathing to them with click to walk. This should show the monster name and description, later we can build out more procedural info like brogue.
-- In addition to clicking we should have a keyboard-only way to select actors and items and getting info (probably tab to cycle through all visible actors and items and enter to view info, this could also be used for keyboard only targeting for throw/zap)
+- In addition to clicking we should have a keyboard-only way to select actors and items and getting info (tab to cycle through objects of interest works now- we add mode-aware action button (enter) to view info, or select when throwing/zapping)
 - because the canvas viewport is prototype definable, could this be too much text for the canvas? we might need to implement paging in ui windows for overflow (paging is more desirable than scrolling)
+- if possible, clicking an actor or item name in the sidebar could highlight its tiles in the canvas and bring up the info canvas textbox
 
 ### Keybinding changes
 
-- movement keys should also be defined in keybindings.json along with actions so we can reclaim wasd for actions if needed
+- movement keys should also be defined in keybindings.json along with actions so we can reclaim wasd for actions if needed. it would probbaly be very easy to make a keybindings-editor.html too, preparing for the time when this all becomes a webapp
 
 ### Dialogue
 
