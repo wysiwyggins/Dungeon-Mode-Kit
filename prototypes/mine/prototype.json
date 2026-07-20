@@ -2,7 +2,6 @@
   "name": "mine",
   "description": "It's dark inside these winding corridors. \nPress 'i' for info.",
   "loaded_sound": "levelout",
-  "depth": 4,
   "turn_speed": 50,
   "previous_level": "Caverns",
   "mechanics": {

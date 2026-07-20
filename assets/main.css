@@ -1057,16 +1057,6 @@ body.editor.prototype-editor .range-vals {
   flex: 0 0 auto;
   white-space: nowrap;
 }
-body.editor.prototype-editor .tip-mark {
-  color: var(--accent);
-  font-size: 12px;
-}
-body.editor.prototype-editor label[title], body.editor.prototype-editor .sub-section-title[title], body.editor.prototype-editor select[title], body.editor.prototype-editor input[title] {
-  cursor: help;
-}
-body.editor.prototype-editor label[title] input, body.editor.prototype-editor label[title] select {
-  cursor: pointer;
-}
 body.editor.prototype-editor .toggle-line {
   display: flex;
   align-items: center;
@@ -1076,6 +1066,17 @@ body.editor.prototype-editor .toggle-line {
   cursor: pointer;
   margin: 6px 0 4px;
   min-width: unset;
+}
+body.editor.prototype-editor .cutscene-toggle {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border, #333);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+}
+body.editor.prototype-editor .cutscene-toggle .toggle-line {
+  margin: 0;
+  font-size: 12px;
 }
 body.editor.prototype-editor .mini-label {
   font-size: 9px;
@@ -1121,7 +1122,8 @@ body.editor.prototype-editor .floor-tab.proto-tab {
   font-weight: bold;
   margin-right: 8px;
 }
-body.editor.prototype-editor .override-toggle {
+body.editor.prototype-editor .override-toggle,
+body.editor.prototype-editor .section-enable-toggle {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -1130,8 +1132,12 @@ body.editor.prototype-editor .override-toggle {
   cursor: pointer;
   margin-left: auto;
 }
-body.editor.prototype-editor .override-toggle input {
+body.editor.prototype-editor .override-toggle input,
+body.editor.prototype-editor .section-enable-toggle input {
   accent-color: var(--accent);
+}
+body.editor.prototype-editor details.section.section-disabled > summary {
+  color: var(--text-dim);
 }
 body.editor.prototype-editor details.section.inherited > .section-body {
   opacity: 0.5;

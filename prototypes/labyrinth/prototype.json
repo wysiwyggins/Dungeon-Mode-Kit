@@ -2,7 +2,6 @@
   "name": "Cretan Labyrinth",
   "description": "It's dark inside these winding corridors. \nSlay the beast to escape. \nPress 'i' for info.",
   "loaded_sound": "levelout",
-  "depth": 2,
   "turn_speed": 50,
   "previous_level": "default",
   "next_level": "Catacombs",

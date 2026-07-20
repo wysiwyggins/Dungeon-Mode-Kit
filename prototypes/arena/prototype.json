@@ -2,7 +2,6 @@
   "name": "Combat Arena",
   "description": "A test arena for combat mechanics.\nDefeat the Minotaur to proceed.\nPress 'i' for info.",
   "loaded_sound": "tone3",
-  "depth": 99,
   "turn_speed": 50,
   "mechanics": {
     "fog_of_war": false,

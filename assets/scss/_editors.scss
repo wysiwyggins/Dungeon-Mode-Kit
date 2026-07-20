@@ -686,14 +686,10 @@ body.editor {
         .range-vals { flex: 0 0 auto; white-space: nowrap; }
 
         // ---- Tooltip affordance ----
-        // A small ⓘ next to labels; the native title attribute carries the
-        // actual text, so it works without JS and is keyboard/hover discoverable.
-        .tip-mark {
-            color: var(--accent);
-            font-size: 12px;
-        }
-        label[title], .sub-section-title[title], select[title], input[title] { cursor: help; }
-        label[title] input, label[title] select { cursor: pointer; }
+        // Labels/fields carry their help text in the native title attribute
+        // (hover to read). No marker icon or help cursor — the ⓘ affordance
+        // read as a clickable button and the question-mark cursor didn't help,
+        // so both were dropped (see docs/IDEAS.md).
 
         // ---- Enable/disable toggle line ----
         // Replaces the repeated inline-styled "enable X" checkboxes.
@@ -706,6 +702,16 @@ body.editor {
             cursor: pointer;
             margin: 6px 0 4px;
             min-width: unset;
+        }
+        // Top-of-form cutscene switch: reads as a mode selector, not a field.
+        .cutscene-toggle {
+            margin: 0 0 8px;
+            padding: 8px 10px;
+            border: 1px solid var(--border, #333);
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.03);
+
+            .toggle-line { margin: 0; font-size: 12px; }
         }
         .mini-label {
             font-size: 9px;
@@ -753,7 +759,8 @@ body.editor {
         }
 
         // Override toggle / inheritance on floor sections
-        .override-toggle {
+        .override-toggle,
+        .section-enable-toggle {
             display: inline-flex;
             align-items: center;
             gap: 4px;
@@ -763,6 +770,9 @@ body.editor {
             margin-left: auto;
             input { accent-color: var(--accent); }
         }
+        // A section switched off via its header toggle: dim the summary so its
+        // disabled state reads at a glance (the body just shows the hint).
+        details.section.section-disabled > summary { color: var(--text-dim); }
         details.section.inherited {
             > .section-body { opacity: 0.5; pointer-events: none; }
             > summary { color: var(--text-dim); }

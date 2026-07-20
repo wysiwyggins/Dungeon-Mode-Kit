@@ -2,7 +2,6 @@
   "name": "Hero Demo",
   "description": "A zero-player observer level: an AI hero (with a `hero` personality and the `pov` attribute) explores a dark, branching dungeon on its own while you watch through its eyes.",
   "loaded_sound": "levelout",
-  "depth": 0,
   "turn_speed": 90,
   "mechanics": {
     "fog_of_war": true,

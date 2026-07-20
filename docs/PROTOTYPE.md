@@ -25,7 +25,6 @@ Load a prototype by adding `?prototype=my_level` to the URL.
 |-------|------|-------------|
 | `name` | string | Display name shown in the UI |
 | `description` | string | Text shown on level load. Supports `\n` for line breaks. |
-| `depth` | number | Numeric identifier for the prototype's position in progression |
 | `turn_speed` | number | Milliseconds per AI turn (lower = faster). Default `50`. |
 | `loaded_sound` | string | Sound played when the prototype loads |
 | `next_level` | string | Prototype folder name to advance to (via down stairway or portal) |

@@ -28,6 +28,7 @@
     <button id="btn-blank">New Blank</button>
     <button id="btn-export" class="btn-accent">Export JSON</button>
     <button id="btn-copy" class="btn-accent">Copy to Clipboard</button>
+    <button id="btn-toggle-json" title="Show or hide the live JSON output panel">Hide JSON</button>
     <span id="load-status" class="status-text"></span>
 </header>
 
@@ -65,7 +66,7 @@
 <!-- ---- Row partials (reused building blocks) ---- -->
 <script type="text/x-handlebars-template" id="tpl-field-row">
   <div class="field-row">
-    <label {{#if tip}}title="{{tip}}"{{/if}}>{{label}}{{#if tip}}<span class="tip-mark" title="{{tip}}"> ⓘ</span>{{/if}}</label>
+    <label {{#if tip}}title="{{tip}}"{{/if}}>{{label}}</label>
     <input type="{{#if type}}{{type}}{{else}}text{{/if}}"
            data-bind="{{bind}}" data-type="{{#if type}}{{type}}{{else}}text{{/if}}"
            {{#if scope}}data-scope="{{scope}}"{{/if}} data-empty="delete"
@@ -76,7 +77,7 @@
 
 <script type="text/x-handlebars-template" id="tpl-textarea-row">
   <div class="field-row">
-    <label {{#if tip}}title="{{tip}}"{{/if}}>{{label}}{{#if tip}}<span class="tip-mark" title="{{tip}}"> ⓘ</span>{{/if}}</label>
+    <label {{#if tip}}title="{{tip}}"{{/if}}>{{label}}</label>
     <textarea data-bind="{{bind}}" data-type="textarea"
               {{#if scope}}data-scope="{{scope}}"{{/if}} data-empty="delete"
               {{#if tip}}title="{{tip}}"{{/if}}></textarea>
@@ -85,7 +86,7 @@
 
 <script type="text/x-handlebars-template" id="tpl-select-row">
   <div class="field-row">
-    <label {{#if tip}}title="{{tip}}"{{/if}}>{{label}}{{#if tip}}<span class="tip-mark" title="{{tip}}"> ⓘ</span>{{/if}}</label>
+    <label {{#if tip}}title="{{tip}}"{{/if}}>{{label}}</label>
     <select data-bind="{{bind}}" data-type="select"
             {{#if scope}}data-scope="{{scope}}"{{/if}} data-empty="delete"
             {{#if tip}}title="{{tip}}"{{/if}}>
@@ -101,29 +102,31 @@
   {{> textareaRow label="Description" bind="description" tip="Intro text shown when the level loads. Use \n for line breaks."}}
   <div class="hint-inline">Use \n in description for line breaks (newlines are preserved).</div>
   {{> selectRow label="Loaded sound" bind="loaded_sound" options=soundIds tip="Sound effect played once when the level finishes loading."}}
-  {{> fieldRow label="Depth" bind="depth" type="number" tip="Dungeon depth for progression tracking/scaling. Higher = deeper."}}
   {{> fieldRow label="Turn speed (ms)" bind="turn_speed" type="number" tip="Milliseconds per turn tick. Lower = faster animation/AI cadence. Default 50."}}
-  {{> fieldRow label="Next level" bind="next_level" placeholder="prototype name" tip="Prototype loaded when the player exits downward from the final floor."}}
-  {{> fieldRow label="Previous level" bind="previous_level" placeholder="prototype name" tip="Prototype reachable by going back up the entrance stairway."}}
+  {{> fieldRow label="Next prototype" bind="next_level" placeholder="prototype name" tip="Prototype loaded when the player exits downward from the final floor."}}
+  {{> fieldRow label="Last prototype" bind="previous_level" placeholder="prototype name" tip="Prototype reachable by going back up the entrance stairway."}}
   {{> fieldRow label="Intro cutscene" bind="intro_cutscene" placeholder="prototype name" tip="Prototype (flipbook cutscene) played before this level begins."}}
 </script>
 
 <!-- ---- Mechanics section body (templated portion) ---- -->
-<!-- The flag checkboxes + viewport/ai_margin fields are templated. The two
-     sliders and the tint color picker are mounted by JS into the placeholders. -->
+<!-- The flag checkboxes + viewport/ai_margin fields are templated. The
+     treasure_room slider and the "ambient level light" group (ambient_light
+     slider + tint color picker, under one toggle) are mounted by JS.
+     observer_mode is intentionally NOT editable here: the engine derives it at
+     runtime from whether any actor has the `controlled` attribute (actors live
+     in the Tiled map, which the editor can't see). Any observer_mode already in
+     a loaded prototype's mechanics is preserved verbatim on export. -->
 <script type="text/x-handlebars-template" id="tpl-section-mechanics">
   <div class="checkbox-grid">
-    <label title="Tiles you have seen stay remembered but dim when out of view; unseen tiles are hidden."><input type="checkbox" data-bind="fog_of_war" data-type="checkbox" data-scope="mechanics"> fog_of_war<span class="tip-mark" title="Tiles you have seen stay remembered but dim when out of view; unseen tiles are hidden."> ⓘ</span></label>
-    <label title="Level is dark — only lit areas (torches, light sources, player light) are visible."><input type="checkbox" data-bind="darkness" data-type="checkbox" data-scope="mechanics"> darkness<span class="tip-mark" title="Level is dark — only lit areas (torches, light sources, player light) are visible."> ⓘ</span></label>
-    <label title="Player emits their own light automatically, so they can always see nearby tiles even in darkness."><input type="checkbox" data-bind="player_auto_light" data-type="checkbox" data-scope="mechanics"> player_auto_light<span class="tip-mark" title="Player emits their own light automatically, so they can always see nearby tiles even in darkness."> ⓘ</span></label>
-    <label title="No player-controlled actor; the level runs autonomously and you watch (e.g. Game of Life)."><input type="checkbox" data-bind="observer_mode" data-type="checkbox" data-scope="mechanics"> observer_mode<span class="tip-mark" title="No player-controlled actor; the level runs autonomously and you watch (e.g. Game of Life)."> ⓘ</span></label>
+    <label title="Tiles you have seen stay remembered but dim when out of view; unseen tiles are hidden."><input type="checkbox" data-bind="fog_of_war" data-type="checkbox" data-scope="mechanics"> fog_of_war</label>
+    <label title="Level is dark — only lit areas (torches, light sources, player light) are visible."><input type="checkbox" data-bind="darkness" data-type="checkbox" data-scope="mechanics"> darkness</label>
+    <label title="Player emits their own light automatically, so they can always see nearby tiles even in darkness."><input type="checkbox" data-bind="player_auto_light" data-type="checkbox" data-scope="mechanics"> player_auto_light</label>
   </div>
   <div data-mount="treasure_room"></div>
-  <div data-mount="ambient_light"></div>
   {{> fieldRow label="viewport_width" bind="viewport_width" type="number" scope="mechanics" tip="Visible columns. If smaller than the map, the level scrolls. Leave blank to show the whole map."}}
   {{> fieldRow label="viewport_height" bind="viewport_height" type="number" scope="mechanics" tip="Visible rows. If smaller than the map, the level scrolls. Leave blank to show the whole map."}}
   {{> fieldRow label="ai_margin" bind="ai_margin" type="number" scope="mechanics" tip="Scrolling levels only: actors more than this many tiles outside the viewport skip their turn (perf optimization). Default 5; ignored when the whole map is visible."}}
-  <div data-mount="tint"></div>
+  <div data-mount="ambient_light_group"></div>
 </script>
 
 <script>
@@ -259,13 +262,10 @@ function el(tag, props = {}, ...children) {
 }
 
 // Build a <label> that, when `tip` is given, carries a native tooltip on the
-// whole row and appends a small ⓘ marker (also titled) as a discoverable hint.
+// whole row (hover to see it — no marker icon).
 function labelEl(text, tip) {
     const lbl = el('label', {}, text);
-    if (tip) {
-        lbl.setAttribute('title', tip);
-        lbl.appendChild(el('span', { class: 'tip-mark', title: tip }, ' ⓘ'));
-    }
+    if (tip) lbl.setAttribute('title', tip);
     return lbl;
 }
 
@@ -304,7 +304,6 @@ function checkboxRow(label, obj, key, def, tip) {
     cb.checked = obj[key] != null ? !!obj[key] : !!def;
     cb.addEventListener('change', () => { obj[key] = cb.checked; commit(); });
     const lbl = el('label', { title: tip || null }, cb, ' ' + label);
-    if (tip) lbl.appendChild(el('span', { class: 'tip-mark', title: tip }, ' ⓘ'));
     return lbl;
 }
 
@@ -316,7 +315,6 @@ function toggleLine(label, checked, onToggle, tip) {
     cb.checked = !!checked;
     cb.addEventListener('change', () => onToggle(cb.checked));
     lbl.append(cb, ' ' + label);
-    if (tip) lbl.appendChild(el('span', { class: 'tip-mark', title: tip }, ' ⓘ'));
     return lbl;
 }
 
@@ -466,11 +464,7 @@ function weightEditor(obj, key, opts = {}) {
             wrap.appendChild(el('div', { class: 'weight-row' }, labelNode, barWrap, num, rm));
         }
         // add control
-        const addSel = el('select', { class: 'wlabel-sel' });
-        addSel.appendChild(el('option', { value: '' }, '+ add…'));
         const existing = new Set(Object.keys(w));
-        const choices = opts.choices || [];
-        for (const c of choices) if (!existing.has(c)) addSel.appendChild(el('option', { value: c }, c));
         if (!opts.choices) {
             // free-text add for object mode without fixed choices (e.g. roomWeights extra)
             const addInput = el('input', { type: 'text', placeholder: 'new name', style: 'width:90px;' });
@@ -481,11 +475,19 @@ function weightEditor(obj, key, opts = {}) {
             });
             wrap.appendChild(el('div', { class: 'weight-row' }, addInput, addBtn));
         } else {
-            addSel.addEventListener('change', () => {
-                if (!addSel.value) return;
-                const c = readWeights(); c[addSel.value] = (c[addSel.value] || 0) + 1; writeWeights(c); redraw();
-            });
-            wrap.appendChild(el('div', { class: 'weight-row' }, addSel));
+            // Fixed-choice add: only offer the dropdown while unused choices remain
+            // (once every choice is added there's nothing to pick, so hide it).
+            const remaining = opts.choices.filter((c) => !existing.has(c));
+            if (remaining.length) {
+                const addSel = el('select', { class: 'wlabel-sel' });
+                addSel.appendChild(el('option', { value: '' }, '+ add…'));
+                for (const c of remaining) addSel.appendChild(el('option', { value: c }, c));
+                addSel.addEventListener('change', () => {
+                    if (!addSel.value) return;
+                    const c = readWeights(); c[addSel.value] = (c[addSel.value] || 0) + 1; writeWeights(c); redraw();
+                });
+                wrap.appendChild(el('div', { class: 'weight-row' }, addSel));
+            }
         }
     }
     redraw();
@@ -659,6 +661,12 @@ function condRow(cond, i, redraw, obj, key) {
    ========================================================================= */
 // Build a <details> section. If we're on a floor and `inheritKey` is given,
 // show an "override on this floor" toggle that adds/removes target[inheritKey].
+//
+// `opts.optional` makes the whole section switchable via a header toggle:
+//   { isOn: bool, enable: fn, disable: fn }
+// When off, the body is left empty (with a hint) and `active` is returned false
+// so the caller skips populating it. enable/disable mutate the model + render.
+// This coexists with the floor override-toggle (both can appear in the header).
 function section(title, opts = {}) {
     const det = el('details', { class: 'section' });
     if (opts.open) det.setAttribute('open', '');
@@ -668,6 +676,30 @@ function section(title, opts = {}) {
     det.appendChild(summary);
     const body = el('div', { class: 'section-body' });
     det.appendChild(body);
+    let active = true;
+
+    if (opts.optional) {
+        const on = !!opts.optional.isOn;
+        active = on;
+        const toggle = el('label', { class: 'section-enable-toggle', title: 'Enable or disable this section. Disabling removes its settings.' });
+        const cb = el('input', { type: 'checkbox' });
+        cb.checked = on;
+        cb.addEventListener('change', (e) => {
+            e.stopPropagation();
+            if (cb.checked) opts.optional.enable(); else opts.optional.disable();
+            commit(); render();
+        });
+        toggle.append(cb, ' enabled');
+        toggle.addEventListener('click', (e) => e.stopPropagation());
+        summaryRow.appendChild(toggle);
+        if (!on) {
+            det.classList.add('section-disabled');
+            if (opts.optional.hint !== false) {
+                body.appendChild(el('div', { class: 'hint-inline' },
+                    opts.optional.hint || 'Disabled — enable this section to configure it.'));
+            }
+        }
+    }
 
     if (opts.inheritKey && isFloor()) {
         const target = currentTarget();
@@ -698,12 +730,12 @@ function section(title, opts = {}) {
                 inh !== undefined ? '(inherited from prototype)' : '(not set at prototype level)'));
         }
     }
-    return { det, body };
+    return { det, body, active };
 }
 
 function subTitle(t, tip) {
     const n = el('div', { class: 'sub-section-title' }, t);
-    if (tip) { n.setAttribute('title', tip); n.appendChild(el('span', { class: 'tip-mark', title: tip }, ' ⓘ')); }
+    if (tip) n.setAttribute('title', tip);
     return n;
 }
 
@@ -768,7 +800,7 @@ function renderFloorTabs() {
     bar.appendChild(el('span', { class: 'floor-hint' },
         isFloor() ? 'Dimmed sections are inherited from prototype defaults; toggle “override” to localize.'
                   : (levels.length ? levels.length + ' floor(s). Per-floor tabs override these defaults.'
-                                   : 'Flat prototype (no per-floor levels). Add a floor to localize settings.')));
+                                   : 'Flat prototype (no per-floor overrides). Add a floor to localize settings.')));
 }
 
 function renderForm() {
@@ -778,14 +810,22 @@ function renderForm() {
     const onProto = !isFloor();
 
     if (onProto) {
+        // A cutscene toggle sits above everything: making a prototype a cutscene
+        // supersedes all level config, so it lives at the top of the form.
+        root.appendChild(cutsceneToggle());
+        // When this prototype IS a cutscene, everything else is invalid — show
+        // only Identity + the cutscene config and stop.
+        if (state.proto.cutscene) {
+            root.appendChild(sectionIdentity().det);
+            root.appendChild(sectionCutscene().det);
+            return;
+        }
         root.appendChild(sectionIdentity().det);
         root.appendChild(sectionMechanics(state.proto, 'mechanics', { open: true }).det);
         root.appendChild(sectionWinState().det);
         root.appendChild(sectionMapGenerator(state.proto).det);
         root.appendChild(sectionItemCatalog().det);
-        root.appendChild(sectionItemBudget(state.proto).det);
         root.appendChild(sectionSpawns(state.proto, { open: true }).det);
-        root.appendChild(sectionTrapsSwitches(state.proto).det);
         root.appendChild(sectionAdvanced().det);
     } else {
         const floor = currentTarget();
@@ -794,7 +834,6 @@ function renderForm() {
         root.appendChild(sectionMapGenerator(floor, { inheritKey: 'map_generator' }).det);
         root.appendChild(sectionItemBudget(floor, { inheritKey: 'item_budget' }).det);
         root.appendChild(sectionSpawns(floor, { open: true }).det);
-        root.appendChild(sectionTrapsSwitches(floor).det);
     }
 }
 
@@ -832,11 +871,30 @@ function sectionMechanics(obj, key, opts = {}) {
     EditorTemplate.mountInto(body, 'treasure_room',
         sliderRow('treasure_room %', m, 'treasure_room', { min: 0, max: 100, suffix: '%', def: 0,
             tip: 'Chance per floor that a special locked treasure room is generated.' }));
-    EditorTemplate.mountInto(body, 'ambient_light',
-        sliderRow('ambient_light', m, 'ambient_light', { min: 0, max: 1, step: 0.05, decimals: 2, def: 1,
-            tip: 'Base brightness applied everywhere (0 = pitch black, 1 = fully lit). Used with darkness.' }));
-    EditorTemplate.mountInto(body, 'tint', colorRow('tint', m, 'tint'));
+    EditorTemplate.mountInto(body, 'ambient_light_group', ambientLightGroup(m));
     return { det };
+}
+
+// The two aspects of a level's baseline light: ambient_light (brightness) and
+// tint (color overlay) live together under one "ambient level light" toggle so
+// it's clear they're facets of the same thing. Toggle off = no ambient config
+// (engine defaults: ambient_light 1 / fully lit, no tint), so both keys are
+// deleted. Modeled on collapsingEditor's toggle+config pattern.
+function ambientLightGroup(m) {
+    const tip = 'Baseline light for the level: overall brightness (ambient_light) and an atmospheric color overlay (tint). Off = engine default (fully lit, no tint).';
+    const wrap = el('div', { class: 'sub-section' });
+    const on = m.ambient_light != null || m.tint != null;
+    wrap.appendChild(toggleLine('ambient level light', on, (checked) => {
+        if (checked) { if (m.ambient_light == null) m.ambient_light = 1; }
+        else { delete m.ambient_light; delete m.tint; }
+        commit(); render();
+    }, tip));
+    if (on) {
+        wrap.appendChild(sliderRow('ambient_light', m, 'ambient_light', { min: 0, max: 1, step: 0.05, decimals: 2, def: 1,
+            tip: 'Base brightness applied everywhere (0 = pitch black, 1 = fully lit). Used with darkness.' }));
+        wrap.appendChild(colorRow('tint', m, 'tint'));
+    }
+    return wrap;
 }
 
 function colorRow(label, obj, key, tip) {
@@ -857,8 +915,16 @@ function colorRow(label, obj, key, tip) {
 }
 
 function sectionWinState() {
-    const { det, body } = section('Win state / conditions');
     const p = state.proto;
+    const hasWin = Array.isArray(p.win_conditions) || p.win_state != null;
+    const { det, body, active } = section('Win state / conditions', {
+        optional: {
+            isOn: hasWin,
+            enable: () => { if (!Array.isArray(p.win_conditions)) p.win_conditions = []; },
+            disable: () => { delete p.win_conditions; delete p.win_state; },
+        },
+    });
+    if (!active) return { det };
     // top-level win_conditions (used by flat, non-leveled prototypes)
     body.appendChild(subTitle('win_conditions (prototype-level / flat prototypes)',
         'Conditions that clear a single-level (flat) prototype. For multi-floor prototypes, set these per floor instead.'));
@@ -893,8 +959,39 @@ function sectionFloorWinConditions(floor) {
 }
 
 function sectionMapGenerator(obj, opts = {}) {
-    const { det, body } = section('Map generator', { ...opts, defaultValue: { type: 'brogue', options: {} } });
-    if (opts.inheritKey && isFloor() && !Object.prototype.hasOwnProperty.call(obj, 'map_generator')) return { det };
+    // At proto level the section is optional (disable → no generator config, e.g.
+    // a prototype driven by a hand-authored map.tmj). At floor level the floor
+    // "override" toggle already serves that role, so no separate enable toggle.
+    const sectionOpts = { ...opts, defaultValue: { type: 'brogue', options: {} } };
+    if (!opts.inheritKey) {
+        sectionOpts.optional = {
+            isOn: obj.map_generator != null,
+            enable: () => { obj.map_generator = { type: 'brogue', options: {} }; },
+            disable: () => { delete obj.map_generator; },
+            hint: 'No procedural generator — the map comes from a hand-authored .tmj. Placed features below still apply.',
+        };
+    }
+    const { det, body, active } = section('Map generator', sectionOpts);
+    // Placed features (traps/fungus/switch_puzzles) are independent top-level keys,
+    // shown even when the generator config is inherited (floor) or absent (proto,
+    // hand-authored map). Only the generator-specific UI is gated.
+    // - proto: gated by the optional toggle (`active`)
+    // - floor: gated by the override toggle (map_generator present on the floor)
+    const showGenBody = opts.inheritKey
+        ? (isFloor() && Object.prototype.hasOwnProperty.call(obj, 'map_generator'))
+        : active;
+    if (showGenBody) {
+        mapGeneratorBody(obj, body);
+    }
+    // Placed features (traps, fungus, switch puzzles): part of what the generator
+    // scatters onto the finished map. They read `obj` (top-level keys), not options.
+    body.appendChild(el('div', { class: 'sub-section' },
+        subTitle('Placed features', 'Hazards and puzzles scattered onto the generated map.')));
+    trapsSwitchesBody(obj, body);
+    return { det };
+}
+
+function mapGeneratorBody(obj, body) {
     if (!obj.map_generator) obj.map_generator = { type: 'brogue', options: {} };
     const mg = obj.map_generator;
     if (!mg.options) mg.options = {};
@@ -928,7 +1025,7 @@ function sectionMapGenerator(obj, opts = {}) {
         }
         body.appendChild(carvedRegionsEditor(o));
         if (t === 'brogue') {
-            body.appendChild(objNumRow('bridges.max', o, 'bridges', 'max', { tip: 'Maximum bridges placed across lakes/abyss so the player can cross.' }));
+            body.appendChild(bridgesEditor(o));
             body.appendChild(collapsingEditor(o));
         }
     } else if (t === 'digger') {
@@ -941,7 +1038,6 @@ function sectionMapGenerator(obj, opts = {}) {
             tip: 'Fraction of the map carved out into rooms/corridors before the generator stops. Default 0.2.' }));
     }
     // arena: only map_width/height (already shown)
-    return { det };
 }
 
 // dual range writing to an array [min,max] at obj[key]
@@ -959,10 +1055,6 @@ function dualRangeArrayRow(label, obj, key, opts = {}) {
 // Labelled dual-range over obj[minKey]/obj[maxKey] (a {min,max} object).
 function dualRangeRow(label, obj, minKey, maxKey, opts = {}) {
     return el('div', { class: 'sub' }, labelEl(label, opts.tip), dualRange(obj, minKey, maxKey, opts));
-}
-function objNumRow(label, obj, parentKey, childKey, opts = {}) {
-    if (!obj[parentKey]) obj[parentKey] = {};
-    return fieldRow(label, obj[parentKey], childKey, { type: 'number', tip: opts.tip });
 }
 
 // Liquid types available to a lakes group (no 'abyss' — void is its own group,
@@ -990,7 +1082,6 @@ function carvedRegionsEditor(o) {
         commit(); render();
     });
     enable.append(cb, ' carved regions');
-    enable.appendChild(el('span', { class: 'tip-mark', title: tip }, ' ⓘ'));
     wrap.appendChild(enable);
 
     if (o.lakes || o.abyss) {
@@ -1074,7 +1165,6 @@ function collapsingEditor(o) {
         commit(); render();
     });
     enable.append(cb, ' collapsing_floors');
-    enable.appendChild(el('span', { class: 'tip-mark', title: tip }, ' ⓘ'));
     wrap.appendChild(enable);
     if (o.collapsing_floors) {
         const c = o.collapsing_floors;
@@ -1090,17 +1180,43 @@ function body_appendNum(wrap, c) {
     ));
 }
 
-function sectionItemCatalog() {
-    const { det, body } = section('Item catalog (budget categories)');
-    const p = state.proto;
-    body.appendChild(el('div', { class: 'hint-inline' }, 'Weights bias treasure-room budget spawning across categories. Optional count limits how many distinct types appear this run.'));
-    body.appendChild(toggleLine('enable item_catalog', !!p.item_catalog, (on) => {
-        if (on) p.item_catalog = { potion: { weight: 50 } }; else delete p.item_catalog;
+// Bridges toggle+config (same shape as collapsingEditor). Off = no `bridges` key
+// (the generator places none); on = { max } bridges spanning lakes/abyss.
+function bridgesEditor(o) {
+    const tip = 'Bridges placed across lakes/abyss so the player can cross. Off = none placed.';
+    const wrap = el('div', { class: 'sub-section' });
+    wrap.appendChild(toggleLine('bridges', !!o.bridges, (on) => {
+        if (on) o.bridges = { max: 2 }; else delete o.bridges;
         commit(); render();
-    }, 'Defines the category mix the item_budget draws from. Weight = relative likelihood; count = how many distinct types of that category appear this run.'));
-    if (p.item_catalog) {
-        body.appendChild(catalogEditor(p.item_catalog));
+    }, tip));
+    if (o.bridges) {
+        wrap.appendChild(fieldRow('max', o.bridges, 'max', { type: 'number', tip: 'Maximum bridges placed across lakes/abyss.' }));
     }
+    return wrap;
+}
+
+// Merged Item catalog + budget (proto level). item_budget draws from
+// item_catalog, so they belong together: the catalog defines the category mix,
+// the budget controls how many items are spawned from it. Budget config is only
+// shown once the catalog is enabled — a budget with no catalog has nothing to
+// draw from.
+function sectionItemCatalog() {
+    const p = state.proto;
+    const hasCatalog = !!p.item_catalog;
+    // The section toggle is the enable for the catalog; disabling drops the
+    // catalog and its budget (a budget with no catalog has nothing to draw from).
+    const { det, body, active } = section('Item catalog & budget', {
+        optional: {
+            isOn: hasCatalog,
+            enable: () => { p.item_catalog = { potion: { weight: 50 } }; },
+            disable: () => { delete p.item_catalog; delete p.item_budget; },
+        },
+    });
+    if (!active) return { det };
+    body.appendChild(el('div', { class: 'hint-inline' }, 'Weights bias treasure spawning across categories; optional count limits how many distinct types appear this run. The budget below controls how many items are drawn from this catalog each floor.'));
+    body.appendChild(catalogEditor(p.item_catalog));
+    body.appendChild(subTitle('item_budget', 'How many catalog items spawn each floor.'));
+    itemBudgetBody(p, body);
     return { det };
 }
 
@@ -1137,10 +1253,12 @@ function catalogEditor(cat) {
     return wrap;
 }
 
-function sectionItemBudget(obj, opts = {}) {
-    const { det, body } = section('Item budget', { ...opts, defaultValue: { base: 2, extra_chance: 40, max_extra: 3 } });
-    if (opts.inheritKey && isFloor() && !Object.prototype.hasOwnProperty.call(obj, 'item_budget')) return { det };
-    // item_budget can be `false` to disable on a floor
+// The item_budget controls: a mode select (unset / enabled-object / disabled-
+// false) plus base/max_extra/extra_chance fields when enabled. Appended into an
+// existing `body` so it can live inside the merged catalog section (proto) or a
+// standalone floor-override section. `item_budget` can be `false` to disable on
+// a specific floor even if the prototype enables it.
+function itemBudgetBody(obj, body) {
     const enableWrap = el('div', { class: 'field-row' });
     const sel = el('select', {});
     [['unset','— not set —'],['object','enabled (configure)'],['false','disabled (false)']].forEach(([v,l]) => sel.appendChild(el('option', { value: v }, l)));
@@ -1156,7 +1274,7 @@ function sectionItemBudget(obj, opts = {}) {
         else delete obj.item_budget;
         commit(); render();
     });
-    enableWrap.append(labelEl('item_budget', budgetTip), sel);
+    enableWrap.append(labelEl('mode', budgetTip), sel);
     body.appendChild(enableWrap);
     if (obj.item_budget && typeof obj.item_budget === 'object') {
         const b = obj.item_budget;
@@ -1167,35 +1285,52 @@ function sectionItemBudget(obj, opts = {}) {
         body.appendChild(sliderRow('extra_chance %', b, 'extra_chance', { min: 0, max: 100, suffix: '%', def: 0,
             tip: 'Chance to roll each additional item (up to max_extra). Higher = more loot.' }));
     }
+}
+
+// Floor-level item_budget override. item_catalog is proto-level only, so a floor
+// only tweaks how many items it draws (or disables budget with `false`).
+function sectionItemBudget(obj, opts = {}) {
+    const { det, body } = section('Item budget', { ...opts, defaultValue: { base: 2, extra_chance: 40, max_extra: 3 } });
+    if (opts.inheritKey && isFloor() && !Object.prototype.hasOwnProperty.call(obj, 'item_budget')) return { det };
+    itemBudgetBody(obj, body);
     return { det };
 }
 
 function sectionSpawns(obj, opts = {}) {
-    const { det, body } = section('Spawns (random_actors / random_items)', opts);
-    body.appendChild(subTitle('random_actors',
-        'Creatures placed on this floor. Each entry has a spawn chance and a count range; “≈ N / floor” shows the expected number placed.'));
-    if (!obj.random_actors) {
-        const add = el('button', { class: 'add-btn' }, '+ enable random_actors');
-        add.addEventListener('click', () => { obj.random_actors = {}; commit(); render(); });
-        body.appendChild(add);
-    } else {
-        body.appendChild(spawnEditor(obj, 'random_actors', 'actor'));
-    }
+    const hasSpawns = obj.random_actors != null || obj.random_items != null;
+    // Section toggle governs both spawn tables; disabling drops both. The inner
+    // per-table toggles remain as finer controls once the section is on.
+    const { det, body, active } = section('Spawns (random_actors / random_items)', {
+        ...opts,
+        optional: {
+            isOn: hasSpawns,
+            enable: () => { if (!obj.random_actors) obj.random_actors = {}; },
+            disable: () => { delete obj.random_actors; delete obj.random_items; },
+        },
+    });
+    if (!active) return { det };
+    // Enable via a toggle (same pattern as traps/switch_puzzles), not a "+ enable" button.
+    body.appendChild(toggleLine('random_actors', !!obj.random_actors, (on) => {
+        if (on) obj.random_actors = {}; else delete obj.random_actors;
+        commit(); render();
+    }, 'Creatures placed on this floor. Each entry has a spawn chance and a count range; “≈ N / floor” shows the expected number placed.'));
+    if (obj.random_actors) body.appendChild(spawnEditor(obj, 'random_actors', 'actor'));
+
     body.appendChild(el('div', { style: 'height:8px;' }));
-    body.appendChild(subTitle('random_items',
-        'Items dropped on this floor. Category ids (potion, scroll, …) marked “ⓘ pool” resolve to a random concrete type at spawn time.'));
-    if (!obj.random_items) {
-        const add = el('button', { class: 'add-btn' }, '+ enable random_items');
-        add.addEventListener('click', () => { obj.random_items = {}; commit(); render(); });
-        body.appendChild(add);
-    } else {
-        body.appendChild(spawnEditor(obj, 'random_items', 'item'));
-    }
+    body.appendChild(toggleLine('random_items', !!obj.random_items, (on) => {
+        if (on) obj.random_items = {}; else delete obj.random_items;
+        commit(); render();
+    }, 'Items dropped on this floor. Category ids (potion, scroll, …) marked “ⓘ pool” resolve to a random concrete type at spawn time.'));
+    if (obj.random_items) body.appendChild(spawnEditor(obj, 'random_items', 'item'));
     return { det };
 }
 
-function sectionTrapsSwitches(obj) {
-    const { det, body } = section('Traps & switch puzzles');
+// Traps / fungus / switch-puzzle controls, appended into a given `body`. These
+// are placed-on-the-floor generation features, so they live inside the Map
+// generator section. IMPORTANT: traps/fungus/switch_puzzles are TOP-LEVEL keys
+// on the prototype/floor object (`obj`), NOT under map_generator.options — pass
+// the level object here, not mg.options.
+function trapsSwitchesBody(obj, body) {
     // traps
     body.appendChild(toggleLine('traps', !!obj.traps, (on) => {
         if (on) obj.traps = { min: 0, max: 5 }; else delete obj.traps; commit(); render();
@@ -1222,7 +1357,6 @@ function sectionTrapsSwitches(obj) {
         body.appendChild(subTitle('patterns', 'Puzzle templates to choose from. Each placed puzzle picks one pattern at random, weighted.'));
         body.appendChild(patternsEditor(sp));
     }
-    return { det };
 }
 
 function patternsEditor(sp) {
@@ -1305,24 +1439,43 @@ function effectsEditor(pat) {
 
 // Advanced / passthrough: cutscene + any unknown top-level keys (preserved verbatim).
 const KNOWN_TOP_KEYS = new Set([
-    'name','description','loaded_sound','depth','turn_speed','next_level','previous_level','intro_cutscene',
+    'name','description','loaded_sound','turn_speed','next_level','previous_level','intro_cutscene',
     'mechanics','win_state','win_conditions','map_generator','item_catalog','item_budget',
     'random_actors','random_items','traps','switch_puzzles','levels','cutscene',
 ]);
-function sectionAdvanced() {
-    const { det, body } = section('Advanced / cutscene');
+// Top-of-form control: whether this prototype is a cutscene. A cutscene has no
+// playable level, so turning this on supersedes and hides all other sections
+// (renderForm branches on state.proto.cutscene). Returned as a bare toggle line,
+// not a <details> section, so it sits above the section list.
+function cutsceneToggle() {
     const p = state.proto;
-    // cutscene
-    body.appendChild(toggleLine('cutscene (flipbook)', !!p.cutscene, (on) => {
-        if (on) p.cutscene = { flipbook: '', skippable: true }; else delete p.cutscene; commit(); render();
-    }, 'Makes this prototype a flipbook cutscene (a Tiled .tmj played as animated frames) instead of a playable level.'));
-    if (p.cutscene) {
-        body.appendChild(fieldGrid(
-            fieldRow('flipbook', p.cutscene, 'flipbook', { placeholder: 'cutscene.tmj', tip: 'Tiled map file (.tmj) whose tile layers are the cutscene frames.' }),
-            el('div', { class: 'field-row' }, checkboxRow('skippable', p.cutscene, 'skippable', true, 'Allow the player to skip this cutscene.')),
-        ));
-    }
-    // unknown keys preserved
+    const wrap = el('div', { class: 'cutscene-toggle' });
+    wrap.appendChild(toggleLine('This prototype is a cutscene', !!p.cutscene, (on) => {
+        if (on) p.cutscene = { flipbook: '', skippable: true }; else delete p.cutscene;
+        commit(); render();
+    }, 'A flipbook cutscene (a Tiled .tmj played as animated frames) instead of a playable level. When on, all level settings below are hidden — a cutscene has none.'));
+    return wrap;
+}
+
+// Cutscene configuration — only shown (via renderForm) when the prototype is a
+// cutscene. The enable/disable itself lives in cutsceneToggle() at the top.
+function sectionCutscene() {
+    const { det, body } = section('Cutscene', { open: true });
+    const cs = state.proto.cutscene;
+    body.appendChild(fieldGrid(
+        fieldRow('flipbook', cs, 'flipbook', { placeholder: 'cutscene.tmj', tip: 'Tiled map file (.tmj) whose tile layers are the cutscene frames.' }),
+        el('div', { class: 'field-row' }, checkboxRow('skippable', cs, 'skippable', true, 'Allow the player to skip this cutscene.')),
+    ));
+    body.appendChild(el('div', { class: 'hint-inline' },
+        'Frame timing uses the Identity “Turn speed (ms)” value (ms per frame).'));
+    return { det };
+}
+
+// Advanced: shows top-level keys the editor has no dedicated UI for, so nothing
+// authored by hand is silently lost on export.
+function sectionAdvanced() {
+    const { det, body } = section('Advanced');
+    const p = state.proto;
     const unknown = Object.keys(p).filter(k => !KNOWN_TOP_KEYS.has(k));
     if (unknown.length) {
         body.appendChild(subTitle('Preserved (not editable here)', 'Top-level keys this editor doesn’t have a UI for. They’re kept verbatim on export so nothing is lost.'));
@@ -1403,6 +1556,21 @@ async function init() {
         const txt = JSON.stringify(serialize(), null, 2);
         try { await navigator.clipboard.writeText(txt); document.getElementById('load-status').textContent = 'copied to clipboard'; }
         catch { const out = document.getElementById('json-output'); out.focus(); out.select(); document.execCommand('copy'); document.getElementById('load-status').textContent = 'copied'; }
+    });
+
+    // JSON output panel show/hide (persisted). The panel is a live convenience
+    // view; hiding it gives the form the full width.
+    const jsonPanel = document.getElementById('json-output-panel');
+    const jsonBtn = document.getElementById('btn-toggle-json');
+    const applyJsonHidden = (hidden) => {
+        jsonPanel.classList.toggle('hidden', hidden);
+        jsonBtn.textContent = hidden ? 'Show JSON' : 'Hide JSON';
+    };
+    applyJsonHidden(localStorage.getItem('protoEditorJsonHidden') === '1');
+    jsonBtn.addEventListener('click', () => {
+        const hidden = !jsonPanel.classList.contains('hidden');
+        applyJsonHidden(hidden);
+        localStorage.setItem('protoEditorJsonHidden', hidden ? '1' : '0');
     });
 }
 

@@ -2,7 +2,6 @@
   "name": "Automatons",
   "description": "Conway's Game of Life.",
   "loaded_sound": "tone3",
-  "depth": 0,
   "turn_speed": 40,
   "mechanics": {
     "fog_of_war": false,

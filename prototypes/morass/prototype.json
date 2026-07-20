@@ -2,7 +2,6 @@
   "name": "Morass",
   "loaded_sound": "tone3",
   "description": "There's something alive in here...",
-  "depth": 1,
   "turn_speed": 50,
   "next_level": "labyrinth",
   "mechanics": {

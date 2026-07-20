@@ -33,7 +33,7 @@ Is it really valuable to have to define every individual level? wouldn't most ro
   - there is a useless confusing dropdown that has "add +" as an option that does nothing in room weights when all the room types have been added. hide it when there are no more additions possible
   - add a toggle for bridges like the collapsing floors toggle
   - for the traps and switch puzzles section, this should be integrated into map generator section
-  - in the switch pattern ui, picking a switch actor shows every single actor in a list, it should just show switchable actors and let us set whether or not they are toggleable or only activate once.
+  - in the switch pattern ui, picking a switch actor shows every single actor in a list, it should just show switchable actors and let us set whether or not they are toggleable or only activate once. "gated room" and "gated corridor" sound like they presuppose a target actor: a gate, and an effect: open. This section seems unclear.
   - if we are going to allow any actor to be set as the switch target, we should have access to any attribute that actor has that can be changed by the switch. This is one case where showing all the actors could be useful in unexpected ways.
   - in the spawns section, the "+ enable random ..." buttons are a different pattern than the toggle boxes we have seen elsewhere. be consistent unless there is a reason to use a different pattern in some places
   - add toggle to hide and show the json-output-panel on all of the editors starting with prototype editor
