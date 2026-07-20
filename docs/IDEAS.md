@@ -15,6 +15,10 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Feature ideas
 
+### corner blocking as an actor attribute
+
+- the brogue style corner movement blocking rule is complex and opinionated to be hard coded into the engine, and it would be complex to have it be a prototype-level mechanics rule. What makes the most sense is to move diagonal movement blocking to an actor attribute that some wall actors have, then it can be used on a per actor basis, or even added as a monster attribute.
+
 ### Prototype editor ui
 
 Thinking through how the parametric ui for making prototypes requires thinking through how multi level prototypes are balanced. We could have two separate modes for single level and multi-level prototypes to hide unneeded complexity.
