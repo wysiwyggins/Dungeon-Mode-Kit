@@ -17,7 +17,8 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ### corner blocking as an actor attribute
 
-- the brogue style corner movement blocking rule is complex and opinionated to be hard coded into the engine, and it would be complex to have it be a prototype-level mechanics rule. What makes the most sense is to move diagonal movement blocking to an actor attribute that some wall actors have, then it can be used on a per actor basis, or even added as a monster attribute.
+- the brogue style corner movement blocking rule is complex and opinionated to be hard coded into the engine, and it would be complex to have it be a prototype-level mechanics toggle. What makes the most sense is to move diagonal movement blocking to an actor attribute that some wall actors have, then it can be used on a per actor basis, or even added as a monster attribute.
+- likewise, the complex engine code that currently closes a door behind you when it was initially unlocked and leaves it open when it was initially locked is an opinionated design that shouldn't have been hard coded. Instead there should have been an attribute that door and locked door actors could have used that determined whether the player closes it as they pass through (swings_shut). Don't hard code design opinions that can be left up to designers with attributes in the data files, as long as the data files don't have so many attributes that they become difficult to read. Having sensible default values for attributes so that more often than not we don't have to specify them helps keep data files readable.
 
 ### Prototype editor ui
 
