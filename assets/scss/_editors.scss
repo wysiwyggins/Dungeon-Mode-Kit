@@ -2,11 +2,11 @@
 // Scoped under body.editor so they don't affect game pages.
 
 @mixin section-wrap($col: 460px, $max: 500px, $gap: 8px) {
-    #form-panel {
+    .form-panel {
         column-width: $col;
         column-gap: $gap;
     }
-    #form-panel > details.section {
+    .form-panel > details.section {
         break-inside: avoid;        // don't split a section across columns
         -webkit-column-break-inside: avoid;
         display: inline-block;      // makes break-inside:avoid reliable in multicol
@@ -77,12 +77,12 @@ body.editor {
 
     // ---- Workspace layout ----
 
-    #workspace {
+    .workspace {
         display: flex;
         height: calc(100vh - 90px);
     }
 
-    #form-panel {
+    .form-panel {
         flex: 1;
         overflow-y: auto;
         padding: 12px 16px;
@@ -191,7 +191,7 @@ body.editor {
 
     // ---- JSON output panel ----
 
-    #json-output-panel {
+    .json-output-panel {
         border-top: 1px solid var(--border);
         background: var(--bg2);
         padding: 8px 16px;
@@ -208,7 +208,7 @@ body.editor {
         h3 { font-size: 14px; color: var(--accent); }
     }
 
-    #json-output {
+    .json-output {
         background: #111;
         color: #0f8;
         border: 1px solid var(--border);
@@ -231,7 +231,7 @@ body.editor {
 
     // ---- Preview panel (actor & item editors) ----
 
-    #preview-panel {
+    .preview-panel {
         width: 220px;
         min-width: 220px;
         padding: 12px;
@@ -241,7 +241,7 @@ body.editor {
         h3 { font-size: 14px; color: var(--accent); margin-bottom: 8px; }
     }
 
-    #preview-canvas { background: #d0cfc8; border: 1px solid var(--border); display: block; margin-bottom: 12px; image-rendering: pixelated; }
+    .preview-canvas { background: #d0cfc8; border: 1px solid var(--border); display: block; margin-bottom: 12px; image-rendering: pixelated; }
     .preview-label { font-size: 12px; color: var(--text-dim); margin-top: 8px; margin-bottom: 2px; }
     .preview-tile { display: inline-block; border: 1px solid var(--border); margin-right: 4px; image-rendering: pixelated; background: #d0cfc8; }
 
@@ -268,7 +268,7 @@ body.editor {
 
     // ---- Tile picker modal (actor & item editors) ----
 
-    #tile-picker-overlay {
+    .tile-picker-overlay {
         display: none;
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
@@ -280,7 +280,7 @@ body.editor {
         &.active { display: flex; }
     }
 
-    #tile-picker {
+    .tile-picker {
         background: var(--bg2);
         border: 1px solid var(--accent);
         padding: 12px;
@@ -289,7 +289,7 @@ body.editor {
         width: fit-content;
     }
 
-    #tile-picker-header {
+    .tile-picker-header {
         display: flex;
         align-items: center;
         gap: 8px;
@@ -305,9 +305,9 @@ body.editor {
         }
     }
 
-    #tile-picker-target { font-size: 11px; color: var(--accent); }
-    #tile-picker-canvas { cursor: crosshair; image-rendering: pixelated; display: block; }
-    #tile-picker-tooltip {
+    .tile-picker-target { font-size: 11px; color: var(--accent); }
+    .tile-picker-canvas { cursor: crosshair; image-rendering: pixelated; display: block; }
+    .tile-picker-tooltip {
         position: fixed;
         background: var(--bg);
         color: var(--accent);
@@ -342,7 +342,7 @@ body.editor {
 
     // ---- Typed attributes (actor & item editors) ----
 
-    #typed-attrs {
+    .typed-attrs {
         display: flex;
         flex-wrap: wrap;
         gap: 4px 16px;
@@ -351,9 +351,9 @@ body.editor {
 
     // ---- Key display fields ----
 
-    #actor-key-field,
-    #item-key-field,
-    #personality-key-field { font-size: 12px; color: var(--accent); }
+    .actor-key-field,
+    .item-key-field,
+    .personality-key-field { font-size: 12px; color: var(--accent); }
 
     // ================================================================
     // Actor editor specifics
@@ -372,8 +372,8 @@ body.editor {
         @include section-wrap;
     }
 
-    #item-filter-wrap { position: relative; display: inline-block; }
-    #item-filter {
+    .item-filter-wrap { position: relative; display: inline-block; }
+    .item-filter {
         background: var(--input-bg);
         color: var(--text);
         border: 1px solid var(--border);
@@ -384,7 +384,7 @@ body.editor {
         &:focus { outline: 1px solid var(--accent); }
     }
 
-    #item-filter-results {
+    .item-filter-results {
         display: none;
         position: absolute;
         top: 100%;
@@ -417,7 +417,7 @@ body.editor {
         @include section-wrap;
     }
 
-    #behavior-panel {
+    .behavior-panel {
         width: 220px;
         min-width: 220px;
         padding: 12px;
@@ -427,7 +427,7 @@ body.editor {
         h3 { font-size: 12px; color: var(--accent); margin-bottom: 8px; }
     }
 
-    #behavior-search {
+    .behavior-search {
         width: 100%;
         background: var(--input-bg);
         color: var(--text);
@@ -452,7 +452,7 @@ body.editor {
 
     // ---- Behavior list ----
 
-    #behavior-list-container { min-height: 30px; margin-bottom: 8px; }
+    .behavior-list-container { min-height: 30px; margin-bottom: 8px; }
 
     .behavior-list-item {
         display: flex;
@@ -500,7 +500,7 @@ body.editor {
         .field-row label { min-width: 140px; }
         @include section-wrap;
 
-        #waveform-canvas {
+        .waveform-canvas {
             background: #111;
             border: 1px solid var(--border);
             display: block;
@@ -564,23 +564,23 @@ body.editor {
     // editors don't use: floor tabs with inheritance, percentage sliders,
     // dual-handle min/max ranges, weighted-pool bars, and spawn rows.
     &.prototype-editor {
-        #workspace {
+        .workspace {
             display: block;
             height: calc(100vh - 48px);
             overflow: hidden;
         }
-        #editor-body {
+        .editor-body {
             display: flex;
             flex-direction: column;
             height: 100%;
         }
-        #proto-main {
+        .proto-main {
             display: flex;
             flex: 1;
             overflow: hidden;
         }
-        #form-panel {
-            flex: 1;            // fill the width of #proto-main (beside the JSON panel)
+        .form-panel {
+            flex: 1;            // fill the width of .proto-main (beside the JSON panel)
             overflow-y: auto;
             padding: 12px 16px;
         }
@@ -589,9 +589,9 @@ body.editor {
         // Sections flow into ~460px columns and pack top-to-bottom, so variable
         // height / collapsing <details> leave no ragged gaps — no row wrappers,
         // no grid, no JS. (Same effect as the shared `section-wrap` mixin, but
-        // the prototype editor's wrap container is the inner #form-sections, not
-        // #form-panel, because of its floor-tabs + JSON-panel layout.)
-        #form-sections {
+        // the prototype editor's wrap container is the inner .form-sections, not
+        // .form-panel, because of its floor-tabs + JSON-panel layout.)
+        .form-sections {
             column-width: 460px;
             column-gap: 8px;
             max-width: none;

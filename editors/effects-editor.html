@@ -18,10 +18,10 @@
     <button id="btn-copy" class="btn-accent">Copy to Clipboard</button>
 </header>
 
-<div id="workspace">
-    <aside id="preview-panel">
+<div id="workspace" class="workspace">
+    <aside id="preview-panel" class="preview-panel">
         <h3>Preview</h3>
-        <canvas id="preview-canvas" width="200" height="200"></canvas>
+        <canvas id="preview-canvas" class="preview-canvas" width="200" height="200"></canvas>
         <div class="preview-label">Top</div>
         <div class="tile-slot" data-target="tileTop">
             <canvas width="80" height="60"></canvas>
@@ -40,7 +40,7 @@
         <div style="font-size:9px;color:var(--text-dim);margin-top:4px">Tint is for preview only. At runtime, each actor/item provides its own.</div>
     </aside>
 
-    <div id="form-panel">
+    <div id="form-panel" class="form-panel">
         <!-- Effect Definition -->
         <details class="section" open>
             <summary>Effect Definition</summary>
@@ -75,34 +75,34 @@
         <details class="section" id="waveform-section">
             <summary>Waveform</summary>
             <div class="section-body">
-                <canvas id="waveform-canvas" width="600" height="120"></canvas>
+                <canvas id="waveform-canvas" class="waveform-canvas" width="600" height="120"></canvas>
                 <div class="timing-readout" id="timing-readout"></div>
             </div>
         </details>
     </div>
 </div>
 
-<div id="json-output-panel">
+<div id="json-output-panel" class="json-output-panel">
     <div class="output-header">
         <h3>JSON Output</h3>
         <span id="effect-key-field"></span>
     </div>
-    <textarea id="json-output" readonly rows="8"></textarea>
+    <textarea id="json-output" class="json-output" readonly rows="8"></textarea>
 </div>
 
 <!-- Tile picker modal -->
-<div id="tile-picker-overlay">
-    <div id="tile-picker">
-        <div id="tile-picker-header">
-            <span id="tile-picker-target">Selecting: —</span>
+<div id="tile-picker-overlay" class="tile-picker-overlay">
+    <div id="tile-picker" class="tile-picker">
+        <div id="tile-picker-header" class="tile-picker-header">
+            <span id="tile-picker-target" class="tile-picker-target">Selecting: —</span>
             <input type="text" id="tile-picker-search" placeholder="Search tile name...">
             <button id="tile-picker-none">None / Blank</button>
             <button id="tile-picker-close">Close</button>
         </div>
-        <canvas id="tile-picker-canvas"></canvas>
+        <canvas id="tile-picker-canvas" class="tile-picker-canvas"></canvas>
     </div>
 </div>
-<div id="tile-picker-tooltip"></div>
+<div id="tile-picker-tooltip" class="tile-picker-tooltip"></div>
 
 <script>
 // ============================================================================

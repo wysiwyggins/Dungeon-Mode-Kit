@@ -5,13 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.15b] 2026-07-22
 
-### Planned
+### Changed
 
-### In Progress
+- **Prototype editor cleanup sweep**: a pass over the whole prototype editor to cut clutter and make implicit settings implicit.
+  - Removed the legacy `depth` attribute (it had no runtime consumers; depth is inferred from level index). Stripped from the 9 prototype.json files that carried it.
+  - `observer_mode` is no longer an editable checkbox — the engine derives it at runtime from whether any actor is `controlled` (actors live in the Tiled map, which the editor can't see). Existing `observer_mode` values in loaded prototypes are preserved on export.
+  - **Cutscene is now a top-level switch** above everything else: turning a prototype into a cutscene hides all level config (Mechanics, Map, Items, Spawns…), since a cutscene has none.
+  - **Item catalog & budget merged** into one section (the budget draws from the catalog, so they belong together); budget config appears once the catalog is enabled.
+  - **Tint + ambient_light grouped** under a single "ambient level light" toggle, since they're two aspects of the same thing.
+  - **Traps / fungus / switch puzzles integrated** into the Map generator section as "Placed features" (they're part of what the generator scatters onto the map).
+  - **Optional sections**: Win state, Map generator, Item catalog & budget, and Spawns can be toggled off from their section header (which deletes their data), reducing visual complexity.
+  - **Switch-puzzle UI**: the switch/target actor dropdowns now list only relevant actors (`switchable` for switches, `openable`/`switchable` for targets) instead of every actor; a hint shows whether the chosen switch is toggleable or one-shot (from its attributes); switch effects offer the target actor's own attributes as choices. The `gated_room`/`gated_corridor` type is relabeled and explained as *layout only*.
+  - **Bridges** got a toggle+config like collapsing floors (was an always-present field that created an empty `bridges` object on every map).
+  - **Consistent toggles**: the Spawns "+ enable random_…" buttons are now toggle switches matching the rest of the editor.
+  - **Info tooltips**: dropped the confusing `ⓘ` marker and question-mark cursor; help text is still available as a native hover tooltip.
+  - **Renamed** "Next/Previous level" → "Next/Last prototype"; tightened "level" vs "prototype" wording.
+  - The room-weights "+ add…" dropdown now hides itself once every room type has been added.
+  - Added a **Hide/Show JSON** button to collapse the live JSON output panel (state persists across reloads).
+- **Editor code reorganized**: the ~1,500 lines of inline JavaScript in `prototype-editor.html` (now 140 lines) were extracted into `editors/scripts/proto-{state,widgets,sections,render}.js`. All five editor pages (`prototype-`, `actor-`, `item-`, `personality-`, `effects-editor.html`) moved into a top-level `editors/` folder. The HTML now holds only the page skeleton and editable Handlebars form templates.
+- **SCSS uses classes for styling**: every ID-based style selector in `_editors.scss` (across all five editors) was converted to a class; IDs are now reserved for JavaScript hooks.
+- **Brogue map density scales with map size**: `maxRooms` and `maxAttempts` are auto-computed from map area when omitted (larger maps get proportionally more rooms/attempts) instead of flat defaults, so big maps fill out. `maxRooms` is no longer surfaced in the editor. Room count, corridor stats, fill %, and stop reason are now logged to the console per generated map.
 
-- Web frontend editors for actors, items and personalities
+### Fixed
+
+- **Brogue corridors rarely generated** on populated maps. Two causes: (1) the corridor stub's grid was padded to end exactly at the tip, so the forward-facing door site fell out of bounds and was dropped — leaving ~75% of corridor-rooms with no door sites and thus unplaceable; and (2) the strict 3×3 no-overlap placement rule (correct for room bodies) also rejected corridor cells for running alongside existing floor. Corridors now place reliably, producing the extended, winding hallways between rooms that were missing.
+- **Rooms clustered at the map center**: the generator seeded its first room dead-center, so on large scrolling maps play piled up on the viewport seams. It now seeds from a randomly-chosen corner, spreading rooms across the whole map.
 
 ## [1.14b] 2026-07-14
 

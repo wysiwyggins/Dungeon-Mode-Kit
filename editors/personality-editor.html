@@ -29,14 +29,14 @@
     <button id="btn-copy" class="btn-accent">Copy to Clipboard</button>
 </header>
 
-<div id="workspace">
-    <aside id="behavior-panel">
+<div id="workspace" class="workspace">
+    <aside id="behavior-panel" class="behavior-panel">
         <h3>Behavior Palette</h3>
-        <input type="text" id="behavior-search" placeholder="Filter behaviors...">
+        <input id="behavior-search" class="behavior-search" type="text"  placeholder="Filter behaviors...">
         <div id="behavior-palette"></div>
     </aside>
 
-    <div id="form-panel">
+    <div id="form-panel" class="form-panel">
         <!-- Identity -->
         <details class="section" open>
             <summary>Identity</summary>
@@ -79,7 +79,7 @@
                 <div style="font-size:10px; color:var(--text-dim); margin-bottom:8px">
                     Behaviors execute in order. The first to succeed stops the chain. Drag to reorder.
                 </div>
-                <div id="behavior-list-container"></div>
+                <div id="behavior-list-container" class="behavior-list-container"></div>
                 <div class="behavior-add-row">
                     <select id="behavior-add-select"></select>
                     <button class="add-btn" id="btn-add-behavior">+ Add</button>
@@ -115,12 +115,12 @@
     </div>
 </div>
 
-<div id="json-output-panel">
+<div id="json-output-panel" class="json-output-panel">
     <div class="output-header">
         <h3>JSON Output</h3>
-        <span id="personality-key-field"></span>
+        <span id="personality-key-field" class="personality-key-field"></span>
     </div>
-    <textarea id="json-output" readonly rows="8"></textarea>
+    <textarea id="json-output" class="json-output" readonly rows="8"></textarea>
 </div>
 
 <script>

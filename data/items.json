@@ -253,6 +253,7 @@
       "break_sound": "glass",
       "explode_sound": "gas",
       "use_verb": "Drink",
+      "use_sound": "swallow",
       "description": "A mysterious potion with unknown effects."
     }
   },
@@ -300,6 +301,7 @@
       "consumable": true,
       "break_sound": "glass",
       "use_verb": "Drink",
+      "use_sound": "swallow",
       "use_effect": {
         "strength": 2
       },
@@ -1625,7 +1627,7 @@
       "use_effect": {
         "nutrition": 400
       },
-      "use_sound": "Drink",
+      "use_sound": "swallow",
       "description": "A hunk of bloody meat."
     }
   },
@@ -1645,7 +1647,7 @@
     "use_effect": {
       "nutrition": 500
     },
-    "use_sound": "pickup"
+    "use_sound": "swallow"
   }
   },
   "ring_of_regeneration": {

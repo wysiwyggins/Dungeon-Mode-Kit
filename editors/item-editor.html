@@ -24,9 +24,9 @@
     <label>Item:
         <select id="item-select" style="min-width:220px"></select>
     </label>
-    <div id="item-filter-wrap">
-        <input type="text" id="item-filter" placeholder="Search items...">
-        <div id="item-filter-results"></div>
+    <div id="item-filter-wrap" class="item-filter-wrap">
+        <input id="item-filter" class="item-filter" type="text"  placeholder="Search items...">
+        <div id="item-filter-results" class="item-filter-results"></div>
     </div>
     <button id="btn-duplicate">Duplicate</button>
     <label>Template:
@@ -47,15 +47,15 @@
     <button id="btn-copy" class="btn-accent">Copy to Clipboard</button>
 </header>
 
-<div id="workspace">
-    <aside id="preview-panel">
+<div id="workspace" class="workspace">
+    <aside id="preview-panel" class="preview-panel">
         <h3>Preview</h3>
-        <canvas id="preview-canvas" width="200" height="200"></canvas>
+        <canvas id="preview-canvas" class="preview-canvas" width="200" height="200"></canvas>
         <div class="preview-label">Tile</div>
         <canvas class="preview-tile" id="preview-tile" width="80" height="60"></canvas>
     </aside>
 
-    <div id="form-panel">
+    <div id="form-panel" class="form-panel">
         <!-- Identity -->
         <details class="section" open>
             <summary>Identity</summary>
@@ -128,7 +128,7 @@
             <div class="section-body">
                 <div id="bool-attrs"></div>
                 <div style="margin: 8px 0 4px; font-size:11px; color:var(--accent)">Typed Attributes</div>
-                <div id="typed-attrs"></div>
+                <div id="typed-attrs" class="typed-attrs"></div>
                 <div style="margin: 8px 0 4px; font-size:11px; color:var(--accent)">Custom Attributes</div>
                 <div id="custom-attrs" class="dynamic-list"></div>
                 <button class="add-btn" id="btn-add-custom-attr">+ Add Custom Attribute</button>
@@ -426,27 +426,27 @@
     </div>
 </div>
 
-<div id="json-output-panel">
+<div id="json-output-panel" class="json-output-panel">
     <div class="output-header">
         <h3>JSON Output</h3>
-        <span id="item-key-field"></span>
+        <span id="item-key-field" class="item-key-field"></span>
     </div>
-    <textarea id="json-output" readonly rows="8"></textarea>
+    <textarea id="json-output" class="json-output" readonly rows="8"></textarea>
 </div>
 
 <!-- Tile picker modal -->
-<div id="tile-picker-overlay">
-    <div id="tile-picker">
-        <div id="tile-picker-header">
-            <span id="tile-picker-target">Selecting: —</span>
+<div id="tile-picker-overlay" class="tile-picker-overlay">
+    <div id="tile-picker" class="tile-picker">
+        <div id="tile-picker-header" class="tile-picker-header">
+            <span id="tile-picker-target" class="tile-picker-target">Selecting: —</span>
             <input type="text" id="tile-picker-search" placeholder="Search tile name...">
             <button id="tile-picker-none">None / Blank</button>
             <button id="tile-picker-close">Close</button>
         </div>
-        <canvas id="tile-picker-canvas"></canvas>
+        <canvas id="tile-picker-canvas" class="tile-picker-canvas"></canvas>
     </div>
 </div>
-<div id="tile-picker-tooltip"></div>
+<div id="tile-picker-tooltip" class="tile-picker-tooltip"></div>
 
 <script>
 let TILE_W = 40, TILE_H = 30, SS_COLS = 23, SS_ROWS = 17;
