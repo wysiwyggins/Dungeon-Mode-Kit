@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Personality Editor — Dungeon Mode Kit</title>
-<link rel="stylesheet" href="assets/main.css">
+<link rel="stylesheet" href="../assets/main.css">
 </head>
 <body class="editor personality-editor">
 
@@ -337,8 +337,8 @@ async function fetchJSON(url) {
 }
 
 async function loadBaseData() {
-    state.basePersonalities = await fetchJSON('data/personalities.json');
-    state.baseActors = await fetchJSON('data/actors.json');
+    state.basePersonalities = await fetchJSON('../data/personalities.json');
+    state.baseActors = await fetchJSON('../data/actors.json');
 }
 
 async function loadPrototype(name) {
@@ -350,8 +350,8 @@ async function loadPrototype(name) {
             state.protoPersonalities = state.prototypeCache[name].personalities;
             state.protoActors = state.prototypeCache[name].actors;
         } else {
-            const p = await fetchJSON(`prototypes/${name}/personalities.json`);
-            const a = await fetchJSON(`prototypes/${name}/actors.json`);
+            const p = await fetchJSON(`../prototypes/${name}/personalities.json`);
+            const a = await fetchJSON(`../prototypes/${name}/actors.json`);
             state.protoPersonalities = p;
             state.protoActors = a;
             state.prototypeCache[name] = { personalities: p, actors: a };

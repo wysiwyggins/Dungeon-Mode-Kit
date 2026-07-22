@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prototype Editor — Dungeon Mode Kit</title>
+<link rel="stylesheet" href="../assets/main.css">
+<script src="../lib/handlebars.min.js"></script>
+<script src="../lib/editor-template.js"></script>
+</head>
+<body class="editor prototype-editor">
+
+<header>
+    <h1>Prototype Editor</h1>
+    <label>Prototype:
+        <select id="prototype-select">
+            <option value="" selected>— choose —</option>
+            <option value="dungeon">dungeon</option>
+            <option value="sewer">sewer</option>
+            <option value="arena">arena</option>
+            <option value="labyrinth">labyrinth</option>
+            <option value="automatons">automatons</option>
+            <option value="test">test</option>
+            <option value="default">default</option>
+            <option value="cutscene_test">cutscene_test</option>
+        </select>
+    </label>
+    <button id="btn-blank">New Blank</button>
+    <button id="btn-export" class="btn-accent">Export JSON</button>
+    <button id="btn-copy" class="btn-accent">Copy to Clipboard</button>
+    <button id="btn-toggle-json" title="Show or hide the live JSON output panel">Hide JSON</button>
+    <span id="load-status" class="status-text"></span>
+</header>
+
+<div id="workspace">
+  <div id="editor-body">
+    <div class="floor-tabs" id="floor-tabs"></div>
+    <div id="proto-main">
+      <div id="form-panel">
+        <div class="empty-hint" id="empty-hint">Choose a prototype above (or “New Blank”) to begin editing.</div>
+        <div id="form-sections" class="hidden"></div>
+      </div>
+    </div>
+    <div id="json-output-panel">
+      <div class="output-header">
+        <h3>prototype.json</h3>
+        <span id="output-key" class="status-text"></span>
+      </div>
+      <textarea id="json-output" readonly spellcheck="false"></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================================
+     Editable form templates (Handlebars)
+     -------------------------------------------------------------------------
+     These describe the STRUCTURE of the simple form sections. Edit the markup
+     here (layout wrappers, field order, grouping) to change the editor's
+     layout without touching the JavaScript. Inputs carry data-* attributes
+     that JS uses to two-way-bind them to the prototype model — see the binding
+     convention in lib/editor-template.js. Widgets that aren't templated yet
+     (sliders, color picker, spawn/weight lists) are dropped into the
+     <... data-mount="name"> placeholders by JS.
+     ========================================================================= -->
+
+<!-- ---- Row partials (reused building blocks) ---- -->
+<script type="text/x-handlebars-template" id="tpl-field-row">
+  <div class="field-row">
+    <label {{#if tip}}title="{{tip}}"{{/if}}>{{label}}</label>
+    <input type="{{#if type}}{{type}}{{else}}text{{/if}}"
+           data-bind="{{bind}}" data-type="{{#if type}}{{type}}{{else}}text{{/if}}"
+           {{#if scope}}data-scope="{{scope}}"{{/if}} data-empty="delete"
+           {{#if placeholder}}placeholder="{{placeholder}}"{{/if}}
+           {{#if tip}}title="{{tip}}"{{/if}}>
+  </div>
+</script>
+
+<script type="text/x-handlebars-template" id="tpl-textarea-row">
+  <div class="field-row">
+    <label {{#if tip}}title="{{tip}}"{{/if}}>{{label}}</label>
+    <textarea data-bind="{{bind}}" data-type="textarea"
+              {{#if scope}}data-scope="{{scope}}"{{/if}} data-empty="delete"
+              {{#if tip}}title="{{tip}}"{{/if}}></textarea>
+  </div>
+</script>
+
+<script type="text/x-handlebars-template" id="tpl-select-row">
+  <div class="field-row">
+    <label {{#if tip}}title="{{tip}}"{{/if}}>{{label}}</label>
+    <select data-bind="{{bind}}" data-type="select"
+            {{#if scope}}data-scope="{{scope}}"{{/if}} data-empty="delete"
+            {{#if tip}}title="{{tip}}"{{/if}}>
+      <option value="">{{#if blankLabel}}{{blankLabel}}{{else}}— none —{{/if}}</option>
+      {{#each options}}<option value="{{this}}">{{this}}</option>{{/each}}
+    </select>
+  </div>
+</script>
+
+<!-- ---- Identity section body ---- -->
+<script type="text/x-handlebars-template" id="tpl-section-identity">
+  {{> fieldRow label="Name" bind="name" tip="Display name of this prototype/level, shown to the player on load."}}
+  {{> textareaRow label="Description" bind="description" tip="Intro text shown when the level loads. Use \n for line breaks."}}
+  <div class="hint-inline">Use \n in description for line breaks (newlines are preserved).</div>
+  {{> selectRow label="Loaded sound" bind="loaded_sound" options=soundIds tip="Sound effect played once when the level finishes loading."}}
+  {{> fieldRow label="Turn speed (ms)" bind="turn_speed" type="number" tip="Milliseconds per turn tick. Lower = faster animation/AI cadence. Default 50."}}
+  {{> fieldRow label="Next prototype" bind="next_level" placeholder="prototype name" tip="Prototype loaded when the player exits downward from the final floor."}}
+  {{> fieldRow label="Last prototype" bind="previous_level" placeholder="prototype name" tip="Prototype reachable by going back up the entrance stairway."}}
+  {{> fieldRow label="Intro cutscene" bind="intro_cutscene" placeholder="prototype name" tip="Prototype (flipbook cutscene) played before this level begins."}}
+</script>
+
+<!-- ---- Mechanics section body (templated portion) ---- -->
+<!-- The flag checkboxes + viewport/ai_margin fields are templated. The
+     treasure_room slider and the "ambient level light" group (ambient_light
+     slider + tint color picker, under one toggle) are mounted by JS.
+     observer_mode is intentionally NOT editable here: the engine derives it at
+     runtime from whether any actor has the `controlled` attribute (actors live
+     in the Tiled map, which the editor can't see). Any observer_mode already in
+     a loaded prototype's mechanics is preserved verbatim on export. -->
+<script type="text/x-handlebars-template" id="tpl-section-mechanics">
+  <div class="checkbox-grid">
+    <label title="Tiles you have seen stay remembered but dim when out of view; unseen tiles are hidden."><input type="checkbox" data-bind="fog_of_war" data-type="checkbox" data-scope="mechanics"> fog_of_war</label>
+    <label title="Level is dark — only lit areas (torches, light sources, player light) are visible."><input type="checkbox" data-bind="darkness" data-type="checkbox" data-scope="mechanics"> darkness</label>
+    <label title="Player emits their own light automatically, so they can always see nearby tiles even in darkness."><input type="checkbox" data-bind="player_auto_light" data-type="checkbox" data-scope="mechanics"> player_auto_light</label>
+  </div>
+  <div data-mount="treasure_room"></div>
+  {{> fieldRow label="viewport_width" bind="viewport_width" type="number" scope="mechanics" tip="Visible columns. If smaller than the map, the level scrolls. Leave blank to show the whole map."}}
+  {{> fieldRow label="viewport_height" bind="viewport_height" type="number" scope="mechanics" tip="Visible rows. If smaller than the map, the level scrolls. Leave blank to show the whole map."}}
+  {{> fieldRow label="ai_margin" bind="ai_margin" type="number" scope="mechanics" tip="Scrolling levels only: actors more than this many tiles outside the viewport skip their turn (perf optimization). Default 5; ignored when the whole map is visible."}}
+  <div data-mount="ambient_light_group"></div>
+</script>
+
+<!-- Editor logic, extracted from this file into scripts/. Loaded in
+     dependency order (shared global scope, no bundler); proto-render.js
+     calls init() last. See those files to edit behavior. -->
+<script src="scripts/proto-state.js"></script>
+<script src="scripts/proto-widgets.js"></script>
+<script src="scripts/proto-sections.js"></script>
+<script src="scripts/proto-render.js"></script>
+</body>
+</html>

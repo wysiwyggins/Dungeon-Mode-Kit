@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Actor Editor — Dungeon Mode Kit</title>
-<link rel="stylesheet" href="assets/main.css">
+<link rel="stylesheet" href="../assets/main.css">
 </head>
 <body class="editor actor-editor">
 
@@ -355,8 +355,8 @@
 <script>
 let TILE_W = 40, TILE_H = 30, SS_COLS = 23, SS_ROWS = 17;
 const SCALE = 4;
-const SPRITESHEET_PATH = 'assets/sprites/static-tiles.png';
-const TILE_DATA_PATH = 'data/static-tiles.json';
+const SPRITESHEET_PATH = '../assets/sprites/static-tiles.png';
+const TILE_DATA_PATH = '../data/static-tiles.json';
 
 const PRIMARY_BOOL_ATTRS = [
     'solid','visible','hostile','sentient','sighted','opaque',
@@ -447,10 +447,10 @@ const TYPED_ATTRS = [
 const TILE_FIELDS = ['tileIndexBase','tileIndexTop','tileIndexSide','tileIndexBase_open','tileIndexTop_open','tileIndexBase_toggled','tileIndexTop_toggled'];
 
 const ANIM_SHEETS = {
-    fire:  'assets/sprites/fire-animation.png',
-    smoke: 'assets/sprites/smoke-animation.png',
-    mist:  'assets/sprites/light-smoke-animation.png',
-    fluid: 'assets/sprites/fluid-animation.png'
+    fire:  '../assets/sprites/fire-animation.png',
+    smoke: '../assets/sprites/smoke-animation.png',
+    mist:  '../assets/sprites/light-smoke-animation.png',
+    fluid: '../assets/sprites/fluid-animation.png'
 };
 
 let state = {
@@ -518,9 +518,9 @@ function loadSpritesheet() {
 async function loadBaseData() {
     const [tilesData, actors, personalities, states] = await Promise.all([
         fetchJSON(TILE_DATA_PATH),
-        fetchJSON('data/actors.json'),
-        fetchJSON('data/personalities.json'),
-        fetchJSON('data/states.json'),
+        fetchJSON('../data/actors.json'),
+        fetchJSON('../data/personalities.json'),
+        fetchJSON('../data/states.json'),
     ]);
     TILE_W = tilesData.tilePixelWidth || TILE_W;
     TILE_H = tilesData.tilePixelHeight || TILE_H;
@@ -548,8 +548,8 @@ async function loadPrototype(name) {
             state.protoPersonalities = state.prototypeCache[name].personalities;
         } else {
             const [a, p] = await Promise.all([
-                fetchJSON(`prototypes/${name}/actors.json`),
-                fetchJSON(`prototypes/${name}/personalities.json`),
+                fetchJSON(`../prototypes/${name}/actors.json`),
+                fetchJSON(`../prototypes/${name}/personalities.json`),
             ]);
             state.protoActors = a;
             state.protoPersonalities = p;

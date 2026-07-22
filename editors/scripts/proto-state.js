@@ -1,0 +1,157 @@
+/* =========================================================================
+   proto-state.js — state, data loading, actor introspection, model helpers
+   -------------------------------------------------------------------------
+   Extracted from prototype-editor.html. These files are plain <script> src
+   includes (no bundler) and share one global scope; load order matters:
+   proto-state -> proto-widgets -> proto-sections -> proto-render. The final
+   file calls init(). Do not wrap in IIFEs — cross-file references rely on the
+   shared top-level scope.
+   ========================================================================= */
+"use strict";
+
+/* =========================================================================
+   State
+   ========================================================================= */
+const state = {
+    proto: null,          // the live prototype object (source of truth)
+    baseActors: {},
+    baseItems: {},
+    protoActors: {},
+    protoItems: {},
+    mergedActorIds: [],   // sorted ids for dropdowns
+    mergedActors: {},     // id -> actor def (proto override base), for attribute lookups
+    mergedItemIds: [],
+    soundIds: [],
+    poolItemIds: new Set(),// item ids that have random_type (category pools)
+    activeFloor: 'proto', // 'proto' or an integer index into proto.levels
+    prototypeCache: {},
+};
+
+const CATEGORY_KEYS = ['potion','scroll','staff','weapon','armor','ring','wand'];
+const GEN_TYPES = ['brogue','digger','arena','infernal'];
+
+/* =========================================================================
+   Data loading
+   ========================================================================= */
+async function fetchJSON(url) {
+    try {
+        const r = await fetch(url);
+        if (!r.ok) return {};
+        const text = await r.text();
+        if (!text.trim()) return {};
+        return JSON.parse(text);
+    } catch { return {}; }
+}
+
+async function loadBaseData() {
+    const [actors, items, sounds] = await Promise.all([
+        fetchJSON('data/actors.json'),
+        fetchJSON('data/items.json'),
+        fetchJSON('data/sounds.json'),
+    ]);
+    state.baseActors = actors;
+    state.baseItems = items;
+    state.soundIds = Object.keys(sounds.sprite || {}).sort();
+    state.poolItemIds = new Set();
+    for (const [k, v] of Object.entries(items)) {
+        const rt = v.random_type || (v.attributes && v.attributes.random_type);
+        if (rt) state.poolItemIds.add(k);
+    }
+}
+
+async function loadPrototype(name) {
+    let cfg, protoActors, protoItems;
+    if (name && state.prototypeCache[name]) {
+        ({ cfg, protoActors, protoItems } = state.prototypeCache[name]);
+    } else if (name) {
+        [cfg, protoActors, protoItems] = await Promise.all([
+            fetchJSON(`prototypes/${name}/prototype.json`),
+            fetchJSON(`prototypes/${name}/actors.json`),
+            fetchJSON(`prototypes/${name}/items.json`),
+        ]);
+        state.prototypeCache[name] = { cfg, protoActors, protoItems };
+    } else {
+        cfg = blankPrototype();
+        protoActors = {}; protoItems = {};
+    }
+    // deep-clone cfg so editing never mutates the cache
+    state.proto = JSON.parse(JSON.stringify(cfg));
+    state.protoActors = protoActors;
+    state.protoItems = protoItems;
+    rebuildMergedIds();
+    state.activeFloor = 'proto';
+    document.getElementById('empty-hint').classList.add('hidden');
+    document.getElementById('form-sections').classList.remove('hidden');
+    render();
+}
+
+function rebuildMergedIds() {
+    // Merge actor defs (proto overrides base) so we can read attributes, not just
+    // ids — the switch-puzzle UI filters/introspects by attribute.
+    state.mergedActors = { ...state.baseActors, ...state.protoActors };
+    state.mergedActorIds = [...new Set([
+        ...Object.keys(state.baseActors),
+        ...Object.keys(state.protoActors),
+    ])].sort();
+    state.mergedItemIds = [...new Set([
+        ...Object.keys(state.baseItems),
+        ...Object.keys(state.protoItems),
+    ])].sort();
+}
+
+/* ---- Actor attribute introspection (for the switch-puzzle UI) ---- */
+// Attributes live nested under def.attributes in actors.json.
+function actorAttrs(id) {
+    return (state.mergedActors[id] && state.mergedActors[id].attributes) || {};
+}
+function actorHasAttr(id, attr) {
+    return !!actorAttrs(id)[attr];
+}
+// Actor ids that can act as a switch (the thing the player interacts with).
+function switchActorIds() {
+    return state.mergedActorIds.filter(id => actorHasAttr(id, 'switchable'));
+}
+// Actor ids that can be a switch target (respond to the switch).
+function targetActorIds() {
+    return state.mergedActorIds.filter(id => actorHasAttr(id, 'openable') || actorHasAttr(id, 'switchable'));
+}
+// How a switch actor behaves, derived from its own attributes (one_shot vs
+// repeatable). This is defined on the actor, not the puzzle pattern.
+function switchModeLabel(id) {
+    if (!id || !actorHasAttr(id, 'switchable')) return '';
+    return actorHasAttr(id, 'one_shot') ? 'activates once' : 'toggleable';
+}
+// Boolean-ish attributes of a target actor that a switch could flip.
+function targetToggleableAttrs(id) {
+    const attrs = actorAttrs(id);
+    const candidates = ['open', 'locked', 'solid', 'opaque', 'toggled', 'visible', 'switchable'];
+    const present = candidates.filter(k => k in attrs);
+    // Always offer the common ones even if the actor doesn't declare them yet.
+    for (const k of ['open', 'locked', 'solid']) if (!present.includes(k)) present.push(k);
+    return present;
+}
+
+function blankPrototype() {
+    return {
+        name: 'New Prototype',
+        description: '',
+        turn_speed: 50,
+        mechanics: { fog_of_war: true, darkness: true },
+    };
+}
+
+/* =========================================================================
+   Model helpers — current editing target (proto-level or a floor)
+   ========================================================================= */
+// Returns the object currently being edited (the prototype root or a floor).
+function currentTarget() {
+    if (state.activeFloor === 'proto') return state.proto;
+    return state.proto.levels[state.activeFloor];
+}
+function isFloor() { return state.activeFloor !== 'proto'; }
+
+// Inherited value for a floor field = the prototype-level value (or undefined).
+function inheritedValue(key) {
+    return state.proto ? state.proto[key] : undefined;
+}
+

@@ -872,7 +872,8 @@
       "liquid": true,
       "paint_tile": "WATER",
       "mass_noun": true,
-      "entry_sound": "step_mud"
+      "entry_sound": "step_mud",
+      "render_layer": "top"
     }
   },
   "deep_water": {
@@ -891,7 +892,8 @@
       "liquid": true,
       "deep": true,
       "mass_noun": true,
-      "entry_sound": "step_mud"
+      "entry_sound": "step_mud",
+      "render_layer": "top"
     }
   },
   "sewage": {
@@ -909,7 +911,8 @@
       "liquid": true,
       "paint_tile": "OPAQUE_DOTTED_LIGHT_SHADE",
       "mass_noun": true,
-      "entry_sound": "step_mud"
+      "entry_sound": "step_mud",
+      "render_layer": "top"
     }
   },
   "deep_sewage": {
@@ -926,7 +929,8 @@
       "liquid": true,
       "deep": true,
       "solid": false,
-      "entry_sound": "step_mud"
+      "entry_sound": "step_mud",
+      "render_layer": "top"
     }
   },
   "drain": {

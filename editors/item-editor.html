@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Item Editor — Dungeon Mode Kit</title>
-<link rel="stylesheet" href="assets/main.css">
+<link rel="stylesheet" href="../assets/main.css">
 </head>
 <body class="editor item-editor">
 
@@ -451,8 +451,8 @@
 <script>
 let TILE_W = 40, TILE_H = 30, SS_COLS = 23, SS_ROWS = 17;
 const SCALE = 4;
-const SPRITESHEET_PATH = 'assets/sprites/static-tiles.png';
-const TILE_DATA_PATH = 'data/static-tiles.json';
+const SPRITESHEET_PATH = '../assets/sprites/static-tiles.png';
+const TILE_DATA_PATH = '../data/static-tiles.json';
 
 const PRIMARY_BOOL_ATTRS = [
     'pickupable','visible','stackable','consumable','flammable','weapon',
@@ -536,7 +536,7 @@ function loadSpritesheet() {
 async function loadBaseData() {
     const [tilesData, items] = await Promise.all([
         fetchJSON(TILE_DATA_PATH),
-        fetchJSON('data/items.json'),
+        fetchJSON('../data/items.json'),
     ]);
     TILE_W = tilesData.tilePixelWidth || TILE_W;
     TILE_H = tilesData.tilePixelHeight || TILE_H;
@@ -559,7 +559,7 @@ async function loadPrototype(name) {
         if (state.prototypeCache[name]) {
             state.protoItems = state.prototypeCache[name];
         } else {
-            const items = await fetchJSON(`prototypes/${name}/items.json`);
+            const items = await fetchJSON(`../prototypes/${name}/items.json`);
             state.protoItems = items;
             state.prototypeCache[name] = items;
         }
