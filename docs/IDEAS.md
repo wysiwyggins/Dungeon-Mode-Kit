@@ -4,8 +4,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Bugs
 
-- tints for actor states shouldn't be so dark that the actor tiles look like a dark block. it also seems like torch light tint is coming from player tint, not the torch tint. fix both if possible
-- why are there both "use_verb": Drink and "drinkable" attributes? what's the difference? My assumption is that some potions like potion of incineration are marked as undrinkable, but they should actually still get a drink verb, and trigger the same effect as if they were thrown, but at the player's location.
+- It seems like torch light tint is coming from player tint, not the torch tint.
 
 ---
 
