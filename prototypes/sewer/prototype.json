@@ -63,13 +63,6 @@
     "options": {
       "map_width": 100,
       "map_height": 100,
-      "maxRooms": 40,
-      "maxAttempts": 50,
-      "corridorChance": 40,
-      "corridorLength": [
-        2,
-        6
-      ],
       "loopMinDistance": 20,
       "maxLoops": 5,
       "roomWeights": {

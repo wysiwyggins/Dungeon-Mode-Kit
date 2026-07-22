@@ -35,8 +35,6 @@
     "type": "brogue",
     "options": {
       "map_width": 100, "map_height": 100,
-      "maxRooms": 40, "maxAttempts": 50,
-      "corridorChance": 40, "corridorLength": [2, 6],
       "loopMinDistance": 20, "maxLoops": 5,
       "roomWeights": { "rectangle": 40, "cross": 25, "circular": 20, "cavern": 10 },
       "lakes": { "count": [1, 3], "types": ["water", "water", "water", "water", "water", "water", "lava"], "minSize": 15, "maxSize": 80 },

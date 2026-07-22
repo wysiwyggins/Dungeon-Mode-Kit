@@ -142,6 +142,7 @@ const state = {
     protoActors: {},
     protoItems: {},
     mergedActorIds: [],   // sorted ids for dropdowns
+    mergedActors: {},     // id -> actor def (proto override base), for attribute lookups
     mergedItemIds: [],
     soundIds: [],
     poolItemIds: new Set(),// item ids that have random_type (category pools)
@@ -208,6 +209,9 @@ async function loadPrototype(name) {
 }
 
 function rebuildMergedIds() {
+    // Merge actor defs (proto overrides base) so we can read attributes, not just
+    // ids — the switch-puzzle UI filters/introspects by attribute.
+    state.mergedActors = { ...state.baseActors, ...state.protoActors };
     state.mergedActorIds = [...new Set([
         ...Object.keys(state.baseActors),
         ...Object.keys(state.protoActors),
@@ -216,6 +220,38 @@ function rebuildMergedIds() {
         ...Object.keys(state.baseItems),
         ...Object.keys(state.protoItems),
     ])].sort();
+}
+
+/* ---- Actor attribute introspection (for the switch-puzzle UI) ---- */
+// Attributes live nested under def.attributes in actors.json.
+function actorAttrs(id) {
+    return (state.mergedActors[id] && state.mergedActors[id].attributes) || {};
+}
+function actorHasAttr(id, attr) {
+    return !!actorAttrs(id)[attr];
+}
+// Actor ids that can act as a switch (the thing the player interacts with).
+function switchActorIds() {
+    return state.mergedActorIds.filter(id => actorHasAttr(id, 'switchable'));
+}
+// Actor ids that can be a switch target (respond to the switch).
+function targetActorIds() {
+    return state.mergedActorIds.filter(id => actorHasAttr(id, 'openable') || actorHasAttr(id, 'switchable'));
+}
+// How a switch actor behaves, derived from its own attributes (one_shot vs
+// repeatable). This is defined on the actor, not the puzzle pattern.
+function switchModeLabel(id) {
+    if (!id || !actorHasAttr(id, 'switchable')) return '';
+    return actorHasAttr(id, 'one_shot') ? 'activates once' : 'toggleable';
+}
+// Boolean-ish attributes of a target actor that a switch could flip.
+function targetToggleableAttrs(id) {
+    const attrs = actorAttrs(id);
+    const candidates = ['open', 'locked', 'solid', 'opaque', 'toggled', 'visible', 'switchable'];
+    const present = candidates.filter(k => k in attrs);
+    // Always offer the common ones even if the actor doesn't declare them yet.
+    for (const k of ['open', 'locked', 'solid']) if (!present.includes(k)) present.push(k);
+    return present;
 }
 
 function blankPrototype() {
@@ -322,10 +358,18 @@ function selectRow(label, obj, key, options, opts = {}) {
     const sel = el('select', {});
     const blank = opts.allowBlank !== false;
     if (blank) sel.appendChild(el('option', { value: '' }, opts.blankLabel || '— none —'));
+    const optVals = new Set();
     for (const o of options) {
         const val = typeof o === 'object' ? o.value : o;
         const txt = typeof o === 'object' ? o.label : o;
+        optVals.add(String(val));
         sel.appendChild(el('option', { value: val }, txt));
+    }
+    // Preserve an existing value that isn't in the option list (e.g. a filtered
+    // list that excludes it) so it's shown and not silently dropped on next edit.
+    const cur = obj[key];
+    if (cur != null && cur !== '' && !optVals.has(String(cur))) {
+        sel.appendChild(el('option', { value: cur }, cur + ' (not in list)'));
     }
     sel.value = obj[key] != null ? obj[key] : '';
     sel.addEventListener('change', () => {
@@ -1006,10 +1050,11 @@ function mapGeneratorBody(obj, body) {
     const t = mg.type || 'brogue';
     if (t === 'brogue' || t === 'infernal') {
         if (t === 'brogue') {
-            body.appendChild(fieldGrid(
-                fieldRow('maxRooms', o, 'maxRooms', { type: 'number', tip: 'Upper bound on the number of rooms placed.' }),
-                fieldRow('maxAttempts', o, 'maxAttempts', { type: 'number', tip: 'How many placement attempts the generator makes before stopping. Default 50.' }),
-            ));
+            // maxRooms is intentionally not exposed: the engine auto-computes it
+            // from the map size (larger maps get more rooms). maxAttempts is also
+            // auto-scaled to map size when left blank; expose it as an optional
+            // override for fine-tuning density.
+            body.appendChild(fieldRow('maxAttempts', o, 'maxAttempts', { type: 'number', tip: 'Optional override: how many room-placement attempts the generator makes (the practical cap on how densely the map fills). Leave blank to auto-scale with map size. Larger = denser.' }));
             body.appendChild(sliderRow('corridorChance %', o, 'corridorChance', { min: 0, max: 100, suffix: '%', def: 0,
                 tip: 'Chance to connect a new room with a corridor (vs. an adjacent doorway). Default 30%.' }));
             body.appendChild(dualRangeArrayRow('corridorLength', o, 'corridorLength', { min: 1, max: 12,
@@ -1354,7 +1399,7 @@ function trapsSwitchesBody(obj, body) {
     if (obj.switch_puzzles) {
         const sp = obj.switch_puzzles;
         body.appendChild(dualRangeRow('count', sp, 'min', 'max', { min: 0, max: 5, tip: 'Min–max number of switch puzzles placed on this floor.' }));
-        body.appendChild(subTitle('patterns', 'Puzzle templates to choose from. Each placed puzzle picks one pattern at random, weighted.'));
+        body.appendChild(subTitle('patterns', 'Puzzle templates to choose from (one is picked per placed puzzle, weighted). Each pattern: a layout to block off, a switch actor the player triggers, a target actor it blocks, and the effect(s) the switch applies to that target.'));
         body.appendChild(patternsEditor(sp));
     }
 }
@@ -1387,16 +1432,33 @@ function patternBox(pat, i, sp, redraw) {
     head.appendChild(rm);
     box.appendChild(head);
     box.appendChild(fieldGrid(
-        selectRow('type', pat, 'type', ['gated_room','gated_corridor'], { allowBlank: false,
-            tip: 'Layout this puzzle gates: a whole room behind the gate, or a corridor segment.' }),
+        // `type` is only the LAYOUT the puzzle blocks off — a room or a corridor
+        // segment. The target actor and its effect are chosen below; they aren't
+        // implied by the type (a gate that opens is just the common default).
+        selectRow('layout', pat, 'type', [
+            { value: 'gated_room', label: 'gate a room' },
+            { value: 'gated_corridor', label: 'gate a corridor' },
+        ], { allowBlank: false,
+            tip: 'Which part of the map the target actor blocks off: a whole room, or a corridor segment. The target actor and what the switch does to it are set below.' }),
         fieldRow('weight', pat, 'weight', { type: 'number', tip: 'Relative likelihood this pattern is chosen vs. the others.' }),
     ));
     box.appendChild(fieldGrid(
-        selectRow('switch_actor', pat, 'switch_actor', state.mergedActorIds, { blankLabel: '— pick actor —',
-            tip: 'Actor the player interacts with to trigger the puzzle (e.g. a lever or pressure plate).' }),
-        selectRow('target_actor', pat, 'target_actor', state.mergedActorIds, { blankLabel: '— pick actor —',
-            tip: 'Actor that responds when the switch fires (e.g. the gate that opens).' }),
+        // Only actors that can actually be a switch / a target are offered.
+        selectRow('switch_actor', pat, 'switch_actor', switchActorIds(), { blankLabel: '— pick switch —', rerender: true,
+            tip: 'Actor the player interacts with to trigger the puzzle. Only actors with the `switchable` attribute (levers, pressure plates) are listed.' }),
+        selectRow('target_actor', pat, 'target_actor', targetActorIds(), { blankLabel: '— pick target —', rerender: true,
+            tip: 'Actor that responds when the switch fires. Only `openable`/`switchable` actors (gates, doors) are listed.' }),
     ));
+    // Toggle-vs-once behavior is a property of the chosen switch actor
+    // (its `one_shot` attribute), not the puzzle — surface it read-only so the
+    // designer knows what they're picking. Change it by editing the actor.
+    const mode = switchModeLabel(pat.switch_actor);
+    if (mode) {
+        box.appendChild(el('div', { class: 'hint-inline' },
+            'This switch ' + (mode === 'toggleable'
+                ? 'is toggleable (can flip on and off).'
+                : 'activates once (one_shot — can’t be reset).')));
+    }
     box.appendChild(fieldRow('switch_message', pat, 'switch_message', { tip: 'Message shown to the player when the switch is activated.' }));
     box.appendChild(subTitle('switch_effects (state changes applied to target)',
         'Attribute changes applied to the target actor when triggered, e.g. open:true, locked:false.'));
@@ -1409,25 +1471,51 @@ function effectsEditor(pat) {
     if (!pat.switch_effects) pat.switch_effects = {};
     function redraw() {
         wrap.innerHTML = '';
+        // Attributes the chosen target actor exposes — offered as key choices so
+        // the designer isn't guessing attribute names. Free-text stays available
+        // for anything not listed (arbitrary attributes still work: the engine
+        // applies switch_effects as generic setAttribute calls).
+        const targetAttrs = pat.target_actor ? targetToggleableAttrs(pat.target_actor) : [];
         for (const k of Object.keys(pat.switch_effects)) {
             const v = pat.switch_effects[k];
-            const keyInput = el('input', { type: 'text', value: k, style: 'flex:0 0 120px;',
-                title: 'Attribute name on the target actor (e.g. open, locked, solid).' });
-            keyInput.addEventListener('change', () => {
-                const nv = keyInput.value.trim(); if (!nv || nv === k) return;
+            const rename = (nv) => {
+                nv = (nv || '').trim(); if (!nv || nv === k) return;
                 pat.switch_effects[nv] = pat.switch_effects[k]; delete pat.switch_effects[k]; commit(); redraw();
-            });
+            };
+            // Key editor: a dropdown of the target's attributes when we know them
+            // and the current key fits, otherwise a free-text input.
+            let keyNode;
+            if (targetAttrs.length && (targetAttrs.includes(k) || k === '')) {
+                keyNode = el('select', { style: 'flex:0 0 120px;', title: 'Attribute on the target actor to change.' });
+                for (const a of targetAttrs) keyNode.appendChild(el('option', { value: a }, a));
+                keyNode.appendChild(el('option', { value: '__other__' }, 'other…'));
+                keyNode.value = k;
+                keyNode.addEventListener('change', () => {
+                    if (keyNode.value === '__other__') {
+                        // switch this row to a custom free-text key
+                        const nv = prompt('Attribute name:', k || '');
+                        if (nv) rename(nv); else redraw();
+                    } else rename(keyNode.value);
+                });
+            } else {
+                keyNode = el('input', { type: 'text', value: k, style: 'flex:0 0 120px;',
+                    title: 'Attribute name on the target actor (e.g. open, locked, solid).' });
+                keyNode.addEventListener('change', () => rename(keyNode.value));
+            }
             const valSel = el('select', { style: 'flex:0 0 80px;' });
             [['true','true'],['false','false']].forEach(([vv, l]) => valSel.appendChild(el('option', { value: vv }, l)));
             valSel.value = String(!!v);
             valSel.addEventListener('change', () => { pat.switch_effects[k] = valSel.value === 'true'; commit(); });
             const rm = el('button', { class: 'remove-btn' }, '×');
             rm.addEventListener('click', () => { delete pat.switch_effects[k]; commit(); redraw(); });
-            wrap.appendChild(el('div', { class: 'list-item' }, keyInput, valSel, rm));
+            wrap.appendChild(el('div', { class: 'list-item' }, keyNode, valSel, rm));
         }
         const add = el('button', { class: 'add-btn' }, '+ effect');
         add.addEventListener('click', () => {
-            let n = 'open'; if (pat.switch_effects[n] !== undefined) n = 'locked';
+            // Prefer an unused target attribute; fall back to the old open/locked default.
+            const prefer = targetAttrs.filter(a => pat.switch_effects[a] === undefined);
+            let n = prefer[0] || 'open';
+            if (pat.switch_effects[n] !== undefined) n = 'locked';
             if (pat.switch_effects[n] !== undefined) n = 'effect' + Object.keys(pat.switch_effects).length;
             pat.switch_effects[n] = true; commit(); redraw();
         });

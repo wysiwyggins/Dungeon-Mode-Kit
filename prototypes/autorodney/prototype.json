@@ -17,8 +17,6 @@
     "type": "brogue",
     "options": {
       "map_width": 80, "map_height": 70,
-      "maxRooms": 30, "maxAttempts": 50,
-      "corridorChance": 45, "corridorLength": [2, 6],
       "loopMinDistance": 18, "maxLoops": 4,
       "roomWeights": { "rectangle": 40, "cross": 25, "circular": 20, "cavern": 15 }
     }

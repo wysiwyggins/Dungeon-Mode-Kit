@@ -44,6 +44,10 @@ Is it really valuable to have to define every individual level? wouldn't most ro
   - add toggle to hide and show the json-output-panel on all of the editors starting with prototype editor
 - I still find the markup of prototype-editor.html to be mostly unreadable and unservicable. There's no reason for a lot of inline javascript to be here. If a script is complex and is not going to be changed by a designer, it should be off the page and in lib in an editors folder. What we want in in the page contents is a human-readable template, were we can add and remove ui elements with regognizable names, edit text and move things around. Complex permanent artifacts are removed from view.
 
+### Make 'infrastructure sight' part of the magic mapping scroll effect
+
+- instead of a separate potion/gas effect, what was called infrastructure sight becomes part of the magic mapping scroll effect, this is a lasting visual reveal of an individual level which should persist when leaving and returning to that level. Remove infrastructure sight from potion and gas effects after adding it to the magic mapping reveal.
+
 ### Actor info
 
 - clicking on an actor could show an info window instead of pathing to them with click to walk. This should show the monster name and description, later we can build out more procedural info like brogue.

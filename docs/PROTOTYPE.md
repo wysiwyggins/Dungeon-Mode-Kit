@@ -130,7 +130,8 @@ When no Tiled map file exists for a floor, the engine generates a procedural map
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `maxRooms` | number | `35` | Maximum rooms to generate |
+| `maxRooms` | number | auto | Maximum rooms to generate. Optional — when omitted, auto-computed from map size (`≈ map_width × map_height / 120`, clamped 8–120) so larger maps fill out. An explicit value overrides the auto default. Not exposed in the prototype editor. |
+| `maxAttempts` | number | auto | Room-placement attempts (the practical cap on density, since many attempts fail to place). Optional — when omitted, auto-scaled to `≈ maxRooms × 4` (clamped 50–600) so it can reach the size-scaled room target. An explicit value overrides. Larger = denser. |
 | `corridorChance` | number | `30` | Percent chance to add a corridor between rooms |
 | `corridorLength` | `[min, max]` | `[2, 6]` | Corridor length range |
 | `doorChance` | number | `50` | Percent chance to place a door at room connections |

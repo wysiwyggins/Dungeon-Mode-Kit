@@ -519,11 +519,25 @@ class Architect {
             }
 
             case 'brogue': {
+                // maxRooms is optional in prototype data: when omitted, scale it to
+                // the map area (~200 tiles per room+corridor footprint) so larger
+                // maps fill out instead of staying sparse at the old flat 35.
+                // The divisor leaves gaps between rooms for corridors to snake
+                // through — packing too tightly (a smaller divisor) starves the
+                // generator of the space corridors need. Clamped so tiny/huge maps
+                // stay sane. An explicit maxRooms wins.
+                const autoMaxRooms = Math.min(120, Math.max(8,
+                    Math.round((this.width * this.height) / 200)));
+                // maxAttempts is the practical limiter (many attempts fail to place),
+                // so it must scale with the room target or large maps stall well
+                // short of maxRooms. ~4x the target gives enough headroom to reach it
+                // despite fails; clamped. An explicit maxAttempts wins.
+                const autoMaxAttempts = Math.min(600, Math.max(50, autoMaxRooms * 4));
                 const brogueCfg = {
-                    maxRooms: options.maxRooms || 35,
-                    maxAttempts: options.maxAttempts || 50,
-                    corridorChance: options.corridorChance ?? 30,
-                    corridorLength: options.corridorLength || [2, 6],
+                    maxRooms: options.maxRooms || autoMaxRooms,
+                    maxAttempts: options.maxAttempts || autoMaxAttempts,
+                    corridorChance: options.corridorChance ?? 55,
+                    corridorLength: options.corridorLength || [3, 9],
                     loopMinDistance: options.loopMinDistance || 20,
                     maxLoops: options.maxLoops || 5,
                     doorChance: options.doorChance ?? 50,
@@ -548,10 +562,25 @@ class Architect {
                 const dungeonGrid = Array.from({ length: this.height }, () => new Uint8Array(this.width));
                 const rooms = [];
 
-                // Place first room near center
+                // Seed the first room in a randomly-chosen corner rather than the
+                // map center. Rooms attach outward from the seed, so a center seed
+                // makes play radiate from the middle — on large scrolling maps that
+                // clusters everything on the viewport seams. Seeding from a random
+                // corner spreads rooms across the whole map, and randomizing which
+                // corner keeps maps from feeling same-y. (margin keeps the room's
+                // 1-tile wall border off the map edge.)
                 const firstType = this._brogueMakeRoom('rectangle', brogueCfg);
-                const cx = Math.floor(this.width / 2) - Math.floor(firstType.width / 2);
-                const cy = Math.floor(this.height / 2) - Math.floor(firstType.height / 2);
+                const margin = 2;
+                const cornerX = ROT.RNG.getUniform() < 0.5;  // true = left, false = right
+                const cornerY = ROT.RNG.getUniform() < 0.5;  // true = top,  false = bottom
+                // Clamp to >=1 so an oversized first room on a small map never
+                // yields a negative offset (which would write out of bounds).
+                const cx = Math.max(1, cornerX
+                    ? margin
+                    : this.width - firstType.width - margin);
+                const cy = Math.max(1, cornerY
+                    ? margin
+                    : this.height - firstType.height - margin);
                 for (let ry = 0; ry < firstType.height; ry++) {
                     for (let rx = 0; rx < firstType.width; rx++) {
                         if (firstType.grid[ry][rx] === 1) {
@@ -564,23 +593,36 @@ class Architect {
                 // Attach rooms via cellophane sliding
                 let roomsBuilt = 1;
                 let consecutiveFails = 0;
-                for (let attempt = 0; attempt < brogueCfg.maxAttempts && roomsBuilt < brogueCfg.maxRooms; attempt++) {
+                let totalFails = 0;
+                let attemptsUsed = 0;
+                let corridorAttempts = 0;      // rooms that grew a corridor stub
+                let corridorsPlaced = 0;       // corridor-rooms that placed successfully
+                let corridorFails = 0;         // corridor-rooms that failed to place
+                let stopReason = 'maxAttempts reached';
+                let attempt = 0;
+                for (attempt = 0; attempt < brogueCfg.maxAttempts && roomsBuilt < brogueCfg.maxRooms; attempt++) {
+                    attemptsUsed = attempt + 1;
                     const type = this._broguePickRoomType(brogueCfg.roomWeights);
                     let room = this._brogueMakeRoom(type, brogueCfg);
                     let doorSites = this._brogueFindDoorSites(room.grid, room.width, room.height);
                     if (doorSites.length === 0) continue;
 
                     const corrResult = this._brogueMaybeAddCorridor(room.grid, room.width, room.height, doorSites, brogueCfg);
+                    const hadCorridor = corrResult.hasCorridor;
+                    if (hadCorridor) corridorAttempts++;
                     room = { grid: corrResult.grid, width: corrResult.width, height: corrResult.height };
                     doorSites = corrResult.doorSites;
 
-                    const placement = this._broguePlaceRoom(dungeonGrid, room.grid, room.width, room.height, doorSites, this.width, this.height);
+                    const placement = this._broguePlaceRoom(dungeonGrid, room.grid, room.width, room.height, doorSites, this.width, this.height, corrResult.corridorCells);
                     if (!placement) {
                         consecutiveFails++;
-                        if (consecutiveFails > 10) break;
+                        totalFails++;
+                        if (hadCorridor) corridorFails++;
+                        if (consecutiveFails > 10) { stopReason = `10 consecutive placement failures (attempt ${attemptsUsed})`; break; }
                         continue;
                     }
                     consecutiveFails = 0;
+                    if (hadCorridor) corridorsPlaced++;
 
                     // Stamp room onto dungeon grid
                     for (let ry = 0; ry < room.height; ry++) {
@@ -601,6 +643,8 @@ class Architect {
                     roomsBuilt++;
                 }
 
+                if (roomsBuilt >= brogueCfg.maxRooms) stopReason = `maxRooms reached (${brogueCfg.maxRooms})`;
+
                 // Create loops
                 this._brogueMakeLoops(dungeonGrid, rooms, this.width, this.height, brogueCfg);
 
@@ -610,7 +654,19 @@ class Architect {
                 // Convert to framework output
                 this._brogueFinalizeMap(dungeonGrid, rooms, this.width, this.height, brogueCfg, secretWalls);
 
-                console.log(`Brogue map: ${roomsBuilt} rooms, ${this.walkableTiles.length} floors, ${this.pendingWallSpawns.length} walls, ${this.pendingDoorSpawns.length} doors`);
+                const mapArea = this.width * this.height;
+                const fillPct = ((this.walkableTiles.length / mapArea) * 100).toFixed(1);
+                const maxRoomsSource = options.maxRooms ? 'explicit' : 'auto';
+                console.log(
+                    `Brogue map ${this.width}x${this.height} (${mapArea} tiles): ` +
+                    `${roomsBuilt} rooms placed (maxRooms ${brogueCfg.maxRooms} [${maxRoomsSource}], ` +
+                    `maxAttempts ${brogueCfg.maxAttempts}) — stopped: ${stopReason}. ` +
+                    `${attemptsUsed} attempts, ${totalFails} placement fails. ` +
+                    `Corridors: ${corridorsPlaced} placed / ${corridorAttempts} tried ` +
+                    `(${corridorFails} rejected; chance ${brogueCfg.corridorChance}%, len ${brogueCfg.corridorLength[0]}-${brogueCfg.corridorLength[1]}). ` +
+                    `${this.walkableTiles.length} floor tiles (${fillPct}% fill), ` +
+                    `${this.pendingDoorSpawns.length} doors.`
+                );
                 break;
             }
 
@@ -2558,7 +2614,7 @@ class Architect {
 
     _brogueMaybeAddCorridor(grid, w, h, doorSites, cfg) {
         if (ROT.RNG.getPercentage() > cfg.corridorChance || doorSites.length === 0) {
-            return { grid, width: w, height: h, doorSites };
+            return { grid, width: w, height: h, doorSites, hasCorridor: false, corridorCells: [] };
         }
 
         const dirNames = ['north', 'south', 'east', 'west'];
@@ -2581,14 +2637,19 @@ class Architect {
                 break;
             }
         }
-        if (!site) return { grid, width: w, height: h, doorSites };
+        if (!site) return { grid, width: w, height: h, doorSites, hasCorridor: false, corridorCells: [] };
 
         const dv = dirVecs[site.direction];
         const len = ROT.RNG.getUniformInt(cfg.corridorLength[0], cfg.corridorLength[1]);
 
-        // Calculate new grid dimensions
+        // Calculate new grid dimensions. Extend to i = len + 1 (one past the
+        // corridor tip) so the forward-facing door site — which sits at tip + dv —
+        // lands INSIDE the padded grid. Without this the padding stopped exactly at
+        // the tip, so the forward door fell out of bounds and was dropped, leaving
+        // most corridor-rooms with zero door sites and thus unplaceable (the real
+        // reason long corridors almost never appeared).
         let padLeft = 0, padRight = 0, padTop = 0, padBottom = 0;
-        for (let i = 1; i <= len; i++) {
+        for (let i = 1; i <= len + 1; i++) {
             const nx = site.localX + dv.dx * i;
             const ny = site.localY + dv.dy * i;
             if (nx < 0) padLeft = Math.max(padLeft, -nx);
@@ -2608,11 +2669,15 @@ class Architect {
             }
         }
 
-        // Draw corridor
+        // Draw corridor, recording each corridor cell (local coords). i=0 is the
+        // room's own door cell — skip it; only i>=1 are true corridor tiles that
+        // should get the relaxed adjacency rule at placement time.
+        const corridorCells = [];
         for (let i = 0; i <= len; i++) {
             const cx = site.localX + padLeft + dv.dx * i;
             const cy = site.localY + padTop + dv.dy * i;
             newGrid[cy][cx] = 1;
+            if (i >= 1) corridorCells.push({ x: cx, y: cy });
         }
 
         // Last interior cell of the corridor
@@ -2639,11 +2704,20 @@ class Architect {
             }
         }
 
-        return { grid: newGrid, width: newW, height: newH, doorSites: newDoorSites };
+        return { grid: newGrid, width: newW, height: newH, doorSites: newDoorSites, hasCorridor: true, corridorCells };
     }
 
-    _broguePlaceRoom(dungeonGrid, roomGrid, roomW, roomH, doorSites, mapW, mapH) {
+    _broguePlaceRoom(dungeonGrid, roomGrid, roomW, roomH, doorSites, mapW, mapH, corridorCells = []) {
         const dirVecs = { north: { dx: 0, dy: -1 }, south: { dx: 0, dy: 1 }, east: { dx: 1, dy: 0 }, west: { dx: -1, dy: 0 } };
+        // Corridor cells get a relaxed adjacency rule: unlike room bodies (which
+        // must keep a clear 3x3 gap so they don't fuse), a 1-wide corridor is
+        // *meant* to run alongside walls and thread past room corners. Requiring a
+        // clear 3x3 around every corridor cell rejects almost all corridors in a
+        // populated map (only a fully-clear channel fits), which is why long/
+        // winding hallways never appeared. For corridor cells we only forbid
+        // ORTHOGONAL adjacency to foreign floor (prevents fusing two passages
+        // side-by-side); diagonal proximity is allowed so corridors can hug walls.
+        const corridorSet = new Set(corridorCells.map(c => c.x + ',' + c.y));
 
         // Collect attachment targets: empty cells adjacent to existing floor
         const targets = [];
@@ -2699,17 +2773,34 @@ class Architect {
                         if (wx < 1 || wx >= mapW - 1 || wy < 1 || wy >= mapH - 1) { valid = false; break; }
                         if (dungeonGrid[wy][wx] !== 0) { valid = false; break; }
 
-                        // 3x3 neighborhood: no existing floor except room cells or door site
-                        for (let dy = -1; dy <= 1 && valid; dy++) {
-                            for (let dx = -1; dx <= 1 && valid; dx++) {
-                                if (dx === 0 && dy === 0) continue;
-                                const nx = wx + dx, ny = wy + dy;
+                        const isCorridorCell = corridorSet.has(rx + ',' + ry);
+                        if (isCorridorCell) {
+                            // Relaxed rule: only forbid ORTHOGONAL adjacency to foreign
+                            // floor (keeps corridors from fusing side-by-side into a
+                            // 2-wide passage or merging rooms); diagonal proximity is
+                            // fine, so the corridor can hug walls and pass room corners.
+                            for (const [ox, oy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+                                if (!valid) break;
+                                const nx = wx + ox, ny = wy + oy;
                                 if (nx < 0 || nx >= mapW || ny < 0 || ny >= mapH) continue;
                                 if (nx === target.x && ny === target.y) continue;
-                                // Check if this neighbor is also a room floor cell
                                 const nrx = nx - offsetX, nry = ny - offsetY;
                                 if (nrx >= 0 && nrx < roomW && nry >= 0 && nry < roomH && roomGrid[nry][nrx] === 1) continue;
                                 if (dungeonGrid[ny][nx] >= 1) valid = false;
+                            }
+                        } else {
+                            // Room-body cell: strict 3x3 separation so rooms don't fuse.
+                            for (let dy = -1; dy <= 1 && valid; dy++) {
+                                for (let dx = -1; dx <= 1 && valid; dx++) {
+                                    if (dx === 0 && dy === 0) continue;
+                                    const nx = wx + dx, ny = wy + dy;
+                                    if (nx < 0 || nx >= mapW || ny < 0 || ny >= mapH) continue;
+                                    if (nx === target.x && ny === target.y) continue;
+                                    // Check if this neighbor is also a room floor cell
+                                    const nrx = nx - offsetX, nry = ny - offsetY;
+                                    if (nrx >= 0 && nrx < roomW && nry >= 0 && nry < roomH && roomGrid[nry][nrx] === 1) continue;
+                                    if (dungeonGrid[ny][nx] >= 1) valid = false;
+                                }
                             }
                         }
                     }
