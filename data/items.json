@@ -326,7 +326,10 @@
       "break_sound": "glass",
       "fire_explosion": true,
       "breakable": true,
-      "drinkable": true,
+      "consumable": true,
+      "use_verb": "Drink",
+      "use_sound": "swallow",
+      "use_at_self": true,
       "description": "A mysterious potion with unknown effects."
     }
   },

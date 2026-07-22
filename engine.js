@@ -6302,6 +6302,27 @@ class Actor extends Entity {
 
         const useEffect = item.getAttribute('use_effect');
 
+        // Drink-at-self: some potions have no drinkable effect of their own and
+        // only do something when thrown/shattered (e.g. incineration). `use_at_self`
+        // lets the player drink one anyway — it triggers that same break/explosion
+        // effect on the drinker's own tile. Mirrors the explosive branch of
+        // InterfaceManager.completeThrow(), applied at (this.x, this.y).
+        if (item.getAttribute('use_at_self')) {
+            const im = this.engine.interfaceManager;
+            const breakSound = item.getAttribute('break_sound');
+            if (breakSound) this.engine.playSound(breakSound);
+            const explodeSound = item.getAttribute('explode_sound');
+            if (explodeSound) this.engine.playSound(explodeSound);
+            if (im && (item.hasAttribute('explosive') || item.hasAttribute('breakable'))) {
+                im.createExplosiveCloud(item, this.x, this.y);
+            }
+            // use_description ("The potion explodes!") is shown by _completeItemUse.
+            // The turn is consumed by the caller (InterfaceManager.executeUseItem),
+            // same as any other used item — don't double-count it here.
+            this._completeItemUse(item, true);
+            return true;
+        }
+
         // Use ceremony — data-driven dramatic effect before item activation
         const ceremonySetting = item.getAttribute('use_ceremony');
         if (this.isPlayerControlled() && ceremonySetting) {
