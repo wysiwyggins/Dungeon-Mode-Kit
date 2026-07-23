@@ -1,0 +1,61 @@
+{
+  "name": "Biome Test",
+  "description": "A 6-floor dungeon defined by one ramping biome instead of per-floor tables.\nEarly floors: rats/kobolds, few traps. Deep floors: ogres/skeletons, many traps.\nFloor 6 is a hand-authored boss floor overriding the biome.",
+  "loaded_sound": "levelout",
+  "turn_speed": 50,
+  "floors": 6,
+  "mechanics": { "fog_of_war": true, "darkness": true },
+  
+  "item_catalog": {
+    "potion": { "count": 6, "weight": 30 },
+    "scroll": { "count": 4, "weight": 30 },
+    "weapon": { "weight": 15 },
+    "armor": { "weight": 10 },
+    "bread": { "weight": 10 },
+    "torch_unlit": { "weight": 10 }
+  },
+  "biomes": {
+    "caves": {
+      "map_generator": {
+        "type": "brogue",
+        "options": { "map_width": 60, "map_height": 50 },
+        "lakes":   { "count": [1, 2], "types": ["water"], "minSize": 15, "maxSize": 40 },
+        "abyss":   { "count": [1, 3], "types": ["abyss"], "minSize": 15, "maxSize": 60 },
+        "bridges": { "max": 10 }
+      },
+      "mechanics": { 
+        "ambient_light": 0.05, "tint": "#030508",
+        "player_auto_light": false 
+      },
+      "actors": [
+        { "id": "rat",      "min": 1, "max": 3, "freq": 150, "count": [1, 3] },
+        { "id": "kobold",   "min": 1, "max": 4, "freq": 120, "count": [1, 2] },
+        { "id": "jackal",   "min": 2, "max": 5, "freq": 100, "count": [1, 2] },
+        { "id": "goblin",   "min": 3, "max": 6, "freq": 100 },
+        { "id": "skeleton", "min": 4, "max": 6, "freq": 80 },
+        { "id": "ogre",     "min": 5, "max": 6, "freq": 60 }
+      ],
+      "actor_budget": { "base": 3, "extra_chance": 60, "max_extra": 3 },
+      "items": [
+        { "type": "potion", "min": 1, "max": 6, "freq": 52 },
+        { "type": "scroll", "min": 1, "max": 6, "freq": 42 },
+        { "type": "weapon", "min": 2, "max": 6, "freq": 15 },
+        { "type": "armor",  "min": 3, "max": 6, "freq": 10 },
+        { "type": "bread",  "min": 3, "max": 6, "freq": 10 },
+        { "type": "torch",  "min": 3, "max": 6, "freq": 10 }
+      ],
+      "item_budget": { "base": 2, "extra_chance": 40, "max_extra": 2 },
+      "traps":  { "min_depth": 2, "intercept": 0, "slope": 2, "max": 12 },
+      "fungus": { "min_depth": 3, "intercept": 1, "slope": 0.5, "max": 8, "tall_chance": 0.3 }
+    }
+  },
+  "floor_plan": [
+    { "biome": "caves", "floors": "1-6" }
+  ],
+  "levels": {
+    "6": {
+      "win_conditions": ["killed:minotaur"],
+      "random_actors": { "minotaur": { "chance": 100 } }
+    }
+  }
+}

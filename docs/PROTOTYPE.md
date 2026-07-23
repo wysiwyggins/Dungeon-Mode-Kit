@@ -29,6 +29,8 @@ Load a prototype by adding `?prototype=my_level` to the URL.
 | `loaded_sound` | string | Sound played when the prototype loads |
 | `next_level` | string | Prototype folder name to advance to (via down stairway or portal) |
 | `previous_level` | string | Prototype folder name to return to (via up stairway from floor 1) |
+| `win_state` | object | Escape-style overall victory for the whole prototype: `{ via: "escape", exit_floor, conditions, message }`. Reaching `exit_floor`'s exit with `conditions` met wins the run (distinct from per-floor `win_conditions`, which just unlock a floor's stairway). |
+| `floors`, `biomes`, `floor_plan` | — | Multi-floor / biome configuration — see [Multi-Floor Prototypes](#multi-floor-prototypes) and [Biomes](#biomes). |
 
 ---
 
@@ -383,7 +385,17 @@ Each floor object can override these fields from the prototype root:
 | `random_items` | Item spawns for this floor |
 | `item_budget` | Override the prototype-level item budget for this floor |
 | `traps` | Trap spawn config for this floor |
+| `fungus` | Fungus scatter config for this floor (`{ min, max, tall_chance? }`) |
 | `switch_puzzles` | Switch puzzle config for this floor |
+
+Resolution order per key: a floor override wins, else the biome for that floor (see [Biomes](#biomes)), else the prototype-root default. `mechanics` is deep-merged (root ← biome ← floor); all other keys replace wholesale.
+
+`levels` may also be written as a **sparse object keyed by floor number** — useful with biomes, where only a few floors are hand-authored:
+
+```json
+"floors": 26,
+"levels": { "6": { "win_conditions": ["killed:ghast"] }, "26": { "map": "throne.tmj" } }
+```
 
 Fields not specified in a floor object fall back to the prototype-level defaults.
 
@@ -405,6 +417,46 @@ Fields not specified in a floor object fall back to the prototype-level defaults
 | N | `{N}.tmj` |
 
 Missing floor maps are generated procedurally using the floor's `map_generator` (or the prototype-level default).
+
+---
+
+## Biomes
+
+Biomes let a multi-floor prototype **ramp difficulty by depth without authoring every floor**. Instead of writing out `random_actors`/`traps`/etc. on each floor, you define a **biome** — a themed bundle of depth-ranged catalogs — and assign it to a range of floors. As depth increases, catalog entries fade in and out of their `[min, max]` windows, so the monster/item/hazard mix ramps automatically. (Modeled on Brogue's depth-distribution system; see `docs/BIOMES.md` for the design rationale.)
+
+Biomes are **opt-in and additive** — a prototype with no `biomes` behaves exactly as before.
+
+### Top-level keys
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `floors` | number | Total floor count (use instead of a dense `levels` array when floors are biome-driven). |
+| `biomes` | object | Map of biome name → biome definition (below). |
+| `floor_plan` | array | Ordered `{ biome, floors }` assignments. `floors` is an inclusive range (`"1-8"`), a single number, or `[lo, hi]`. Ranges should tile `1..floors` without gaps. |
+
+```json
+{
+  "floors": 26,
+  "biomes": { "caves": { ... }, "crypt": { ... } },
+  "floor_plan": [
+    { "biome": "caves", "floors": "1-8" },
+    { "biome": "crypt", "floors": "9-26" }
+  ]
+}
+```
+
+### Biome definition
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `actors` | array | Depth-ranged monster catalog. Each row: `{ id, min, max, freq, count? }` — `min`/`max` are the floor window, `freq` the raffle weight, `count` an optional `[lo, hi]` per-pick spawn count. |
+| `actor_budget` | object | `{ base, extra_chance, max_extra }` — how many weighted picks to make per floor from the eligible `actors`. |
+| `items` | array | Depth-ranged item catalog. Rows use `type` (a category from `item_catalog`) plus `min`/`max`/`freq`. |
+| `item_budget` | object | Standard `{ base, extra_chance, max_extra }` budget (see [Item Budget](#item-budget)). |
+| `traps`, `fungus` | object | Hazard **count ramp**: `{ min_depth, intercept, slope, max }`. Count at floor `d` = `clamp(intercept + d*slope, 0, max)`, active only at `d ≥ min_depth`. `fungus` also takes `tall_chance`. |
+| `map_generator`, `mechanics` | object | Applied to every floor in the biome (a biome is one theme). A floor can still override. |
+
+Depth = the absolute 1-based floor index. `actors`/`items` rows are picked by filtering to `min ≤ floor ≤ max` and doing a frequency-weighted raffle, `budget` times per floor. Hand-authored `levels` entries still override the biome per key.
 
 ---
 

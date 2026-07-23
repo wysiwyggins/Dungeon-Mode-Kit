@@ -1371,6 +1371,44 @@ body.editor.prototype-editor .pattern-box {
   padding: 8px;
   margin-bottom: 8px;
 }
+body.editor.prototype-editor .biome-card {
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  margin: 6px 0;
+}
+body.editor.prototype-editor .biome-card > summary {
+  cursor: pointer;
+  padding: 6px 10px;
+  background: var(--bg3);
+  color: var(--accent);
+  font-weight: bold;
+  font-size: 12px;
+  list-style: none;
+}
+body.editor.prototype-editor .biome-card > summary::before {
+  content: "+ ";
+}
+body.editor.prototype-editor .biome-card[open] > summary::before {
+  content: "- ";
+}
+body.editor.prototype-editor .biome-card > .section-body {
+  padding: 8px 10px;
+}
+body.editor.prototype-editor .depth-catalog {
+  margin: 4px 0 8px;
+}
+body.editor.prototype-editor .depth-row-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+body.editor.prototype-editor .depth-preview {
+  margin-top: 6px;
+}
+body.editor.prototype-editor .depth-preview .weight-row {
+  margin: 2px 0;
+}
 body.editor.prototype-editor .unknown-keys {
   font-size: 10px;
   color: var(--accent2);

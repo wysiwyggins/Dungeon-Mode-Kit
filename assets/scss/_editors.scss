@@ -1005,6 +1005,35 @@ body.editor {
             padding: 8px;
             margin-bottom: 8px;
         }
+        // ---- Biome authoring (multi-level prototypes) ----
+        .biome-card {
+            border: 1px solid var(--accent);
+            background: var(--surface);
+            margin: 6px 0;
+            > summary {
+                cursor: pointer;
+                padding: 6px 10px;
+                background: var(--bg3);
+                color: var(--accent);
+                font-weight: bold;
+                font-size: 12px;
+                list-style: none;
+                &::before { content: '+ '; }
+            }
+            &[open] > summary::before { content: '- '; }
+            > .section-body { padding: 8px 10px; }
+        }
+        .depth-catalog { margin: 4px 0 8px; }
+        .depth-row-head {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+        .depth-preview {
+            margin-top: 6px;
+            .weight-row { margin: 2px 0; }
+        }
         .unknown-keys {
             font-size: 10px;
             color: var(--accent2);

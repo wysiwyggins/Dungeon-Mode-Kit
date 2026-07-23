@@ -1,0 +1,63 @@
+{
+  "player": {
+    "name": "Rodney",
+    "tileIndexBase": "WHITE_LEG",
+    "tileIndexTop": "OPAQUE_WHITE_SMILING_FACE",
+    "vision_range": 20,
+    "collision_effect": {
+      "health": "-{strength}"
+    },
+    "collision_sound": "hit",
+    "defaultFacing": "left",
+    "facingEnabled": true,
+    "death_sound": "ouch",
+    "attributes": {
+      "flammable": true,
+      "controlled": true,
+      "sighted": true,
+      "inventory": 10,
+      "strength": 8,
+      "remains": "skull",
+      "proper_named": true,
+      "accuracy": 50,
+      "defense": 5
+    },
+    "stats": {
+      "health": {
+        "max": 50,
+        "per_turn": 1,
+        "restore_from": "nutrition"
+      },
+      "nutrition": {
+        "max": 1000,
+        "per_turn": -1,
+        "rate_scaled_by": "strength",
+        "fatal": true,
+        "death_message": "You starve to death!",
+        "warnings": [
+          {
+            "threshold": 0.5,
+            "message": "You are getting hungry."
+          },
+          {
+            "threshold": 0.25,
+            "message": "You are very hungry."
+          },
+          {
+            "threshold": 0.1,
+            "message": "You are starving!"
+          }
+        ],
+        "condition_state": {
+          "state": "starving",
+          "threshold": 0.1
+        }
+      }
+    },
+    "default_items": [
+      "butter_knife",
+      "torch",
+      "spike"
+    ]
+  }
+}

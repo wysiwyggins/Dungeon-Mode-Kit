@@ -232,6 +232,13 @@
       "mystery_potion"
     ]
   },
+  "food": {
+    "random_type": [
+      "meat",
+      "bread",
+      "rations"
+    ]
+  },
   "mystery_potion": {
     "name": "Potion",
     "tileIndex": "FEMALE_SYMBOL",

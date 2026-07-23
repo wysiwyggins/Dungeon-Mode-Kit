@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Biomes (depth-ramping)**: a multi-floor prototype can now define a `biome` — a themed bundle of depth-ranged spawn/item/hazard catalogs — and assign it to floor ranges via `floor_plan`, instead of hand-authoring every floor. Each catalog row carries `{min, max, freq}`; as depth increases, entries fade in/out of their windows so difficulty ramps automatically (Brogue's model). Hazards ramp by a linear `clamp(intercept + depth*slope, 0, max)` count. Resolves in one seam (`getFloorConfig`) as a tier between per-floor overrides and prototype defaults; downstream spawning is unchanged, and prototypes without biomes behave identically. `levels` may now be a sparse floor-keyed map for the few hand-authored floors. See `docs/BIOMES.md`. Example: `prototypes/biometest/`.
 - **Drink-at-self potions**: a new `use_at_self` item attribute lets a potion that normally only does something when thrown (e.g. the potion of incineration) be drunk anyway — it triggers its own break/explosion effect on the drinker's tile. The incineration potion now offers a "Drink" verb that detonates on you. Replaces the vestigial, unread `drinkable` attribute (removed).
 
 ### Changed

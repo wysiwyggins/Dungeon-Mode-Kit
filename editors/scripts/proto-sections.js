@@ -90,12 +90,21 @@ function renderForm() {
             root.appendChild(sectionCutscene().det);
             return;
         }
+        root.appendChild(multiLevelToggle());
         root.appendChild(sectionIdentity().det);
         root.appendChild(sectionMechanics(state.proto, 'mechanics', { open: true }).det);
         root.appendChild(sectionWinState().det);
-        root.appendChild(sectionMapGenerator(state.proto).det);
-        root.appendChild(sectionItemCatalog().det);
-        root.appendChild(sectionSpawns(state.proto, { open: true }).det);
+        // Multi-level prototypes author their level content via biomes + a floor
+        // plan; single-level prototypes author the one level's map/items/spawns
+        // directly. (A floor tab can still hand-author specific floors either way.)
+        if (isMultiLevel()) {
+            root.appendChild(sectionBiomes().det);
+            root.appendChild(sectionFloorPlan().det);
+        } else {
+            root.appendChild(sectionMapGenerator(state.proto).det);
+            root.appendChild(sectionItemCatalog().det);
+            root.appendChild(sectionSpawns(state.proto, { open: true }).det);
+        }
         root.appendChild(sectionAdvanced().det);
     } else {
         const floor = currentTarget();
@@ -255,9 +264,13 @@ function sectionMapGenerator(obj, opts = {}) {
     }
     // Placed features (traps, fungus, switch puzzles): part of what the generator
     // scatters onto the finished map. They read `obj` (top-level keys), not options.
-    body.appendChild(el('div', { class: 'sub-section' },
-        subTitle('Placed features', 'Hazards and puzzles scattered onto the generated map.')));
-    trapsSwitchesBody(obj, body);
+    // Suppressed for biomes, which express traps/fungus as depth ramps instead
+    // (writing the same keys via hazardRampEditor — showing both would collide).
+    if (!opts.noPlacedFeatures) {
+        body.appendChild(el('div', { class: 'sub-section' },
+            subTitle('Placed features', 'Hazards and puzzles scattered onto the generated map.')));
+        trapsSwitchesBody(obj, body);
+    }
     return { det };
 }
 
@@ -769,6 +782,346 @@ function cutsceneToggle() {
         commit(); render();
     }, 'A flipbook cutscene (a Tiled .tmj played as animated frames) instead of a playable level. When on, all level settings below are hidden — a cutscene has none.'));
     return wrap;
+}
+
+// Is this prototype multi-level? True when it declares an explicit floor count
+// (biome-driven) or a legacy levels[] array. Mirrors the engine's getTotalFloors.
+function isMultiLevel() {
+    const p = state.proto;
+    return p.floors != null || !!p.biomes || !!p.floor_plan || Array.isArray(p.levels);
+}
+
+// Top-of-form switch between single-level and multi-level prototypes. Multi-level
+// reveals the floor count + Biomes + Floor plan tools; single-level hides all of
+// that complexity. Turning it on seeds a small default (3 floors); turning it off
+// clears the biome/floor keys (and any levels[]).
+function multiLevelToggle() {
+    const p = state.proto;
+    const wrap = el('div', { class: 'cutscene-toggle' });
+    wrap.appendChild(toggleLine('Multi-level prototype', isMultiLevel(), (on) => {
+        if (on) {
+            if (p.floors == null) p.floors = 3;
+        } else {
+            delete p.floors; delete p.biomes; delete p.floor_plan; delete p.levels;
+            if (state.activeFloor !== 'proto') state.activeFloor = 'proto';
+        }
+        commit(); render();
+    }, 'A dungeon of several floors. Multi-level prototypes ramp difficulty by depth using biomes (see Biomes below) and can hand-author individual floors. Off = a single self-contained level.'));
+    if (isMultiLevel()) {
+        wrap.appendChild(fieldRow('floors', p, 'floors', { type: 'number',
+            tip: 'Total number of floors. Biomes are assigned to floor ranges in the Floor plan below.' }));
+    }
+    return wrap;
+}
+
+/* =========================================================================
+   Biomes (multi-level prototypes) — see docs/BIOMES.md
+   A biome is a reusable bundle of depth-ranged catalogs (actors/items) + hazard
+   ramps + map/mechanics. The floor plan assigns biomes to floor ranges. The
+   engine (resolveBiome) turns these into per-floor spawn tables that ramp with
+   depth, so you don't author every floor by hand.
+   ========================================================================= */
+
+// The biome library: a collapsible per biome, plus add-biome. Each biome edits
+// like a mini-prototype (map generator, mechanics, and the depth-ranged catalogs).
+function sectionBiomes() {
+    const p = state.proto;
+    if (!p.biomes) p.biomes = {};
+    const { det, body } = section('Biomes', { open: true });
+    body.appendChild(el('div', { class: 'hint-inline' },
+        'A biome is a themed set of monsters/items/hazards with depth ranges. Assign biomes to floors in the Floor plan below; difficulty ramps automatically with depth.'));
+
+    for (const name of Object.keys(p.biomes)) {
+        body.appendChild(biomeCard(name));
+    }
+
+    // add biome
+    const addWrap = el('div', { class: 'weight-row', style: 'margin-top:8px;' });
+    const addInput = el('input', { type: 'text', placeholder: 'new biome name', style: 'width:130px;' });
+    const addBtn = el('button', { class: 'add-btn' }, '+ biome');
+    addBtn.addEventListener('click', () => {
+        const nm = addInput.value.trim();
+        if (!nm || p.biomes[nm]) return;
+        p.biomes[nm] = { map_generator: { type: 'brogue', options: { map_width: 60, map_height: 50 } },
+            actors: [], actor_budget: { base: 3, extra_chance: 60, max_extra: 3 } };
+        commit(); render();
+    });
+    addWrap.append(addInput, addBtn);
+    body.appendChild(addWrap);
+    return { det };
+}
+
+// One biome, as a nested collapsible: rename/remove + its config body.
+function biomeCard(name) {
+    const p = state.proto;
+    const biome = p.biomes[name];
+    const card = el('details', { class: 'section biome-card', open: '' });
+    const summary = el('summary', {},
+        el('div', { class: 'section-summary-row' }, el('span', { class: 'sec-title' }, 'biome: ' + name)));
+    card.appendChild(summary);
+    const body = el('div', { class: 'section-body' });
+    card.appendChild(body);
+
+    // rename + remove
+    const nameRow = el('div', { class: 'field-row' });
+    const nameInput = el('input', { type: 'text', value: name, title: 'Biome name — referenced by the floor plan.' });
+    nameInput.addEventListener('change', () => {
+        const nn = nameInput.value.trim();
+        if (!nn || nn === name || p.biomes[nn]) { nameInput.value = name; return; }
+        p.biomes[nn] = biome; delete p.biomes[name];
+        // repoint any floor_plan entries that used the old name
+        (p.floor_plan || []).forEach(fp => { if (fp.biome === name) fp.biome = nn; });
+        commit(); render();
+    });
+    const rm = el('button', { class: 'remove-btn' }, 'remove biome');
+    rm.addEventListener('click', () => { delete p.biomes[name]; commit(); render(); });
+    nameRow.append(labelEl('name'), nameInput, rm);
+    body.appendChild(nameRow);
+
+    // map generator + mechanics (reuse the existing section builders against the
+    // biome obj). Suppress the map generator's Placed-features block — the biome
+    // authors traps/fungus as depth ramps below, writing the same keys.
+    body.appendChild(sectionMapGenerator(biome, { noPlacedFeatures: true }).det);
+    body.appendChild(sectionMechanics(biome, 'mechanics', {}).det);
+
+    // depth-ranged actor catalog
+    body.appendChild(subTitle('actors (depth-ranged)', 'Monsters eligible per floor. Each row spawns within its min–max depth window, chosen by weight. actor_budget sets how many are placed per floor.'));
+    if (!Array.isArray(biome.actors)) biome.actors = [];
+    body.appendChild(depthCatalogEditor(biome.actors, 'id', state.mergedActorIds));
+    body.appendChild(budgetRow(biome, 'actor_budget', 'actor_budget'));
+
+    // depth-ranged item catalog
+    body.appendChild(subTitle('items (depth-ranged)', 'Item categories eligible per floor (drawn via item_catalog). item_budget sets how many per floor.'));
+    if (!Array.isArray(biome.items)) biome.items = [];
+    body.appendChild(depthCatalogEditor(biome.items, 'type', CATEGORY_KEYS));
+    body.appendChild(budgetRow(biome, 'item_budget', 'item_budget'));
+
+    // hazard ramps
+    body.appendChild(subTitle('hazards (ramp with depth)', 'Count grows with depth: clamp(intercept + depth·slope, 0, max), active from min_depth.'));
+    body.appendChild(hazardRampEditor(biome, 'traps', 'traps'));
+    body.appendChild(hazardRampEditor(biome, 'fungus', 'fungus'));
+    return card;
+}
+
+// A small { base, extra_chance, max_extra } budget editor shared by actor/item.
+function budgetRow(obj, key, label) {
+    if (!obj[key]) obj[key] = { base: 3, extra_chance: 50, max_extra: 2 };
+    const b = obj[key];
+    return el('div', { class: 'sub-section' },
+        subTitle(label, 'How many picks to place per floor: base guaranteed, then up to max_extra more at extra_chance% each.'),
+        fieldGrid(
+            fieldRow('base', b, 'base', { type: 'number', tip: 'Guaranteed picks per floor.' }),
+            fieldRow('max_extra', b, 'max_extra', { type: 'number', tip: 'Maximum extra picks.' }),
+        ),
+        sliderRow('extra_chance %', b, 'extra_chance', { min: 0, max: 100, suffix: '%', def: 0,
+            tip: 'Chance to roll each extra pick.' }));
+}
+
+/* Depth-ranged catalog editor: an array of rows { [keyField], min, max, freq }.
+   keyField is 'id' (actors) or 'type' (item categories). `choices` seeds the
+   add-dropdown. Includes a "preview at depth N" that shows which rows are
+   eligible and their weighted share — mirrors the engine's resolveBiome pick. */
+function depthCatalogEditor(rows, keyField, choices) {
+    const wrap = el('div', { class: 'depth-catalog' });
+    // preview depth persists on the array object so re-renders keep it.
+    if (rows._previewDepth == null) Object.defineProperty(rows, '_previewDepth', { value: 1, writable: true, enumerable: false });
+
+    function redraw() {
+        wrap.innerHTML = '';
+        rows.forEach((row, i) => wrap.appendChild(depthCatalogRow(rows, i, keyField, choices, redraw)));
+
+        // add row
+        const used = new Set(rows.map(r => r[keyField]));
+        const addSel = el('select', { class: 'wlabel-sel' });
+        addSel.appendChild(el('option', { value: '' }, '+ add ' + (keyField === 'id' ? 'actor…' : 'category…')));
+        for (const c of choices) if (!used.has(c)) addSel.appendChild(el('option', { value: c }, c));
+        addSel.addEventListener('change', () => {
+            if (!addSel.value) return;
+            rows.push({ [keyField]: addSel.value, min: 1, max: 1, freq: 100 });
+            commit(); redraw();
+        });
+        wrap.appendChild(el('div', { class: 'weight-row' }, addSel));
+
+        // preview at depth N
+        wrap.appendChild(depthPreview(rows, keyField, redraw));
+    }
+    redraw();
+    return wrap;
+}
+
+function depthCatalogRow(rows, i, keyField, choices, redraw) {
+    const row = rows[i];
+    const line = el('div', { class: 'depth-row' });
+
+    // id/type selector (preserve an out-of-list value)
+    const sel = el('select', { class: 'wlabel-sel' });
+    for (const c of choices) sel.appendChild(el('option', { value: c }, c));
+    if (!choices.includes(row[keyField])) sel.appendChild(el('option', { value: row[keyField] }, row[keyField] + ' (?)'));
+    sel.value = row[keyField];
+    sel.addEventListener('change', () => { row[keyField] = sel.value; commit(); redraw(); });
+
+    // depth window (min–max) via dualRange over the row itself
+    const depthWrap = el('div', { class: 'sub' }, labelEl('depth', 'Floor range this entry can appear on.'),
+        dualRange(row, 'min', 'max', { min: 1, max: 30, defMin: 1, defMax: 6 }));
+
+    // freq
+    const freqInput = el('input', { type: 'number', min: 0, value: row.freq ?? 100, style: 'width:64px;',
+        title: 'Weight in the per-floor raffle (higher = more common).' });
+    freqInput.addEventListener('input', () => { row.freq = Number(freqInput.value); commit(); });
+
+    // optional count [lo,hi]
+    if (!Array.isArray(row.count)) row.count = row.count || undefined;
+    const countProxy = {
+        get min() { return Array.isArray(row.count) ? row.count[0] : 1; },
+        set min(v) { row.count = [v, Array.isArray(row.count) ? row.count[1] : v]; },
+        get max() { return Array.isArray(row.count) ? row.count[1] : 1; },
+        set max(v) { row.count = [Array.isArray(row.count) ? row.count[0] : v, v]; },
+    };
+    const countWrap = el('div', { class: 'sub' }, labelEl('count', 'How many to place per pick (min–max). Default 1.'),
+        dualRange(countProxy, 'min', 'max', { min: 1, max: 10 }));
+
+    const rm = el('button', { class: 'remove-btn' }, '×');
+    rm.addEventListener('click', () => { rows.splice(i, 1); commit(); redraw(); });
+
+    line.append(el('div', { class: 'depth-row-head' }, sel,
+        el('span', { class: 'mini-label', title: 'freq' }, 'freq'), freqInput, rm),
+        depthWrap, countWrap);
+    return el('div', { class: 'pattern-box' }, line);
+}
+
+// "Preview at depth N": shows which rows are eligible at a chosen depth and
+// their weighted share, so the author can see the ramp without running the game.
+function depthPreview(rows, keyField, redraw) {
+    const wrap = el('div', { class: 'sub-section depth-preview' });
+    const depth = rows._previewDepth || 1;
+    const head = el('div', { class: 'field-row' }, labelEl('preview at depth'));
+    const depthInput = el('input', { type: 'number', min: 1, value: depth, style: 'width:64px;' });
+    depthInput.addEventListener('input', () => { rows._previewDepth = Math.max(1, Number(depthInput.value) || 1); redraw(); });
+    head.appendChild(depthInput);
+    wrap.appendChild(head);
+
+    const eligible = rows.filter(r => depth >= (r.min ?? 1) && depth <= (r.max ?? Infinity));
+    if (!eligible.length) {
+        wrap.appendChild(el('div', { class: 'hint-inline' }, 'Nothing eligible at depth ' + depth + '.'));
+        return wrap;
+    }
+    const total = eligible.reduce((a, r) => a + (r.freq ?? 1), 0) || 1;
+    for (const r of eligible) {
+        const pct = Math.round(((r.freq ?? 1) / total) * 100);
+        const bar = el('div', { class: 'wbar-fill', style: `width:${pct}%` });
+        const barWrap = el('div', { class: 'wbar-wrap' }, bar, el('span', { class: 'wbar-pct' }, pct + '%'));
+        wrap.appendChild(el('div', { class: 'weight-row' }, el('span', { class: 'wlabel' }, r[keyField]), barWrap));
+    }
+    return wrap;
+}
+
+/* Hazard ramp editor: { min_depth, intercept, slope, max } with a live "count at
+   depth N" readout so the linear ramp is legible. Toggle to enable/disable. */
+function hazardRampEditor(biome, key, label) {
+    const wrap = el('div', { class: 'sub-section' });
+    wrap.appendChild(toggleLine(label, !!biome[key], (on) => {
+        if (on) biome[key] = { min_depth: 1, intercept: 0, slope: 1, max: 10, ...(key === 'fungus' ? { tall_chance: 0.3 } : {}) };
+        else delete biome[key];
+        commit(); render();
+    }, key === 'fungus'
+        ? 'Fungus patches, count ramping with depth.'
+        : 'Hidden traps, count ramping with depth.'));
+    const h = biome[key];
+    if (!h) return wrap;
+    wrap.appendChild(fieldGrid(
+        fieldRow('min_depth', h, 'min_depth', { type: 'number', tip: 'Floor this hazard first appears on.' }),
+        fieldRow('max', h, 'max', { type: 'number', tip: 'Hard cap on count.' }),
+    ));
+    wrap.appendChild(fieldGrid(
+        fieldRow('intercept', h, 'intercept', { type: 'number', tip: 'Base count at depth 0 (usually 0).' }),
+        fieldRow('slope', h, 'slope', { type: 'number', tip: 'Extra count per floor of depth.' }),
+    ));
+    if (key === 'fungus') {
+        wrap.appendChild(sliderRow('tall_chance', h, 'tall_chance', { min: 0, max: 1, step: 0.05, decimals: 2, def: 0,
+            tip: 'Chance each fungus is the tall, solid, sight-blocking variant.' }));
+    }
+    // count-at-depth preview (depth kept in a closure var, not on the model, so
+    // it never leaks into exported JSON).
+    const prev = el('div', { class: 'hint-inline' });
+    const dInput = el('input', { type: 'number', min: 1, value: (h.min_depth || 1), style: 'width:56px;' });
+    const upd = () => {
+        const d = Math.max(1, Number(dInput.value) || 1);
+        const raw = (h.intercept ?? 0) + d * (h.slope ?? 0);
+        const n = d < (h.min_depth ?? 1) ? 0 : Math.max(0, Math.min(h.max ?? raw, Math.round(raw)));
+        prev.textContent = `≈ ${n} at depth ${d}`;
+    };
+    dInput.addEventListener('input', upd); upd();
+    wrap.appendChild(el('div', { class: 'field-row' }, labelEl('count at depth'), dInput, prev));
+    return wrap;
+}
+
+/* Floor plan: assign biomes to inclusive floor ranges. Validates that ranges
+   tile 1..floors without gaps/overlap and warns otherwise. */
+function sectionFloorPlan() {
+    const p = state.proto;
+    if (!Array.isArray(p.floor_plan)) p.floor_plan = [];
+    const { det, body } = section('Floor plan', { open: true });
+    const biomeNames = Object.keys(p.biomes || {});
+    body.appendChild(el('div', { class: 'hint-inline' },
+        'Assign each biome to a floor range (e.g. 1-8). Ranges should cover every floor from 1 to ' + (p.floors ?? '?') + ' without gaps.'));
+
+    p.floor_plan.forEach((fp, i) => body.appendChild(floorPlanRow(fp, i, biomeNames)));
+
+    const add = el('button', { class: 'add-btn' }, '+ range');
+    add.addEventListener('click', () => {
+        p.floor_plan.push({ biome: biomeNames[0] || '', floors: '' });
+        commit(); render();
+    });
+    body.appendChild(add);
+
+    // validation
+    const warn = validateFloorPlan(p.floor_plan, p.floors);
+    if (warn) body.appendChild(el('div', { class: 'hint-inline', style: 'color:var(--accent2);' }, warn));
+    return { det };
+}
+
+function floorPlanRow(fp, i, biomeNames) {
+    const p = state.proto;
+    const row = el('div', { class: 'field-row' });
+    const bSel = el('select', {});
+    bSel.appendChild(el('option', { value: '' }, '— biome —'));
+    for (const n of biomeNames) bSel.appendChild(el('option', { value: n }, n));
+    if (fp.biome && !biomeNames.includes(fp.biome)) bSel.appendChild(el('option', { value: fp.biome }, fp.biome + ' (?)'));
+    bSel.value = fp.biome || '';
+    bSel.addEventListener('change', () => { fp.biome = bSel.value; commit(); render(); });
+
+    const rangeInput = el('input', { type: 'text', value: typeof fp.floors === 'string' ? fp.floors : (Array.isArray(fp.floors) ? fp.floors.join('-') : fp.floors ?? ''),
+        placeholder: '1-8', style: 'width:80px;', title: 'Floor range, e.g. 1-8 or a single floor number.' });
+    rangeInput.addEventListener('change', () => { fp.floors = rangeInput.value.trim(); commit(); render(); });
+
+    const rm = el('button', { class: 'remove-btn' }, '×');
+    rm.addEventListener('click', () => { p.floor_plan.splice(i, 1); commit(); render(); });
+
+    row.append(bSel, el('span', { class: 'mini-label' }, 'floors'), rangeInput, rm);
+    return row;
+}
+
+// Returns a warning string if the floor_plan doesn't cleanly tile 1..floors.
+function validateFloorPlan(plan, floors) {
+    if (!floors || !plan.length) return '';
+    const covered = {};
+    for (const fp of plan) {
+        let lo, hi;
+        if (typeof fp.floors === 'string') { const parts = fp.floors.split('-').map(s => parseInt(s.trim(), 10)); lo = parts[0]; hi = parts[1] ?? parts[0]; }
+        else if (Array.isArray(fp.floors)) { lo = fp.floors[0]; hi = fp.floors[1]; }
+        else if (typeof fp.floors === 'number') { lo = hi = fp.floors; }
+        if (!Number.isFinite(lo) || !Number.isFinite(hi)) continue;
+        for (let f = lo; f <= hi; f++) covered[f] = (covered[f] || 0) + 1;
+    }
+    const gaps = [], overlaps = [];
+    for (let f = 1; f <= floors; f++) {
+        if (!covered[f]) gaps.push(f);
+        else if (covered[f] > 1) overlaps.push(f);
+    }
+    const msgs = [];
+    if (gaps.length) msgs.push('Uncovered floors (fall back to prototype defaults): ' + gaps.join(', '));
+    if (overlaps.length) msgs.push('Floors covered by more than one biome (first wins): ' + overlaps.join(', '));
+    return msgs.join('  •  ');
 }
 
 // Cutscene configuration — only shown (via renderForm) when the prototype is a

@@ -4,25 +4,42 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Bugs
 
-- It seems like torch light tint is coming from player tint, not the torch tint.
+- trying to load biometest in the prototype-editor gives the following error:
+
+```
+[Error] Unhandled Promise Rejection: TypeError: levels.forEach is not a function. (In 'levels.forEach((_, i) => {
+        const t = el('button', { class: 'floor-tab' + (state.activeFloor === i ? ' active' : '') }, 'Floor ' + (i + 1));
+  ...
+ (anonymous function) (proto-render.js:64)
+```
+
+- while starving to death, the health sidebar stat started showing floats
+- why is the confusion effect also temporarily lowering health?
 
 ---
 
 ## Tweaks
 
 - use the color name when referring to paired doors, keys levers etc. "the orange gate is locked" etc
+- stairways should be spawning in room walls like braziers not in the middle of rooms/hallways. Ideally there would be braziers on either side of them too
+- item attribute for break chance. This is needed for mattocks. Could we reuse work from torch fuel for item condition and have the amount an item degrades per use be specified in a json attribute? Fuel use per turn ought to be specified in json too—stop hard coding specific things in engine! reusable modules with data-driven attributes!
+- mattocks should have a random chance of successful digging rather than the three-strikes dig they have now, this should be a json attribute that designers could use in other items if they wanted.
 
 ## Feature ideas
 
 ### corner blocking as an actor attribute
 
 - the brogue style corner movement blocking rule is complex and opinionated to be hard coded into the engine, and it would be complex to have it be a prototype-level mechanics toggle. What makes the most sense is to move diagonal movement blocking to an actor attribute that some wall actors have, then it can be used on a per actor basis, or even added as a monster attribute.
+- Currently attacks are legal diagonally across corner blocking actors like walls. I'd like to block melee attacks but not staffs or wands around wall corners.
 - likewise, the complex engine code that currently closes a door behind you when it was initially unlocked and leaves it open when it was initially locked is an opinionated design that shouldn't have been hard coded. Instead there should have been an attribute that door and locked door actors could have used that determined whether the player closes it as they pass through (swings_shut). Don't hard code design opinions that can be left up to designers with attributes in the data files, as long as the data files don't have so many attributes that they become difficult to read. Having sensible default values for attributes so that more often than not we don't have to specify them helps keep data files readable.
 
 ### Prototype editor ui
 
+- currently all the prototype names are hard coded in the ui selector for loading prototypes in prototype-editor.html. Is there not a way to check for these dynamically?
+
 - Thinking through how the parametric ui for making prototypes requires thinking through how multi level prototypes are balanced. We could have two separate modes for single level and multi-level prototypes to hide unneeded complexity.
-- Is it really valuable to have to define every individual level? wouldn't most roguelikes have at most two levels that might have a user created map.tmj and special rules and then all the levels in-between which have ramping difficulty in terms of monsters, traps, map features and item distributions? It would be more useful to define a 'biome' with its features and then say which level sequences use each biome rther than all the controls for each individual level. Studying how Brogue balances its distribution of monsters, items and hazards over its levels could help in coming up with the best ui with the least amount of visual complexity and most amount of control (think sliders, hiding and showing elementd that depend on others, ui elements that affect one another. we already do this to some extent.)
+Cr
+- [BIOMES.md](BIOMES.md)
 
 - eliminate clutter, implicit attributes etc, don't be afraid to change how prototypes work themselves:
   - [x] we don't need "depth" as an attribute any more, it's an artifact from when all prototypes were one level, infer depth from level.

@@ -45,9 +45,9 @@ async function fetchJSON(url) {
 
 async function loadBaseData() {
     const [actors, items, sounds] = await Promise.all([
-        fetchJSON('data/actors.json'),
-        fetchJSON('data/items.json'),
-        fetchJSON('data/sounds.json'),
+        fetchJSON('../data/actors.json'),
+        fetchJSON('../data/items.json'),
+        fetchJSON('../data/sounds.json'),
     ]);
     state.baseActors = actors;
     state.baseItems = items;
@@ -65,9 +65,9 @@ async function loadPrototype(name) {
         ({ cfg, protoActors, protoItems } = state.prototypeCache[name]);
     } else if (name) {
         [cfg, protoActors, protoItems] = await Promise.all([
-            fetchJSON(`prototypes/${name}/prototype.json`),
-            fetchJSON(`prototypes/${name}/actors.json`),
-            fetchJSON(`prototypes/${name}/items.json`),
+            fetchJSON(`../prototypes/${name}/prototype.json`),
+            fetchJSON(`../prototypes/${name}/actors.json`),
+            fetchJSON(`../prototypes/${name}/items.json`),
         ]);
         state.prototypeCache[name] = { cfg, protoActors, protoItems };
     } else {

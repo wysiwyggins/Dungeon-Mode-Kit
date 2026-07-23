@@ -1566,16 +1566,16 @@ class DungeonEngine {
 
         // Stairway/gateway placement — after pending doors so getActorAt sees them
         if (!prototypeConfig.mechanics?.observer_mode) {
-            const hasLevels = !!prototypeConfig.levels;
-            const totalFloors = hasLevels ? prototypeConfig.levels.length : 1;
+            const totalFloors = this.getTotalFloors();
+            const multiFloor = totalFloors > 1;
 
             this.ensureUpStairway();
 
-            if (hasLevels && floor < totalFloors) {
+            if (multiFloor && floor < totalFloors) {
                 this.ensureDownStairway();
             }
 
-            if (hasLevels && floor === totalFloors && prototypeConfig.next_level) {
+            if (multiFloor && floor === totalFloors && prototypeConfig.next_level) {
                 this.ensureGateway();
             }
 
@@ -1966,8 +1966,7 @@ class DungeonEngine {
         if (!nameEl) return;
         nameEl.textContent = this.currentPrototype?.config?.name || '';
         if (floorEl) {
-            const hasLevels = !!this.currentPrototype?.config?.levels;
-            const totalFloors = hasLevels ? this.currentPrototype.config.levels.length : 1;
+            const totalFloors = this.getTotalFloors();
             floorEl.textContent = totalFloors > 1 ? `Floor ${this.currentFloor}` : '';
         }
     }
@@ -2051,19 +2050,154 @@ class DungeonEngine {
      */
     getFloorConfig(floor) {
         const config = this.currentPrototype.config;
-        if (!config.levels) return config; // legacy: prototype-level config IS the floor config
-        const floorOverride = config.levels[floor - 1] || {};
+        // Legacy: a prototype with neither levels nor biomes IS the floor config.
+        if (!config.levels && !config.floor_plan) return config;
+        const floorOverride = this._getFloorOverride(config, floor);
+        // Biome tier: sits between the floor override and the prototype defaults.
+        // Empty ({}) when the prototype has no biome for this floor, so biome-less
+        // prototypes resolve exactly as before.
+        const biome = this.resolveBiome(floor);
         return {
-            win_conditions: floorOverride.win_conditions ?? config.win_conditions ?? [],
-            random_actors: floorOverride.random_actors ?? config.random_actors ?? {},
-            random_items: floorOverride.random_items ?? config.random_items ?? {},
-            traps: floorOverride.traps ?? config.traps ?? null,
-            fungus: floorOverride.fungus ?? config.fungus ?? null,
-            map_generator: floorOverride.map_generator ?? config.map_generator,
-            mechanics: { ...(config.mechanics || {}), ...(floorOverride.mechanics || {}) },
-            switch_puzzles: floorOverride.switch_puzzles ?? config.switch_puzzles ?? null,
-            item_budget: floorOverride.item_budget ?? config.item_budget ?? null,
+            win_conditions: floorOverride.win_conditions ?? biome.win_conditions ?? config.win_conditions ?? [],
+            random_actors: floorOverride.random_actors ?? biome.random_actors ?? config.random_actors ?? {},
+            random_items: floorOverride.random_items ?? biome.random_items ?? config.random_items ?? {},
+            traps: floorOverride.traps ?? biome.traps ?? config.traps ?? null,
+            fungus: floorOverride.fungus ?? biome.fungus ?? config.fungus ?? null,
+            map_generator: floorOverride.map_generator ?? biome.map_generator ?? config.map_generator,
+            mechanics: { ...(config.mechanics || {}), ...(biome.mechanics || {}), ...(floorOverride.mechanics || {}) },
+            switch_puzzles: floorOverride.switch_puzzles ?? biome.switch_puzzles ?? config.switch_puzzles ?? null,
+            item_budget: floorOverride.item_budget ?? biome.item_budget ?? config.item_budget ?? null,
         };
+    }
+
+    // Total floor count. Prefers an explicit `floors` (used with biomes/sparse
+    // levels), falls back to a dense levels array length, else 1 (flat prototype).
+    getTotalFloors() {
+        const config = this.currentPrototype?.config;
+        if (!config) return 1;
+        if (config.floors != null) return config.floors;
+        if (Array.isArray(config.levels)) return config.levels.length;
+        return 1;
+    }
+
+    // A floor's explicit override. Supports both the legacy dense array
+    // (levels[floor-1]) and a sparse map keyed by floor number (levels["6"]).
+    _getFloorOverride(config, floor) {
+        const levels = config.levels;
+        if (!levels) return {};
+        if (Array.isArray(levels)) return levels[floor - 1] || {};
+        return levels[String(floor)] || levels[floor] || {};
+    }
+
+    /**
+     * Resolve the biome covering `floor` into the standard floor-config shape
+     * (random_actors / random_items / traps / fungus / map_generator / mechanics
+     * / item_budget). Returns {} when the prototype has no biome for this floor,
+     * so a prototype without biomes behaves exactly as before.
+     *
+     * Depth = the absolute 1-based floor index. See docs/BIOMES.md.
+     */
+    resolveBiome(floor) {
+        const config = this.currentPrototype?.config;
+        const plan = config?.floor_plan;
+        const biomes = config?.biomes;
+        if (!Array.isArray(plan) || !biomes) return {};
+
+        // Find the floor_plan entry whose (inclusive, 1-based) range contains floor.
+        const entry = plan.find(p => this._floorInRange(floor, p.floors));
+        const biome = entry && biomes[entry.biome];
+        if (!biome) return {};
+
+        const out = {};
+        if (biome.actors) out.random_actors = this._rollBiomeSpawns(biome.actors, biome.actor_budget, floor);
+        if (biome.items) out.random_items = this._rollBiomeSpawns(biome.items, biome.item_budget, floor, 'type');
+        if (biome.item_budget) out.item_budget = biome.item_budget;
+        if (biome.traps) out.traps = this._rampRange(biome.traps, floor);
+        if (biome.fungus) {
+            const r = this._rampRange(biome.fungus, floor);
+            if (r) out.fungus = { ...r, tall_chance: biome.fungus.tall_chance };
+        }
+        if (biome.map_generator) out.map_generator = biome.map_generator;
+        if (biome.mechanics) out.mechanics = biome.mechanics;
+        return out;
+    }
+
+    // Is 1-based `floor` inside a floor_plan range? Accepts "1-8", "5", or [1,8].
+    _floorInRange(floor, range) {
+        if (Array.isArray(range)) return floor >= range[0] && floor <= range[1];
+        if (typeof range === 'number') return floor === range;
+        if (typeof range === 'string') {
+            const [lo, hi] = range.split('-').map(s => parseInt(s.trim(), 10));
+            return floor >= lo && floor <= (hi ?? lo);
+        }
+        return false;
+    }
+
+    /**
+     * Turn a depth-ranged biome catalog into a { id/type: {chance,min,max} } spawn
+     * table by making `budget` weighted-raffle picks over the rows eligible at this
+     * depth (min <= floor <= max), weighted by `freq`. Mirrors Brogue's pickHordeType.
+     * `keyField` is the row's id key ('id' for actors, 'type' for item categories).
+     */
+    _rollBiomeSpawns(rows, budget, floor, keyField = 'id') {
+        const eligible = rows.filter(r => floor >= (r.min ?? 1) && floor <= (r.max ?? Infinity));
+        if (!eligible.length) return {};
+
+        const picks = this._budgetCount(budget);
+        const table = {};
+        for (let i = 0; i < picks; i++) {
+            const row = this._weightedPick(eligible);
+            if (!row) break;
+            const key = row[keyField];
+            const [lo, hi] = Array.isArray(row.count) ? row.count : [1, 1];
+            // Accumulate repeat picks of the same entry into its min/max range.
+            const cur = table[key] || { chance: 100, min: 0, max: 0 };
+            cur.min += lo;
+            cur.max += hi;
+            table[key] = cur;
+        }
+        return table;
+    }
+
+    // How many spawn picks this floor: base + up to max_extra rolls at extra_chance%.
+    // Defaults keep a bare {} budget from spawning nothing unexpectedly.
+    _budgetCount(budget) {
+        const b = budget || {};
+        const base = b.base ?? 0;
+        const maxExtra = b.max_extra ?? 0;
+        const extraChance = b.extra_chance ?? 0;
+        let n = base;
+        for (let i = 0; i < maxExtra; i++) {
+            if (ROT.RNG.getUniform() * 100 < extraChance) n++;
+        }
+        return n;
+    }
+
+    // Frequency-weighted raffle over rows (each row has a `freq`, default 1).
+    _weightedPick(rows) {
+        let total = 0;
+        for (const r of rows) total += (r.freq ?? 1);
+        if (total <= 0) return null;
+        let roll = ROT.RNG.getUniform() * total;
+        for (const r of rows) {
+            roll -= (r.freq ?? 1);
+            if (roll < 0) return r;
+        }
+        return rows[rows.length - 1];
+    }
+
+    /**
+     * Hazard count ramp (Brogue's autoGenerator model): count grows linearly with
+     * depth as clamp(intercept + floor*slope, 0, max), gated by min_depth. Returns
+     * a {min,max} range the existing trap/fungus placers consume, or null if the
+     * hazard isn't active yet at this depth.
+     */
+    _rampRange(spec, floor) {
+        if (spec.min_depth != null && floor < spec.min_depth) return null;
+        const raw = (spec.intercept ?? 0) + floor * (spec.slope ?? 0);
+        const n = Math.max(0, Math.min(spec.max ?? raw, Math.round(raw)));
+        // A small band around the computed count so floors aren't identical.
+        return { min: Math.max(0, n - 1), max: n };
     }
 
     /**
@@ -2351,8 +2485,7 @@ class DungeonEngine {
         // A top floor with no previous_level has no floor below to pair with, so the
         // seal tracker isn't authoritative for its up-stairway — leave an authored
         // locked state (a dead-end seal) intact. Mirrors ensureUpStairway()'s guard.
-        const hasLevels = !!this.currentPrototype?.config?.levels;
-        const isTopFloor = !hasLevels || this.currentFloor === 1;
+        const isTopFloor = this.getTotalFloors() <= 1 || this.currentFloor === 1;
         if (isTopFloor && !this.currentPrototype?.config?.previous_level) return;
 
         const shouldLock = this.isFloorDownSealed(this.currentFloor - 1);
@@ -2469,7 +2602,10 @@ class DungeonEngine {
     async useStairway(direction) {
         const config = this.currentPrototype.config;
 
-        if (!config.levels) {
+        // Multi-floor when the prototype has explicit floors (biomes) or a levels[]
+        // array; otherwise legacy cross-prototype stairways.
+        const isMultiFloor = config.floors != null || !!config.levels;
+        if (!isMultiFloor) {
             // LEGACY: stairways go between prototypes (unchanged behavior)
             let targetLevel = null;
 
@@ -2496,7 +2632,7 @@ class DungeonEngine {
         }
 
         // NEW: stairways go between floors within the prototype
-        const totalFloors = config.levels.length;
+        const totalFloors = this.getTotalFloors();
         if (direction === 'down' && this.currentFloor < totalFloors) {
             await this.transitionToFloor(this.currentFloor + 1, 'from_above');
         } else if (direction === 'up') {
@@ -2602,8 +2738,7 @@ class DungeonEngine {
         // Don't place an up stairway on the top floor of a prototype if there's nowhere to go.
         // Exception: an escape-style win_state turns the top floor's up-stairway into the
         // (locked) escape exit, so we fall through and spawn it.
-        const hasLevels = !!this.currentPrototype.config.levels;
-        const isTopFloor = !hasLevels || this.currentFloor === 1;
+        const isTopFloor = this.getTotalFloors() <= 1 || this.currentFloor === 1;
         const escapeExit = this.isEscapeExitFloor(this.currentFloor);
         if (isTopFloor && !this.currentPrototype.config.previous_level && !escapeExit) {
             return;
@@ -2923,8 +3058,7 @@ class DungeonEngine {
      * @returns {boolean} True if the item fell to a floor below; false if lost to the void
      */
     itemFallsToNextFloor(item) {
-        const config = this.currentPrototype?.config;
-        const totalFloors = config?.levels ? config.levels.length : 1;
+        const totalFloors = this.getTotalFloors();
         const hasFloorBelow = totalFloors > 1 && this.currentFloor < totalFloors;
 
         if (!hasFloorBelow) {
@@ -7691,8 +7825,7 @@ class Actor extends Entity {
     async fall(cause = 'void') {
         console.log(`${this.name} fell into the void!`);
 
-        const config = this.engine.currentPrototype?.config;
-        const totalFloors = config?.levels ? config.levels.length : 1;
+        const totalFloors = this.engine.getTotalFloors();
         const hasFloorBelow = totalFloors > 1 && this.engine.currentFloor < totalFloors;
 
         if (hasFloorBelow) {
@@ -13267,8 +13400,7 @@ window.goToFloor = async (floorNumber) => {
         console.error('Engine not initialized.');
         return;
     }
-    const config = engine.currentPrototype?.config;
-    const totalFloors = config?.levels?.length || 1;
+    const totalFloors = engine.getTotalFloors();
     if (floorNumber < 1 || floorNumber > totalFloors) {
         console.error(`Invalid floor: ${floorNumber}. Valid range: 1-${totalFloors}`);
         return;
