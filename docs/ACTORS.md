@@ -489,31 +489,6 @@ Personalities are defined in `data/personalities.json`. Each turn, the personali
 
 Personality data fields (besides `name`, `hostile`, `behaviors`) are passed to every behavior as the `data` parameter, so any behavior-specific configuration lives directly in the personality object.
 
-### Built-in Personalities
-
-**Combat:**
-
-| Personality | Behavior |
-|-------------|----------|
-| `aggressive_melee` | Attack adjacent, follow thread, pursue visible target, wander |
-| `stationed_melee` | Attack adjacent, follow thread, pursue, flee when hurt |
-| `ranged_attacker` | Ranged attack, maintain distance, pursue, wander |
-| `guard` | Attack adjacent, patrol area, guard position, pursue intruders (alerts allies) |
-| `stationed_ranged` | Shoot projectile at target (stationary turret, consumes inventory ammo) |
-| `lightning_mage` | Bolt attack on cooldown, flee danger, melee fallback, pursue, wander |
-| `pickpocket` | Flee danger, flee with stolen loot, steal from adjacent player, pursue, wander |
-| `scutigera_head` | Attack adjacent, chain head pathfinding (multi-segment creature) |
-| `scutigera_body` | Chain body follow, scatter when severed |
-| `horizontal_march` | Bounce horizontally between walls (glass sentry) |
-| `vertical_march` | Bounce vertically between walls (glass sentry) |
-| `jelly` | Attack adjacent, pursue; splits into smaller copies (pink jelly) |
-| `poison_frog` | Attack adjacent, maintain distance; bite applies poison |
-| `shaman` | Heal wounded allies, raise the dead, melee fallback, pursue (witch) |
-| `blink_stalker` | Blink toward/away on cooldown, attack adjacent, pursue (phantom hound) |
-| `hell_hound` | Blink stalker that leaves fire in its wake |
-| `illusionist` | Spawns illusory clones of itself, melee, flee (illusionist) |
-| `illusion_clone` | Decoy spawned by the illusionist; mimics it, fades when struck |
-
 **Passive/Utility:**
 
 | Personality | Behavior |

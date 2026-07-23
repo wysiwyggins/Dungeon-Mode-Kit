@@ -5995,6 +5995,7 @@ class Actor extends Entity {
                 const msg = item.getAttribute('burnout_message') || `Your ${item.name} burns out.`;
                 if (isPlayer) {
                     this.engine.inputManager?.showMessage(msg, { style: 'warning' });
+                    this.engine.playSound('extinguish');
                     if (this.engine.lightingManager) {
                         const hasOtherLight = this.inventory.some(other =>
                             other !== item &&

@@ -1644,9 +1644,10 @@
   "rations": {
   "name": "Rations",
   "tileIndex": "WHITE_SEMICOLON",
-  "tint": "#daa520",
+  "tint": "#1a1500",
   "identified": false,
   "attributes": {
+    "mass_noun": true,
     "pickupable": true,
     "visible": true,
     "stackable": true,

@@ -363,11 +363,11 @@
       "inventory": 1,
       "remains": "skull",
       "accuracy": 35,
-      "defense": 5,
+      "defense": 8,
       "opaque": false
     },
     "stats": {
-      "health": 15
+      "health": 25
     }
   },
   "goblin_spearman": {
