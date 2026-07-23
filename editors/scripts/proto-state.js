@@ -23,7 +23,7 @@ const state = {
     mergedItemIds: [],
     soundIds: [],
     poolItemIds: new Set(),// item ids that have random_type (category pools)
-    activeFloor: 'proto', // 'proto' or an integer index into proto.levels
+    activeFloor: 'proto', // 'proto' or a 1-based floor number (see currentTarget)
     prototypeCache: {},
 };
 
@@ -144,11 +144,38 @@ function blankPrototype() {
    Model helpers — current editing target (proto-level or a floor)
    ========================================================================= */
 // Returns the object currently being edited (the prototype root or a floor).
+// state.activeFloor is 'proto' or a 1-based floor NUMBER. Floor overrides live
+// in `levels`, which may be a dense array (legacy) or a sparse object keyed by
+// floor number (biome prototypes). The entry is created lazily on first edit.
 function currentTarget() {
     if (state.activeFloor === 'proto') return state.proto;
-    return state.proto.levels[state.activeFloor];
+    return floorOverride(state.activeFloor, true);
 }
 function isFloor() { return state.activeFloor !== 'proto'; }
+
+// Get (or optionally create) the override object for a 1-based floor number,
+// supporting both the array and sparse-object forms of `levels`.
+function floorOverride(floorNum, create = false) {
+    const p = state.proto;
+    if (Array.isArray(p.levels)) {
+        if (create && !p.levels[floorNum - 1]) p.levels[floorNum - 1] = { win_conditions: [] };
+        return p.levels[floorNum - 1] || {};
+    }
+    // sparse object form (or none yet)
+    const key = String(floorNum);
+    if (!p.levels) { if (!create) return {}; p.levels = {}; }
+    if (create && !p.levels[key]) p.levels[key] = { win_conditions: [] };
+    return p.levels[key] || {};
+}
+
+// Total floors for the editor — mirrors the engine's getTotalFloors().
+function totalFloors() {
+    const p = state.proto;
+    if (!p) return 1;
+    if (p.floors != null) return p.floors;
+    if (Array.isArray(p.levels)) return p.levels.length;
+    return 1;
+}
 
 // Inherited value for a floor field = the prototype-level value (or undefined).
 function inheritedValue(key) {

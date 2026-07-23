@@ -17,7 +17,9 @@
 function serialize() {
     const out = JSON.parse(JSON.stringify(state.proto));
     pruneSpawnDefaults(out);
-    if (Array.isArray(out.levels)) out.levels.forEach(pruneSpawnDefaults);
+    // levels may be a dense array or a sparse object keyed by floor number.
+    if (Array.isArray(out.levels)) out.levels.forEach(lv => lv && pruneSpawnDefaults(lv));
+    else if (out.levels) Object.values(out.levels).forEach(lv => lv && pruneSpawnDefaults(lv));
     return out;
 }
 
@@ -38,10 +40,11 @@ function pruneSpawnDefaults(scope) {
 function updateJSONOutput() {
     if (!state.proto) return;
     document.getElementById('json-output').value = JSON.stringify(serialize(), null, 2);
-    const lvls = state.proto.levels ? state.proto.levels.length + ' floor(s)' : 'flat';
+    const n = totalFloors();
+    const lvls = n > 1 ? n + ' floor(s)' : 'flat';
     document.getElementById('output-key').textContent =
         (state.proto.name || '(unnamed)') + ' — ' + lvls
-        + (isFloor() ? ' — editing Floor ' + (state.activeFloor + 1) : ' — editing prototype defaults');
+        + (isFloor() ? ' — editing Floor ' + state.activeFloor : ' — editing prototype defaults');
 }
 
 // Called on every model mutation. Keeps JSON output live without a full re-render.

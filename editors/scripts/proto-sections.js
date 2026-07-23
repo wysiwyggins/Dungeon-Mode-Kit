@@ -38,39 +38,95 @@ function renderFloorTabs() {
     const bar = document.getElementById('floor-tabs');
     bar.innerHTML = '';
     if (!state.proto) return;
+
     const protoTab = el('button', { class: 'floor-tab proto-tab' + (state.activeFloor === 'proto' ? ' active' : '') }, 'Prototype defaults');
     protoTab.addEventListener('click', () => { state.activeFloor = 'proto'; render(); });
     bar.appendChild(protoTab);
 
-    const levels = state.proto.levels || [];
-    levels.forEach((_, i) => {
-        const t = el('button', { class: 'floor-tab' + (state.activeFloor === i ? ' active' : '') }, 'Floor ' + (i + 1));
-        t.addEventListener('click', () => { state.activeFloor = i; render(); });
-        bar.appendChild(t);
-    });
-    const add = el('button', { class: 'add-btn' }, '+ floor');
-    add.addEventListener('click', () => {
-        if (!state.proto.levels) state.proto.levels = [];
-        state.proto.levels.push({ win_conditions: [] });
-        state.activeFloor = state.proto.levels.length - 1;
-        commit(); render();
-    });
-    bar.appendChild(add);
+    // Only multi-level prototypes have floor tabs. Floors are 1-based; a tab is
+    // marked "authored" when a levels override exists for it (biome prototypes
+    // otherwise get their content from the biome, so most floors have no override).
+    if (!isMultiLevel()) {
+        bar.appendChild(el('span', { class: 'floor-hint' }, 'Single-level prototype. Turn on “Multi-level” to add floors.'));
+        return;
+    }
 
-    if (isFloor()) {
-        const del = el('button', { class: 'remove-btn' }, 'remove floor ' + (state.activeFloor + 1));
-        del.addEventListener('click', () => {
-            state.proto.levels.splice(state.activeFloor, 1);
-            if (!state.proto.levels.length) delete state.proto.levels;
-            state.activeFloor = 'proto';
+    const n = totalFloors();
+
+    // Legacy dense-array prototypes (e.g. the hand-authored dungeon) keep a tab
+    // per floor. Biome-driven prototypes deliberately DON'T enumerate floors —
+    // that's the whole point of biomes — so they show a tab only for floors that
+    // actually have a hand-authored override, plus a picker to add one.
+    const denseArray = Array.isArray(state.proto.levels);
+
+    if (denseArray) {
+        for (let f = 1; f <= n; f++) {
+            const authored = hasFloorOverride(f);
+            const t = el('button', { class: 'floor-tab' + (state.activeFloor === f ? ' active' : '') + (authored ? ' authored' : '') },
+                'Floor ' + f + (authored ? ' ✎' : ''));
+            t.addEventListener('click', () => { state.activeFloor = f; render(); });
+            bar.appendChild(t);
+        }
+        const add = el('button', { class: 'add-btn' }, '+ floor');
+        add.addEventListener('click', () => {
+            state.proto.levels.push({ win_conditions: [] });
+            state.activeFloor = state.proto.levels.length;
             commit(); render();
         });
+        bar.appendChild(add);
+    } else {
+        // Biome-driven: only authored floors get a tab.
+        const authoredFloors = [];
+        for (let f = 1; f <= n; f++) if (hasFloorOverride(f)) authoredFloors.push(f);
+        for (const f of authoredFloors) {
+            const t = el('button', { class: 'floor-tab authored' + (state.activeFloor === f ? ' active' : '') }, 'Floor ' + f + ' ✎');
+            t.addEventListener('click', () => { state.activeFloor = f; render(); });
+            bar.appendChild(t);
+        }
+        // "add floor override" picker: choose an as-yet-unauthored floor to hand-author.
+        const addSel = el('select', { class: 'floor-tab' });
+        addSel.appendChild(el('option', { value: '' }, '+ override floor…'));
+        for (let f = 1; f <= n; f++) if (!hasFloorOverride(f)) addSel.appendChild(el('option', { value: f }, 'Floor ' + f));
+        addSel.addEventListener('change', () => {
+            if (!addSel.value) return;
+            const f = Number(addSel.value);
+            floorOverride(f, true);   // creates the sparse entry
+            state.activeFloor = f;
+            commit(); render();
+        });
+        bar.appendChild(addSel);
+    }
+
+    if (isFloor()) {
+        const del = el('button', { class: 'remove-btn' }, 'clear floor ' + state.activeFloor + ' override');
+        del.addEventListener('click', () => { clearFloorOverride(state.activeFloor); state.activeFloor = 'proto'; commit(); render(); });
         bar.appendChild(del);
     }
     bar.appendChild(el('span', { class: 'floor-hint' },
-        isFloor() ? 'Dimmed sections are inherited from prototype defaults; toggle “override” to localize.'
-                  : (levels.length ? levels.length + ' floor(s). Per-floor tabs override these defaults.'
-                                   : 'Flat prototype (no per-floor overrides). Add a floor to localize settings.')));
+        isFloor() ? 'This floor’s content comes from its biome unless you override it here.'
+                  : (denseArray
+                      ? n + ' floor(s). Click a floor to hand-author it.'
+                      : n + ' floor(s), biome-driven. Only hand-authored floors show a tab; use “+ override floor” to add one.')));
+}
+
+// Does floor `f` (1-based) have an explicit override entry?
+function hasFloorOverride(f) {
+    const l = state.proto.levels;
+    if (Array.isArray(l)) return l[f - 1] != null && Object.keys(l[f - 1]).length > 0;
+    return !!(l && (l[String(f)] || l[f]));
+}
+
+// Remove floor `f`'s override entry (array: null the slot; object: delete key).
+function clearFloorOverride(f) {
+    const l = state.proto.levels;
+    if (!l) return;
+    if (Array.isArray(l)) {
+        l.splice(f - 1, 1);
+        if (!l.length) delete state.proto.levels;
+    } else {
+        delete l[String(f)]; delete l[f];
+        if (!Object.keys(l).length) delete state.proto.levels;
+    }
 }
 
 function renderForm() {
@@ -94,16 +150,16 @@ function renderForm() {
         root.appendChild(sectionIdentity().det);
         root.appendChild(sectionMechanics(state.proto, 'mechanics', { open: true }).det);
         root.appendChild(sectionWinState().det);
-        // Multi-level prototypes author their level content via biomes + a floor
-        // plan; single-level prototypes author the one level's map/items/spawns
-        // directly. (A floor tab can still hand-author specific floors either way.)
+        // Prototype-level map/items/spawns are the defaults every floor inherits —
+        // always shown. Biomes are an additional depth-ramping layer, shown when a
+        // multi-level prototype opts into them (has biomes/floor_plan, or via the
+        // "use biomes" toggle inside sectionBiomes).
+        root.appendChild(sectionMapGenerator(state.proto).det);
+        root.appendChild(sectionItemCatalog().det);
+        root.appendChild(sectionSpawns(state.proto, { open: true }).det);
         if (isMultiLevel()) {
             root.appendChild(sectionBiomes().det);
             root.appendChild(sectionFloorPlan().det);
-        } else {
-            root.appendChild(sectionMapGenerator(state.proto).det);
-            root.appendChild(sectionItemCatalog().det);
-            root.appendChild(sectionSpawns(state.proto, { open: true }).det);
         }
         root.appendChild(sectionAdvanced().det);
     } else {
