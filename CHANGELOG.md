@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.15b] 2026-07-22
 
+### Added
+
+- **Drink-at-self potions**: a new `use_at_self` item attribute lets a potion that normally only does something when thrown (e.g. the potion of incineration) be drunk anyway — it triggers its own break/explosion effect on the drinker's tile. The incineration potion now offers a "Drink" verb that detonates on you. Replaces the vestigial, unread `drinkable` attribute (removed).
+
 ### Changed
 
 - **Prototype editor cleanup sweep**: a pass over the whole prototype editor to cut clutter and make implicit settings implicit.

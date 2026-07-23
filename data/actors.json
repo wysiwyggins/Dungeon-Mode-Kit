@@ -352,7 +352,7 @@
     "facingEnabled": true,
     "personality": "goblin",
     "collision_effect": {
-      "health": -3
+      "health": -8
     },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] strikes back at [attacked_actor_name]!",
@@ -367,7 +367,7 @@
       "opaque": false
     },
     "stats": {
-      "health": 25
+      "health": 15
     }
   },
   "goblin_spearman": {
@@ -382,7 +382,7 @@
     "facingEnabled": true,
     "personality": "goblin_ambusher",
     "collision_effect": {
-      "health": -3
+      "health": -8
     },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] strikes back at [attacked_actor_name]!",
