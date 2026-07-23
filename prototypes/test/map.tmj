@@ -404,17 +404,6 @@
                  "width":40,
                  "x":560,
                  "y":480
-                }, 
-                {
-                 "height":30,
-                 "id":115,
-                 "name":"",
-                 "rotation":0,
-                 "type":"goblin",
-                 "visible":true,
-                 "width":40,
-                 "x":880,
-                 "y":450
                 }],
          "opacity":1,
          "type":"objectgroup",
