@@ -1802,7 +1802,7 @@
       "deferred": true,
       "charge_stat": "pow",
       "uses": 3,
-      "spell_range": 8,
+      "spell_range": 50,
       "spell_effect": {
         "apply_state": "slowed"
       },
@@ -1839,7 +1839,7 @@
       "deferred": true,
       "charge_stat": "pow",
       "uses": 3,
-      "spell_range": 8,
+      "spell_range": 50,
       "spell_effect": {
         "remove_states": true
       },
@@ -1876,7 +1876,7 @@
       "deferred": true,
       "charge_stat": "pow",
       "uses": 3,
-      "spell_range": 8,
+      "spell_range": 50,
       "spell_effect": {
         "teleport_target": true
       },
@@ -1913,7 +1913,7 @@
       "deferred": true,
       "charge_stat": "pow",
       "uses": 3,
-      "spell_range": 10,
+      "spell_range": 50,
       "spell_effect": {
         "beckon_target": true
       },
