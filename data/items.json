@@ -93,13 +93,13 @@
   },
   "torch_spent": {
     "name": "Spent Torch",
-    "tileIndex": "BOX_VERTICAL_WHITE_TOP",
+    "tileIndex": "WHITE_APOSTROPHE",
+    "flipV": true,
     "tint": "#333333",
+    "identified": false,
     "attributes": {
       "pickupable": true,
       "visible": true,
-      "stackable": false,
-      "flammable": false,
       "description": "A burned-out torch. Useless."
     }
   },
