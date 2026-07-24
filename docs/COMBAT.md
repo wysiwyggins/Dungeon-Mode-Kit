@@ -2,6 +2,8 @@
 
 Combat occurs when actors collide (move into the same tile). Actors and items have collision effects, which have a chance to change a stat in the target. Hit rolls are exponential. We've picked three stats- strength, defence, and accuracy to modify chance to hit and effect, and generally affect a stat called health in the target, but our system should remain flexible to allow per-prototype experimentation in the actors and item json files.
 
+As with a lot of these systems, "Can I make something like Brogue" was the first target (a boiled-down, simplified roguelike) keeping as much of those design decisions as possible located in data files. Modular reusable chunks in the scripts, handy defaults in data, design variations in prototype data.
+
 ## Hit Calculation
 
 When an actor with an `accuracy` attribute attacks a target, the hit probability uses an exponential formula:
@@ -186,6 +188,8 @@ The rapier lunges through gaps to strike distant enemies, and each hit has a 20%
 ## Combat Attributes
 
 ### Actor Attributes
+
+Remember, all actor attributes are optional, so combat still works without these
 
 | Attribute | Description | Default |
 |-----------|-------------|---------|

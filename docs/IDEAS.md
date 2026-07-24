@@ -4,15 +4,6 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Bugs
 
-- trying to load biometest in the prototype-editor gives the following error:
-
-```
-[Error] Unhandled Promise Rejection: TypeError: levels.forEach is not a function. (In 'levels.forEach((_, i) => {
-        const t = el('button', { class: 'floor-tab' + (state.activeFloor === i ? ' active' : '') }, 'Floor ' + (i + 1));
-  ...
- (anonymous function) (proto-render.js:64)
-```
-
 - while starving to death, the health sidebar stat started showing floats
 - why is the confusion effect also temporarily lowering health?
 
@@ -20,7 +11,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Tweaks
 
-- use the color name when referring to paired doors, keys levers etc. "the orange gate is locked" etc
+- use the color name in descriptive text when referring to paired doors, keys levers etc. "the orange gate is locked" etc
 - stairways should be spawning in room walls like braziers not in the middle of rooms/hallways. Ideally there would be braziers on either side of them too
 - item attribute for break chance. This is needed for mattocks. Could we reuse work from torch fuel for item condition and have the amount an item degrades per use be specified in a json attribute? Fuel use per turn ought to be specified in json too—stop hard coding specific things in engine! reusable modules with data-driven attributes!
 - mattocks should have a random chance of successful digging rather than the three-strikes dig they have now, this should be a json attribute that designers could use in other items if they wanted.
@@ -29,37 +20,9 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ### corner blocking as an actor attribute
 
-- the brogue style corner movement blocking rule is complex and opinionated to be hard coded into the engine, and it would be complex to have it be a prototype-level mechanics toggle. What makes the most sense is to move diagonal movement blocking to an actor attribute that some wall actors have, then it can be used on a per actor basis, or even added as a monster attribute.
+- the brogue style corner movement blocking rule is pretty complex and opinionated for it to be hard coded into the engine, and it would be complex to have it be a prototype-level mechanics toggle. What makes the most sense is to move diagonal movement blocking to an actor attribute that some wall actors have, then it can be used on a per actor basis, or even added as a monster attribute.
 - Currently attacks are legal diagonally across corner blocking actors like walls. I'd like to block melee attacks but not staffs or wands around wall corners.
 - likewise, the complex engine code that currently closes a door behind you when it was initially unlocked and leaves it open when it was initially locked is an opinionated design that shouldn't have been hard coded. Instead there should have been an attribute that door and locked door actors could have used that determined whether the player closes it as they pass through (swings_shut). Don't hard code design opinions that can be left up to designers with attributes in the data files, as long as the data files don't have so many attributes that they become difficult to read. Having sensible default values for attributes so that more often than not we don't have to specify them helps keep data files readable.
-
-### Prototype editor ui
-
-- currently all the prototype names are hard coded in the ui selector for loading prototypes in prototype-editor.html. Is there not a way to check for these dynamically?
-
-- Thinking through how the parametric ui for making prototypes requires thinking through how multi level prototypes are balanced. We could have two separate modes for single level and multi-level prototypes to hide unneeded complexity.
-Cr
-- [BIOMES.md](BIOMES.md)
-
-- eliminate clutter, implicit attributes etc, don't be afraid to change how prototypes work themselves:
-  - [x] we don't need "depth" as an attribute any more, it's an artifact from when all prototypes were one level, infer depth from level.
-  - [x] turn speed is only important on observer mode/cutscene prototypes, which are very similar (it's framerate). Observer mode is implicit when there's no playable controlled actors in a prototype. Cutscenes are a specific type of observer mode prototype. these are examples of settings that can be removed as implicit from other conditions or hidden. *(observer_mode removed from editor — engine derives it at runtime from `controlled` actors; cutscene is now a top-level supersede switch)*
-  - [x] the advanced/ cutscene section shold be a top-level option that would supercede everything else. if a prototype is a cutscene then everything else is invalid and hidden.
-  - [x] item budget section is confusing, why is it separate from item catalog? are any of its settings implicit based on item catalog? this could be one section. *(merged into one "Item catalog & budget" section)*
-  - [x] are any whole sections optional? they could have a toggle switch that hides them and reduces complexity. *(Win state, Map generator, Item catalog & budget, and Spawns are toggleable from their section header)*
-  - [x] info icon tooltips are a little confusing because you have to know to hover to show them, the instinct is to click the i icon as if its a button. the question mark cursor doesn't make this interaction any clearer. the hovers appear fast enough for us to just get rid of the icon and cursor change, or we could change it into a button that shows an info tip as expected. *(dropped the ⓘ marker + help cursor; native hover tooltip kept)*
-  - [x] next level and previous level attributes should be renamed "next prototype/last prototype." prototype connections are not as important now that prototypes can have multiple levels and we need to make sure the words "level" and "prototype" are now used correctly.
-  - [x] in the mechanics section, the tint and ambient light settings need to be next to one another and use the same language so that we know they are two aspects of the same thing. there should be a clear toggle that shows or hides them both, "ambient level light".
-  - [x] max rooms isn't useful, there should always be enough rooms to fill the map size. currently there are often too few rooms because this is a value that must be guessed.  I also want the engine to fill the surrounding space with enough hallways so that the map is mostly filled. Brogue is good at this. We don't need to necessarily remove max rooms from the engine, but if we could compute it automatically and hide it in the editor I would not miss it. *(maxRooms + maxAttempts now auto-scale with map area and are hidden from the editor; corridor generation bugs fixed so hallways actually appear)*
-  - [x] there is a useless confusing dropdown that has "add +" as an option that does nothing in room weights when all the room types have been added. hide it when there are no more additions possible
-  - [x] add a toggle for bridges like the collapsing floors toggle
-  - [x] for the traps and switch puzzles section, this should be integrated into map generator section
-  - [x] in the switch pattern ui, picking a switch actor shows every single actor in a list, it should just show switchable actors and let us set whether or not they are toggleable or only activate once. "gated room" and "gated corridor" sound like they presuppose a target actor: a gate, and an effect: open. This section seems unclear. *(dropdowns filtered to switchable/openable actors; toggleable-vs-once shown from the actor's attributes; type relabeled + clarified as layout-only)*
-  - [x] if we are going to allow any actor to be set as the switch target, we should have access to any attribute that actor has that can be changed by the switch. This is one case where showing all the actors could be useful in unexpected ways. *(switch effects offer the target actor's own attributes, with free-text fallback for anything else)*
-  - [x] in the spawns section, the "+ enable random ..." buttons are a different pattern than the toggle boxes we have seen elsewhere. be consistent unless there is a reason to use a different pattern in some places
-  - [x] add toggle to hide and show the json-output-panel on all of the editors starting with prototype editor *(done for the prototype editor; portable to the others)*
-- [x] I still find the markup of prototype-editor.html to be mostly unreadable and unservicable. There's no reason for a lot of inline javascript to be here. If a script is complex and is not going to be changed by a designer, it should be off the page and in lib in an editors folder. What we want in in the page contents is a human-readable template, were we can add and remove ui elements with regognizable names, edit text and move things around. Complex permanent artifacts are removed from view. *(inline JS extracted to `editors/scripts/`; all five editor pages moved into `editors/`; HTML is now skeleton + editable Handlebars templates)*
-- The single-level vs multi-level / biome rethink in the intro above remains **open** as a design spike — the cleanup work above is a prerequisite for it.
 
 ### Make 'infrastructure sight' part of the magic mapping scroll effect
 

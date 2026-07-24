@@ -22,38 +22,7 @@ Rope bridge actors use connected box-drawing tiles, like the thread trail left b
 
 ---
 
-## The terrain model
-
-### How abysses are represented
-
-At **generation time**, an abyss cell is defined as:
-
-```js
-backgroundMap[y][x].tileId === 217 && floorMap[y][x] === null
-```
-
-i.e. the black void background tile (217) with no floor. Abysses are carved by `generateOverlayBlobs` (the same routine that makes lakes/lava), which grows **compact, roughly-circular blobs**, not clean channels — frontier expansion is deliberately biased toward dense shapes. **All of the bridge logic (blob flood-fill, `isAbyss`, crossing detection) runs at this stage, when abyss cells are still uniformly tile 217.**
-
-For **display**, `addBaseAndShadows()` runs later (after generation, in `engine.js`) and rewrites many abyss backgrounds into cliffside tiles to imply depth — `SHADOW_DIAGONAL` (128) along floor-to-void edges and `DARK_SHADE` (178) filling below them. So a *rendered* abyss cell's background is often 128 or 178, **not** 217. Two consequences for bridges:
-
-- The bridge algorithm must run *before* `addBaseAndShadows` (it does) so it sees the clean 217 abyss.
-- A bridge cell must be left as a real abyss cell (`floorMap === null`, background 217) so `addBaseAndShadows` decorates it with the same cliffside shadow as its surroundings. If a bridge instead laid a floor tile, `addBaseAndShadows` would skip the cell (it looks like floor) and it would keep a flat, undecorated void — and that flat tile would remain visible after the bridge burned. This was the "burned bridge leaves a raw void tile" bug; see [Burning and destruction](#burning-and-destruction).
-
-### The boundary-wall ring
-
-When a blob is carved, `generateOverlayBlobs` rings it with **boundary walls** — but only around blob cells that ate an *original* wall. Those walls are pushed to `pendingWallSpawns` and always have real floor underneath them. The practical consequence: the rim of an abyss is a **mix** of exposed walkable floor and boundary walls. A naive "find floor next to the abyss" check fails on the walled portions, which is why bridge landing needs the wall-punch step below.
-
-### Generation order
-
-```text
-lakes → abyss → bridges → collapsing_floors
-```
-
-Bridges run *after* abysses exist (correct) and *before* walls are spawned into actors (`engine.js`), so a bridge can remove a boundary wall from `pendingWallSpawns` and that removal is honored. `generateCollapsingFloors` runs next and already excludes bridge cells via its `bridgeSet`.
-
----
-
-## The algorithm (`generateBridges`)
+## `generateBridges`
 
 Four stages:
 
@@ -80,7 +49,7 @@ The cell just outside each end of the run must connect to walkable floor:
 
 At most **one** wall is punched per side, so a bridge never tunnels through a thick wall mass into nothing.
 
-### 4. Connectivity gate (Brogue-style)
+### 4. Connectivity gate
 
 A crossing is only built if walking **around** the abyss is much longer than crossing it. A bounded breadth-first search runs over existing walkable floor (treating abyss and walls as blockers) from one shore toward the other:
 
@@ -138,29 +107,6 @@ Bridges are configured in a prototype's `map_generator.options` block, alongside
 ### Per-level gotcha
 
 A floor's own `map_generator` **fully replaces** the prototype-level one (the engine uses `floorConfig.map_generator ?? prototypeConfig.map_generator` — no merge). So **any level that defines its own `map_generator` with an `abyss` block must also include a `bridges` block**, or that level gets zero bridges regardless of the top-level config. The deep infernal levels in `prototypes/dungeon/prototype.json` each carry their own `bridges` block for this reason.
-
----
-
-## Comparison to Brogue's `buildABridge`
-
-| | DMK | Brogue |
-|---|----------|--------|
-| **Unit of work** | Whole abyss blob (flood-filled), one bridge per blob | Single candidate cell, scanned in random order; one bridge per call, looped `while (buildABridge())` |
-| **Shore guarantee** | Run must be the blob's **full cross-section** (geometric opposite-shores proof) | Straight chasm run with solid land at both ends + an "exposure" check that it isn't a walled corridor |
-| **Worthwhile check** | Bounded BFS detour gate (`minDetourRatio`, default 3) | `pathingDistance / bridgeLength > bridgeRatio` (depth-scaled ~3–5×) |
-| **Wall handling** | Punches ≤1 boundary wall per side to reach floor (our abysses are wall-ringed) | Not needed; Brogue chasms aren't wall-ringed |
-| **Distribution** | One *abyss* per `max` slot, largest first; a blob passing both axes' gates gets a crossing (`+`) counting as one slot | Greedy; may stack several bridges on one big chasm |
-| **Min length** | `max(2, ceil(blobWidth·0.4))` | `> 3` spaces |
-
-The **connectivity gate is directly inspired by Brogue's `bridgeRatio` test** — a bridge should only exist where it meaningfully shortens travel, not merely wherever a gap happens to be crossable. The main divergence is that this kit reasons about whole abyss blobs and their full cross-sections (guaranteeing opposite shores geometrically), whereas Brogue reasons per-cell and leans on its pathing-distance test to reject bad placements.
-
----
-
-## Known limitations / follow-ups
-
-- **Very-thin chasms (1 tile wide) are never bridged** — the minimum-length rule forbids a single-tile bridge. In practice abysses come from `generateOverlayBlobs` with `minSize ≥ 10`, so they're always fat blobs; a 1-wide gap doesn't occur naturally.
-- **Crossings are limited to one horizontal + one vertical per abyss.** A blob gets at most a single `+` intersection (the best crossing on each axis); it never grows a lattice of multiple parallel bridges. The tile selection (`spawnPendingBridges`) already handles arbitrary adjacency (corners, all four Ts, the `+`), so richer bridge shapes would only require the placement loop to emit more cells — no new tile work.
-- **Individual bridges are still straight lines.** Each crossing is a single row or column; a bridge never bends mid-span. Bends/corners only appear where two straight crossings meet at an intersection.
 
 ---
 
