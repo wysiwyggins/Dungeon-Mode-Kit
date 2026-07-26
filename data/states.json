@@ -44,7 +44,7 @@
 
   "confused": {
     "name": "Confused",
-    "duration": 100,
+    "duration": 40,
     "tint": "#3388ff",
     "random_movement": true,
     "effect_description": "Everything spins",
@@ -54,7 +54,7 @@
 
   "hasted": {
     "name": "Hasted",
-    "duration": 100,
+    "duration": 20,
     "tint": "#88ffff",
     "extra_turn": true,
     "effect_description": "You feel quick",
@@ -64,7 +64,7 @@
 
   "slowed": {
     "name": "Slowed",
-    "duration": 100,
+    "duration": 40,
     "tint": "#222244",
     "skip_every_other_turn": true,
     "effect_description": "You feel sluggish",
@@ -74,7 +74,7 @@
 
   "regenerating": {
     "name": "Regenerating",
-    "duration": 100,
+    "duration": 20,
     "tint": "#00ff88",
     "per_turn_effect": { "health": 2 },
     "effect_description": "Your wounds begin to mend",
@@ -95,7 +95,7 @@
 
   "blinded": {
     "name": "Blinded",
-    "duration": 100,
+    "duration": 60,
     "tint": "#222222",
     "on_apply_effect": { "visionRange": -3 },
     "effect_description": "Darkness closes in around you",
@@ -105,7 +105,7 @@
 
   "flying": {
     "name": "Flying",
-    "duration": 100,
+    "duration": 60,
     "tint": "#33eeff",
     "flying": true,
     "effect_description": "You hover above the ground",
@@ -147,7 +147,7 @@
 
   "invisible": {
     "name": "Invisible",
-    "duration": 100,
+    "duration": 60,
     "invisible": true,
     "effect_description": "You fade from sight",
     "on_apply_message": "[actor_name] fades from sight!",
@@ -156,7 +156,7 @@
 
   "fireproof_temp": {
     "name": "Fire Immune",
-    "duration": 100,
+    "duration": 60,
     "tint": "#ffcc44",
     "grants_immunity": "fireproof",
     "effect_description": "Flames cannot touch you",

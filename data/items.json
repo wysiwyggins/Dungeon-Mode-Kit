@@ -1033,7 +1033,7 @@
       "use_verb": "Drink",
       "use_sound": "swallow",
       "use_effect": {
-        "apply_state": "confused"
+        "apply_state": { "state": "confused", "duration": 20 }
       },
       "description": "Scrambles the senses."
     }

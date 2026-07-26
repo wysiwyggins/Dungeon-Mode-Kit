@@ -5353,6 +5353,56 @@ class Actor extends Entity {
     // ========================================================================
 
     /**
+     * Normalize an authored `apply_state` value into a name and optional duration.
+     *
+     * The duration in states.json is that state's *default*, not a fact about every
+     * source of it — a potion of confusion can reasonably last longer or shorter than
+     * confusion from a trap or a monster's attack. So any `apply_state` may be written
+     * either as a bare state name (use the state's default duration):
+     *
+     *     "apply_state": "confused"
+     *
+     * or as an object that overrides the duration for this source only:
+     *
+     *     "apply_state": { "state": "confused", "duration": 20 }
+     *
+     * Duration is in turns; -1 means indefinite (as in states.json).
+     *
+     * @param {string|Object} value - The authored apply_state value
+     * @returns {{name: string|null, duration: number|undefined}}
+     */
+    static parseApplyState(value) {
+        if (typeof value === 'string') return { name: value, duration: undefined };
+        if (value && typeof value === 'object' && value.state) {
+            return {
+                name: value.state,
+                duration: typeof value.duration === 'number' ? value.duration : undefined
+            };
+        }
+        return { name: null, duration: undefined };
+    }
+
+    /**
+     * Resolve an authored `apply_state` value and apply it to this actor.
+     * Returns false when the value is malformed or names an unknown state.
+     *
+     * @param {string|Object} value - Bare state name, or { state, duration }
+     * @param {Object} [options] - Extra applyState options (e.g. source)
+     * @returns {boolean} True if the state was applied
+     */
+    applyAuthoredState(value, options = {}) {
+        const { name, duration } = Actor.parseApplyState(value);
+        if (!name) return false;
+        const stateData = this.engine.globalStates?.[name];
+        if (!stateData) {
+            console.log(`Unknown state: ${name}`);
+            return false;
+        }
+        return this.applyState(name, stateData,
+            duration !== undefined ? { ...options, duration } : options);
+    }
+
+    /**
      * Apply a temporary state to this actor
      * @param {string} stateName - The state name (e.g., 'burning', 'poisoned')
      * @param {Object} stateData - State configuration from states.json
@@ -6707,25 +6757,20 @@ class Actor extends Entity {
             for (const [key, amount] of Object.entries(effect)) {
                 // Handle state application (to self)
                 if (key === 'apply_state') {
-                    const stateName = amount;
-                    const statesData = this.engine.globalStates;
-                    if (statesData && statesData[stateName]) {
-                        const applied = this.applyState(stateName, statesData[stateName]);
-                        if (applied) {
-                            anyModified = true;
-                            console.log(`Applied state ${stateName} to ${this.name}`);
-                        }
-                    } else {
-                        console.log(`Unknown state: ${stateName}`);
+                    if (this.applyAuthoredState(amount)) {
+                        anyModified = true;
+                        console.log(`Applied state ${Actor.parseApplyState(amount).name} to ${this.name}`);
                     }
                     continue;
                 }
 
                 // Apply state to actors in radius: { "apply_state_radius": { "state": "confused", "radius": 5, "filter": "hostile" } }
+                // An optional `duration` overrides the state's default for this source.
                 if (key === 'apply_state_radius') {
-                    const { state: stateName, radius = 5, filter, message, empty_message } = amount;
+                    const { state: stateName, radius = 5, filter, message, empty_message, duration } = amount;
                     const statesData = this.engine.globalStates;
                     if (!statesData?.[stateName]) continue;
+                    const stateOpts = typeof duration === 'number' ? { duration } : {};
                     let affected = 0;
                     for (const actor of this.engine.entityManager?.actors || []) {
                         if (actor.isDead || actor === this) continue;
@@ -6733,7 +6778,7 @@ class Actor extends Entity {
                         if (filter === 'friendly' && actor.hasAttribute('hostile')) continue;
                         const dist = getChebyshevDistance(this.x, this.y, actor.x, actor.y);
                         if (dist <= radius) {
-                            actor.applyState(stateName, statesData[stateName]);
+                            actor.applyState(stateName, statesData[stateName], stateOpts);
                             affected++;
                         }
                     }
@@ -7712,15 +7757,11 @@ class Actor extends Entity {
                 }
             }
 
-            // Handle apply_state: apply a state to the target
+            // Handle apply_state: apply a state to the target. Accepts a bare state name
+            // or { state, duration } so a trap/attack can set its own duration.
             if (key === 'apply_state' && isDamageSource) {
-                const stateName = value;
-                const statesData = this.engine.globalStates;
-                if (statesData && statesData[stateName]) {
-                    const applied = target.applyState(stateName, statesData[stateName]);
-                    if (applied) {
-                        sourceApplied = true;
-                    }
+                if (target.applyAuthoredState(value, { source: this })) {
+                    sourceApplied = true;
                 }
                 continue;
             }
@@ -8111,8 +8152,7 @@ class Actor extends Entity {
         // spawnActor's applySpawnDamage ran before we set the effect, so apply the
         // rolled effect to the trampler now (matches the trap victim path).
         if (roll.apply_state) {
-            const stateData = this.engine.globalStates?.[roll.apply_state];
-            if (stateData && this.applyState) this.applyState(roll.apply_state, stateData);
+            this.applyAuthoredState?.(roll.apply_state);
         } else if (roll.collision_effect && this.stats) {
             for (const [stat, delta] of Object.entries(roll.collision_effect)) {
                 const s = this.stats[stat];
@@ -8657,12 +8697,9 @@ class Actor extends Entity {
             }
 
             // Apply state if specified (paralysis, confusion, etc.)
-            const applyStateName = other.getAttribute('apply_state');
-            if (applyStateName && this.applyState) {
-                const statesData = this.engine.globalStates;
-                if (statesData && statesData[applyStateName]) {
-                    this.applyState(applyStateName, statesData[applyStateName]);
-                }
+            const applyStateValue = other.getAttribute('apply_state');
+            if (applyStateValue && this.applyAuthoredState) {
+                this.applyAuthoredState(applyStateValue, { source: other });
             }
         }
     }
@@ -11077,12 +11114,9 @@ class EntityManager {
                 }
 
                 // Apply state if cloud has apply_state (paralysis, confusion, etc.)
-                const applyStateName = hazard.getAttribute('apply_state');
-                if (applyStateName && other.applyState) {
-                    const statesData = this.engine.globalStates;
-                    if (statesData && statesData[applyStateName]) {
-                        other.applyState(applyStateName, statesData[applyStateName]);
-                    }
+                const applyStateValue = hazard.getAttribute('apply_state');
+                if (applyStateValue && other.applyAuthoredState) {
+                    other.applyAuthoredState(applyStateValue, { source: hazard });
                 }
             }
         }
