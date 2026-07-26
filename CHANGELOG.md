@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - "Infrastructure sight" folded into magic mapping
+- degrading/breaking items (mattock is the test case)
 
 ### Fixed
 
