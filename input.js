@@ -63,39 +63,8 @@ class InputManager {
         // Temporary hover description (doesn't affect turn history)
         this.hoverDescription = null;
 
-        // Movement keys (hardcoded — these are universal roguelike conventions)
-        this.keyMap = {
-            'ArrowUp': 'move_up',
-            'ArrowDown': 'move_down',
-            'ArrowLeft': 'move_left',
-            'ArrowRight': 'move_right',
-            'w': 'move_up',
-            'W': 'move_up',
-            's': 'move_down',
-            'S': 'move_down',
-            'a': 'move_left',
-            'A': 'move_left',
-            'd': 'move_right',
-            'D': 'move_right',
-            'Numpad8': 'move_up',
-            'Numpad2': 'move_down',
-            'Numpad4': 'move_left',
-            'Numpad6': 'move_right',
-            'Numpad7': 'move_up_left',
-            'Numpad9': 'move_up_right',
-            'Numpad1': 'move_down_left',
-            'Numpad3': 'move_down_right',
-            'k': 'move_up',
-            'j': 'move_down',
-            'h': 'move_left',
-            'l': 'move_right',
-            'y': 'move_up_left',
-            'u': 'move_up_right',
-            'b': 'move_down_left',
-            'n': 'move_down_right'
-        };
-
-        // Action and global keys loaded from data/keybindings.json
+        // Movement, action and global keys all loaded from data/keybindings.json
+        this.keyMap = {};
         this.loadKeybindings(engine.globalKeybindings || {});
 
         // Direction vectors for movement actions
@@ -113,28 +82,79 @@ class InputManager {
         this.setupListeners();
     }
 
+    /**
+     * Build the key → action lookup from a keybindings definition.
+     *
+     * Movement lives in its own `movement` block (rather than being hardcoded) so a
+     * designer can rebind or remove it — freeing letter keys for command hotkeys.
+     * Movement is loaded first so `actions` wins on any collision, letting a prototype
+     * claim a key that movement holds by default.
+     *
+     * @param {Object} bindings - { movement, actions, global } key→action maps
+     */
     loadKeybindings(bindings) {
-        const movementKeys = {};
-        for (const [key, action] of Object.entries(this.keyMap)) {
-            if (action.startsWith('move_')) movementKeys[key] = action;
+        this.keyMap = {};
+
+        if (bindings.movement) {
+            for (const [key, action] of Object.entries(bindings.movement)) {
+                this.bindKey(this.keyMap, key, action);
+            }
         }
-        this.keyMap = movementKeys;
 
         if (bindings.actions) {
             for (const [key, action] of Object.entries(bindings.actions)) {
-                this.keyMap[key] = action;
-                if (key.length === 1 && key >= 'a' && key <= 'z') {
-                    this.keyMap[key.toUpperCase()] = action;
-                }
+                this.bindKey(this.keyMap, key, action);
             }
         }
 
         this.globalKeyMap = {};
         if (bindings.global) {
             for (const [key, action] of Object.entries(bindings.global)) {
-                this.globalKeyMap[key] = action;
+                this.bindKey(this.globalKeyMap, key, action);
             }
         }
+    }
+
+    /**
+     * Register one binding, also aliasing a bare lowercase letter to its uppercase form
+     * so the action still fires with caps lock on or shift held.
+     *
+     * Skipped for modifier-prefixed bindings ("Shift+ArrowLeft"): those are matched by
+     * an explicitly-built lookup name, and a shifted letter already arrives as its own
+     * uppercase character (which is how "R" for reload works).
+     */
+    bindKey(map, key, action) {
+        map[key] = action;
+        if (!key.includes('+') && key.length === 1 && key >= 'a' && key <= 'z') {
+            map[key.toUpperCase()] = action;
+        }
+    }
+
+    /**
+     * Resolve a keydown event to a bound action.
+     *
+     * Modifier-prefixed bindings are checked first and most-specific-first, so
+     * "Shift+ArrowLeft" beats a plain "ArrowLeft" when shift is down. This matters for
+     * non-printing keys: Shift+ArrowLeft reports the same `key`/`code` as an unshifted
+     * press, so without the prefix there'd be no way to tell them apart. A shifted
+     * *letter* needs no prefix — it arrives as its own uppercase character.
+     *
+     * @param {Object} map - key → action lookup
+     * @param {KeyboardEvent} event
+     * @returns {string|undefined} The bound action, if any
+     */
+    lookupBinding(map, event) {
+        let prefix = '';
+        if (event.ctrlKey) prefix += 'Ctrl+';
+        if (event.altKey) prefix += 'Alt+';
+        if (event.shiftKey) prefix += 'Shift+';
+
+        if (prefix) {
+            const modified = map[prefix + event.key] ?? map[prefix + event.code];
+            if (modified) return modified;
+        }
+
+        return map[event.key] ?? map[event.code];
     }
 
     setupListeners() {
@@ -1607,7 +1627,7 @@ class InputManager {
         }
 
         // Check global keys first (work regardless of player state)
-        const globalAction = this.globalKeyMap[event.key] || this.globalKeyMap[event.code];
+        const globalAction = this.lookupBinding(this.globalKeyMap, event);
         if (globalAction) {
             event.preventDefault();
             this.executeGlobalAction(globalAction);
@@ -1621,7 +1641,7 @@ class InputManager {
         // Block input while incapacitated (paralyzed, stunned, etc.)
         if (player.isIncapacitated()) return;
 
-        const action = this.keyMap[event.key] || this.keyMap[event.code];
+        const action = this.lookupBinding(this.keyMap, event);
         if (!action) return;
 
         // Prevent default for game keys (don't scroll page with arrows, etc.)

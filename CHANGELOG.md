@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Infrastructure sight folded into magic mapping.** The machine-link overlay (lines connecting each switch to the gates/doors sharing its `machine_id`) was a 60-turn `infrastructure_sight` state from a dedicated Potion of Infrastructure. It's now part of the Scroll of Magic Mapping's `reveal_map` effect: reading the scroll reveals the floor's layout *and* its hidden machinery, as one lasting per-level reveal rather than a timed sense. Floors are tracked in `engine.mappedFloors` and reset on new game/prototype switch. The Potion of Infrastructure and the `infrastructure_sight` state are removed (the author-facing `infrastructureDebugForced` renderer toggle is unchanged). See [ITEMS.md](docs/ITEMS.md#magic-mapping).
+
+### Fixed
+
+- **Exploration is no longer lost when you revisit a floor.** `restoreFloor` builds a fresh `LightingManager`, whose `initialize()` zeroes `exploredMap`, and the explored state was never saved with the rest of the floor — so returning to a floor re-fogged it completely, discarding both walked-over ground and any magic-mapped reveal. `saveFloorState` now snapshots the explored map and `LightingManager.restoreExplored()` re-applies it (clipped to the live map's dimensions, and only ever revealing cells, never re-hiding them). Floor restore also refreshes lighting on bright (`darkness: false`) floors, which previously ran no lighting pass at all and so never rebuilt overlays on return.
+
 - **Colors are named in descriptive text.** A color-locked door or a machine-linked lever/gate pair is tinted from `colors.json`, and that color is how the player tells one pair from another — but messages ignored it ("The Door is locked."). `Entity.getDisplayName()` now prefixes an entity's paired color and `getNameWithArticle()` routes through it, so every existing message becomes color-aware at one seam: "The fire brick door is locked.", "You pull the fire brick lever." `initializeSwitchTints` stores the color's *name* (as `lock_color`, the same attribute doors and keys already carry) instead of only its hex, and reuses an existing color on floor restore rather than re-rolling — a revisited lever keeps its identity. An authored `switch_message` can use `[name]` to interpolate the color-aware name without knowing whether a color was assigned. Unlocking messages no longer hardcode the noun "door", so a color-locked chest or gate reports itself correctly.
 
 ### Changed

@@ -1,6 +1,6 @@
 {
   "name": "The Dungeon (biome)",
-  "description": "A 26-floor descent, defined by three biomes that ramp with depth instead of 26 hand-authored floors.\nEscape with the Amulet of Yendor.\nPress 'i' for info.",
+  "description": "Retrieve the Amulet of Yendor.\nPress '?' for help.",
   "loaded_sound": "levelout",
   "turn_speed": 50,
   "floors": 26,

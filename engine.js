@@ -867,6 +867,7 @@ class DungeonEngine {
         this.pendingFallenActors = new Map(); // floor# → [serialized actor data]
         this.pendingFallenItems = new Map();  // floor# → [serialized item data] (items that fell through void/collapse)
         this.sealedDownFloors = new Set(); // floor#s whose down-stairway is sealed (win conditions unmet) → that floor's N+1 up-stairway must be locked
+        this.mappedFloors = new Set();   // floor#s revealed by magic mapping; a lasting per-level reveal (layout + machine links) that survives leaving and returning
         this.gameplayStarted = false;    // false during the load sequence; gates sounds/messages so load-time state changes don't leak feedback before the player begins play
 
         // Configuration
@@ -1447,6 +1448,7 @@ class DungeonEngine {
         this.currentFloor = 1;
         this.floorStates.clear();
         this.sealedDownFloors.clear();
+        this.mappedFloors.clear();
 
         // Cutscene prototype: play the .tmj flipbook instead of the normal gameplay load.
         if (prototypeConfig.cutscene?.flipbook) {
@@ -1922,9 +1924,19 @@ class DungeonEngine {
                 this.mapManager.height,
                 mechanics
             );
+            // Restore what the player had already seen here. initialize() just zeroed
+            // exploredMap, so this must land before the first computeLighting, or the
+            // floor renders fully fogged and the memory is lost.
+            if (saved.explored) {
+                this.lightingManager.restoreExplored(saved.explored);
+            }
             this.renderer.initializeDarkness(this.mapManager.width, this.mapManager.height);
-            this.updateLighting();
         }
+
+        // Always refresh, dark or bright: a magic-mapped floor needs its machine-link
+        // overlay rebuilt on return. With no LightingManager (bright floor) this falls
+        // through to updateProximityTransparency(), the funnel that drives the overlay.
+        this.updateLighting();
 
         // Re-establish active full-scene state effects on the fresh renderer.
         this.reapplyPersistentVisualEffects();
@@ -2254,6 +2266,7 @@ class DungeonEngine {
         this.currentFloor = 1;
         this.floorStates.clear();
         this.sealedDownFloors.clear();
+        this.mappedFloors.clear();
         await this.loadPrototype(prototypeName, entryDirection, fromCutscene);
     }
 
@@ -2590,6 +2603,7 @@ class DungeonEngine {
         if (config.next_level) {
             console.log(`Using gateway to transition to ${config.next_level}`);
             this.floorStates.clear();
+            this.mappedFloors.clear();
             this.currentFloor = 1;
             await this.transitionToPrototype(config.next_level, true, 'from_above');
         }
@@ -2956,9 +2970,15 @@ class DungeonEngine {
         const map = this.mapManager.serializeMap();
         // Exclude player from saved entities (player carries across floors)
         const nonPlayerEntities = entities.filter(e => e.type !== 'player');
+        // Carry exploration across the round trip. restoreFloor builds a fresh
+        // LightingManager, whose initialize() zeroes exploredMap — so without this a
+        // revisited floor re-fogs entirely, discarding both walked-over ground and a
+        // magic-mapped reveal. Copy the rows; the live arrays get reused/cleared.
+        const explored = this.lightingManager?.exploredMap;
         this.floorStates.set(this.currentFloor, {
             entities: nonPlayerEntities,
             map,
+            explored: explored ? explored.map(row => row.slice()) : null,
             rngState: typeof ROT !== 'undefined' ? ROT.RNG.getState() : null
         });
     }
@@ -3214,6 +3234,7 @@ class DungeonEngine {
         this.currentFloor = 1;
         this.floorStates.clear();
         this.sealedDownFloors.clear();
+        this.mappedFloors.clear();
     }
 }
 
@@ -3265,6 +3286,7 @@ class Prototype {
         this.personalities = { ...this.engine.globalPersonalities, ...prototypePersonalities };
         this.effects = { ...this.engine.globalEffects, ...prototypeEffects };
         this.keybindings = {
+            movement: { ...this.engine.globalKeybindings?.movement, ...prototypeKeybindings.movement },
             actions: { ...this.engine.globalKeybindings?.actions, ...prototypeKeybindings.actions },
             global: { ...this.engine.globalKeybindings?.global, ...prototypeKeybindings.global },
             descriptions: { ...this.engine.globalKeybindings?.descriptions, ...prototypeKeybindings.descriptions }
@@ -5534,16 +5556,6 @@ class Actor extends Entity {
         if (state.data.telepathic && this.isPlayerControlled()) {
             this.engine.updateLighting?.();
         }
-
-        // Infrastructure sight ending: hide the machine-id link overlay. Done after
-        // the delete so hasStateProperty('reveal_infrastructure') reads false; hide
-        // directly (not just via updateLighting) so it clears even if the debug
-        // toggle isn't holding it open.
-        if (state.data.reveal_infrastructure && this.isPlayerControlled()) {
-            if (!this.engine.renderer?.infrastructureDebugForced) {
-                this.engine.renderer?.hideInfrastructureLayer?.();
-            }
-        }
     }
 
     _updateInvisibilitySprites() {
@@ -6855,11 +6867,16 @@ class Actor extends Entity {
                         lm.exploredMap[y][x] = true;
                     }
                 }
+                // Mark the floor mapped: this is a lasting reveal of this level, not a
+                // timed sense, so it persists across leaving and returning (see
+                // saveFloorState/restoreFloor) and drives the machine-link overlay.
+                this.engine.mappedFloors.add(this.engine.currentFloor);
                 lm.computeLighting();
                 const fogOfWar = this.engine.currentPrototype?.config?.mechanics?.fog_of_war || false;
                 this.engine.renderer?.updateDarkness(lm, fogOfWar);
+                this.engine.renderer?.updateInfrastructureVisibility?.();
                 if (this.isPlayerControlled()) {
-                    this.engine.inputManager?.showMessage('The layout of this place becomes clear in your mind.');
+                    this.engine.inputManager?.showMessage('The layout of this place becomes clear in your mind, and hidden connections glimmer into view.');
                 }
                 return true;
             }
@@ -11662,8 +11679,8 @@ class RenderSystem {
     /**
      * Infrastructure overlay: tinted box-drawing lines connecting each machine's
      * hub (a switch/lever) to the targets (gates/doors/pedestals) it controls,
-     * grouped by shared machine_id. Normally hidden; revealed by the
-     * infrastructure_sight state (Potion of Infrastructure) or the debug toggle.
+     * grouped by shared machine_id. Normally hidden; revealed by magic mapping
+     * (Scroll of Magic Mapping) on this floor, or by the debug toggle.
      * Modeled on the hideLinePath()/linePathSprites overlay lifecycle above.
      *
      * Routing is L-shaped (horizontal then vertical) and ignores walls by design —
@@ -11828,16 +11845,15 @@ class RenderSystem {
     }
 
     /**
-     * Drive the infrastructure layer's visibility each render refresh. Shown when
-     * the player has the reveal_infrastructure state or the author debug toggle is
-     * on; hidden otherwise. Rebuilt every refresh while visible so it self-heals if
-     * a gate opens/moves/dies mid-reveal. Called from updateProximityTransparency
-     * (the single funnel both the dark and bright render paths pass through).
+     * Drive the infrastructure layer's visibility each render refresh. Shown when this
+     * floor has been magic-mapped (a lasting per-level reveal, so it comes back on
+     * revisit) or the author debug toggle is on; hidden otherwise. Rebuilt every
+     * refresh while visible so it self-heals if a gate opens/moves/dies mid-reveal.
+     * Called from updateProximityTransparency (the single funnel both the dark and
+     * bright render paths pass through).
      */
     updateInfrastructureVisibility() {
-        const player = this.engine.entityManager?.player;
-        const revealed = !!player && !player.isDead &&
-            player.hasStateProperty?.('reveal_infrastructure');
+        const revealed = this.engine.mappedFloors?.has(this.engine.currentFloor) ?? false;
         const shouldShow = revealed || this.infrastructureDebugForced;
 
         if (shouldShow) {
@@ -13536,6 +13552,7 @@ window.goToFloor = async (floorNumber) => {
     engine.currentFloor = floorNumber;
     engine.floorStates.clear();
     engine.sealedDownFloors.clear();
+    engine.mappedFloors.clear();
     await engine.loadFloor(floorNumber, 'from_above');
     console.log(`Jumped to floor ${floorNumber}/${totalFloors}`);
 };

@@ -3668,7 +3668,7 @@ class InterfaceManager {
         this.inventoryMode = false;
 
         this.showTextBox('spike_instructions',
-            'Spike which door? (arrow keys or WASD, Esc to cancel)',
+            'Spike which door? (movement keys, Esc to cancel)',
             { dismissOnMove: false }
         );
     }
@@ -3703,18 +3703,11 @@ class InterfaceManager {
             return true;
         }
 
-        const keyToDir = {
-            'ArrowUp': { dx: 0, dy: -1 },
-            'ArrowDown': { dx: 0, dy: 1 },
-            'ArrowLeft': { dx: -1, dy: 0 },
-            'ArrowRight': { dx: 1, dy: 0 },
-            'w': { dx: 0, dy: -1 }, 'W': { dx: 0, dy: -1 },
-            'a': { dx: -1, dy: 0 }, 'A': { dx: -1, dy: 0 },
-            's': { dx: 0, dy: 1 }, 'S': { dx: 0, dy: 1 },
-            'd': { dx: 1, dy: 0 }, 'D': { dx: 1, dy: 0 }
-        };
-
-        const dir = keyToDir[key];
+        // Resolve through the player's actual movement bindings rather than a private
+        // copy, so rebinding movement in keybindings.json steers this prompt too.
+        const inputMgr = this.engine.inputManager;
+        const action = inputMgr?.keyMap?.[key];
+        const dir = action ? inputMgr.directions?.[action] : null;
         if (!dir) return true;
 
         const match = this.spikeAdjacentDoors?.find(
@@ -4515,6 +4508,12 @@ class InterfaceManager {
         const actionDescriptions = bindings.descriptions || {};
 
         const formatKey = (key) => {
+            // Keep a modifier prefix, shortening the key it applies to ("Shift+ArrowUp"
+            // -> "Shift+Up"). Split on the LAST '+' so a literal '+' binding survives.
+            const plus = key.lastIndexOf('+');
+            if (plus > 0) {
+                return key.slice(0, plus + 1) + formatKey(key.slice(plus + 1));
+            }
             if (key === ' ') return 'Space';
             if (key === 'Escape') return 'Esc';
             if (key.startsWith('Arrow')) return key.slice(5);
@@ -4557,12 +4556,48 @@ class InterfaceManager {
         const pad = (str, len) => str + ' '.repeat(Math.max(0, len - str.length));
         const kw = 6;
 
+        // Summarize movement from the actual bindings rather than a fixed string, so
+        // rebinding or removing movement keys is reflected here.
+        const ORTHOGONAL = ['move_up', 'move_down', 'move_left', 'move_right'];
+        const DIAGONAL = ['move_up_left', 'move_up_right', 'move_down_left', 'move_down_right'];
+
+        // Group the bound keys for a set of move actions into readable families, so eight
+        // separate bindings read as "Arrows/Numpad/hjkl" instead of a wall of keys.
+        const describeMovement = (actions) => {
+            const families = new Map(); // label -> insertion order preserved
+            for (const [key, action] of Object.entries(inputMgr.keyMap)) {
+                if (!actions.includes(action)) continue;
+                const bare = key.slice(key.lastIndexOf('+') + 1);
+                const mod = key.slice(0, key.lastIndexOf('+') + 1);
+                // Skip single letters entirely — lowercase ones are collected below, and
+                // uppercase ones are just the shift-tolerance aliases bindKey adds, which
+                // would otherwise show up as a duplicate "K/J/H/L" family.
+                if (bare.length === 1 && bare.toLowerCase() >= 'a' && bare.toLowerCase() <= 'z') continue;
+                let label;
+                if (bare.startsWith('Arrow')) label = mod + 'Arrows';
+                else if (bare.startsWith('Numpad')) label = 'Numpad';
+                else label = formatKey(key);
+                families.set(label, true);
+            }
+            // Letter keys are listed literally, in the order the bindings declare them
+            // (hjkl / yubn), since that sequence is itself the mnemonic.
+            const letters = Object.entries(inputMgr.keyMap)
+                .filter(([k, a]) => actions.includes(a) && k.length === 1 && k >= 'a' && k <= 'z')
+                .map(([k]) => k);
+            const parts = [...families.keys()];
+            if (letters.length) parts.push(letters.join(''));
+            return parts.join('/');
+        };
+
+        const moveSummary = describeMovement(ORTHOGONAL);
+        const diagSummary = describeMovement(DIAGONAL);
+
         const lines = [];
         lines.push('Help');
         lines.push('');
-        lines.push('Move: Arrows/WASD/hjkl');
-        lines.push('Diag: Numpad/yubn');
-        lines.push('');
+        if (moveSummary) lines.push(`Move: ${moveSummary}`);
+        if (diagSummary) lines.push(`Diag: ${diagSummary}`);
+        if (moveSummary || diagSummary) lines.push('');
 
         const actionActions = bindings.actions ? Object.values(bindings.actions) : [];
         const seen = new Set();

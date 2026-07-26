@@ -171,7 +171,7 @@ Pass an object to modify stats, attributes, or apply states directly:
 | `"targeted_spell"` | Enters aiming mode; fires `spell_effect` at target tile (staffs) |
 | `"identify_item"` | Opens item picker; player selects one unidentified item to reveal |
 | `"teleport"` | Moves player to a random walkable tile |
-| `"reveal_map"` | Marks all tiles as explored (fog of war) |
+| `"reveal_map"` | Marks all tiles on the floor explored, and reveals the machine-link overlay (lines connecting each switch to the gates/doors it drives). A lasting per-level reveal: it persists when you leave the floor and return. See [Magic Mapping](#magic-mapping) |
 | `"aggravate_monsters"` | All hostile actors on the level become aware of the player |
 | `"summon_monsters"` | Spawns 2–4 random monsters adjacent to the player |
 | `"recharge_items"` | Restores all `charge_stat` items in inventory to full |
@@ -180,6 +180,25 @@ Pass an object to modify stats, attributes, or apply states directly:
 | `"darkness_field"` | Extinguishes all light-source items within radius 5 |
 | `"enchant_item"` | Opens item picker; player selects an `enchantable` item to increase its enchantment by +1 |
 | `"remove_curse"` | Clears `cursed` attribute from all currently equipped items |
+
+### Magic Mapping
+
+`reveal_map` (the Scroll of Magic Mapping) does two things to the current floor:
+
+1. Marks every tile explored, so the layout is remembered under fog of war/darkness.
+2. Reveals the **machine-link overlay** — diagrammatic lines connecting each switch
+   (lever, pressure plate) to the gates, doors, and pedestals sharing its `machine_id`,
+   drawn in that machine's paired color. Only `machine_id` groups are drawn;
+   proximity-linked machines are out of scope.
+
+Unlike a timed sense, this is a **lasting reveal of one level**. The floor is recorded in
+`engine.mappedFloors`, and its exploration is saved with the rest of the floor state — so
+leaving and coming back preserves both the layout and the overlay. The reveal is per-floor:
+mapping floor 3 tells you nothing about floor 4. Everything resets on a new game or a
+prototype switch.
+
+Authors can also force the overlay on for any floor with the `infrastructureDebugForced`
+renderer flag, independent of whether the floor has been mapped.
 
 ### Object format — area effects
 

@@ -23,10 +23,6 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 - Currently attacks are legal diagonally across corner blocking actors like walls. I'd like to block melee attacks but not staffs or wands around wall corners.
 - likewise, the complex engine code that currently closes a door behind you when it was initially unlocked and leaves it open when it was initially locked is an opinionated design that shouldn't have been hard coded. Instead there should have been an attribute that door and locked door actors could have used that determined whether the player closes it as they pass through (swings_shut). Don't hard code design opinions that can be left up to designers with attributes in the data files, as long as the data files don't have so many attributes that they become difficult to read. Having sensible default values for attributes so that more often than not we don't have to specify them helps keep data files readable.
 
-### Make 'infrastructure sight' part of the magic mapping scroll effect
-
-- instead of a separate potion/gas effect, what was called infrastructure sight becomes part of the magic mapping scroll effect, this is a lasting visual reveal of an individual level which should persist when leaving and returning to that level. Remove infrastructure sight from potion and gas effects after adding it to the magic mapping reveal.
-
 ### Actor info
 
 - clicking on an actor could show an info window instead of pathing to them with click to walk. This should show the monster name and description, later we can build out more procedural info like brogue.

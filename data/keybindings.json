@@ -1,4 +1,33 @@
 {
+  "movement": {
+    "ArrowUp": "move_up",
+    "ArrowDown": "move_down",
+    "ArrowLeft": "move_left",
+    "ArrowRight": "move_right",
+    "Shift+ArrowUp": "move_up_right",
+    "Shift+ArrowLeft": "move_up_left",
+    "Shift+ArrowDown": "move_down_left",
+    "Shift+ArrowRight": "move_down_right",
+
+    "Numpad8": "move_up",
+    "Numpad2": "move_down",
+    "Numpad4": "move_left",
+    "Numpad6": "move_right",
+    "Numpad7": "move_up_left",
+    "Numpad9": "move_up_right",
+    "Numpad1": "move_down_left",
+    "Numpad3": "move_down_right",
+
+    "k": "move_up",
+    "j": "move_down",
+    "h": "move_left",
+    "l": "move_right",
+    "y": "move_up_left",
+    "u": "move_up_right",
+    "b": "move_down_left",
+    "n": "move_down_right"
+  },
+
   "actions": {
     "z": "wait",
     ".": "wait",
@@ -8,7 +37,7 @@
     "e": "equipment_menu",
     "q": "quaff",
     "r": "read_scroll",
-    "j": "jam_spike",
+    "s": "jam_spike",
     "c": "catalog",
     "x": "explore",
     "Tab": "cycle_target"

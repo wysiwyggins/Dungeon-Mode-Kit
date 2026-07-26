@@ -56,6 +56,32 @@ class LightingManager {
         this.visionFov = new ROT.FOV.PreciseShadowcasting((x, y) => this.visionPasses(x, y));
     }
 
+    /**
+     * Re-apply a previously saved exploration map (see Engine.saveFloorState). Revisiting
+     * a floor builds a fresh LightingManager, so without this the player's memory of the
+     * level — including a magic-mapped reveal — would be lost.
+     *
+     * Copies cell-by-cell within the overlap rather than adopting the array wholesale, so
+     * a saved map from different dimensions can't desync width/height from the live map.
+     * Only ORs explored cells on; it never un-explores something already seen.
+     *
+     * @param {boolean[][]} saved - Saved exploredMap rows
+     */
+    restoreExplored(saved) {
+        if (!Array.isArray(saved) || !this.exploredMap) return;
+
+        const rows = Math.min(saved.length, this.exploredMap.length);
+        for (let y = 0; y < rows; y++) {
+            const savedRow = saved[y];
+            const liveRow = this.exploredMap[y];
+            if (!Array.isArray(savedRow) || !liveRow) continue;
+            const cols = Math.min(savedRow.length, liveRow.length);
+            for (let x = 0; x < cols; x++) {
+                if (savedRow[x]) liveRow[x] = true;
+            }
+        }
+    }
+
     visionPasses(x, y) {
         if (x < 0 || x >= this.width || y < 0 || y >= this.height) {
             return false;
