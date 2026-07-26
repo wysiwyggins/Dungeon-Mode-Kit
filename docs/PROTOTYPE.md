@@ -200,7 +200,7 @@ Can be set at the prototype level or per-floor (overrides prototype default).
       "switch_actor": "gate_lever",
       "target_actor": "gate",
       "switch_effects": { "locked": false, "open": true },
-      "switch_message": "You pull the lever. A gate grinds open."
+      "switch_message": "You pull [name]. A gate grinds open."
     }
   ]
 }
@@ -221,7 +221,7 @@ Each pattern defines:
 | `switch_actor` | string | Actor type ID for the switch |
 | `target_actor` | string | Actor type ID for the target |
 | `switch_effects` | object | Attributes to set on the target when the switch is activated |
-| `switch_message` | string | Message shown when the switch is activated |
+| `switch_message` | string | Message shown when the switch is activated. `[name]` interpolates the switch's color-aware name (see [ACTORS.md](ACTORS.md#paired-colors)) |
 
 Can be set at the prototype level or per-floor.
 

@@ -4441,7 +4441,11 @@ class Actor extends Entity {
 
         const sound = this.data?.switch_sound || this.getAttribute('collision_sound') || 'tap2';
         this.engine.playSound?.(sound);
-        const message = this.data?.switch_message || `The ${this.name} clicks.`;
+        // `[name]` in an authored switch_message resolves to the color-aware name, so a
+        // lever can read "You pull the fire brick lever." without the data file having to
+        // know a color was assigned. Falls back to the plain name when uncolored.
+        const message = (this.data?.switch_message || `${this.getNameWithArticle(true)} clicks.`)
+            .replace(/\[name\]/g, () => this.getNameWithArticle());
         this.engine.inputManager?.showMessage(message, { x: this.x, y: this.y });
 
         this._propagateSwitchEffects(nowToggled);
@@ -7731,7 +7735,7 @@ class Actor extends Entity {
                         targetPassable = !target.hasAttribute('solid');
 
                         if (this.isPlayerControlled()) {
-                            this.engine.inputManager?.showMessage(`The ${source.name} unlocks the ${targetLockColor} door!`);
+                            this.engine.inputManager?.showMessage(`The ${source.name} unlocks ${target.getNameWithArticle()}!`);
                         }
 
                         if (source.item && source.item.hasAttribute('consumable')) {
@@ -7741,7 +7745,7 @@ class Actor extends Entity {
                     } else {
                         console.log(`${source.name} (${sourceLockColor || 'no color'}) doesn't match ${target.name} (${targetLockColor})`);
                         if (this.isPlayerControlled() && targetLockColor) {
-                            this.engine.inputManager?.showMessage(`The ${targetLockColor} door requires a ${targetLockColor} key.`);
+                            this.engine.inputManager?.showMessage(`${target.getNameWithArticle(true)} requires a ${targetLockColor} key.`);
                         }
                     }
                 }
@@ -7770,7 +7774,7 @@ class Actor extends Entity {
                             targetPassable = !target.hasAttribute('solid');
 
                             if (this.isPlayerControlled()) {
-                                this.engine.inputManager?.showMessage(`The ${source.name} unlocks the ${target.name}!`);
+                                this.engine.inputManager?.showMessage(`The ${source.name} unlocks ${target.getNameWithArticle()}!`);
                             }
 
                             if (source.item && source.item.hasAttribute('consumable')) {
@@ -9575,14 +9579,30 @@ class EntityManager {
 
             if (targets.length === 0) continue;
 
-            const color = randomElement(colors);
+            // Reuse an already-assigned color on floor restore. This runs on every floor
+            // load, so re-rolling would give a revisited lever a new hue — and now a new
+            // name too ("the fire brick lever" becoming "the child's sky lever"), which
+            // would break the color as a way to identify which lever drives which gate.
+            const existing = actor.getAttribute('lock_color')
+                || targets.map(t => t.getAttribute('lock_color')).find(Boolean);
+            const color = existing
+                ? (colors.find(c => c.color === existing) || randomElement(colors))
+                : randomElement(colors);
             const tint = parseTint(color.hex);
 
-            actor.tint = tint;
-            tinted.add(actor);
+            // Store the color's name alongside the tint, not just the hex: the color is
+            // how the player tells one lever/gate pair from another, so messages need to
+            // be able to say "the fire brick lever" (see Entity.getColorName). Uses the
+            // same `lock_color` attribute doors and keys carry, so one seam serves all.
+            const applyColor = (a) => {
+                a.tint = tint;
+                a.setAttribute('lock_color', color.color);
+                tinted.add(a);
+            };
+
+            applyColor(actor);
             for (const target of targets) {
-                target.tint = tint;
-                tinted.add(target);
+                applyColor(target);
             }
         }
     }

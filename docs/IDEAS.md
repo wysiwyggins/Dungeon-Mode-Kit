@@ -10,7 +10,6 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ### Tweaks
 
-- use the color name in descriptive text when referring to paired doors, keys levers etc. "the orange gate is locked" etc
 - stairways should be spawning along room walls like braziers rather than in the middle of rooms/hallways. Ideally there would be braziers on either side of them too
 - item attribute for an item's integrity/condition (maybe there is a better word- how many uses until it breaks). This is needed for mattocks. Could we reuse work from torch fuel stat for item condition and have the amount an item degrades per use be specified in a json attribute?
 - mattocks should have a random chance of successful digging rather than the three-strikes dig they have now, this should also be a json attribute that designers could use in other items if they wanted.

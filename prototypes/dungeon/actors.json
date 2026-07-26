@@ -129,7 +129,7 @@
       "switchable": true,
       "toggled": false
     },
-    "switch_message": "You pull the lever. A gate grinds open.",
+    "switch_message": "You pull [name]. A gate grinds open.",
     "switch_effects": {
       "locked": false,
       "open": true
@@ -166,7 +166,7 @@
       "switchable": true,
       "toggled": false
     },
-    "switch_message": "You pull the lever.",
+    "switch_message": "You pull [name].",
     "switch_effects": {
       "locked": false,
       "open": true

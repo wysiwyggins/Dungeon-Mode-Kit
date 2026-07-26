@@ -2236,7 +2236,7 @@ class Architect {
         const leverData = {
             ...switchData,
             switch_effects: pattern.switch_effects || switchData.switch_effects || { locked: false, open: true },
-            switch_message: pattern.switch_message || switchData.switch_message || 'You pull the lever.',
+            switch_message: pattern.switch_message || switchData.switch_message || 'You pull [name].',
             attributes: {
                 ...(switchData.attributes || {}),
                 machine_id: machineId

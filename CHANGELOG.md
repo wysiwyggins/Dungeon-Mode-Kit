@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Colors are named in descriptive text.** A color-locked door or a machine-linked lever/gate pair is tinted from `colors.json`, and that color is how the player tells one pair from another — but messages ignored it ("The Door is locked."). `Entity.getDisplayName()` now prefixes an entity's paired color and `getNameWithArticle()` routes through it, so every existing message becomes color-aware at one seam: "The fire brick door is locked.", "You pull the fire brick lever." `initializeSwitchTints` stores the color's *name* (as `lock_color`, the same attribute doors and keys already carry) instead of only its hex, and reuses an existing color on floor restore rather than re-rolling — a revisited lever keeps its identity. An authored `switch_message` can use `[name]` to interpolate the color-aware name without knowing whether a color was assigned. Unlocking messages no longer hardcode the noun "door", so a color-locked chest or gate reports itself correctly.
+
 ### Changed
 
 - **Torch fuel is now fully data-driven**. Two engine sites (the Extinguish/Light verb and the auto-extinguish when submerging) each rebuilt a torch's `burns` stat from hard-coded literals — `per_turn: -1`, `display_label: 'Fuel'`, the warning threshold and its message text, a `?? 500` fuel cap, and the `'torch_unlit'` type name — discarding whatever the JSON authored. Both now call one `buildToggledItem()` helper that takes the destination type's own stat block from `items.json` and carries over only the live `current` value. `torch_unlit` gained its own `burns` block (`per_turn: 0` — holds a reserve without consuming it) and both torch types gained `toggle_to`, so the lit/unlit pairing and the burn rate are authored in data rather than known by the engine. Fuel still carries across light/extinguish/relight exactly as before; an item with no `burns` stat is now treated as never running out (omit it for a permanent lamp). See [ITEMS.md](docs/ITEMS.md#lighting-extinguishing-and-fuel).

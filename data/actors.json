@@ -802,7 +802,7 @@
       "opaque": false
     },
     "collision_description": "a lever",
-    "switch_message": "You pull the lever.",
+    "switch_message": "You pull [name].",
     "switch_effects": {
       "solid": false,
       "open": true

@@ -342,7 +342,7 @@ its `machine_id` — so a lever can open a distant gate, or a pressure plate can
 |-------|------|-------------|
 | `machine_id` | string | Links a switch to its targets. All actors with the same `machine_id` react together. |
 | `switch_effects` | object | Attribute → value map applied to linked actors on toggle (e.g. `{ "solid": false, "open": true }`). |
-| `switch_message` | string | Message shown when the switch is toggled. |
+| `switch_message` | string | Message shown when the switch is toggled. `[name]` interpolates the actor's color-aware name (see below). |
 | `switch_sound` | string | Sound played when the switch is toggled. |
 
 ```json
@@ -356,10 +356,27 @@ its `machine_id` — so a lever can open a distant gate, or a pressure plate can
   "flipTopV_toggled": true,
   "collision_sound": "push1",
   "attributes": { "solid": true, "switchable": true, "toggled": false },
-  "switch_message": "You pull the lever.",
+  "switch_message": "You pull [name].",
   "switch_effects": { "solid": false, "open": true }
 }
 ```
+
+#### Paired Colors
+
+Actors linked by `machine_id` are tinted a shared random color from `colors.json`, and
+that color's **name** is stored on each of them as `lock_color`. The color is how a
+player tells one lever/gate pair from another, so it appears in descriptive text:
+
+- `switch_message: "You pull [name]."` → *"You pull the fire brick lever."*
+- Bumping the linked gate → *"The fire brick gate is locked."*
+
+Color-locked doors and their keys use the same `lock_color` attribute, assigned by a
+separate pairing pass. Any message built with `getNameWithArticle()` picks the color up
+automatically; uncolored actors read exactly as before (*"You pull the lever."*).
+
+Because generic names are lowercase in the data files, they read as prose mid-sentence.
+Reserve capitalized names for proper nouns, and mark those `proper_named` so no article
+is prepended.
 
 ### Splitting & Grabbing
 
