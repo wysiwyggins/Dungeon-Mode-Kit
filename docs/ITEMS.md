@@ -191,6 +191,10 @@ Pass an object to modify stats, attributes, or apply states directly:
    drawn in that machine's paired color. Only `machine_id` groups are drawn;
    proximity-linked machines are out of scope.
 
+Step 1 is skipped on a fully-lit floor (`darkness: false`) — there's no fog to clear — but
+step 2 still applies, so the scroll is useful on bright levels. The message names whatever
+actually happened, and reports no effect only on a lit floor with no machines to reveal.
+
 Unlike a timed sense, this is a **lasting reveal of one level**. The floor is recorded in
 `engine.mappedFloors`, and its exploration is saved with the rest of the floor state — so
 leaving and coming back preserves both the layout and the overlay. The reveal is per-floor:

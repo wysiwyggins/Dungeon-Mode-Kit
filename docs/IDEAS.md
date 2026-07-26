@@ -30,10 +30,6 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 - because the canvas viewport is prototype definable, could this be too much text for the canvas? we might need to implement paging in ui windows for overflow (paging is more desirable than scrolling)
 - if possible, clicking an actor or item name in the sidebar could highlight its tiles in the canvas and bring up the info canvas textbox
 
-### Keybinding changes
-
-- movement keys should also be defined in keybindings.json along with actions so we can reclaim wasd for actions if needed. it would probbaly be very easy to make a keybindings-editor.html too, preparing for the time when this all becomes a webapp
-
 ### Dialogue
 
 - A dialogue/options window

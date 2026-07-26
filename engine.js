@@ -6855,28 +6855,42 @@ class Actor extends Entity {
             }
 
             case 'reveal_map': {
-                const lm = this.engine.lightingManager;
-                if (!lm || !lm.exploredMap) {
-                    if (this.isPlayerControlled()) {
-                        this.engine.inputManager?.showMessage('You already know this place well.');
-                    }
-                    return true;
-                }
-                for (let y = 0; y < lm.exploredMap.length; y++) {
-                    for (let x = 0; x < lm.exploredMap[y].length; x++) {
-                        lm.exploredMap[y][x] = true;
-                    }
-                }
                 // Mark the floor mapped: this is a lasting reveal of this level, not a
                 // timed sense, so it persists across leaving and returning (see
                 // saveFloorState/restoreFloor) and drives the machine-link overlay.
+                // Done unconditionally — a fully-lit level has no fog to clear, but its
+                // hidden machinery is still worth revealing, so the scroll must do
+                // something there rather than reporting no effect.
                 this.engine.mappedFloors.add(this.engine.currentFloor);
-                lm.computeLighting();
-                const fogOfWar = this.engine.currentPrototype?.config?.mechanics?.fog_of_war || false;
-                this.engine.renderer?.updateDarkness(lm, fogOfWar);
+
+                const lm = this.engine.lightingManager;
+                const clearedFog = !!(lm && lm.exploredMap);
+                if (clearedFog) {
+                    for (let y = 0; y < lm.exploredMap.length; y++) {
+                        for (let x = 0; x < lm.exploredMap[y].length; x++) {
+                            lm.exploredMap[y][x] = true;
+                        }
+                    }
+                    lm.computeLighting();
+                    const fogOfWar = this.engine.currentPrototype?.config?.mechanics?.fog_of_war || false;
+                    this.engine.renderer?.updateDarkness(lm, fogOfWar);
+                }
                 this.engine.renderer?.updateInfrastructureVisibility?.();
+
                 if (this.isPlayerControlled()) {
-                    this.engine.inputManager?.showMessage('The layout of this place becomes clear in your mind, and hidden connections glimmer into view.');
+                    // Only claim to reveal the layout when there was fog hiding it.
+                    const hasMachines = this.engine.renderer?.hasInfrastructureLinks?.() ?? true;
+                    let message;
+                    if (clearedFog) {
+                        message = hasMachines
+                            ? 'The layout of this place becomes clear in your mind, and hidden connections glimmer into view.'
+                            : 'The layout of this place becomes clear in your mind.';
+                    } else {
+                        message = hasMachines
+                            ? 'Hidden connections glimmer into view.'
+                            : 'You already know this place well.';
+                    }
+                    this.engine.inputManager?.showMessage(message);
                 }
                 return true;
             }
@@ -11688,6 +11702,36 @@ class RenderSystem {
      * (no shared machine_id) are intentionally not drawn; the feature is scoped to
      * "same machine id" per docs/IDEAS.md.
      */
+    /**
+     * Whether this floor has any machine links the overlay could draw — a switch with a
+     * machine_id that at least one other actor shares. Lets the magic-mapping message
+     * avoid promising "hidden connections" on a floor that has none.
+     * @returns {boolean}
+     */
+    hasInfrastructureLinks() {
+        const em = this.engine.entityManager;
+        if (!em) return false;
+
+        for (const hub of em.actors) {
+            if (hub.isDead || !this._isInfrastructureHub(hub)) continue;
+            const machineId = hub.getAttribute('machine_id');
+            if (!machineId) continue;
+            if (em.actors.some(a => a !== hub && !a.isDead &&
+                a.getAttribute('machine_id') === machineId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * A hub is a switch/lever/plate: it drives switch_effects (or is switchable).
+     * Shared by the overlay renderer and hasInfrastructureLinks so they can't drift.
+     */
+    _isInfrastructureHub(actor) {
+        return actor.hasAttribute('switchable') || !!actor.data?.switch_effects;
+    }
+
     renderInfrastructureLayer() {
         this.hideInfrastructureLayer();
 
@@ -11702,8 +11746,7 @@ class RenderSystem {
 
         for (const hub of em.actors) {
             if (hub.isDead || seen.has(hub)) continue;
-            // A hub is a switch/lever/plate: it drives switch_effects (or is switchable).
-            if (!hub.hasAttribute('switchable') && !hub.data?.switch_effects) continue;
+            if (!this._isInfrastructureHub(hub)) continue;
 
             const machineId = hub.getAttribute('machine_id');
             if (!machineId) continue; // proximity-only groups are out of scope

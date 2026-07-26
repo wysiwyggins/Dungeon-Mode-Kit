@@ -9,13 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Infrastructure sight folded into magic mapping.** The machine-link overlay (lines connecting each switch to the gates/doors sharing its `machine_id`) was a 60-turn `infrastructure_sight` state from a dedicated Potion of Infrastructure. It's now part of the Scroll of Magic Mapping's `reveal_map` effect: reading the scroll reveals the floor's layout *and* its hidden machinery, as one lasting per-level reveal rather than a timed sense. Floors are tracked in `engine.mappedFloors` and reset on new game/prototype switch. The Potion of Infrastructure and the `infrastructure_sight` state are removed (the author-facing `infrastructureDebugForced` renderer toggle is unchanged). See [ITEMS.md](docs/ITEMS.md#magic-mapping).
+- "Infrastructure sight" folded into magic mapping
 
 ### Fixed
 
-- **Exploration is no longer lost when you revisit a floor.** `restoreFloor` builds a fresh `LightingManager`, whose `initialize()` zeroes `exploredMap`, and the explored state was never saved with the rest of the floor — so returning to a floor re-fogged it completely, discarding both walked-over ground and any magic-mapped reveal. `saveFloorState` now snapshots the explored map and `LightingManager.restoreExplored()` re-applies it (clipped to the live map's dimensions, and only ever revealing cells, never re-hiding them). Floor restore also refreshes lighting on bright (`darkness: false`) floors, which previously ran no lighting pass at all and so never rebuilt overlays on return.
-
-- **Colors are named in descriptive text.** A color-locked door or a machine-linked lever/gate pair is tinted from `colors.json`, and that color is how the player tells one pair from another — but messages ignored it ("The Door is locked."). `Entity.getDisplayName()` now prefixes an entity's paired color and `getNameWithArticle()` routes through it, so every existing message becomes color-aware at one seam: "The fire brick door is locked.", "You pull the fire brick lever." `initializeSwitchTints` stores the color's *name* (as `lock_color`, the same attribute doors and keys already carry) instead of only its hex, and reuses an existing color on floor restore rather than re-rolling — a revisited lever keeps its identity. An authored `switch_message` can use `[name]` to interpolate the color-aware name without knowing whether a color was assigned. Unlocking messages no longer hardcode the noun "door", so a color-locked chest or gate reports itself correctly.
+- Exploration (map memory) is no longer lost when you revisit a floor
+- Colors are named in descriptive text.
 
 ### Changed
 
@@ -23,53 +22,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Burnout no longer fires on items that aren't burning**: the per-turn burnout check only tested `burns.current <= 0`, so any item holding an empty-but-dormant fuel reserve would announce "burns out" every turn and be destroyed. It now also requires the fuel to actually be draining (`per_turn < 0`), so an unlit torch at 0 fuel is simply empty.
-
-- **Health showed decimals while starving** (e.g. `21.6` in the sidebar, stuck there permanently). `rate_scaled_by` multiplies a stat's `per_turn` by `attribute / 10`, so the player's strength-8 nutrition drain was a fractional `-0.8`/turn. As nutrition bottomed out, `restore_from` clamped health's regen to whatever fraction of nutrition was left and paid it into health, leaving a permanent fraction. Fractional per-turn rates are now banked in a per-stat remainder and spent as whole points (a `-0.8`/turn drain spends `-1` on four of every five turns, so the long-run average is unchanged — exactly 800 over 1000 turns), and `restore_from` only ever draws whole points from its source. Stat values stay integral. The sidebar and player-info panel also round stat values as a last-resort display guard, so no stat can render a decimal regardless of source.
+- Burnout no longer fires on items that aren't burning
+- Health showed decimals while starving
 
 ## [1.15b] 2026-07-22
 
 ### Added
 
 - **Biomes (depth-ramping)**: a multi-floor prototype can now define a `biome` — a themed bundle of depth-ranged spawn/item/hazard catalogs — and assign it to floor ranges via `floor_plan`, instead of hand-authoring every floor. Each catalog row carries `{min, max, freq}`; as depth increases, entries fade in/out of their windows so difficulty ramps automatically (Brogue's model). Hazards ramp by a linear `clamp(intercept + depth*slope, 0, max)` count. Resolves in one seam (`getFloorConfig`) as a tier between per-floor overrides and prototype defaults; downstream spawning is unchanged, and prototypes without biomes behave identically. `levels` may now be a sparse floor-keyed map for the few hand-authored floors. See `docs/BIOMES.md`. Example: `prototypes/biometest/`.
-- **Biome dungeon example** (`prototypes/dungeon_biome/`, `dungeon_biome.html`): a biome-driven reimplementation of the 26-floor dungeon — three biomes (caves 1-8, depths 9-19, infernal 20-26) plus five boss-floor overrides — replacing ~500 lines of hand-authored per-floor tables with ~180 lines of depth-ranged catalogs. The original `dungeon` is left unchanged for comparison.
 - **Biome editor**: the prototype editor gained a Multi-level toggle (floor count), a Biomes library (per-biome map generator, mechanics, depth-ranged actor/item catalogs, and hazard ramps, each with a "preview at depth N" showing which entries are eligible and their weighted share), and a Floor plan section that assigns biomes to floor ranges with gap/overlap validation. Floor tabs now mark hand-authored floors and work with both array and sparse-object `levels`.
-- **Drink-at-self potions**: a new `use_at_self` item attribute lets a potion that normally only does something when thrown (e.g. the potion of incineration) be drunk anyway — it triggers its own break/explosion effect on the drinker's tile. The incineration potion now offers a "Drink" verb that detonates on you. Replaces the vestigial, unread `drinkable` attribute (removed).
+- **Drink-at-self potions**: a new `use_at_self` item attribute lets a potion that normally only does something when thrown (e.g. the potion of incineration) be drunk anyway — it triggers its own break/explosion effect on the drinker's tile.
 
 ### Changed
 
 - **Prototype editor cleanup sweep**: a pass over the whole prototype editor to cut clutter and make implicit settings implicit.
-  - Removed the legacy `depth` attribute (it had no runtime consumers; depth is inferred from level index). Stripped from the 9 prototype.json files that carried it.
-  - `observer_mode` is no longer an editable checkbox — the engine derives it at runtime from whether any actor is `controlled` (actors live in the Tiled map, which the editor can't see). Existing `observer_mode` values in loaded prototypes are preserved on export.
-  - **Cutscene is now a top-level switch** above everything else: turning a prototype into a cutscene hides all level config (Mechanics, Map, Items, Spawns…), since a cutscene has none.
-  - **Item catalog & budget merged** into one section (the budget draws from the catalog, so they belong together); budget config appears once the catalog is enabled.
-  - **Tint + ambient_light grouped** under a single "ambient level light" toggle, since they're two aspects of the same thing.
-  - **Traps / fungus / switch puzzles integrated** into the Map generator section as "Placed features" (they're part of what the generator scatters onto the map).
-  - **Optional sections**: Win state, Map generator, Item catalog & budget, and Spawns can be toggled off from their section header (which deletes their data), reducing visual complexity.
-  - **Switch-puzzle UI**: the switch/target actor dropdowns now list only relevant actors (`switchable` for switches, `openable`/`switchable` for targets) instead of every actor; a hint shows whether the chosen switch is toggleable or one-shot (from its attributes); switch effects offer the target actor's own attributes as choices. The `gated_room`/`gated_corridor` type is relabeled and explained as *layout only*.
-  - **Bridges** got a toggle+config like collapsing floors (was an always-present field that created an empty `bridges` object on every map).
-  - **Consistent toggles**: the Spawns "+ enable random_…" buttons are now toggle switches matching the rest of the editor.
-  - **Info tooltips**: dropped the confusing `ⓘ` marker and question-mark cursor; help text is still available as a native hover tooltip.
-  - **Renamed** "Next/Previous level" → "Next/Last prototype"; tightened "level" vs "prototype" wording.
-  - The room-weights "+ add…" dropdown now hides itself once every room type has been added.
-  - Added a **Hide/Show JSON** button to collapse the live JSON output panel (state persists across reloads).
-- **Editor code reorganized**: the ~1,500 lines of inline JavaScript in `prototype-editor.html` (now 140 lines) were extracted into `editors/scripts/proto-{state,widgets,sections,render}.js`. All five editor pages (`prototype-`, `actor-`, `item-`, `personality-`, `effects-editor.html`) moved into a top-level `editors/` folder. The HTML now holds only the page skeleton and editable Handlebars form templates.
-- **SCSS uses classes for styling**: every ID-based style selector in `_editors.scss` (across all five editors) was converted to a class; IDs are now reserved for JavaScript hooks.
-- **Brogue map density scales with map size**: `maxRooms` and `maxAttempts` are auto-computed from map area when omitted (larger maps get proportionally more rooms/attempts) instead of flat defaults, so big maps fill out. `maxRooms` is no longer surfaced in the editor. Room count, corridor stats, fill %, and stop reason are now logged to the console per generated map.
 
 ### Fixed
 
-- **Brogue corridors rarely generated** on populated maps. Two causes: (1) the corridor stub's grid was padded to end exactly at the tip, so the forward-facing door site fell out of bounds and was dropped — leaving ~75% of corridor-rooms with no door sites and thus unplaceable; and (2) the strict 3×3 no-overlap placement rule (correct for room bodies) also rejected corridor cells for running alongside existing floor. Corridors now place reliably, producing the extended, winding hallways between rooms that were missing.
-- **Rooms clustered at the map center**: the generator seeded its first room dead-center, so on large scrolling maps play piled up on the viewport seams. It now seeds from a randomly-chosen corner, spreading rooms across the whole map.
+- More corridors
+- Better room distribution
 
 ## [1.14b] 2026-07-14
 
 ### Added
 
-- **Two-step auto-explore + target cycling**: (x)plore (`x`) now previews the path to its next destination on the first press and travels on the second (Brogue-style); pressing it again while walking cancels. A new **Tab** key (`cycle_target`) cycles through reachable points of interest — ground items and important actors (doors, stairways, gateways, and any actor with a personality) — previewing the path to each; pressing (x)plore then travels there.
+- A new **Tab** key (`cycle_target`) cycles through reachable points of interest — ground items and important actors (doors, stairways, gateways, and any actor with a personality) — previewing the path to each; pressing (x)plore then travels there.
 - **Random fungus + spore clouds**: an opt-in `fungus` generation block (`{ min, max, tall_chance? }`, per prototype or per floor) scatters clustered fungus patches, each with a random name (from `fungi_types.json`) and color. Short `fungus` is walkable and glowing; walking onto it crushes it and puffs out a small spore cloud tinted to match, applying a random, usually-beneficial potion-style effect. `tall_fungus` is a solid, flammable, sight-blocking cluster. Enabled on every non-infernal dungeon floor.
 - **`crushable` actor attribute**: a general "destroyed when an actor walks onto it" attribute for non-solid actors, decoupled from the separate `spore_release` add-on (which makes a crushed actor also release a spore cloud).
-- **Consolidated terrain-regions editor**: the prototype editor's separate Lakes and Abyss checkboxes (which built duplicate forms, including an irrelevant liquid-type dropdown for abyss) are merged into one region editor; toggling a section no longer collapses it, since the editor now preserves open sections across re-renders.
 
 ### Fixed
 
