@@ -228,6 +228,7 @@ An item with `light_source: true` emits light when carried in an actor's invento
 | `lightIntensity` | number | Light strength 0–1 (default `1.0`) |
 | `burns_out_item` | string | Item type to replace this one when its `burns` stat hits 0 |
 | `burnout_message` | string | Message shown to player when the item burns out |
+| `toggle_to` | string | Item type this becomes when toggled by the `toggle_torch` use effect (lit ↔ unlit) |
 
 ```json
 "torch": {
@@ -251,6 +252,37 @@ An item with `light_source: true` emits light when carried in an actor's invento
   }
 }
 ```
+
+### Lighting, Extinguishing, and Fuel
+
+A lit/unlit pair is defined entirely in data. Each type points at the other with
+`toggle_to`, and **each declares its own `burns` block** — the engine holds no fuel
+constants. The lit torch burns (`per_turn: -1`); the unlit one holds its reserve
+without consuming it (`per_turn: 0`):
+
+```json
+"torch_unlit": {
+  "attributes": {
+    "use_verb": "Light",
+    "use_effect": "toggle_torch",
+    "toggle_to": "torch"
+  },
+  "stats": {
+    "burns": { "max": 500, "per_turn": 0, "display_label": "Fuel" }
+  }
+}
+```
+
+When an item toggles (via the use verb, or automatically when submerged in deep
+liquid), the engine copies only the **current** value across; `max`, `per_turn`,
+`display_label`, and `warnings` all come from the destination type's own JSON. So
+burn rate, fuel capacity, and warning text are per-item authoring decisions.
+
+Notes:
+
+- An item with **no** `burns` stat is treated as never running out — omit the stat for a permanent lamp.
+- Only an item actively consuming fuel (`per_turn` negative) can *burn out*. An unlit torch at 0 fuel is simply empty: it won't trigger `burns_out_item` and can't be relit.
+- `burns_out_item` fires when a burning item's fuel reaches 0, replacing it (e.g. a torch becomes `torch_spent`).
 
 ---
 

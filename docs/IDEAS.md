@@ -4,17 +4,17 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Bugs
 
-- while starving to death, the health sidebar stat started showing floats
-- why is the confusion effect also temporarily lowering health?
+- in the prototype editor, I can turn on the toggles for settings like fog of war and darkness, implying an override of the prototype-level default. But if I deactivate those toggles, that is still an override. There's no way to disable the override altogether, resulting in potentially redundant json (low priority). These types of settings might best be grouped under a activate deactivate toggle that returns us to prototype defaults.
 
 ---
 
-## Tweaks
+### Tweaks
 
 - use the color name in descriptive text when referring to paired doors, keys levers etc. "the orange gate is locked" etc
-- stairways should be spawning in room walls like braziers not in the middle of rooms/hallways. Ideally there would be braziers on either side of them too
-- item attribute for break chance. This is needed for mattocks. Could we reuse work from torch fuel for item condition and have the amount an item degrades per use be specified in a json attribute? Fuel use per turn ought to be specified in json too—stop hard coding specific things in engine! reusable modules with data-driven attributes!
-- mattocks should have a random chance of successful digging rather than the three-strikes dig they have now, this should be a json attribute that designers could use in other items if they wanted.
+- stairways should be spawning along room walls like braziers rather than in the middle of rooms/hallways. Ideally there would be braziers on either side of them too
+- item attribute for an item's integrity/condition (maybe there is a better word- how many uses until it breaks). This is needed for mattocks. Could we reuse work from torch fuel stat for item condition and have the amount an item degrades per use be specified in a json attribute?
+- mattocks should have a random chance of successful digging rather than the three-strikes dig they have now, this should also be a json attribute that designers could use in other items if they wanted.
+- It doesn't seem like good design to have duration hard coded into states. Confusion from a potion might last longer than confusion from an enemy attack or trap.
 
 ## Feature ideas
 

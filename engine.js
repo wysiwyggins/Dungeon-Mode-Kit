@@ -3551,12 +3551,47 @@ class Entity {
     }
 
     /**
+     * The name to show the player. Base implementation prefixes the entity's paired
+     * color when it has one, so a color-locked door reads "fire brick door" rather
+     * than a generic "Door" — the color is how the player actually identifies which
+     * door goes with which key, so it belongs in the text, not just the sprite tint.
+     *
+     * Keeps the name's own capitalization — this is the label form, used in sidebars
+     * and headings. getNameWithArticle() handles lowercasing for mid-sentence use.
+     * Item overrides this with its own identification-aware template logic.
+     *
+     * @returns {string} Display name, color-prefixed when applicable
+     */
+    getDisplayName() {
+        const color = this.getColorName?.();
+        if (!color) return this.name;
+
+        // Don't double up if the name already carries the color (e.g. authored that way).
+        if (this.name.toLowerCase().includes(color.toLowerCase())) return this.name;
+        return `${color} ${this.name}`;
+    }
+
+    /**
+     * The color name paired to this entity, if any. Doors/keys carry `lock_color`
+     * (set when a key/door pair is assigned a color from colors.json). Returns null
+     * for entities with no color pairing, which is most of them.
+     * @returns {string|null}
+     */
+    getColorName() {
+        return this.getAttribute?.('lock_color') || null;
+    }
+
+    /**
      * Get the entity's name with appropriate article ("the", or none for proper nouns/mass nouns)
+     *
+     * Generic names are authored lowercase in the data files so they read as prose
+     * mid-sentence ("the fire brick door"); proper names keep their capitals.
+     *
      * @param {boolean} capitalize - Whether to capitalize "The" (default false)
      * @returns {string} Name with article if appropriate
      */
     getNameWithArticle(capitalize = false) {
-        const name = this.name;
+        const name = this.getDisplayName();
         if (this.hasAttribute('proper_named') || this.hasAttribute('mass_noun')) {
             return name;
         }
@@ -5857,6 +5892,35 @@ class Actor extends Entity {
     }
 
     /**
+     * Quantize a possibly-fractional per-turn rate into a whole-number change,
+     * banking the leftover fraction so the long-run average matches the rate.
+     *
+     * Stats are only ever displayed and compared as integers, so we never write a
+     * fraction into stat.current. A rate of -0.8/turn spends -1 on four of every
+     * five turns and 0 on the fifth, averaging -0.8 exactly.
+     *
+     * @param {string} statName - Stat the rate belongs to
+     * @param {number} rate - Effective per-turn rate, possibly fractional
+     * @returns {number} Whole-number amount to apply this turn (may be 0)
+     */
+    takeWholePerTurn(statName, rate) {
+        if (Number.isInteger(rate)) return rate;
+
+        if (!this._perTurnRemainders) this._perTurnRemainders = {};
+        const banked = this._perTurnRemainders[statName] || 0;
+        const total = banked + rate;
+
+        // Truncate toward zero so the whole part never overshoots the banked total;
+        // the leftover keeps the total's sign and carries into the next turn.
+        const whole = Math.trunc(total);
+        // Round the carry to kill float dust (0.5999999999999999 -> 0.6) so the
+        // bank can't drift over thousands of turns.
+        this._perTurnRemainders[statName] = Math.round((total - whole) * 1e6) / 1e6;
+
+        return whole;
+    }
+
+    /**
      * Process per-turn stat changes for this actor
      * Called at the start of each turn
      *
@@ -5883,13 +5947,30 @@ class Actor extends Entity {
         if (!this.stats || this.isDead) return;
 
         for (const [statName, stat] of Object.entries(this.stats)) {
-            const perTurn = this.getEffectivePerTurn(statName);
+            const rawPerTurn = this.getEffectivePerTurn(statName);
+            if (rawPerTurn === 0) continue;
+
+            // Stat values must stay whole numbers — the UI never shows decimals, and
+            // fractional carryover through restore_from used to leave permanent
+            // fractions in health (e.g. 21.6). Fractional rates (from rate_scaled_by
+            // or wear_effect) are banked in a remainder and spent as whole points, so
+            // a -0.8/turn drain still averages -0.8 without ever writing a fraction.
+            const perTurn = this.takeWholePerTurn(statName, rawPerTurn);
             if (perTurn === 0) continue;
 
             const oldValue = stat.current;
 
-            // Split into base per-turn (subject to restore_from) and passive bonus (always applies)
-            const basePerTurn = stat.per_turn || 0;
+            // Split into base per-turn (subject to restore_from) and passive bonus (always
+            // applies). The split is taken from the quantized total so neither part
+            // reintroduces a fraction. The base claims its share first, capped at the total
+            // so it can't overshoot and flip the sign of the passive remainder; a fractional
+            // authored per_turn rounds up to a whole point so it still goes through the
+            // restore_from gate rather than leaking past it as a passive bonus.
+            const rawBase = stat.per_turn || 0;
+            const sign = Math.sign(perTurn);
+            const basePerTurn = Math.sign(rawBase) === sign
+                ? Math.ceil(Math.min(Math.abs(rawBase), Math.abs(perTurn))) * sign
+                : 0;
             const passivePerTurn = perTurn - basePerTurn;
 
             // Apply base per-turn with restore_from gate
@@ -5901,11 +5982,14 @@ class Actor extends Entity {
                 if (stat.restore_from && baseGain > 0) {
                     const sourceStat = this.stats[stat.restore_from];
                     if (sourceStat) {
-                        if (sourceStat.current <= 0) {
+                        // Only whole points can be drawn from the source, so a partial
+                        // point left in the source can't bleed a fraction into this stat.
+                        const available = Math.floor(sourceStat.current);
+                        if (available <= 0) {
                             baseGain = 0;
-                        } else if (sourceStat.current < baseGain) {
-                            baseGain = sourceStat.current;
-                            sourceStat.current = 0;
+                        } else if (available < baseGain) {
+                            baseGain = available;
+                            sourceStat.current -= available;
                         } else {
                             sourceStat.current -= baseGain;
                         }
@@ -5988,9 +6072,12 @@ class Actor extends Entity {
                 item.processPerTurnStats();
             }
 
-            // Handle items that burn out (burns stat hits 0)
+            // Handle items that burn out (burns stat hits 0). Only something actively
+            // consuming fuel can burn out — an item holding a dormant fuel reserve (an
+            // unlit torch, which declares per_turn 0) is just empty, not burning out,
+            // and must not be destroyed or announced every turn.
             const burns = item.stats?.burns;
-            if (burns && burns.current <= 0) {
+            if (burns && burns.current <= 0 && burns.per_turn < 0) {
                 const isPlayer = this.hasAttribute('controlled');
                 const msg = item.getAttribute('burnout_message') || `Your ${item.name} burns out.`;
                 if (isPlayer) {
@@ -6417,6 +6504,39 @@ class Actor extends Entity {
     }
 
     /**
+     * Build the toggled counterpart of an item (lit torch <-> unlit torch), carrying
+     * over the live value of a consumable stat so fuel survives the swap.
+     *
+     * The replacement's stat config (max, per_turn, display_label, warnings) comes
+     * entirely from the target type's JSON — the engine only copies `current` across.
+     * That way "how fast does this burn" and "when does it warn" are authored in the
+     * data files per item, not hard-coded here. An unlit torch declares per_turn 0,
+     * a lit one declares -1, so lighting and extinguishing need no engine knowledge
+     * of which direction is which.
+     *
+     * @param {Item} item - The item being toggled
+     * @param {string} targetType - Item type to become
+     * @param {string} [carryStat='burns'] - Stat whose `current` carries over
+     * @returns {Item|null} The replacement item, or null if targetType is unknown
+     */
+    buildToggledItem(item, targetType, carryStat = 'burns') {
+        const itemData = this.engine.currentPrototype?.getItemData(targetType);
+        if (!itemData) return null;
+
+        const newItem = new Item(-1, -1, targetType, itemData, this.engine);
+        newItem.owner = this;
+
+        // Carry the consumable's remaining amount into the new item's own stat block.
+        const carried = item.stats?.[carryStat]?.current;
+        if (carried !== undefined && newItem.stats?.[carryStat]) {
+            const target = newItem.stats[carryStat];
+            target.current = target.max !== undefined ? Math.min(target.max, carried) : carried;
+        }
+
+        return newItem;
+    }
+
+    /**
      * Use an item from inventory
      * @param {Item} item - The item to use
      * @returns {boolean} True if item was used successfully
@@ -6801,12 +6921,12 @@ class Actor extends Entity {
             case 'toggle_torch': {
                 const isLit = item.hasAttribute('light_source');
                 const targetType = item.getAttribute('toggle_to') || (isLit ? 'torch_unlit' : 'torch');
-                const itemData = this.engine.currentPrototype?.getItemData(targetType);
-                if (!itemData) return false;
+                if (!this.engine.currentPrototype?.getItemData(targetType)) return false;
 
-                const maxFuel = item.stats?.burns?.max ?? 500;
+                // An item with no fuel stat at all is treated as always-fuelled, so a
+                // designer can make a permanent lamp by simply omitting the stat.
                 const hasBurnsStat = item.stats?.burns !== undefined;
-                const remainingFuel = hasBurnsStat ? (item.stats.burns.current ?? 0) : maxFuel;
+                const remainingFuel = hasBurnsStat ? (item.stats.burns.current ?? 0) : Infinity;
 
                 if (!isLit && remainingFuel <= 0) {
                     if (this.isPlayerControlled()) {
@@ -6826,16 +6946,8 @@ class Actor extends Entity {
                     }
                 }
 
-                const newItem = new Item(-1, -1, targetType, itemData, this.engine);
-                newItem.owner = this;
-                newItem.stats = newItem.stats || {};
-                newItem.stats.burns = {
-                    current: remainingFuel,
-                    max: maxFuel,
-                    per_turn: isLit ? 0 : -1,
-                    display_label: 'Fuel',
-                    warnings: [{ threshold: 0.1, message: 'Your torch is almost out!' }]
-                };
+                const newItem = this.buildToggledItem(item, targetType);
+                if (!newItem) return false;
 
                 if (!isLit && item.count > 1) {
                     item.count--;
@@ -8152,7 +8264,7 @@ class Actor extends Entity {
                     this.engine.playSound?.('tap1');
                     if (this.isPlayerControlled()) {
                         this.engine.inputManager?.showMessage(
-                            `The ${actorAtTarget.name} is jammed shut with a spike.`
+                            `${actorAtTarget.getNameWithArticle(true)} is jammed shut with a spike.`
                         );
                     }
                     // feedbackShown: we already played a sound + messaged, so the
@@ -8177,7 +8289,7 @@ class Actor extends Entity {
                         // Prefer a context-specific rejection (e.g. the escape exit's
                         // "you need the amulet" text) over the generic locked message.
                         const lockedMsg = actorAtTarget.getAttribute('collision_description')
-                            || `The ${actorAtTarget.name} is locked.`;
+                            || `${actorAtTarget.getNameWithArticle(true)} is locked.`;
                         this.engine.inputManager?.showMessage(lockedMsg);
                     }
                     // feedbackShown: the plunk3 + "is locked" message above is the
@@ -9019,21 +9131,11 @@ class Actor extends Entity {
                     this.engine.playSound('extinguish');
                     this.engine.inputManager?.showMessage(`Your ${item.name} is extinguished.`);
                 }
-                const unlitType = 'torch_unlit';
-                const itemData = this.engine.currentPrototype?.getItemData(unlitType);
-                if (itemData) {
-                    const remainingFuel = item.stats?.burns?.current ?? 0;
-                    const maxFuel = item.stats?.burns?.max ?? 500;
-                    const newItem = new Item(-1, -1, unlitType, itemData, this.engine);
-                    newItem.owner = this;
-                    newItem.stats = newItem.stats || {};
-                    newItem.stats.burns = {
-                        current: remainingFuel,
-                        max: maxFuel,
-                        per_turn: 0,
-                        display_label: 'Fuel',
-                        warnings: [{ threshold: 0.1, message: 'Your torch is almost out!' }]
-                    };
+                // Same data-driven swap as the Extinguish verb: the unlit type and its
+                // fuel config come from the item's own JSON, not from literals here.
+                const unlitType = item.getAttribute('toggle_to') || 'torch_unlit';
+                const newItem = this.buildToggledItem(item, unlitType);
+                if (newItem) {
                     const idx = this.inventory.indexOf(item);
                     if (idx !== -1) this.inventory[idx] = newItem;
                 } else {

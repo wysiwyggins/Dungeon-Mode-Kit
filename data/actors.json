@@ -35,7 +35,7 @@
     ]
   },
   "skeleton": {
-    "name": "Skeleton",
+    "name": "skeleton",
     "description": "Brittle bones stripped of their flesh and animated by some dark magic.",
     "tileIndexBase": "THIN_TORSO",
     "tileIndexTop": "SKULL",
@@ -61,7 +61,7 @@
     }
   },
   "pink_jelly": {
-    "name": "Pink Jelly",
+    "name": "pink jelly",
     "description": "A quivering, gelatinous blob that engulfs whatever it touches.",
     "tileIndexBase": "WHITE_FULL_BLOCK",
     "tileIndexTop": "WHITE_FULL_BLOCK",
@@ -90,7 +90,7 @@
     }
   },
   "small_pink_jelly": {
-    "name": "Small Pink Jelly",
+    "name": "small pink jelly",
     "description": "A wad of pink slime that broke off a larger blob.",
     "tileIndexBase": "DROPLET",
     "tileIndexTop": "BLANK",
@@ -116,7 +116,7 @@
     }
   },
   "ghast": {
-    "name": "Ghast",
+    "name": "ghast",
     "description": "A phantasm casts a baleful, cold light on its surroundings.",
     "tileIndexBase": "OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE",
     "tileIndexTop": "HAUNTED_FACE",
@@ -171,7 +171,7 @@
     }
   },
   "turret": {
-    "name": "Dart turret",
+    "name": "dart turret",
     "description": "A clockwork blowgun",
     "tileIndexBase": "CANDLE_STICK",
     "tileIndexTop": "CYCLOPS_FACE",
@@ -197,7 +197,7 @@
     ]
   },
   "scutigera_head": {
-    "name": "Scutigera",
+    "name": "scutigera",
     "description": "A fast moving, enormous centipede with an immense fan of legs.",
     "tileIndexBase": "DOUBLE_EXCLAMATION_MARK",
     "tileIndexTop": {
@@ -232,7 +232,7 @@
     }
   },
   "scutigera_body": {
-    "name": "Scutigera",
+    "name": "scutigera",
     "description": "A fast moving, enormous centipede with an immense fan of legs.",
     "tileIndexBase": "DOUBLE_EXCLAMATION_MARK",
     "tileIndexTop": "OPAQUE_PRISON_WINDOW",
@@ -372,7 +372,7 @@
   },
   "goblin_spearman": {
     "name": "goblin spearman",
-    "description": "A goblin clutching a long spear, lurking by the doorway",
+    "description": "A goblin clutching a spear",
     "tileIndexBase": "THIN_TORSO",
     "tileIndexTop": "FLY",
     "flipTopV": true,
@@ -400,11 +400,11 @@
       "health": 25
     },
     "default_items": [
-      "long_spear"
+      "spear"
     ]
   },
   "deer": {
-    "name": "Deer",
+    "name": "deer",
     "tileIndexBase": "DOOR_TOP",
     "tileIndexTop": "OPAQUE_DARK_SHOCKED_ANIMAL_FACE",
     "tileIndexSide": "FLIPPED_SMALL_WHITE_LOWER_RIGHT_TRIANGLE",
@@ -486,7 +486,7 @@
     ]
   },
   "tree": {
-    "name": "Tree",
+    "name": "tree",
     "tileIndexBase": "CANDLE_STICK",
     "tileIndexTop": "WHITE_UPWARD_POINTING_TRIANGLE",
     "tint": "#006610",
@@ -534,7 +534,7 @@
     }
   },
   "wall": {
-    "name": "Wall",
+    "name": "wall",
     "tileIndexBase": "OPAQUE_DARK_SHADE",
     "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
     "attributes": {
@@ -547,10 +547,10 @@
     }
   },
   "brick_wall": {
-    "name": "Brick Wall",
+    "name": "brick wall",
     "tileIndexBase": "BRICK_WALL",
     "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
-    "tint": "#884444",
+    "tint": "#664444",
     "attributes": {
       "flammable": false,
       "pushable": false,
@@ -575,7 +575,7 @@
     }
   },
   "metal_wall": {
-    "name": "Wall",
+    "name": "wall",
     "tileIndexBase": "OPAQUE_DARK_SHADE",
     "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
     "tint": "#33CCAA",
@@ -588,7 +588,7 @@
     }
   },
   "wall-bottom-left-corner": {
-    "name": "Wall",
+    "name": "wall",
     "tileIndexBase": "OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE",
     "tileIndexTop": "OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE_AND_OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE",
     "flipBaseH": true,
@@ -603,7 +603,7 @@
     }
   },
   "wall-bottom-right-corner": {
-    "name": "Wall",
+    "name": "wall",
     "tileIndexTop": "OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE_AND_OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE",
     "tileIndexBase": "OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE",
     "flipBaseV": true,
@@ -618,7 +618,7 @@
     }
   },
   "wall-top-right-corner": {
-    "name": "Wall",
+    "name": "wall",
     "tileIndexBase": "OPAQUE_DARK_SHADE",
     "tileIndexTop": "OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE",
     "flipTopH": true,
@@ -635,7 +635,7 @@
     }
   },
   "wall-top-left-corner": {
-    "name": "Wall",
+    "name": "wall",
     "tileIndexBase": "OPAQUE_DARK_SHADE",
     "tileIndexTop": "OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE",
     "flipTopV": true,
@@ -685,7 +685,7 @@
     }
   },
   "torch": {
-    "name": "Torch",
+    "name": "torch",
     "tileIndexBase": "OPAQUE_WHITE_DIAMOND_SUITE",
     "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
     "tint": "#EC7505",
@@ -699,7 +699,7 @@
     }
   },
   "pushable_wall": {
-    "name": "Wall",
+    "name": "wall",
     "tileIndexBase": "OPAQUE_MEDIUM_SHADE",
     "tileIndexTop": "OPAQUE_LIGHT_SHADE",
     "attributes": {
@@ -740,7 +740,7 @@
     }
   },
   "door": {
-    "name": "Door",
+    "name": "door",
     "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
     "tileIndexTop": "OPAQUE_DOOR_TOP",
     "tileIndexTop_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
@@ -755,7 +755,7 @@
     }
   },
   "locked_door": {
-    "name": "Door",
+    "name": "door",
     "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
     "tileIndexTop": "OPAQUE_DOOR_TOP",
     "tileIndexTop_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
@@ -772,7 +772,7 @@
     }
   },
   "generic_locked_door": {
-    "name": "Door",
+    "name": "door",
     "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
     "tileIndexTop": "OPAQUE_DOOR_TOP",
     "tileIndexTop_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
@@ -1033,7 +1033,7 @@
     }
   },
   "fire": {
-    "name": "Fire",
+    "name": "fire",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
     "animated": true,
@@ -1055,7 +1055,7 @@
     "lifetime": 5
   },
   "intense_fire": {
-    "name": "Fire",
+    "name": "fire",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
     "tint": "#fecb3e",
@@ -1075,7 +1075,7 @@
     "spread_chance": 0.2
   },
   "brazier": {
-    "name": "Brazier",
+    "name": "brazier",
     "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
     "animationTop": "fire",
     "tint": "#EC7505",
@@ -1099,7 +1099,7 @@
     }
   },
   "down_stairway": {
-    "name": "Stairs Down",
+    "name": "stairs down",
     "tileIndexBase": "DOWNWARDS_ARROW_ON_LIGHT_SHADE",
     "tileIndexTop": "OPAQUE_QUADRANT_UPPER_LEFT_AND_LOWER_LEFT_AND_LOWER_RIGHT",
     "flipTopV": true,
@@ -1111,7 +1111,7 @@
     }
   },
   "locked_down_stairway": {
-    "name": "Sealed Stairs",
+    "name": "sealed stairs",
     "tileIndexBase": "EMPHASIZED_LATIN_CAPITAL_LETTER_X",
     "tileIndexTop": "OPAQUE_QUADRANT_UPPER_LEFT_AND_LOWER_LEFT_AND_LOWER_RIGHT",
     "tileIndexBase_open": "DOWNWARDS_ARROW_ON_LIGHT_SHADE",
@@ -1128,7 +1128,7 @@
     }
   },
   "up_stairway": {
-    "name": "Stairs Up",
+    "name": "stairs up",
     "tileIndexBase": "UPWARDS_ARROW_ON_LIGHT_SHADE",
     "tileIndexTop": "OPAQUE_QUADRANT_UPPER_LEFT_AND_LOWER_LEFT_AND_LOWER_RIGHT",
     "flipTopV": true,
@@ -1141,7 +1141,7 @@
     }
   },
   "locked_up_stairway": {
-    "name": "Sealed Stairs",
+    "name": "sealed stairs",
     "tileIndexBase": "EMPHASIZED_LATIN_CAPITAL_LETTER_X",
     "tileIndexTop": "OPAQUE_QUADRANT_UPPER_LEFT_AND_LOWER_LEFT_AND_LOWER_RIGHT",
     "tileIndexBase_open": "UPWARDS_ARROW_ON_LIGHT_SHADE",
@@ -1247,7 +1247,7 @@
     "lifetime": 4
   },
   "poison_gas_trap": {
-    "name": "Poison Gas Trap",
+    "name": "poison gas trap",
     "tileIndexBase": "INVERSE_BULLET",
     "tint": "#55AA55",
     "personality": "trap",
@@ -1267,7 +1267,7 @@
     "trap_message": "A hidden vent releases poisonous gas!"
   },
   "fire_trap": {
-    "name": "Fire Trap",
+    "name": "fire trap",
     "tileIndexBase": "INVERSE_BULLET",
     "tint": "#FF6622",
     "personality": "trap",
@@ -1288,7 +1288,7 @@
     "trap_message": "Flames erupt from the floor!"
   },
   "paralysis_gas_trap": {
-    "name": "Paralysis Gas Trap",
+    "name": "paralysis gas trap",
     "tileIndexBase": "INVERSE_BULLET",
     "tint": "#AAAAFF",
     "personality": "trap",
@@ -1306,7 +1306,7 @@
     "trap_message": "A numbing gas billows forth!"
   },
   "confusion_gas_trap": {
-    "name": "Confusion Gas Trap",
+    "name": "confusion gas trap",
     "tileIndexBase": "INVERSE_BULLET",
     "tint": "#FF88FF",
     "personality": "trap",
@@ -1324,7 +1324,7 @@
     "trap_message": "A disorienting mist fills the air!"
   },
   "toad": {
-    "name": "Toad",
+    "name": "toad",
     "tileIndexBase": "WHITE_DOOR_TOP",
     "tileIndexTop": "WHITE_QUOTATION_MARK",
     "flipTopV": true,
@@ -1346,7 +1346,7 @@
     }
   },
   "bat": {
-    "name": "Bat",
+    "name": "bat",
     "tileIndexBase": "BOX_DRAWING_LIGHT_HORIZONTAL",
     "tileIndexTop": "CARON",
     "personality": "aggressive_melee",
@@ -1369,7 +1369,7 @@
     }
   },
   "rat": {
-    "name": "Rat",
+    "name": "rat",
     "tileIndexBase": "WHITE_LEFTWARDS_HARPOON_BARB_UPWARDS",
     "tileIndexTop": "BLANK",
     "tint": "#222233",
@@ -1455,7 +1455,7 @@
     }
   },
   "spider": {
-    "name": "Spider",
+    "name": "giant spider",
     "tileIndexBase": "ASTERISK",
     "tileIndexTop": "BLANK",
     "tint": "#665544",
@@ -1480,7 +1480,7 @@
     }
   },
   "wraith": {
-    "name": "Wraith",
+    "name": "wraith",
     "tileIndexBase": "OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE",
     "tileIndexTop": "SKULL",
     "tint": "#d4e3fe",
@@ -1507,7 +1507,7 @@
     }
   },
   "ogre": {
-    "name": "Ogre",
+    "name": "ogre",
     "tileIndexBase": "STRONG_TORSO",
     "tileIndexTop": "GRIM_FACE",
     "tint": "#cce8b5",
@@ -1535,7 +1535,7 @@
     ]
   },
   "jackal": {
-    "name": "Jackal",
+    "name": "jackal",
     "tileIndexBase": "DOOR_TOP",
     "tileIndexTop": "REPTILE_HEAD",
     "tint": "#C4A035",
@@ -1570,7 +1570,7 @@
     
   },
   "monkey": {
-    "name": "Monkey",
+    "name": "monkey",
     "tileIndexBase": "LEG",
     "tileIndexTop": "ANIMAL_HEAD",
     "tileIndexSide": "BOX_BOTTOM_RIGHT",
@@ -1605,7 +1605,7 @@
     }
   },
   "guard": {
-    "name": "Guard",
+    "name": "guard",
     "tileIndexBase": "STRONG_TORSO",
     "tileIndexTop": {
       "x": 8,
@@ -1664,7 +1664,7 @@
     }
   },
   "poison_frog": {
-    "name": "Poison Frog",
+    "name": "poison frog",
     "description": "A bright-skinned frog that exudes a toxic miasma.",
     "tileIndexBase": "DOOR_TOP",
     "tileIndexTop": "QUOTATION_MARK",
@@ -1689,7 +1689,7 @@
     }
   },
   "witch": {
-    "name": "Witch",
+    "name": "witch",
     "description": "A hunched figure muttering incantations, mending allies and calling the dead to rise.",
     "tileIndexBase": "LEG",
     "tileIndexTop": "WHITE_UPWARD_POINTING_TRIANGLE",
@@ -1718,7 +1718,7 @@
     }
   },
   "crow": {
-    "name": "Crow",
+    "name": "crow",
     "description": "A glossy black bird with greedy eyes, drawn to anything that glitters.",
     "tileIndexBase": "BOX_DRAWING_LIGHT_HORIZONTAL",
     "tileIndexTop": "LATIN_SMALL_LETTER_C_WITH_CARON",
@@ -1743,7 +1743,7 @@
     }
   },
   "phantom_hound": {
-    "name": "Phantom Hound",
+    "name": "phantom hound",
     "description": "A spectral canine that phases in and out of reality, striking before vanishing.",
     "tileIndexBase": "WHITE_DOOR_TOP",
     "tileIndexTop": "WHITE_HUNTING_ANIMAL_FACE",
@@ -1771,7 +1771,7 @@
     }
   },
   "hell_hound": {
-    "name": "Hell Hound",
+    "name": "hell hound",
     "description": "A blazing canine that blinks through space, leaving fire in its wake.",
     "tileIndexBase": "WHITE_DOOR_TOP",
     "tileIndexTop": "WHITE_HUNTING_ANIMAL_FACE",

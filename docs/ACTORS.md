@@ -150,7 +150,7 @@ Makes a stat's per-turn regeneration cost another stat. Each point gained is sub
 }
 ```
 
-Every turn that health regenerates, the same amount is deducted from nutrition. If nutrition is empty, health does not regenerate. If nutrition has less than the full amount, health only gains what nutrition can afford.
+Every turn that health regenerates, the same amount is deducted from nutrition. If nutrition is empty, health does not regenerate. If nutrition has less than the full amount, health only gains what nutrition can afford — in whole points, so a partial point left in the source is not transferable.
 
 Only per-turn **gains** trigger the transfer. If health is already full or the effective per-turn is negative (e.g., from a cursed item), no nutrition is spent.
 
@@ -169,6 +169,8 @@ Scales a stat's `per_turn` rate by an attribute value. The multiplier is `attrib
 With strength 8, the effective drain is `-1 * (8 / 10) = -0.8` per turn. With strength 15, it becomes `-1.5` per turn. Equipment bonuses to the attribute (from `wear_effect`) are included in the calculation.
 
 Works with any attribute — not just the three combat attributes. For custom attributes, the same `value / 10` formula applies.
+
+**Stat values stay whole numbers.** Scaling produces a fractional *rate*, but a fraction is never written into the stat itself — the UI shows stats as integers, and fractions leak into dependent stats through `restore_from`. Instead the leftover fraction is banked per stat and spent once it accumulates to a whole point: a `-0.8`/turn drain spends `-1` on four of every five turns and `0` on the fifth. The long-run average matches the rate exactly (a `-0.8` drain removes exactly 800 over 1000 turns), so scaled rates behave as designed while every displayed value remains an integer.
 
 #### Combining Both
 
@@ -200,7 +202,7 @@ The two fields compose naturally. Rodney's stat block in the dungeon prototype u
 Each turn with strength 8:
 
 1. Health gains 1 (if not full), debiting 1 from nutrition
-2. Nutrition drains at `1 * (8 / 10) = 0.8` from its own `per_turn`
+2. Nutrition drains at `1 * (8 / 10) = 0.8` from its own `per_turn` — applied as a whole point on 4 of every 5 turns (see above), averaging 0.8
 3. Total nutrition cost: ~1.8 per turn (healing + hunger)
 
 Equipping a Ring of Strength (+2, total 10) increases the drain to `1 * (10 / 10) = 1.0`, making total cost ~2.0 per turn. A stronger character heals at the same rate but gets hungrier faster.

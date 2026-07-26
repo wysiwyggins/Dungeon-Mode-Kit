@@ -969,7 +969,7 @@ class InterfaceManager {
                 } else if (!this.isThermometerStat(key)) {
                     // Regular stat - display as text
                     const displayValue = typeof value === 'object' ? value.current : value;
-                    regularStats.push(`${this.capitalize(key)}: ${displayValue}`);
+                    regularStats.push(`${this.capitalize(key)}: ${this.formatStatValue(displayValue)}`);
                 }
                 // When hasHtmlActorsElement is true, thermometer stats are skipped entirely
                 // (they're shown in the HTML sidebar instead)
@@ -1651,6 +1651,17 @@ class InterfaceManager {
      */
     capitalize(str) {
         return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    /**
+     * Format a stat value for display. Stats are conceptually whole numbers, so this
+     * is a last-resort guard: even if some effect leaves a fraction behind, the UI
+     * shows a clean integer rather than "21.6" or "0.30000000000000004".
+     * @param {number} value
+     * @returns {string|number}
+     */
+    formatStatValue(value) {
+        return typeof value === 'number' ? Math.round(value) : value;
     }
 
     /**
@@ -4223,7 +4234,7 @@ class InterfaceManager {
                     html += `</figure>`;
                     // Only show ratio numbers for stats with max <= 100
                     if (max <= 100) {
-                        html += `<span class="stat-ratio">${current}/${max}</span>`;
+                        html += `<span class="stat-ratio">${this.formatStatValue(current)}/${this.formatStatValue(max)}</span>`;
                     }
                     html += `</li>`;
                 }

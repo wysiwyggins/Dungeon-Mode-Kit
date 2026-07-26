@@ -169,6 +169,16 @@
           "min": 7,
           "max": 12,
           "freq": 40
+        },
+        {
+          "id": "oculus",
+          "min": 2,
+          "max": 2,
+          "freq": 100,
+          "count": [
+            1,
+            4
+          ]
         }
       ],
       "actor_budget": {

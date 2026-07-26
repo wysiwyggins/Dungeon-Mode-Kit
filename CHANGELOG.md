@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **Torch fuel is now fully data-driven**. Two engine sites (the Extinguish/Light verb and the auto-extinguish when submerging) each rebuilt a torch's `burns` stat from hard-coded literals — `per_turn: -1`, `display_label: 'Fuel'`, the warning threshold and its message text, a `?? 500` fuel cap, and the `'torch_unlit'` type name — discarding whatever the JSON authored. Both now call one `buildToggledItem()` helper that takes the destination type's own stat block from `items.json` and carries over only the live `current` value. `torch_unlit` gained its own `burns` block (`per_turn: 0` — holds a reserve without consuming it) and both torch types gained `toggle_to`, so the lit/unlit pairing and the burn rate are authored in data rather than known by the engine. Fuel still carries across light/extinguish/relight exactly as before; an item with no `burns` stat is now treated as never running out (omit it for a permanent lamp). See [ITEMS.md](docs/ITEMS.md#lighting-extinguishing-and-fuel).
+
+### Fixed
+
+- **Burnout no longer fires on items that aren't burning**: the per-turn burnout check only tested `burns.current <= 0`, so any item holding an empty-but-dormant fuel reserve would announce "burns out" every turn and be destroyed. It now also requires the fuel to actually be draining (`per_turn < 0`), so an unlit torch at 0 fuel is simply empty.
+
+- **Health showed decimals while starving** (e.g. `21.6` in the sidebar, stuck there permanently). `rate_scaled_by` multiplies a stat's `per_turn` by `attribute / 10`, so the player's strength-8 nutrition drain was a fractional `-0.8`/turn. As nutrition bottomed out, `restore_from` clamped health's regen to whatever fraction of nutrition was left and paid it into health, leaving a permanent fraction. Fractional per-turn rates are now banked in a per-stat remainder and spent as whole points (a `-0.8`/turn drain spends `-1` on four of every five turns, so the long-run average is unchanged — exactly 800 over 1000 turns), and `restore_from` only ever draws whole points from its source. Stat values stay integral. The sidebar and player-info panel also round stat values as a last-resort display guard, so no stat can render a decimal regardless of source.
+
 ## [1.15b] 2026-07-22
 
 ### Added
