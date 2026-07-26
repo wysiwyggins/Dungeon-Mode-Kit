@@ -3848,14 +3848,26 @@ class Item extends Entity {
                 }
             }
 
-            // Check warning thresholds (fires when crossing below threshold * max)
-            if (stat.warnings && this.owner?.hasAttribute('controlled')) {
-                for (const warning of stat.warnings) {
-                    const threshold = warning.threshold * stat.max;
-                    if (oldValue > threshold && stat.current <= threshold) {
-                        this.owner.engine.inputManager?.showMessage(warning.message);
-                    }
-                }
+            this.checkStatWarnings(stat, oldValue);
+        }
+    }
+
+    /**
+     * Fire any `warnings` whose threshold this stat just dropped below.
+     *
+     * Split out of the per-turn loop so stats that change on *use* rather than per turn
+     * (e.g. `condition`, spent by degradeItem) get the same warnings — that loop skips
+     * anything without a `per_turn`, so those stats would otherwise never warn.
+     *
+     * @param {Object} stat - The stat object ({current, max, warnings})
+     * @param {number} oldValue - Its value before the change
+     */
+    checkStatWarnings(stat, oldValue) {
+        if (!stat?.warnings || !this.owner?.hasAttribute('controlled')) return;
+        for (const warning of stat.warnings) {
+            const threshold = warning.threshold * stat.max;
+            if (oldValue > threshold && stat.current <= threshold) {
+                this.owner.engine.inputManager?.showMessage(warning.message);
             }
         }
     }
@@ -6570,6 +6582,75 @@ class Actor extends Entity {
     }
 
     /**
+     * Wear down an item's `condition` stat by one use, destroying it when it hits zero.
+     *
+     * The durability model mirrors torch fuel: `condition` is an ordinary item stat, so
+     * it gets the same `display_label` progress bar and `warnings` thresholds for free.
+     * How much a use costs is authored per item (`degrade_per_use`), and what's left
+     * behind is too (`breaks_into_item`, mirroring `burns_out_item`) — the engine only
+     * knows "spend some condition, and if it runs out the item is gone".
+     *
+     * Items with no `condition` stat never wear out, so this is opt-in per item.
+     *
+     * @param {Item} item - The item being used
+     * @returns {boolean} True if the item broke
+     */
+    degradeItem(item) {
+        const condition = item?.stats?.condition;
+        if (!condition) return false;
+
+        const perUse = item.getAttribute('degrade_per_use') ?? 1;
+        if (perUse <= 0) return false;
+
+        const before = condition.current;
+        condition.current = Math.max(0, condition.current - perUse);
+        item.checkStatWarnings?.(condition, before);
+
+        if (condition.current > 0) {
+            if (this.isPlayerControlled()) this.engine.interfaceManager?.updatePlayerInfo();
+            return false;
+        }
+
+        const isPlayer = this.isPlayerControlled();
+        if (isPlayer) {
+            const msg = item.getAttribute('break_message')
+                || `Your ${item.getDisplayName?.() ?? item.name} breaks!`;
+            this.engine.inputManager?.showMessage(msg, { style: 'warning' });
+            this.engine.playSound?.(item.getAttribute('break_sound') || 'glass');
+        }
+
+        // Clear the equipment slot first — a broken item must not keep granting its
+        // wear_effect, and unequipFromSlot also tears down the held sprite.
+        for (const slot of ['weapon', 'top', 'middle', 'lower', 'ring1', 'ring2']) {
+            if (this.equipment?.[slot] === item) {
+                this.unequipFromSlot(slot);
+                break;
+            }
+        }
+
+        // Leave a remnant if the item declares one (a snapped haft, etc.), else it's gone.
+        // Built fresh rather than carrying condition across — the broken item's condition
+        // is 0 by definition, and a remnant should start at whatever its own JSON says.
+        const breaksInto = item.getAttribute('breaks_into_item');
+        const itemData = breaksInto
+            ? this.engine.currentPrototype?.getItemData(breaksInto)
+            : null;
+        let replacement = null;
+        if (itemData) {
+            replacement = new Item(-1, -1, breaksInto, itemData, this.engine);
+            replacement.owner = this;
+        }
+        const idx = this.inventory.indexOf(item);
+        if (idx !== -1) {
+            if (replacement) this.inventory[idx] = replacement;
+            else this.inventory.splice(idx, 1);
+        }
+
+        if (isPlayer) this.engine.interfaceManager?.updatePlayerInfo();
+        return true;
+    }
+
+    /**
      * Build the toggled counterpart of an item (lit torch <-> unlit torch), carrying
      * over the live value of a consumable stat so fuel survives the swap.
      *
@@ -7714,6 +7795,22 @@ class Actor extends Entity {
             if (key === 'health' && isDamageSource && target.hasAttribute('breakable')) {
                 const isMiningWeapon = source.item?.hasAttribute('mining');
                 if (isMiningWeapon) {
+                    // A swing can glance off. `dig_chance` is authored per item (default 1
+                    // = always bites, preserving the old deterministic behaviour for tools
+                    // that don't opt in), so designers can make a crude tool unreliable
+                    // without the engine knowing anything about mattocks specifically.
+                    const digChance = source.item.getAttribute('dig_chance') ?? 1;
+                    if (digChance < 1 && ROT.RNG.getUniform() >= digChance) {
+                        sourceApplied = true;
+                        if (source.sound) this.engine.playSound(source.sound);
+                        if (this.isPlayerControlled()) {
+                            const miss = source.item.getAttribute('dig_fail_message')
+                                || `Your ${source.item.getDisplayName?.() ?? source.item.name} glances off ${target.getNameWithArticle()}.`;
+                            this.engine.inputManager?.showMessage(miss);
+                        }
+                        continue; // costs the turn, but no progress and no wear
+                    }
+
                     // Use mining_power from the weapon, default to 25
                     const miningPower = source.item.getAttribute('mining_power') || 25;
                     // Initialize mining damage tracker on target
@@ -7753,6 +7850,10 @@ class Actor extends Entity {
                         targetShouldDie = true;
                         // Don't set targetPassable - miner shouldn't move into the space on the same turn
                     }
+
+                    // A productive swing wears the tool. Only successful digs count, so a
+                    // glancing blow costs a turn but not durability (it returned above).
+                    this.degradeItem(source.item);
                     continue;
                 }
             }
