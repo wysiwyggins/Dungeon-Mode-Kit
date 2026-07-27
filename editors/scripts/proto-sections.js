@@ -210,11 +210,6 @@ function sectionMechanics(obj, key, opts = {}) {
     return { det };
 }
 
-// The two aspects of a level's baseline light: ambient_light (brightness) and
-// tint (color overlay) live together under one "ambient level light" toggle so
-// it's clear they're facets of the same thing. Toggle off = no ambient config
-// (engine defaults: ambient_light 1 / fully lit, no tint), so both keys are
-// deleted. Modeled on collapsingEditor's toggle+config pattern.
 function ambientLightGroup(m) {
     const tip = 'Baseline light for the level: overall brightness (ambient_light) and an atmospheric color overlay (tint). Off = engine default (fully lit, no tint).';
     const wrap = el('div', { class: 'sub-section' });
@@ -318,10 +313,7 @@ function sectionMapGenerator(obj, opts = {}) {
     if (showGenBody) {
         mapGeneratorBody(obj, body);
     }
-    // Placed features (traps, fungus, switch puzzles): part of what the generator
-    // scatters onto the finished map. They read `obj` (top-level keys), not options.
-    // Suppressed for biomes, which express traps/fungus as depth ramps instead
-    // (writing the same keys via hazardRampEditor — showing both would collide).
+
     if (!opts.noPlacedFeatures) {
         body.appendChild(el('div', { class: 'sub-section' },
             subTitle('Placed features', 'Hazards and puzzles scattered onto the generated map.')));
@@ -362,6 +354,7 @@ function mapGeneratorBody(obj, body) {
             ));
             body.appendChild(el('div', { class: 'sub-section' }, subTitle('roomWeights', 'Relative likelihood of each room shape. Bars show each shape’s share of the total.'),
                 weightEditor(o, 'roomWeights', { choices: ['rectangle','cross','circular','cavern'] })));
+            body.appendChild(roomSizeEditor(o));
         }
         body.appendChild(carvedRegionsEditor(o));
         if (t === 'brogue') {
@@ -381,8 +374,11 @@ function mapGeneratorBody(obj, body) {
 }
 
 // dual range writing to an array [min,max] at obj[key]
+// `opts.def` seeds an unset key with the ENGINE's default rather than the slider
+// bounds, so a field that's merely rendered doesn't silently write a bogus override
+// (e.g. rectWidth: [1,24]) into the prototype JSON.
 function dualRangeForArray(obj, key, opts) {
-    if (!Array.isArray(obj[key])) obj[key] = obj[key] || [opts.min ?? 0, opts.max ?? 0];
+    if (!Array.isArray(obj[key])) obj[key] = obj[key] || opts.def || [opts.min ?? 0, opts.max ?? 0];
     const proxy = {
         get min() { return obj[key][0]; }, set min(v) { obj[key][0] = v; },
         get max() { return obj[key][1]; }, set max(v) { obj[key][1] = v; },
@@ -397,19 +393,73 @@ function dualRangeRow(label, obj, minKey, maxKey, opts = {}) {
     return el('div', { class: 'sub' }, labelEl(label, opts.tip), dualRange(obj, minKey, maxKey, opts));
 }
 
-// Liquid types available to a lakes group (no 'abyss' — void is its own group,
-// stored under options.abyss, not mixed into the liquid pool).
+// Per-shape size ranges for the brogue generator. Defaults mirror architect.js's
+// `case 'brogue'` block — keep them in sync, since they're what the engine falls back
+// to when a key is absent and what the sliders seed an unset field with.
+//
+// Exposing these is what makes room-size variation tunable per biome: roomWeights
+// alone only shifts WHICH shapes appear, and the most common shape (rectangle) has
+// the smallest default range — so a map can read as uniformly cramped even though
+// cross/cavern rooms are capable of being large.
+const ROOM_SIZE_FIELDS = [
+    { shape: 'rectangle', rows: [
+        { label: 'width',  key: 'rectWidth',  def: [3, 12], max: 30 },
+        { label: 'height', key: 'rectHeight', def: [3, 8],  max: 30 },
+    ] },
+    { shape: 'cross', rows: [
+        { label: 'width',  key: 'crossWidth',  def: [7, 16], max: 30 },
+        { label: 'height', key: 'crossHeight', def: [7, 14], max: 30 },
+    ] },
+    { shape: 'circular', rows: [
+        { label: 'radius', key: 'circularRadius', def: [2, 5], max: 12 },
+    ] },
+    { shape: 'cavern', rows: [
+        { label: 'width',  key: 'cavernWidth',  def: [8, 20], max: 40 },
+        { label: 'height', key: 'cavernHeight', def: [8, 15], max: 40 },
+    ] },
+];
+
+// Room size ranges, grouped by shape so the numbers sit next to the roomWeights that
+// decide how often each shape is used. Off by default: the engine's own defaults apply
+// until a designer opts in, so we don't write seven redundant overrides into every
+// prototype just for rendering the form.
+function roomSizeEditor(o) {
+    const tip = 'Min–max dimensions for each room shape, in tiles. Widen a range (or raise its minimum) for bigger, more varied rooms; the shape’s roomWeight decides how often it appears.';
+    const keys = ROOM_SIZE_FIELDS.flatMap(g => g.rows.map(r => r.key));
+    const wrap = el('div', { class: 'sub-section' });
+
+    const enable = el('label', { class: 'toggle-line', title: tip });
+    const cb = el('input', { type: 'checkbox' });
+    cb.checked = keys.some(k => Array.isArray(o[k]));
+    cb.addEventListener('change', () => {
+        if (cb.checked) {
+            // Seed every field from the engine defaults, so the form opens showing what
+            // the generator is actually doing rather than arbitrary slider bounds.
+            for (const g of ROOM_SIZE_FIELDS) {
+                for (const r of g.rows) if (!Array.isArray(o[r.key])) o[r.key] = [...r.def];
+            }
+        } else {
+            for (const k of keys) delete o[k];
+        }
+        commit(); render();
+    });
+    enable.append(cb, ' room sizes');
+    wrap.appendChild(enable);
+
+    if (!cb.checked) return wrap;
+
+    for (const g of ROOM_SIZE_FIELDS) {
+        const grp = el('div', { class: 'sub-section' }, subTitle(g.shape));
+        grp.appendChild(fieldGrid(...g.rows.map(r =>
+            dualRangeArrayRow(r.label, o, r.key, { min: 1, max: r.max, def: r.def, tip })
+        )));
+        wrap.appendChild(grp);
+    }
+    return wrap;
+}
+
 const LIQUID_TYPES = ['water', 'sewage', 'lava'];
 
-// Consolidated "carved regions" editor. The engine (architect.js
-// generateOverlayBlobs) reads two blob-config keys: options.lakes (liquid pool)
-// and options.abyss (void). Previously each got its own near-identical form via
-// lakeEditor, and abyss's form showed an irrelevant liquid-types dropdown that
-// even listed 'abyss' as a liquid. Here they're presented as one section listing
-// the region groups that exist — a liquid group (→ options.lakes) and/or an abyss
-// group (→ options.abyss) — each with its own count/size, and the liquid group
-// with a real liquid-type pool. The data shape written is unchanged, so no
-// engine or prototype.json changes are needed.
 function carvedRegionsEditor(o) {
     const tip = 'Regions carved into the map: liquid lakes (water/sewage/lava) and/or bottomless abyss pits. Bridges can span either so the player can cross.';
     const wrap = el('div', { class: 'sub-section' });
@@ -461,9 +511,6 @@ function addRegionBtn(label, onClick) {
     return el('div', { class: 'sub' }, b);
 }
 
-// One carved-region group bound to o[key] ({count,types,minSize,maxSize}).
-// A liquid group gets a weighted liquid-type pool; the abyss group is always
-// type ['abyss'] so it shows no type picker. Each group has a remove (×) button.
 function regionGroup(o, key, title, opts) {
     const g = el('div', { class: 'sub-section' });
     const head = el('div', { class: 'sub-section-title' }, title);
@@ -535,11 +582,6 @@ function bridgesEditor(o) {
     return wrap;
 }
 
-// Merged Item catalog + budget (proto level). item_budget draws from
-// item_catalog, so they belong together: the catalog defines the category mix,
-// the budget controls how many items are spawned from it. Budget config is only
-// shown once the catalog is enabled — a budget with no catalog has nothing to
-// draw from.
 function sectionItemCatalog() {
     const p = state.proto;
     const hasCatalog = !!p.item_catalog;

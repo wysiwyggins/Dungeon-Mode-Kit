@@ -2802,13 +2802,22 @@ class DungeonEngine {
             return only.getAttribute('paint_tile') ? only : null;
         };
 
-        // Find which side the wall is on, then place along the perpendicular axis.
+        // Locate the wall the stairway backs onto, then step along that wall in both
+        // directions. The sconces are the two wall tiles either side of the stairway's
+        // own backing tile — e.g. a stairway with wall above gets braziers at the wall
+        // tiles up-left and up-right of it, framing the stairs.
         const { x, y } = stairway;
-        const wallIsVertical = !(mm.floorMap[y]?.[x - 1]?.tileId > 0) ||
-                               !(mm.floorMap[y]?.[x + 1]?.tileId > 0);
-        const flanks = wallIsVertical
-            ? [{ x, y: y - 1 }, { x, y: y + 1 }]   // wall to the left/right → sconces above/below
-            : [{ x: x - 1, y }, { x: x + 1, y }];  // wall above/below → sconces left/right
+        const isFloorTile = (tx, ty) => mm.floorMap[ty]?.[tx]?.tileId > 0;
+        const back = [{ dx: 0, dy: -1 }, { dx: 0, dy: 1 }, { dx: -1, dy: 0 }, { dx: 1, dy: 0 }]
+            .find(d => !isFloorTile(x + d.dx, y + d.dy));
+        if (!back) return; // no wall behind it (open floor) — nothing to mount on
+
+        // Walk perpendicular to the wall normal: a vertical normal means a horizontal run.
+        const along = back.dx === 0 ? { dx: 1, dy: 0 } : { dx: 0, dy: 1 };
+        const flanks = [
+            { x: x + back.dx - along.dx, y: y + back.dy - along.dy },
+            { x: x + back.dx + along.dx, y: y + back.dy + along.dy }
+        ];
 
         let placed = 0;
         for (const pos of flanks) {

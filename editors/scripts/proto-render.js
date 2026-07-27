@@ -9,11 +9,6 @@
    ========================================================================= */
 "use strict";
 
-/* =========================================================================
-   Output / serialize
-   The model IS the output (edits mutate state.proto directly), so serialize =
-   clean-up pass that drops transient empties without losing real data.
-   ========================================================================= */
 function serialize() {
     const out = JSON.parse(JSON.stringify(state.proto));
     pruneSpawnDefaults(out);

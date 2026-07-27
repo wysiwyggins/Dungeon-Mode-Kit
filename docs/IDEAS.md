@@ -10,6 +10,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ### Tweaks
 
+- add biome setting in prototype-editor for room size variation. Rooms currently seem consistently small.
 - invisible actors shouldn't cast shadows
 - stairways should be spawning along room walls like braziers rather than in the middle of rooms/hallways. Ideally there would be braziers on either side of them too
 
