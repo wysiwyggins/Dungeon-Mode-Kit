@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Torch fuel is now fully data-driven**. Two engine sites (the Extinguish/Light verb and the auto-extinguish when submerging) each rebuilt a torch's `burns` stat from hard-coded literals — `per_turn: -1`, `display_label: 'Fuel'`, the warning threshold and its message text, a `?? 500` fuel cap, and the `'torch_unlit'` type name — discarding whatever the JSON authored. Both now call one `buildToggledItem()` helper that takes the destination type's own stat block from `items.json` and carries over only the live `current` value. `torch_unlit` gained its own `burns` block (`per_turn: 0` — holds a reserve without consuming it) and both torch types gained `toggle_to`, so the lit/unlit pairing and the burn rate are authored in data rather than known by the engine. Fuel still carries across light/extinguish/relight exactly as before; an item with no `burns` stat is now treated as never running out (omit it for a permanent lamp). See [ITEMS.md](docs/ITEMS.md#lighting-extinguishing-and-fuel).
+- Torch fuel amount can be set from item data, which sets a precedent for other timed consumable items.
 
 ### Fixed
 
@@ -30,8 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Biomes (depth-ramping)**: a multi-floor prototype can now define a `biome` — a themed bundle of depth-ranged spawn/item/hazard catalogs — and assign it to floor ranges via `floor_plan`, instead of hand-authoring every floor. Each catalog row carries `{min, max, freq}`; as depth increases, entries fade in/out of their windows so difficulty ramps automatically (Brogue's model). Hazards ramp by a linear `clamp(intercept + depth*slope, 0, max)` count. Resolves in one seam (`getFloorConfig`) as a tier between per-floor overrides and prototype defaults; downstream spawning is unchanged, and prototypes without biomes behave identically. `levels` may now be a sparse floor-keyed map for the few hand-authored floors. See `docs/BIOMES.md`. Example: `prototypes/biometest/`.
-- **Biome editor**: the prototype editor gained a Multi-level toggle (floor count), a Biomes library (per-biome map generator, mechanics, depth-ranged actor/item catalogs, and hazard ramps, each with a "preview at depth N" showing which entries are eligible and their weighted share), and a Floor plan section that assigns biomes to floor ranges with gap/overlap validation. Floor tabs now mark hand-authored floors and work with both array and sparse-object `levels`.
+- **Biomes (depth-ramping)**: a multi-floor prototype can now define a `biome` — a themed bundle of depth-ranged spawn/item/hazard catalogs — and assign it to floor ranges via `floor_plan`.
 - **Drink-at-self potions**: a new `use_at_self` item attribute lets a potion that normally only does something when thrown (e.g. the potion of incineration) be drunk anyway — it triggers its own break/explosion effect on the drinker's tile.
 
 ### Changed
