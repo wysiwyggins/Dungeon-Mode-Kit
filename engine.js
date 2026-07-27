@@ -2744,6 +2744,85 @@ class DungeonEngine {
     }
 
     /**
+     * Pick a tile to place a stairway on.
+     *
+     * Prefers a wall niche — a room floor tile flush against a wall, where braziers go —
+     * so stairs read as built into the architecture instead of dropped in the middle of a
+     * room or blocking a corridor. Falls back to any free walkable tile when a map has no
+     * such niche (a cave with no straight walls, a tiny map, or one already crowded with
+     * actors), so placement never fails outright.
+     *
+     * @returns {{x: number, y: number}|null} The chosen tile, or null if none is free
+     */
+    pickStairwayTile() {
+        const walkableTiles = this.mapManager.walkableTiles;
+        if (!walkableTiles || walkableTiles.length === 0) return null;
+
+        const availableTiles = walkableTiles.filter(tile => !this.entityManager.getActorAt(tile.x, tile.y));
+        if (availableTiles.length === 0) return null;
+
+        const niches = availableTiles.filter(t => this.entityManager.isWallNicheTile(t.x, t.y));
+        if (niches.length > 0) return randomElement(niches);
+
+        console.log('No wall-niche tile available for stairway; falling back to open floor');
+        return randomElement(availableTiles);
+    }
+
+    /**
+     * Flank a stairway with braziers, the way an architect would frame a doorway.
+     *
+     * A stairway in a wall niche has one wall behind it; the two tiles to either side
+     * *along* that wall are the sconce positions. Each is only replaced if it's currently
+     * a plain wall with nothing on it, so this never eats a door, another stairway, or a
+     * corridor mouth — on a stairway that isn't in a niche, usually nothing is placed.
+     *
+     * @param {Actor} stairway - The freshly-placed stairway
+     */
+    flankStairwayWithBraziers(stairway) {
+        const brazierData = this.currentPrototype.getActorData('brazier');
+        if (!brazierData) return;
+
+        const mm = this.mapManager;
+        // A usable sconce spot is a non-floor tile occupied by nothing but a plain wall
+        // actor, which the brazier replaces (the same swap the map generator does for its
+        // own wall torches). Walls are spawned as actors before stairways are placed, so
+        // requiring an *empty* tile here would find nothing. Anything else standing there
+        // — a door, a gate, another stairway — disqualifies the spot.
+        const wallActorAt = (x, y) => {
+            if (x < 0 || x >= mm.width || y < 0 || y >= mm.height) return null;
+            if (mm.floorMap[y]?.[x]?.tileId > 0) return null;
+            const actors = this.entityManager.getActorsAt(x, y).filter(a => !a.isDead);
+            if (actors.length !== 1) return null;
+            const only = actors[0];
+            // Plain static wall only. `pushable` excludes puzzle walls, `openable`
+            // excludes doors/gates, and requiring `paint_tile` keeps this to the wall
+            // types the generator paints into wall runs.
+            if (only.hasAttribute('pushable') || only.hasAttribute('openable')) return null;
+            if (only.hasAttribute('stairway') || !only.hasAttribute('solid')) return null;
+            return only.getAttribute('paint_tile') ? only : null;
+        };
+
+        // Find which side the wall is on, then place along the perpendicular axis.
+        const { x, y } = stairway;
+        const wallIsVertical = !(mm.floorMap[y]?.[x - 1]?.tileId > 0) ||
+                               !(mm.floorMap[y]?.[x + 1]?.tileId > 0);
+        const flanks = wallIsVertical
+            ? [{ x, y: y - 1 }, { x, y: y + 1 }]   // wall to the left/right → sconces above/below
+            : [{ x: x - 1, y }, { x: x + 1, y }];  // wall above/below → sconces left/right
+
+        let placed = 0;
+        for (const pos of flanks) {
+            const wall = wallActorAt(pos.x, pos.y);
+            if (!wall) continue;
+            this.entityManager.removeEntity(wall);
+            this.entityManager.addEntity(new Actor(pos.x, pos.y, 'brazier', brazierData, this));
+            placed++;
+        }
+        if (placed) this.entityManager.invalidateActorPosCache();
+        if (placed) console.log(`Flanked stairway at (${x}, ${y}) with ${placed} brazier(s)`);
+    }
+
+    /**
      * Ensure an up_stairway exists, spawning one randomly if needed
      * This is called after wildcard processing to place stairways in generated areas
      * If the prototype has no previous_level, spawns a locked_up_stairway instead
@@ -2773,25 +2852,12 @@ class DungeonEngine {
             return;
         }
 
-        // No up_stairway found - spawn one on a random walkable tile
-        const walkableTiles = this.mapManager.walkableTiles;
-        if (!walkableTiles || walkableTiles.length === 0) {
-            console.warn('No walkable tiles available to place up_stairway');
-            return;
-        }
-
-        // Filter out tiles that already have actors on them
-        const availableTiles = walkableTiles.filter(tile => {
-            return !this.entityManager.getActorAt(tile.x, tile.y);
-        });
-
-        if (availableTiles.length === 0) {
+        // No up_stairway found - place one against a wall (see pickStairwayTile)
+        const tile = this.pickStairwayTile();
+        if (!tile) {
             console.warn('No available tiles to place up_stairway');
             return;
         }
-
-        // Pick a random tile using ROT.RNG for consistency
-        const tile = randomElement(availableTiles);
 
         // The escape exit is always a locked stairway (the down-seal logic below is
         // meaningless on the top floor — there is no floor below it). Otherwise this
@@ -2814,6 +2880,7 @@ class DungeonEngine {
         const stairway = new Actor(tile.x, tile.y, stairwayType, stairwayData, this);
         if (escapeExit) this.makeEscapeExit(stairway);
         this.entityManager.addEntity(stairway);
+        this.flankStairwayWithBraziers(stairway);
         console.log(`Spawned ${stairwayType} at (${tile.x}, ${tile.y})`);
     }
 
@@ -2870,22 +2937,11 @@ class DungeonEngine {
             return;
         }
 
-        const walkableTiles = this.mapManager.walkableTiles;
-        if (!walkableTiles || walkableTiles.length === 0) {
-            console.warn('No walkable tiles available to place down_stairway');
-            return;
-        }
-
-        const availableTiles = walkableTiles.filter(tile => {
-            return !this.entityManager.getActorAt(tile.x, tile.y);
-        });
-
-        if (availableTiles.length === 0) {
+        const tile = this.pickStairwayTile();
+        if (!tile) {
             console.warn('No available tiles to place down_stairway');
             return;
         }
-
-        const tile = randomElement(availableTiles);
 
         // Check if this floor has win conditions — if so, use locked_down_stairway
         const floorConfig = this.getFloorConfig(this.currentFloor);
@@ -2904,6 +2960,7 @@ class DungeonEngine {
 
         const stairway = new Actor(tile.x, tile.y, stairwayType, stairwayData, this);
         this.entityManager.addEntity(stairway);
+        this.flankStairwayWithBraziers(stairway);
         console.log(`Spawned ${stairwayType} at (${tile.x}, ${tile.y})`);
     }
 
@@ -10797,6 +10854,24 @@ class EntityManager {
             if (this.isEntrywayTile(x + dir.dx, y + dir.dy)) return true;
         }
         return false;
+    }
+
+    /**
+     * A wall-niche tile: a room floor tile set against a wall, the way braziers are
+     * placed. Stairways look deliberate here and don't obstruct traffic, unlike a
+     * stairway dropped in open floor or mid-corridor.
+     *
+     * Requires exactly 3 walkable cardinal neighbors — one side is wall (so it's flush
+     * against it) while the other three are open (so it's room interior, not a corridor
+     * or a corner pocket). Corners (2 walls) are excluded: they read as cramped and are
+     * the spots most likely to be a dead-end nook rather than a wall run.
+     *
+     * @returns {boolean}
+     */
+    isWallNicheTile(x, y) {
+        if (!(this.engine.mapManager.floorMap[y]?.[x]?.tileId > 0)) return false;
+        if (this.getSolidActorAt(x, y)) return false;
+        return this._walkableCardinalCount(x, y) === 3;
     }
 
     getItemAt(x, y) {
