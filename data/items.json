@@ -1564,7 +1564,7 @@
   "bread": {
   "name": "bread",
   "tileIndex": "WHITE_BULLET",
-  "tint": "#d4a574",
+  "tint": "#645400",
   "identified": false,
   "attributes": {
     "pickupable": true,
