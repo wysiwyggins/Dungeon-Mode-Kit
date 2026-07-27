@@ -750,6 +750,7 @@
       "conductive": false,
       "openable": true,
       "lockable": true,
+      "swings_shut": true,
       "open": false,
       "locked": false
     }

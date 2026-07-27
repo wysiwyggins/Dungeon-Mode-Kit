@@ -4552,9 +4552,6 @@ class Actor extends Entity {
                 if (shouldOpen) {
                     if (target.hasAttribute('locked')) {
                         target.setAttribute('locked', false);
-                        // A switch-unlocked door/gate is "previously locked" too — don't
-                        // auto-close it behind the player.
-                        target.setAttribute('was_locked', true);
                     }
                     target.open();
                 } else {
@@ -7897,9 +7894,6 @@ class Actor extends Entity {
 
                     if (targetLockColor && sourceLockColor && targetLockColor === sourceLockColor) {
                         target.setAttribute(key, value);
-                        // Remember it was locked so we don't auto-close it behind the
-                        // player the way we do generic (never-locked) doors.
-                        target.setAttribute('was_locked', true);
                         console.log(`${source.name} (${sourceLockColor}) unlocks ${target.name} (${targetLockColor})!`);
                         sourceApplied = true;
                         this.engine.playSound?.('lock');
@@ -7936,9 +7930,6 @@ class Actor extends Entity {
                             !target.hasAttribute('gate');
                         if (isGenericLockableDoor) {
                             target.setAttribute(key, value);
-                            // Remember it was locked so we don't auto-close it behind the
-                            // player the way we do generic (never-locked) doors.
-                            target.setAttribute('was_locked', true);
                             console.log(`${source.name} unlocks ${target.name} (generic lock)`);
                             sourceApplied = true;
                             this.engine.playSound?.('lock');
@@ -8590,19 +8581,34 @@ class Actor extends Entity {
         // Process passive effects from inventory items (e.g., thread trail)
         this.processPassiveEffects(this._lastPosition, { x: newX, y: newY });
 
-        // Auto-close doors behind player-controlled actors
-        if (this.isPlayerControlled() && this._lastPosition) {
+        // Swing self-closing doors shut behind whoever walked through. Which actors do
+        // this is a design decision, so it lives in the data as `swings_shut` rather than
+        // being inferred here: a plain door declares it, a door that had to be unlocked
+        // (or a gate driven by a lever) simply doesn't, and stays open once opened.
+        if (this._lastPosition) {
             this.engine.entityManager.invalidateActorPosCache();
             const actorsAtOldPos = this.engine.entityManager.getActorsAt(
                 this._lastPosition.x, this._lastPosition.y
             );
+            let closedAny = false;
             for (const actor of actorsAtOldPos) {
-                // Leave previously-locked doors open once unlocked — only auto-close
-                // generic (never-locked) doors behind the player.
-                if (actor.hasAttribute('openable') && actor.getAttribute('open') &&
-                    !actor.hasAttribute('spiked') && !actor.getAttribute('was_locked')) {
-                    actor.close(true);
+                if (!actor.getAttribute('swings_shut')) continue;
+                if (!actor.hasAttribute('openable') || !actor.getAttribute('open')) continue;
+                if (actor.hasAttribute('spiked')) continue; // jammed open by a spike
+                // Never seal another actor inside the doorway.
+                if (this.engine.entityManager.getActorsAt(actor.x, actor.y)
+                        .some(a => a !== actor && !a.isDead && a.hasAttribute('solid'))) {
+                    continue;
                 }
+                actor.close(true);
+                closedAny = true;
+            }
+            // A door closing changes what blocks sight. Movement only recomputes lighting
+            // for viewpoint actors and light sources, so a monster shutting a door behind
+            // itself would otherwise leave the old sightline open until something else
+            // refreshed it.
+            if (closedAny && !this.isViewpoint() && !this.hasAttribute('light_source')) {
+                this.engine.requestLightingUpdate?.(this._lastPosition.x, this._lastPosition.y);
             }
         }
 
