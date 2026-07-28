@@ -550,7 +550,7 @@
     "name": "brick wall",
     "tileIndexBase": "BRICK_WALL",
     "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
-    "tint": "#664444",
+    "tint": "#b53a00",
     "attributes": {
       "flammable": false,
       "pushable": false,
@@ -686,13 +686,16 @@
   },
   "torch": {
     "name": "torch",
-    "tileIndexBase": "OPAQUE_WHITE_DIAMOND_SUITE",
+    "tileIndexBase": "OPAQUE_DARK_SHADE",
     "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
-    "tint": "#EC7505",
-    "flickerTint": true,
+    "sideOffset": {
+      "dx": 0,
+      "dy": -1
+    },
+    "tint": "#ffaa00",
+    "effect": "flicker_tint",
+    "animationSide": "fire",
     "attributes": {
-      "flammable": false,
-      "pushable": false,
       "breakable": true,
       "light_source": true,
       "remains": "rubble"
