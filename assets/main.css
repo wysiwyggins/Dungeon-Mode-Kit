@@ -367,10 +367,10 @@ body.editor .sub-section-title {
   margin-bottom: 4px;
 }
 body.editor .json-output-panel {
+  display: none;
   border-top: 1px solid var(--border);
   background: var(--bg2);
   padding: 8px 16px;
-  display: flex;
   flex-direction: column;
   height: 200px;
 }
