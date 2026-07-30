@@ -26,15 +26,20 @@
         }
 
         .stat-thermometer {
-            flex: 1;
-            min-width: 50px;
-            max-width: 100px;
+            // Fixed track width, NOT flex. The fill is a percentage of this
+            // element, so anything that lets the track resize makes the bar
+            // change length without the stat changing: adding a condition line
+            // ("confused (18)") widens the actor entry, which widens the
+            // unconstrained sidebar column, which re-flexed the track — the
+            // health bar visibly shrank and grew back as confusion counted down.
+            flex: 0 0 100px;
+            width: 100px;
             height: 0.75em;
             background: #333;
             margin: 0;
             position: relative;
             overflow: hidden;
-        }
+        } 
 
         .stat-fill {
             height: 100%;

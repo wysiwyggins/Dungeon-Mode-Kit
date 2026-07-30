@@ -79,9 +79,8 @@
   font-size: 0.9em;
 }
 .game-sidebar-text ul .stat-thermometer {
-  flex: 1;
-  min-width: 50px;
-  max-width: 100px;
+  flex: 0 0 100px;
+  width: 100px;
   height: 0.75em;
   background: #333;
   margin: 0;

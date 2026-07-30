@@ -3,6 +3,11 @@
 // ============================================================================
 // Handles UI elements like boxes, menus, and overlays using the uiContainer
 
+// Bare modifier keydowns, as reported by KeyboardEvent.key. Dialogs that treat an
+// unrecognized key as a dismissal must skip these: pressing Shift to type an
+// uppercase answer fires its own keydown first.
+const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'AltGraph', 'Dead']);
+
 class InterfaceManager {
     constructor(engine) {
         this.engine = engine;
@@ -1777,14 +1782,16 @@ class InterfaceManager {
             return true;
         }
 
-        if (key === 'n' || key === 'N' || key === 'Escape') {
-            const onCancel = this.confirmDialog.onCancel;
-            this.closeConfirmDialog();
-            if (onCancel) onCancel();
-            return true;
-        }
+        // Any other key is a "no": only Y confirms, so an accidental or exploratory
+        // keypress dismisses rather than leaving the dialog stuck open. Bare modifier
+        // presses are ignored — they arrive as their own keydown, so treating them as
+        // "no" would cancel the dialog while the user was still reaching for Shift+Y.
+        if (MODIFIER_KEYS.has(key)) return true;
 
-        return true; // Consume all keys while dialog is open
+        const onCancel = this.confirmDialog.onCancel;
+        this.closeConfirmDialog();
+        if (onCancel) onCancel();
+        return true;
     }
 
     /**

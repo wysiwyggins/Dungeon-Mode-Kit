@@ -93,7 +93,10 @@ class LightingManager {
         }
 
         const actorAtTile = this._solidActorCache?.get(x * 10000 + y);
-        if (actorAtTile && !actorAtTile.hasAttribute('controlled') && actorAtTile.getAttribute('opaque') !== false) {
+        if (actorAtTile
+                && !actorAtTile.hasAttribute('controlled')
+                && actorAtTile.getAttribute('opaque') !== false
+                && !actorAtTile.hasStateProperty?.('invisible')) {
             return false;
         }
 
@@ -115,7 +118,14 @@ class LightingManager {
             return false;
         }
 
-        if (this._solidActorCache?.has(x * 10000 + y)) {
+        // Mirrors visionPasses' actor test: a solid actor blocks light unless it's
+        // see-through (`opaque: false`, e.g. columns, statues, fortifications) or
+        // invisible — an unseen creature casting a visible shadow gives away its
+        // position, which defeats the point of invisibility.
+        const actorAtTile = this._solidActorCache?.get(x * 10000 + y);
+        if (actorAtTile
+                && actorAtTile.getAttribute('opaque') !== false
+                && !actorAtTile.hasStateProperty?.('invisible')) {
             return false;
         }
 

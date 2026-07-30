@@ -1268,9 +1268,7 @@
     },
     "trap_spawn": "cloud",
     "trap_spawn_tint": "#55FF55",
-    "trap_collision_effect": {
-      "health": -3
-    },
+    "trap_apply_state": "poisoned",
     "trap_message": "A hidden vent releases poisonous gas!"
   },
   "fire_trap": {
