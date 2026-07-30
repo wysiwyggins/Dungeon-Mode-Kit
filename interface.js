@@ -98,6 +98,42 @@ class InterfaceManager {
         };
     }
 
+    /**
+     * Choose a box position that keeps the playable actor visible.
+     *
+     * A window centered in the viewport lands exactly where the player usually is,
+     * so this dodges VERTICALLY: player in the upper half puts the box low, player
+     * in the lower half puts it high. X is left centered — horizontal placement is
+     * the caller's business, and pushing boxes sideways makes centered modals read
+     * as misaligned.
+     *
+     * @param {number} boxWidth - Box width in tiles
+     * @param {number} boxHeight - Box height in tiles
+     * @returns {{x: number, y: number}} Box origin in tile coords
+     */
+    placeBoxAwayFromPlayer(boxWidth, boxHeight) {
+        const vis = this.getVisibleArea();
+        const player = this.engine.entityManager?.player;
+
+        const x = vis.originX + Math.floor((vis.width - boxWidth) / 2);
+        // Centered vertically is the fallback when there's no player to dodge.
+        let y = vis.originY + Math.floor((vis.height - boxHeight) / 2);
+
+        if (player) {
+            // Inset one tile from the viewport edge so the frame isn't clipped.
+            const highY = vis.originY + 1;
+            const lowY = vis.originY + vis.height - boxHeight - 1;
+            y = player.y < vis.originY + vis.height / 2 ? lowY : highY;
+        }
+
+        // Clamp: on a viewport shorter than the box, lowY goes negative. Better to
+        // clip the bottom than to start off-screen with the title lost.
+        return {
+            x: Math.max(vis.originX, x),
+            y: Math.max(vis.originY, y),
+        };
+    }
+
     get spriteLibrary() {
         return this.engine.spriteLibrary;
     }
@@ -1086,6 +1122,10 @@ class InterfaceManager {
             lines.push('Inventory: (empty)');
         }
 
+        // A blank trailing line so the '?' affordance on the bottom padding row is
+        // separated from the last line of content rather than sitting right under it.
+        lines.push('');
+
         // Calculate dimensions - account for thermometer bar widths
         const padding = 1;
         let maxLineLength = Math.max(...lines.map(l => this.stripMarkup(l).length), 10);
@@ -1109,14 +1149,15 @@ class InterfaceManager {
         const boxWidth = contentWidth + (padding * 2) + 2;
         const boxHeight = contentHeight + (padding * 2) + 2;
 
-        // Position box on opposite side from player to avoid covering them
+        // Vertically placed in the half the player isn't in. X keeps this window's
+        // own long-standing rule — player on the right puts the box on the left —
+        // since it's a side panel rather than a centered modal.
+        const { y } = this.placeBoxAwayFromPlayer(boxWidth, boxHeight);
         const vis = this.getVisibleArea();
-        const playerX = player.x || 0;
         const visMidpoint = vis.originX + vis.width / 2;
-
-        // If player is on the right side, put box on left; otherwise put on right
-        const x = playerX >= visMidpoint ? vis.originX + 1 : vis.originX + vis.width - boxWidth - 1;
-        const y = vis.originY + 1;
+        const x = (player.x || 0) >= visMidpoint
+            ? vis.originX + 1
+            : vis.originX + vis.width - boxWidth - 1;
 
         // Create the box
         const boxContainer = this.createBox(infoBoxId, x, y, boxWidth, boxHeight);
@@ -1126,6 +1167,11 @@ class InterfaceManager {
         // Store click metadata
         boxContainer._padding = padding;
         boxContainer._inventoryLineIndices = inventoryLineIndices;
+        // Absolute tile of the '?' affordance: one tile in from the bottom and right
+        // border tiles, which is inside the padding ring rather than the content area —
+        // so it's hit-tested directly here instead of through _hitTestBox's content grid.
+        boxContainer._helpTileX = x + boxWidth - 2;
+        boxContainer._helpTileY = y + boxHeight - 2;
 
         // Zebra-stripe the inventory rows (an item with a stat sub-line spans 2 rows)
         const stripeRows = inventoryLineIndices.map(({ lineIndex }) => ({
@@ -1170,6 +1216,16 @@ class InterfaceManager {
             const barY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
             this.renderThermometerBar(boxContainer, current, max, barX, barY, this.statAccentColor);
         }
+
+        // The '?' help affordance, one tile in from the bottom-right border tiles.
+        // Positioned box-relative, not text-relative: it sits in the padding ring
+        // just outside the content area.
+        const helpSprite = this.createCharSprite(
+            '?',
+            (boxWidth - 2) * globalVars.TILE_WIDTH,
+            (boxHeight - 2) * globalVars.TILE_HEIGHT
+        );
+        if (helpSprite) boxContainer.addChild(helpSprite);
 
         // Enable inventory selection mode
         this.inventoryMode = true;
@@ -1726,10 +1782,8 @@ class InterfaceManager {
         const boxWidth = contentWidth + (padding * 2) + 2;
         const boxHeight = contentHeight + (padding * 2) + 2;
 
-        // Center the dialog within visible area
-        const vis = this.getVisibleArea();
-        const x = vis.originX + Math.floor((vis.width - boxWidth) / 2);
-        const y = vis.originY + Math.floor((vis.height - boxHeight) / 2);
+        // Centered horizontally; vertically placed so the dialog never hides the player
+        const { x, y } = this.placeBoxAwayFromPlayer(boxWidth, boxHeight);
 
         // Create the box
         const fillColor = options.fillColor ?? this.defaultFillColor;
@@ -1817,6 +1871,14 @@ class InterfaceManager {
     handleDialogClick(tileX, tileY) {
         // Priority order matches keyboard handler:
 
+        // 0. Help window — matches updateBoxOverlays' priority. Any click dismisses
+        //    (it's a reference panel with nothing to select), and consuming the click
+        //    keeps a click behind the panel from starting an auto-walk.
+        if (this.helpWindowMode) {
+            this.closeHelpWindow();
+            return true;
+        }
+
         // 1. Confirm dialog (highest priority)
         if (this.confirmDialog) {
             const box = this.boxes.get('confirm_dialog');
@@ -1885,6 +1947,12 @@ class InterfaceManager {
         if (this.inventoryMode && this.currentPlayer) {
             const invBox = this.boxes.get('player_info');
             if (invBox) {
+                // The '?' affordance sits in the padding ring, outside the content
+                // grid _hitTestBox covers, so check it against its own tile first.
+                if (tileX === invBox._helpTileX && tileY === invBox._helpTileY) {
+                    this.showHelpWindow();
+                    return true;
+                }
                 const hit = this._hitTestBox(invBox, tileX, tileY);
                 if (hit) {
                     this._handleInventoryClick(invBox, hit.contentLine);
@@ -3031,9 +3099,8 @@ class InterfaceManager {
         const maxLineLength = Math.max(...lines.map(l => this.stripMarkup(l).length), 14);
         const boxWidth = maxLineLength + padding * 2 + 2;
         const boxHeight = lines.length + padding * 2 + 2;
-        const vis = this.getVisibleArea();
-        const x = Math.max(vis.originX, vis.originX + Math.floor((vis.width - boxWidth) / 2));
-        const y = vis.originY + 1;
+        // Centered horizontally; vertically placed in the half the player isn't in
+        const { x, y } = this.placeBoxAwayFromPlayer(boxWidth, boxHeight);
 
         const boxContainer = this.createBox('identify_picker', x, y, boxWidth, boxHeight);
         if (!boxContainer) return;
@@ -3115,9 +3182,8 @@ class InterfaceManager {
         const maxLineLength = Math.max(...lines.map(l => this.stripMarkup(l).length), 14);
         const boxWidth = maxLineLength + padding * 2 + 2;
         const boxHeight = lines.length + padding * 2 + 2;
-        const vis = this.getVisibleArea();
-        const x = Math.max(vis.originX, vis.originX + Math.floor((vis.width - boxWidth) / 2));
-        const y = vis.originY + 1;
+        // Centered horizontally; vertically placed away from the player.
+        const { x, y } = this.placeBoxAwayFromPlayer(boxWidth, boxHeight);
 
         const boxContainer = this.createBox('enchant_picker', x, y, boxWidth, boxHeight);
         if (!boxContainer) return;
@@ -3809,10 +3875,8 @@ class InterfaceManager {
         const boxWidth = contentWidth + (padding * 2) + 2;
         const boxHeight = contentHeight + (padding * 2) + 2;
 
-        // Center the dialog within visible area
-        const vis = this.getVisibleArea();
-        const x = vis.originX + Math.floor((vis.width - boxWidth) / 2);
-        const y = vis.originY + Math.floor((vis.height - boxHeight) / 2);
+        // Centered horizontally; vertically placed in the half the player isn't in
+        const { x, y } = this.placeBoxAwayFromPlayer(boxWidth, boxHeight);
 
         // Create the box
         const boxContainer = this.createBox(menuId, x, y, boxWidth, boxHeight);
@@ -3943,9 +4007,8 @@ class InterfaceManager {
         const maxLineLength = Math.max(...lines.map(l => this.stripMarkup(l).length), 14);
         const boxWidth = maxLineLength + padding * 2 + 2;
         const boxHeight = lines.length + padding * 2 + 2;
-        const vis = this.getVisibleArea();
-        const x = Math.max(vis.originX, vis.originX + Math.floor((vis.width - boxWidth) / 2));
-        const y = vis.originY + 1;
+        // Centered horizontally; vertically placed away from the player.
+        const { x, y } = this.placeBoxAwayFromPlayer(boxWidth, boxHeight);
 
         const boxContainer = this.createBox(boxId, x, y, boxWidth, boxHeight);
         if (!boxContainer) return;
@@ -4048,10 +4111,8 @@ class InterfaceManager {
         const boxWidth = contentWidth + (padding * 2) + 2;
         const boxHeight = contentHeight + (padding * 2) + 2;
 
-        // Center the dialog within visible area
-        const vis = this.getVisibleArea();
-        const x = vis.originX + Math.floor((vis.width - boxWidth) / 2);
-        const y = vis.originY + Math.floor((vis.height - boxHeight) / 2);
+        // Centered horizontally; vertically placed in the half the player isn't in
+        const { x, y } = this.placeBoxAwayFromPlayer(boxWidth, boxHeight);
 
         // Create the box
         const boxContainer = this.createBox(menuId, x, y, boxWidth, boxHeight);
@@ -4418,9 +4479,8 @@ class InterfaceManager {
         const boxWidth = contentWidth + (padding * 2) + 2;
         const boxHeight = contentHeight + (padding * 2) + 2;
 
-        const vis = this.getVisibleArea();
-        const x = vis.originX + Math.floor((vis.width - boxWidth) / 2);
-        const y = vis.originY + Math.floor((vis.height - boxHeight) / 2);
+        // Centered horizontally; vertically placed in the half the player isn't in
+        const { x, y } = this.placeBoxAwayFromPlayer(boxWidth, boxHeight);
 
         const boxContainer = this.createBox(menuId, x, y, boxWidth, boxHeight);
         if (!boxContainer) return;
@@ -4635,9 +4695,8 @@ class InterfaceManager {
         const boxWidth = contentWidth + (padding * 2) + 2;
         const boxHeight = contentHeight + (padding * 2) + 2;
 
-        const vis = this.getVisibleArea();
-        const x = vis.originX + Math.floor((vis.width - boxWidth) / 2);
-        const y = vis.originY + Math.floor((vis.height - boxHeight) / 2);
+        // Centered horizontally; vertically placed in the half the player isn't in
+        const { x, y } = this.placeBoxAwayFromPlayer(boxWidth, boxHeight);
 
         const boxContainer = this.createBox(menuId, x, y, boxWidth, boxHeight);
         if (!boxContainer) return;

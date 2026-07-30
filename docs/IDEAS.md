@@ -9,10 +9,6 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ---
 
-### Tweaks
-
-- Add a '?' to the bottom right corner of the player info window that can be clicked on to open the help menu
-
 ## Feature ideas
 
 ### corner blocking as an actor attribute
