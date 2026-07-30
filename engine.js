@@ -2754,18 +2754,74 @@ class DungeonEngine {
      *
      * @returns {{x: number, y: number}|null} The chosen tile, or null if none is free
      */
-    pickStairwayTile() {
+    /**
+     * Which region a stairway should be placed in, if any.
+     *
+     * `mechanics.up_stairway_region` / `mechanics.down_stairway_region` win when
+     * authored, so a designer always has the final say. Otherwise the generator's own
+     * suggestion applies: a generator that builds a recognisable entrance knows where
+     * the stairs belong better than a uniform random pick does, and shouldn't need
+     * every floor using it to repeat the same mechanics line. Setting the mechanic to
+     * `null` explicitly opts back out to random placement.
+     *
+     * @param {'up'|'down'} direction
+     * @param {object} floorConfig - resolved floor config (mechanics already merged)
+     */
+    stairwayRegionFor(direction, floorConfig) {
+        const key = `${direction}_stairway_region`;
+        const mechanics = floorConfig?.mechanics || {};
+        if (key in mechanics) return mechanics[key];
+        return this.mapManager?.suggestedStairwayRegions?.[direction] ?? null;
+    }
+
+    /**
+     * Pick a tile for a stairway, preferring a wall niche so it can be framed with
+     * braziers.
+     *
+     * `preferredRegion` names a region the map generator published (see
+     * Architect.namedRegions) to place the stairway inside — e.g. 'portico' so the
+     * palladian villa's entrance stair lands in the courtyard out front rather than
+     * in an interior room. It is a *preference*, not a constraint: a generator that
+     * publishes no regions, or a region with no free tile, falls back to the whole
+     * map, so this can never leave a floor without its stairs.
+     *
+     * @param {string|null} preferredRegion - Optional generator-published region name
+     */
+    pickStairwayTile(preferredRegion = null) {
         const walkableTiles = this.mapManager.walkableTiles;
         if (!walkableTiles || walkableTiles.length === 0) return null;
 
         const availableTiles = walkableTiles.filter(tile => !this.entityManager.getActorAt(tile.x, tile.y));
         if (availableTiles.length === 0) return null;
 
-        const niches = availableTiles.filter(t => this.entityManager.isWallNicheTile(t.x, t.y));
-        if (niches.length > 0) return randomElement(niches);
+        // Try the preferred region first, then the whole map. Within each, a wall
+        // niche wins over open floor.
+        const pools = [];
+        if (preferredRegion) {
+            const region = this.mapManager.namedRegions?.[preferredRegion];
+            if (region?.length) {
+                const inRegion = new Set(region.map(t => `${t.x},${t.y}`));
+                const regionTiles = availableTiles.filter(t => inRegion.has(`${t.x},${t.y}`));
+                if (regionTiles.length > 0) pools.push({ name: preferredRegion, tiles: regionTiles });
+            }
+        }
+        pools.push({ name: 'map', tiles: availableTiles });
 
+        for (const pool of pools) {
+            const niches = pool.tiles.filter(t => this.entityManager.isWallNicheTile(t.x, t.y));
+            if (niches.length === 0) continue;
+            if (pool.name !== 'map') console.log(`Stairway placed in the "${pool.name}" region`);
+            // Among niches, prefer one that can actually be framed with braziers.
+            // Some niches are geometric accidents — a gap in a colonnade reads as a
+            // 3-neighbour tile but has ornaments, not plain wall, to either side — and
+            // a stairway there ends up unframed.
+            const framed = niches.filter(t => this.canFlankStairwayAt(t.x, t.y));
+            return randomElement(framed.length > 0 ? framed : niches);
+        }
+
+        // No niche anywhere: take open floor, still preferring the region.
         console.log('No wall-niche tile available for stairway; falling back to open floor');
-        return randomElement(availableTiles);
+        return randomElement(pools[0].tiles);
     }
 
     /**
@@ -2778,20 +2834,23 @@ class DungeonEngine {
      *
      * @param {Actor} stairway - The freshly-placed stairway
      */
-    flankStairwayWithBraziers(stairway) {
-        const brazierData = this.currentPrototype.getActorData('brazier');
-        if (!brazierData) return;
-
+    /**
+     * The wall actors either side of the tile a stairway at (x, y) backs onto — the
+     * two sconce positions. Shared by flankStairwayWithBraziers and by
+     * pickStairwayTile, which uses it to prefer a niche that can actually be framed.
+     *
+     * @returns {Actor[]} 0-2 replaceable wall actors
+     */
+    stairwaySconceWalls(x, y) {
         const mm = this.mapManager;
         // A usable sconce spot is a non-floor tile occupied by nothing but a plain wall
         // actor, which the brazier replaces (the same swap the map generator does for its
         // own wall torches). Walls are spawned as actors before stairways are placed, so
         // requiring an *empty* tile here would find nothing. Anything else standing there
         // — a door, a gate, another stairway — disqualifies the spot.
-        const wallActorAt = (x, y) => {
-            if (x < 0 || x >= mm.width || y < 0 || y >= mm.height) return null;
-            if (mm.floorMap[y]?.[x]?.tileId > 0) return null;
-            const actors = this.entityManager.getActorsAt(x, y).filter(a => !a.isDead);
+        const wallActorAt = (wx, wy) => {
+            if (wx < 0 || wx >= mm.width || wy < 0 || wy >= mm.height) return null;
+            const actors = this.entityManager.getActorsAt(wx, wy).filter(a => !a.isDead);
             if (actors.length !== 1) return null;
             const only = actors[0];
             // Plain static wall only. `pushable` excludes puzzle walls, `openable`
@@ -2799,6 +2858,11 @@ class DungeonEngine {
             // types the generator paints into wall runs.
             if (only.hasAttribute('pushable') || only.hasAttribute('openable')) return null;
             if (only.hasAttribute('stairway') || !only.hasAttribute('solid')) return null;
+            // `ornament` marks a solid that is deliberately placed architecture — a
+            // colonnade column, a window grille. Those carry a paint_tile like any
+            // wall, but swapping one for a brazier would eat the very structure a
+            // generator just built.
+            if (only.hasAttribute('ornament')) return null;
             return only.getAttribute('paint_tile') ? only : null;
         };
 
@@ -2806,23 +2870,36 @@ class DungeonEngine {
         // directions. The sconces are the two wall tiles either side of the stairway's
         // own backing tile — e.g. a stairway with wall above gets braziers at the wall
         // tiles up-left and up-right of it, framing the stairs.
-        const { x, y } = stairway;
-        const isFloorTile = (tx, ty) => mm.floorMap[ty]?.[tx]?.tileId > 0;
+        //
+        // "Backs onto a wall" must be decided by what stands on the tile, NOT by
+        // floorMap: generators give wall tiles a floorMap entry too (a wall sits *on*
+        // a floor tile), so a floorMap test finds no wall anywhere and no brazier is
+        // ever placed.
         const back = [{ dx: 0, dy: -1 }, { dx: 0, dy: 1 }, { dx: -1, dy: 0 }, { dx: 1, dy: 0 }]
-            .find(d => !isFloorTile(x + d.dx, y + d.dy));
-        if (!back) return; // no wall behind it (open floor) — nothing to mount on
+            .find(d => wallActorAt(x + d.dx, y + d.dy));
+        if (!back) return []; // no mountable wall behind it — nothing to frame
 
         // Walk perpendicular to the wall normal: a vertical normal means a horizontal run.
         const along = back.dx === 0 ? { dx: 1, dy: 0 } : { dx: 0, dy: 1 };
-        const flanks = [
-            { x: x + back.dx - along.dx, y: y + back.dy - along.dy },
-            { x: x + back.dx + along.dx, y: y + back.dy + along.dy }
-        ];
+        return [
+            wallActorAt(x + back.dx - along.dx, y + back.dy - along.dy),
+            wallActorAt(x + back.dx + along.dx, y + back.dy + along.dy)
+        ].filter(Boolean);
+    }
 
+    /** Whether a stairway at (x, y) could be framed with braziers on both sides. */
+    canFlankStairwayAt(x, y) {
+        return this.stairwaySconceWalls(x, y).length === 2;
+    }
+
+    flankStairwayWithBraziers(stairway) {
+        const brazierData = this.currentPrototype.getActorData('brazier');
+        if (!brazierData) return;
+
+        const { x, y } = stairway;
         let placed = 0;
-        for (const pos of flanks) {
-            const wall = wallActorAt(pos.x, pos.y);
-            if (!wall) continue;
+        for (const wall of this.stairwaySconceWalls(x, y)) {
+            const pos = { x: wall.x, y: wall.y };
             this.entityManager.removeEntity(wall);
             this.entityManager.addEntity(new Actor(pos.x, pos.y, 'brazier', brazierData, this));
             placed++;
@@ -2861,8 +2938,9 @@ class DungeonEngine {
             return;
         }
 
-        // No up_stairway found - place one against a wall (see pickStairwayTile)
-        const tile = this.pickStairwayTile();
+        // No up_stairway found - place one against a wall (see pickStairwayTile).
+        const floorConfig = this.getFloorConfig(this.currentFloor);
+        const tile = this.pickStairwayTile(this.stairwayRegionFor('up', floorConfig));
         if (!tile) {
             console.warn('No available tiles to place up_stairway');
             return;
@@ -2946,14 +3024,13 @@ class DungeonEngine {
             return;
         }
 
-        const tile = this.pickStairwayTile();
+        const floorConfig = this.getFloorConfig(this.currentFloor);
+        const tile = this.pickStairwayTile(this.stairwayRegionFor('down', floorConfig));
         if (!tile) {
             console.warn('No available tiles to place down_stairway');
             return;
         }
 
-        // Check if this floor has win conditions — if so, use locked_down_stairway
-        const floorConfig = this.getFloorConfig(this.currentFloor);
         const hasWinConditions = floorConfig.win_conditions && floorConfig.win_conditions.length > 0;
         const stairwayType = hasWinConditions ? 'locked_down_stairway' : 'down_stairway';
 
@@ -10022,11 +10099,29 @@ class EntityManager {
             return walkableTiles.filter(t => !occupied.has(`${t.x},${t.y}`));
         };
 
-        this.spawnRandomActors(getAvailableTiles, floorConfig);
-        this.spawnRandomTraps(getAvailableTiles, floorConfig);
-        this.spawnRandomFungus(getAvailableTiles, floorConfig);
-        this.spawnRandomItems(getAvailableTiles, floorConfig);
-        this.spawnBudgetItems(getAvailableTiles, floorConfig);
+        // A random_actors/random_items entry may name a region the generator
+        // published (e.g. "sanctum" from the palladian generator) to confine its
+        // spawns to. Entirely optional: a generator that publishes no regions costs
+        // nothing, and an unknown name warns and falls back to the whole map rather
+        // than blanking a floor over a typo.
+        const regions = this.engine.mapManager.namedRegions || {};
+        const tilesIn = (regionName) => {
+            if (!regionName) return getAvailableTiles;
+            const region = regions[regionName];
+            if (!region || !region.length) {
+                const available = Object.keys(regions).join(', ') || 'none';
+                console.warn(`random spawn: region "${regionName}" not provided by this floor's generator (available: ${available}); using whole map`);
+                return getAvailableTiles;
+            }
+            const inRegion = new Set(region.map(t => `${t.x},${t.y}`));
+            return () => getAvailableTiles().filter(t => inRegion.has(`${t.x},${t.y}`));
+        };
+
+        this.spawnRandomActors(getAvailableTiles, floorConfig, tilesIn);
+        this.spawnRandomTraps(getAvailableTiles, floorConfig, tilesIn);
+        this.spawnRandomFungus(getAvailableTiles, floorConfig, tilesIn);
+        this.spawnRandomItems(getAvailableTiles, floorConfig, tilesIn);
+        this.spawnBudgetItems(getAvailableTiles, floorConfig, tilesIn);
     }
 
     /**
@@ -10053,7 +10148,7 @@ class EntityManager {
      * `fungus` (spore-releasing, walkable) and, per `tall_chance`, solid sight-blocking
      * `tall_fungus`. Modeled on spawnRandomTraps; clusters patches like pack actors.
      */
-    spawnRandomFungus(getAvailableTiles, floorConfig) {
+    spawnRandomFungus(getAvailableTiles, floorConfig, tilesIn = null) {
         const fungusConfig = floorConfig?.fungus;
         if (!fungusConfig) return;
 
@@ -10063,6 +10158,8 @@ class EntityManager {
         const tallChance = fungusConfig.tall_chance ?? 0;
         const cluster = fungusConfig.cluster !== false; // default: clustered patches
         const patches = min + Math.floor(ROT.RNG.getUniform() * (max - min + 1));
+        // An optional `region` confines the patches to a generator-published area.
+        const tiles = tilesIn ? tilesIn(fungusConfig.region) : getAvailableTiles;
 
         const placeFungus = (tile) => {
             const type = ROT.RNG.getUniform() < tallChance ? 'tall_fungus' : 'fungus';
@@ -10075,7 +10172,7 @@ class EntityManager {
         };
 
         for (let p = 0; p < patches; p++) {
-            const availableTiles = getAvailableTiles();
+            const availableTiles = tiles();
             if (availableTiles.length === 0) {
                 console.warn('fungus: No tiles available');
                 break;
@@ -10088,7 +10185,7 @@ class EntityManager {
                 // A patch is the anchor plus 1-3 neighbors within Manhattan distance <= 2.
                 const extra = 1 + Math.floor(ROT.RNG.getUniform() * 3);
                 for (let i = 0; i < extra; i++) {
-                    const nearby = getAvailableTiles().filter(t =>
+                    const nearby = tiles().filter(t =>
                         Math.abs(t.x - anchorTile.x) + Math.abs(t.y - anchorTile.y) <= 2
                     );
                     if (nearby.length === 0) break;
@@ -10099,7 +10196,7 @@ class EntityManager {
         console.log(`fungus: Spawned ${patches} patch(es)`);
     }
 
-    spawnRandomTraps(getAvailableTiles, floorConfig) {
+    spawnRandomTraps(getAvailableTiles, floorConfig, tilesIn = null) {
         const trapsConfig = floorConfig?.traps;
         if (!trapsConfig) return;
 
@@ -10116,9 +10213,12 @@ class EntityManager {
         const min = trapsConfig.min ?? 1;
         const max = trapsConfig.max ?? min;
         const count = min + Math.floor(ROT.RNG.getUniform() * (max - min + 1));
+        // An optional `region` confines traps to a generator-published area — e.g.
+        // trapping a villa's interior while leaving its courtyard safe.
+        const tiles = tilesIn ? tilesIn(trapsConfig.region) : getAvailableTiles;
 
         for (let i = 0; i < count; i++) {
-            const availableTiles = getAvailableTiles();
+            const availableTiles = tiles();
             if (availableTiles.length === 0) {
                 console.warn('traps: No tiles available');
                 break;
@@ -10138,7 +10238,7 @@ class EntityManager {
      * Spawn random actors based on prototype's random_actors config
      * @param {Function} getAvailableTiles - Function that returns available spawn tiles
      */
-    spawnRandomActors(getAvailableTiles, floorConfig = null) {
+    spawnRandomActors(getAvailableTiles, floorConfig = null, tilesIn = null) {
         const prototype = this.engine.currentPrototype;
         const randomActors = floorConfig?.random_actors ?? prototype?.config?.random_actors;
         if (!randomActors) return;
@@ -10154,12 +10254,17 @@ class EntityManager {
                 continue;
             }
 
+            // An optional `region` narrows the pool to a generator-published area
+            // (e.g. a palladian sanctum), so a boss can be authored to appear in the
+            // room built for it. Composes with the aquatic filter below.
+            const regionTiles = tilesIn ? tilesIn(spawnConfig.region) : getAvailableTiles;
+
             // Aquatic actors (eels) may only spawn on a liquid tile — i.e. inside a
             // water/sewage lake. Lava isn't a liquid, so lava lakes are excluded.
             const isAquatic = actorData.attributes?.aquatic === true;
             const tilesForActor = isAquatic
-                ? () => getAvailableTiles().filter(t => this._getLiquidActorAt(t.x, t.y))
-                : getAvailableTiles;
+                ? () => regionTiles().filter(t => this._getLiquidActorAt(t.x, t.y))
+                : regionTiles;
 
             // If chance is 100%, spawn exactly one (guaranteed spawn)
             if (chance >= 100) {
@@ -10259,7 +10364,7 @@ class EntityManager {
      * Spawn random items based on prototype's random_items config
      * @param {Function} getAvailableTiles - Function that returns available spawn tiles
      */
-    spawnRandomItems(getAvailableTiles, floorConfig = null) {
+    spawnRandomItems(getAvailableTiles, floorConfig = null, tilesIn = null) {
         const prototype = this.engine.currentPrototype;
         const randomItems = floorConfig?.random_items ?? prototype?.config?.random_items;
         if (!randomItems) return;
@@ -10268,6 +10373,9 @@ class EntityManager {
             const chance = spawnConfig.chance ?? 100;
             const min = spawnConfig.min ?? 1;
             const max = spawnConfig.max ?? 1;
+            // An optional `region` confines this item to a generator-published area
+            // (e.g. an artifact in a palladian sanctum).
+            const itemTiles = tilesIn ? tilesIn(spawnConfig.region) : getAvailableTiles;
 
             let resolvedType = itemType;
             let itemData = prototype.getItemData(itemType);
@@ -10278,7 +10386,7 @@ class EntityManager {
 
             // If chance is 100%, spawn exactly one (guaranteed spawn)
             if (chance >= 100) {
-                const availableTiles = getAvailableTiles();
+                const availableTiles = itemTiles();
                 if (availableTiles.length === 0) {
                     console.warn(`random_items: No tiles available for guaranteed spawn of "${resolvedType}"`);
                     continue;
@@ -10313,7 +10421,7 @@ class EntityManager {
                     continue;
                 }
 
-                const availableTiles = getAvailableTiles();
+                const availableTiles = itemTiles();
                 if (availableTiles.length === 0) {
                     console.warn(`random_items: No tiles available for "${itemType}"`);
                     break;
@@ -10342,7 +10450,7 @@ class EntityManager {
         }
     }
 
-    spawnBudgetItems(getAvailableTiles, floorConfig) {
+    spawnBudgetItems(getAvailableTiles, floorConfig, tilesIn = null) {
         const prototype = this.engine.currentPrototype;
         const budget = floorConfig?.item_budget ?? prototype?.config?.item_budget;
         if (!budget || prototype.activeCatalog.size === 0) return;
@@ -10350,6 +10458,8 @@ class EntityManager {
         const base = budget.base ?? 3;
         const extraChance = budget.extra_chance ?? 50;
         const maxExtra = budget.max_extra ?? 3;
+        // An optional `region` confines the budget drop to a generator-published area.
+        const tiles = tilesIn ? tilesIn(budget.region) : getAvailableTiles;
 
         let totalItems = base;
         for (let i = 0; i < maxExtra; i++) {
@@ -10372,7 +10482,7 @@ class EntityManager {
         if (categories.length === 0 || totalWeight === 0) return;
 
         for (let i = 0; i < totalItems; i++) {
-            const availableTiles = getAvailableTiles();
+            const availableTiles = tiles();
             if (availableTiles.length === 0) break;
 
             // Weighted random category selection

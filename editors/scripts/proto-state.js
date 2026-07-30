@@ -28,7 +28,7 @@ const state = {
 };
 
 const CATEGORY_KEYS = ['potion','scroll','staff','weapon','armor','ring','wand'];
-const GEN_TYPES = ['brogue','digger','arena','infernal'];
+const GEN_TYPES = ['brogue','digger','arena','infernal','palladian'];
 
 /* =========================================================================
    Data loading

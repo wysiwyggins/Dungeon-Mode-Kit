@@ -4,15 +4,18 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Bugs
 
+- in the confusion state, the bar representing health in the sidebar shortens, even though it is still reported with unchanged current and max values. as the confusion state turns count down, the health bar begins to get wider again
 - in the prototype editor, I can turn on the toggles for settings like fog of war and darkness, implying an override of the prototype-level default. But if I deactivate those toggles, that is still an override. There's no way to disable the override altogether, resulting in potentially redundant json (low priority). These types of settings might best be grouped under a activate deactivate toggle that returns us to prototype defaults.
+  - Related: `dualRangeArrayRow` seeds `obj[key]` on *render*, so merely viewing a section (e.g. the palladian or brogue room-size fields) writes defaults into the JSON. `roomSizeEditor`/`porticoEditor` work around it with a gating checkbox that deletes the keys when off — that toggle-gate is the pattern to generalize.
 
 ---
 
 ### Tweaks
 
-- add biome setting in prototype-editor for room size variation. Rooms currently seem consistently small.
+- Poison gas is just ding damage rather than adding a poisoned state
 - invisible actors shouldn't cast shadows
-- stairways should be spawning along room walls like braziers rather than in the middle of rooms/hallways. Ideally there would be braziers on either side of them too
+- Add a '?' to the bottom right corner of the player info window that can be clicked on to open the help menu
+- on yes no modal ui windows, hitting another key or clicking off also counts as no
 
 ## Feature ideas
 
