@@ -1,14 +1,16 @@
 {
-  "amulet": {
-    "name": "Amulet of Yendor",
+ "amulet": {
+  "name": "Amulet of Yendor",
     "tileIndex": "WHITE_FEMALE_SYMBOL",
-    "tint": "#ffee00",
+    "tint": "#ffaa00",
+    "effect": "flicker_tint",
     "identified": false,
     "attributes": {
       "pickupable": true,
       "visible": true,
       "light_source": true,
-      "lightRadius": 1
+      "lightRadius": 2,
+      "pickup_sound": "magic"
     }
   },
   "grail": {
@@ -22,7 +24,8 @@
       "pickupable": true,
       "visible": true,
       "light_source": true,
-      "lightRadius": 1
+      "lightRadius": 2,
+      "pickup_sound": "magic"
     }
   },
   "key": {

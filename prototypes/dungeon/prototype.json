@@ -695,15 +695,15 @@
           ],
           "bayRows": [
             2,
-            4
+            5
           ],
           "bayWidth": [
             4,
-            11
+            8
           ],
           "bayHeight": [
             4,
-            9
+            12
           ],
           "porticoStyle": "random",
           "lakes": {
@@ -721,7 +721,11 @@
             "max": 2
           },
           "map_width": 60,
-          "map_height": 60
+          "map_height": 60,
+          "sanctumShapes": [
+            "cross"
+          ],
+          "sanctumChance": 100
         }
       },
       "switch_puzzles": {
