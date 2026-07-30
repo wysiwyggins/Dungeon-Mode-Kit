@@ -77,6 +77,8 @@ See [LIGHTING.md](LIGHTING.md) for the full lighting system reference.
 |-------|------|---------|-------------|
 | `observer_mode` | boolean | `false` | Disable stairway and portal placement. Use for spectator-only prototypes (e.g. cellular automata demos). |
 | `treasure_room` | number | `0` | Percent chance (0-100) to spawn a treasure room on the level |
+| `up_stairway_region` | string | generator's choice | Place the up (entry) stairway inside a named region the generator published. Some generators suggest one — `palladian` puts the entry stair in its `portico` courtyard, since arriving in the middle of an interior room reads as a mistake. Set explicitly to override, or to `null` for random placement. |
+| `down_stairway_region` | string | generator's choice | Same for the down stairway. No generator currently suggests one; set it to e.g. `"sanctum"` on a palladian floor to put the descent behind the boss. |
 
 ---
 
@@ -112,6 +114,7 @@ When no Tiled map file exists for a floor, the engine generates a procedural map
 | `eller_maze` | Perfect maze (Eller's algorithm) |
 | `arena` | Simple empty rectangle |
 | `infernal` | Cave with lava pools |
+| `palladian` | Symmetrical villa: a mirrored grid of rooms around a central axial sanctum, with a columned portico. Built for boss floors and vaults |
 
 ### Common Options
 
@@ -132,15 +135,76 @@ When no Tiled map file exists for a floor, the engine generates a procedural map
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `maxRooms` | number | auto | Maximum rooms to generate. Optional — when omitted, auto-computed from map size (`≈ map_width × map_height / 120`, clamped 8–120) so larger maps fill out. An explicit value overrides the auto default. Not exposed in the prototype editor. |
+| `maxRooms` | number | auto | Maximum rooms to generate. Optional — when omitted, auto-computed from map size (`≈ map_width × map_height / 200`, clamped 8–120) so larger maps fill out. An explicit value overrides the auto default. Not exposed in the prototype editor. |
 | `maxAttempts` | number | auto | Room-placement attempts (the practical cap on density, since many attempts fail to place). Optional — when omitted, auto-scaled to `≈ maxRooms × 4` (clamped 50–600) so it can reach the size-scaled room target. An explicit value overrides. Larger = denser. |
-| `corridorChance` | number | `30` | Percent chance to add a corridor between rooms |
-| `corridorLength` | `[min, max]` | `[2, 6]` | Corridor length range |
+| `corridorChance` | number | `55` | Percent chance to add a corridor between rooms |
+| `corridorLength` | `[min, max]` | `[3, 9]` | Corridor length range |
 | `doorChance` | number | `50` | Percent chance to place a door at room connections |
 | `torchChance` | number | `30` | Percent chance to place a torch in a room |
 | `roomWeights` | object | `{ rectangle: 30, cross: 25, circular: 20, cavern: 25 }` | Relative weights for room types |
 | `loopMinDistance` | number | `20` | Minimum path distance between rooms before a loop shortcut is added |
 | `maxLoops` | number | `5` | Maximum loop connections to add |
+
+#### Palladian-Specific Options
+
+The `palladian` generator implements the parametric shape grammar from Stiny & Mitchell, *"The Palladian grammar"* (1978) — the formal grammar behind Palladio's villa plans. Unlike the other generators it produces a space that reads as deliberately *built*: a "tartan" grid of an **odd** number of east–west bays by any number of north–south rows, mirrored about a central axis, with adjacent bays separated by exactly one wall. Bays are then merged into larger rooms, and one room may be a non-rectangular cross-hall straddling the axis — the **sanctum**, meant to hold a boss or a reward.
+
+Interior doors are aligned with each other and with the exterior windows, producing the *enfilade* Palladio is known for: an unbroken sight-line through the whole villa, including one straight down the axis from the rear door, through the sanctum, and out through the portico.
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `bayColumns` | `[min, max]` | `[3, 7]` | Number of east–west bays. **Always forced odd** — the centre bay is bisected by the symmetry axis. `5` is the canonical villa. |
+| `bayRows` | `[min, max]` | `[2, 4]` | Number of north–south bay rows. `3` is canonical. |
+| `bayWidth` | `[min, max]` | `[4, 11]` | Interior width of one bay, in tiles. |
+| `bayHeight` | `[min, max]` | `[4, 9]` | Interior height of one bay, in tiles. |
+| `centralBias` | number | `150` | Percent width of the central axial bay relative to a flanking bay. Above 100 gives a grander salone. |
+| `mergeChance` | number | `45` | Percent chance a mirrored pair of adjacent bays merges into one room. `0` = a warren of small rooms; `100` = a few vast halls. |
+| `sanctumChance` | number | `70` | Percent chance the plan has a non-rectangular cross-hall on the axis. The grammar permits **at most one**. |
+| `sanctumShapes` | array | `["cross","tee","eye"]` | Eligible cross-hall shapes, as a weighted pool (repeat an entry to weight it). `cross` (+) keeps the sanctum tightest; `eye` (I) swallows most of the plan. Falls back `cross → tee → eye → rect` when the grid is too small for the pick. |
+| `porticoStyle` | string | `"prostyle"` | `prostyle` (porch projects out), `in_antis` (recessed into the facade), `random`, or `none`. |
+| `porticoDepth` | number | `3` | Tiles the porch projects out or is recessed in. Clamped to fit the map. |
+| `columnSpacing` | number | `2` | Tiles between colonnade columns; `0` = no colonnade. The column count is forced **even** so the axis stays an open doorway — Palladio never blocks the axis with a column. |
+| `doorChance` | number | `55` | Percent chance a non-axial interior opening gets a door actor. Axial openings are always open, so the axial sight-line can't be closed off. |
+| `torchChance` | number | `40` | Percent chance to place a brazier in a room (higher than brogue's 30 — temples are lit). |
+| `wall_types` | array | `[{ "type": "brick_wall", "weight": 100 }]` | Weighted wall types. **Note:** the shared post-generation pass converts ~2% of interior walls to pushable secret walls, but only walls of type `wall`. So the `brick_wall` default disables that; set `[{ "type": "wall", "weight": 100 }]` to get secret passages in the villa walls. |
+
+The generator reuses existing actors — `column` for the colonnade, `fortification` for windows (solid but see-through, so it reads as a barred opening), `brick_wall`, and `brazier`. No new art is required.
+
+**Region-targeted spawning.** The generator publishes two named regions, `sanctum` and `portico`. A `random_actors` or `random_items` entry can name one to confine its spawns, which is how a boss is placed in the room built for it:
+
+```json
+"levels": {
+  "18": {
+    "map_generator": {
+      "type": "palladian",
+      "options": { "bayColumns": [5, 5], "bayRows": [3, 3], "sanctumShapes": ["cross"] }
+    },
+    "win_conditions": ["killed:minotaur"],
+    "random_actors": { "minotaur": { "chance": 100, "region": "sanctum" } },
+    "random_items": { "amulet": { "chance": 100, "region": "sanctum" } }
+  }
+}
+```
+
+`region` is optional and generator-agnostic: an unknown name warns and falls back to the whole map rather than failing. Prefer `sanctumShapes: ["cross"]` when you want a *tight* boss chamber — an `eye` sanctum can span most of the plan, which makes the region barely a constraint.
+
+#### Named Regions
+
+A generator can publish named areas that spawn entries target with `"region"`. Available regions by generator:
+
+| Region | Published by | Description |
+|--------|--------------|-------------|
+| `largest_room` | `brogue`, `digger`, `palladian` | The biggest single room by floor area — a natural arena for a guaranteed boss or a hoard. |
+| `treasure_room` | any generator, when the `treasure_room` mechanic fires | The locked vault's interior. Target it to put a guardian inside with the loot. |
+| `sanctum` | `palladian` | The axial cross-hall, when the plan has one. |
+| `portico` | `palladian` | The entrance courtyard. Also where the entry stairway lands by default. |
+
+`region` is honoured by `random_actors`, `random_items`, `traps`, `fungus`, and `item_budget`. On the per-entry configs (`random_actors`, `random_items`) it goes on the individual entry; on the single-block configs (`traps`, `fungus`, `item_budget`) it goes on the block:
+
+```json
+"traps":  { "min": 4, "max": 8, "region": "sanctum" },
+"fungus": { "min": 2, "max": 5, "region": "largest_room" }
+```
 
 If both a `map.tmj` and `map_generator` exist for a floor, the `.tmj` takes priority.
 

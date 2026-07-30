@@ -192,10 +192,12 @@ body.editor {
     // ---- JSON output panel ----
 
     .json-output-panel {
+        //hide this for now
+        display: none;
         border-top: 1px solid var(--border);
         background: var(--bg2);
         padding: 8px 16px;
-        display: flex;
+        //display: flex;
         flex-direction: column;
         height: 200px;
 

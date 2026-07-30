@@ -681,6 +681,63 @@
         "amulet": {
           "chance": 100
         }
+      },
+      "map_generator": {
+        "type": "palladian",
+        "options": {
+          "corridorLength": [
+            1,
+            12
+          ],
+          "bayColumns": [
+            3,
+            7
+          ],
+          "bayRows": [
+            2,
+            4
+          ],
+          "bayWidth": [
+            4,
+            11
+          ],
+          "bayHeight": [
+            4,
+            9
+          ],
+          "porticoStyle": "random",
+          "lakes": {
+            "count": [
+              1,
+              2
+            ],
+            "types": [
+              "lava"
+            ],
+            "minSize": 5,
+            "maxSize": 20
+          },
+          "bridges": {
+            "max": 2
+          },
+          "map_width": 60,
+          "map_height": 60
+        }
+      },
+      "switch_puzzles": {
+        "min": 0,
+        "max": 1,
+        "patterns": []
+      },
+      "mechanics": {
+        "fog_of_war": true,
+        "darkness": true,
+        "player_auto_light": false,
+        "viewport_width": 60,
+        "viewport_height": 60,
+        "treasure_room": 40,
+        "ambient_light": 0.3,
+        "tint": "#450e59"
       }
     }
   },

@@ -311,7 +311,8 @@ Items listed in `default_items` are added to the actor's inventory on spawn. Wea
 | `break_threshold` | number | Mining damage required to break |
 | `lode` | string | Item dropped when mined |
 | `lode_chance` | number | Percent chance (0–100) to drop lode item |
-| `paint_tile` | string | Tile placed in the world when this actor is destroyed |
+| `paint_tile` | string | Named tile that stands for this actor when painting a Tiled map — drawing that tile spawns this actor. Values must be unique across actors, or they collide. Also marks an actor as a "wall the engine may swap", e.g. for a stairway's flanking braziers. |
+| `ornament` | boolean | Marks a solid as deliberately-placed architecture (a colonnade column, a window grille) rather than part of a wall run. The engine won't repurpose these — a stairway's braziers skip them instead of eating the structure a generator just built. Default `false`. |
 
 ### Level Transitions
 

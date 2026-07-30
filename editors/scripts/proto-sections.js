@@ -327,7 +327,7 @@ function mapGeneratorBody(obj, body) {
     const mg = obj.map_generator;
     if (!mg.options) mg.options = {};
     body.appendChild(selectRow('type', mg, 'type', GEN_TYPES, { allowBlank: false, rerender: true,
-        tip: 'Algorithm used to build the map: brogue (rooms + corridors + loops), digger (ROT.js dungeon), arena (open box), infernal (lava-heavy caverns).' }));
+        tip: 'Algorithm used to build the map: brogue (rooms + corridors + loops), digger (ROT.js dungeon), arena (open box), infernal (lava-heavy caverns), palladian (symmetrical villa — axial sanctum, portico, colonnade; good for a boss floor).' }));
     const o = mg.options;
     body.appendChild(fieldGrid(
         fieldRow('map_width', o, 'map_width', { type: 'number', tip: 'Total map width in tiles (can exceed the viewport — the level then scrolls).' }),
@@ -369,8 +369,64 @@ function mapGeneratorBody(obj, body) {
         body.appendChild(dualRangeArrayRow('corridorLength', o, 'corridorLength', { min: 1, max: 12, tip: 'Min–max corridor length (tiles).' }));
         body.appendChild(sliderRow('dugPercentage', o, 'dugPercentage', { min: 0, max: 1, step: 0.05, decimals: 2, def: 0.2,
             tip: 'Fraction of the map carved out into rooms/corridors before the generator stops. Default 0.2.' }));
+    } else if (t === 'palladian') {
+        body.appendChild(fieldGrid(
+            dualRangeArrayRow('bayColumns', o, 'bayColumns', { min: 1, max: 9, def: [3, 7],
+                tip: 'Min–max number of east–west bays. Always forced ODD: the centre bay is bisected by the symmetry axis. 5 is the canonical villa.' }),
+            dualRangeArrayRow('bayRows', o, 'bayRows', { min: 1, max: 6, def: [2, 4],
+                tip: 'Min–max number of north–south bay rows. 3 is canonical.' }),
+        ));
+        body.appendChild(fieldGrid(
+            dualRangeArrayRow('bayWidth', o, 'bayWidth', { min: 2, max: 16, def: [4, 11],
+                tip: 'Min–max interior width of one bay, in tiles.' }),
+            dualRangeArrayRow('bayHeight', o, 'bayHeight', { min: 2, max: 16, def: [4, 9],
+                tip: 'Min–max interior height of one bay, in tiles.' }),
+        ));
+        body.appendChild(sliderRow('centralBias %', o, 'centralBias', { min: 50, max: 300, suffix: '%', def: 150,
+            tip: 'How much wider the central axial bay is than a flanking bay. Above 100% gives a grander salone. Default 150%.' }));
+        body.appendChild(sliderRow('mergeChance %', o, 'mergeChance', { min: 0, max: 100, suffix: '%', def: 45,
+            tip: 'Chance a mirrored pair of adjacent bays merges into one larger room. 0% = a warren of small rooms; 100% = a few vast halls.' }));
+        body.appendChild(porticoEditor(o));
+        body.appendChild(sliderRow('sanctumChance %', o, 'sanctumChance', { min: 0, max: 100, suffix: '%', def: 70,
+            tip: 'Chance the plan has a non-rectangular cross-hall on the axis (the sanctum). The grammar permits at most one such room. Spawns can target it with "region": "sanctum".' }));
+        body.appendChild(el('div', { class: 'sub-section' },
+            subTitle('sanctumShapes', 'Which cross-hall shapes are eligible. cross (+) keeps the sanctum tightest; eye (I) swallows most of the plan.'),
+            weightEditor(o, 'sanctumShapes', { mode: 'pool', choices: ['cross', 'tee', 'eye'] })));
+        body.appendChild(carvedRegionsEditor(o));
+        body.appendChild(bridgesEditor(o));
+        body.appendChild(collapsingEditor(o));
     }
     // arena: only map_width/height (already shown)
+}
+
+// The portico is the villa's principal entrance, on the symmetry axis. Absent
+// porticoStyle means ON: 'prostyle' is the engine default, so the toggle has to
+// treat "unset" and "'none'" differently.
+function porticoEditor(o) {
+    const tip = 'The principal entrance on the symmetry axis: a columned porch projecting out (prostyle) or recessed into the facade (in antis).';
+    const wrap = el('div', { class: 'sub-section' });
+    const enable = el('label', { class: 'toggle-line', title: tip });
+    const cb = el('input', { type: 'checkbox' });
+    cb.checked = o.porticoStyle !== 'none';
+    cb.addEventListener('change', () => {
+        if (cb.checked) delete o.porticoStyle;   // back to the engine default
+        else o.porticoStyle = 'none';
+        commit(); render();
+    });
+    enable.append(cb, ' portico');
+    wrap.appendChild(enable);
+    if (o.porticoStyle !== 'none') {
+        wrap.appendChild(selectRow('porticoStyle', o, 'porticoStyle', ['prostyle', 'in_antis', 'random'], {
+            allowBlank: true,
+            tip: 'prostyle: the porch projects out from the facade. in_antis: it is recessed into it. random: picked per floor. Blank = prostyle.' }));
+        wrap.appendChild(fieldGrid(
+            fieldRow('porticoDepth', o, 'porticoDepth', { type: 'number',
+                tip: 'Tiles the porch projects out (prostyle) or is recessed in (in antis). Default 3.' }),
+            fieldRow('columnSpacing', o, 'columnSpacing', { type: 'number',
+                tip: 'Tiles between colonnade columns; 0 = no colonnade. The column count is forced even so the axis stays an open doorway. Default 2.' }),
+        ));
+    }
+    return wrap;
 }
 
 // dual range writing to an array [min,max] at obj[key]

@@ -67,38 +67,48 @@
   },
   "azhdaya_head": {
     "name": "Azhdaya",
-    "tileIndexBase": "FULL_BLOCK",
+    "tileIndexBase": "OPAQUE_DOTTED_FULL_BLOCK",
     "tileIndexTop": "SKULL",
+    "sideOffset": {
+      "dx": 1,
+      "dy": 0
+    },
+    "tint": "#ffd9a8",
+    "effect": "flicker_tint",
+    "animationSide": "fire",
+    "lightRadius": 3,
     "personality": "stationed_melee",
     "collision_effect": {
       "health": "-{strength}"
     },
     "collision_sound": "hit",
     "attributes": {
-      "flammable": true,
       "hostile": true,
-      "proper_named": true,
       "sentient": true,
+      "flammable": true,
       "follows_thread": true,
-      "segment_count": 2,
-      "chain_head": true,
-      "chain_segment_type": "azhdaya_tail",
-      "remains": "skull",
-      "strength": 15,
+      "proper_named": true,
       "accuracy": 80,
-      "defense": 20
+      "defense": 20,
+      "strength": 15,
+      "remains": "skull",
+      "chain_segment_type": "azhdaya_tail",
+      "segment_count": 1,
+      "chain_head": true
     },
     "stats": {
-      "health": 30
-    },
-    "default_items": [
-      "extra_skull"
-    ]
+      "health": 80
+    }
   },
   "azhdaya_tail": {
     "name": "Azhdaya",
-    "tileIndexBase": "LEFT_HALF_BLOCK_WITH_LIGHT_SHADE_AND_MEDIUM_SHADE_RIGHT_BLOCKS",
+    "tileIndexBase": "OPAQUE_QUADRANT_UPPER_LEFT_AND_LOWER_LEFT_AND_LOWER_RIGHT",
     "tileIndexTop": "RIGHT_ONE_HALF_BLOCK",
+    "tint": "#ffe4a8",
+    "effect": "flicker_tint",
+    "lightRadius": 1,
+    "facingEnabled": true,
+    "defaultFacing": "left",
     "personality": "azhdaya_tail",
     "collision_effect": {
       "health": "-{strength}",
@@ -106,7 +116,6 @@
     },
     "collision_sound": "tap1",
     "attributes": {
-      "flammable": true,
       "hostile": true,
       "proper_named": true,
       "defense": 15

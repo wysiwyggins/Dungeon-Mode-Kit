@@ -529,6 +529,8 @@
     "flipTopV": true,
     "attributes": {
       "breakable": true,
+      "opaque": false,
+      "ornament": true,
       "remains": "rubble",
       "paint_tile": "CANDLE_STICK"
     }
@@ -570,6 +572,7 @@
       "breakable": true,
       "conductive": false,
       "opaque": false,
+      "ornament": true,
       "paint_tile": "BALLOT_BOX",
       "remains": "rubble"
     }
