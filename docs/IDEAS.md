@@ -4,10 +4,6 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Bugs
 
-- [x] in the prototype editor, I can turn on the toggles for settings like fog of war and darkness, implying an override of the prototype-level default. But if I deactivate those toggles, that is still an override. There's no way to disable the override altogether, resulting in potentially redundant json (low priority).
-  - Fixed with a `data-tristate` attribute in `lib/editor-template.js`: the flag boxes cycle inherit -> true -> false -> inherit, showing "inherited" as indeterminate. Applied to fog_of_war/darkness/player_auto_light.
-  - [x] Related: `dualRangeArrayRow` seeded `obj[key]` on *render*, so merely viewing a section (e.g. the palladian or brogue room-size fields) wrote defaults into the JSON. Fixed at the source in `dualRangeForArray`, which now reads through to `opts.def` and only materializes the array on a real edit — so no gating checkbox is needed for correctness. The `roomSizeEditor`/`porticoEditor` gates remain, but as a way to group a feature rather than as a workaround.
-
 ## Tweaks
 
 - We don't need to show a fuel bar for unlit torches that have never been lit. Could gate this by not showing fuel etc when it's 100%
@@ -17,13 +13,9 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Feature ideas
 
-### Editor wrangling
-
-- Not a feature idea, per se, but I need to always always look for opportunities to reduce complexity of the editors. This means logical groupings, show/hide toggles, looking for things that are implicit and don't need to be shown, etc. There may be some visual design that keeps this from looking like an intimidating wall of text and form elements too. The hosted bitsy-style version of this stuff should put the simplest version of a prototype design first, with toggleable complexity when you want to add it. (The biome-editor sprint is part of this)
-
 ### Machines.json
 
-- our pattern is that as aspects of a data file become more complex, we move them to their own data file to make them modular and reusable and to keep editors focused and simple. Just as biomes got moved to their own data files and editor, trasure rooms would get data files and an editor, and would probably be renamed to something broader, possibly machines.json like Brogue's naming convention.
+- our pattern is that as aspects of a data file become more complex, we move them to their own data file to make them modular and reusable and to keep editors focused and simple. Just as biomes got moved to their own data files and editor, trasure rooms would get data files and an editor, and would probably be renamed to something broader, possibly machines.json like Brogue's naming convention. They would encompass parametric designs for various locked areas and unlocking interactions.
 
 ### More digging
 
