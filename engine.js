@@ -2070,22 +2070,28 @@ class DungeonEngine {
      */
     getFloorConfig(floor) {
         const config = this.currentPrototype.config;
-        // Legacy: a prototype with neither levels nor biomes IS the floor config.
+        // Legacy: a flat prototype — no per-floor overrides and no floor plan — IS
+        // its own floor config. (Note the test is floor_plan, not biomes: the biome
+        // library is always loaded, so `biomes` alone doesn't mean multi-floor.)
         if (!config.levels && !config.floor_plan) return config;
         const floorOverride = this._getFloorOverride(config, floor);
         // Biome tier: sits between the floor override and the prototype defaults.
         // Empty ({}) when the prototype has no biome for this floor, so biome-less
         // prototypes resolve exactly as before.
         const biome = this.resolveBiome(floor);
+        // win_conditions and switch_puzzles have no biome tier on purpose: a biome
+        // spans many floors, while both of those are per-floor (a stairway gate, a
+        // specific puzzle placement). resolveBiome never emits them, so reading
+        // biome.<key> here would always be undefined.
         return {
-            win_conditions: floorOverride.win_conditions ?? biome.win_conditions ?? config.win_conditions ?? [],
+            win_conditions: floorOverride.win_conditions ?? config.win_conditions ?? [],
             random_actors: floorOverride.random_actors ?? biome.random_actors ?? config.random_actors ?? {},
             random_items: floorOverride.random_items ?? biome.random_items ?? config.random_items ?? {},
             traps: floorOverride.traps ?? biome.traps ?? config.traps ?? null,
             fungus: floorOverride.fungus ?? biome.fungus ?? config.fungus ?? null,
             map_generator: floorOverride.map_generator ?? biome.map_generator ?? config.map_generator,
             mechanics: { ...(config.mechanics || {}), ...(biome.mechanics || {}), ...(floorOverride.mechanics || {}) },
-            switch_puzzles: floorOverride.switch_puzzles ?? biome.switch_puzzles ?? config.switch_puzzles ?? null,
+            switch_puzzles: floorOverride.switch_puzzles ?? config.switch_puzzles ?? null,
             item_budget: floorOverride.item_budget ?? biome.item_budget ?? config.item_budget ?? null,
         };
     }

@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - "Infrastructure sight" folded into magic mapping
 - degrading/breaking items (mattock is the test case)
 - new "palladian" map generator for boss/artifact areas
+- Biome editor (`editors/biome-editor.html`) and a shared biome library. Biomes are now data files like actors and items: defaults in `data/biomes.json`, per-prototype additions/overrides in `prototypes/<name>/biomes.json`. `prototype.json` only names them in its `floor_plan`. See [docs/BIOMES.md](docs/BIOMES.md).
+- `data/prototypes.json`, an index of the prototype folders. Static HTTP can't list a directory, so the editors read it to fill their prototype dropdowns — previously four editors each carried a hardcoded list, all of them out of date. Add a line here when you add a prototype.
 
 ### Fixed
 
