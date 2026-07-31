@@ -18,6 +18,10 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 - our pattern is that as aspects of a data file become more complex, we move them to their own data file to make them modular and reusable and to keep editors focused and simple. Just as biomes got moved to their own data files and editor, trasure rooms would get data files and an editor, and would probably be renamed to something broader, possibly machines.json like Brogue's naming convention. They would encompass parametric designs for various locked areas and unlocking interactions.
 
+### Effects editor
+
+- there's a stub for an effects editor but it isn't good. This is something I should probably find help for. Currently it doesn't show an effect as it would actually appear in the game and there are lots of other issues. This is a pixijs related task. Maybe it should load an actual prototype, like a 3x3 tile map/viewport and a single actor for the preview.
+
 ### More digging
 
 - if the mattock could also be used to dig the floor instead of just the walls, we could dig up graves etc. I'm making a "SHALLOW_GRAVE" tile for a dug-up floor tile.
