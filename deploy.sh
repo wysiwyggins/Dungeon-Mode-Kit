@@ -89,9 +89,11 @@ cp "$SCRIPT_DIR/index.html" "$DEST/"
 
 # Editor tools
 echo "Copying editor tools..."
-cp "$SCRIPT_DIR/item-editor.html" "$DEST/"
-cp "$SCRIPT_DIR/actor-editor.html" "$DEST/"
-cp "$SCRIPT_DIR/personality-editor.html" "$DEST/"
+cp "$SCRIPT_DIR/editors/item-editor.html" "$DEST/"
+cp "$SCRIPT_DIR/editors/actor-editor.html" "$DEST/"
+cp "$SCRIPT_DIR/editors/personality-editor.html" "$DEST/"
+cp "$SCRIPT_DIR/editors/prototype-editor.html" "$DEST/"
+cp "$SCRIPT_DIR/editors/biome-editor.html" "$DEST/"
 
 echo ""
 echo -e "${GREEN}Deploy complete!${NC}"
