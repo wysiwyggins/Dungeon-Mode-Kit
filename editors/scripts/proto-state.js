@@ -3,9 +3,9 @@
    -------------------------------------------------------------------------
    Extracted from prototype-editor.html. These files are plain <script> src
    includes (no bundler) and share one global scope; load order matters:
-   proto-state -> proto-widgets -> proto-sections -> proto-render. The final
-   file calls init(). Do not wrap in IIFEs — cross-file references rely on the
-   shared top-level scope.
+   proto-state -> proto-widgets -> biome-sections -> proto-sections ->
+   proto-render. The final file calls init(). Do not wrap in IIFEs — cross-file
+   references rely on the shared top-level scope.
    ========================================================================= */
 "use strict";
 
@@ -21,6 +21,10 @@ const state = {
     mergedActorIds: [],   // sorted ids for dropdowns
     mergedActors: {},     // id -> actor def (proto override base), for attribute lookups
     mergedItemIds: [],
+    baseBiomes: {},       // data/biomes.json — the default library
+    protoBiomes: {},      // prototypes/<name>/biomes.json — this prototype's own
+    protoName: '',        // directory name of the loaded prototype ('' when blank)
+    prototypeNames: [],   // from data/prototypes.json (no directory listing over http)
     soundIds: [],
     poolItemIds: new Set(),// item ids that have random_type (category pools)
     activeFloor: 'proto', // 'proto' or a 1-based floor number (see currentTarget)
@@ -44,13 +48,17 @@ async function fetchJSON(url) {
 }
 
 async function loadBaseData() {
-    const [actors, items, sounds] = await Promise.all([
+    const [actors, items, sounds, biomes, protoIndex] = await Promise.all([
         fetchJSON('../data/actors.json'),
         fetchJSON('../data/items.json'),
         fetchJSON('../data/sounds.json'),
+        fetchJSON('../data/biomes.json'),
+        fetchJSON('../data/prototypes.json'),
     ]);
     state.baseActors = actors;
     state.baseItems = items;
+    state.baseBiomes = biomes;
+    state.prototypeNames = Array.isArray(protoIndex.prototypes) ? protoIndex.prototypes : [];
     state.soundIds = Object.keys(sounds.sprite || {}).sort();
     state.poolItemIds = new Set();
     for (const [k, v] of Object.entries(items)) {
@@ -60,24 +68,27 @@ async function loadBaseData() {
 }
 
 async function loadPrototype(name) {
-    let cfg, protoActors, protoItems;
+    let cfg, protoActors, protoItems, protoBiomes;
     if (name && state.prototypeCache[name]) {
-        ({ cfg, protoActors, protoItems } = state.prototypeCache[name]);
+        ({ cfg, protoActors, protoItems, protoBiomes } = state.prototypeCache[name]);
     } else if (name) {
-        [cfg, protoActors, protoItems] = await Promise.all([
+        [cfg, protoActors, protoItems, protoBiomes] = await Promise.all([
             fetchJSON(`../prototypes/${name}/prototype.json`),
             fetchJSON(`../prototypes/${name}/actors.json`),
             fetchJSON(`../prototypes/${name}/items.json`),
+            fetchJSON(`../prototypes/${name}/biomes.json`),
         ]);
-        state.prototypeCache[name] = { cfg, protoActors, protoItems };
+        state.prototypeCache[name] = { cfg, protoActors, protoItems, protoBiomes };
     } else {
         cfg = blankPrototype();
-        protoActors = {}; protoItems = {};
+        protoActors = {}; protoItems = {}; protoBiomes = {};
     }
     // deep-clone cfg so editing never mutates the cache
     state.proto = JSON.parse(JSON.stringify(cfg));
     state.protoActors = protoActors;
     state.protoItems = protoItems;
+    state.protoBiomes = protoBiomes || {};
+    state.protoName = name || '';
     rebuildMergedIds();
     state.activeFloor = 'proto';
     document.getElementById('empty-hint').classList.add('hidden');
@@ -97,6 +108,41 @@ function rebuildMergedIds() {
         ...Object.keys(state.baseItems),
         ...Object.keys(state.protoItems),
     ])].sort();
+}
+
+/* Fill a <select> with the prototype names from data/prototypes.json, preserving
+   whatever placeholder option the markup already has. Static HTTP can't list a
+   directory, so that file is the index — the alternative was a hardcoded <option>
+   list per editor, which had already drifted out of sync in all four of them. */
+function populatePrototypeSelect(selectId = 'prototype-select') {
+    const sel = document.getElementById(selectId);
+    if (!sel) return;
+    const keep = sel.value;
+    // Drop everything but the placeholder (value="").
+    for (const opt of [...sel.options]) if (opt.value !== '') opt.remove();
+    for (const name of state.prototypeNames) {
+        sel.appendChild(el('option', { value: name }, name));
+    }
+    if (keep) sel.value = keep;
+}
+
+/* ---- Biome library ----
+   Biomes are not authored in prototype.json. They come from data/biomes.json,
+   optionally overridden/extended per prototype by prototypes/<name>/biomes.json —
+   the same global-then-prototype merge the engine does in Prototype.loadAssets().
+   The prototype editor only SELECTS names from this merged set in its floor plan;
+   authoring happens in the biome editor. */
+function mergedBiomes() {
+    return { ...state.baseBiomes, ...state.protoBiomes };
+}
+function mergedBiomeNames() {
+    return Object.keys(mergedBiomes()).sort();
+}
+// Where a biome name came from, for labelling the floor-plan dropdown.
+function biomeSource(name) {
+    if (state.protoBiomes && state.protoBiomes[name]) return 'prototype';
+    if (state.baseBiomes && state.baseBiomes[name]) return 'default';
+    return null;
 }
 
 /* ---- Actor attribute introspection (for the switch-puzzle UI) ---- */

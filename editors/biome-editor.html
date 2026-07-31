@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Biome Editor — Dungeon Mode Kit</title>
+<link rel="stylesheet" href="../assets/main.css">
+<script src="../lib/handlebars.min.js"></script>
+<script src="../lib/editor-template.js"></script>
+</head>
+<body class="editor biome-editor">
+
+<header>
+    <h1>Biome Editor</h1>
+    <label>Biome:
+        <select id="biome-select">
+            <option value="" selected>— choose —</option>
+        </select>
+    </label>
+    <input id="new-biome-name" type="text" placeholder="new biome name" style="width:130px;">
+    <button id="btn-new">+ New Biome</button>
+    <button id="btn-copy-library" class="btn-accent" title="Copy the whole data/biomes.json — paste it over that file">Copy library</button>
+    <button id="btn-copy-one" class="btn-accent" title="Copy just this biome as a &quot;name&quot;: { … } fragment, for pasting inline into a prototype.json">Copy this biome</button>
+    <button id="btn-toggle-json" title="Show or hide the live JSON output panel">Hide JSON</button>
+    <span id="load-status" class="status-text"></span>
+</header>
+
+<div id="workspace" class="workspace">
+  <div id="editor-body" class="editor-body">
+    <!-- A biome has no floor count of its own — the prototype that uses it does.
+         This only sets the range of the depth sliders and the preview, and is
+         never written into the biome. -->
+    <div class="floor-tabs design-bar" id="design-bar">
+      <label class="design-floors-label" title="Sets the range of the depth sliders and the depth preview. A biome does not own a floor count — the prototype that uses it does — so this is never saved with the biome.">
+        design for
+        <input id="design-floors" type="number" min="1" value="26">
+        floors
+      </label>
+      <span class="floor-hint">Slider range and previews only; not saved with the biome.</span>
+    </div>
+    <div id="proto-main" class="proto-main">
+      <div id="form-panel" class="form-panel">
+        <div class="empty-hint" id="empty-hint">Choose a biome above (or “+ New Biome”) to begin editing.</div>
+        <div id="form-sections" class="hidden form-sections"></div>
+      </div>
+    </div>
+    <div id="json-output-panel" class="json-output-panel">
+      <div class="output-header">
+        <h3>data/biomes.json</h3>
+        <span id="output-key" class="status-text"></span>
+      </div>
+      <textarea id="json-output" class="json-output" readonly spellcheck="false"></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================================================
+     Form templates (Handlebars)
+     -------------------------------------------------------------------------
+     Only the templates biome-sections.js actually compiles: the row partials it
+     uses via {{> fieldRow}} etc, and the mechanics section body. Kept identical
+     to the copies in prototype-editor.html so the shared section builders render
+     the same in both editors.
+     ========================================================================= -->
+
+<!-- ---- Row partials (reused building blocks) ---- -->
+<script type="text/x-handlebars-template" id="tpl-field-row">
+  <div class="field-row">
+    <label {{#if tip}}title="{{tip}}"{{/if}}>{{label}}</label>
+    <input type="{{#if type}}{{type}}{{else}}text{{/if}}"
+           data-bind="{{bind}}" data-type="{{#if type}}{{type}}{{else}}text{{/if}}"
+           {{#if scope}}data-scope="{{scope}}"{{/if}} data-empty="delete"
+           {{#if placeholder}}placeholder="{{placeholder}}"{{/if}}
+           {{#if tip}}title="{{tip}}"{{/if}}>
+  </div>
+</script>
+
+<script type="text/x-handlebars-template" id="tpl-textarea-row">
+  <div class="field-row">
+    <label {{#if tip}}title="{{tip}}"{{/if}}>{{label}}</label>
+    <textarea data-bind="{{bind}}" data-type="textarea"
+              {{#if scope}}data-scope="{{scope}}"{{/if}} data-empty="delete"
+              {{#if tip}}title="{{tip}}"{{/if}}></textarea>
+  </div>
+</script>
+
+<script type="text/x-handlebars-template" id="tpl-select-row">
+  <div class="field-row">
+    <label {{#if tip}}title="{{tip}}"{{/if}}>{{label}}</label>
+    <select data-bind="{{bind}}" data-type="select"
+            {{#if scope}}data-scope="{{scope}}"{{/if}} data-empty="delete"
+            {{#if tip}}title="{{tip}}"{{/if}}>
+      <option value="">{{#if blankLabel}}{{blankLabel}}{{else}}— none —{{/if}}</option>
+      {{#each options}}<option value="{{this}}">{{this}}</option>{{/each}}
+    </select>
+  </div>
+</script>
+
+<!-- ---- Mechanics section body (templated portion) ----
+     A biome's `mechanics` is shallow-merged over the prototype's by the engine
+     (getFloorConfig, the one deep-merged key), so any flag valid at prototype
+     level is valid here. data-tristate lets a flag stay unset = inherit. -->
+<script type="text/x-handlebars-template" id="tpl-section-mechanics">
+  <div class="checkbox-grid">
+    <label title="Tiles you have seen stay remembered but dim when out of view; unseen tiles are hidden."><input type="checkbox" data-bind="fog_of_war" data-type="checkbox" data-tristate data-scope="mechanics"> fog_of_war</label>
+    <label title="Level is dark — only lit areas (torches, light sources, player light) are visible."><input type="checkbox" data-bind="darkness" data-type="checkbox" data-tristate data-scope="mechanics"> darkness</label>
+    <label title="Player emits their own light automatically, so they can always see nearby tiles even in darkness."><input type="checkbox" data-bind="player_auto_light" data-type="checkbox" data-tristate data-scope="mechanics"> player_auto_light</label>
+  </div>
+  <div class="hint-inline">Flag boxes are three-state: dash = inherit the prototype's value, checked = force on, unchecked = force off.</div>
+  <div data-mount="treasure_room"></div>
+  {{> fieldRow label="viewport_width" bind="viewport_width" type="number" scope="mechanics" tip="Visible columns. If smaller than the map, the level scrolls. Leave blank to inherit."}}
+  {{> fieldRow label="viewport_height" bind="viewport_height" type="number" scope="mechanics" tip="Visible rows. If smaller than the map, the level scrolls. Leave blank to inherit."}}
+  {{> fieldRow label="ai_margin" bind="ai_margin" type="number" scope="mechanics" tip="Scrolling levels only: actors more than this many tiles outside the viewport skip their turn. Leave blank to inherit."}}
+  <div data-mount="ambient_light_group"></div>
+</script>
+
+<!-- Editor logic. Plain <script src> includes sharing one global scope (no
+     bundler); load order matters:
+     biome-state -> proto-widgets -> biome-sections -> biome-render.
+     biome-render.js calls init() last. proto-widgets.js and biome-sections.js
+     are shared verbatim with the prototype editor — biome-state.js supplies the
+     globals they expect (state, isFloor, totalFloors, CATEGORY_KEYS, GEN_TYPES)
+     and biome-render.js supplies commit()/render(). -->
+<script src="scripts/biome-state.js"></script>
+<script src="scripts/proto-widgets.js"></script>
+<script src="scripts/biome-sections.js"></script>
+<script src="scripts/biome-render.js"></script>
+</body>
+</html>

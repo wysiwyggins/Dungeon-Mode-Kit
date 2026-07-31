@@ -908,7 +908,7 @@ class DungeonEngine {
     async loadGlobalData() {
         try {
             // Load global entity definitions
-            const [actorsRes, itemsRes, personalitiesRes, entitiesRes, colorsRes, adjectivesRes, attacksRes, reagentsRes, substancesRes, statesRes, wordsRes, effectsRes, keybindingsRes, fungiTypesRes] = await Promise.all([
+            const [actorsRes, itemsRes, personalitiesRes, entitiesRes, colorsRes, adjectivesRes, attacksRes, reagentsRes, substancesRes, statesRes, wordsRes, effectsRes, keybindingsRes, fungiTypesRes, biomesRes] = await Promise.all([
                 fetch(`${globalVars.BASE_PATH}/data/actors.json`),
                 fetch(`${globalVars.BASE_PATH}/data/items.json`),
                 fetch(`${globalVars.BASE_PATH}/data/personalities.json`),
@@ -922,7 +922,8 @@ class DungeonEngine {
                 fetch(`${globalVars.BASE_PATH}/data/words.json`),
                 fetch(`${globalVars.BASE_PATH}/data/effects.json`),
                 fetch(`${globalVars.BASE_PATH}/data/keybindings.json`),
-                fetch(`${globalVars.BASE_PATH}/data/fungi_types.json`)
+                fetch(`${globalVars.BASE_PATH}/data/fungi_types.json`),
+                fetch(`${globalVars.BASE_PATH}/data/biomes.json`)
             ]);
 
             this.globalActors = await actorsRes.json();
@@ -955,6 +956,10 @@ class DungeonEngine {
 
             // Load flavor fungus names (used to randomize scattered fungus appearances)
             this.globalFungiTypes = await fungiTypesRes.json();
+
+            // Default biome library. A prototype's floor_plan names these; a prototype
+            // can add or override entries with its own biomes.json (see loadAssets).
+            this.globalBiomes = await biomesRes.json();
 
             console.log('Global data loaded:', {
                 actors: Object.keys(this.globalActors).length,
@@ -1536,8 +1541,11 @@ class DungeonEngine {
 
         await this.mapManager.processWildcards(architectContext);
 
-        // Check for treasure room before pending doors are promoted to actors
-        const treasureRoomChance = prototypeConfig.mechanics?.treasure_room ?? 0;
+        // Check for treasure room before pending doors are promoted to actors.
+        // Reads the RESOLVED mechanics (`mechanics` above), not prototypeConfig, so a
+        // biome or a floor override can set its own rate — mechanics is the one key
+        // getFloorConfig deep-merges (root <- biome <- floor).
+        const treasureRoomChance = mechanics.treasure_room ?? 0;
         let treasureRoomData = null;
         if (treasureRoomChance > 0 && ROT.RNG.getPercentage() <= treasureRoomChance) {
             treasureRoomData = this.mapManager.spawnTreasureRoom();
@@ -3424,10 +3432,17 @@ class Prototype {
         const prototypePersonalities = await this.loadJSON('personalities.json', {});
         const prototypeEffects = await this.loadJSON('effects.json', {});
         const prototypeKeybindings = await this.loadJSON('keybindings.json', {});
+        const prototypeBiomes = await this.loadJSON('biomes.json', {});
         this.actors = { ...this.engine.globalActors, ...prototypeActors };
         this.items = { ...this.engine.globalItems, ...prototypeItems };
         this.personalities = { ...this.engine.globalPersonalities, ...prototypePersonalities };
         this.effects = { ...this.engine.globalEffects, ...prototypeEffects };
+        // Biomes follow the same global-then-prototype merge as the entity data above.
+        // resolveBiome reads config.biomes, so publish the merged library there — that
+        // keeps the whole resolution path (resolveBiome, getFloorConfig, ...) unchanged
+        // and means a prototype.json never needs an inline `biomes` block.
+        this.biomes = { ...this.engine.globalBiomes, ...prototypeBiomes };
+        this.config.biomes = this.biomes;
         this.keybindings = {
             movement: { ...this.engine.globalKeybindings?.movement, ...prototypeKeybindings.movement },
             actions: { ...this.engine.globalKeybindings?.actions, ...prototypeKeybindings.actions },
@@ -3450,7 +3465,30 @@ class Prototype {
         console.log(`  Items: ${Object.keys(this.items).length} (${this.prototypeItemTypes.length} prototype-specific)`);
         console.log(`  Personalities: ${Object.keys(this.personalities).length} (${Object.keys(prototypePersonalities).length} prototype-specific)`);
 
+        if (Object.keys(this.biomes).length) {
+            console.log(`  Biomes: ${Object.keys(this.biomes).length} (${Object.keys(prototypeBiomes).length} prototype-specific)`);
+        }
+
+        this.warnUnknownFloorPlanBiomes();
         this.initItemCatalog();
+    }
+
+    /**
+     * A floor_plan entry naming a biome that no library defines is silent by default:
+     * resolveBiome finds nothing, returns {}, and those floors quietly fall back to
+     * the prototype's own defaults. Since nothing validates prototype.json, say so.
+     */
+    warnUnknownFloorPlanBiomes() {
+        const plan = this.config.floor_plan;
+        if (!Array.isArray(plan)) return;
+        for (const name of new Set(plan.map(p => p && p.biome).filter(Boolean))) {
+            if (this.biomes[name]) continue;
+            console.warn(
+                `floor_plan references unknown biome "${name}" — not in data/biomes.json ` +
+                `or prototypes/${this.name}/biomes.json. Those floors fall back to the ` +
+                `prototype's own defaults.`
+            );
+        }
     }
 
     /**
@@ -3481,7 +3519,10 @@ class Prototype {
 
     initItemCatalog() {
         const catalogConfig = this.config.item_catalog;
-        if (!catalogConfig) return;
+        // No catalog at all is the worst case for a biome that wants categories, so
+        // warn before bailing out rather than after (activeCatalog stays empty, so
+        // every category a biome asks for is unsatisfied).
+        if (!catalogConfig) { this.warnUnsatisfiedBiomeCategories(); return; }
 
         for (const [category, catConfig] of Object.entries(catalogConfig)) {
             let pool = catConfig.pool;
@@ -3514,6 +3555,29 @@ class Prototype {
 
             this.activeCatalog.set(category, activeTypes);
             console.log(`item_catalog: ${category} — ${activeTypes.length} types active: ${activeTypes.join(', ')}`);
+        }
+
+        this.warnUnsatisfiedBiomeCategories();
+    }
+
+    /**
+     * A biome's `items` rows name item_catalog CATEGORIES, but item_catalog lives only
+     * at the prototype root. spawnBudgetItems silently skips any category that isn't in
+     * activeCatalog, so a biome asking for a category this prototype doesn't provide
+     * spawns nothing at all, with no other signal. That's a portability trap for shared
+     * library biomes, so say so loudly at load.
+     */
+    warnUnsatisfiedBiomeCategories() {
+        for (const [name, biome] of Object.entries(this.config.biomes || {})) {
+            const wanted = (biome.items || [])
+                .map(row => row && row.type)
+                .filter(t => t && !this.activeCatalog.has(t));
+            if (wanted.length === 0) continue;
+            console.warn(
+                `biome "${name}" wants item categories [${[...new Set(wanted)].join(', ')}] ` +
+                `which this prototype's item_catalog does not provide — those items will ` +
+                `not spawn. Add them to item_catalog, or use categories it defines.`
+            );
         }
     }
 

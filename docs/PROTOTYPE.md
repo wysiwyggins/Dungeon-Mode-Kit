@@ -9,6 +9,7 @@ prototypes/
     actors.json             ← actor overrides/additions (optional)
     items.json              ← item overrides/additions (optional)
     personalities.json      ← AI behavior overrides (optional)
+    biomes.json             ← biome library for this prototype (optional)
     map.tmj                 ← authored Tiled map, floor 1 (optional)
     2.tmj, 3.tmj, ...      ← authored maps for floors 2+ (optional)
 ```
@@ -16,6 +17,11 @@ prototypes/
 Prototype-specific data files are merged with the global `data/` files at load. You only need to define what's new or different for a given level.
 
 Load a prototype by adding `?prototype=my_level` to the URL.
+
+**When you add a prototype folder, add its name to `data/prototypes.json`.** Static HTTP
+can't list a directory, so that file is the index the editors read to populate their
+prototype dropdowns. The game itself doesn't need it — it loads by name — but a prototype
+missing from the index is invisible in the editors.
 
 ---
 
@@ -488,20 +494,20 @@ Missing floor maps are generated procedurally using the floor's `map_generator` 
 
 Biomes let a multi-floor prototype **ramp difficulty by depth without authoring every floor**. Instead of writing out `random_actors`/`traps`/etc. on each floor, you define a **biome** — a themed bundle of depth-ranged catalogs — and assign it to a range of floors. As depth increases, catalog entries fade in and out of their `[min, max]` windows, so the monster/item/hazard mix ramps automatically. (Modeled on Brogue's depth-distribution system; see `docs/BIOMES.md` for the design rationale.)
 
-Biomes are **opt-in and additive** — a prototype with no `biomes` behaves exactly as before.
+Biomes are **opt-in and additive** — a prototype with no `floor_plan` behaves exactly as before.
 
 ### Top-level keys
 
 | Key | Type | Description |
 |-----|------|-------------|
 | `floors` | number | Total floor count (use instead of a dense `levels` array when floors are biome-driven). |
-| `biomes` | object | Map of biome name → biome definition (below). |
 | `floor_plan` | array | Ordered `{ biome, floors }` assignments. `floors` is an inclusive range (`"1-8"`), a single number, or `[lo, hi]`. Ranges should tile `1..floors` without gaps. |
+
+`prototype.json` names biomes but does not define them:
 
 ```json
 {
   "floors": 26,
-  "biomes": { "caves": { ... }, "crypt": { ... } },
   "floor_plan": [
     { "biome": "caves", "floors": "1-8" },
     { "biome": "crypt", "floors": "9-26" }
@@ -509,7 +515,14 @@ Biomes are **opt-in and additive** — a prototype with no `biomes` behaves exac
 }
 ```
 
+Each name is looked up in `data/biomes.json`, or in this prototype's own `biomes.json`
+if it defines one (see [Prototype-Specific Data Files](#prototype-specific-data-files)).
+A name neither library defines logs a warning, and those floors fall back to the
+prototype's own defaults.
+
 ### Biome definition
+
+A biome is one entry in `data/biomes.json` (or a prototype's `biomes.json`), keyed by name:
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -553,8 +566,15 @@ Place these files alongside `prototype.json` to add or override entity definitio
 | `actors.json` | `data/actors.json` | Add level-specific actors or override global ones |
 | `items.json` | `data/items.json` | Add level-specific items or override global ones |
 | `personalities.json` | `data/personalities.json` | Add level-specific AI behaviors |
+| `biomes.json` | `data/biomes.json` | Biomes this prototype's `floor_plan` can name |
 
 Prototype-specific entries with the same key as a global entry replace the global version for that level. See [ACTORS.md](ACTORS.md) and [ITEMS.md](ITEMS.md) for the data formats.
+
+Biomes are **not** authored inside `prototype.json`. The defaults live in `data/biomes.json`,
+a prototype's own `biomes.json` adds to or overrides them by name, and `prototype.json` just
+names the result in its `floor_plan` — the same pattern as `actors.json`. A prototype entry
+replaces that whole biome (no per-key merging), so each definition is self-contained.
+Author biomes with the Biome Editor (`editors/biome-editor.html`).
 
 ---
 

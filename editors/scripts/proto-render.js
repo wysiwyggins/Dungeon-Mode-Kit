@@ -3,9 +3,9 @@
    -------------------------------------------------------------------------
    Extracted from prototype-editor.html. These files are plain <script> src
    includes (no bundler) and share one global scope; load order matters:
-   proto-state -> proto-widgets -> proto-sections -> proto-render. The final
-   file calls init(). Do not wrap in IIFEs — cross-file references rely on the
-   shared top-level scope.
+   proto-state -> proto-widgets -> biome-sections -> proto-sections ->
+   proto-render. The final file calls init(). Do not wrap in IIFEs — cross-file
+   references rely on the shared top-level scope.
    ========================================================================= */
 "use strict";
 
@@ -56,6 +56,7 @@ async function init() {
         selectRow: 'tpl-select-row',
     });
     await loadBaseData();
+    populatePrototypeSelect();
     document.getElementById('prototype-select').addEventListener('change', async (e) => {
         const name = e.target.value;
         document.getElementById('load-status').textContent = name ? 'loading ' + name + '…' : '';

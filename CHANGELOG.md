@@ -11,15 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - "Infrastructure sight" folded into magic mapping
 - degrading/breaking items (mattock is the test case)
-- new "palladian" map generator for boss/artifact areas 
+- new "palladian" map generator for boss/artifact areas
 
 ### Fixed
 
 - Exploration (map memory) is no longer lost when you revisit a floor
 - Item colors are named in text feedback
+- `treasure_room` now reads the resolved floor mechanics, so a biome or floor override can set its own rate — previously only the prototype-level value applied. **Behavior change:** in the dungeon this lowers the treasure-room chance on 18 of 26 floors (caves 40%→10%, depths 40%→20%), which is what those biomes always intended. Floors 1 and 26 keep 40% via explicit overrides, and `infernal` inherits the root 40%.
 
 ### Changed
 
+- Moved biome editing to its own devoted editor, just apply them in the floorplan section of prototype-editor
 - Torch fuel amount can be set from item data, which sets a precedent for other timed consumable items.
 - "walk_description" attribute is extended to Actors as well as Entities
 

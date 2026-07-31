@@ -3,9 +3,9 @@
    -------------------------------------------------------------------------
    Extracted from prototype-editor.html. These files are plain <script> src
    includes (no bundler) and share one global scope; load order matters:
-   proto-state -> proto-widgets -> proto-sections -> proto-render. The final
-   file calls init(). Do not wrap in IIFEs — cross-file references rely on the
-   shared top-level scope.
+   proto-state -> proto-widgets -> biome-sections -> proto-sections ->
+   proto-render. The final file calls init(). Do not wrap in IIFEs — cross-file
+   references rely on the shared top-level scope.
    ========================================================================= */
 "use strict";
 
@@ -151,14 +151,14 @@ function renderForm() {
         root.appendChild(sectionMechanics(state.proto, 'mechanics', { open: true }).det);
         root.appendChild(sectionWinState().det);
         // Prototype-level map/items/spawns are the defaults every floor inherits —
-        // always shown. Biomes are an additional depth-ramping layer, shown when a
-        // multi-level prototype opts into them (has biomes/floor_plan, or via the
-        // "use biomes" toggle inside sectionBiomes).
-        root.appendChild(sectionMapGenerator(state.proto).det);
+        // always shown. The floor plan is the depth-ramping layer: it assigns library
+        // biomes (data/biomes.json + this prototype's biomes.json) to floor ranges, so
+        // it only appears for multi-level prototypes. Biomes themselves are authored in
+        // the biome editor, not here.
+        root.appendChild(sectionMapGenerator(state.proto, { placedFeatures: trapsSwitchesBody }).det);
         root.appendChild(sectionItemCatalog().det);
         root.appendChild(sectionSpawns(state.proto, { open: true }).det);
         if (isMultiLevel()) {
-            root.appendChild(sectionBiomes().det);
             root.appendChild(sectionFloorPlan().det);
         }
         root.appendChild(sectionAdvanced().det);
@@ -166,7 +166,7 @@ function renderForm() {
         const floor = currentTarget();
         root.appendChild(sectionFloorWinConditions(floor).det);
         root.appendChild(sectionMechanics(floor, 'mechanics', { inheritKey: 'mechanics', open: true }).det);
-        root.appendChild(sectionMapGenerator(floor, { inheritKey: 'map_generator' }).det);
+        root.appendChild(sectionMapGenerator(floor, { inheritKey: 'map_generator', placedFeatures: trapsSwitchesBody }).det);
         root.appendChild(sectionItemBudget(floor, { inheritKey: 'item_budget' }).det);
         root.appendChild(sectionSpawns(floor, { open: true }).det);
     }
@@ -187,62 +187,6 @@ function sectionIdentity() {
     return { det };
 }
 
-// Mechanics: the flag checkboxes + viewport/ai_margin fields are templated
-// (#tpl-section-mechanics); the two sliders and the tint color picker keep
-// their JS builders and are mounted into the template's data-mount slots.
-function sectionMechanics(obj, key, opts = {}) {
-    const { det, body } = section('Mechanics', { ...opts, inheritKey: opts.inheritKey, defaultValue: {} });
-    if (opts.inheritKey && isFloor() && !Object.prototype.hasOwnProperty.call(obj, key)) return { det };
-    if (!obj[key]) obj[key] = {};
-    const m = obj[key];
-
-    body.innerHTML = EditorTemplate.compileById('tpl-section-mechanics')({});
-    EditorTemplate.bindSection(body, {
-        resolveScope: () => m,   // every data-scope="mechanics" input binds to m
-        onCommit: commit,
-    });
-
-    // JS-only widgets: live value formatting / coupled controls.
-    EditorTemplate.mountInto(body, 'treasure_room',
-        sliderRow('treasure_room %', m, 'treasure_room', { min: 0, max: 100, suffix: '%', def: 0,
-            tip: 'Chance per floor that a special locked treasure room is generated.' }));
-    EditorTemplate.mountInto(body, 'ambient_light_group', ambientLightGroup(m));
-    return { det };
-}
-
-function ambientLightGroup(m) {
-    const tip = 'Baseline light for the level: overall brightness (ambient_light) and an atmospheric color overlay (tint). Off = engine default (fully lit, no tint).';
-    const wrap = el('div', { class: 'sub-section' });
-    const on = m.ambient_light != null || m.tint != null;
-    wrap.appendChild(toggleLine('ambient level light', on, (checked) => {
-        if (checked) { if (m.ambient_light == null) m.ambient_light = 1; }
-        else { delete m.ambient_light; delete m.tint; }
-        commit(); render();
-    }, tip));
-    if (on) {
-        wrap.appendChild(sliderRow('ambient_light', m, 'ambient_light', { min: 0, max: 1, step: 0.05, decimals: 2, def: 1,
-            tip: 'Base brightness applied everywhere (0 = pitch black, 1 = fully lit). Used with darkness.' }));
-        wrap.appendChild(colorRow('tint', m, 'tint'));
-    }
-    return wrap;
-}
-
-function colorRow(label, obj, key, tip) {
-    tip = tip || 'Screen color overlay for this level (atmospheric tint). Clear to use no tint.';
-    const color = el('input', { type: 'color' });
-    const hex = el('input', { type: 'text', placeholder: '#RRGGBB', style: 'flex:0 0 90px;' });
-    const cur = obj[key] || '';
-    if (cur) { color.value = cur; hex.value = cur; }
-    color.addEventListener('input', () => { obj[key] = color.value; hex.value = color.value; commit(); });
-    hex.addEventListener('input', () => {
-        if (hex.value === '') { delete obj[key]; }
-        else { obj[key] = hex.value; if (/^#[0-9a-fA-F]{6}$/.test(hex.value)) color.value = hex.value; }
-        commit();
-    });
-    const clear = el('button', { class: 'remove-btn' }, 'clear');
-    clear.addEventListener('click', () => { delete obj[key]; hex.value = ''; commit(); });
-    return el('div', { class: 'field-row' }, labelEl(label, tip), color, hex, clear);
-}
 
 function sectionWinState() {
     const p = state.proto;
@@ -288,355 +232,6 @@ function sectionFloorWinConditions(floor) {
     return { det };
 }
 
-function sectionMapGenerator(obj, opts = {}) {
-    // At proto level the section is optional (disable → no generator config, e.g.
-    // a prototype driven by a hand-authored map.tmj). At floor level the floor
-    // "override" toggle already serves that role, so no separate enable toggle.
-    const sectionOpts = { ...opts, defaultValue: { type: 'brogue', options: {} } };
-    if (!opts.inheritKey) {
-        sectionOpts.optional = {
-            isOn: obj.map_generator != null,
-            enable: () => { obj.map_generator = { type: 'brogue', options: {} }; },
-            disable: () => { delete obj.map_generator; },
-            hint: 'No procedural generator — the map comes from a hand-authored .tmj. Placed features below still apply.',
-        };
-    }
-    const { det, body, active } = section('Map generator', sectionOpts);
-    // Placed features (traps/fungus/switch_puzzles) are independent top-level keys,
-    // shown even when the generator config is inherited (floor) or absent (proto,
-    // hand-authored map). Only the generator-specific UI is gated.
-    // - proto: gated by the optional toggle (`active`)
-    // - floor: gated by the override toggle (map_generator present on the floor)
-    const showGenBody = opts.inheritKey
-        ? (isFloor() && Object.prototype.hasOwnProperty.call(obj, 'map_generator'))
-        : active;
-    if (showGenBody) {
-        mapGeneratorBody(obj, body);
-    }
-
-    if (!opts.noPlacedFeatures) {
-        body.appendChild(el('div', { class: 'sub-section' },
-            subTitle('Placed features', 'Hazards and puzzles scattered onto the generated map.')));
-        trapsSwitchesBody(obj, body);
-    }
-    return { det };
-}
-
-function mapGeneratorBody(obj, body) {
-    if (!obj.map_generator) obj.map_generator = { type: 'brogue', options: {} };
-    const mg = obj.map_generator;
-    if (!mg.options) mg.options = {};
-    body.appendChild(selectRow('type', mg, 'type', GEN_TYPES, { allowBlank: false, rerender: true,
-        tip: 'Algorithm used to build the map: brogue (rooms + corridors + loops), digger (ROT.js dungeon), arena (open box), infernal (lava-heavy caverns), palladian (symmetrical villa — axial sanctum, portico, colonnade; good for a boss floor).' }));
-    const o = mg.options;
-    body.appendChild(fieldGrid(
-        fieldRow('map_width', o, 'map_width', { type: 'number', tip: 'Total map width in tiles (can exceed the viewport — the level then scrolls).' }),
-        fieldRow('map_height', o, 'map_height', { type: 'number', tip: 'Total map height in tiles (can exceed the viewport — the level then scrolls).' }),
-    ));
-
-    const t = mg.type || 'brogue';
-    if (t === 'brogue' || t === 'infernal') {
-        if (t === 'brogue') {
-            // maxRooms is intentionally not exposed: the engine auto-computes it
-            // from the map size (larger maps get more rooms). maxAttempts is also
-            // auto-scaled to map size when left blank; expose it as an optional
-            // override for fine-tuning density.
-            body.appendChild(fieldRow('maxAttempts', o, 'maxAttempts', { type: 'number', tip: 'Optional override: how many room-placement attempts the generator makes (the practical cap on how densely the map fills). Leave blank to auto-scale with map size. Larger = denser.' }));
-            body.appendChild(sliderRow('corridorChance %', o, 'corridorChance', { min: 0, max: 100, suffix: '%', def: 0,
-                tip: 'Chance to connect a new room with a corridor (vs. an adjacent doorway). Default 30%.' }));
-            body.appendChild(dualRangeArrayRow('corridorLength', o, 'corridorLength', { min: 1, max: 12,
-                tip: 'Min–max length (tiles) of generated corridors.' }));
-            body.appendChild(fieldGrid(
-                fieldRow('loopMinDistance', o, 'loopMinDistance', { type: 'number',
-                    tip: 'Two points must be at least this far apart (path distance) before a loop-back corridor connects them. Default 20.' }),
-                fieldRow('maxLoops', o, 'maxLoops', { type: 'number',
-                    tip: 'Maximum extra loop corridors added (creates alternate routes). Default 5.' }),
-            ));
-            body.appendChild(el('div', { class: 'sub-section' }, subTitle('roomWeights', 'Relative likelihood of each room shape. Bars show each shape’s share of the total.'),
-                weightEditor(o, 'roomWeights', { choices: ['rectangle','cross','circular','cavern'] })));
-            body.appendChild(roomSizeEditor(o));
-        }
-        body.appendChild(carvedRegionsEditor(o));
-        if (t === 'brogue') {
-            body.appendChild(bridgesEditor(o));
-            body.appendChild(collapsingEditor(o));
-        }
-    } else if (t === 'digger') {
-        body.appendChild(fieldGrid(
-            dualRangeArrayRow('roomWidth', o, 'roomWidth', { min: 1, max: 20, tip: 'Min–max width of dug rooms (tiles).' }),
-            dualRangeArrayRow('roomHeight', o, 'roomHeight', { min: 1, max: 20, tip: 'Min–max height of dug rooms (tiles).' }),
-        ));
-        body.appendChild(dualRangeArrayRow('corridorLength', o, 'corridorLength', { min: 1, max: 12, tip: 'Min–max corridor length (tiles).' }));
-        body.appendChild(sliderRow('dugPercentage', o, 'dugPercentage', { min: 0, max: 1, step: 0.05, decimals: 2, def: 0.2,
-            tip: 'Fraction of the map carved out into rooms/corridors before the generator stops. Default 0.2.' }));
-    } else if (t === 'palladian') {
-        body.appendChild(fieldGrid(
-            dualRangeArrayRow('bayColumns', o, 'bayColumns', { min: 1, max: 9, def: [3, 7],
-                tip: 'Min–max number of east–west bays. Always forced ODD: the centre bay is bisected by the symmetry axis. 5 is the canonical villa.' }),
-            dualRangeArrayRow('bayRows', o, 'bayRows', { min: 1, max: 6, def: [2, 4],
-                tip: 'Min–max number of north–south bay rows. 3 is canonical.' }),
-        ));
-        body.appendChild(fieldGrid(
-            dualRangeArrayRow('bayWidth', o, 'bayWidth', { min: 2, max: 16, def: [4, 11],
-                tip: 'Min–max interior width of one bay, in tiles.' }),
-            dualRangeArrayRow('bayHeight', o, 'bayHeight', { min: 2, max: 16, def: [4, 9],
-                tip: 'Min–max interior height of one bay, in tiles.' }),
-        ));
-        body.appendChild(sliderRow('centralBias %', o, 'centralBias', { min: 50, max: 300, suffix: '%', def: 150,
-            tip: 'How much wider the central axial bay is than a flanking bay. Above 100% gives a grander salone. Default 150%.' }));
-        body.appendChild(sliderRow('mergeChance %', o, 'mergeChance', { min: 0, max: 100, suffix: '%', def: 45,
-            tip: 'Chance a mirrored pair of adjacent bays merges into one larger room. 0% = a warren of small rooms; 100% = a few vast halls.' }));
-        body.appendChild(porticoEditor(o));
-        body.appendChild(sliderRow('sanctumChance %', o, 'sanctumChance', { min: 0, max: 100, suffix: '%', def: 70,
-            tip: 'Chance the plan has a non-rectangular cross-hall on the axis (the sanctum). The grammar permits at most one such room. Spawns can target it with "region": "sanctum".' }));
-        body.appendChild(el('div', { class: 'sub-section' },
-            subTitle('sanctumShapes', 'Which cross-hall shapes are eligible. cross (+) keeps the sanctum tightest; eye (I) swallows most of the plan.'),
-            weightEditor(o, 'sanctumShapes', { mode: 'pool', choices: ['cross', 'tee', 'eye'] })));
-        body.appendChild(carvedRegionsEditor(o));
-        body.appendChild(bridgesEditor(o));
-        body.appendChild(collapsingEditor(o));
-    }
-    // arena: only map_width/height (already shown)
-}
-
-// The portico is the villa's principal entrance, on the symmetry axis. Absent
-// porticoStyle means ON: 'prostyle' is the engine default, so the toggle has to
-// treat "unset" and "'none'" differently.
-function porticoEditor(o) {
-    const tip = 'The principal entrance on the symmetry axis: a columned porch projecting out (prostyle) or recessed into the facade (in antis).';
-    const wrap = el('div', { class: 'sub-section' });
-    const enable = el('label', { class: 'toggle-line', title: tip });
-    const cb = el('input', { type: 'checkbox' });
-    cb.checked = o.porticoStyle !== 'none';
-    cb.addEventListener('change', () => {
-        if (cb.checked) delete o.porticoStyle;   // back to the engine default
-        else o.porticoStyle = 'none';
-        commit(); render();
-    });
-    enable.append(cb, ' portico');
-    wrap.appendChild(enable);
-    if (o.porticoStyle !== 'none') {
-        wrap.appendChild(selectRow('porticoStyle', o, 'porticoStyle', ['prostyle', 'in_antis', 'random'], {
-            allowBlank: true,
-            tip: 'prostyle: the porch projects out from the facade. in_antis: it is recessed into it. random: picked per floor. Blank = prostyle.' }));
-        wrap.appendChild(fieldGrid(
-            fieldRow('porticoDepth', o, 'porticoDepth', { type: 'number',
-                tip: 'Tiles the porch projects out (prostyle) or is recessed in (in antis). Default 3.' }),
-            fieldRow('columnSpacing', o, 'columnSpacing', { type: 'number',
-                tip: 'Tiles between colonnade columns; 0 = no colonnade. The column count is forced even so the axis stays an open doorway. Default 2.' }),
-        ));
-    }
-    return wrap;
-}
-
-// dual range writing to an array [min,max] at obj[key]
-// `opts.def` seeds an unset key with the ENGINE's default rather than the slider
-// bounds, so a field that's merely rendered doesn't silently write a bogus override
-// (e.g. rectWidth: [1,24]) into the prototype JSON.
-function dualRangeForArray(obj, key, opts) {
-    if (!Array.isArray(obj[key])) obj[key] = obj[key] || opts.def || [opts.min ?? 0, opts.max ?? 0];
-    const proxy = {
-        get min() { return obj[key][0]; }, set min(v) { obj[key][0] = v; },
-        get max() { return obj[key][1]; }, set max(v) { obj[key][1] = v; },
-    };
-    return dualRange(proxy, 'min', 'max', opts);
-}
-function dualRangeArrayRow(label, obj, key, opts = {}) {
-    return el('div', { class: 'sub' }, labelEl(label, opts.tip), dualRangeForArray(obj, key, opts));
-}
-// Labelled dual-range over obj[minKey]/obj[maxKey] (a {min,max} object).
-function dualRangeRow(label, obj, minKey, maxKey, opts = {}) {
-    return el('div', { class: 'sub' }, labelEl(label, opts.tip), dualRange(obj, minKey, maxKey, opts));
-}
-
-// Per-shape size ranges for the brogue generator. Defaults mirror architect.js's
-// `case 'brogue'` block — keep them in sync, since they're what the engine falls back
-// to when a key is absent and what the sliders seed an unset field with.
-//
-// Exposing these is what makes room-size variation tunable per biome: roomWeights
-// alone only shifts WHICH shapes appear, and the most common shape (rectangle) has
-// the smallest default range — so a map can read as uniformly cramped even though
-// cross/cavern rooms are capable of being large.
-const ROOM_SIZE_FIELDS = [
-    { shape: 'rectangle', rows: [
-        { label: 'width',  key: 'rectWidth',  def: [3, 12], max: 30 },
-        { label: 'height', key: 'rectHeight', def: [3, 8],  max: 30 },
-    ] },
-    { shape: 'cross', rows: [
-        { label: 'width',  key: 'crossWidth',  def: [7, 16], max: 30 },
-        { label: 'height', key: 'crossHeight', def: [7, 14], max: 30 },
-    ] },
-    { shape: 'circular', rows: [
-        { label: 'radius', key: 'circularRadius', def: [2, 5], max: 12 },
-    ] },
-    { shape: 'cavern', rows: [
-        { label: 'width',  key: 'cavernWidth',  def: [8, 20], max: 40 },
-        { label: 'height', key: 'cavernHeight', def: [8, 15], max: 40 },
-    ] },
-];
-
-// Room size ranges, grouped by shape so the numbers sit next to the roomWeights that
-// decide how often each shape is used. Off by default: the engine's own defaults apply
-// until a designer opts in, so we don't write seven redundant overrides into every
-// prototype just for rendering the form.
-function roomSizeEditor(o) {
-    const tip = 'Min–max dimensions for each room shape, in tiles. Widen a range (or raise its minimum) for bigger, more varied rooms; the shape’s roomWeight decides how often it appears.';
-    const keys = ROOM_SIZE_FIELDS.flatMap(g => g.rows.map(r => r.key));
-    const wrap = el('div', { class: 'sub-section' });
-
-    const enable = el('label', { class: 'toggle-line', title: tip });
-    const cb = el('input', { type: 'checkbox' });
-    cb.checked = keys.some(k => Array.isArray(o[k]));
-    cb.addEventListener('change', () => {
-        if (cb.checked) {
-            // Seed every field from the engine defaults, so the form opens showing what
-            // the generator is actually doing rather than arbitrary slider bounds.
-            for (const g of ROOM_SIZE_FIELDS) {
-                for (const r of g.rows) if (!Array.isArray(o[r.key])) o[r.key] = [...r.def];
-            }
-        } else {
-            for (const k of keys) delete o[k];
-        }
-        commit(); render();
-    });
-    enable.append(cb, ' room sizes');
-    wrap.appendChild(enable);
-
-    if (!cb.checked) return wrap;
-
-    for (const g of ROOM_SIZE_FIELDS) {
-        const grp = el('div', { class: 'sub-section' }, subTitle(g.shape));
-        grp.appendChild(fieldGrid(...g.rows.map(r =>
-            dualRangeArrayRow(r.label, o, r.key, { min: 1, max: r.max, def: r.def, tip })
-        )));
-        wrap.appendChild(grp);
-    }
-    return wrap;
-}
-
-const LIQUID_TYPES = ['water', 'sewage', 'lava'];
-
-function carvedRegionsEditor(o) {
-    const tip = 'Regions carved into the map: liquid lakes (water/sewage/lava) and/or bottomless abyss pits. Bridges can span either so the player can cross.';
-    const wrap = el('div', { class: 'sub-section' });
-    const enable = el('label', { class: 'toggle-line', title: tip });
-    const cb = el('input', { type: 'checkbox' });
-    cb.checked = !!(o.lakes || o.abyss);
-    cb.addEventListener('change', () => {
-        if (cb.checked) o.lakes = { count: [1, 2], types: ['water'], minSize: 15, maxSize: 60 };
-        else { delete o.lakes; delete o.abyss; }
-        commit(); render();
-    });
-    enable.append(cb, ' carved regions');
-    wrap.appendChild(enable);
-
-    if (o.lakes || o.abyss) {
-        // Liquid group (options.lakes)
-        if (o.lakes) {
-            wrap.appendChild(regionGroup(o, 'lakes', 'Lakes (liquid)', {
-                countTip: 'Min–max number of separate liquid regions per floor.',
-                sizeTip: 'size (in tiles) of a single liquid region.',
-                liquid: true,
-            }));
-        } else {
-            wrap.appendChild(addRegionBtn('+ add liquid lakes', () => {
-                o.lakes = { count: [1, 2], types: ['water'], minSize: 15, maxSize: 60 };
-                commit(); render();
-            }));
-        }
-        // Abyss group (options.abyss) — void, no liquid-type picker.
-        if (o.abyss) {
-            wrap.appendChild(regionGroup(o, 'abyss', 'Abyss (bottomless void)', {
-                countTip: 'Min–max number of separate abyss regions per floor.',
-                sizeTip: 'size (in tiles) of a single abyss region.',
-                liquid: false,
-            }));
-        } else {
-            wrap.appendChild(addRegionBtn('+ add abyss pits', () => {
-                o.abyss = { count: [1, 2], types: ['abyss'], minSize: 15, maxSize: 50 };
-                commit(); render();
-            }));
-        }
-    }
-    return wrap;
-}
-
-function addRegionBtn(label, onClick) {
-    const b = el('button', { class: 'add-btn' }, label);
-    b.addEventListener('click', onClick);
-    return el('div', { class: 'sub' }, b);
-}
-
-function regionGroup(o, key, title, opts) {
-    const g = el('div', { class: 'sub-section' });
-    const head = el('div', { class: 'sub-section-title' }, title);
-    const rm = el('button', { class: 'remove-btn', title: 'remove ' + title }, '×');
-    rm.addEventListener('click', () => {
-        delete o[key];
-        // Removing the last group turns the whole feature off; keep the shape sane.
-        commit(); render();
-    });
-    head.appendChild(rm);
-    g.appendChild(head);
-
-    const grp = o[key];
-    if (!Array.isArray(grp.count)) grp.count = [1, 2];
-    g.appendChild(dualRangeArrayRow('count', grp, 'count', { min: 0, max: 6, tip: opts.countTip }));
-    if (opts.liquid) {
-        if (!Array.isArray(grp.types) || !grp.types.length) grp.types = ['water'];
-        g.appendChild(subTitle('types (weighted pool)', 'Which liquid types these lakes use. Each type’s weight is its share of the random pick.'));
-        g.appendChild(weightEditor(grp, 'types', { mode: 'pool', choices: LIQUID_TYPES }));
-    } else {
-        grp.types = ['abyss'];
-    }
-    g.appendChild(fieldGrid(
-        fieldRow('minSize', grp, 'minSize', { type: 'number', tip: 'Smallest ' + opts.sizeTip }),
-        fieldRow('maxSize', grp, 'maxSize', { type: 'number', tip: 'Largest ' + opts.sizeTip }),
-    ));
-    return g;
-}
-
-function collapsingEditor(o) {
-    const tip = 'Patches of floor that crumble away when stepped on, dropping into the abyss below.';
-    const wrap = el('div', { class: 'sub-section' });
-    const enable = el('label', { class: 'toggle-line', title: tip });
-    const cb = el('input', { type: 'checkbox' });
-    cb.checked = !!o.collapsing_floors;
-    cb.addEventListener('change', () => {
-        if (cb.checked) o.collapsing_floors = { max: 2, minSize: 2, maxSize: 4 };
-        else delete o.collapsing_floors;
-        commit(); render();
-    });
-    enable.append(cb, ' collapsing_floors');
-    wrap.appendChild(enable);
-    if (o.collapsing_floors) {
-        const c = o.collapsing_floors;
-        body_appendNum(wrap, c);
-    }
-    return wrap;
-}
-function body_appendNum(wrap, c) {
-    wrap.appendChild(fieldRow('max', c, 'max', { type: 'number', tip: 'Maximum number of collapsing-floor patches per floor.' }));
-    wrap.appendChild(fieldGrid(
-        fieldRow('minSize', c, 'minSize', { type: 'number', tip: 'Smallest patch size (tiles).' }),
-        fieldRow('maxSize', c, 'maxSize', { type: 'number', tip: 'Largest patch size (tiles).' }),
-    ));
-}
-
-// Bridges toggle+config (same shape as collapsingEditor). Off = no `bridges` key
-// (the generator places none); on = { max } bridges spanning lakes/abyss.
-function bridgesEditor(o) {
-    const tip = 'Bridges placed across lakes/abyss so the player can cross. Off = none placed.';
-    const wrap = el('div', { class: 'sub-section' });
-    wrap.appendChild(toggleLine('bridges', !!o.bridges, (on) => {
-        if (on) o.bridges = { max: 2 }; else delete o.bridges;
-        commit(); render();
-    }, tip));
-    if (o.bridges) {
-        wrap.appendChild(fieldRow('max', o.bridges, 'max', { type: 'number', tip: 'Maximum bridges placed across lakes/abyss.' }));
-    }
-    return wrap;
-}
 
 function sectionItemCatalog() {
     const p = state.proto;
@@ -940,6 +535,8 @@ function cutsceneToggle() {
 
 // Is this prototype multi-level? True when it declares an explicit floor count
 // (biome-driven) or a legacy levels[] array. Mirrors the engine's getTotalFloors.
+// `p.biomes` is only here for older prototype.json files that still carry an inline
+// biomes block; biomes now live in data/biomes.json + prototypes/<n>/biomes.json.
 function isMultiLevel() {
     const p = state.proto;
     return p.floors != null || !!p.biomes || !!p.floor_plan || Array.isArray(p.levels);
@@ -969,255 +566,36 @@ function multiLevelToggle() {
 }
 
 /* =========================================================================
-   Biomes (multi-level prototypes) — see docs/BIOMES.md
+   Floor plan (multi-level prototypes) — see docs/BIOMES.md
    A biome is a reusable bundle of depth-ranged catalogs (actors/items) + hazard
-   ramps + map/mechanics. The floor plan assigns biomes to floor ranges. The
-   engine (resolveBiome) turns these into per-floor spawn tables that ramp with
-   depth, so you don't author every floor by hand.
+   ramps + map/mechanics, and the engine (resolveBiome) turns it into per-floor
+   spawn tables that ramp with depth — so you don't author every floor by hand.
+
+   Biomes are DATA, not prototype content: they come from data/biomes.json plus an
+   optional prototypes/<name>/biomes.json override, exactly like actors and items,
+   and are authored in the biome editor. All this section does is assign them to
+   floor ranges, which is a prototype concern because the prototype owns `floors`.
    ========================================================================= */
 
-// The biome library: a collapsible per biome, plus add-biome. Each biome edits
-// like a mini-prototype (map generator, mechanics, and the depth-ranged catalogs).
-function sectionBiomes() {
-    const p = state.proto;
-    if (!p.biomes) p.biomes = {};
-    const { det, body } = section('Biomes', { open: true });
-    body.appendChild(el('div', { class: 'hint-inline' },
-        'A biome is a themed set of monsters/items/hazards with depth ranges. Assign biomes to floors in the Floor plan below; difficulty ramps automatically with depth.'));
-
-    for (const name of Object.keys(p.biomes)) {
-        body.appendChild(biomeCard(name));
-    }
-
-    // add biome
-    const addWrap = el('div', { class: 'weight-row', style: 'margin-top:8px;' });
-    const addInput = el('input', { type: 'text', placeholder: 'new biome name', style: 'width:130px;' });
-    const addBtn = el('button', { class: 'add-btn' }, '+ biome');
-    addBtn.addEventListener('click', () => {
-        const nm = addInput.value.trim();
-        if (!nm || p.biomes[nm]) return;
-        p.biomes[nm] = { map_generator: { type: 'brogue', options: { map_width: 60, map_height: 50 } },
-            actors: [], actor_budget: { base: 3, extra_chance: 60, max_extra: 3 } };
-        commit(); render();
-    });
-    addWrap.append(addInput, addBtn);
-    body.appendChild(addWrap);
-    return { det };
-}
-
-// One biome, as a nested collapsible: rename/remove + its config body.
-function biomeCard(name) {
-    const p = state.proto;
-    const biome = p.biomes[name];
-    const card = el('details', { class: 'section biome-card', open: '' });
-    const summary = el('summary', {},
-        el('div', { class: 'section-summary-row' }, el('span', { class: 'sec-title' }, 'biome: ' + name)));
-    card.appendChild(summary);
-    const body = el('div', { class: 'section-body' });
-    card.appendChild(body);
-
-    // rename + remove
-    const nameRow = el('div', { class: 'field-row' });
-    const nameInput = el('input', { type: 'text', value: name, title: 'Biome name — referenced by the floor plan.' });
-    nameInput.addEventListener('change', () => {
-        const nn = nameInput.value.trim();
-        if (!nn || nn === name || p.biomes[nn]) { nameInput.value = name; return; }
-        p.biomes[nn] = biome; delete p.biomes[name];
-        // repoint any floor_plan entries that used the old name
-        (p.floor_plan || []).forEach(fp => { if (fp.biome === name) fp.biome = nn; });
-        commit(); render();
-    });
-    const rm = el('button', { class: 'remove-btn' }, 'remove biome');
-    rm.addEventListener('click', () => { delete p.biomes[name]; commit(); render(); });
-    nameRow.append(labelEl('name'), nameInput, rm);
-    body.appendChild(nameRow);
-
-    // map generator + mechanics (reuse the existing section builders against the
-    // biome obj). Suppress the map generator's Placed-features block — the biome
-    // authors traps/fungus as depth ramps below, writing the same keys.
-    body.appendChild(sectionMapGenerator(biome, { noPlacedFeatures: true }).det);
-    body.appendChild(sectionMechanics(biome, 'mechanics', {}).det);
-
-    // depth-ranged actor catalog
-    body.appendChild(subTitle('actors (depth-ranged)', 'Monsters eligible per floor. Each row spawns within its min–max depth window, chosen by weight. actor_budget sets how many are placed per floor.'));
-    if (!Array.isArray(biome.actors)) biome.actors = [];
-    body.appendChild(depthCatalogEditor(biome.actors, 'id', state.mergedActorIds));
-    body.appendChild(budgetRow(biome, 'actor_budget', 'actor_budget'));
-
-    // depth-ranged item catalog
-    body.appendChild(subTitle('items (depth-ranged)', 'Item categories eligible per floor (drawn via item_catalog). item_budget sets how many per floor.'));
-    if (!Array.isArray(biome.items)) biome.items = [];
-    body.appendChild(depthCatalogEditor(biome.items, 'type', CATEGORY_KEYS));
-    body.appendChild(budgetRow(biome, 'item_budget', 'item_budget'));
-
-    // hazard ramps
-    body.appendChild(subTitle('hazards (ramp with depth)', 'Count grows with depth: clamp(intercept + depth·slope, 0, max), active from min_depth.'));
-    body.appendChild(hazardRampEditor(biome, 'traps', 'traps'));
-    body.appendChild(hazardRampEditor(biome, 'fungus', 'fungus'));
-    return card;
-}
-
-// A small { base, extra_chance, max_extra } budget editor shared by actor/item.
-function budgetRow(obj, key, label) {
-    if (!obj[key]) obj[key] = { base: 3, extra_chance: 50, max_extra: 2 };
-    const b = obj[key];
-    return el('div', { class: 'sub-section' },
-        subTitle(label, 'How many picks to place per floor: base guaranteed, then up to max_extra more at extra_chance% each.'),
-        fieldGrid(
-            fieldRow('base', b, 'base', { type: 'number', tip: 'Guaranteed picks per floor.' }),
-            fieldRow('max_extra', b, 'max_extra', { type: 'number', tip: 'Maximum extra picks.' }),
-        ),
-        sliderRow('extra_chance %', b, 'extra_chance', { min: 0, max: 100, suffix: '%', def: 0,
-            tip: 'Chance to roll each extra pick.' }));
-}
-
-/* Depth-ranged catalog editor: an array of rows { [keyField], min, max, freq }.
-   keyField is 'id' (actors) or 'type' (item categories). `choices` seeds the
-   add-dropdown. Includes a "preview at depth N" that shows which rows are
-   eligible and their weighted share — mirrors the engine's resolveBiome pick. */
-function depthCatalogEditor(rows, keyField, choices) {
-    const wrap = el('div', { class: 'depth-catalog' });
-    // preview depth persists on the array object so re-renders keep it.
-    if (rows._previewDepth == null) Object.defineProperty(rows, '_previewDepth', { value: 1, writable: true, enumerable: false });
-
-    function redraw() {
-        wrap.innerHTML = '';
-        rows.forEach((row, i) => wrap.appendChild(depthCatalogRow(rows, i, keyField, choices, redraw)));
-
-        // add row
-        const used = new Set(rows.map(r => r[keyField]));
-        const addSel = el('select', { class: 'wlabel-sel' });
-        addSel.appendChild(el('option', { value: '' }, '+ add ' + (keyField === 'id' ? 'actor…' : 'category…')));
-        for (const c of choices) if (!used.has(c)) addSel.appendChild(el('option', { value: c }, c));
-        addSel.addEventListener('change', () => {
-            if (!addSel.value) return;
-            rows.push({ [keyField]: addSel.value, min: 1, max: 1, freq: 100 });
-            commit(); redraw();
-        });
-        wrap.appendChild(el('div', { class: 'weight-row' }, addSel));
-
-        // preview at depth N
-        wrap.appendChild(depthPreview(rows, keyField, redraw));
-    }
-    redraw();
-    return wrap;
-}
-
-function depthCatalogRow(rows, i, keyField, choices, redraw) {
-    const row = rows[i];
-    const line = el('div', { class: 'depth-row' });
-
-    // id/type selector (preserve an out-of-list value)
-    const sel = el('select', { class: 'wlabel-sel' });
-    for (const c of choices) sel.appendChild(el('option', { value: c }, c));
-    if (!choices.includes(row[keyField])) sel.appendChild(el('option', { value: row[keyField] }, row[keyField] + ' (?)'));
-    sel.value = row[keyField];
-    sel.addEventListener('change', () => { row[keyField] = sel.value; commit(); redraw(); });
-
-    // depth window (min–max) via dualRange over the row itself
-    const depthWrap = el('div', { class: 'sub' }, labelEl('depth', 'Floor range this entry can appear on.'),
-        dualRange(row, 'min', 'max', { min: 1, max: 30, defMin: 1, defMax: 6 }));
-
-    // freq
-    const freqInput = el('input', { type: 'number', min: 0, value: row.freq ?? 100, style: 'width:64px;',
-        title: 'Weight in the per-floor raffle (higher = more common).' });
-    freqInput.addEventListener('input', () => { row.freq = Number(freqInput.value); commit(); });
-
-    // optional count [lo,hi]
-    if (!Array.isArray(row.count)) row.count = row.count || undefined;
-    const countProxy = {
-        get min() { return Array.isArray(row.count) ? row.count[0] : 1; },
-        set min(v) { row.count = [v, Array.isArray(row.count) ? row.count[1] : v]; },
-        get max() { return Array.isArray(row.count) ? row.count[1] : 1; },
-        set max(v) { row.count = [Array.isArray(row.count) ? row.count[0] : v, v]; },
-    };
-    const countWrap = el('div', { class: 'sub' }, labelEl('count', 'How many to place per pick (min–max). Default 1.'),
-        dualRange(countProxy, 'min', 'max', { min: 1, max: 10 }));
-
-    const rm = el('button', { class: 'remove-btn' }, '×');
-    rm.addEventListener('click', () => { rows.splice(i, 1); commit(); redraw(); });
-
-    line.append(el('div', { class: 'depth-row-head' }, sel,
-        el('span', { class: 'mini-label', title: 'freq' }, 'freq'), freqInput, rm),
-        depthWrap, countWrap);
-    return el('div', { class: 'pattern-box' }, line);
-}
-
-// "Preview at depth N": shows which rows are eligible at a chosen depth and
-// their weighted share, so the author can see the ramp without running the game.
-function depthPreview(rows, keyField, redraw) {
-    const wrap = el('div', { class: 'sub-section depth-preview' });
-    const depth = rows._previewDepth || 1;
-    const head = el('div', { class: 'field-row' }, labelEl('preview at depth'));
-    const depthInput = el('input', { type: 'number', min: 1, value: depth, style: 'width:64px;' });
-    depthInput.addEventListener('input', () => { rows._previewDepth = Math.max(1, Number(depthInput.value) || 1); redraw(); });
-    head.appendChild(depthInput);
-    wrap.appendChild(head);
-
-    const eligible = rows.filter(r => depth >= (r.min ?? 1) && depth <= (r.max ?? Infinity));
-    if (!eligible.length) {
-        wrap.appendChild(el('div', { class: 'hint-inline' }, 'Nothing eligible at depth ' + depth + '.'));
-        return wrap;
-    }
-    const total = eligible.reduce((a, r) => a + (r.freq ?? 1), 0) || 1;
-    for (const r of eligible) {
-        const pct = Math.round(((r.freq ?? 1) / total) * 100);
-        const bar = el('div', { class: 'wbar-fill', style: `width:${pct}%` });
-        const barWrap = el('div', { class: 'wbar-wrap' }, bar, el('span', { class: 'wbar-pct' }, pct + '%'));
-        wrap.appendChild(el('div', { class: 'weight-row' }, el('span', { class: 'wlabel' }, r[keyField]), barWrap));
-    }
-    return wrap;
-}
-
-/* Hazard ramp editor: { min_depth, intercept, slope, max } with a live "count at
-   depth N" readout so the linear ramp is legible. Toggle to enable/disable. */
-function hazardRampEditor(biome, key, label) {
-    const wrap = el('div', { class: 'sub-section' });
-    wrap.appendChild(toggleLine(label, !!biome[key], (on) => {
-        if (on) biome[key] = { min_depth: 1, intercept: 0, slope: 1, max: 10, ...(key === 'fungus' ? { tall_chance: 0.3 } : {}) };
-        else delete biome[key];
-        commit(); render();
-    }, key === 'fungus'
-        ? 'Fungus patches, count ramping with depth.'
-        : 'Hidden traps, count ramping with depth.'));
-    const h = biome[key];
-    if (!h) return wrap;
-    wrap.appendChild(fieldGrid(
-        fieldRow('min_depth', h, 'min_depth', { type: 'number', tip: 'Floor this hazard first appears on.' }),
-        fieldRow('max', h, 'max', { type: 'number', tip: 'Hard cap on count.' }),
-    ));
-    wrap.appendChild(fieldGrid(
-        fieldRow('intercept', h, 'intercept', { type: 'number', tip: 'Base count at depth 0 (usually 0).' }),
-        fieldRow('slope', h, 'slope', { type: 'number', tip: 'Extra count per floor of depth.' }),
-    ));
-    if (key === 'fungus') {
-        wrap.appendChild(sliderRow('tall_chance', h, 'tall_chance', { min: 0, max: 1, step: 0.05, decimals: 2, def: 0,
-            tip: 'Chance each fungus is the tall, solid, sight-blocking variant.' }));
-    }
-    // count-at-depth preview (depth kept in a closure var, not on the model, so
-    // it never leaks into exported JSON).
-    const prev = el('div', { class: 'hint-inline' });
-    const dInput = el('input', { type: 'number', min: 1, value: (h.min_depth || 1), style: 'width:56px;' });
-    const upd = () => {
-        const d = Math.max(1, Number(dInput.value) || 1);
-        const raw = (h.intercept ?? 0) + d * (h.slope ?? 0);
-        const n = d < (h.min_depth ?? 1) ? 0 : Math.max(0, Math.min(h.max ?? raw, Math.round(raw)));
-        prev.textContent = `≈ ${n} at depth ${d}`;
-    };
-    dInput.addEventListener('input', upd); upd();
-    wrap.appendChild(el('div', { class: 'field-row' }, labelEl('count at depth'), dInput, prev));
-    return wrap;
-}
-
-/* Floor plan: assign biomes to inclusive floor ranges. Validates that ranges
-   tile 1..floors without gaps/overlap and warns otherwise. */
+/* Assign biomes to inclusive floor ranges. Validates that ranges tile 1..floors
+   without gaps/overlap, and that the biomes' item categories exist in the
+   prototype's item_catalog. */
 function sectionFloorPlan() {
     const p = state.proto;
     if (!Array.isArray(p.floor_plan)) p.floor_plan = [];
     const { det, body } = section('Floor plan', { open: true });
-    const biomeNames = Object.keys(p.biomes || {});
+    // Names come from the biome LIBRARY (data/biomes.json + this prototype's
+    // biomes.json), not from prototype.json — biomes aren't authored inline.
+    const biomeNames = mergedBiomeNames();
     body.appendChild(el('div', { class: 'hint-inline' },
-        'Assign each biome to a floor range (e.g. 1-8). Ranges should cover every floor from 1 to ' + (p.floors ?? '?') + ' without gaps.'));
+        'Assign a biome to each floor range (e.g. 1-8). Ranges should cover every floor from 1 to ' + (p.floors ?? '?') + ' without gaps.'));
+    body.appendChild(el('div', { class: 'hint-inline' },
+        biomeNames.length
+            ? `${biomeNames.length} biome(s) available from data/biomes.json` +
+              (Object.keys(state.protoBiomes || {}).length
+                  ? ` and prototypes/${state.protoName}/biomes.json` : '') + '. '
+            : 'No biomes found in data/biomes.json — create one first. ',
+        el('a', { href: 'biome-editor.html' }, 'Edit biomes →')));
 
     p.floor_plan.forEach((fp, i) => body.appendChild(floorPlanRow(fp, i, biomeNames)));
 
@@ -1231,7 +609,33 @@ function sectionFloorPlan() {
     // validation
     const warn = validateFloorPlan(p.floor_plan, p.floors);
     if (warn) body.appendChild(el('div', { class: 'hint-inline', style: 'color:var(--accent2);' }, warn));
+
+    // A biome's `items` rows name item_catalog CATEGORIES, but item_catalog lives
+    // only at the prototype root. The engine silently skips a category that isn't
+    // there, so those items just never spawn — catch it where the mistake is made.
+    const catWarn = validateBiomeCategories(p);
+    if (catWarn) body.appendChild(el('div', { class: 'hint-inline', style: 'color:var(--accent2);' }, catWarn));
     return { det };
+}
+
+/* Do the biomes this floor plan uses ask for item categories the prototype's
+   item_catalog doesn't provide? Returns a message, or null when fine. */
+function validateBiomeCategories(p) {
+    const catalog = new Set(Object.keys(p.item_catalog || {}));
+    const lib = mergedBiomes();
+    const problems = [];
+    for (const fp of (p.floor_plan || [])) {
+        const b = fp && fp.biome && lib[fp.biome];
+        if (!b) continue;
+        const missing = [...new Set((b.items || [])
+            .map(r => r && r.type)
+            .filter(t => t && !catalog.has(t)))];
+        if (missing.length) problems.push(`${fp.biome} wants ${missing.join(', ')}`);
+    }
+    if (!problems.length) return null;
+    return catalog.size === 0
+        ? `This prototype has no item_catalog, so biome items will not spawn (${problems.join('; ')}).`
+        : `item_catalog is missing categories these biomes use — those items won't spawn: ${problems.join('; ')}.`;
 }
 
 function floorPlanRow(fp, i, biomeNames) {
@@ -1239,8 +643,14 @@ function floorPlanRow(fp, i, biomeNames) {
     const row = el('div', { class: 'field-row' });
     const bSel = el('select', {});
     bSel.appendChild(el('option', { value: '' }, '— biome —'));
-    for (const n of biomeNames) bSel.appendChild(el('option', { value: n }, n));
-    if (fp.biome && !biomeNames.includes(fp.biome)) bSel.appendChild(el('option', { value: fp.biome }, fp.biome + ' (?)'));
+    for (const n of biomeNames) {
+        // Mark which library a name resolves from, so an override is visible here.
+        const tag = biomeSource(n) === 'prototype' ? ' (this prototype)' : '';
+        bSel.appendChild(el('option', { value: n }, n + tag));
+    }
+    // A name no library defines: the engine silently falls back to prototype
+    // defaults for those floors, so flag it rather than dropping the value.
+    if (fp.biome && !biomeNames.includes(fp.biome)) bSel.appendChild(el('option', { value: fp.biome }, fp.biome + ' (not found)'));
     bSel.value = fp.biome || '';
     bSel.addEventListener('change', () => { fp.biome = bSel.value; commit(); render(); });
 

@@ -1,0 +1,17 @@
+{
+  "_comment": "Index of the prototypes under prototypes/. Directory listing isn't possible over static HTTP, so the editors read this to populate their prototype dropdowns. Add an entry when you add a prototype folder.",
+  "prototypes": [
+    "arena",
+    "automatons",
+    "autorodney",
+    "cutscene_test",
+    "default",
+    "dungeon",
+    "infrastructure",
+    "labyrinth",
+    "mine",
+    "morass",
+    "sewer",
+    "test"
+  ]
+}

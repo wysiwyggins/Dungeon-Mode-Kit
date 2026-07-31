@@ -12,18 +12,10 @@
 
 <header>
     <h1>Prototype Editor</h1>
+    <!-- Options are filled from data/prototypes.json at init; see populatePrototypeSelect(). -->
     <label>Prototype:
         <select id="prototype-select">
             <option value="" selected>— choose —</option>
-            <option value="dungeon">dungeon</option>
-            <option value="sewer">sewer</option>
-            <option value="arena">arena</option>
-            <option value="labyrinth">labyrinth</option>
-            <option value="automatons">automatons</option>
-            <option value="test">test</option>
-            <option value="default">default</option>
-            <option value="cutscene_test">cutscene_test</option>
-            <option value="dungeon">dungeon</option>
         </select>
     </label>
     <button id="btn-blank">New Blank</button>
@@ -118,11 +110,15 @@
      in the Tiled map, which the editor can't see). Any observer_mode already in
      a loaded prototype's mechanics is preserved verbatim on export. -->
 <script type="text/x-handlebars-template" id="tpl-section-mechanics">
+  <!-- data-tristate: these cycle unset -> true -> false -> unset. An unchecked box
+       used to write `false`, which the engine treats as an explicit override of the
+       prototype default, with no way back to inheriting. Indeterminate = inherited. -->
   <div class="checkbox-grid">
-    <label title="Tiles you have seen stay remembered but dim when out of view; unseen tiles are hidden."><input type="checkbox" data-bind="fog_of_war" data-type="checkbox" data-scope="mechanics"> fog_of_war</label>
-    <label title="Level is dark — only lit areas (torches, light sources, player light) are visible."><input type="checkbox" data-bind="darkness" data-type="checkbox" data-scope="mechanics"> darkness</label>
-    <label title="Player emits their own light automatically, so they can always see nearby tiles even in darkness."><input type="checkbox" data-bind="player_auto_light" data-type="checkbox" data-scope="mechanics"> player_auto_light</label>
+    <label title="Tiles you have seen stay remembered but dim when out of view; unseen tiles are hidden."><input type="checkbox" data-bind="fog_of_war" data-type="checkbox" data-tristate data-scope="mechanics"> fog_of_war</label>
+    <label title="Level is dark — only lit areas (torches, light sources, player light) are visible."><input type="checkbox" data-bind="darkness" data-type="checkbox" data-tristate data-scope="mechanics"> darkness</label>
+    <label title="Player emits their own light automatically, so they can always see nearby tiles even in darkness."><input type="checkbox" data-bind="player_auto_light" data-type="checkbox" data-tristate data-scope="mechanics"> player_auto_light</label>
   </div>
+  <div class="hint-inline">Flag boxes are three-state: dash = inherit the default, checked = force on, unchecked = force off.</div>
   <div data-mount="treasure_room"></div>
   {{> fieldRow label="viewport_width" bind="viewport_width" type="number" scope="mechanics" tip="Visible columns. If smaller than the map, the level scrolls. Leave blank to show the whole map."}}
   {{> fieldRow label="viewport_height" bind="viewport_height" type="number" scope="mechanics" tip="Visible rows. If smaller than the map, the level scrolls. Leave blank to show the whole map."}}
@@ -135,6 +131,7 @@
      calls init() last. See those files to edit behavior. -->
 <script src="scripts/proto-state.js"></script>
 <script src="scripts/proto-widgets.js"></script>
+<script src="scripts/biome-sections.js"></script>
 <script src="scripts/proto-sections.js"></script>
 <script src="scripts/proto-render.js"></script>
 </body>

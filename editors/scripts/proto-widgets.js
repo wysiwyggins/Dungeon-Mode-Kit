@@ -3,9 +3,9 @@
    -------------------------------------------------------------------------
    Extracted from prototype-editor.html. These files are plain <script> src
    includes (no bundler) and share one global scope; load order matters:
-   proto-state -> proto-widgets -> proto-sections -> proto-render. The final
-   file calls init(). Do not wrap in IIFEs — cross-file references rely on the
-   shared top-level scope.
+   proto-state -> proto-widgets -> biome-sections -> proto-sections ->
+   proto-render. The final file calls init(). Do not wrap in IIFEs — cross-file
+   references rely on the shared top-level scope.
    ========================================================================= */
 "use strict";
 
@@ -512,5 +512,31 @@ function subTitle(t, tip) {
     const n = el('div', { class: 'sub-section-title' }, t);
     if (tip) n.setAttribute('title', tip);
     return n;
+}
+
+/* A collapsible sub-section: same look as subTitle(), but the body folds away.
+   For blocks that are legitimately long — a biome's depth-ranged actor catalog can
+   run to a dozen rows of two sliders each, which buries the sections under it.
+
+   `countLabel` is shown in the summary so the block still reports its size while
+   collapsed (an empty catalog shouldn't look identical to a full one).
+
+   Open state is keyed by `stateKey` on a module-level map rather than on the model,
+   so it survives render()'s full rebuild without leaking into the exported JSON. */
+const _subSectionOpen = Object.create(null);
+
+function collapsibleSubSection(title, stateKey, countLabel, tip, opts = {}) {
+    const det = el('details', { class: 'sub-section sub-collapsible' });
+    // Default closed for long blocks; the caller decides via opts.defaultOpen.
+    const remembered = _subSectionOpen[stateKey];
+    if (remembered !== undefined ? remembered : !!opts.defaultOpen) det.setAttribute('open', '');
+    const summary = el('summary', { class: 'sub-section-title' }, title);
+    if (countLabel) summary.appendChild(el('span', { class: 'sub-count' }, countLabel));
+    if (tip) summary.setAttribute('title', tip);
+    det.appendChild(summary);
+    det.addEventListener('toggle', () => { _subSectionOpen[stateKey] = det.open; });
+    const body = el('div', {});
+    det.appendChild(body);
+    return { det, body };
 }
 

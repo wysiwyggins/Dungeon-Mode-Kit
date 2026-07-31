@@ -189,6 +189,26 @@ body.editor {
     .sub-section { border-left: 2px solid var(--border); padding-left: 10px; margin: 6px 0; }
     .sub-section-title { font-size: 11px; color: var(--accent); margin-bottom: 4px; }
 
+    // Collapsible sub-section (long depth-ranged catalogs). Follows the same
+    // '+ '/'- ' marker convention as details.section, one level quieter.
+    details.sub-collapsible {
+        > summary {
+            cursor: pointer;
+            user-select: none;
+            list-style: none;
+            &::-webkit-details-marker { display: none; }
+            &::before { content: '+ '; }
+            &:hover { color: var(--text); }
+        }
+        &[open] > summary::before { content: '- '; }
+
+        .sub-count {
+            margin-left: 6px;
+            font-weight: normal;
+            color: var(--text-dim);
+        }
+    }
+
     // ---- JSON output panel ----
 
     .json-output-panel {
@@ -561,11 +581,18 @@ body.editor {
         }
     }
 
-    // ---- Prototype editor (prototype.json) ----
-    // Visual editor for level/prototype configs. Adds widgets the other
+    // ---- Prototype editor (prototype.json) + biome editor (data/biomes.json) ----
+    // Visual editors for level/prototype configs. Add widgets the other
     // editors don't use: floor tabs with inheritance, percentage sliders,
     // dual-handle min/max ranges, weighted-pool bars, and spawn rows.
-    &.prototype-editor {
+    //
+    // Both pages are covered by one block because they share the same shell
+    // (.workspace / .editor-body / .proto-main / .form-panel + JSON panel) and
+    // the same widget set — the biome editor reuses proto-widgets.js and
+    // biome-sections.js verbatim. Scoping these to .prototype-editor alone would
+    // leave the biome editor's cards, depth catalogs and dual-ranges unstyled.
+    &.prototype-editor,
+    &.biome-editor {
         .workspace {
             display: block;
             height: calc(100vh - 48px);
@@ -739,6 +766,27 @@ body.editor {
                 font-style: italic;
             }
         }
+
+        // Biome editor: the "design for N floors" bar reuses .floor-tabs for its
+        // strip styling, but its content is one labelled number input rather than
+        // a row of tabs, so the label needs its own sizing.
+        .design-bar .design-floors-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--text);
+
+            input[type=number] {
+                width: 60px;
+                font-family: inherit;
+                font-size: 11px;
+                background: var(--input-bg);
+                color: var(--text);
+                border: 1px solid var(--border);
+                padding: 2px 4px;
+            }
+        }
         .floor-tab {
             font-family: inherit;
             font-size: 11px;
@@ -779,11 +827,23 @@ body.editor {
             > .section-body { opacity: 0.5; pointer-events: none; }
             > summary { color: var(--text-dim); }
         }
+        // A <summary> is display:list-item by default, so its ::before marker and
+        // the .section-summary-row div inside it stack on two lines (the marker
+        // ends up alone above the title). Make the summary itself a flex row so
+        // the marker sits inline and the row fills the remaining width.
+        details.section > summary,
+        .biome-card > summary,
+        details.sub-collapsible > summary {
+            display: flex;
+            align-items: center;
+            &::before { flex: 0 0 auto; }
+        }
         .section-summary-row {
             display: flex;
             align-items: center;
             gap: 8px;
             width: 100%;
+            flex: 1 1 auto;
             .sec-title { flex: 0 0 auto; }
         }
         .inherit-badge {

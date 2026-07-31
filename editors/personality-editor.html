@@ -13,12 +13,6 @@
     <label>Prototype:
         <select id="prototype-select">
             <option value="" selected>— base only —</option>
-            <option value="dungeon">dungeon</option>
-            <option value="arena">arena</option>
-            <option value="labyrinth">labyrinth</option>
-            <option value="automatons">automatons</option>
-            <option value="test">test</option>
-            <option value="default">default</option>
         </select>
     </label>
     <label>Personality:
@@ -911,8 +905,26 @@ function initEventListeners() {
 
 // ---- Init ----
 
+// Fill the prototype dropdown from data/prototypes.json. Static HTTP can't list a
+// directory, so that file is the index; keeping the list there instead of hardcoded
+// <option>s stops the editors drifting out of sync with prototypes/.
+async function populatePrototypeSelect() {
+    const sel = document.getElementById('prototype-select');
+    if (!sel) return;
+    const idx = await fetchJSON('../data/prototypes.json');
+    const names = Array.isArray(idx.prototypes) ? idx.prototypes : [];
+    if (!names.length) return;   // keep the markup's fallback options
+    for (const opt of [...sel.options]) if (opt.value !== '') opt.remove();
+    for (const name of names) {
+        const o = document.createElement('option');
+        o.value = name; o.textContent = name;
+        sel.appendChild(o);
+    }
+}
+
 async function init() {
     await loadBaseData();
+    await populatePrototypeSelect();
     await loadPrototype('');
     buildParamRows();
     populateActorSelects();
