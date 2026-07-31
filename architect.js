@@ -261,6 +261,7 @@ class Architect {
             230: 'infernal',
             143: 'room',
             144: 'room',
+            226: 'palladian',       // CROWN
             12: 'item_spawn',
             3: 'actor_spawn',
             218: 'abyss'
@@ -1529,6 +1530,9 @@ class Architect {
             case 'room':
                 this.generateRoomAt(region.x, region.y, region.width, region.height, context);
                 break;
+            case 'palladian':
+                this.generatePalladianAt(region.x, region.y, region.width, region.height, context);
+                break;
             case 'abyss':
                 this.generateAbyssAt(region.x, region.y, region.width, region.height, context);
                 break;
@@ -1981,6 +1985,175 @@ class Architect {
         }
 
         this.pendingWallSpawns.push(...wallPositions);
+    }
+
+    /**
+     * Wildcard counterpart to the full-floor 'palladian' case: drops a villa inside a
+     * single wildcard region so a temple can be one feature of a larger floor rather
+     * than the whole floor.
+     *
+     * Reuses every stage helper unchanged by having _palladianBuildGrid center the plan
+     * inside the region's bounding box — the plan it returns is in world coordinates, so
+     * carving, openings, columns and windows all work as they do on a full floor. Only
+     * the finalize step differs (see _palladianFinalizeRegion): it must not iterate or
+     * repaint the rest of the map.
+     */
+    generatePalladianAt(startX, startY, width, height, context = null) {
+        const mapGenConfig = context?.getMapGeneratorConfig?.() || {};
+        const cfg = {
+            bayColumns: mapGenConfig.bayColumns || [3, 5],
+            bayRows: mapGenConfig.bayRows || [2, 3],
+            bayWidth: mapGenConfig.bayWidth || [3, 7],
+            bayHeight: mapGenConfig.bayHeight || [3, 6],
+            centralBias: mapGenConfig.centralBias ?? 150,
+            mergeChance: mapGenConfig.mergeChance ?? 45,
+            sanctumChance: mapGenConfig.sanctumChance ?? 70,
+            sanctumShapes: mapGenConfig.sanctumShapes || ['cross', 'tee', 'eye'],
+            // A wildcard villa sits inside an existing floor, so a projecting portico
+            // would push its colonnade into whatever is already there. In-antis keeps
+            // the whole composition inside the region footprint.
+            porticoStyle: mapGenConfig.porticoStyle || 'in_antis',
+            porticoDepth: mapGenConfig.porticoDepth ?? 2,
+            columnSpacing: mapGenConfig.columnSpacing ?? 2,
+            doorChance: mapGenConfig.doorChance ?? 55,
+            torchChance: mapGenConfig.torchChance ?? 40,
+            wall_types: mapGenConfig.wall_types || [{ type: 'brick_wall', weight: 100 }],
+        };
+
+        // The mask is the region as authored, which may be an irregular blob. The plan
+        // is fitted to the bounding box, so a non-rectangular region can clip it; that
+        // is the map author's choice and the mask keeps the clip from corrupting
+        // neighbouring geometry.
+        const mask = new Set();
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const wx = startX + x;
+                const wy = startY + y;
+                if (wx < 0 || wx >= this.width || wy < 0 || wy >= this.height) continue;
+                const wildcard = this.wildcardMap[wy][wx];
+                if (wildcard && wildcard.type === 'palladian') mask.add(`${wx},${wy}`);
+            }
+        }
+        if (mask.size === 0) return;
+
+        const plan = this._palladianBuildGrid(cfg, { x: startX, y: startY, width, height });
+        if (!plan) {
+            // Too small for even a 1x1 villa. Carve the region as a plain hall rather
+            // than leaving a hole in the floor the player can't cross.
+            console.warn(`Palladian wildcard: region ${width}x${height} at (${startX},${startY}) too small for a villa; carving a plain hall`);
+            for (const key of mask) {
+                const [hx, hy] = key.split(',').map(Number);
+                this.backgroundMap[hy][hx] = null;
+                this.floorMap[hy][hx] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                this.walkableTiles.push({ x: hx, y: hy });
+            }
+            return;
+        }
+
+        const dungeonGrid = Array.from({ length: this.height }, () => new Uint8Array(this.width));
+        this._palladianCarveBays(dungeonGrid, plan);
+        const rooms = this._palladianLayoutRooms(dungeonGrid, plan, cfg);
+        const portico = this._palladianAddPortico(dungeonGrid, plan, cfg);
+        const openings = this._palladianAddOpenings(dungeonGrid, plan, rooms, portico, cfg);
+        this._palladianEnsureConnected(dungeonGrid, plan, rooms, portico);
+
+        const records = this._palladianMakeRecords(dungeonGrid, plan, rooms, portico, openings);
+        this._palladianFinalizeRegion(dungeonGrid, records, mask, cfg);
+
+        // Same ordering rule as the full-floor path: decoration must run after
+        // finalize, or the torch pass converts a column into a brazier.
+        this._palladianPlaceColumns(plan, portico, cfg);
+        this._palladianPlaceWindows(openings);
+        this._palladianPublishRegions(dungeonGrid, plan, records, portico);
+        this.palladianPlan = plan;
+
+        const sanctum = records.find(r => r.isSanctum);
+        console.log(
+            `Palladian wildcard villa ${plan.nCols}x${plan.nRows} bays ` +
+            `(${plan.footprintW}x${plan.footprintH} tiles at ${plan.left},${plan.top}, axis x=${plan.axisX}) ` +
+            `in region ${width}x${height} at (${startX},${startY}): ` +
+            `${records.length} rooms, sanctum ${sanctum ? sanctum.shape : 'none'}, ` +
+            `portico ${portico ? portico.style : 'none'}, ${openings.windows.length} windows.`
+        );
+    }
+
+    /**
+     * Region-scoped variant of _brogueFinalizeMap.
+     *
+     * Differs in three ways that matter, all of them consequences of there being a
+     * map outside the villa:
+     *   - iteration and every write are clipped to `mask`, so the pass cannot repaint
+     *     the surrounding floor;
+     *   - there is no perimeter/metal_wall rule. That rule exists to seal the edge of
+     *     the world; inside a floor it would wall the villa off from its surroundings;
+     *   - rooms and regions are APPENDED. _brogueFinalizeMap assigns this.diggerRooms,
+     *     which would discard the rooms of every other generator on the floor.
+     */
+    _palladianFinalizeRegion(dungeonGrid, rooms, mask, cfg) {
+        const floorSet = new Set();
+        const inMask = (x, y) => mask.has(`${x},${y}`);
+
+        for (const key of mask) {
+            const [x, y] = key.split(',').map(Number);
+            if (dungeonGrid[y][x] >= 1) {
+                this.backgroundMap[y][x] = null;
+                this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                this.walkableTiles.push({ x, y });
+                floorSet.add(key);
+            }
+        }
+
+        const hasFloor = (fx, fy) => floorSet.has(`${fx},${fy}`);
+        const wallTypes = cfg.wall_types;
+        const totalWeight = wallTypes.reduce((sum, wt) => sum + wt.weight, 0);
+        const pickWallType = () => {
+            let roll = ROT.RNG.getUniform() * totalWeight;
+            for (const wt of wallTypes) {
+                roll -= wt.weight;
+                if (roll <= 0) return wt.type;
+            }
+            return wallTypes[0].type;
+        };
+
+        for (const key of mask) {
+            const [x, y] = key.split(',').map(Number);
+            if (floorSet.has(key)) continue;
+            const adj =
+                hasFloor(x - 1, y) || hasFloor(x + 1, y) ||
+                hasFloor(x, y - 1) || hasFloor(x, y + 1) ||
+                hasFloor(x - 1, y - 1) || hasFloor(x + 1, y - 1) ||
+                hasFloor(x - 1, y + 1) || hasFloor(x + 1, y + 1);
+            if (!adj || y === 0) continue;
+
+            this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+            this.pendingWallSpawns.push({ x, y, type: pickWallType() });
+        }
+
+        // Doors: dungeonGrid marks them with 2. Clipped to the mask like everything else.
+        for (const key of mask) {
+            const [x, y] = key.split(',').map(Number);
+            if (dungeonGrid[y][x] === 2 && y > 0 && ROT.RNG.getPercentage() <= cfg.doorChance) {
+                this.pendingDoorSpawns.push({ x, y });
+            }
+        }
+
+        // Torches, one per room, drawn from that room's own walls.
+        for (const room of rooms) {
+            if (ROT.RNG.getPercentage() > cfg.torchChance) continue;
+            const roomWalls = this.pendingWallSpawns.filter(p =>
+                p.type !== 'metal_wall' && inMask(p.x, p.y) &&
+                p.x >= room._x1 - 1 && p.x <= room._x2 + 1 &&
+                p.y >= room._y1 - 1 && p.y <= room._y2 + 1
+            );
+            if (roomWalls.length === 0) continue;
+            const torchPos = roomWalls[Math.floor(ROT.RNG.getUniform() * roomWalls.length)];
+            this.pendingTorchSpawns.push({ x: torchPos.x, y: torchPos.y });
+            const idx = this.pendingWallSpawns.findIndex(p => p.x === torchPos.x && p.y === torchPos.y);
+            if (idx !== -1) this.pendingWallSpawns.splice(idx, 1);
+        }
+
+        this.diggerRooms = [...(this.diggerRooms || []), ...rooms];
+        this.publishRoomRegions(rooms, floorSet);
     }
 
     // ========================================================================
@@ -3089,7 +3262,15 @@ class Architect {
     //    get wrong, and no rounding that could differ between the two sides.
     //    Every later stage follows the same discipline.
 
-    _palladianBuildGrid(cfg) {
+    /**
+     * @param {object} cfg - palladian config
+     * @param {object} [bounds] - sub-rectangle to fit the villa into, for the wildcard
+     *   path. Defaults to the whole map, which is the full-floor generator's behavior.
+     *   The villa is centered inside these bounds and every returned coordinate is
+     *   still absolute/world, so downstream stages need no offsetting.
+     */
+    _palladianBuildGrid(cfg, bounds = null) {
+        const area = bounds || { x: 0, y: 0, width: this.width, height: this.height };
         const rollRange = (range, lo = 1) => {
             const a = Math.max(lo, Math.min(range[0], range[1]));
             const b = Math.max(lo, Math.max(range[0], range[1]));
@@ -3135,7 +3316,7 @@ class Architect {
         const MARGIN = 2;
         const fits = () => {
             const { w, h } = footprint();
-            return w <= this.width - 2 * MARGIN && h + porticoDepth <= this.height - 2 * MARGIN;
+            return w <= area.width - 2 * MARGIN && h + porticoDepth <= area.height - 2 * MARGIN;
         };
 
         // Degradation ladder. Never throws: a generator that throws breaks
@@ -3208,8 +3389,8 @@ class Architect {
         // Center the FOOTPRINT and derive the axis from it. Do not try to center
         // axisX on this.width/2 — that reintroduces off-by-one asymmetry when the
         // map width and the footprint width differ in parity.
-        const X0 = Math.max(MARGIN, Math.floor((this.width - footprintW) / 2));
-        const Y0 = Math.max(MARGIN, Math.floor((this.height - footprintH - porticoDepth) / 2));
+        const X0 = area.x + Math.max(MARGIN, Math.floor((area.width - footprintW) / 2));
+        const Y0 = area.y + Math.max(MARGIN, Math.floor((area.height - footprintH - porticoDepth) / 2));
 
         const colX = [];
         let x = X0 + 1;

@@ -552,7 +552,6 @@
     "name": "brick wall",
     "tileIndexBase": "BRICK_WALL",
     "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
-    "tint": "#b53a00",
     "attributes": {
       "flammable": false,
       "pushable": false,
@@ -927,7 +926,7 @@
     "name": "sewage",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
-    "tint": "#77bb41",
+    "tint": "#7d9332",
     "rippleTint": true,
     "animated": true,
     "animation_frames": "fluid",

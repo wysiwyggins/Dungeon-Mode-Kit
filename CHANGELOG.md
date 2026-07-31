@@ -5,21 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.16b]
 
 ### Added
 
 - "Infrastructure sight" folded into magic mapping
 - degrading/breaking items (mattock is the test case)
+- new "palladian" map generator for boss/artifact areas 
 
 ### Fixed
 
 - Exploration (map memory) is no longer lost when you revisit a floor
-- Colors are named in descriptive text.
+- Item colors are named in text feedback
 
 ### Changed
 
 - Torch fuel amount can be set from item data, which sets a precedent for other timed consumable items.
+- "walk_description" attribute is extended to Actors as well as Entities
 
 ### Fixed
 

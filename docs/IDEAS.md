@@ -4,8 +4,13 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Bugs
 
-- in the prototype editor, I can turn on the toggles for settings like fog of war and darkness, implying an override of the prototype-level default. But if I deactivate those toggles, that is still an override. There's no way to disable the override altogether, resulting in potentially redundant json (low priority). These types of settings might best be grouped under a activate deactivate toggle that returns us to prototype defaults.
+- in the prototype editor, I can turn on the toggles for settings like fog of war and darkness, implying an override of the prototype-level default. But if I deactivate those toggles, that is still an override. There's no way to disable the override altogether, resulting in potentially redundant json (low priority). These types of settings might best be grouped under a activate/deactivate toggle that returns us to prototype defaults.
   - Related: `dualRangeArrayRow` seeds `obj[key]` on *render*, so merely viewing a section (e.g. the palladian or brogue room-size fields) writes defaults into the JSON. `roomSizeEditor`/`porticoEditor` work around it with a gating checkbox that deletes the keys when off — that toggle-gate is the pattern to generalize.
+
+## Tweaks
+
+- We don't need to show a fuel bar for unlit torches that have never been lit. Could gate this by not showing fuel etc when it's 100%
+- Wand uses currently display as a bar and a float value rather than the more appropriate number of uses. Additionally, we shouldn't know the number of uses unless the wand is has the scroll of identify used on it.
 
 ---
 
