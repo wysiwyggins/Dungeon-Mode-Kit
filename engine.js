@@ -8762,11 +8762,19 @@ class Actor extends Entity {
             pickedUp = this.pickUpItem(itemAtTarget) || pickedUp;
         }
 
-        // Check for entity walk descriptions (only for player-controlled actors)
+        // Check for walk descriptions (only for player-controlled actors). Entities and
+        // non-solid actors both describe being stepped on: water and mud are actors, while
+        // blood and rubble are entities, and either should narrate the same way. Solid
+        // actors are skipped because you never end a move on top of one.
         if (this.isPlayerControlled()) {
             const entityAtTarget = this.engine.entityManager.getEntityAt(newX, newY);
             if (entityAtTarget && entityAtTarget.hasAttribute('walk_description')) {
                 this.engine.inputManager?.showMessage(entityAtTarget.getAttribute('walk_description'));
+            }
+            for (const other of this.engine.entityManager.getActorsAt(newX, newY)) {
+                if (other === this || other.isDead || other.hasAttribute('solid')) continue;
+                if (!other.hasAttribute('walk_description')) continue;
+                this.engine.inputManager?.showMessage(other.getAttribute('walk_description'));
             }
         }
 

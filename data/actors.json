@@ -879,7 +879,8 @@
       "paint_tile": "WATER",
       "mass_noun": true,
       "entry_sound": "step_mud",
-      "render_layer": "top"
+      "render_layer": "top",
+      "walk_description": "Cold water reaches your knees."
     }
   },
   "deep_water": {
@@ -899,7 +900,7 @@
       "deep": true,
       "mass_noun": true,
       "entry_sound": "step_mud",
-      "render_layer": "top"
+      "walk_description": "You plunge into the dark waters."
     }
   },
   "sewage": {
@@ -918,7 +919,8 @@
       "paint_tile": "OPAQUE_DOTTED_LIGHT_SHADE",
       "mass_noun": true,
       "entry_sound": "step_mud",
-      "render_layer": "top"
+      "render_layer": "top",
+      "walk_description": "You trudge through the stinking effluvia."
     }
   },
   "deep_sewage": {
@@ -936,7 +938,7 @@
       "deep": true,
       "solid": false,
       "entry_sound": "step_mud",
-      "render_layer": "top"
+      "walk_description": "You wade out into the vile morass."
     }
   },
   "drain": {
