@@ -1041,7 +1041,6 @@ class InterfaceManager {
                 if (item.stats && Object.keys(item.stats).length > 0) {
                     const chargeStat = item.getAttribute('charge_stat');
                     if (chargeStat) {
-                        // Charge display: "Charges: N/M" for staffs and similar usable items
                         const stat = item.stats[chargeStat];
                         if (stat && typeof stat === 'object' && stat.max !== undefined) {
                             const uses = item.getAttribute('uses') || 1;
@@ -1051,14 +1050,14 @@ class InterfaceManager {
                             statLine = {
                                 label: `      Charges: `,
                                 chargeCount: isIdentified ? `${availableCharges}/${uses}` : `?/?`,
+                                noBar: true,
                                 current: stat.current,
                                 max: stat.max
                             };
                         }
                     } else {
                         // Generic display: find first stat with a display_label.
-                        // Show the label + thermometer only — no numeric value (the raw
-                        // value can be a float that renders a stray glyph in some decimals).
+                        // Show the label + thermometer only — no numeric value 
                         for (const stat of Object.values(item.stats)) {
                             if (stat && typeof stat === 'object' && stat.display_label && stat.max !== undefined) {
                                 statLine = {
@@ -1079,7 +1078,7 @@ class InterfaceManager {
 
         // Build lines for the info box
         const lines = [];
-        const thermometerLineIndices = []; // Track which lines have thermometer bars
+        const thermometerLineIndices = [];
         lines.push(player.name);
         lines.push('');
 
@@ -1098,8 +1097,8 @@ class InterfaceManager {
             }
         }
 
-        const inventoryLineIndices = []; // Track which lines have item tiles
-        const itemStatLineIndices = []; // Track which lines have item stat thermometers
+        const inventoryLineIndices = [];
+        const itemStatLineIndices = [];
         if (inventoryItems.length > 0) {
             if (hasStats) lines.push('');
             lines.push('Inventory:');
@@ -1113,8 +1112,11 @@ class InterfaceManager {
                     const displayLabel = statLine.chargeCount
                         ? `${statLine.label}${statLine.chargeCount} `
                         : statLine.label;
-                    itemStatLineIndices.push({ lineIndex: lines.length, label: displayLabel, current: statLine.current, max: statLine.max });
-                    lines.push(displayLabel); // Shows "      Charges: 2/3 " then thermometer renders after
+                    itemStatLineIndices.push({
+                        lineIndex: lines.length, label: displayLabel,
+                        current: statLine.current, max: statLine.max, noBar: !!statLine.noBar
+                    });
+                    lines.push(displayLabel); // "Charges: 2/3", or "Fuel: " + thermometer
                 }
             }
         } else {
@@ -1122,14 +1124,12 @@ class InterfaceManager {
             lines.push('Inventory: (empty)');
         }
 
-        // A blank trailing line so the '?' affordance on the bottom padding row is
-        // separated from the last line of content rather than sitting right under it.
+        // A blank trailing line to pad the '?' button
         lines.push('');
 
         // Calculate dimensions - account for thermometer bar widths
         const padding = 1;
         let maxLineLength = Math.max(...lines.map(l => this.stripMarkup(l).length), 10);
-        // Check if any thermometer bars would be wider (fixed width of 10 tiles)
         const thermometerBarWidth = 10;
         for (const { label } of thermometerLineIndices) {
             const totalWidth = label.length + thermometerBarWidth;
@@ -1149,9 +1149,7 @@ class InterfaceManager {
         const boxWidth = contentWidth + (padding * 2) + 2;
         const boxHeight = contentHeight + (padding * 2) + 2;
 
-        // Vertically placed in the half the player isn't in. X keeps this window's
-        // own long-standing rule — player on the right puts the box on the left —
-        // since it's a side panel rather than a centered modal.
+        // Vertically placed in the half the player isn't in
         const { y } = this.placeBoxAwayFromPlayer(boxWidth, boxHeight);
         const vis = this.getVisibleArea();
         const visMidpoint = vis.originX + vis.width / 2;
@@ -1210,8 +1208,10 @@ class InterfaceManager {
             this.renderItemTile(boxContainer, item, tileX, tileY);
         }
 
-        // Render thermometer bars for item stats (like staff pow) in the amber accent color
-        for (const { lineIndex, label, current, max } of itemStatLineIndices) {
+        // Render thermometer bars for continuous item stats (torch fuel, condition) in
+        // the amber accent color. Charge-based items opt out via noBar 
+        for (const { lineIndex, label, current, max, noBar } of itemStatLineIndices) {
+            if (noBar) continue;
             const barX = textStartX + (label.length * globalVars.TILE_WIDTH);
             const barY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
             this.renderThermometerBar(boxContainer, current, max, barX, barY, this.statAccentColor);
