@@ -1098,7 +1098,7 @@
   "oculus": {
     "name": "oculus",
     "tint": "#fefcdd",
-    "lightRadius": 3,
+    "lightRadius": 6,
     "attributes": {
       "solid": false,
       "visible": false,

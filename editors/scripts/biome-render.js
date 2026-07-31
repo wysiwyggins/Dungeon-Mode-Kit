@@ -108,13 +108,21 @@ async function copyText(txt, okMsg) {
     try {
         await navigator.clipboard.writeText(txt);
         setStatus(okMsg);
+        return;
     } catch {
-        const out = document.getElementById('json-output');
-        out.value = txt; out.focus(); out.select();
-        document.execCommand('copy');
-        setStatus(okMsg);
-        updateJSONOutput();
+        // navigator.clipboard is unavailable outside a secure context; fall through.
     }
+    // Don't reuse #json-output for this: the JSON panel is display:none, and you
+    // can't select() inside a hidden element — execCommand would copy nothing and
+    // still look like it worked. Use a temporary off-screen textarea instead.
+    const tmp = el('textarea', { style: 'position:fixed;top:-9999px;left:-9999px;' });
+    tmp.value = txt;
+    document.body.appendChild(tmp);
+    tmp.focus(); tmp.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch { ok = false; }
+    tmp.remove();
+    setStatus(ok ? okMsg : 'copy failed — select the JSON panel text manually');
 }
 
 /* =========================================================================
@@ -173,19 +181,23 @@ async function init() {
     });
 
     // JSON panel show/hide, persisted. Separate key from the prototype editor's
-    // so the two pages remember independently.
+    // so the two pages remember independently. Both the panel and the button are
+    // optional — the markup may comment either out — and this runs before render(),
+    // so a missing element must not throw and abort the rest of init().
     const jsonPanel = document.getElementById('json-output-panel');
     const jsonBtn = document.getElementById('btn-toggle-json');
-    const applyJsonHidden = (hidden) => {
-        jsonPanel.classList.toggle('hidden', hidden);
-        jsonBtn.textContent = hidden ? 'Show JSON' : 'Hide JSON';
-    };
-    applyJsonHidden(localStorage.getItem('biomeEditorJsonHidden') === '1');
-    jsonBtn.addEventListener('click', () => {
-        const hidden = !jsonPanel.classList.contains('hidden');
-        applyJsonHidden(hidden);
-        localStorage.setItem('biomeEditorJsonHidden', hidden ? '1' : '0');
-    });
+    if (jsonPanel && jsonBtn) {
+        const applyJsonHidden = (hidden) => {
+            jsonPanel.classList.toggle('hidden', hidden);
+            jsonBtn.textContent = hidden ? 'Show JSON' : 'Hide JSON';
+        };
+        applyJsonHidden(localStorage.getItem('biomeEditorJsonHidden') === '1');
+        jsonBtn.addEventListener('click', () => {
+            const hidden = !jsonPanel.classList.contains('hidden');
+            applyJsonHidden(hidden);
+            localStorage.setItem('biomeEditorJsonHidden', hidden ? '1' : '0');
+        });
+    }
 
     render();
 }

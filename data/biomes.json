@@ -16,7 +16,7 @@
         "lakes": {
           "count": [
             1,
-            2
+            3
           ],
           "types": [
             "water"
@@ -30,7 +30,46 @@
         "corridorLength": [
           1,
           12
-        ]
+        ],
+        "rectWidth": [
+          3,
+          30
+        ],
+        "rectHeight": [
+          3,
+          8
+        ],
+        "crossWidth": [
+          7,
+          16
+        ],
+        "crossHeight": [
+          7,
+          14
+        ],
+        "circularRadius": [
+          2,
+          12
+        ],
+        "cavernWidth": [
+          8,
+          20
+        ],
+        "cavernHeight": [
+          8,
+          15
+        ],
+        "abyss": {
+          "count": [
+            1,
+            2
+          ],
+          "types": [
+            "abyss"
+          ],
+          "minSize": 15,
+          "maxSize": 50
+        }
       }
     },
     "mechanics": {

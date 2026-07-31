@@ -45,6 +45,30 @@ function updateJSONOutput() {
 // Called on every model mutation. Keeps JSON output live without a full re-render.
 function commit() { updateJSONOutput(); }
 
+/* Copy the serialized prototype to the clipboard.
+   The execCommand fallback (used outside a secure context, where
+   navigator.clipboard is undefined) copies via a temporary off-screen textarea
+   rather than #json-output, because that panel is display:none and you can't
+   select() inside a hidden element — it would copy nothing and still report
+   success. */
+async function copyProtoJSON(okMsg) {
+    const txt = JSON.stringify(serialize(), null, 2);
+    const status = document.getElementById('load-status');
+    try {
+        await navigator.clipboard.writeText(txt);
+        status.textContent = okMsg;
+        return;
+    } catch { /* fall through */ }
+    const tmp = el('textarea', { style: 'position:fixed;top:-9999px;left:-9999px;' });
+    tmp.value = txt;
+    document.body.appendChild(tmp);
+    tmp.focus(); tmp.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch { ok = false; }
+    tmp.remove();
+    status.textContent = ok ? okMsg : 'copy failed';
+}
+
 /* =========================================================================
    Wiring
    ========================================================================= */
@@ -68,32 +92,36 @@ async function init() {
         await loadPrototype('');
         document.getElementById('load-status').textContent = 'new blank prototype';
     });
+    // "Export" used to just select the JSON textarea so you could hit Cmd-C, but the
+    // JSON panel is display:none now — selecting inside a hidden element does
+    // nothing. Both buttons therefore copy; Export keeps its name for muscle memory.
     document.getElementById('btn-export').addEventListener('click', () => {
-        updateJSONOutput();
-        const out = document.getElementById('json-output');
-        out.focus(); out.select();
-    });
-    document.getElementById('btn-copy').addEventListener('click', async () => {
         if (!state.proto) return;
-        const txt = JSON.stringify(serialize(), null, 2);
-        try { await navigator.clipboard.writeText(txt); document.getElementById('load-status').textContent = 'copied to clipboard'; }
-        catch { const out = document.getElementById('json-output'); out.focus(); out.select(); document.execCommand('copy'); document.getElementById('load-status').textContent = 'copied'; }
+        updateJSONOutput();
+        copyProtoJSON('exported to clipboard');
+    });
+    document.getElementById('btn-copy').addEventListener('click', () => {
+        if (!state.proto) return;
+        copyProtoJSON('copied to clipboard');
     });
 
     // JSON output panel show/hide (persisted). The panel is a live convenience
-    // view; hiding it gives the form the full width.
+    // view; hiding it gives the form the full width. Both elements are optional —
+    // the markup may comment either out — so guard rather than throw.
     const jsonPanel = document.getElementById('json-output-panel');
     const jsonBtn = document.getElementById('btn-toggle-json');
-    const applyJsonHidden = (hidden) => {
-        jsonPanel.classList.toggle('hidden', hidden);
-        jsonBtn.textContent = hidden ? 'Show JSON' : 'Hide JSON';
-    };
-    applyJsonHidden(localStorage.getItem('protoEditorJsonHidden') === '1');
-    jsonBtn.addEventListener('click', () => {
-        const hidden = !jsonPanel.classList.contains('hidden');
-        applyJsonHidden(hidden);
-        localStorage.setItem('protoEditorJsonHidden', hidden ? '1' : '0');
-    });
+    if (jsonPanel && jsonBtn) {
+        const applyJsonHidden = (hidden) => {
+            jsonPanel.classList.toggle('hidden', hidden);
+            jsonBtn.textContent = hidden ? 'Show JSON' : 'Hide JSON';
+        };
+        applyJsonHidden(localStorage.getItem('protoEditorJsonHidden') === '1');
+        jsonBtn.addEventListener('click', () => {
+            const hidden = !jsonPanel.classList.contains('hidden');
+            applyJsonHidden(hidden);
+            localStorage.setItem('protoEditorJsonHidden', hidden ? '1' : '0');
+        });
+    }
 }
 
 init();
