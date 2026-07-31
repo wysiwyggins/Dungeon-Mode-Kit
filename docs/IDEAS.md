@@ -7,7 +7,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 ## Tweaks
 
 - We don't need to show a fuel bar for unlit torches that have never been lit. Could gate this by not showing fuel etc when it's 100%
-- Wand uses currently display as a bar and a float value rather than the more appropriate number of uses. Additionally, we shouldn't know the number of uses unless the wand is has the scroll of identify used on it.
+- Wand uses currently display as a bar and a float value rather than the more appropriate number of uses. Additionally, we shouldn't know the number of uses unless the wand has had the scroll of identify used on it.
 
 ---
 
