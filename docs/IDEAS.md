@@ -12,10 +12,10 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Tweaks
 
-- evenly place more braziers in larger rooms
+- evenly place more braziers in large shaped rooms
 - flip the weapon tile that flashes during attacks in the direction of the actor being attacked.
 - "press travel to go" in tab-selected targeting should be "press [explore key] to go" with [explore key] being the actual key set to explore (x by default).
-- item names and descriptions should be able to use template variables like [color] too, not just unidentified_description.
+- item names and descriptions should be able to use template variables like [color] too, not just unidentified_description. How does the lever actor get color words in its name when paired? I would have expected to see that in the actor data, not just hardcoded, this would show a reusable precedent for templated strings in data.
 - should the "map generator" section in prototype defaults be a biomes/single generator/authored map radio button selection? We can eliminate some of this with the single level/multi level toggle. A single level is either a single generator or an authored map, hiding biome stuff. A multi level is either a single generator or biomes with level overrides for authored maps. the current "No procedural generator — the map comes from a hand-authored .tmj. Placed features below still apply." message when a single generator default isn't enabled is misleading, and when the section is disabled we don't expect to be able to set placed features, despite the message saying otherwise.
 - We don't need to show a fuel bar for unlit torches that have never been lit. Could gate this by not showing fuel etc when it's 100%
 - Wand uses currently display as a bar and a float value rather than the more appropriate number of uses. Additionally, we shouldn't know the number of uses unless the wand has had the scroll of identify used on it.

@@ -526,7 +526,7 @@
         },     
         {
             "color": "smokeblue",
-                "hex": "#001689"
+                "hex": "#222289"
         },     
         {
             "color": "orangekeyed",
@@ -3606,8 +3606,8 @@
         },
 
         {
-            "color": "bluish grey",
-            "hex": "#748b97"
+            "color": "bluish gray",
+            "hex": "#748ba7"
         },
 
         {
