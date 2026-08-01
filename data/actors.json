@@ -700,7 +700,7 @@
     "attributes": {
       "breakable": true,
       "light_source": true,
-      "light_radius": 15,
+      "light_radius": 8,
       "remains": "rubble"
     }
   },
@@ -1089,7 +1089,7 @@
     "animationTop": "fire",
     "tint": "#EC7505",
     "flickerTint": true,
-    "lightRadius": 15,
+    "lightRadius": 10,
     "attributes": {
       "opaque": true,
       "flammable": false,

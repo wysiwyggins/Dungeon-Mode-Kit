@@ -4,6 +4,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Bugs
 
+- torch_unlit is set to stackable: true but it's not stacking. didn't it used to stack?
 - Don't put the up and down stairs of a level right next to one another
 - I just saw a vertical bridge that was made out of horizontal box drawing tiles, however on another level I saw a correct vertical box drawing tile vertical bridge, so this issue is intermittent.
 - Advanced section looks like it can be removed from prototype-editor
