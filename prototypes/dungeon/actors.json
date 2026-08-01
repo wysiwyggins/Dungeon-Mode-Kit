@@ -1,8 +1,8 @@
 {
   "player": {
     "name": "Rodney",
-    "tileIndexBase": "WHITE_LEG",
-    "tileIndexTop": "OPAQUE_WHITE_SMILING_FACE",
+    "tileIndexBase": "LEG",
+    "tileIndexTop": "OPAQUE_DARK_SMILING_FACE",
     "vision_range": 20,
     "collision_effect": {
       "health": "-{strength}"
@@ -55,7 +55,8 @@
       }
     },
     "default_items": [
-      "butter_knife",
+      "sword",
+      "staff_of_lightning",
       "torch",
       "torch_unlit",
       "torch_unlit",

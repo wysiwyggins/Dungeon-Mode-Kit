@@ -22,10 +22,10 @@
             "water"
           ],
           "minSize": 15,
-          "maxSize": 60
+          "maxSize": 40
         },
         "bridges": {
-          "max": 3
+          "max": 4
         },
         "corridorLength": [
           1,
@@ -37,27 +37,27 @@
         ],
         "rectHeight": [
           3,
-          8
+          40
         ],
         "crossWidth": [
           7,
-          16
+          20
         ],
         "crossHeight": [
           7,
-          14
+          20
         ],
         "circularRadius": [
           2,
-          12
+          30
         ],
         "cavernWidth": [
           8,
-          20
+          30
         ],
         "cavernHeight": [
           8,
-          15
+          40
         ],
         "abyss": {
           "count": [
@@ -68,12 +68,12 @@
             "abyss"
           ],
           "minSize": 15,
-          "maxSize": 50
+          "maxSize": 40
         }
       }
     },
     "mechanics": {
-      "treasure_room": 10
+      "treasure_room": 20
     },
     "actors": [
       {

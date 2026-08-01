@@ -380,7 +380,9 @@
       "visible": true,
       "stackable": true,
       "flammable": true,
-      "tint_variation": true,
+      "random_color": true,
+      "identified": false,
+      "unidentified_template": "[color] potion",
       "description": "A delicate wildflower."
     }
   },
