@@ -3067,6 +3067,7 @@ class DungeonEngine {
     /**
      * Ensure a gateway exists on the current floor (last floor of multi-level prototype)
      * Gateway is hidden by default, revealed when win conditions are met
+     * Gateways were for when prototypes were all a single level and loaded one another, might be superfluous now.
      */
     ensureGateway() {
         // Check if a gateway already exists
@@ -11675,25 +11676,6 @@ class EntityManager {
     }
 }
 
-// ============================================================================
-// MAP MANAGER (now in architect.js as Architect class)
-// ============================================================================
-
-// LightingManager is now in lighting.js
-
-// ============================================================================
-// RENDER SYSTEM
-// ============================================================================
-
-// Old MapManager code removed - see architect.js
-
-// MapManager class has been moved to architect.js as the Architect class
-// See architect.js for the Architect class which handles map generation
-// All map generation and wildcard processing is now handled by the Architect class
-// The Architect class is loaded from architect.js before engine.js
-// END OF MAPMANAGER REMOVAL
-
-// LightingManager is now in lighting.js
 
 // ============================================================================
 // RENDER SYSTEM
@@ -13924,7 +13906,8 @@ async function initializeGame() {
 window.initializeGame = initializeGame;
 
 // Level loading utilities for developer console
-// Levels ordered by depth (index = depth number)
+// This confuses the terms 'level' and 'prototype,' since originally there were only single floor prototypes which we could assign depth to, now there are multi floor prototypes.
+// we should have a loadPrototype debug function and a loadFloor for a floor in that prototype
 const levelsByDepth = [
     { name: 'test', description: 'Test Prototype' },
     { name: 'labyrinth', description: 'Cretan Labyrinth' }
