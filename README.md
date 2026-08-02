@@ -231,7 +231,7 @@ Collision effect values can reference the attacker's stats/attributes: `"-{stren
 | `accuracy` | Hit chance percentage (combat) |
 | `defense` | Reduces attacker hit chance (combat) |
 | `strength` | Multiplies weapon damage ÷ 10 (combat) |
-| `sighted: true` | AI avoids hazards like fire and lava |
+| `sentient: true` | Has a mind: states apply, telepathy reveals it, and it avoids hazards while wandering |
 | `deep: true` | Submerges any actor that enters this tile (canvas tints, sprite swaps to show submersion); extinguishes carried torches |
 | `portal: true` | Hidden inter-prototype transition point; revealed when last floor's win conditions are met |
 | `hidden: true` | Actor exists but is not rendered until revealed |
