@@ -11,7 +11,6 @@
       "solid": true,
       "visible": true,
       "flammable": true,
-      "sighted": true,
       "proper_named": true,
       "inventory": 5,
       "strength": 10,

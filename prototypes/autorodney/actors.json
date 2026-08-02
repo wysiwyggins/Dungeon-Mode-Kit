@@ -19,7 +19,6 @@
     "attributes": {
       "flammable": true,
       "pov": true,
-      "sighted": true,
       "sentient": true,
       "inventory": 5,
       "remains": "skull",

@@ -14,7 +14,6 @@
     "attributes": {
       "flammable": true,
       "controlled": true,
-      "sighted": true,
       "inventory": 10,
       "strength": 8,
       "remains": "skull",

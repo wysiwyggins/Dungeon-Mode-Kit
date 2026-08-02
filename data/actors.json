@@ -16,7 +16,6 @@
     "attributes": {
       "flammable": true,
       "controlled": true,
-      "sighted": true,
       "sentient": true,
       "inventory": 5,
       "remains": "skull",
@@ -300,7 +299,6 @@
     "collision_description": "The [actor_name] strikes back at [attacked_actor_name]!",
     "attributes": {
       "sentient": true,
-      "sighted": true,
       "flammable": true,
       "accuracy": 35,
       "defense": 5,
@@ -358,7 +356,6 @@
     "collision_description": "The [actor_name] strikes back at [attacked_actor_name]!",
     "attributes": {
       "flammable": true,
-      "sighted": true,
       "sentient": true,
       "inventory": 1,
       "remains": "skull",
@@ -388,7 +385,6 @@
     "collision_description": "The [actor_name] strikes back at [attacked_actor_name]!",
     "attributes": {
       "flammable": true,
-      "sighted": true,
       "sentient": true,
       "inventory": 2,
       "remains": "skull",
@@ -469,7 +465,6 @@
       "flammable": true,
       "hostile": true,
       "sentient": true,
-      "sighted": true,
       "follows_thread": true,
       "proper_named": true,
       "accuracy": 80,
@@ -1558,7 +1553,6 @@
     "attributes": {
       "flammable": true,
       "hostile": true,
-      "sighted": true,
       "sentient": true,
       "pack": true,
       "inventory": 0,
@@ -1598,7 +1592,6 @@
     "attributes": {
       "flammable": true,
       "hostile": true,
-      "sighted": true,
       "sentient": true,
       "vision_range": 10,
       "inventory": 1,
@@ -1632,7 +1625,6 @@
       "flammable": true,
       "hostile": true,
       "sentient": true,
-      "sighted": true,
       "accuracy": 65,
       "defense": 10
     },
@@ -1657,7 +1649,6 @@
     "attributes": {
       "flammable": true,
       "hostile": true,
-      "sighted": true,
       "sentient": true,
       "accuracy": 55,
       "defense": 4,
@@ -1715,7 +1706,6 @@
       "flammable": true,
       "hostile": true,
       "sentient": true,
-      "sighted": true,
       "accuracy": 40,
       "defense": 5,
       "remains": "skull"
@@ -1740,7 +1730,6 @@
       "flammable": true,
       "flies": true,
       "sentient": true,
-      "sighted": true,
       "accuracy": 40,
       "defense": 15,
       "inventory": 1
@@ -1766,7 +1755,6 @@
     "attributes": {
       "hostile": true,
       "sentient": true,
-      "sighted": true,
       "flammable": true,
       "light_source": true,
       "accuracy": 70,
@@ -1796,7 +1784,6 @@
     "attributes": {
       "hostile": true,
       "sentient": true,
-      "sighted": true,
       "light_source": true,
       "accuracy": 60,
       "defense": 6,
@@ -1825,7 +1812,6 @@
       "flammable": true,
       "hostile": true,
       "sentient": true,
-      "sighted": true,
       "accuracy": 55,
       "defense": 8,
       "remains": "skull",
@@ -1848,7 +1834,6 @@
     "attributes": {
       "flammable": true,
       "hostile": true,
-      "sighted": true,
       "sentient": true,
       "accuracy": 0,
       "defense": 0,

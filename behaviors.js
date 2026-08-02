@@ -410,8 +410,17 @@ const BehaviorLibrary = {
     random_walk: (actor) => {
         const isConfused = actor.hasStateProperty('random_movement');
 
-        // Sighted, non-confused actors only consider valid moves (avoids pits, walls, etc.)
-        if (actor.hasAttribute('sighted') && !isConfused) {
+        // A sentient, non-confused actor watches where it's going: only consider
+        // valid moves, so it won't wander off a cliff or into a wall.
+        //
+        // Gated on `sentient` rather than a separate `sighted` attribute. `sighted`
+        // was read in this one place despite being documented as controlling AI
+        // line-of-sight, and most creatures (rat, deer, jelly, wraith, ...) never
+        // declared it — so they took the reckless branch below and walked into the
+        // abyss. `sentient` is the attribute that already means "this thing has a
+        // mind" (it gates states and telepathy too), and every random-walking
+        // creature already sets it.
+        if (actor.hasAttribute('sentient') && !isConfused) {
             const validDirs = actor.getValidMoveDirections();
             if (validDirs.length === 0) {
                 return false;
@@ -421,7 +430,8 @@ const BehaviorLibrary = {
             return result.moved || result.actionTaken;
         }
 
-        // Non-sighted or confused actors pick randomly (may fall into pits, walk into hazards)
+        // Mindless or confused actors stumble: they may fall into pits or walk into
+        // hazards. That's the intended behavior for a confused creature.
         const dir = randomElement(CARDINAL_DIRS);
         const result = actor.tryMove(actor.x + dir.dx, actor.y + dir.dy);
         return result.moved || result.actionTaken;

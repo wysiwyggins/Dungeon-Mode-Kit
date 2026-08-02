@@ -72,11 +72,10 @@ When `facingEnabled` is `true`, the actor's sprites (base, top, side, and equipm
 | `visible` | boolean | Rendered on the map. Default `true`. |
 | `flammable` | boolean | Can be set on fire. Default `true`. |
 | `hostile` | boolean | AI will attack the player. Default `false`. |
-| `sentient` | boolean | Can have states (burning, poisoned, etc.) applied. Default `false`. |
+| `sentient` | boolean | This actor has a mind: states (burning, poisoned, etc.) can be applied to it, telepathy reveals it, and it watches its footing while wandering (won't walk off a cliff unless confused). Default `false`. |
 | `controlled` | boolean | This is the player character |
 | `pov` | boolean | Point-of-view actor: acts as the field-of-view and camera-follow origin even though it is **not** player-controlled. Use for an AI "hero" in a zero-player observer prototype so a dark/fog level renders around it (it carries the auto-light and the camera follows it). Turn/input logic still keys on `controlled`, not `pov`. |
 | `hunts` | string | Names a quarry the `hunt` behavior pursues: an actor **type** to kill (e.g. `"rat"`) or an item **type** to collect (e.g. `"meat"`). Independent of faction/hostility, so a hunter can chase quarry it isn't otherwise hostile to while still attacking its normal enemies. Requires the `hunt` behavior in the actor's personality. |
-| `sighted` | boolean | Uses vision range for AI line-of-sight checks |
 | `dark_vision` | boolean | Actor can see and act normally without light (bypasses darkness AI penalties) |
 | `opaque` | boolean | Actor blocks line of sight for vision checks. Default `false` for most actors. |
 | `inventory` | number | Max items this actor can carry |
@@ -716,7 +715,6 @@ Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a fu
   "stats": { "health": 12 },
   "attributes": {
     "hostile": true,
-    "sighted": true,
     "sentient": true,
     "inventory": 1,
     "accuracy": 70,
