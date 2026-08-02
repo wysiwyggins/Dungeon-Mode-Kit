@@ -1056,13 +1056,26 @@ class InterfaceManager {
                             };
                         }
                     } else {
-                        // Generic display: find first stat with a display_label.
-                        // Show the label + thermometer only — no numeric value 
+                        // Generic display: first stat with a display_label. Label +
+                        // thermometer only, no numeric value (the raw value can be a
+                        // float that renders a stray glyph in some decimals).
                         for (const stat of Object.values(item.stats)) {
                             if (stat && typeof stat === 'object' && stat.display_label && stat.max !== undefined) {
+                                // A full, idle consumable has nothing to report: three
+                                // fresh unlit torches showing three identical 100% bars
+                                // is noise, and it's the common case now that they stack.
+                                // Show the bar only once the item is being consumed
+                                // (per_turn drains it) or has actually been used.
+                                const draining = (stat.per_turn ?? 0) < 0;
+                                const partial = stat.current < stat.max;
+                                if (!draining && !partial) break;
                                 statLine = {
                                     label: `      ${stat.display_label}: `,
                                     chargeCount: null,
+                                    // Amber while it's actively burning down; gray for a
+                                    // part-used item sitting idle, so "lit" reads at a
+                                    // glance without checking the item name.
+                                    dim: !draining,
                                     current: stat.current,
                                     max: stat.max
                                 };
@@ -1114,7 +1127,8 @@ class InterfaceManager {
                         : statLine.label;
                     itemStatLineIndices.push({
                         lineIndex: lines.length, label: displayLabel,
-                        current: statLine.current, max: statLine.max, noBar: !!statLine.noBar
+                        current: statLine.current, max: statLine.max,
+                        noBar: !!statLine.noBar, dim: !!statLine.dim
                     });
                     lines.push(displayLabel); // "Charges: 2/3", or "Fuel: " + thermometer
                 }
@@ -1182,12 +1196,16 @@ class InterfaceManager {
         const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
         const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
 
-        // Item stat sub-lines (charges, fuel, etc.) render in the amber accent color
+        // Item stat sub-lines (charges, fuel, etc.) render in the amber accent color —
+        // except a `dim` line (a part-used but idle consumable), whose label follows its
+        // bar to gray so the two don't disagree about whether the item is active.
         const accentLineSet = new Set(itemStatLineIndices.map(s => s.lineIndex));
+        const dimLineSet = new Set(itemStatLineIndices.filter(s => s.dim).map(s => s.lineIndex));
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
             const accent = accentLineSet.has(lineIndex);
-            const baseColor = accent ? this.statAccentColor : this.defaultTextTint;
+            const baseColor = dimLineSet.has(lineIndex) ? this.inactiveTintColor
+                : accent ? this.statAccentColor : this.defaultTextTint;
             const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
             // accent lines are wholly amber (baseWhite); markup spans color individual words
             this.renderTextLine(boxContainer, lines[lineIndex], textStartX, charY, baseColor, accent);
@@ -1210,11 +1228,12 @@ class InterfaceManager {
 
         // Render thermometer bars for continuous item stats (torch fuel, condition) in
         // the amber accent color. Charge-based items opt out via noBar 
-        for (const { lineIndex, label, current, max, noBar } of itemStatLineIndices) {
+        for (const { lineIndex, label, current, max, noBar, dim } of itemStatLineIndices) {
             if (noBar) continue;
             const barX = textStartX + (label.length * globalVars.TILE_WIDTH);
             const barY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
-            this.renderThermometerBar(boxContainer, current, max, barX, barY, this.statAccentColor);
+            this.renderThermometerBar(boxContainer, current, max, barX, barY,
+                dim ? this.inactiveTintColor : this.statAccentColor);
         }
 
         // The '?' help affordance, one tile in from the bottom-right border tiles.

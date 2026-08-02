@@ -4114,6 +4114,37 @@ class Item extends Entity {
     }
 
     /**
+     * Can this item share an inventory slot with `other`?
+     *
+     * Stacking used to require BOTH items to have no stats at all, which quietly
+     * excluded anything carrying a consumable stat — so three identical unlit
+     * torches (each with a full `burns` stat) sat in three slots while three spikes
+     * stacked. The real requirement is that the items be indistinguishable: a
+     * half-burnt torch must NOT merge into a fresh one, because merging would throw
+     * away the difference (a stack keeps one `count`, not one value per unit).
+     *
+     * So compare the stats instead of forbidding them: every stat must sit at the
+     * same value, which for consumables means "both untouched" in practice.
+     */
+    canStackWith(other) {
+        if (!other || other === this) return false;
+        if (other.type !== this.type) return false;
+        if (!this.getAttribute('stackable') || !other.getAttribute('stackable')) return false;
+        // Identification state is visible to the player, so don't merge across it.
+        if ((this.identified !== false) !== (other.identified !== false)) return false;
+
+        const keys = new Set([...Object.keys(this.stats || {}), ...Object.keys(other.stats || {})]);
+        for (const key of keys) {
+            const a = this.stats?.[key];
+            const b = other.stats?.[key];
+            const av = (a && typeof a === 'object') ? a.current : a;
+            const bv = (b && typeof b === 'object') ? b.current : b;
+            if (av !== bv) return false;
+        }
+        return true;
+    }
+
+    /**
      * Modify an item stat
      * @param {string} statName - Name of the stat
      * @param {number} amount - Amount to add (negative to subtract)
@@ -4621,11 +4652,10 @@ class Actor extends Entity {
         // Merge stackable items (loadDefaultItems pushes directly, skipping pickUpItem merge)
         for (let i = this.inventory.length - 1; i >= 0; i--) {
             const item = this.inventory[i];
-            if (!item.getAttribute('stackable') || Object.keys(item.stats).length > 0) continue;
+            if (!item.getAttribute('stackable')) continue;
             for (let j = 0; j < i; j++) {
                 const existing = this.inventory[j];
-                if (existing.type === item.type && existing.getAttribute('stackable') &&
-                    Object.keys(existing.stats).length === 0) {
+                if (existing.canStackWith(item)) {
                     existing.count = (existing.count || 1) + (item.count || 1);
                     this.inventory.splice(i, 1);
                     break;
@@ -5243,13 +5273,9 @@ class Actor extends Entity {
             return false;
         }
 
-        // Merge stackable items with no stats into existing stacks
-        if (item.getAttribute('stackable') && Object.keys(item.stats).length === 0) {
-            const existing = this.inventory.find(inv =>
-                inv.type === item.type &&
-                inv.getAttribute('stackable') &&
-                Object.keys(inv.stats).length === 0
-            );
+        // Merge into an existing, indistinguishable stack (see Item.canStackWith)
+        if (item.getAttribute('stackable')) {
+            const existing = this.inventory.find(inv => inv.canStackWith(item));
             if (existing) {
                 existing.count = (existing.count || 1) + (item.count || 1);
                 this.engine.entityManager.removeEntity(item);
