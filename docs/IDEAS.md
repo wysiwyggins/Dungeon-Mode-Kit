@@ -17,6 +17,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 - need to filter out dangerous targets like lava at the very least when selecting tab travel targets. At best we'd only select items, enemies, doors, stairs and unexplored areas in dark levels. currently even actors like water get selected.
 - item names and descriptions should be able to use template variables like [color] too, not just unidentified_description. How does the lever actor get color words in its name when paired? I would have expected to see that in the actor data, not just hardcoded, this would show a reusable precedent for templated strings in data.
 - should the "map generator" section in prototype defaults be a biomes/single generator/authored map radio button selection? We can eliminate some of this with the single level/multi level toggle. A single level is either a single generator or an authored map, hiding biome stuff. A multi level is either a single generator or biomes with level overrides for authored maps. the current "No procedural generator — the map comes from a hand-authored .tmj. Placed features below still apply." message when a single generator default isn't enabled is misleading, and when the section is disabled we don't expect to be able to set placed features, despite the message saying otherwise.
+- word lists in data should be named in a way that indicates they are just words, 'attacks.json' sounds like a list of reusable actor attacks, not a list of random verbs for describing them
 
 ---
 
@@ -24,7 +25,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ### Machines.json
 
-- our pattern is that as aspects of a data file become more complex, we move them to their own data file to make them modular and reusable and to keep editors focused and simple. Just as biomes got moved to their own data files and editor, trasure rooms would get data files and an editor, and would probably be renamed to something broader, possibly machines.json like Brogue's naming convention. They would encompass parametric designs for various locked areas and unlocking interactions.
+- As aspects of a data file become more complex, we move them to their own data file to make them modular and reusable and to keep editors focused and simple. Just as biomes got moved out of prototypes to their own data file, trasure rooms would get data files and an editor, and would probably be renamed to something broader, possibly machines.json like Brogue's naming convention. They would encompass parametric designs for various locked areas and unlocking interactions.
 
 ### Effects editor
 
@@ -32,7 +33,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ### More digging
 
-- if the mattock could also be used to dig the floor instead of just the walls, we could dig up graves etc. I'm making a "SHALLOW_GRAVE" tile for a dug-up floor tile.
+- if the mattock could also be used to dig the floor instead of just the walls, we could dig up graves etc. I'm making a "SHALLOW_GRAVE" tile for a dug-up floor tile. On specific entities (a grave marker) this could have a chance of producing loot that it wouldn't on a regular floor tile.
 
 ### corner blocking as an actor attribute
 
@@ -105,6 +106,10 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 - [ ] Weapon runic enchantments — special procs beyond the existing weapon_proc system (vampiric, slowing, quietus, paralysis) [B]
 - [ ] Armor runic enchantments — defensive procs (reflection, reprisal, immunity, absorption) [B]
 - [ ] Grappling — creature seizes target, preventing movement until broken free (started working on this for quicksand and an early version of jelllies, test quicksand) [B]
+
+### Rethinking and refactoring items and behaviors
+
+- a research task to think about behaviors and item verbs. Right now behaviors are pretty specific js methods that can be combined into personality data for acrots. Each behavior function is a "thing that an actor can do." This could use an audit to find patterns that could be turned into reusable utility functions. Also some of these behaviors are specific to individual items in a way that feels muddy. I need to think this through. We always want scripts to be multi purpose, modular and reusable in a way that we can make specific cases in data, using them in different ways, allowing for flexability in new designs.
 
 ### Items
 
