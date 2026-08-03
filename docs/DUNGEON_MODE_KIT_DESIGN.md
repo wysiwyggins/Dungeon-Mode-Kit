@@ -41,14 +41,6 @@ An HTML sidebar displays actor stats and visible items alongside the game canvas
 | Tween.js | Animation tweening (movement, fades) |
 | Howler.js | Audio sprite playback |
 
-### Rendering
-
-- Tiles displayed at half-size for hi-DPI displays
-- Actors are two tiles tall (base + top), with an optional side tile
-- Maps have floor + 2-tile height walls. Most tiles have transparent backgrounds, when an 'important' actor moves behind an occluding tile, the occluding tile becomes transparent.
-- 8 render layers (bottom to top): background, floor, landmarks, overlay, light color, darkness, UI, splash
-- Sprite tinting, animated frames, flicker/ripple effects
-
 ### File Structure
 
 ```
@@ -83,25 +75,13 @@ See [ENTITIES.md](ENTITIES.md), [ACTORS.md](ACTORS.md), [ITEMS.md](ITEMS.md).
 
 ## Combat System
 
-Combat can occur when actors collide (see [movement](MOVEMENT.md)). Hit probability uses an exponential formula with diminishing returns on defense stacking:
-
-```
-hit_chance = accuracy × 0.987^defense    (clamped 5–95%)
-```
-
-Weapon damage is scaled by attacker strength (`damage × strength/10`), with optional enchantment bonuses and weapon procs (knockback, lifesteal, critical).
-
-Attack styles modify targeting: **lunge** (gap-closing strike), **sweep** (hit all adjacent), **penetrate** (pierce through to enemy behind).
-
-See [COMBAT.md](COMBAT.md).
+Combat can occur when actors collide (see [movement](MOVEMENT.md)) and [COMBAT.md](COMBAT.md).
 
 ## Map System
 
 Maps are authored in [Tiled](https://www.mapeditor.org/) or generated procedurally. Authored maps use 6 layers: background, floor, wildcards, actors, items, landmarks.
 
-**Wildcards** are special tiles painted on a tile layer that the engine replaces with procedural content at runtime — dungeon rooms, caves, mazes, lava pools, or entity spawn points. This allows mixing hand-crafted and generated content on the same map.
-
-Generator types: digger, cellular, uniform, rogue, brogue, arena, infernal, and several maze variants.
+**Wildcards** are special tiles painted on a tile layer that the engine replaces with procedural content at runtime — dungeon rooms, caves, mazes, lava pools, or Actor spawn points. This allows mixing hand-crafted and generated content on the same map.
 
 See [MAP.md](MAP.md), [PROTOTYPE.md](PROTOTYPE.md), [Tile Index](/docs/tiles.pdf), [Wildcard Tile Key](/docs/TILED_KEY.pdf).
 
