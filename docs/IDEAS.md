@@ -11,6 +11,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Tweaks
 
+- need to filter out dangerous targets like lava at the very least when selecting tab travel targets. At best we'd only select items, enemies, doors, stairs and unexplored areas in dark levels. currently actors like water even get selected.
 - evenly place more braziers in large shaped rooms
 - flip the weapon tile that flashes during attacks in the direction of the actor being attacked.
 - "press travel to go" in tab-selected targeting should be "press [explore key] to go" with [explore key] being the actual key set to explore (x by default).
