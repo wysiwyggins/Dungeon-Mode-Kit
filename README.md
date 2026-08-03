@@ -357,7 +357,7 @@ Give any actor `"light_source": true` to make it emit light. The light color com
 
 ## Tile Names
 
-All tile names are in `data/static-tiles.json` (and `tiled/static-tiles.tsj` for use inside Tiled). Names are Unicode character names: `SKULL`, `CROWN`, `LATIN_CAPITAL_LETTER_T`, etc.
+All tile names are in `data/static-tiles.json` (and `tiled/static-tiles.tsj` for use inside Tiled). Names character names: `SKULL`, `CROWN`, `LATIN_CAPITAL_LETTER_T`, listed in **[TILES.pdf](/docs/TILES.pdf)**.
 
 Use these exact strings in:
 
