@@ -119,16 +119,9 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 - [ ] Wand of plenty — clone a creature [B]
 - [ ] Containers — chests, bags that hold multiple items
 
-### Terrain & Environment
-
-- [ ] Sunlight tiles — upper-level areas with natural light [B]
-- [ ] Steam vents - periodic scalding clouds [B]
-
 ### Dungeon Generation
 
-- [ ] Biome/theme system — per-floor visual and mechanical themes (crypt, sewer, infernal already exists)
-- [ ] Secret doors/rooms — would require searching action, could also use pushable walls
-- [ ] Outdoor generation — open areas with scattered terrain features
+- [ ] Secret doors, requires search feature. right now there are just pushable walls which are already slightly visually distinct from walls. secret door would have wall tiles until discovered then door tiles. Or is it actually one actor becoming another?
 
 ### Lighting & Vision
 
