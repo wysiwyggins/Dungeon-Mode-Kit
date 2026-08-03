@@ -24,40 +24,32 @@
         },     
         {
             "color": "flourescent blue",
-                "hex": "#00007f"
+                "hex": "#2222ff"
         },     
         {
             "color": "flourescent green",
-                "hex": "#00b400"
+                "hex": "#22ff22"
         },     
         {
             "color": "light sky blue",
-                "hex": "#00009d"
+                "hex": "#2222ff"
         },     
         {
             "color": "light slate blue",
-                "hex": "#0000bd"
+                "hex": "#6666ff"
         },     
         {
             "color": "light slate gray",
                 "hex": "#646464"
-        },     
-        {
-            "color": "light steel blue",
-                "hex": "#001c70"
-        },     
+        },        
         {
             "color": "light yellow",
                 "hex": "#e6f300"
         },     
         {
             "color": "lime green",
-                "hex": "#00ce00"
-        },     
-        {
-            "color": "navajo white",
-                "hex": "#fffffb"
-        },     
+                "hex": "#88ff00"
+        },         
         {
             "color": "orange",
                 "hex": "#f7f621"
@@ -108,7 +100,7 @@
         },     
         {
             "color": "sky blue",
-                "hex": "#002587"
+                "hex": "#0025ff"
         },     
         {
             "color": "snow",
@@ -124,12 +116,8 @@
         },
         {
             "color": "spring green",
-                "hex": "#00e400"
-        },     
-        {
-            "color": "steel blue",
-                "hex": "#0000fc"
-        },     
+                "hex": "#11e400"
+        },         
         {
             "color": "tartan",
                 "hex": "#4e1c25"
@@ -222,19 +210,7 @@
         {
             "color": "goldenly",
                 "hex": "#def314"
-        },     
-        {
-            "color": "greenvested",
-                "hex": "#00a200"
-        },     
-        {
-            "color": "greens",
-                "hex": "#2d7b00"
-        },     
-        {
-            "color": "indigoblue",
-                "hex": "#3f008b"
-        },     
+        },           
         {
             "color": "violet",
                 "hex": "#805e84"
@@ -262,11 +238,7 @@
         {
             "color": "green",
                 "hex": "#23de00"
-        },     
-        {
-            "color": "bluesilver",
-                "hex": "#0000c6"
-        },     
+        },         
         {
             "color": "green",
                 "hex": "#00c200"
@@ -277,12 +249,8 @@
         },     
         {
             "color": "whitehot",
-                "hex": "#ffffff"
-        },     
-        {
-            "color": "oranges",
-                "hex": "#d1f800"
-        },     
+                "hex": "#fffefe"
+        },         
         {
             "color": "yellow",
                 "hex": "#ecf100"
@@ -298,31 +266,19 @@
         {
             "color": "bloodcoloured",
                 "hex": "#b2216a"
-        },     
-        {
-            "color": "skyblue",
-                "hex": "#00009e"
-        },     
+        },          
         {
             "color": "rubycoloured",
                 "hex": "#bf7a5f"
         },     
-        {
-            "color": "greenhouses",
-                "hex": "#009b00"
-        }, 
         {
             "color": "sadcoloured",
                 "hex": "#b42d3f"
         },   
         {
             "color": "winecoloured",
-                "hex": "#c0ce46"
-        },     
-        {
-            "color": "bowlinggreen",
-                "hex": "#00e000"
-        },     
+                "hex": "#ddce46"
+        },        
         {
             "color": "whitepolled",
                 "hex": "#ffffff"
@@ -333,11 +289,11 @@
         },    
         {
             "color": "greenish",
-                "hex": "#009c00"
+                "hex": "#009c11"
         },     
         {
             "color": "greylunged",
-                "hex": "#0515b9"
+                "hex": "#1515b9"
         },     
 
         {
@@ -346,28 +302,16 @@
         },     
         {
             "color": "green",
-                "hex": "#008d3f"
+                "hex": "#00ff3f"
         },     
         {
             "color": "goldenbrown",
                 "hex": "#eb4b00"
-        },     
-        {
-            "color": "bluebottle",
-                "hex": "#0000e0"
-        },     
+        },         
         {
             "color": "tallwhitehatted",
                 "hex": "#e3ffff"
-        },     
-        {
-            "color": "greeny",
-                "hex": "#00c400"
-        },     
-        {
-            "color": "orangeman",
-                "hex": "#e39e68"
-        },     
+        },            
         {
             "color": "particoloured",
                 "hex": "#6713e1"
@@ -386,12 +330,8 @@
         },     
         {
             "color": "blue",
-                "hex": "#0017b3"
-        },     
-        {
-            "color": "blues",
-                "hex": "#0000af"
-        },     
+                "hex": "#0017ff"
+        },       
         {
             "color": "baldpink",
                 "hex": "#ffae93"
@@ -450,7 +390,7 @@
         },     
         {
             "color": "oceangreen",
-                "hex": "#00d100"
+                "hex": "#00d122"
         },     
         {
             "color": "yellowed",
@@ -474,7 +414,7 @@
         },     
         {
             "color": "whitelivered",
-                "hex": "#ffffff"
+                "hex": "#fffff9"
         },     
         {
             "color": "greying",
@@ -511,11 +451,7 @@
         {
             "color": "whitey",
                 "hex": "#ffffff"
-        },     
-        {
-            "color": "bluehued",
-                "hex": "#00009b"
-        },     
+        },        
         {
             "color": "whites",
                 "hex": "#ffccff"
@@ -538,7 +474,7 @@
         },     
         {
             "color": "blueglancing",
-                "hex": "#000072"
+                "hex": "#0010a2"
         },     
         {
             "color": "tabbywhite",
@@ -606,7 +542,7 @@
         },     
         {
             "color": "peagreen",
-                "hex": "#007207"
+                "hex": "#05a207"
         },     
         {
             "color": "sunnygolden",
@@ -651,14 +587,10 @@
         {
             "color": "goldtooled",
                 "hex": "#fef90c"
-        },     
-        {
-            "color": "blueeyed",
-                "hex": "#0003c0"
-        },     
+        },        
         {
             "color": "seagreen",
-                "hex": "#00c647"
+                "hex": "#00c6a7"
         },     
         {
             "color": "greeneyed",
