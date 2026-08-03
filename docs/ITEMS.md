@@ -75,13 +75,15 @@ Everything else goes in `attributes`. If you're not sure, put it in `attributes`
 
 ## Equipment (Wearable Items)
 
+'worn' items actually appear on the actor as tiles. Since most actors are two tiles high this doesn't usually conform to traditional helmet/body/legs, but is more like hat/face/legs. I am actually not in love with how this works during play and I've considered turning this off!
+
 ### Wearable Slots
 
 | Slot | Position | Use Case |
 |------|----------|----------|
 | `"top"` | Above actor's head | Crowns, horns |
 | `"middle"` | Actor's top tile | Helmets, masks |
-| `"lower"` | Actor's base tile | Armor, cloaks |
+| `"lower"` | Actor's base tile | Armor, pants |
 
 ### Wear Effects
 
@@ -172,7 +174,7 @@ Pass an object to modify stats, attributes, or apply states directly:
 | `"identify_item"` | Opens item picker; player selects one unidentified item to reveal |
 | `"teleport"` | Moves player to a random walkable tile |
 | `"reveal_map"` | Marks all tiles on the floor explored, and reveals the machine-link overlay (lines connecting each switch to the gates/doors it drives). A lasting per-level reveal: it persists when you leave the floor and return. See [Magic Mapping](#magic-mapping) |
-| `"aggravate_monsters"` | All hostile actors on the level become aware of the player |
+| `"aggravate_monsters"` | *non-working stub* - All hostile actors on the level become aware of the player |
 | `"summon_monsters"` | Spawns 2–4 random monsters adjacent to the player |
 | `"recharge_items"` | Restores all `charge_stat` items in inventory to full |
 | `"shatter_walls"` | Destroys breakable solid actors within radius 3; triggers a screen shake, amber flash, and radiating tile fill effect |
