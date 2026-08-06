@@ -10,7 +10,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 
 ## Tweaks
 
-- We should be able to turn off biomes on a multi-level prototype and just use defaults- change floor plan section name to biomes, add a toggle to disable
+- We should be able to turn off biomes on a multi-level prototype and just use defaults- change floor plan section name to 'biome plan' or something, add a toggle to disable
 - evenly place more braziers or torches in large shaped rooms. Maybe we should switch to torch actors as walls and a single brazier in the middle of some large, shaped rooms.
 - flip the weapon tile that flashes during attacks in the direction of the actor being attacked.
 - "press travel to go" in tab-selected targeting should be "press [explore key] to go" with [explore key] being the actual key set to explore (x by default).
