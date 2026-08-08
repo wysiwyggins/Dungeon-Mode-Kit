@@ -4291,6 +4291,11 @@ class Architect {
         return this.floorMap[y][x]?.tileId === this.config.defaultFloorTileId;
     }
 
+    /**
+     * One of the visually opinionated things that DMK does is draw background tiles in areas with no floor
+     * to make it look like there are hard diagonal shadows on cliff faces.
+     * 
+     **/
     addBaseAndShadows() {
         const BLACK_TILE = 217;
         const DARK_SHADE = 178;

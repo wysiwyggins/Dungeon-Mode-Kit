@@ -5,7 +5,7 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 ## Bugs
 
 - a monkey was able to walk across two collapsable floor tiles, which caused the game to report he died twice. [Log] monkey fell into the void! (engine.js, line 8347, x2)
-- it doesn't look like ambient light is tinting tiles on the background layer. this is probably because the tiles used by addBaseAndShadows are translucent or black and don't have light pixels to tint. An easy fix would be to set the canvas background color to the ambient light tint. (or can you only do this when you are making a new pixi app?)
+- it doesn't look like ambient light is tinting tiles on the background layer. this is probably because the tiles used by addBaseAndShadows are translucent or black and don't have light pixels to tint. An easy fix would be to set the canvas background color to the ambient light tint. (or can you only do this when you are making a new pixi app?) Could also refactor addBaseAndShadows to use the opaque variants of the tiles, but when i just changed the consts to do this, it broke the logic of the function.
 - Don't put the up and down stairs of a level right next to one another
 - I just saw a vertical bridge that was made out of horizontal box drawing tiles, however on another level I saw a correct vertical box drawing tile vertical bridge, so this issue is intermittent. might have been related to a stairway being placed below the bridge.
 - prototype-editor advanced section is vestigal, remove
