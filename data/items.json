@@ -1574,6 +1574,7 @@
   "attributes": {
     "pickupable": true,
     "visible": true,
+    "mass_noun": true,
     "stackable": true,
     "consumable": true,
     "flammable": true,

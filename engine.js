@@ -245,10 +245,7 @@ function randomElement(arr) {
 /**
  * Roll a random "potion-style" effect: 50/50 a state (from globalStates, excluding
  * attached-actor states like burning) vs a stat change (70% positive), with stat
- * magnitude scaled by the stat's max. Returns a normalized shape consumed by both
- * random potions (Item.generateRandomEffect) and released fungus spores:
- *   { apply_state: string|null, collision_effect: {stat:delta}|null, effect_description: string }
- * Exactly one of apply_state / collision_effect is set (or neither, if no pools exist).
+ * magnitude scaled by the stat's max.
  */
 function rollRandomEffect(engine) {
     const playerData = engine.currentPrototype?.getActorData('player');
@@ -606,14 +603,7 @@ function buildExplorePassable(engine, actor) {
             // stay impassable and explore won't strand a target behind them.
             if (isOpenableDoorTile(solid)) return true;
             // A pushable wall the actor can shove is treated as passable so explore
-            // routes THROUGH it (the actor steps in and pushes it aside). "Can
-            // shove" = the actor has strength AND at least one cardinal direction
-            // has open floor on the far side to push the wall into. A wall the
-            // actor could never budge (every far side blocked) stays impassable, so
-            // computeExploreTarget won't strand a frontier behind it. This is
-            // direction-agnostic on purpose — the actual arrival direction is
-            // resolved at step time by the explore behavior; here we only decide
-            // "is this wall a shovable gap or a real wall."
+            // routes THROUGH it (the actor steps in and pushes it aside).
             if (pusherStrength > 0 && solid.hasAttribute('pushable')) {
                 for (const d of CARDINAL_DIRS) {
                     const px = x + d.dx, py = y + d.dy;
@@ -643,7 +633,7 @@ function buildExplorePassable(engine, actor) {
  * space). "Explored" is supplied by the caller, because the two consumers have
  * different notions of it:
  *   - the player (x)plore action passes engine.isTileExplored (fog-of-war memory);
- *   - the AI hero personality passes its own per-actor visited-tile memory
+ *   - the AI "hero" personality passes its own per-actor visited-tile memory
  *     (there is no player/FOV in an observer prototype).
  * When everything is already explored (fully-lit level with fog-of-war memory,
  * or the hero has walked everywhere), this returns [] → "nothing left."
