@@ -35,11 +35,11 @@ An HTML sidebar displays actor stats and visible items alongside the game canvas
 ### Libraries
 
 | Library | Role |
-|---------|------|
-| ROT.js | Map generation algorithms, FOV shadowcasting, RNG with seed support |
-| PIXI.js | 2D rendering (sprites, containers, blend modes) |
-| Tween.js | Animation tweening (movement, fades) |
-| Howler.js | Audio sprite playback |
+| --------- | ------ |
+| [ROT.js](https://ondras.github.io/rot.js/hp/) | Map generation algorithms, FOV shadowcasting, RNG with seed support |
+| [PIXI.js](https://pixijs.com/) | 2D rendering (sprites, containers, blend modes) |
+| [Tween.js](http://createjs.com/) | Animation tweening (movement, fades) |
+| [Howler.js](https://howlerjs.com) | Audio sprite playback |
 
 ### File Structure
 
@@ -104,7 +104,7 @@ See [PROTOTYPE.md](PROTOTYPE.md).
 ## Other Systems
 
 | System | Doc | Summary |
-|--------|-----|---------|
+| -------- | ----- | --------- |
 | Lighting | [LIGHTING.md](LIGHTING.md) | Dynamic colored lighting with shadowcasting FOV, fog of war |
 | Sound | [SOUNDS.md](SOUNDS.md) | Audio sprite with Howler.js, data-driven sound attributes |
 | Descriptions | [DESCRIPTIONS.md](DESCRIPTIONS.md) | Turn-based message history, hover descriptions, template substitution |
