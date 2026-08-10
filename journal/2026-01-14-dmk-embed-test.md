@@ -5,9 +5,6 @@ dungeon_prototype: labyrinth
 layout: post
 categories: design
 tags:
-- dungeon
-- dungeonkit
-- studio
 ---
 
 

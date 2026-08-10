@@ -1,12 +1,10 @@
 ---
 title: Dungeon Mode Kit
 date: 2025-11-26 13:15:09
-layout: post
-categories: []
+author: Wiley Wiggins
+project: Dungeon Mode Kit
 tags: 
-- dungeon
-- dungeonkit
-- studio
+
 ---
 
 ![DMK test pattern](/images/dmktest.png)
