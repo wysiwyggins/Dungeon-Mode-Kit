@@ -1,3 +1,5 @@
+Thinking about adding 'types,' see IDEAS.md
+
 # Actor System
 
 Actors are defined in `data/actors.json` or prototype-specific `actors.json` files. They are the living and environmental objects in the world — enemies, the player, doors, fire, water, walls, and more. All behavior is data-driven through attributes, stats, states, and personalities.
@@ -32,7 +34,7 @@ See [ENTITIES.md](ENTITIES.md) for the base fields (`tint`, `zIndex`, `attribute
 Actors are two tiles tall: `tileIndexTop` renders at head height (y-1), `tileIndexBase` at foot height (y). Actors can optionally have a third **side tile** at an offset from the base (e.g., a tail).
 
 | Field | Type | Description |
-|-------|------|-------------|
+| ------- | ------ | ------------- |
 | `tileIndexBase` | string or `{x, y}` | Tile for the actor's base (lower body) |
 | `tileIndexTop` | string or `{x, y}` | Tile for the actor's top (head/upper body) |
 | `tileIndexSide` | string or `{x, y}` | Tile for a side-attached body part (e.g., tail) |
@@ -67,7 +69,7 @@ When `facingEnabled` is `true`, the actor's sprites (base, top, side, and equipm
 ## Core Attributes
 
 | Attribute | Type | Description |
-|-----------|------|-------------|
+| ----------- | ------ | ------------- |
 | `solid` | boolean | Blocks movement. Default `true`. |
 | `visible` | boolean | Rendered on the map. Default `true`. |
 | `flammable` | boolean | Can be set on fire. Default `true`. |
@@ -89,7 +91,7 @@ When `facingEnabled` is `true`, the actor's sprites (base, top, side, and equipm
 These attributes factor into the combat formula. Hit probability is `accuracy * 0.987^defense`, clamped to 5–95%.
 
 | Attribute | Type | Description |
-|-----------|------|-------------|
+| ----------- | ------ | ------------- |
 | `accuracy` | number | Base chance to hit (0–100). |
 | `defense` | number | Reduces attacker's effective hit chance. |
 | `strength` | number | Damage multiplier. `10` = 1×, `15` = 1.5× (default: `10`) |
@@ -122,7 +124,7 @@ Stats track numeric values that change over time or from damage. Define them in 
 ```
 
 | Sub-field | Type | Description |
-|-----------|------|-------------|
+| ----------- | ------ | ------------- |
 | `max` | number | Maximum value |
 | `current` | number | Starting value (defaults to `max`) |
 | `per_turn` | number | Applied each turn (negative = drain, positive = regen) |
@@ -219,7 +221,7 @@ States only apply to actors with `sentient: true`, except states with `player_on
 **Built-in states:**
 
 | State | Effect | Immunity Attribute |
-|-------|--------|--------------------|
+| ------- | -------- | -------------------- |
 | `burning` | Damage per turn, attached fire visual | `fireproof` |
 | `poisoned` | Damage per turn | `poison_immune` |
 | `stunned` | Skips turns | — |
@@ -236,7 +238,7 @@ States only apply to actors with `sentient: true`, except states with `player_on
 ### State Properties
 
 | Property | Type | Description |
-|----------|------|-------------|
+| ---------- | ------ | ------------- |
 | `duration` | number | Turns the state lasts. Use `-1` for infinite duration (converted to `Infinity` at runtime). |
 | `player_only` | boolean | State only applies to `controlled` actors (like `hallucinating`). |
 | `random_apply_states` | array | Each turn, rolls for sub-states in order; first success fires and stops. Each entry: `{ "state", "chance", "duration"?, "message"? }` |
@@ -272,7 +274,7 @@ This is useful for actors that should always have a particular state (e.g., a ba
 Actors can carry and equip items. The four equipment slots are:
 
 | Slot | Renders At | Use Case |
-|------|-----------|----------|
+| ------ | ----------- | ---------- |
 | `weapon` | (hand) | Melee weapons — used for collision damage |
 | `top` | y-2 (above head) | Crowns, halos, horns |
 | `middle` | y-1 (head) | Helmets, masks |
@@ -291,7 +293,7 @@ Items listed in `default_items` are added to the actor's inventory on spawn. Wea
 ### Doors
 
 | Attribute | Type | Description |
-|-----------|------|-------------|
+| ----------- | ------ | ------------- |
 | `openable` | boolean | Actor can be opened (door, chest) |
 | `open` | boolean | Current open/closed state |
 | `locked` | boolean | Requires a key to open |
@@ -302,7 +304,7 @@ Items listed in `default_items` are added to the actor's inventory on spawn. Wea
 ### Physics
 
 | Attribute | Type | Description |
-|-----------|------|-------------|
+| ----------- | ------ | ------------- |
 | `pushable` | boolean | Can be pushed by walking actors |
 | `push_sound` | string | Sound played when this actor is pushed. Overrides the default `push1`. |
 | `conductive` | boolean | Bolt attacks pass through this actor to hit targets behind. Default `true` for most actors; set `false` on walls/pillars to block bolts. |
@@ -316,7 +318,7 @@ Items listed in `default_items` are added to the actor's inventory on spawn. Wea
 ### Level Transitions
 
 | Attribute | Type | Description |
-|-----------|------|-------------|
+| ----------- | ------ | ------------- |
 | `stairway` | string | `"up"` or `"down"` — triggers level transition |
 | `portal` | boolean | Inter-prototype transition point. Hidden by default; revealed when last floor's win conditions are met. |
 | `hidden` | boolean | Actor exists in the world but is not rendered. Used for portals that appear later. |
@@ -328,7 +330,7 @@ A `switchable` actor, when toggled, propagates its `switch_effects` to every act
 its `machine_id` — so a lever can open a distant gate, or a pressure plate can drop a barrier.
 
 | Attribute | Type | Description |
-|-----------|------|-------------|
+| ----------- | ------ | ------------- |
 | `switchable` | boolean | Actor can be toggled (by bumping it or by another machine). |
 | `toggled` | boolean | Current toggle state. Drives the `*_toggled` tile/flip variants. |
 | `one_shot` | boolean | Toggles once and then stays put (pressure plate). |
@@ -339,7 +341,7 @@ its `machine_id` — so a lever can open a distant gate, or a pressure plate can
 | `display_inventory` | boolean | Renders the actor's first held item as a sprite on top (pedestals, jellies that swallowed loot). |
 
 | Field | Type | Description |
-|-------|------|-------------|
+| ------- | ------ | ------------- |
 | `machine_id` | string | Links a switch to its targets. All actors with the same `machine_id` react together. |
 | `switch_effects` | object | Attribute → value map applied to linked actors on toggle (e.g. `{ "solid": false, "open": true }`). |
 | `switch_message` | string | Message shown when the switch is toggled. `[name]` interpolates the actor's color-aware name (see below). |
@@ -388,7 +390,7 @@ hook — e.g. quicksand applying `stuck`), use the `apply_state` attribute toget
 `grab_sound` fields below, which have **no readers** and are retained only for reference.
 
 | Attribute / Field | Type | Description |
-|-------------------|------|-------------|
+| ------------------- | ------ | ------------- |
 | `splits` | boolean | Actor splits into copies when damaged. |
 | `split_min_health` | number | Health floor below which the actor stops splitting (default `2`). |
 | `split_into` | string | Actor type spawned for each split-off piece. |
@@ -403,7 +405,7 @@ themselves. They use the `trap` personality. A trap either **spawns a cloud** or
 area effect** — set one style or the other.
 
 | Field | Type | Description |
-|-------|------|-------------|
+| ------- | ------ | ------------- |
 | `trap` | boolean | Marks this actor as a trap. |
 | `trap_type` | string | Trap identifier (`"fire"`, `"poison_gas"`, `"paralysis_gas"`, `"confusion_gas"`). |
 | `trap_spawn` | string | Actor type to spawn when triggered (cloud style). |
@@ -416,7 +418,7 @@ area effect** — set one style or the other.
 ## Environmental Actors
 
 | Attribute | Type | Description |
-|-----------|------|-------------|
+| ----------- | ------ | ------------- |
 | `liquid` | boolean | Non-solid liquid (player can walk through) |
 | `deep` | boolean | Submerges actors that enter (deep water, lava) |
 | `light_source` | boolean | Emits light |
@@ -444,7 +446,7 @@ The `collision_effect` object defines what happens when an actor is walked into 
 ```
 
 | Value Type | Effect |
-|------------|--------|
+| ------------ | -------- |
 | Number | Add to stat (negative = damage). Damage is scaled by attacker's `strength`. |
 | Boolean | Set the attribute to that value |
 | `"toggle"` | Toggle a boolean attribute |
@@ -511,7 +513,7 @@ Personality data fields (besides `name`, `hostile`, `behaviors`) are passed to e
 **Passive/Utility:**
 
 | Personality | Behavior |
-|-------------|----------|
+| ------------- | ---------- |
 | `passive_wanderer` | Random walk, flee danger |
 | `kobold_miner` | Flee danger, defend self, mine nearby wall, wander to wall, random walk |
 | `scavenger` | Seek and grab nearby ground items, flee danger, wander (crow) |
@@ -519,7 +521,7 @@ Personality data fields (besides `name`, `hostile`, `behaviors`) are passed to e
 **Environmental:**
 
 | Personality | Behavior |
-|-------------|----------|
+| ------------- | ---------- |
 | `fire` | Spread to adjacent flammable tiles, burn out over time |
 | `cloud` | Spread, disperse to mist, affect actors, countdown lifetime |
 | `mist` | Fade when isolated, affect actors, countdown lifetime |
@@ -539,7 +541,7 @@ Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a fu
 **Movement:**
 
 | Behavior | Description | Parameters |
-|----------|-------------|------------|
+| ---------- | ------------- | ------------ |
 | `random_walk` | Move in a random cardinal direction. Sighted actors avoid pits. | — |
 | `pursue_target` | Pathfind toward nearest visible controlled actor. | — |
 | `explore` | Auto-explore toward the nearest unvisited area (or nearby item), like a player pressing (x)plore. Keeps its own visited-tile memory (`actor._exploreVisited`), so it works with no player/fog-of-war. Returns false when nothing is left, falling through to `random_walk`. Used by the `hero` personality; shares the engine `computeExploreTarget` core with the player action. | `explore_mark_radius` (default: 1) |
@@ -554,7 +556,7 @@ Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a fu
 **Combat:**
 
 | Behavior | Description | Parameters |
-|----------|-------------|------------|
+| ---------- | ------------- | ------------ |
 | `attack_adjacent` | Melee attack any adjacent controlled actor. | — |
 | `defend_self` | Retaliate against last attacker. | — |
 | `ranged_attack` | Fire projectile at visible target using actor's `collision_effect`. | `attack_range` (default: 5), `ranged_cooldown` (default: 2) |
@@ -566,7 +568,7 @@ Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a fu
 **Detection/Pursuit:**
 
 | Behavior | Description | Parameters |
-|----------|-------------|------------|
+| ---------- | ------------- | ------------ |
 | `guard_area` | Guard home position, alert allies on spotting threat. | `vision_range`, `memory_duration`, `alert_allies` |
 | `pursue_intruders` | Chase alerted target, remember last known position. | `memory_duration` |
 | `follow_thread` | Follow thread trail entities toward the trail owner. | — |
@@ -574,7 +576,7 @@ Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a fu
 **Utility:**
 
 | Behavior | Description | Parameters |
-|----------|-------------|------------|
+| ---------- | ------------- | ------------ |
 | `seek_item` | Pathfind toward nearest ground item, pick up when adjacent. | `search_radius` (default: 10), `item_type` (optional filter) |
 | `mine_nearby_wall` | Mine adjacent breakable walls with equipped mining tool. | — |
 | `wander_to_wall` | Walk toward nearest visible wall (for miners). | — |
@@ -590,7 +592,7 @@ Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a fu
 **Environmental:**
 
 | Behavior | Description | Parameters |
-|----------|-------------|------------|
+| ---------- | ------------- | ------------ |
 | `fire_spread` | Spread fire to adjacent flammable actors/items. | `spread_chance` |
 | `fire_burn_out` | Countdown fire lifetime, damage actors standing in fire. | `damage_per_turn` |
 | `cloud_spread` | Expand cloud to adjacent tiles. | `spread_radius`, `spread_turns` |
@@ -612,7 +614,7 @@ Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a fu
 **Chain Creature:**
 
 | Behavior | Description | Parameters |
-|----------|-------------|------------|
+| ---------- | ------------- | ------------ |
 | `chain_head_ai` | Head segment pursues player, records path for body. | — |
 | `chain_body_follow` | Body segment follows previous segment's path. | — |
 | `chain_scatter` | Severed body segment wanders randomly. | — |
@@ -620,7 +622,7 @@ Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a fu
 ## Sound Attributes
 
 | Attribute | Type | Description |
-|-----------|------|-------------|
+| ----------- | ------ | ------------- |
 | `collision_sound` | string | Played on collision/attack |
 | `death_sound` | string | Played on death |
 | `entry_sound` | string | Played when another actor steps on this tile |

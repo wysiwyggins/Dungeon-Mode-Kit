@@ -5655,8 +5655,11 @@ class Actor extends Entity {
         if (stateData.hallucinating || stateData.player_only) {
             if (!this.hasAttribute('controlled')) return false;
         } else {
-            // All other states require the 'sentient' or 'controlled' attribute
+            // Right now other states require the 'sentient' or 'controlled' attribute
             // This excludes walls, traps, fire, clouds, etc.
+
+            // shouldn't there be a default applyState with an additional version just
+            //for sentient or controlled actors? what if I want to apply a state to a wall or a tree etc?
             if (!this.hasAttribute('sentient') && !this.hasAttribute('controlled')) return false;
         }
 

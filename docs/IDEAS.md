@@ -1,11 +1,11 @@
-# Bugs and ideas
-
-Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy-inspired.
 
 ## Bugs
 
+- pushing a pushable actor across collapsable floors keeps them from triggering.
 - a monkey was able to walk across two collapsable floor tiles, which caused the game to report he died twice. [Log] monkey fell into the void! (engine.js, line 8347, x2)
 - it doesn't look like ambient light is tinting tiles on the background layer. this is probably because the tiles used by addBaseAndShadows are translucent or black and don't have light pixels to tint. An easy fix would be to set the canvas background color to the ambient light tint. (or can you only do this when you are making a new pixi app?) Could also refactor addBaseAndShadows to use the opaque variants of the tiles, but when i just changed the consts to do this, it broke the logic of the function.
+  - this makes me wonder if addBaseAndShadows couldn't be generalized to a sort of cellular automata backround function that makes tile pattern on the background layer using changeable rules with addBaseAndShadows as it's initial use.
+
 - Don't put the up and down stairs of a level right next to one another
 - I just saw a vertical bridge that was made out of horizontal box drawing tiles, however on another level I saw a correct vertical box drawing tile vertical bridge, so this issue is intermittent. might have been related to a stairway being placed below the bridge.
 - prototype-editor advanced section is vestigal, remove
@@ -24,6 +24,18 @@ Items marked [B] are Brogue-parity features, [Z] are ZZT-inspired, [b] are Bitsy
 ---
 
 ## Feature ideas
+
+### applyState() revisit
+
+- right now applyState only works on sentient or controlled actors, but that is not good design for something just called applyState. there should be an additional method for sentient controlled actors that uses applyState so we can still make up new states for inanimate actors.
+
+this suggests:
+
+### Actor types
+
+- A type would be a set of actor defaults that individual actors could apply through an attribute, which would set a lot of things that would be tedious to apply to each actor. For instance 'beast' could be a type that would add things like state immunities, a personality, stats and attributes. A 'dog' actor could have type: "beast" and then any actor data would supplement or override "beast" and the additional benefit is that we could gate different states by type instead of gating all states to a couple of attributes.
+
+- Would there be a types.json or would this be additional information in actors.json?
 
 ### Patrol behavior
 
