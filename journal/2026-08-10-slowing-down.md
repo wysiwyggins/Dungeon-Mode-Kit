@@ -27,7 +27,7 @@ this suggests:
 
 ### Actor types
 
-- A type would be a set of actor defaults that individual actors could apply through an attribute, which would set a lot of things that would be tedious to apply to each actor. For instance 'beast' could be a type that would add things like state immunities, a personality, stats and attributes. A 'dog' actor could have type: "beast" and then any actor data would supplement or override "beast" and the additional benefit is that we could gate different states by type instead of gating all states to a couple of attributes.
+- A type would be a set of actor defaults that individual actors could apply through an attribute, which would set a lot of things that would be tedious to apply to each actor. For instance 'beast' could be a type that would add things like state immunities, a personality, stats and attributes. A 'dog' actor could have type: "beast" and then any actor data would supplement or override "beast."
 
 - Would there be a types.json or would this be additional information in actors.json?
 
