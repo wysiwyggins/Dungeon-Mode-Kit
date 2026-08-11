@@ -134,7 +134,7 @@
       "weapon": true,
       "enchantable": true,
       "collision_effect": {
-        "health": -10
+        "health": -7
       },
       "attack_sound": "bow",
       "collision_sound": "hit",
@@ -143,7 +143,7 @@
         "accuracy": "{strength}"
       },
       "enchant_range": [
-        -1,
+        -2,
         3
       ],
       "description": "[damage] damage. Scales with strength."
@@ -162,7 +162,7 @@
       "weapon": true,
       "enchantable": true,
       "collision_effect": {
-        "health": -5
+        "health": -6
       },
       "attack_sound": "bow",
       "collision_sound": "hit",
@@ -187,7 +187,7 @@
       "flammable": false,
       "weapon": true,
       "collision_effect": {
-        "health": -6
+        "health": -5
       },
       "attack_sound": "bow",
       "collision_sound": "hit",

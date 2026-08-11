@@ -1,0 +1,57 @@
+{
+  "_comment": "Actor types: reusable bundles of defaults an actor inherits with \"type\": \"<key>\". An actor's own keys always win over its type's. attributes, stats and collision_effect merge one level deep; every other key replaces wholesale. Types do not inherit from other types. The optional \"domain\" field marks what a type is for — only \"actor\" is resolved today; \"item\" is reserved so items can share this file later.",
+
+  "beast": {
+    "name": "Beast",
+    "domain": "actor",
+    "description": "Animals and vermin. A mind, but no hands and no possessions. Says nothing about temper — a deer and a jackal are both beasts, so each declares its own `hostile`.",
+    "attributes": {
+      "sentient": true,
+      "flammable": true,
+      "opaque": false,
+      "inventory": 0,
+      "remains": "blood"
+    }
+  },
+
+  "undead": {
+    "name": "Undead",
+    "domain": "actor",
+    "description": "Animate dead. Dry bones and cold flesh: nothing left to poison and no breath to hold, but fire still finds them.",
+    "attributes": {
+      "sentient": true,
+      "flammable": true,
+      "hostile": true,
+      "dark_vision": true,
+      "poison_immune": true,
+      "gas_immune": true,
+      "remains": "skull"
+    }
+  },
+
+  "humanoid": {
+    "name": "Humanoid",
+    "domain": "actor",
+    "description": "Upright folk who carry things: goblins, kobolds, guards, witches.",
+    "attributes": {
+      "sentient": true,
+      "flammable": true,
+      "opaque": false,
+      "inventory": 1,
+      "remains": "skull"
+    }
+  },
+
+  "terrain": {
+    "name": "Terrain",
+    "domain": "actor",
+    "description": "Built and grown scenery — walls, columns, statues. Mindless, so it can burn or be stuck but never confused or put to sleep.",
+    "attributes": {
+      "solid": true,
+      "flammable": false,
+      "pushable": false,
+      "conductive": false,
+      "remains": "rubble"
+    }
+  }
+}

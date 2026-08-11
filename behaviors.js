@@ -1159,7 +1159,10 @@ const BehaviorLibrary = {
 
             const stateData = { ...statesData[auraState] };
             if (data.aura_duration) stateData.duration = data.aura_duration;
-            other.applyState(auraState, stateData);
+            // Creature-only: an aura is something a creature exudes at other
+            // creatures. Without this the neighbour scan would poison the walls
+            // a creature happens to be standing next to.
+            other.applyCreatureState(auraState, stateData);
         }
 
         return false;

@@ -1,5 +1,3 @@
-Thinking about adding 'types,' see IDEAS.md
-
 # Actor System
 
 Actors are defined in `data/actors.json` or prototype-specific `actors.json` files. They are the living and environmental objects in the world — enemies, the player, doors, fire, water, walls, and more. All behavior is data-driven through attributes, stats, states, and personalities.
@@ -10,6 +8,7 @@ See [ENTITIES.md](ENTITIES.md) for the base fields (`tint`, `zIndex`, `attribute
 
 ```json
 "actor_id": {
+  "type": "beast",
   "name": "Display Name",
   "tileIndexBase": "TILE_NAME",
   "tileIndexTop": "TILE_NAME",
@@ -27,7 +26,24 @@ See [ENTITIES.md](ENTITIES.md) for the base fields (`tint`, `zIndex`, `attribute
 }
 ```
 
-> **Defaults:** Actors are `solid`, `visible`, and `flammable` by default. They are **not** `hostile` or `sentient` by default. Only declare attributes that override these defaults.
+> **Defaults:** Actors are `solid` and `visible` by default. They are **not** `hostile`, `sentient` or `flammable` by default. Only declare attributes that override these defaults.
+
+## Types
+
+The optional `type` key names an entry in `data/types.json` whose defaults this actor
+inherits — a bundle of the attributes, stats and personality shared by a whole family, so
+each member only declares what makes it distinct. The actor's own keys always win.
+
+```json
+"rat": {
+  "type": "beast",
+  "name": "rat",
+  "attributes": { "hostile": true, "accuracy": 40 }
+}
+```
+
+`beast`, `undead`, `humanoid` and `terrain` ship by default. See [TYPES.md](TYPES.md) for the
+merge rules, how to remove an inherited value, and how to add your own.
 
 ## Visual Fields
 
@@ -74,7 +90,7 @@ When `facingEnabled` is `true`, the actor's sprites (base, top, side, and equipm
 | `visible` | boolean | Rendered on the map. Default `true`. |
 | `flammable` | boolean | Can be set on fire. Default `true`. |
 | `hostile` | boolean | AI will attack the player. Default `false`. |
-| `sentient` | boolean | This actor has a mind: states (burning, poisoned, etc.) can be applied to it, telepathy reveals it, and it watches its footing while wandering (won't walk off a cliff unless confused). Default `false`. |
+| `sentient` | boolean | This actor has a mind: mind-states (sleep, confusion, stun) can be applied to it, telepathy reveals it, and it watches its footing while wandering (won't walk off a cliff unless confused). Usually supplied by a [type](TYPES.md). Default `false`. |
 | `controlled` | boolean | This is the player character |
 | `pov` | boolean | Point-of-view actor: acts as the field-of-view and camera-follow origin even though it is **not** player-controlled. Use for an AI "hero" in a zero-player observer prototype so a dark/fog level renders around it (it carries the auto-light and the camera follows it). Turn/input logic still keys on `controlled`, not `pov`. |
 | `hunts` | string | Names a quarry the `hunt` behavior pursues: an actor **type** to kill (e.g. `"rat"`) or an item **type** to collect (e.g. `"meat"`). Independent of faction/hostility, so a hunter can chase quarry it isn't otherwise hostile to while still attacking its normal enemies. Requires the `hunt` behavior in the actor's personality. |
@@ -216,7 +232,22 @@ Stats are processed in the order they appear in the JSON definition. When using 
 
 States are temporary conditions. They are defined in `data/states.json` and can be applied through `collision_effect`, item effects, traps, or condition-driven stat thresholds.
 
-States only apply to actors with `sentient: true`, except states with `player_only: true` or `hallucinating: true`, which apply to `controlled` actors instead.
+**Most states apply to any actor** — walls, trees, doors and fire included. A tree can burn, a
+pushed boulder can be `stuck` in quicksand.
+
+Two kinds of state are still gated:
+
+| Kind | Requires | Which states |
+| ---- | -------- | ------------ |
+| **Mind-states** — anything that changes how its holder takes turns | `sentient` or `controlled` | `stunned`, `sleeping`, `paralyzed` (`skip_turn`), `confused` (`random_movement`), `nauseated` (`skip_turn_chance`), `slowed` (`skip_every_other_turn`), `hasted` (`extra_turn`) |
+| **Player-perception states** | `controlled` | anything with `player_only: true` (`starving`, `telepathic`) or `hallucinating: true` |
+
+The gate is derived from the properties a state already declares — there is no separate field
+to set in `states.json`. A wall has no turn to skip and no view to scramble, so those states
+have nothing to act on.
+
+Call `applyState()` to affect whatever is there, or `applyCreatureState()` where the caller
+specifically means "affect a creature" (a sleep-gas cloud shouldn't put a wall to sleep).
 
 **Built-in states:**
 

@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17b]
+
+### Added
+
+- Actor **types** — reusable bundles of actor defaults, inherited with `"type": "beast"`. Defaults in `data/types.json`, per-prototype overrides in `prototypes/<name>/types.json`, resolved in `Prototype.getActorData()`. Ships `beast`, `undead`, `humanoid`, `terrain`. The actor's own keys win; `attributes`/`stats`/`collision_effect` merge one level deep, `null` unsets. See [docs/TYPES.md](docs/TYPES.md).
+- Type dropdown in the actor editor, showing what the selected type contributes.
+
+### Changed
+
+- `applyState()` works on **any** actor now — a tree can burn, a boulder can get stuck. Only mind-states (anything altering how a holder takes turns) and player-perception states still need `sentient`/`controlled`, derived from properties the states already had. New `applyCreatureState()` for callers that mean "affect a creature."
+- A prototype's `actors.json` **supplements** the base actor instead of replacing it, so an override states only what it changes. **Behavior change:** six overrides that omitted keys their base declares now inherit them — `arena/player` and `labyrinth/player` gain `sentient`. Use `null` to unset deliberately.
+- 25 actors converted to types, cutting 57 lines from `actors.json`.
+- Dropped the vestigial `sighted` attribute from the actor editor.
+
+### Fixed
+
+- Skeletons no longer burn like flesh or take poison — `undead` grants `poison_immune`/`gas_immune`. The immunity vocabulary was already in `states.json`; no actor had declared it.
+- `apply_state_radius` counted immune creatures in its "N creatures are affected" message.
+- `docs/ACTORS.md` claimed actors are `flammable` by default; the engine defaults it to `false`.
+
 ## [1.16b]
 
 ### Added

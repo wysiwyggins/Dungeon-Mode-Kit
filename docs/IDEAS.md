@@ -25,17 +25,21 @@
 
 ## Feature ideas
 
-### applyState() revisit
+### applyState() revisit — [x] done
 
-- right now applyState only works on sentient or controlled actors, but that is not good design for something just called applyState. there should be an additional method for sentient controlled actors that uses applyState so we can still make up new states for inanimate actors.
+- ~~right now applyState only works on sentient or controlled actors, but that is not good design for something just called applyState. there should be an additional method for sentient controlled actors that uses applyState so we can still make up new states for inanimate actors.~~
+- `applyState()` now works on any actor; `applyCreatureState()` is the sentient/controlled variant. Mind-states stay gated, derived from properties the states already had rather than a new field. See [ACTORS.md](ACTORS.md#states).
 
-this suggests:
+### Actor types — [x] done
 
-### Actor types
+- ~~A type would be a set of actor defaults that individual actors could apply through an attribute...~~
+- Landed as `data/types.json` with `beast`, `undead`, `humanoid`, `terrain`. Separate file rather than entries in `actors.json`, because `prototypeActorTypes` auto-spawns everything keyed in that file — types would have walked around as monsters. See [TYPES.md](TYPES.md).
 
-- A type would be a set of actor defaults that individual actors could apply through an attribute, which would set a lot of things that would be tedious to apply to each actor. For instance 'beast' could be a type that would add things like state immunities, a personality, stats and attributes. A 'dog' actor could have type: "beast" and then any actor data would supplement or override "beast" and the additional benefit is that we could gate different states by type instead of gating all states to a couple of attributes.
+Still open, from the same thread:
 
-- Would there be a types.json or would this be additional information in actors.json?
+- Items have a backwards version of this: 8 hollow meta-entries (`potion`, `food`, `weapon`, `armor`, `staff`, `scroll`, `ring`, `wand`) hold `random_type` lists pointing *down* at their members, while each of the 16 potions restates the same seven "this is a potion" attributes. Inverting it would let `item_catalog` pools be derived from membership instead of hand-maintained arrays that drift when you add an item. `types.json` already has a `domain` field reserved for this.
+- `Entity.type` still holds the entity *id* (`actor.type === 'goblin'`), so an actor's type is read as `actor.data.type`. Renaming the id field to `Entity.id` would free the word — ~50 call sites plus a save-format shim, and no data file would change.
+- Types don't inherit from types (single hop, like `$alias`). Probably fine; revisit if a `dire_beast` wants to extend `beast`.
 
 ### Patrol behavior
 

@@ -312,6 +312,76 @@ function parseItemList(value) {
     return trimmed.split(',').map(s => s.trim()).filter(Boolean);
 }
 
+// Entry keys that merge one level deep instead of replacing wholesale, so a
+// layer can add or change a single attribute without restating the whole bag.
+// Same idea as `mechanics` in getFloorConfig (root <- biome <- floor).
+// `default_items` is deliberately NOT here: it replaces, so an override can
+// give an actor an empty loadout. Concatenating would make that impossible.
+const MERGED_ENTITY_KEYS = ['attributes', 'stats', 'collision_effect'];
+
+/**
+ * Layer one entity definition over another (base <- override).
+ *
+ * Every key replaces wholesale except those in MERGED_ENTITY_KEYS, which get a
+ * single level of spreading. An override value of null deletes the key, which
+ * is the only way to drop an attribute the base declares.
+ *
+ * Always returns a new object — definitions are shared by reference across all
+ * instances of an actor (`this.data = data`), so mutating one would leak.
+ *
+ * @param {Object} base - The underlying definition (global actor, or a type)
+ * @param {Object} override - The definition layered on top (wins on conflict)
+ * @returns {Object} A new merged definition
+ */
+function mergeEntityDef(base, override) {
+    if (!base) return { ...(override || {}) };
+    if (!override) return { ...base };
+
+    const merged = { ...base, ...override };
+
+    for (const key of MERGED_ENTITY_KEYS) {
+        const baseVal = base[key];
+        const overrideVal = override[key];
+        if (baseVal && overrideVal && typeof baseVal === 'object' && typeof overrideVal === 'object'
+            && !Array.isArray(baseVal) && !Array.isArray(overrideVal)) {
+            merged[key] = { ...baseVal, ...overrideVal };
+        }
+    }
+
+    // An explicit null unsets a key the base declared.
+    for (const [key, value] of Object.entries(override)) {
+        if (value === null) delete merged[key];
+    }
+    for (const key of MERGED_ENTITY_KEYS) {
+        if (!merged[key] || typeof merged[key] !== 'object') continue;
+        for (const [attr, value] of Object.entries(merged[key])) {
+            if (value === null) delete merged[key][attr];
+        }
+    }
+
+    return merged;
+}
+
+/**
+ * Merge a prototype's entity library over the global one, per entry.
+ *
+ * Entries only the prototype defines pass through untouched; entries that shadow
+ * a global one are layered over it rather than replacing it.
+ *
+ * @param {Object} globalLib - The global library (e.g. engine.globalActors)
+ * @param {Object} protoLib - The prototype's overriding library
+ * @returns {Object} A new merged library
+ */
+function mergeEntityLibrary(globalLib, protoLib) {
+    const merged = { ...(globalLib || {}) };
+    for (const [key, def] of Object.entries(protoLib || {})) {
+        merged[key] = (key in merged && merged[key] && typeof def === 'object' && !Array.isArray(def))
+            ? mergeEntityDef(merged[key], def)
+            : def;
+    }
+    return merged;
+}
+
 /**
  * Get the indefinite article ('a' or 'an') for a word
  * @param {string} word - The word to get the article for
@@ -898,7 +968,7 @@ class DungeonEngine {
     async loadGlobalData() {
         try {
             // Load global entity definitions
-            const [actorsRes, itemsRes, personalitiesRes, entitiesRes, colorsRes, adjectivesRes, attacksRes, reagentsRes, substancesRes, statesRes, wordsRes, effectsRes, keybindingsRes, fungiTypesRes, biomesRes] = await Promise.all([
+            const [actorsRes, itemsRes, personalitiesRes, entitiesRes, colorsRes, adjectivesRes, attacksRes, reagentsRes, substancesRes, statesRes, wordsRes, effectsRes, keybindingsRes, fungiTypesRes, biomesRes, typesRes] = await Promise.all([
                 fetch(`${globalVars.BASE_PATH}/data/actors.json`),
                 fetch(`${globalVars.BASE_PATH}/data/items.json`),
                 fetch(`${globalVars.BASE_PATH}/data/personalities.json`),
@@ -913,7 +983,8 @@ class DungeonEngine {
                 fetch(`${globalVars.BASE_PATH}/data/effects.json`),
                 fetch(`${globalVars.BASE_PATH}/data/keybindings.json`),
                 fetch(`${globalVars.BASE_PATH}/data/fungi_types.json`),
-                fetch(`${globalVars.BASE_PATH}/data/biomes.json`)
+                fetch(`${globalVars.BASE_PATH}/data/biomes.json`),
+                fetch(`${globalVars.BASE_PATH}/data/types.json`)
             ]);
 
             this.globalActors = await actorsRes.json();
@@ -951,8 +1022,14 @@ class DungeonEngine {
             // can add or override entries with its own biomes.json (see loadAssets).
             this.globalBiomes = await biomesRes.json();
 
+            // Actor types: named bundles of defaults an actor inherits via its
+            // `type` key. A prototype can add or override entries with its own
+            // types.json (see loadAssets).
+            this.globalTypes = await typesRes.json();
+
             console.log('Global data loaded:', {
                 actors: Object.keys(this.globalActors).length,
+                types: Object.keys(this.globalTypes).length,
                 items: Object.keys(this.globalItems).length,
                 personalities: Object.keys(this.globalPersonalities).length,
                 entities: Object.keys(this.globalEntities).length,
@@ -968,6 +1045,7 @@ class DungeonEngine {
         } catch (error) {
             console.error('Failed to load global data:', error);
             this.globalActors = {};
+            this.globalTypes = {};
             this.globalItems = {};
             this.globalPersonalities = {};
             this.globalEntities = {};
@@ -3430,7 +3508,13 @@ class Prototype {
         const prototypeEffects = await this.loadJSON('effects.json', {});
         const prototypeKeybindings = await this.loadJSON('keybindings.json', {});
         const prototypeBiomes = await this.loadJSON('biomes.json', {});
-        this.actors = { ...this.engine.globalActors, ...prototypeActors };
+        const prototypeTypes = await this.loadJSON('types.json', {});
+        this.types = { ...this.engine.globalTypes, ...prototypeTypes };
+        // Actors merge per-entry rather than wholesale: a prototype that overrides
+        // an existing actor supplements the base entry instead of replacing it, so
+        // it only has to state what it changes (and keeps the base's `type`).
+        // Brand-new prototype actors are unaffected — there is no base to merge.
+        this.actors = mergeEntityLibrary(this.engine.globalActors, prototypeActors);
         this.items = { ...this.engine.globalItems, ...prototypeItems };
         this.personalities = { ...this.engine.globalPersonalities, ...prototypePersonalities };
         this.effects = { ...this.engine.globalEffects, ...prototypeEffects };
@@ -3717,10 +3801,44 @@ class Prototype {
         }
     }
     
+    /**
+     * Look up an actor definition, resolving its `type` if it declares one.
+     *
+     * Every spawn path funnels through here, so resolving at this single point
+     * means the Actor constructor and everything downstream keep receiving one
+     * flat definition and need no knowledge of types.
+     *
+     * Results are cached: definitions are static for the life of a prototype,
+     * and this runs on every spawn.
+     *
+     * @param {string} actorType - The actor id key (e.g. 'goblin')
+     * @returns {Object|null} The resolved definition, or null if unknown
+     */
     getActorData(actorType) {
-        return this.actors[actorType] || null;
+        const def = this.actors[actorType];
+        if (!def) return null;
+        if (!def.type) return def;
+
+        if (!this._resolvedActors) this._resolvedActors = {};
+        if (this._resolvedActors[actorType]) return this._resolvedActors[actorType];
+
+        const typeDef = this.types?.[def.type];
+        if (!typeDef) {
+            console.warn(`Actor '${actorType}' declares unknown type '${def.type}'`);
+            this._resolvedActors[actorType] = def;
+            return def;
+        }
+
+        // Only the shared entity fields are inherited. A type's own bookkeeping
+        // (name, description, domain) describes the type itself, not its members
+        // — inheriting `name` would rename every beast to "Beast".
+        const { name, description, domain, ...inheritable } = typeDef;
+        const resolved = mergeEntityDef(inheritable, def);
+        this._resolvedActors[actorType] = resolved;
+        return resolved;
     }
-    
+
+
     getItemData(itemType) {
         return this.items[itemType] || null;
     }
@@ -5642,7 +5760,44 @@ class Actor extends Entity {
     }
 
     /**
-     * Apply a temporary state to this actor
+     * Does this state act on a mind, rather than on a body or a thing?
+     *
+     * Derived from properties the state already declares instead of a separate
+     * field in states.json: everything on this list changes how its holder takes
+     * turns, or is a player-perception effect. A wall has no turn to skip and no
+     * view to scramble, so those states have nothing to act on.
+     *
+     * Mind-states: stunned, sleeping, paralyzed (skip_turn), confused
+     * (random_movement), nauseated (skip_turn_chance), slowed
+     * (skip_every_other_turn), hasted (extra_turn), hallucinating, and anything
+     * flagged player_only (starving, telepathic).
+     *
+     * Everything else — burning, poisoned, regenerating, blinded, flying,
+     * invisible, fireproof_temp, stuck — can attach to any actor.
+     *
+     * @param {Object} stateData - State configuration from states.json
+     * @returns {boolean} True if the state requires a mind
+     */
+    static isMindState(stateData) {
+        if (!stateData) return false;
+        return Boolean(
+            stateData.skip_turn ||
+            stateData.skip_turn_chance ||
+            stateData.skip_every_other_turn ||
+            stateData.extra_turn ||
+            stateData.random_movement ||
+            stateData.hallucinating ||
+            stateData.player_only
+        );
+    }
+
+    /**
+     * Apply a temporary state to this actor.
+     *
+     * Works on ANY actor — walls, trees, doors and fire included. Only states
+     * that act on a mind (see isMindState) still require one; use
+     * applyCreatureState when the caller specifically means "affect a creature."
+     *
      * @param {string} stateName - The state name (e.g., 'burning', 'poisoned')
      * @param {Object} stateData - State configuration from states.json
      * @param {Object} [options] - Additional options
@@ -5651,15 +5806,13 @@ class Actor extends Entity {
      * @returns {boolean} True if state was applied, false if immune or already has state
      */
     applyState(stateName, stateData, options = {}) {
-        // Some states only apply to the player-controlled actor
+        // Player-perception states (hallucinating) and states written from the
+        // player's point of view (player_only) still only make sense on the
+        // player-controlled actor.
         if (stateData.hallucinating || stateData.player_only) {
             if (!this.hasAttribute('controlled')) return false;
-        } else {
-            // Right now other states require the 'sentient' or 'controlled' attribute
-            // This excludes walls, traps, fire, clouds, etc.
-
-            // shouldn't there be a default applyState with an additional version just
-            //for sentient or controlled actors? what if I want to apply a state to a wall or a tree etc?
+        } else if (Actor.isMindState(stateData)) {
+            // Turn-altering states need something that takes turns.
             if (!this.hasAttribute('sentient') && !this.hasAttribute('controlled')) return false;
         }
 
@@ -5760,6 +5913,25 @@ class Actor extends Entity {
         }
 
         return true;
+    }
+
+    /**
+     * Apply a state, but only to something alive enough to have a mind.
+     *
+     * Use this where the caller means "affect a creature" rather than "affect
+     * whatever is here" — a sleep gas cloud should not put a wall to sleep even
+     * though applyState would now happily let it. Callers that deliberately
+     * target scenery (fire spreading to a tree, quicksand gripping a pushed
+     * boulder) should call applyState directly.
+     *
+     * @param {string} stateName - The state name
+     * @param {Object} stateData - State configuration from states.json
+     * @param {Object} [options] - Same options as applyState
+     * @returns {boolean} True if the state was applied
+     */
+    applyCreatureState(stateName, stateData, options = {}) {
+        if (!this.hasAttribute('sentient') && !this.hasAttribute('controlled')) return false;
+        return this.applyState(stateName, stateData, options);
     }
 
     /**
@@ -7089,8 +7261,12 @@ class Actor extends Entity {
                         if (filter === 'friendly' && actor.hasAttribute('hostile')) continue;
                         const dist = getChebyshevDistance(this.x, this.y, actor.x, actor.y);
                         if (dist <= radius) {
-                            actor.applyState(stateName, statesData[stateName], stateOpts);
-                            affected++;
+                            // Creature-only: this sweeps every actor in range and
+                            // reports a count of "creatures affected", so scenery
+                            // must not be swept up in it.
+                            if (actor.applyCreatureState(stateName, statesData[stateName], stateOpts)) {
+                                affected++;
+                            }
                         }
                     }
                     if (this.isPlayerControlled() && this.engine.inputManager) {

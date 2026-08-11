@@ -34,6 +34,7 @@
     ]
   },
   "skeleton": {
+    "type": "undead",
     "name": "skeleton",
     "description": "Brittle bones stripped of their flesh and animated by some dark magic.",
     "tileIndexBase": "THIN_TORSO",
@@ -46,11 +47,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
     "attributes": {
-      "flammable": true,
-      "hostile": true,
-      "sentient": true,
       "inventory": 1,
-      "remains": "skull",
       "accuracy": 40,
       "defense": 2,
       "opaque": false
@@ -115,6 +112,7 @@
     }
   },
   "ghast": {
+    "type": "undead",
     "name": "ghast",
     "description": "A phantasm casts a baleful, cold light on its surroundings.",
     "tileIndexBase": "OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE",
@@ -128,11 +126,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
     "attributes": {
-      "flammable": true,
-      "hostile": true,
-      "sentient": true,
       "light_source": true,
-      "dark_vision": true,
       "accuracy": 70,
       "defense": 10,
       "inventory": 0
@@ -142,6 +136,7 @@
     }
   },
   "vampire": {
+    "type": "undead",
     "name": "vampire",
     "tileIndexBase": "THIN_TORSO",
     "tileIndexTop": "HAUNTED_FACE",
@@ -156,11 +151,7 @@
     "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
     "death_sound": "ouch",
     "attributes": {
-      "hostile": true,
-      "sentient": true,
-      "flammable": true,
       "conductive": true,
-      "dark_vision": true,
       "flies": true,
       "lode_chance": 50,
       "lode": "thaler"
@@ -283,6 +274,7 @@
     }
   },
   "kobold": {
+    "type": "humanoid",
     "name": "kobold",
     "description": "A small humanoid with a stooped back, face hidden beneath a ragged hood.",
     "tileIndexBase": "LEG",
@@ -298,12 +290,8 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] strikes back at [attacked_actor_name]!",
     "attributes": {
-      "sentient": true,
-      "flammable": true,
       "accuracy": 35,
-      "defense": 5,
-      "inventory": 1,
-      "remains": "skull"
+      "defense": 5
     },
     "stats": {
       "health": 20
@@ -339,6 +327,7 @@
     }
   },
   "goblin": {
+    "type": "humanoid",
     "name": "goblin",
     "description": "A lumpy piglike humanoid",
     "tileIndexBase": "THIN_TORSO",
@@ -355,19 +344,15 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] strikes back at [attacked_actor_name]!",
     "attributes": {
-      "flammable": true,
-      "sentient": true,
-      "inventory": 1,
-      "remains": "skull",
       "accuracy": 35,
-      "defense": 8,
-      "opaque": false
+      "defense": 8
     },
     "stats": {
       "health": 25
     }
   },
   "goblin_spearman": {
+    "type": "humanoid",
     "name": "goblin spearman",
     "description": "A goblin clutching a spear",
     "tileIndexBase": "THIN_TORSO",
@@ -384,13 +369,9 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] strikes back at [attacked_actor_name]!",
     "attributes": {
-      "flammable": true,
-      "sentient": true,
       "inventory": 2,
-      "remains": "skull",
       "accuracy": 35,
-      "defense": 5,
-      "opaque": false
+      "defense": 5
     },
     "stats": {
       "health": 25
@@ -400,6 +381,7 @@
     ]
   },
   "deer": {
+    "type": "beast",
     "name": "deer",
     "tileIndexBase": "DOOR_TOP",
     "tileIndexTop": "OPAQUE_DARK_SHOCKED_ANIMAL_FACE",
@@ -414,11 +396,7 @@
     "facingEnabled": true,
     "personality": "passive_wanderer",
     "attributes": {
-      "sentient": true,
-      "flammable": true,
-      "inventory": 1,
-      "remains": "blood",
-      "opaque": false
+      "inventory": 1
     },
     "stats": {
       "health": 10
@@ -428,6 +406,7 @@
     ]
   },
   "chicken": {
+    "type": "beast",
     "name": "chicken",
     "tileIndexBase": "OPAQUE_PRISON_WINDOW",
     "tileIndexTop": "BIRD_HEAD",
@@ -436,11 +415,7 @@
     "defaultFacing": "left",
     "personality": "passive_wanderer",
     "attributes": {
-      "sentient": true,
-      "flammable": true,
-      "opaque": false,
-      "inventory": 1,
-      "remains": "blood"
+      "inventory": 1
     },
     "stats": {
       "health": 10
@@ -518,6 +493,7 @@
     }
   },
   "column": {
+    "type": "terrain",
     "name": "column",
     "tileIndexBase": "CANDLE_STICK",
     "tileIndexTop": "CANDLE_STICK",
@@ -526,34 +502,27 @@
       "breakable": true,
       "opaque": false,
       "ornament": true,
-      "remains": "rubble",
       "paint_tile": "CANDLE_STICK"
     }
   },
   "wall": {
+    "type": "terrain",
     "name": "wall",
     "tileIndexBase": "OPAQUE_DARK_SHADE",
     "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
     "attributes": {
-      "flammable": false,
-      "pushable": false,
       "breakable": true,
-      "conductive": false,
-      "paint_tile": "WALL_TOP",
-      "remains": "rubble"
+      "paint_tile": "WALL_TOP"
     }
   },
   "brick_wall": {
+    "type": "terrain",
     "name": "brick wall",
     "tileIndexBase": "BRICK_WALL",
     "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
     "attributes": {
-      "flammable": false,
-      "pushable": false,
       "breakable": true,
-      "conductive": false,
-      "paint_tile": "BRICK_WALL",
-      "remains": "rubble"
+      "paint_tile": "BRICK_WALL"
     }
   },
   "fortification": {
@@ -572,16 +541,13 @@
     }
   },
   "metal_wall": {
+    "type": "terrain",
     "name": "wall",
     "tileIndexBase": "OPAQUE_DARK_SHADE",
     "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
     "tint": "#33CCAA",
     "attributes": {
-      "flammable": false,
-      "pushable": false,
-      "breakable": false,
-      "conductive": false,
-      "remains": "rubble"
+      "breakable": false
     }
   },
   "wall-bottom-left-corner": {
@@ -647,6 +613,7 @@
     }
   },
   "rock_wall": {
+    "type": "terrain",
     "name": "rock",
     "tileIndexBase": "OPAQUE_DOTTED_LIGHT_SHADE",
     "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
@@ -654,7 +621,6 @@
     "attributes": {
       "breakable": true,
       "lode_chance": 20,
-      "remains": "rubble",
       "lode": "gold_nugget",
       "paint_tile": "DARK_SHADE"
     }
@@ -1326,6 +1292,7 @@
     "trap_message": "A disorienting mist fills the air!"
   },
   "toad": {
+    "type": "beast",
     "name": "toad",
     "tileIndexBase": "WHITE_DOOR_TOP",
     "tileIndexTop": "WHITE_QUOTATION_MARK",
@@ -1338,16 +1305,14 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] touches the [attacked_actor_name]!",
     "attributes": {
-      "flammable": true,
-      "hostile": true,
-      "sentient": true,
-      "opaque": false
+      "hostile": true
     },
     "stats": {
       "health": 10
     }
   },
   "bat": {
+    "type": "beast",
     "name": "bat",
     "tileIndexBase": "BOX_DRAWING_LIGHT_HORIZONTAL",
     "tileIndexTop": "CARON",
@@ -1358,12 +1323,9 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
-      "flammable": true,
       "flies": true,
       "hostile": true,
-      "sentient": true,
       "dark_vision": true,
-      "opaque": false,
       "defense": 20
     },
     "stats": {
@@ -1371,6 +1333,7 @@
     }
   },
   "rat": {
+    "type": "beast",
     "name": "rat",
     "tileIndexBase": "WHITE_LEFTWARDS_HARPOON_BARB_UPWARDS",
     "tileIndexTop": "BLANK",
@@ -1384,11 +1347,8 @@
     "facingEnabled": true,
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
-      "flammable": true,
       "hostile": true,
       "dark_vision": true,
-      "opaque": false,
-      "sentient": true,
       "accuracy": 40
     },
     "stats": {
@@ -1457,6 +1417,7 @@
     }
   },
   "spider": {
+    "type": "beast",
     "name": "giant spider",
     "tileIndexBase": "ASTERISK",
     "tileIndexTop": "BLANK",
@@ -1469,9 +1430,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
-      "flammable": true,
       "hostile": true,
-      "sentient": true,
       "dark_vision": true,
       "web_immune": true,
       "accuracy": 50,
@@ -1482,6 +1441,7 @@
     }
   },
   "wraith": {
+    "type": "undead",
     "name": "wraith",
     "tileIndexBase": "OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE",
     "tileIndexTop": "SKULL",
@@ -1494,11 +1454,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
     "attributes": {
-      "flammable": true,
-      "hostile": true,
-      "sentient": true,
       "light_source": true,
-      "dark_vision": true,
       "accuracy": 65,
       "defense": 12,
       "strength": 12,
@@ -1537,6 +1493,7 @@
     ]
   },
   "jackal": {
+    "type": "beast",
     "name": "jackal",
     "tileIndexBase": "DOOR_TOP",
     "tileIndexTop": "REPTILE_HEAD",
@@ -1551,12 +1508,8 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
-      "flammable": true,
       "hostile": true,
-      "sentient": true,
       "pack": true,
-      "inventory": 0,
-      "remains": "blood",
       "accuracy": 80,
       "defense": 5,
       "strength": 3,
@@ -1568,9 +1521,9 @@
     "default_items": [
       "meat"
     ]
-    
   },
   "monkey": {
+    "type": "beast",
     "name": "monkey",
     "tileIndexBase": "LEG",
     "tileIndexTop": "ANIMAL_HEAD",
@@ -1590,9 +1543,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] scratches the [attacked_actor_name]!",
     "attributes": {
-      "flammable": true,
       "hostile": true,
-      "sentient": true,
       "vision_range": 10,
       "inventory": 1,
       "accuracy": 70,
@@ -1605,6 +1556,7 @@
     }
   },
   "guard": {
+    "type": "humanoid",
     "name": "guard",
     "tileIndexBase": "STRONG_TORSO",
     "tileIndexTop": {
@@ -1622,9 +1574,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] strikes the [attacked_actor_name]!",
     "attributes": {
-      "flammable": true,
       "hostile": true,
-      "sentient": true,
       "accuracy": 65,
       "defense": 10
     },
@@ -1687,6 +1637,7 @@
     }
   },
   "witch": {
+    "type": "humanoid",
     "name": "witch",
     "description": "A hunched figure muttering incantations, mending allies and calling the dead to rise.",
     "tileIndexBase": "LEG",
@@ -1703,18 +1654,16 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] strikes [attacked_actor_name] with a gnarled staff!",
     "attributes": {
-      "flammable": true,
       "hostile": true,
-      "sentient": true,
       "accuracy": 40,
-      "defense": 5,
-      "remains": "skull"
+      "defense": 5
     },
     "stats": {
       "health": 25
     }
   },
   "crow": {
+    "type": "beast",
     "name": "crow",
     "description": "A glossy black bird with greedy eyes, drawn to anything that glitters.",
     "tileIndexBase": "BOX_DRAWING_LIGHT_HORIZONTAL",
@@ -1727,9 +1676,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] pecks the [attacked_actor_name]!",
     "attributes": {
-      "flammable": true,
       "flies": true,
-      "sentient": true,
       "accuracy": 40,
       "defense": 15,
       "inventory": 1
@@ -1739,6 +1686,7 @@
     }
   },
   "phantom_hound": {
+    "type": "undead",
     "name": "phantom hound",
     "description": "A spectral canine that phases in and out of reality, striking before vanishing.",
     "tileIndexBase": "WHITE_DOOR_TOP",
@@ -1753,9 +1701,6 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] lunges at the [attacked_actor_name]!",
     "attributes": {
-      "hostile": true,
-      "sentient": true,
-      "flammable": true,
       "light_source": true,
       "accuracy": 70,
       "defense": 12,
@@ -1794,6 +1739,7 @@
     }
   },
   "illusionist": {
+    "type": "humanoid",
     "name": "illusionist",
     "description": "A shimmering cloaked figure, light seems to bend around it.",
     "tileIndexBase": "LEG",
@@ -1809,12 +1755,9 @@
     "collision_sound": "hit",
     "death_sound": "ouch",
     "attributes": {
-      "flammable": true,
       "hostile": true,
-      "sentient": true,
       "accuracy": 55,
       "defense": 8,
-      "remains": "skull",
       "light_source": true
     },
     "stats": {

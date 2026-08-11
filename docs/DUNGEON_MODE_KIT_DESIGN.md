@@ -46,6 +46,7 @@ An HTML sidebar displays actor stats and visible items alongside the game canvas
 ```
 data/                    ← Global entity definitions
   actors.json            ← All actor types
+  types.json             ← Reusable actor defaults (beast, undead, ...)
   items.json             ← All item types  
   personalities.json     ← AI behavior configs
   states.json            ← Temporary condition definitions
@@ -55,6 +56,7 @@ prototypes/
   my_level/
     prototype.json       ← Level config (required)
     actors.json          ← Override/add actors (optional)
+    types.json           ← Override/add actor types (optional)
     items.json           ← Override/add items (optional)
     personalities.json   ← Override/add behaviors (optional)
     map.tmj              ← Tiled map for floor 1 (optional)

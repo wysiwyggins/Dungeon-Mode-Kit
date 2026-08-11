@@ -49,6 +49,11 @@
                     <input type="text" id="f-name" placeholder="Display name">
                 </div>
                 <div class="field-row">
+                    <label>Type</label>
+                    <select id="f-type"></select>
+                </div>
+                <div class="hint" id="type-hint" style="margin:-4px 0 8px 0"></div>
+                <div class="field-row">
                     <label>Description</label>
                     <textarea id="f-description" rows="2" placeholder="Flavor text"></textarea>
                 </div>
@@ -353,7 +358,7 @@ const SPRITESHEET_PATH = '../assets/sprites/static-tiles.png';
 const TILE_DATA_PATH = '../data/static-tiles.json';
 
 const PRIMARY_BOOL_ATTRS = [
-    'solid','visible','hostile','sentient','sighted','opaque',
+    'solid','visible','hostile','sentient','opaque',
     'flammable','conductive','breakable','pushable','light_source','dark_vision','flies'
 ];
 const SECONDARY_BOOL_ATTRS = [
@@ -368,10 +373,9 @@ const BOOL_ATTRS = [...PRIMARY_BOOL_ATTRS, ...SECONDARY_BOOL_ATTRS];
 const BOOL_HINTS = {
     solid: 'Default: true. Blocks movement.',
     visible: 'Default: true. Sprite is drawn.',
-    flammable: 'Default: true (inherited). Can catch fire.',
+    flammable: 'Default: false. Can catch fire. Often supplied by a type.',
     hostile: 'Default: false. Attacks player.',
-    sentient: 'Default: false. Takes turns / has AI.',
-    sighted: 'AI can see targets (needs vision_range).',
+    sentient: 'Default: false. Takes turns / has AI. Also gates mind-states (sleep, confusion, stun).',
     opaque: 'Blocks line of sight for lighting/FOV.',
 
     conductive: 'Conducts lightning.',
@@ -510,11 +514,12 @@ function loadSpritesheet() {
 }
 
 async function loadBaseData() {
-    const [tilesData, actors, personalities, states] = await Promise.all([
+    const [tilesData, actors, personalities, states, types] = await Promise.all([
         fetchJSON(TILE_DATA_PATH),
         fetchJSON('../data/actors.json'),
         fetchJSON('../data/personalities.json'),
         fetchJSON('../data/states.json'),
+        fetchJSON('../data/types.json'),
     ]);
     TILE_W = tilesData.tilePixelWidth || TILE_W;
     TILE_H = tilesData.tilePixelHeight || TILE_H;
@@ -522,6 +527,10 @@ async function loadBaseData() {
     state.baseActors = actors;
     state.basePersonalities = personalities;
     state.baseStates = states;
+    // Types are a keyed library like actors; '_comment' is documentation, not a type.
+    state.types = Object.fromEntries(
+        Object.entries(types || {}).filter(([k]) => !k.startsWith('_'))
+    );
 
     state.tileNames = Object.keys(state.tileMap).sort();
     state.reverseTileMap = {};
@@ -585,6 +594,39 @@ function populatePersonalityDropdown() {
         sel.appendChild(opt);
     }
     if (prev) sel.value = prev;
+}
+
+function populateTypeDropdown() {
+    const sel = document.getElementById('f-type');
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">— none —</option>';
+    for (const k of Object.keys(state.types || {}).sort()) {
+        const opt = document.createElement('option');
+        opt.value = k;
+        opt.textContent = `${k} (${state.types[k].name || k})`;
+        sel.appendChild(opt);
+    }
+    if (prev) sel.value = prev;
+}
+
+/** The attributes a type supplies, or {} for no/unknown type. */
+function typeAttrsFor(typeKey) {
+    return (typeKey && state.types?.[typeKey]?.attributes) || {};
+}
+
+/**
+ * Show what the selected type contributes, so it's clear which values an actor
+ * inherits rather than declares. Anything the actor sets itself overrides these.
+ */
+function updateTypeHint() {
+    const hint = document.getElementById('type-hint');
+    const key = document.getElementById('f-type').value;
+    const def = key && state.types?.[key];
+    if (!def) { hint.textContent = ''; return; }
+    const attrs = Object.entries(def.attributes || {})
+        .map(([k, v]) => `${k}: ${v}`).join(', ');
+    hint.textContent = (def.description ? def.description + ' ' : '')
+        + (attrs ? `Inherits — ${attrs}` : '');
 }
 
 // ---- Tile drawing ----
@@ -1413,6 +1455,8 @@ function clearForm() {
     document.getElementById('f-split_into').value = '';
     document.getElementById('f-split_sound').value = '';
     document.getElementById('f-personality').value = '';
+    document.getElementById('f-type').value = '';
+    updateTypeHint();
     document.getElementById('f-vision_range').value = '';
     document.getElementById('f-switch_message').value = '';
     document.getElementById('f-switch_sound').value = '';
@@ -1435,6 +1479,8 @@ function populateForm(key, data) {
     clearForm();
     document.getElementById('actor-key').value = key || '';
     document.getElementById('f-name').value = data.name || '';
+    document.getElementById('f-type').value = data.type || '';
+    updateTypeHint();
     document.getElementById('f-description').value = data.description || '';
 
     // Tiles
@@ -1480,12 +1526,18 @@ function populateForm(key, data) {
 
     // Attributes
     const attrs = data.attributes || {};
+    // Values the actor's type supplies. These are shown checked (the actor really
+    // does have them at runtime) but are NOT written back unless changed, so
+    // opening and exporting an actor doesn't pin its inherited values.
+    const typeAttrs = typeAttrsFor(data.type);
     let hasSecondary = false;
     for (const attr of BOOL_ATTRS) {
-        // Use the stored value when present, else the attribute's default. This keeps an
-        // explicit `false` (e.g. solid:false) unchecked, while an absent default-true attr
-        // (e.g. solid omitted) shows checked to match runtime behavior.
-        const v = attrs[attr] !== undefined ? attrs[attr] : boolDefault(attr);
+        // Use the stored value when present, else what the type gives, else the
+        // attribute's own default. This keeps an explicit `false` (e.g. solid:false)
+        // unchecked, while an absent default-true attr shows checked to match
+        // runtime behavior.
+        const v = attrs[attr] !== undefined ? attrs[attr]
+            : (typeAttrs[attr] !== undefined ? typeAttrs[attr] : boolDefault(attr));
         document.getElementById('attr-' + attr).checked = !!v;
         if (v && SECONDARY_BOOL_ATTRS.includes(attr)) hasSecondary = true;
     }
@@ -1592,6 +1644,10 @@ function parseValue(str) {
 function readForm() {
     const obj = {};
 
+    // Type first, so the inherited-from line reads before the actor's own keys.
+    const type = document.getElementById('f-type').value;
+    if (type) obj.type = type;
+
     const name = document.getElementById('f-name').value.trim();
     if (name) obj.name = name;
 
@@ -1677,12 +1733,16 @@ function readForm() {
 
     // Attributes
     const attrs = {};
+    const typeAttrs = typeAttrsFor(type);
     for (const attr of BOOL_ATTRS) {
-        // Only write a boolean when it differs from its default. Lets a default-true attr
-        // be persisted as false (the whole point), while keeping JSON minimal: a checkbox
-        // left at its default is omitted (the runtime re-applies the default).
+        // Only write a boolean when it differs from the effective default. The type's
+        // value takes precedence over the global default, so an inherited attribute
+        // left alone stays out of the JSON instead of being pinned onto the actor.
+        // A designer who unticks an inherited true still gets an explicit false.
+        const effectiveDefault = typeAttrs[attr] !== undefined
+            ? !!typeAttrs[attr] : boolDefault(attr);
         const checked = document.getElementById('attr-' + attr).checked;
-        if (checked !== boolDefault(attr)) attrs[attr] = checked;
+        if (checked !== effectiveDefault) attrs[attr] = checked;
     }
     for (const ta of TYPED_ATTRS) {
         const el = document.getElementById('attr-' + ta.key);
@@ -1839,6 +1899,8 @@ function initEventListeners() {
     });
 
     // Randomize appearance
+    document.getElementById('f-type').addEventListener('change', updateTypeHint);
+
     document.getElementById('btn-randomize').addEventListener('click', randomizeAppearance);
 
     // Export
@@ -1907,6 +1969,7 @@ async function init() {
     initTintSync();
 
     await Promise.all([loadBaseData(), loadSpritesheet(), loadAnimSheets()]);
+    populateTypeDropdown();
     await populatePrototypeSelect();
     await loadPrototype(document.getElementById('prototype-select').value);
 

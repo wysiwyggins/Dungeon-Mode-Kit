@@ -55,6 +55,7 @@ Prototype JSON files are merged with global `data/` files at load — you only n
 - [TILES.pdf](/docs/TILES.pdf) - visual index of all tile names
 - [TILED_KEY.md](docs/TILED_KEY.md) — Complete reference of wildcard-layer tiles and the actors/generators they spawn ([printable PDF](docs/TILED_KEY.pdf))
 - [ACTORS.md](docs/ACTORS.md) — Actor attributes, stats, personalities, behaviors
+- [TYPES.md](docs/TYPES.md) — Reusable actor defaults inherited via `type`
 - [ITEMS.md](docs/ITEMS.md) — Full item attribute reference, use effects, equipment
 - [COMBAT.md](docs/COMBAT.md) — Hit/damage math, weapon types, equipment slots
 - [LIGHTING.md](docs/LIGHTING.md) — Darkness, fog of war, light source configuration
