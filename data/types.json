@@ -2,22 +2,40 @@
   "_comment": "Actor types: reusable bundles of defaults an actor inherits with \"type\": \"<key>\". An actor's own keys always win over its type's. attributes, stats and collision_effect merge one level deep; every other key replaces wholesale. Types do not inherit from other types. The optional \"domain\" field marks what a type is for — only \"actor\" is resolved today; \"item\" is reserved so items can share this file later.",
 
   "beast": {
-    "name": "Beast",
+    "name": "beast",
     "domain": "actor",
-    "description": "Animals and vermin. A mind, but no hands and no possessions. Says nothing about temper — a deer and a jackal are both beasts, so each declares its own `hostile`.",
+    "description": "Animals and vermin. A mind, but no hands and no possessions. Hunts or is hostile.",
     "attributes": {
       "sentient": true,
       "flammable": true,
+      "hostile": true,
       "opaque": false,
       "inventory": 0,
       "remains": "blood"
     }
   },
 
-  "undead": {
-    "name": "Undead",
+  "prey": {
+    "name": "prey",
     "domain": "actor",
-    "description": "Animate dead. Dry bones and cold flesh: nothing left to poison and no breath to hold, but fire still finds them.",
+    "description": "non-hostile animals.",
+    "attributes": {
+      "sentient": true,
+      "flammable": true,
+      "opaque": false,
+      "hostile": false,
+      "inventory": 0,
+      "remains": "blood"
+    },
+    "default_items": [
+        "meat"
+    ]
+  },
+
+  "undead": {
+    "name": "undead",
+    "domain": "actor",
+    "description": "The animate dead in various states of decay.",
     "attributes": {
       "sentient": true,
       "flammable": true,
@@ -30,9 +48,9 @@
   },
 
   "humanoid": {
-    "name": "Humanoid",
+    "name": "humanoid",
     "domain": "actor",
-    "description": "Upright folk who carry things: goblins, kobolds, guards, witches.",
+    "description": "Upright folk who carry things.",
     "attributes": {
       "sentient": true,
       "flammable": true,
@@ -42,8 +60,25 @@
     }
   },
 
+  "arcane": {
+    "name": "arcane",
+    "domain": "actor",
+    "description": "Upright folk who carry things.",
+    "attributes": {
+      "sentient": true,
+      "flammable": true,
+      "opaque": false,
+      "inventory": 1,
+      "remains": "blood"
+    },
+    "default_items": [
+        "potion",
+        "scroll"
+    ]
+  },
+
   "terrain": {
-    "name": "Terrain",
+    "name": "terrain",
     "domain": "actor",
     "description": "Built and grown scenery — walls, columns, statues. Mindless, so it can burn or be stuck but never confused or put to sleep.",
     "attributes": {

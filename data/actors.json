@@ -300,32 +300,6 @@
       "mattock"
     ]
   },
-  "sentry_h": {
-    "name": "glass sentry",
-    "tileIndexBase": "LEG",
-    "tileIndexTop": "OPAQUE_PRISON_WINDOW",
-    "personality": "horizontal_march",
-    "defaultFacing": "left",
-    "facingEnabled": true,
-    "collision_effect": {
-      "health": -200
-    },
-    "stats": {
-      "health": 1
-    }
-  },
-  "sentry_v": {
-    "name": "glass sentry",
-    "tileIndexBase": "LEG",
-    "tileIndexTop": "OPAQUE_PRISON_WINDOW",
-    "personality": "vertical_march",
-    "collision_effect": {
-      "health": -200
-    },
-    "stats": {
-      "health": 1
-    }
-  },
   "goblin": {
     "type": "humanoid",
     "name": "goblin",
@@ -381,7 +355,7 @@
     ]
   },
   "deer": {
-    "type": "beast",
+    "type": "prey",
     "name": "deer",
     "tileIndexBase": "DOOR_TOP",
     "tileIndexTop": "OPAQUE_DARK_SHOCKED_ANIMAL_FACE",
@@ -400,13 +374,10 @@
     },
     "stats": {
       "health": 10
-    },
-    "default_items": [
-      "meat"
-    ]
+    }
   },
   "chicken": {
-    "type": "beast",
+    "type": "prey",
     "name": "chicken",
     "tileIndexBase": "OPAQUE_PRISON_WINDOW",
     "tileIndexTop": "BIRD_HEAD",
@@ -414,15 +385,9 @@
     "facingEnabled": true,
     "defaultFacing": "left",
     "personality": "passive_wanderer",
-    "attributes": {
-      "inventory": 1
-    },
     "stats": {
-      "health": 10
-    },
-    "default_items": [
-      "meat"
-    ]
+      "health": 4
+    }
   },
   "minotaur": {
     "name": "Asterion",
@@ -454,6 +419,505 @@
     "default_items": [
       "horns"
     ]
+  },
+  "toad": {
+    "type": "beast",
+    "name": "toad",
+    "tileIndexBase": "WHITE_DOOR_TOP",
+    "tileIndexTop": "WHITE_QUOTATION_MARK",
+    "flipTopV": true,
+    "tint": "#77bb41",
+    "personality": "stationed_melee",
+    "collision_effect": {
+      "apply_state": "hallucinating"
+    },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] touches the [attacked_actor_name]!",
+    "attributes": {
+      "hostile": true
+    },
+    "stats": {
+      "health": 10
+    }
+  },
+  "bat": {
+    "type": "beast",
+    "name": "bat",
+    "tileIndexBase": "BOX_DRAWING_LIGHT_HORIZONTAL",
+    "tileIndexTop": "CARON",
+    "personality": "aggressive_melee",
+    "collision_effect": {
+      "health": -2
+    },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
+    "attributes": {
+      "flies": true,
+      "hostile": true,
+      "dark_vision": true,
+      "defense": 20
+    },
+    "stats": {
+      "health": 5
+    }
+  },
+  "rat": {
+    "type": "beast",
+    "name": "rat",
+    "tileIndexBase": "WHITE_LEFTWARDS_HARPOON_BARB_UPWARDS",
+    "tileIndexTop": "BLANK",
+    "tint": "#222233",
+    "personality": "aggressive_melee",
+    "collision_effect": {
+      "health": -2
+    },
+    "collision_sound": "hit",
+    "defaultFacing": "left",
+    "facingEnabled": true,
+    "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
+    "attributes": {
+      "hostile": true,
+      "dark_vision": true,
+      "accuracy": 40
+    },
+    "stats": {
+      "health": 12
+    }
+  },
+  "eel": {
+    "name": "eel",
+    "tileIndexBase": "LEO",
+    "tileIndexTop": "BLANK",
+    "personality": "aquatic_predator",
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
+    "collision_effect": {
+      "health": -4
+    },
+    "attributes": {
+      "flammable": true,
+      "hostile": true,
+      "sentient": true,
+      "aquatic": true,
+      "conceals_when_submerged": true,
+      "accuracy": 55,
+      "defense": 4
+    },
+    "stats": {
+      "health": 25
+    }
+  },
+  "giant_fly": {
+    "name": "giant fly",
+    "tileIndexBase": "BOX_DRAWING_LIGHT_HORIZONTAL",
+    "tileIndexTop": "FLY",
+    "tint": "#3a88fe",
+    "facingEnabled": true,
+    "defaultFacing": "left",
+    "personality": "aggressive_melee",
+    "collision_effect": {
+      "health": -2
+    },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
+    "attributes": {
+      "flammable": true,
+      "flies": true,
+      "hostile": true,
+      "sentient": true,
+      "dark_vision": true,
+      "accuracy": 40
+    },
+    "stats": {
+      "health": 12
+    }
+  },
+  "web": {
+    "name": "web",
+    "tileIndexBase": "WHITE_NUMBER_SIGN",
+    "tileIndexTop": "BLANK",
+    "attributes": {
+      "solid": false,
+      "flammable": true,
+      "platform": true,
+      "mass_noun": true,
+      "consume_on_escape": true,
+      "apply_state": "stuck"
+    }
+  },
+  "spider": {
+    "type": "beast",
+    "name": "giant spider",
+    "tileIndexBase": "ASTERISK",
+    "tileIndexTop": "BLANK",
+    "tint": "#665544",
+    "personality": "web_spinner",
+    "collision_effect": {
+      "health": -3,
+      "apply_state": "poisoned"
+    },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
+    "attributes": {
+      "hostile": true,
+      "dark_vision": true,
+      "web_immune": true,
+      "accuracy": 50,
+      "defense": 3
+    },
+    "stats": {
+      "health": 12
+    }
+  },
+  "wraith": {
+    "type": "undead",
+    "name": "wraith",
+    "tileIndexBase": "OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE",
+    "tileIndexTop": "SKULL",
+    "tint": "#d4e3fe",
+    "flickerTint": true,
+    "personality": "aggressive_melee",
+    "collision_effect": {
+      "health": -8
+    },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
+    "attributes": {
+      "light_source": true,
+      "accuracy": 65,
+      "defense": 12,
+      "strength": 12,
+      "remains": "mist"
+    },
+    "stats": {
+      "health": 40
+    }
+  },
+  "ogre": {
+    "name": "ogre",
+    "type": "humanoid",
+    "tileIndexBase": "STRONG_TORSO",
+    "tileIndexTop": "GRIM_FACE",
+    "tint": "#cce8b5",
+    "personality": "stationed_melee",
+    "collision_effect": {
+      "health": "-{strength}"
+    },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
+    "attributes": {
+      "flammable": true,
+      "hostile": true,
+      "sentient": true,
+      "accuracy": 55,
+      "defense": 8,
+      "strength": 15,
+      "inventory": 1,
+      "remains": "skull"
+    },
+    "stats": {
+      "health": 80
+    },
+    "default_items": [
+      "club"
+    ]
+  },
+  "jackal": {
+    "type": "beast",
+    "name": "jackal",
+    "tileIndexBase": "DOOR_TOP",
+    "tileIndexTop": "REPTILE_HEAD",
+    "tint": "#C4A035",
+    "flipTopH": true,
+    "personality": "hunter_melee",
+    "vision_range": 10,
+    "death_sound": "hit",
+    "collision_effect": {
+      "health": -2
+    },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
+    "attributes": {
+      "hostile": true,
+      "pack": true,
+      "accuracy": 80,
+      "defense": 5,
+      "strength": 3,
+      "hunts": "rat"
+    },
+    "stats": {
+      "health": 5
+    },
+    "default_items": [
+      "meat"
+    ]
+  },
+  "monkey": {
+    "type": "beast",
+    "name": "monkey",
+    "tileIndexBase": "LEG",
+    "tileIndexTop": "ANIMAL_HEAD",
+    "tileIndexSide": "BOX_BOTTOM_RIGHT",
+    "sideOffset": {
+      "dx": 1,
+      "dy": 0
+    },
+    "defaultFacing": "left",
+    "facingEnabled": true,
+    "tint": "#C89664",
+    "personality": "pickpocket",
+    "death_sound": "hit",
+    "collision_effect": {
+      "health": -3
+    },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] scratches the [attacked_actor_name]!",
+    "attributes": {
+      "hostile": true,
+      "vision_range": 10,
+      "inventory": 1,
+      "accuracy": 70,
+      "defense": 3,
+      "strength": 1,
+      "remains": "skull"
+    },
+    "stats": {
+      "health": 12
+    }
+  },
+  "guard": {
+    "type": "humanoid",
+    "name": "guard",
+    "tileIndexBase": "STRONG_TORSO",
+    "tileIndexTop": {
+      "x": 8,
+      "y": 16
+    },
+    "tint": "#d6d6d6",
+    "facingEnabled": true,
+    "defaultFacing": "left",
+    "personality": "guard",
+    "vision_range": 8,
+    "collision_effect": {
+      "health": -6
+    },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] strikes the [attacked_actor_name]!",
+    "attributes": {
+      "hostile": true,
+      "accuracy": 65,
+      "defense": 10
+    },
+    "stats": {
+      "health": 40
+    }
+  },
+  "dynamo": {
+    "name": "dynamo",
+    "type": "arcane",
+    "description": "A cone-shaped entity crackling with energy.",
+    "tileIndexBase": "GATE",
+    "tileIndexTop": "EYE_OF_PROVIDENCE",
+    "tint": "#AADDFF",
+    "vision_range": 10,
+    "lightRadius": 3,
+    "personality": "lightning_mage",
+    "collision_effect": {
+      "health": -5
+    },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] strikes [attacked_actor_name] with a crackling fist!",
+    "attributes": {
+      "flammable": true,
+      "hostile": true,
+      "sentient": true,
+      "accuracy": 55,
+      "defense": 4,
+      "light_source": true,
+      "remains": "rubble",
+      "conductive": false,
+      "opaque": false
+    },
+    "stats": {
+      "health": 30
+    }
+  },
+  "poison_frog": {
+    "name": "poison frog",
+    "type": "beast",
+    "description": "A bright-skinned frog that exudes a toxic miasma.",
+    "tileIndexBase": "DOOR_TOP",
+    "tileIndexTop": "QUOTATION_MARK",
+    "flipTopV": true,
+    "tint": "#44FF44",
+    "personality": "poison_frog",
+    "collision_effect": {
+      "health": -2,
+      "apply_state": "poisoned"
+    },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
+    "attributes": {
+      "flammable": true,
+      "hostile": true,
+      "sentient": true,
+      "accuracy": 50,
+      "defense": 3
+    },
+    "stats": {
+      "health": 8
+    }
+  },
+  "witch": {
+    "type": "arcane",
+    "name": "witch",
+    "description": "A hunched figure muttering incantations, mending allies and calling the dead to rise.",
+    "tileIndexBase": "LEG",
+    "tileIndexTop": "WHITE_UPWARD_POINTING_TRIANGLE",
+    "flipTopH": true,
+    "tint": "#88AA44",
+    "facingEnabled": true,
+    "defaultFacing": "left",
+    "personality": "shaman",
+    "vision_range": 8,
+    "collision_effect": {
+      "health": -3
+    },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] strikes [attacked_actor_name] with a gnarled staff!",
+    "attributes": {
+      "hostile": true,
+      "accuracy": 40,
+      "defense": 5
+    },
+    "stats": {
+      "health": 25
+    }
+  },
+  "crow": {
+    "type": "beast",
+    "name": "crow",
+    "description": "A glossy black bird with greedy eyes, drawn to anything that glitters.",
+    "tileIndexBase": "BOX_DRAWING_LIGHT_HORIZONTAL",
+    "tileIndexTop": "LATIN_SMALL_LETTER_C_WITH_CARON",
+    "flipBaseV": true,
+    "personality": "scavenger",
+    "collision_effect": {
+      "health": -1
+    },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] pecks the [attacked_actor_name]!",
+    "attributes": {
+      "flies": true,
+      "accuracy": 40,
+      "defense": 15,
+      "inventory": 1
+    },
+    "stats": {
+      "health": 5
+    }
+  },
+  "phantom_hound": {
+    "type": "undead",
+    "name": "phantom hound",
+    "description": "A spectral canine that phases in and out of reality, striking before vanishing.",
+    "tileIndexBase": "WHITE_DOOR_TOP",
+    "tileIndexTop": "WHITE_HUNTING_ANIMAL_FACE",
+    "flipTopH": true,
+    "tint": "#AADDFF",
+    "effect": "flicker_tint",
+    "personality": "blink_stalker",
+    "collision_effect": {
+      "health": -6
+    },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] lunges at the [attacked_actor_name]!",
+    "attributes": {
+      "light_source": true,
+      "accuracy": 70,
+      "defense": 12,
+      "remains": "mist"
+    },
+    "stats": {
+      "health": 25
+    }
+  },
+  "hell_hound": {
+    "name": "hell hound",
+    "type": "undead",
+    "description": "A blazing canine that blinks through space, leaving fire in its wake.",
+    "tileIndexBase": "WHITE_DOOR_TOP",
+    "tileIndexTop": "WHITE_HUNTING_ANIMAL_FACE",
+    "flipTopH": true,
+    "tint": "#e32400",
+    "effect": "flicker_tint",
+    "animationSide": "fire",
+    "personality": "hell_hound",
+    "collision_effect": {
+      "health": -8
+    },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
+    "death_sound": "ouch",
+    "attributes": {
+      "hostile": true,
+      "sentient": true,
+      "light_source": true,
+      "accuracy": 60,
+      "defense": 6,
+      "remains": "skull"
+    },
+    "stats": {
+      "health": 40
+    }
+  },
+  "illusionist": {
+    "type": "arcane",
+    "name": "illusionist",
+    "description": "A shimmering cloaked figure, light seems to bend around it.",
+    "tileIndexBase": "LEG",
+    "tileIndexTop": "OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE",
+    "flipTopH": true,
+    "tint": "#CC77FF",
+    "flickerTint": true,
+    "lightRadius": 1,
+    "personality": "illusionist",
+    "collision_effect": {
+      "health": -4
+    },
+    "collision_sound": "hit",
+    "death_sound": "ouch",
+    "attributes": {
+      "hostile": true,
+      "accuracy": 55,
+      "defense": 8,
+      "light_source": true
+    },
+    "stats": {
+      "health": 30
+    }
+  },
+  "illusion": {
+    "name": "illusionist",
+    "description": "Is it real?",
+    "tileIndexBase": "LEG",
+    "tileIndexTop": "OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE",
+    "flipTopH": true,
+    "tint": "#CC77FF",
+    "personality": "illusion_clone",
+    "death_description": "The illusion shimmers and fades.",
+    "death_sound": "magic",
+    "attributes": {
+      "flammable": true,
+      "hostile": true,
+      "sentient": true,
+      "accuracy": 0,
+      "defense": 0,
+      "opaque": false
+    },
+    "stats": {
+      "health": 1
+    }
   },
   "tree": {
     "name": "tree",
@@ -490,6 +954,28 @@
       "opaque": true,
       "flammable": true,
       "breakable": true
+    }
+  },
+  "fungus": {
+    "name": "fungus",
+    "description": "A glowing patch of [fungi_types]",
+    "tileIndexBase": {
+      "x": 11,
+      "y": 16
+    },
+    "tileIndexTop": "BLANK",
+    "tileIndexSide": "IMPERFECT_DOTTED_WHITE_SHADE",
+    "tint": "#33AA77",
+    "lightRadius": 2,
+    "attributes": {
+      "solid": false,
+      "crushable": true,
+      "spore_release": true,
+      "flammable": true,
+      "light_source": true,
+      "mass_noun": true,
+      "entry_sound": "step_mud",
+      "paint_tile": "BLACK_SPADE_SUITE"
     }
   },
   "column": {
@@ -548,68 +1034,6 @@
     "tint": "#33CCAA",
     "attributes": {
       "breakable": false
-    }
-  },
-  "wall-bottom-left-corner": {
-    "name": "wall",
-    "tileIndexBase": "OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE",
-    "tileIndexTop": "OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE_AND_OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE",
-    "flipBaseH": true,
-    "flipBaseV": true,
-    "attributes": {
-      "flammable": false,
-      "pushable": false,
-      "breakable": true,
-      "conductive": false,
-      "paint_tile": "LIGHT_SHADE_UPPER_RIGHT_TRIANGLE",
-      "remains": "rubble"
-    }
-  },
-  "wall-bottom-right-corner": {
-    "name": "wall",
-    "tileIndexTop": "OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE_AND_OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE",
-    "tileIndexBase": "OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE",
-    "flipBaseV": true,
-    "flipTopH": true,
-    "attributes": {
-      "flammable": false,
-      "pushable": false,
-      "breakable": true,
-      "conductive": false,
-      "paint_tile": "LIGHT_SHADE_UPPER_LEFT_TRIANGLE",
-      "remains": "rubble"
-    }
-  },
-  "wall-top-right-corner": {
-    "name": "wall",
-    "tileIndexBase": "OPAQUE_DARK_SHADE",
-    "tileIndexTop": "OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE",
-    "flipTopH": true,
-    "flipTopV": true,
-    "flipBaseV": true,
-    "flipBaseH": true,
-    "attributes": {
-      "flammable": false,
-      "pushable": false,
-      "breakable": true,
-      "conductive": false,
-      "paint_tile": "LIGHT_SHADE_LOWER_LEFT_TRIANGLE",
-      "remains": "rubble"
-    }
-  },
-  "wall-top-left-corner": {
-    "name": "wall",
-    "tileIndexBase": "OPAQUE_DARK_SHADE",
-    "tileIndexTop": "OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE",
-    "flipTopV": true,
-    "flipBaseH": true,
-    "attributes": {
-      "flammable": false,
-      "pushable": false,
-      "breakable": true,
-      "conductive": false,
-      "paint_tile": "LIGHT_SHADE_LOWER_RIGHT_TRIANGLE",
-      "remains": "rubble"
     }
   },
   "rock_wall": {
@@ -941,28 +1365,6 @@
       "paint_tile": "DOWNWARDS_ARROW"
     }
   },
-  "fungus": {
-    "name": "fungus",
-    "description": "A glowing patch of [fungi_types]",
-    "tileIndexBase": {
-      "x": 11,
-      "y": 16
-    },
-    "tileIndexTop": "BLANK",
-    "tileIndexSide": "IMPERFECT_DOTTED_WHITE_SHADE",
-    "tint": "#33AA77",
-    "lightRadius": 2,
-    "attributes": {
-      "solid": false,
-      "crushable": true,
-      "spore_release": true,
-      "flammable": true,
-      "light_source": true,
-      "mass_noun": true,
-      "entry_sound": "step_mud",
-      "paint_tile": "BLACK_SPADE_SUITE"
-    }
-  },
   "lava": {
     "name": "lava",
     "tileIndexBase": "BLANK",
@@ -1290,500 +1692,5 @@
     "trap_spawn_tint": "#FFAAFF",
     "trap_apply_state": "confused",
     "trap_message": "A disorienting mist fills the air!"
-  },
-  "toad": {
-    "type": "beast",
-    "name": "toad",
-    "tileIndexBase": "WHITE_DOOR_TOP",
-    "tileIndexTop": "WHITE_QUOTATION_MARK",
-    "flipTopV": true,
-    "tint": "#77bb41",
-    "personality": "stationed_melee",
-    "collision_effect": {
-      "apply_state": "hallucinating"
-    },
-    "collision_sound": "hit",
-    "collision_description": "The [actor_name] touches the [attacked_actor_name]!",
-    "attributes": {
-      "hostile": true
-    },
-    "stats": {
-      "health": 10
-    }
-  },
-  "bat": {
-    "type": "beast",
-    "name": "bat",
-    "tileIndexBase": "BOX_DRAWING_LIGHT_HORIZONTAL",
-    "tileIndexTop": "CARON",
-    "personality": "aggressive_melee",
-    "collision_effect": {
-      "health": -2
-    },
-    "collision_sound": "hit",
-    "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
-    "attributes": {
-      "flies": true,
-      "hostile": true,
-      "dark_vision": true,
-      "defense": 20
-    },
-    "stats": {
-      "health": 5
-    }
-  },
-  "rat": {
-    "type": "beast",
-    "name": "rat",
-    "tileIndexBase": "WHITE_LEFTWARDS_HARPOON_BARB_UPWARDS",
-    "tileIndexTop": "BLANK",
-    "tint": "#222233",
-    "personality": "aggressive_melee",
-    "collision_effect": {
-      "health": -2
-    },
-    "collision_sound": "hit",
-    "defaultFacing": "left",
-    "facingEnabled": true,
-    "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
-    "attributes": {
-      "hostile": true,
-      "dark_vision": true,
-      "accuracy": 40
-    },
-    "stats": {
-      "health": 12
-    }
-  },
-  "eel": {
-    "name": "eel",
-    "tileIndexBase": "LEO",
-    "tileIndexTop": "BLANK",
-    "personality": "aquatic_predator",
-    "collision_sound": "hit",
-    "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
-    "collision_effect": {
-      "health": -4
-    },
-    "attributes": {
-      "flammable": true,
-      "hostile": true,
-      "sentient": true,
-      "aquatic": true,
-      "conceals_when_submerged": true,
-      "accuracy": 55,
-      "defense": 4
-    },
-    "stats": {
-      "health": 25
-    }
-  },
-  "giant_fly": {
-    "name": "giant fly",
-    "tileIndexBase": "BOX_DRAWING_LIGHT_HORIZONTAL",
-    "tileIndexTop": "FLY",
-    "tint": "#3a88fe",
-    "facingEnabled": true,
-    "defaultFacing": "left",
-    "personality": "aggressive_melee",
-    "collision_effect": {
-      "health": -2
-    },
-    "collision_sound": "hit",
-    "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
-    "attributes": {
-      "flammable": true,
-      "flies": true,
-      "hostile": true,
-      "sentient": true,
-      "dark_vision": true,
-      "accuracy": 40
-    },
-    "stats": {
-      "health": 12
-    }
-  },
-  "web": {
-    "name": "web",
-    "tileIndexBase": "WHITE_NUMBER_SIGN",
-    "tileIndexTop": "BLANK",
-    "attributes": {
-      "solid": false,
-      "flammable": true,
-      "platform": true,
-      "mass_noun": true,
-      "consume_on_escape": true,
-      "apply_state": "stuck"
-    }
-  },
-  "spider": {
-    "type": "beast",
-    "name": "giant spider",
-    "tileIndexBase": "ASTERISK",
-    "tileIndexTop": "BLANK",
-    "tint": "#665544",
-    "personality": "web_spinner",
-    "collision_effect": {
-      "health": -3,
-      "apply_state": "poisoned"
-    },
-    "collision_sound": "hit",
-    "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
-    "attributes": {
-      "hostile": true,
-      "dark_vision": true,
-      "web_immune": true,
-      "accuracy": 50,
-      "defense": 3
-    },
-    "stats": {
-      "health": 12
-    }
-  },
-  "wraith": {
-    "type": "undead",
-    "name": "wraith",
-    "tileIndexBase": "OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE",
-    "tileIndexTop": "SKULL",
-    "tint": "#d4e3fe",
-    "flickerTint": true,
-    "personality": "aggressive_melee",
-    "collision_effect": {
-      "health": -8
-    },
-    "collision_sound": "hit",
-    "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
-    "attributes": {
-      "light_source": true,
-      "accuracy": 65,
-      "defense": 12,
-      "strength": 12,
-      "remains": "mist"
-    },
-    "stats": {
-      "health": 40
-    }
-  },
-  "ogre": {
-    "name": "ogre",
-    "tileIndexBase": "STRONG_TORSO",
-    "tileIndexTop": "GRIM_FACE",
-    "tint": "#cce8b5",
-    "personality": "stationed_melee",
-    "collision_effect": {
-      "health": "-{strength}"
-    },
-    "collision_sound": "hit",
-    "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
-    "attributes": {
-      "flammable": true,
-      "hostile": true,
-      "sentient": true,
-      "accuracy": 55,
-      "defense": 8,
-      "strength": 15,
-      "inventory": 1,
-      "remains": "skull"
-    },
-    "stats": {
-      "health": 80
-    },
-    "default_items": [
-      "club"
-    ]
-  },
-  "jackal": {
-    "type": "beast",
-    "name": "jackal",
-    "tileIndexBase": "DOOR_TOP",
-    "tileIndexTop": "REPTILE_HEAD",
-    "tint": "#C4A035",
-    "flipTopH": true,
-    "personality": "hunter_melee",
-    "vision_range": 10,
-    "death_sound": "hit",
-    "collision_effect": {
-      "health": -2
-    },
-    "collision_sound": "hit",
-    "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
-    "attributes": {
-      "hostile": true,
-      "pack": true,
-      "accuracy": 80,
-      "defense": 5,
-      "strength": 3,
-      "hunts": "rat"
-    },
-    "stats": {
-      "health": 5
-    },
-    "default_items": [
-      "meat"
-    ]
-  },
-  "monkey": {
-    "type": "beast",
-    "name": "monkey",
-    "tileIndexBase": "LEG",
-    "tileIndexTop": "ANIMAL_HEAD",
-    "tileIndexSide": "BOX_BOTTOM_RIGHT",
-    "sideOffset": {
-      "dx": 1,
-      "dy": 0
-    },
-    "defaultFacing": "left",
-    "facingEnabled": true,
-    "tint": "#C89664",
-    "personality": "pickpocket",
-    "death_sound": "hit",
-    "collision_effect": {
-      "health": -3
-    },
-    "collision_sound": "hit",
-    "collision_description": "The [actor_name] scratches the [attacked_actor_name]!",
-    "attributes": {
-      "hostile": true,
-      "vision_range": 10,
-      "inventory": 1,
-      "accuracy": 70,
-      "defense": 3,
-      "strength": 1,
-      "remains": "skull"
-    },
-    "stats": {
-      "health": 12
-    }
-  },
-  "guard": {
-    "type": "humanoid",
-    "name": "guard",
-    "tileIndexBase": "STRONG_TORSO",
-    "tileIndexTop": {
-      "x": 8,
-      "y": 16
-    },
-    "tint": "#d6d6d6",
-    "facingEnabled": true,
-    "defaultFacing": "left",
-    "personality": "guard",
-    "vision_range": 8,
-    "collision_effect": {
-      "health": -6
-    },
-    "collision_sound": "hit",
-    "collision_description": "The [actor_name] strikes the [attacked_actor_name]!",
-    "attributes": {
-      "hostile": true,
-      "accuracy": 65,
-      "defense": 10
-    },
-    "stats": {
-      "health": 40
-    }
-  },
-  "dynamo": {
-    "name": "dynamo",
-    "description": "A cone-shaped entity crackling with energy.",
-    "tileIndexBase": "GATE",
-    "tileIndexTop": "EYE_OF_PROVIDENCE",
-    "tint": "#AADDFF",
-    "vision_range": 10,
-    "lightRadius": 3,
-    "personality": "lightning_mage",
-    "collision_effect": {
-      "health": -5
-    },
-    "collision_sound": "hit",
-    "collision_description": "The [actor_name] strikes [attacked_actor_name] with a crackling fist!",
-    "attributes": {
-      "flammable": true,
-      "hostile": true,
-      "sentient": true,
-      "accuracy": 55,
-      "defense": 4,
-      "light_source": true,
-      "remains": "rubble",
-      "conductive": false,
-      "opaque": false
-    },
-    "stats": {
-      "health": 30
-    }
-  },
-  "poison_frog": {
-    "name": "poison frog",
-    "description": "A bright-skinned frog that exudes a toxic miasma.",
-    "tileIndexBase": "DOOR_TOP",
-    "tileIndexTop": "QUOTATION_MARK",
-    "flipTopV": true,
-    "tint": "#44FF44",
-    "personality": "poison_frog",
-    "collision_effect": {
-      "health": -2,
-      "apply_state": "poisoned"
-    },
-    "collision_sound": "hit",
-    "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
-    "attributes": {
-      "flammable": true,
-      "hostile": true,
-      "sentient": true,
-      "accuracy": 50,
-      "defense": 3
-    },
-    "stats": {
-      "health": 8
-    }
-  },
-  "witch": {
-    "type": "humanoid",
-    "name": "witch",
-    "description": "A hunched figure muttering incantations, mending allies and calling the dead to rise.",
-    "tileIndexBase": "LEG",
-    "tileIndexTop": "WHITE_UPWARD_POINTING_TRIANGLE",
-    "flipTopH": true,
-    "tint": "#88AA44",
-    "facingEnabled": true,
-    "defaultFacing": "left",
-    "personality": "shaman",
-    "vision_range": 8,
-    "collision_effect": {
-      "health": -3
-    },
-    "collision_sound": "hit",
-    "collision_description": "The [actor_name] strikes [attacked_actor_name] with a gnarled staff!",
-    "attributes": {
-      "hostile": true,
-      "accuracy": 40,
-      "defense": 5
-    },
-    "stats": {
-      "health": 25
-    }
-  },
-  "crow": {
-    "type": "beast",
-    "name": "crow",
-    "description": "A glossy black bird with greedy eyes, drawn to anything that glitters.",
-    "tileIndexBase": "BOX_DRAWING_LIGHT_HORIZONTAL",
-    "tileIndexTop": "LATIN_SMALL_LETTER_C_WITH_CARON",
-    "flipBaseV": true,
-    "personality": "scavenger",
-    "collision_effect": {
-      "health": -1
-    },
-    "collision_sound": "hit",
-    "collision_description": "The [actor_name] pecks the [attacked_actor_name]!",
-    "attributes": {
-      "flies": true,
-      "accuracy": 40,
-      "defense": 15,
-      "inventory": 1
-    },
-    "stats": {
-      "health": 5
-    }
-  },
-  "phantom_hound": {
-    "type": "undead",
-    "name": "phantom hound",
-    "description": "A spectral canine that phases in and out of reality, striking before vanishing.",
-    "tileIndexBase": "WHITE_DOOR_TOP",
-    "tileIndexTop": "WHITE_HUNTING_ANIMAL_FACE",
-    "flipTopH": true,
-    "tint": "#AADDFF",
-    "effect": "flicker_tint",
-    "personality": "blink_stalker",
-    "collision_effect": {
-      "health": -6
-    },
-    "collision_sound": "hit",
-    "collision_description": "The [actor_name] lunges at the [attacked_actor_name]!",
-    "attributes": {
-      "light_source": true,
-      "accuracy": 70,
-      "defense": 12,
-      "remains": "mist"
-    },
-    "stats": {
-      "health": 25
-    }
-  },
-  "hell_hound": {
-    "name": "hell hound",
-    "description": "A blazing canine that blinks through space, leaving fire in its wake.",
-    "tileIndexBase": "WHITE_DOOR_TOP",
-    "tileIndexTop": "WHITE_HUNTING_ANIMAL_FACE",
-    "flipTopH": true,
-    "tint": "#e32400",
-    "effect": "flicker_tint",
-    "animationSide": "fire",
-    "personality": "hell_hound",
-    "collision_effect": {
-      "health": -8
-    },
-    "collision_sound": "hit",
-    "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
-    "death_sound": "ouch",
-    "attributes": {
-      "hostile": true,
-      "sentient": true,
-      "light_source": true,
-      "accuracy": 60,
-      "defense": 6,
-      "remains": "skull"
-    },
-    "stats": {
-      "health": 40
-    }
-  },
-  "illusionist": {
-    "type": "humanoid",
-    "name": "illusionist",
-    "description": "A shimmering cloaked figure, light seems to bend around it.",
-    "tileIndexBase": "LEG",
-    "tileIndexTop": "OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE",
-    "flipTopH": true,
-    "tint": "#CC77FF",
-    "flickerTint": true,
-    "lightRadius": 1,
-    "personality": "illusionist",
-    "collision_effect": {
-      "health": -4
-    },
-    "collision_sound": "hit",
-    "death_sound": "ouch",
-    "attributes": {
-      "hostile": true,
-      "accuracy": 55,
-      "defense": 8,
-      "light_source": true
-    },
-    "stats": {
-      "health": 30
-    }
-  },
-  "illusion": {
-    "name": "illusionist",
-    "description": "Is it real?",
-    "tileIndexBase": "LEG",
-    "tileIndexTop": "OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE",
-    "flipTopH": true,
-    "tint": "#CC77FF",
-    "personality": "illusion_clone",
-    "death_description": "The illusion shimmers and fades.",
-    "death_sound": "magic",
-    "attributes": {
-      "flammable": true,
-      "hostile": true,
-      "sentient": true,
-      "accuracy": 0,
-      "defense": 0,
-      "opaque": false
-    },
-    "stats": {
-      "health": 1
-    }
   }
 }
