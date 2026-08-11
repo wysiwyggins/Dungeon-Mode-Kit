@@ -3,11 +3,13 @@
     "name": "Burning",
     "duration": 5,
     "tint": "#ff3300",
+    "per_turn_effect": { "health": -8 },
     "attached_actor": "fire",
     "immunity": "fireproof",
     "on_apply_message": "[actor_name] catches fire!",
     "on_remove_message": "[actor_name] stops burning.",
-    "on_apply_sound": "fireball"
+    "on_apply_sound": "fireball",
+    "on_remove_sound": "extinguish"
   },
 
   "poisoned": {

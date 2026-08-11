@@ -5884,11 +5884,18 @@ class Actor extends Entity {
             const em = this.engine.entityManager;
             const prevMergingFire = em._mergingFire;
             em._mergingFire = true;
+            // Suppress spawn damage for the duration of the spawn: spawnActor calls
+            // applySpawnDamage internally, so tagging _isAttachedFire on the returned
+            // actor happens too late to stop it hitting the very actor whose state
+            // just spawned it. The state's per_turn_effect owns this damage now.
+            const prevSpawningAttached = em._spawningAttachedActor;
+            em._spawningAttachedActor = true;
             const attachedActor = em.spawnActor(
                 stateData.attached_actor,
                 this.x,
                 this.y
             );
+            em._spawningAttachedActor = prevSpawningAttached;
             em._mergingFire = prevMergingFire;
             if (attachedActor) {
                 // Mark as attached to this actor so it follows and doesn't apply spawn damage
@@ -9150,6 +9157,17 @@ class Actor extends Entity {
             this.updateSubmersionState();
         }
 
+        // Stepping into a liquid puts out a burning actor — the same rule that
+        // already extinguishes carried torches in submerge(), applied to the actor
+        // itself. Keyed on the `liquid` attribute, so water and sewage douse but
+        // lava doesn't (lava deliberately isn't a liquid — see canMoveTo). Flying
+        // actors hover clear of it. removeState() kills the attached fire actor and
+        // prints the state's own on_remove_message, so nothing is hardcoded here.
+        if (this.states?.burning && !this.hasStateProperty('flying') &&
+            this.engine.entityManager._getLiquidActorAt(newX, newY)) {
+            this.removeState('burning');
+        }
+
         // Apply walk-through effects (clouds, webs, quicksand) at destination immediately
         this.applyWalkThroughEffects(newX, newY);
 
@@ -11726,6 +11744,12 @@ class EntityManager {
      * @param {Actor} hazard - The newly spawned hazardous actor
      */
     applySpawnDamage(hazard) {
+        // A fire spawned as a state's attached_actor must not damage on arrival —
+        // it's the visual for `burning`, and the state's per_turn_effect delivers
+        // the damage. Flagged by applyState around the spawn call, because the
+        // hazard's own _isAttachedFire tag can't be set until spawnActor returns.
+        if (this._spawningAttachedActor) return;
+
         // Check if this actor has damage-dealing behaviors
         const personality = hazard.personality;
         if (!personality) return;

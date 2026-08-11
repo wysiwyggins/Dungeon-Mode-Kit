@@ -1826,21 +1826,20 @@ const BehaviorLibrary = {
         const victim = entityManager.getActorsAt(actor.x, actor.y)
             .find(a => a !== actor && a.hasAttribute('flammable') && !a.hasAttribute('fireproof') && !a.hasStateProperty('flying'));
 
-        if (victim && damagePerTurn > 0 && victim.stats?.health) {
-            // Cap fire damage at once per victim turn so overlapping fires can't stack.
-            const burned = victim.takeFireDamageOncePerTurn(damagePerTurn);
-
-            // Show damage message (only when the hit actually landed this turn)
-            if (burned && victim.hasAttribute('visible')) {
-                actor.engine.inputManager?.showMessage(`The fire burns ${victim.name} for ${damagePerTurn} damage!`, { x: actor.x, y: actor.y });
+        if (victim) {
+            const statesData = actor.engine.globalStates;
+            const canIgnite = !actor._isAttachedFire && victim.applyState && !victim.hasState(burnState);
+            if (canIgnite && statesData?.[burnState]) {
+                victim.applyState(burnState, statesData[burnState]);
             }
 
-            // Apply burning state if victim isn't already burning. Runs even when the
-            // damage was capped this turn, so lingering burn is still applied on contact.
-            if (!actor._isAttachedFire && victim.applyState && !victim.hasState(burnState)) {
-                const statesData = actor.engine.globalStates;
-                if (statesData?.[burnState]) {
-                    victim.applyState(burnState, statesData[burnState]);
+            // Victims that can't hold the burning state (no health, or immune to it) still take
+            // direct contact damage, so terrain and fireproof-but-damageable actors
+            // burn as before rather than becoming silently immune.
+            if (!victim.hasState(burnState) && damagePerTurn > 0 && victim.stats?.health) {
+                const burned = victim.takeFireDamageOncePerTurn(damagePerTurn);
+                if (burned && victim.hasAttribute('visible')) {
+                    actor.engine.inputManager?.showMessage(`The fire burns ${victim.name} for ${damagePerTurn} damage!`, { x: actor.x, y: actor.y });
                 }
             }
         }
