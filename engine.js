@@ -8549,6 +8549,15 @@ class Actor extends Entity {
      * Called when actor falls into a void tile
      */
     async fall(cause = 'void') {
+        // A fall can be queued more than once for the same actor: the collapse path
+        // below defers via setTimeout, and turnEngine.lock() only gates the AI
+        // scheduler's *next* tick, so an actor mid-move can step onto a second
+        // collapsible tile and arm a second timer. Without this guard both timers
+        // fire and the actor falls twice — logging its death twice and, on a
+        // multi-floor prototype, pushing two copies of itself into pendingFallenActors.
+        if (this._falling || this.isDead) return;
+        this._falling = true;
+
         console.log(`${this.name} fell into the void!`);
 
         const totalFloors = this.engine.getTotalFloors();
@@ -8791,6 +8800,29 @@ class Actor extends Entity {
                         // Show push message if player is pushing
                         if (this.isPlayerControlled()) {
                             this.engine.inputManager?.showMessage(`You push ${actorAtTarget.getNameWithArticle()}.`);
+                        }
+
+                        // A pushed actor sets off collapsible floors the same way a
+                        // walking one does. The mover's own collapse check further down
+                        // never sees this tile — the push returns early — so without
+                        // this a boulder rolls across a collapsing floor untouched.
+                        // Flying pushables (if any) hover over it, matching the walk path.
+                        const pushedOnto = actorAtTarget.hasStateProperty('flying')
+                            ? []
+                            : this.engine.entityManager.getActorsAt(pushX, pushY)
+                                .filter(a => a !== actorAtTarget && !a.isDead && a.hasAttribute('collapsible'));
+                        if (pushedOnto.length > 0) {
+                            this.engine.renderer?.effectRunner.apply('collapse_shake');
+                            this.engine.playSound('push1');
+                            setTimeout(async () => {
+                                for (const platform of pushedOnto) platform.collapse();
+                                if (!actorAtTarget.hasFloorAt(pushX, pushY) &&
+                                    !actorAtTarget.hasPlatformAt(pushX, pushY) &&
+                                    !actorAtTarget.hasStateProperty('flying')) {
+                                    await new Promise(r => setTimeout(r, 400));
+                                    await actorAtTarget.fall('collapse');
+                                }
+                            }, 300);
                         }
                     }
 

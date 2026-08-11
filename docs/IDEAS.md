@@ -1,8 +1,6 @@
 
 ## Bugs
 
-- pushing a pushable actor across collapsable floors keeps them from triggering.
-- a monkey was able to walk across two collapsable floor tiles, which caused the game to report he died twice. [Log] monkey fell into the void! (engine.js, line 8347, x2)
 - it doesn't look like ambient light is tinting tiles on the background layer. this is probably because the tiles used by addBaseAndShadows are translucent or black and don't have light pixels to tint. An easy fix would be to set the canvas background color to the ambient light tint. (or can you only do this when you are making a new pixi app?) Could also refactor addBaseAndShadows to use the opaque variants of the tiles, but when i just changed the consts to do this, it broke the logic of the function.
   - this makes me wonder if addBaseAndShadows couldn't be generalized to a sort of cellular automata backround function that makes tile pattern on the background layer using changeable rules with addBaseAndShadows as it's initial use.
 
@@ -11,6 +9,8 @@
 
 ## Tweaks
 
+- when the player walks onto a water tile, which has render top, the water correctly renders over the player, but a non controllable actor like a skeleton is still rendering over the water when it walks onto it. (render top is how we make it appear like water covers the base tile of another actor)
+- sidebar message when an actor other than the player picks up an item. I feel like message worthy events should be covered already by general underlying logic rather than doing this case by case.
 - If an actor with a burning state walks onto a liquid actor they should be extinguished (we already do this for lit torch items).
 - We should be able to turn off biomes on a multi-level prototype and just use defaults- change floor plan section name to 'biome plan' or something, add a toggle to disable
 - evenly place more braziers or torches in large shaped rooms. Maybe we should switch to torch actors as walls and a single brazier in the middle of some large, shaped rooms.
