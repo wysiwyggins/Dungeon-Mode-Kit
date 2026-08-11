@@ -22,6 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Skeletons no longer get poisoned — `undead` grants `poison_immune`/`gas_immune`. The immunity vocabulary was already in `states.json`; no actor had declared it.
+- The keybindings screen's private key-name formatter moved to `InputManager.formatKeyName()` and is shared.
+- Prototype editor's Advanced section listed `floors`, `floor_plan` and `biomes` as unrecognized keys it couldn't edit, even though the Floor plan section manages them — `KNOWN_TOP_KEYS` was never updated when biomes landed. The dungeon was the visible case.
+- Tab targeting offered water, lava, fire, gas clouds and **hidden traps** as travel destinations. It reused `isImportantActor`, which counts anything with a personality — and terrain runs personalities to drive spreading. A new `isTravelTarget` excludes hazards and scenery while keeping creatures, doors, stairways, portals, levers, pressure plates and pedestals. Turrets and sentries are included via a `hostile`/health-stat fallback, since they're enemies that don't declare `sentient`.
+- A floor's up and down stairways could generate right next to each other, making the floor skippable in a step. `pickStairwayTile` now prefers tiles at least `STAIRWAY_MIN_SEPARATION` (8) tiles from the already-placed stairway, falling back to any tile when a cramped floor has nothing far enough. Region and wall-niche preferences still apply within the spaced set.
+- Stairways generated on the lip of an abyss, often. `isWallNicheTile` counted a neighbour as "wall" whenever it had no floor tile — but an abyss cell has its floor removed too, so a pit edge looked like a cosy alcove, and since stairway placement *prefers* niches it actively sought them out. On a test map 18 of 94 niches (19%) were pit edges. The niche test now requires the non-floor side to hold a solid actor, and `pickStairwayTile` additionally avoids any tile with a void in its 8 neighbours (new `isAdjacentToVoid`), falling back if a floor offers nothing else.
+- The `caves` biome eooms mostly failed to place due to size, resized.
 - `apply_state_radius` counted immune creatures in its "N creatures are affected" message.
 - `docs/ACTORS.md` claimed actors are `flammable` by default; the engine defaults it to `false`.
 

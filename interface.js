@@ -4593,19 +4593,9 @@ class InterfaceManager {
         const bindings = this.engine.currentPrototype?.keybindings || this.engine.globalKeybindings || {};
         const actionDescriptions = bindings.descriptions || {};
 
-        const formatKey = (key) => {
-            // Keep a modifier prefix, shortening the key it applies to ("Shift+ArrowUp"
-            // -> "Shift+Up"). Split on the LAST '+' so a literal '+' binding survives.
-            const plus = key.lastIndexOf('+');
-            if (plus > 0) {
-                return key.slice(0, plus + 1) + formatKey(key.slice(plus + 1));
-            }
-            if (key === ' ') return 'Space';
-            if (key === 'Escape') return 'Esc';
-            if (key.startsWith('Arrow')) return key.slice(5);
-            if (key.startsWith('Numpad')) return 'Num' + key.slice(6);
-            return key;
-        };
+        // Shared with InputManager.getKeyForAction, so the keybindings screen and
+        // in-game prompts shorten key names the same way.
+        const formatKey = (key) => InputManager.formatKeyName(key);
 
         const inputMgr = this.engine.inputManager;
         const actionKeys = {};

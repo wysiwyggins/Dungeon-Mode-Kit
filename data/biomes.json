@@ -32,32 +32,32 @@
           12
         ],
         "rectWidth": [
-          3,
-          30
+          4,
+          14
         ],
         "rectHeight": [
-          3,
-          40
+          4,
+          12
         ],
         "crossWidth": [
           7,
-          20
+          14
         ],
         "crossHeight": [
           7,
-          20
+          14
         ],
         "circularRadius": [
           2,
-          30
+          7
         ],
         "cavernWidth": [
-          8,
-          30
+          10,
+          18
         ],
         "cavernHeight": [
-          8,
-          40
+          10,
+          18
         ],
         "abyss": {
           "count": [

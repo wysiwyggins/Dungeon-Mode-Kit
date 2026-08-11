@@ -204,6 +204,11 @@ function rgbToHue(color) {
     return h * 60;
 }
 
+// How far apart a floor's up and down stairways should be, in tiles (Chebyshev).
+// A preference, not a guarantee — see pickStairwayTile. Small enough that cramped
+// floors can still satisfy it, large enough that the pair isn't one step apart.
+const STAIRWAY_MIN_SEPARATION = 8;
+
 // ── Array / direction helpers ──────────────────────────────────────────
 
 const CARDINAL_DIRS = [
@@ -2873,8 +2878,39 @@ class DungeonEngine {
         const walkableTiles = this.mapManager.walkableTiles;
         if (!walkableTiles || walkableTiles.length === 0) return null;
 
-        const availableTiles = walkableTiles.filter(tile => !this.entityManager.getActorAt(tile.x, tile.y));
+        let availableTiles = walkableTiles.filter(tile => !this.entityManager.getActorAt(tile.x, tile.y));
         if (availableTiles.length === 0) return null;
+
+        // Keep stairways off the lip of a pit. A stairway is a place the player
+        // arrives — sometimes mid-fall from the floor above — so putting one where a
+        // stray step is fatal reads as a generation accident rather than a design.
+        // Also a preference: a bridge-heavy floor might have nothing else.
+        const inland = availableTiles.filter(t => !this.entityManager.isAdjacentToVoid(t.x, t.y));
+        if (inland.length > 0) {
+            availableTiles = inland;
+        } else {
+            console.log('Every candidate stairway tile borders a void; placing anyway');
+        }
+
+        // Keep the two stairways apart. ensureUpStairway runs before
+        // ensureDownStairway, so by the time we place the second one the first is
+        // already on the map — back away from it rather than landing next door,
+        // which makes a floor trivially skippable.
+        //
+        // Applied as a preference, not a requirement: a tiny or heavily occupied
+        // floor may have nothing far enough away, and placing the stairway is more
+        // important than spacing it.
+        const otherStairway = this.entityManager.findActorByAttribute('stairway', 'up')
+            || this.entityManager.findActorByAttribute('stairway', 'down');
+        if (otherStairway) {
+            const spaced = availableTiles.filter(t =>
+                getChebyshevDistance(t.x, t.y, otherStairway.x, otherStairway.y) >= STAIRWAY_MIN_SEPARATION);
+            if (spaced.length > 0) {
+                availableTiles = spaced;
+            } else {
+                console.log('No tile far enough from the other stairway; placing without spacing');
+            }
+        }
 
         // Try the preferred region first, then the whole map. Within each, a wall
         // niche wins over open floor.
@@ -11261,10 +11297,49 @@ class EntityManager {
      *
      * @returns {boolean}
      */
+    /**
+     * Does this tile touch a hole in the floor (abyss, dug-out void)?
+     *
+     * Checks all 8 neighbours, since a diagonal step off a lip is just as fatal.
+     * A cell counts as void when it has no floor AND nothing solid standing on it —
+     * that distinguishes a pit from a wall, which is also floorless.
+     *
+     * Off-map cells don't count: the map edge is a boundary, not a fall.
+     *
+     * @returns {boolean}
+     */
+    isAdjacentToVoid(x, y) {
+        const mm = this.engine.mapManager;
+        for (const dir of ALL_DIRS) {
+            const nx = x + dir.dx;
+            const ny = y + dir.dy;
+            if (nx < 0 || ny < 0 || nx >= mm.width || ny >= mm.height) continue;
+            if (mm.floorMap[ny]?.[nx]?.tileId > 0) continue;
+            if (this.getSolidActorAt(nx, ny)) continue;   // a wall, not a pit
+            return true;
+        }
+        return false;
+    }
+
     isWallNicheTile(x, y) {
         if (!(this.engine.mapManager.floorMap[y]?.[x]?.tileId > 0)) return false;
         if (this.getSolidActorAt(x, y)) return false;
-        return this._walkableCardinalCount(x, y) === 3;
+        if (this._walkableCardinalCount(x, y) !== 3) return false;
+
+        // The one non-floor neighbour has to be an actual wall, not a hole.
+        // _walkableCardinalCount only asks "does this cell have floor", and an abyss
+        // cell has its floor removed (architect sets floorMap to null), so a tile on
+        // the lip of a pit counts as a 3-neighbour niche and reads as a cosy alcove.
+        // Since callers *prefer* niches, that actively steered stairways to cliff edges.
+        for (const dir of CARDINAL_DIRS) {
+            const nx = x + dir.dx;
+            const ny = y + dir.dy;
+            if (this.engine.mapManager.floorMap[ny]?.[nx]?.tileId > 0) continue;
+            // Found the non-floor side: it only counts as a niche wall if something
+            // solid stands there. Off-map edges have no actor, so they don't qualify.
+            return Boolean(this.getSolidActorAt(nx, ny));
+        }
+        return false;
     }
 
     getItemAt(x, y) {

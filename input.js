@@ -3,6 +3,47 @@
 // INPUT MANAGER
 // ============================================================================
 
+/**
+ * Is this actor somewhere the player would plausibly want to walk to?
+ *
+ * Deliberately narrower than isImportantActor, which answers a different question
+ * (should obscuring sprites go transparent) and counts anything with a personality.
+ * Terrain has personalities too — water, lava, fire, gas and clouds all run one to
+ * drive spreading — so reusing it offered the player a Tab-stop on a lava pool.
+ *
+ * Hidden traps are excluded outright: listing one would give away its position, and
+ * a revealed trap is still not a destination.
+ *
+ * @param {Object} actor - The candidate actor
+ * @returns {boolean} True if the actor is worth offering as a travel target
+ */
+function isTravelTarget(actor) {
+    if (!actor?.hasAttribute) return false;
+
+    // Never route the player onto a hazard or into scenery.
+    if (actor.hasAttribute('trap')) return false;
+    if (actor.hasAttribute('liquid')) return false;
+    if (actor.hasAttribute('damage_type')) return false;   // lava, fire
+    if (actor.hasAttribute('ignites')) return false;
+    if (actor.hasAttribute('mass_noun')) return false;      // clouds, mist, gas, spores
+
+    // Structural landmarks and interactables worth crossing a level for.
+    if (actor.hasAttribute('openable')) return true;        // doors, gates
+    if (actor.hasAttribute('stairway')) return true;
+    if (actor.hasAttribute('gateway')) return true;
+    if (actor.hasAttribute('portal')) return true;
+    if (actor.hasAttribute('switchable')) return true;      // levers, pressure plates
+    if (actor.hasAttribute('pedestal')) return true;        // displays an item
+
+    // Creatures. `sentient` covers most (usually via a type), but not all: a turret
+    // is hostile without a mind, and the sentries declare no attributes at all, so
+    // fall back to "hostile" and then to "has a health stat" — a thing that can be
+    // fought is a thing worth walking to.
+    if (actor.hasAttribute('sentient')) return true;
+    if (actor.hasAttribute('hostile')) return true;
+    return actor.stats?.health !== undefined;
+}
+
 class InputManager {
     constructor(engine) {
         this.engine = engine;
@@ -128,6 +169,45 @@ class InputManager {
         if (!key.includes('+') && key.length === 1 && key >= 'a' && key <= 'z') {
             map[key.toUpperCase()] = action;
         }
+    }
+
+    /**
+     * The key currently bound to an action, formatted for display in a message.
+     *
+     * Player-facing text should never name a key literally — a prototype can rebind
+     * anything, so "press x" goes stale the moment someone does.
+     *
+     * Prefers the lowercase form of a letter binding, since bindKey aliases letters to
+     * their uppercase form and Object.keys order would otherwise sometimes surface "X".
+     *
+     * @param {string} action - The bound action name (e.g. 'explore')
+     * @param {string} [fallback] - Returned when the action isn't bound at all
+     * @returns {string} A display-ready key name (e.g. 'x', 'Space', 'Esc')
+     */
+    getKeyForAction(action, fallback = '?') {
+        const matches = Object.keys(this.keyMap).filter(k => this.keyMap[k] === action)
+            .concat(Object.keys(this.globalKeyMap || {}).filter(k => this.globalKeyMap[k] === action));
+        if (matches.length === 0) return fallback;
+
+        // A single lowercase letter reads best; otherwise take the first binding.
+        const preferred = matches.find(k => k.length === 1 && k >= 'a' && k <= 'z') || matches[0];
+        return InputManager.formatKeyName(preferred);
+    }
+
+    /**
+     * Shorten a raw key name for display ("ArrowUp" -> "Up", " " -> "Space").
+     * Keeps a modifier prefix, splitting on the LAST '+' so a literal '+' survives.
+     */
+    static formatKeyName(key) {
+        const plus = key.lastIndexOf('+');
+        if (plus > 0) {
+            return key.slice(0, plus + 1) + InputManager.formatKeyName(key.slice(plus + 1));
+        }
+        if (key === ' ') return 'Space';
+        if (key === 'Escape') return 'Esc';
+        if (key.startsWith('Arrow')) return key.slice(5);
+        if (key.startsWith('Numpad')) return 'Num' + key.slice(6);
+        return key;
     }
 
     /**
@@ -808,7 +888,7 @@ class InputManager {
 
         this.exploreArmed = true;
         this.exploreArmedTarget = target;
-        this.showMessage('Explore: press again to travel.');
+        this.showMessage(`Explore: press [${this.getKeyForAction('explore', 'explore')}] again to travel.`);
     }
 
     /**
@@ -872,8 +952,8 @@ class InputManager {
      * Gather the reachable points of interest the player can travel to, nearest
      * first. Candidates are:
      *   - ground items the player can currently perceive, and
-     *   - "important" actors (doors/openables, stairways, gateways, and any actor
-     *     with a personality), excluding the player and controlled allies.
+     *   - travel-worthy actors (creatures, doors/openables, stairways, gateways),
+     *     excluding the player and controlled allies.
      * Reachability is probed with renderer.computeWalkPath, which paths to an
      * occupied end tile (so a solid door/stairway/monster tile is a valid
      * destination) and returns null when unreachable — the same rules the drawn
@@ -907,12 +987,12 @@ class InputManager {
             consider(item, 'item', engine.isTileVisible(item.x, item.y));
         }
 
-        // Important actors on tiles the player has seen (visible or remembered),
+        // Travel-worthy actors on tiles the player has seen (visible or remembered),
         // excluding the player and any controlled ally.
         for (const actor of (em.actors || [])) {
             if (actor === player) continue;
             if (actor.hasAttribute?.('controlled')) continue;
-            if (!isImportantActor(actor)) continue;
+            if (!isTravelTarget(actor)) continue;
             const known = engine.isTileVisible(actor.x, actor.y) || engine.isTileExplored(actor.x, actor.y);
             consider(actor, 'actor', known);
         }
@@ -959,7 +1039,8 @@ class InputManager {
         this.exploreArmedTarget = { ...target, travel: true };
 
         const label = target.entity?.name || (target.kind === 'item' ? 'item' : 'target');
-        this.showMessage(`Target: ${label} (${this.targetCycleIndex + 1}/${targets.length}) — press travel to go.`);
+        const goKey = this.getKeyForAction('explore', 'explore');
+        this.showMessage(`Target: ${label} (${this.targetCycleIndex + 1}/${targets.length}) — press [${goKey}] to go.`);
     }
 
     /**

@@ -8,7 +8,6 @@
 
 - Don't put the up and down stairs of a level right next to one another
 - I just saw a vertical bridge that was made out of horizontal box drawing tiles, however on another level I saw a correct vertical box drawing tile vertical bridge, so this issue is intermittent. might have been related to a stairway being placed below the bridge.
-- prototype-editor advanced section is vestigal, remove
 
 ## Tweaks
 
@@ -16,7 +15,6 @@
 - evenly place more braziers or torches in large shaped rooms. Maybe we should switch to torch actors as walls and a single brazier in the middle of some large, shaped rooms.
 - flip the weapon tile that flashes during attacks in the direction of the actor being attacked.
 - "press travel to go" in tab-selected targeting should be "press [explore key] to go" with [explore key] being the actual key set to explore (x by default).
-- need to filter out dangerous targets like lava at the very least when selecting tab travel targets. At best we'd only select items, enemies, doors, stairs and unexplored areas in dark levels. currently even actors like water get selected.
 - item names and descriptions should be able to use template variables like [color] too, not just unidentified_description. How does the lever actor get color words in its name when paired? I would have expected to see that in the actor data, not just hardcoded, this would show a reusable precedent for templated strings in data.
 - should the "map generator" section in prototype defaults be a biomes/single generator/authored map radio button selection? We can eliminate some of this with the single level/multi level toggle. A single level is either a single generator or an authored map, hiding biome stuff. A multi level is either a single generator or biomes with level overrides for authored maps. the current "No procedural generator — the map comes from a hand-authored .tmj. Placed features below still apply." message when a single generator default isn't enabled is misleading, and when the section is disabled we don't expect to be able to set placed features, despite the message saying otherwise.
 - word lists in data should be named in a way that indicates they are just words, 'attacks.json' sounds like a list of reusable actor attacks, not a list of random verbs for describing them
@@ -25,17 +23,9 @@
 
 ## Feature ideas
 
-### applyState() revisit — [x] done
+## extend tab targeting to item throwing, staffs and wands
 
-- ~~right now applyState only works on sentient or controlled actors, but that is not good design for something just called applyState. there should be an additional method for sentient controlled actors that uses applyState so we can still make up new states for inanimate actors.~~
-- `applyState()` now works on any actor; `applyCreatureState()` is the sentient/controlled variant. Mind-states stay gated, derived from properties the states already had rather than a new field. See [ACTORS.md](ACTORS.md#states).
-
-### Actor types — [x] done
-
-- ~~A type would be a set of actor defaults that individual actors could apply through an attribute...~~
-- Landed as `data/types.json` with `beast`, `undead`, `humanoid`, `terrain`. Separate file rather than entries in `actors.json`, because `prototypeActorTypes` auto-spawns everything keyed in that file — types would have walked around as monsters. See [TYPES.md](TYPES.md).
-
-Still open, from the same thread:
+## remaning types refactor work
 
 - Items have a backwards version of this: 8 hollow meta-entries (`potion`, `food`, `weapon`, `armor`, `staff`, `scroll`, `ring`, `wand`) hold `random_type` lists pointing *down* at their members, while each of the 16 potions restates the same seven "this is a potion" attributes. Inverting it would let `item_catalog` pools be derived from membership instead of hand-maintained arrays that drift when you add an item. `types.json` already has a `domain` field reserved for this.
 - `Entity.type` still holds the entity *id* (`actor.type === 'goblin'`), so an actor's type is read as `actor.data.type`. Renaming the id field to `Entity.id` would free the word — ~50 call sites plus a save-format shim, and no data file would change.

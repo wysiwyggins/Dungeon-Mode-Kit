@@ -514,10 +514,15 @@ function effectsEditor(pat) {
 }
 
 // Advanced / passthrough: cutscene + any unknown top-level keys (preserved verbatim).
+// Keys the editor has dedicated UI for. Anything NOT listed here surfaces in the
+// Advanced section as "preserved but not editable" — so a key the editor really does
+// manage must be listed, or the editor reports its own fields as unrecognized.
 const KNOWN_TOP_KEYS = new Set([
     'name','description','loaded_sound','turn_speed','next_level','previous_level','intro_cutscene',
     'mechanics','win_state','win_conditions','map_generator','item_catalog','item_budget',
     'random_actors','random_items','traps','switch_puzzles','levels','cutscene',
+    // Multi-level / biome keys, edited by the Floor plan section.
+    'floors','floor_plan','biomes',
 ]);
 // Top-of-form control: whether this prototype is a cutscene. A cutscene has no
 // playable level, so turning this on supersedes and hides all other sections
