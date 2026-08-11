@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Skeletons no longer burn like flesh or take poison — `undead` grants `poison_immune`/`gas_immune`. The immunity vocabulary was already in `states.json`; no actor had declared it.
+- Skeletons no longer get poisoned — `undead` grants `poison_immune`/`gas_immune`. The immunity vocabulary was already in `states.json`; no actor had declared it.
 - `apply_state_radius` counted immune creatures in its "N creatures are affected" message.
 - `docs/ACTORS.md` claimed actors are `flammable` by default; the engine defaults it to `false`.
 
