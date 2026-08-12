@@ -8020,7 +8020,7 @@ class Actor extends Entity {
 
         // Show weapon swing visual only when combat is actually attempted
         if (isCombatTarget && equippedWeapon?.tileIndex && this.engine.renderer) {
-            this.engine.interfaceManager?.showWeaponSwing(equippedWeapon, target.x, target.y);
+            this.engine.interfaceManager?.showWeaponSwing(equippedWeapon, target.x, target.y, 100, this.x, this.y);
         }
 
         // Play attack/swing sound on every combat attempt (hit or miss)
@@ -12957,6 +12957,14 @@ class RenderSystem {
                 continue;
             }
 
+            // Same layering as createActorSprites — this is the level-load path and
+            // that one handles dynamic spawns, but both must honour 'render_layer'.
+            // Hardcoding 10/11 here meant the attribute did nothing for anything
+            // placed during generation: water (render_layer "top") tied with a
+            // skeleton standing in it instead of covering its base tile.
+            const baseZ = this._actorLayerBaseZ(actor);
+            const topZ = baseZ + 1;
+
             // Render base sprite (static or animated)
             actor.spriteBase = this.createActorSprite(
                 actor,
@@ -12964,7 +12972,7 @@ class RenderSystem {
                 actor.animationBase,
                 actor.x * globalVars.TILE_WIDTH,
                 actor.y * globalVars.TILE_HEIGHT,
-                10, // zIndex
+                baseZ,
                 { flipH: actor.flipBaseH, flipV: actor.flipBaseV }
             );
 
@@ -12975,7 +12983,7 @@ class RenderSystem {
                 actor.animationTop,
                 actor.x * globalVars.TILE_WIDTH,
                 (actor.y - 1) * globalVars.TILE_HEIGHT,
-                11, // zIndex
+                topZ,
                 { flipH: actor.flipTopH, flipV: actor.flipTopV }
             );
 
@@ -12988,7 +12996,7 @@ class RenderSystem {
                     actor.animationSide,
                     (actor.x + sideOffset.dx) * globalVars.TILE_WIDTH,
                     (actor.y + sideOffset.dy) * globalVars.TILE_HEIGHT,
-                    10,
+                    baseZ,
                     { flipH: actor.flipSideH, flipV: actor.flipSideV }
                 );
             }

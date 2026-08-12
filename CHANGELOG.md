@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The weapon tile that flashes during an attack now points at the actor being hit, mirroring horizontally, vertically, or both for a diagonal. It was always drawn in the weapon art's authored orientation, so every blow read as up-and-left regardless of which neighbour took it.
 - Skeletons no longer get poisoned — `undead` grants `poison_immune`/`gas_immune`. The immunity vocabulary was already in `states.json`; no actor had declared it.
 - The keybindings screen's private key-name formatter moved to `InputManager.formatKeyName()` and is shared.
 - Prototype editor's Advanced section listed `floors`, `floor_plan` and `biomes` as unrecognized keys it couldn't edit, even though the Floor plan section manages them — `KNOWN_TOP_KEYS` was never updated when biomes landed. The dungeon was the visible case.

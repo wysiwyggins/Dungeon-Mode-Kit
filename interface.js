@@ -2474,8 +2474,11 @@ class InterfaceManager {
      * @param {number} targetX - Target tile X coordinate
      * @param {number} targetY - Target tile Y coordinate
      * @param {number} duration - How long to display (ms), default 100
+     * @param {number|null} fromX - Attacker tile X, used to point the swing at the
+     *   target. Omit for an unaimed swing (the weapon's authored flip is used as-is).
+     * @param {number|null} fromY - Attacker tile Y, the vertical half of the same aim.
      */
-    showWeaponSwing(weapon, targetX, targetY, duration = 100) {
+    showWeaponSwing(weapon, targetX, targetY, duration = 100, fromX = null, fromY = null) {
         const renderer = this.engine.renderer;
         if (!renderer || !weapon?.tileIndex) return;
 
@@ -2500,11 +2503,29 @@ class InterfaceManager {
             weaponSprite.tint = weapon.tint;
         }
 
+        // Point the swing at whoever is being hit. Weapon art is drawn pointing up and
+        // to the left, so a blow struck rightward or downward needs the tile mirrored on
+        // that axis — otherwise every swing reads up-left no matter which neighbour took
+        // it. Each axis is toggled independently, so a diagonal attack flips both.
+        //
+        // The aimed flip is XORed against the weapon's authored flip rather than
+        // replacing it: most weapons ship `flipV: true`, and that orientation is the
+        // baseline the mirroring is relative to. A caller that passes no origin (or an
+        // attack with no displacement on an axis) keeps the authored value for it.
+        let flipH = !!weapon.flipH;
+        let flipV = !!weapon.flipV;
+        if (fromX !== null && targetX !== fromX) {
+            flipH = flipH !== (targetX > fromX);
+        }
+        if (fromY !== null && targetY !== fromY) {
+            flipV = flipV !== (targetY > fromY);
+        }
+
         // Apply flip if present
-        if (weapon.flipH || weapon.flipV) {
+        if (flipH || flipV) {
             weaponSprite.anchor.set(0.5, 0.5);
-            weaponSprite.scale.x = weapon.flipH ? -1 : 1;
-            weaponSprite.scale.y = weapon.flipV ? -1 : 1;
+            weaponSprite.scale.x = flipH ? -1 : 1;
+            weaponSprite.scale.y = flipV ? -1 : 1;
             // Position at center of tile when using anchor
             weaponSprite.x = targetX * tileWidth + tileWidth / 2;
             weaponSprite.y = targetY * tileHeight + tileHeight / 2;
