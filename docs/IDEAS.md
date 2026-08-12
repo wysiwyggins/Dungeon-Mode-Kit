@@ -1,10 +1,8 @@
 
 ## Bugs
 
-- it doesn't look like ambient light is tinting tiles on the background layer. this is probably because the tiles used by addBaseAndShadows are translucent or black and don't have light pixels to tint. An easy fix would be to set the canvas background color to the ambient light tint. (or can you only do this when you are making a new pixi app?) Could also refactor addBaseAndShadows to use the opaque variants of the tiles, but when i just changed the consts to do this, it broke the logic of the function.
-  - this makes me wonder if addBaseAndShadows couldn't be generalized to a sort of cellular automata backround function that makes tile pattern on the background layer using changeable rules with addBaseAndShadows as it's initial use.
+- addBaseAndShadows could be generalized to a sort of cellular automata backround function that makes tile pattern on the background layer using changeable rules with addBaseAndShadows as it's initial use. (The ambient light tinting bug that prompted this is fixed — the function's read sentinel is now separate from its paint values, which is the prerequisite for making the rules configurable.)
 
-- Don't put the up and down stairs of a level right next to one another
 - I just saw a vertical bridge that was made out of horizontal box drawing tiles, however on another level I saw a correct vertical box drawing tile vertical bridge, so this issue is intermittent. might have been related to a stairway being placed below the bridge.
 
 ## Tweaks

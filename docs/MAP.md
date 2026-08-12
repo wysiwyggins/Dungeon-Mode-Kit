@@ -50,7 +50,9 @@ Some existing maps include a `ui` tile layer — the engine ignores it completel
 
 ### Layer Details
 
-**background** — Fill entirely with ![FULL_BLOCK](../assets/images/FULL_BLOCK.png) `FULL_BLOCK` (tile 217, solid black). The engine clears background behind floor tiles automatically, so this just fills the void. You can also paint other decorative tiles here for effect.
+**background** — Fill entirely with ![FULL_BLOCK](../assets/images/FULL_BLOCK.png) `FULL_BLOCK` (tile 217, solid black) or its opaque twin `OPAQUE_FULL_BLOCK` (tile 231). The engine clears background behind floor tiles automatically, so this just fills the void. You can also paint other decorative tiles here for effect.
+
+Prefer the **opaque** variant on levels that use `ambient_light`: a transparent glyph has no pixels for the lighting pass to tint, so the void reads flat black instead of picking up the level's colour. Both are recognized as void either way (`globalVars.VOID_TILE_IDS`), so existing maps keep working.
 
 **floor** — Paint walkable areas. ![FLOOR](../assets/images/FLOOR.png) `FLOOR` (tile 158) is the standard floor tile, but any tiles can be used for decorative effect. Leave cells empty (null or tile 0) for impassable void.
 

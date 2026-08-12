@@ -125,6 +125,98 @@ class Architect {
         }
     }
 
+    /**
+     * Paint a tile pattern onto a layer by evaluating an ordered rule list at every
+     * cell — a small cellular automaton with designer-supplied rules.
+     *
+     * Rules are tried in order and the FIRST match wins, so put the most specific
+     * rule first. A rule is `{ when, paint }`:
+     *
+     *   when(ctx, x, y) → truthy to apply this rule at this cell
+     *   paint           → a tileId to write, or a function (ctx, x, y) → tileId.
+     *                     Returning null writes nothing and ends the cell (a rule
+     *                     can match purely to veto later rules).
+     *
+     * The `ctx` handed to callbacks carries the helpers a neighbour-sensitive rule
+     * needs, all layer-aware and bounds-safe:
+     *
+     *   ctx.get(x, y)            tileId on the target layer (null if empty/OOB)
+     *   ctx.is(x, y, v)          target-layer tile equals v (v may be an array)
+     *   ctx.on(layer, x, y)      tileId on any other layer
+     *   ctx.isOn(layer,x,y,v)    same equality test against another layer
+     *   ctx.inBounds(x, y)
+     *   ctx.width / ctx.height
+     *   ctx.paint(x, y, tileId)  write immediately — for rules that fill a run
+     *
+     * Options:
+     *   passes  (1)         run the whole grid N times; later passes see earlier output
+     *   order   ('rows')    'rows' = top-left → bottom-right, 'reverse' = the inverse.
+     *                       Scan order is load-bearing for self-referential rules, so
+     *                       it is explicit rather than implied.
+     *
+     * IMPORTANT — rules read the same layer they write, within a single pass. That
+     * is what lets a shape propagate (a diagonal continuing from the cell up-left of
+     * it), and it is also why a rule must not treat its own output as fresh input
+     * unless it means to. Guard on the values you paint, the way addBaseAndShadows
+     * excludes its paint values from `isUnpaintedVoid`.
+     *
+     * @returns {number} count of cells painted
+     */
+    applyTilePattern(layerName, rules, options = {}) {
+        const layer = this.getLayer(layerName);
+        if (!layer) {
+            console.warn(`applyTilePattern: unknown layer "${layerName}"`);
+            return 0;
+        }
+        if (!Array.isArray(rules) || rules.length === 0) return 0;
+
+        const passes = options.passes ?? 1;
+        const reverse = options.order === 'reverse';
+        let painted = 0;
+
+        const matches = (tileId, value) =>
+            Array.isArray(value) ? value.includes(tileId) : tileId === value;
+
+        const ctx = {
+            width: this.width,
+            height: this.height,
+            inBounds: (x, y) => x >= 0 && x < this.width && y >= 0 && y < this.height,
+            get: (x, y) => this.getTile(layerName, x, y),
+            is: (x, y, value) => matches(this.getTile(layerName, x, y), value),
+            on: (otherLayer, x, y) => this.getTile(otherLayer, x, y),
+            isOn: (otherLayer, x, y, value) => matches(this.getTile(otherLayer, x, y), value),
+            paint: (x, y, tileId) => {
+                this.setTile(layerName, x, y, tileId);
+                painted++;
+            }
+        };
+
+        for (let pass = 0; pass < passes; pass++) {
+            for (let i = 0; i < this.height; i++) {
+                const y = reverse ? this.height - 1 - i : i;
+                for (let j = 0; j < this.width; j++) {
+                    const x = reverse ? this.width - 1 - j : j;
+
+                    for (const rule of rules) {
+                        if (!rule || typeof rule.when !== 'function') continue;
+                        if (!rule.when(ctx, x, y)) continue;
+
+                        const tileId = typeof rule.paint === 'function'
+                            ? rule.paint(ctx, x, y)
+                            : rule.paint;
+                        if (tileId !== null && tileId !== undefined) {
+                            this.setTile(layerName, x, y, tileId);
+                            painted++;
+                        }
+                        break; // first match wins
+                    }
+                }
+            }
+        }
+
+        return painted;
+    }
+
     // ========================================================================
     // TILED MAP LOADING
     // ========================================================================
@@ -188,15 +280,38 @@ class Architect {
 
     processBackgroundLayer(layer) {
         console.log('Processing background layer...');
+
+        // Authored maps were painted with the transparent void tiles (a designer
+        // fills the background with FULL_BLOCK per docs/MAP.md), but a transparent
+        // glyph has no pixels for the lighting pass to tint, so ambient_light can't
+        // reach it. Remap the transparent family onto whatever the configured void
+        // style is, so authored maps match procedurally generated ones. Any other
+        // background tile a designer painted is decorative and passes through as-is.
+        const VOID_REMAP = {
+            217: globalVars.VOID_FILL,      // FULL_BLOCK
+            178: globalVars.VOID_SHADE,     // DARK_SHADE
+            128: globalVars.VOID_DIAGONAL   // shadow diagonal
+        };
+
+        let remapped = 0;
         for (let y = 0; y < layer.height; y++) {
             for (let x = 0; x < layer.width; x++) {
                 const index = y * layer.width + x;
                 const { tileId, flipH, flipV, flipD } = this.parseTileGID(layer.data[index]);
 
                 if (tileId > 0) {
-                    this.backgroundMap[y][x] = { tileId, layer: 'background', flipH, flipV, flipD };
+                    let id = tileId;
+                    if (VOID_REMAP[id] !== undefined && VOID_REMAP[id] !== id) {
+                        id = VOID_REMAP[id];
+                        remapped++;
+                    }
+                    this.backgroundMap[y][x] = { tileId: id, layer: 'background', flipH, flipV, flipD };
                 }
             }
+        }
+
+        if (remapped > 0) {
+            console.log(`Background: remapped ${remapped} authored void tiles to the opaque set`);
         }
     }
 
@@ -1004,7 +1119,7 @@ class Architect {
                     allVoidCells.add(key);
                     const [vx, vy] = key.split(',').map(Number);
                     this.floorMap[vy][vx] = null;
-                    this.backgroundMap[vy][vx] = { tileId: 217, layer: 'background' };
+                    this.backgroundMap[vy][vx] = { tileId: globalVars.VOID_FILL, layer: 'background' };
                     this.wallMap[vy][vx] = null;
                     this.overlayMap[vy][vx] = null;
                 }
@@ -1096,7 +1211,7 @@ class Architect {
         const isAbyss = (x, y) => {
             if (x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
             const bg = this.backgroundMap[y][x];
-            return bg && bg.tileId === 217 && this.floorMap[y][x] === null;
+            return bg && globalVars.VOID_TILE_IDS.includes(bg.tileId) && this.floorMap[y][x] === null;
         };
 
         const hasFloor = (x, y) => {
@@ -1348,12 +1463,11 @@ class Architect {
         const maxPatches = config.max || 2;
         const minPatchSize = config.minSize || 2;
         const maxPatchSize = config.maxSize || 5;
-        const BLACK_TILE = 217;
 
         const isAbyss = (x, y) => {
             if (x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
             const bg = this.backgroundMap[y][x];
-            return bg && bg.tileId === BLACK_TILE && this.floorMap[y][x] === null;
+            return bg && globalVars.VOID_TILE_IDS.includes(bg.tileId) && this.floorMap[y][x] === null;
         };
 
         const hasFloor = (x, y) => {
@@ -1427,7 +1541,7 @@ class Architect {
 
             for (const c of patch) {
                 this.floorMap[c.y][c.x] = null;
-                this.backgroundMap[c.y][c.x] = { tileId: BLACK_TILE, layer: 'background' };
+                this.backgroundMap[c.y][c.x] = { tileId: globalVars.VOID_FILL, layer: 'background' };
                 this.pendingCollapsingFloorSpawns.push(c);
                 usedCells.add(`${c.x},${c.y}`);
             }
@@ -4297,56 +4411,68 @@ class Architect {
      * 
      **/
     addBaseAndShadows() {
-        const BLACK_TILE = 217;
-        const DARK_SHADE = 178;
-        const SHADOW_DIAGONAL = 128;
+        // The three tile values live in globalVars (globals.js) — restyle every abyss
+        // in the game from there. SHADE and DIAGONAL are what this pass PAINTS;
+        // VOID_TILE_IDS is the wider set it RECOGNIZES as void, and it accepts both
+        // the transparent and opaque tile families because hand-authored Tiled maps
+        // embed either one (dungeon/map.tmj ships opaque, the rest transparent).
+        // Narrowing recognition to just the paint values would make maps in the other
+        // family stop registering as void, and this pass would draw nothing at all.
+        const SHADE = globalVars.VOID_SHADE;
+        const DIAGONAL = globalVars.VOID_DIAGONAL;
 
-        const hasFloor = (x, y) => {
-            if (x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
-            const floorTile = this.getTile('floor', x, y);
-            return floorTile !== null && floorTile !== BLACK_TILE;
+        // Flat void on the FLOOR layer means void, not walkable floor.
+        const hasFloor = (ctx, x, y) => {
+            const t = ctx.on('floor', x, y);
+            return t !== null && !globalVars.VOID_FLOOR_FILLS.includes(t);
         };
 
-        const bgEquals = (x, y, value) => {
-            if (x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
-            return this.getTile('background', x, y) === value;
+        // Void this pass hasn't painted over yet. Excluding the paint values is what
+        // stops the automaton re-reading its own output as fresh input.
+        const isUnpaintedVoid = (ctx, x, y) => {
+            const bg = ctx.get(x, y);
+            if (bg === null || bg === SHADE || bg === DIAGONAL) return false;
+            return globalVars.VOID_TILE_IDS.includes(bg);
         };
 
-        const isFloorAbove = (x, y) => hasFloor(x, y - 1);
-        const isFloorLeft = (x, y) => hasFloor(x - 1, y);
-        const isFloorUpperLeft = (x, y) => hasFloor(x - 1, y - 1);
-        const isDiagonalLeft = (x, y) => bgEquals(x - 1, y, SHADOW_DIAGONAL);
-        const isDiagonalUpperLeft = (x, y) => bgEquals(x - 1, y - 1, SHADOW_DIAGONAL);
-        const isDarkShadeAbove = (x, y) => bgEquals(x, y - 1, DARK_SHADE);
+        // Only unpainted void with no floor is eligible; every rule below assumes it.
+        const eligible = (ctx, x, y) => isUnpaintedVoid(ctx, x, y) && !hasFloor(ctx, x, y);
 
-        for (let y = 0; y < this.height; y++) {
-            for (let x = 0; x < this.width; x++) {
-                if (!bgEquals(x, y, BLACK_TILE)) continue;
-                if (hasFloor(x, y)) continue;
+        this.applyTilePattern('background', [
+            // 1. Start a diagonal at the top-left corner of a cliff drop.
+            {
+                when: (ctx, x, y) => eligible(ctx, x, y) &&
+                    hasFloor(ctx, x, y - 1) &&
+                    (hasFloor(ctx, x - 1, y) || !hasFloor(ctx, x - 1, y - 1)),
+                paint: DIAGONAL
+            },
 
-                if (isFloorAbove(x, y) && (isFloorLeft(x, y) || !isFloorUpperLeft(x, y))) {
-                    this.setTile('background', x, y, SHADOW_DIAGONAL);
-                    continue;
-                }
+            // 2. Continue the diagonal down-right: reads the cell rule 1 wrote
+            //    up-left of here, plus shade already laid down directly above.
+            {
+                when: (ctx, x, y) => eligible(ctx, x, y) &&
+                    ctx.is(x - 1, y - 1, DIAGONAL) &&
+                    ctx.is(x, y - 1, SHADE),
+                paint: DIAGONAL
+            },
 
-                if (isDiagonalUpperLeft(x, y) && isDarkShadeAbove(x, y)) {
-                    this.setTile('background', x, y, SHADOW_DIAGONAL);
-                    continue;
-                }
-
-                if (isDiagonalLeft(x, y) && (isFloorAbove(x, y) || isDarkShadeAbove(x, y))) {
-                    let xPos = x;
-                    while (xPos < this.width &&
-                           bgEquals(xPos, y, BLACK_TILE) &&
-                           !hasFloor(xPos, y) &&
-                           (hasFloor(xPos, y - 1) || bgEquals(xPos, y - 1, DARK_SHADE))) {
-                        this.setTile('background', xPos, y, DARK_SHADE);
-                        xPos++;
+            // 3. Flood the shadow body rightward from a diagonal edge, for as long as
+            //    the run stays void, floorless and sheltered from above. Paints the
+            //    whole run itself, so it returns null to avoid a second write here.
+            {
+                when: (ctx, x, y) => eligible(ctx, x, y) &&
+                    ctx.is(x - 1, y, DIAGONAL) &&
+                    (hasFloor(ctx, x, y - 1) || ctx.is(x, y - 1, SHADE)),
+                paint: (ctx, x, y) => {
+                    for (let xPos = x; xPos < ctx.width; xPos++) {
+                        if (!eligible(ctx, xPos, y)) break;
+                        if (!hasFloor(ctx, xPos, y - 1) && !ctx.is(xPos, y - 1, SHADE)) break;
+                        ctx.paint(xPos, y, SHADE);
                     }
-                    continue;
+                    return null;
                 }
             }
-        }
+        ]);
     }
 
     // ========================================================================

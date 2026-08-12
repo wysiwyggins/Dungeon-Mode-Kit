@@ -11179,11 +11179,13 @@ class EntityManager {
         if (!wallData) return;
 
         const DUG_FLOOR_TILE = 135;
-        // Void backgrounds: flat black (217) plus the cliffside shading tiles that
-        // addBaseAndShadows (architect.js) paints ALONG abyss edges — SHADOW_DIAGONAL
-        // (128) and DARK_SHADE (178). Those are only ever set on floorless 217 cells,
-        // so all three still mean "bottomless void", just rendered as a shaded cliff.
-        const VOID_BG_TILES = new Set([217, 178, 128]);
+        // Void backgrounds: the flat void fill plus the cliffside shading that
+        // addBaseAndShadows (architect.js) paints along abyss edges. All of them are
+        // only ever set on floorless cells, so each still means "bottomless void",
+        // just rendered as a shaded cliff. Sourced from globalVars so it cannot drift
+        // out of sync with what the generator paints — if a shaded cliff cell stopped
+        // reading as void here, digging beside an abyss would pave over the pit.
+        const VOID_BG_TILES = new Set(globalVars.VOID_TILE_IDS);
         const clearedSet = new Set(clearedPositions.map(p => `${p.x},${p.y}`));
 
         // An abyss cell (void background, no floor) is a deliberate bottomless pit —
@@ -13771,6 +13773,16 @@ class RenderSystem {
                 const overlaySprite = this.overlaySprites[y]?.[x];
                 if (overlaySprite) {
                     overlaySprite.tint = lightingManager.getOverlayTint(x, y, fogOfWar);
+                }
+
+                // Background tiles (void fill and the cliffside shading from
+                // addBaseAndShadows) are floorless, so the light-color overlay layer
+                // skips them entirely — see getLightColorOverlay's hasFloor gate. They
+                // carry the ambient hue as a sprite tint instead, or ambient_light
+                // would never reach the background layer at all.
+                const backgroundSprite = this.backgroundSprites[y]?.[x];
+                if (backgroundSprite) {
+                    backgroundSprite.tint = lightingManager.getBackgroundTint(x, y, fogOfWar);
                 }
             }
         }

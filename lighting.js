@@ -849,6 +849,44 @@ class LightingManager {
         return (r << 16) | (g << 8) | b;
     }
 
+    /**
+     * The tint a background-layer tile should end up with. Background tiles are the
+     * void fill and the cliffside shading that addBaseAndShadows paints (architect.js),
+     * and they render BELOW the darkness layer — but they still need the ambient hue
+     * applied directly, because getLightColorOverlay deliberately skips any cell
+     * without a floor tile, and void cells are floorless by definition. Without this
+     * the background layer ignored ambient_light entirely and read as flat black.
+     *
+     * Same light-color + darkness compositing as getOverlayTint. Uses
+     * getOverlayDarknessAlpha rather than getDarknessAlpha so an explored cliff edge
+     * keeps its ambient colour instead of being clipped to black the moment the
+     * player loses line of sight to it. Returns 0xRRGGBB; 0xFFFFFF means untinted.
+     */
+    getBackgroundTint(x, y, fogOfWar = false) {
+        const light = this.getLightLevel(x, y);
+        const lightTint = this.getLightTint(light);
+        const darkness = this.getOverlayDarknessAlpha(x, y, fogOfWar);
+
+        // Light-color overlay: multiply toward the light hue by its alpha.
+        let r = (lightTint >> 16) & 0xFF;
+        let g = (lightTint >> 8) & 0xFF;
+        let b = lightTint & 0xFF;
+        const colorAlpha = (light.intensity > 0 && lightTint !== 0xFFFFFF)
+            ? Math.min(0.5, light.intensity * 0.5)
+            : 0;
+        r = Math.round(255 * (1 - colorAlpha) + r * colorAlpha);
+        g = Math.round(255 * (1 - colorAlpha) + g * colorAlpha);
+        b = Math.round(255 * (1 - colorAlpha) + b * colorAlpha);
+
+        // Darkness: black at `darkness.alpha` scales brightness down.
+        const dim = 1 - darkness.alpha;
+        r = Math.round(r * dim);
+        g = Math.round(g * dim);
+        b = Math.round(b * dim);
+
+        return (r << 16) | (g << 8) | b;
+    }
+
     reset() {
         // Clean up shadow entities
         for (const entity of this.shadowEntities.values()) {

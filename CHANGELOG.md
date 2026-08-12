@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `MapManager.applyTilePattern(layer, rules, options)` — paints a tile pattern onto a layer by evaluating an ordered `{ when, paint }` rule list at every cell, first match winning. `addBaseAndShadows` is now three rules over it instead of hand-rolled nested loops.
+- Void tile ids live in `globalVars` (`VOID_FILL`/`VOID_SHADE`/`VOID_DIAGONAL`, plus the `VOID_TILE_IDS` recognition set), so an abyss can be restyled from one place instead of five scattered literals.
 - Actor **types** — reusable bundles of actor defaults, inherited with `"type": "beast"`. Defaults in `data/types.json`, per-prototype overrides in `prototypes/<name>/types.json`, resolved in `Prototype.getActorData()`. Ships `beast`, `undead`, `humanoid`, `terrain`. The actor's own keys win; `attributes`/`stats`/`collision_effect` merge one level deep, `null` unsets. See [docs/TYPES.md](docs/TYPES.md).
 - Type dropdown in the actor editor, showing what the selected type contributes.
 
@@ -22,12 +24,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- The weapon tile that flashes during an attack now points at the actor being hit, mirroring horizontally, vertically, or both for a diagonal. It was always drawn in the weapon art's authored orientation, so every blow read as up-and-left regardless of which neighbour took it.
-- Skeletons no longer get poisoned — `undead` grants `poison_immune`/`gas_immune`. The immunity vocabulary was already in `states.json`; no actor had declared it.
+- ### Changed
+
+- refactored addBaseAndShadows() away from old hardcoded tile id's that prevented tinting backgrounds and re-included background layer in the lighting pass
+- The weapon tile that flashes during an attack now points at the actor being hit, mirroring horizontally, vertically, or both for a diagonal.
+- Type based state immunity tweaks.
 - The keybindings screen's private key-name formatter moved to `InputManager.formatKeyName()` and is shared.
 - Prototype editor's Advanced section listed `floors`, `floor_plan` and `biomes` as unrecognized keys it couldn't edit, even though the Floor plan section manages them — `KNOWN_TOP_KEYS` was never updated when biomes landed. The dungeon was the visible case.
 - Fixed tab targeting offered water, lava, fire, gas clouds and **hidden traps** as travel destinations.
-- A floor's up and down stairways could generate right next to each other, making the floor skippable in a step. `pickStairwayTile` now prefers tiles at least `STAIRWAY_MIN_SEPARATION` (8) tiles from the already-placed stairway, falling back to any tile when a cramped floor has nothing far enough. Region and wall-niche preferences still apply within the spaced set.
+- A floor's up and down stairways could generate right next to each other, making the floor skippable in a step. `pickStairwayTile` now prefers tiles at least `STAIRWAY_MIN_SEPARATION` (8) tiles from the already-placed stairway.
 - fixed stairways generating on the lip of abysses.
 - The `caves` biome rooms mostly failed to place due to size, resized.
 - Fixed burning actors stepping into water not extinguishing.
