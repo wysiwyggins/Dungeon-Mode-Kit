@@ -19,28 +19,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `applyState()` works on **any** actor now — a tree can burn, a boulder can get stuck. Only mind-states (anything altering how a holder takes turns) and player-perception states still need `sentient`/`controlled`, derived from properties the states already had. New `applyCreatureState()` for callers that mean "affect a creature."
 - A prototype's `actors.json` **supplements** the base actor instead of replacing it, so an override states only what it changes. **Behavior change:** six overrides that omitted keys their base declares now inherit them — `arena/player` and `labyrinth/player` gain `sentient`. Use `null` to unset deliberately.
 - 25 actors converted to types, cutting 57 lines from `actors.json`.
-- All random word lists consolidated into `data/words.json`].
+- All random word lists consolidated into `data/words.json`.
 - Dropped the vestigial `sighted` attribute from the actor editor.
-
-### Fixed
-
-- ### Changed
-
 - refactored addBaseAndShadows() away from old hardcoded tile id's that prevented tinting backgrounds and re-included background layer in the lighting pass
-- The darkness overlay was using the opaque full block picked up during that refactor; back to the translucent `FULL_BLOCK`, now resolved by name rather than by hardcoded spritesheet coordinates.
 - The weapon tile that flashes during an attack now points at the actor being hit, mirroring horizontally, vertically, or both for a diagonal.
 - Type based state immunity tweaks.
 - The keybindings screen's private key-name formatter moved to `InputManager.formatKeyName()` and is shared.
 - Prototype editor's Advanced section listed `floors`, `floor_plan` and `biomes` as unrecognized keys it couldn't edit, even though the Floor plan section manages them — `KNOWN_TOP_KEYS` was never updated when biomes landed. The dungeon was the visible case.
 - Fixed tab targeting offered water, lava, fire, gas clouds and **hidden traps** as travel destinations.
 - A floor's up and down stairways could generate right next to each other, making the floor skippable in a step. `pickStairwayTile` now prefers tiles at least `STAIRWAY_MIN_SEPARATION` (8) tiles from the already-placed stairway.
+- burning state damage per turn added
+
+### Fixed
+
+- tinting background layers, see changed
 - fixed stairways generating on the lip of abysses.
 - The `caves` biome rooms mostly failed to place due to size, resized.
 - Fixed burning actors stepping into water not extinguishing.
 - Fixed actors falling twice in collapsable floors and pushable actors not triggering collapse.
 - `apply_state_radius` counted immune creatures in its "N creatures are affected" message.
 - `docs/ACTORS.md` claimed actors are `flammable` by default; the engine defaults it to `false`.
-- burning state damage per turn added
 
 ## [1.16b]
 

@@ -1411,6 +1411,11 @@ class Architect {
 
         const usedCells = new Set();
         let placed = 0;
+        // Distinguishes one crossing's cells from another's in spawnPendingBridges.
+        // The two crossings of the SAME blob deliberately share this id so their
+        // shared cell still resolves to a "+" junction; unrelated bridges that merely
+        // run next to each other get different ids and cannot bend each other's tiles.
+        let crossingGroupId = 0;
 
         for (const blob of blobs) {
             if (placed >= maxBridges) break;
@@ -1424,6 +1429,8 @@ class Architect {
             // another blob. The two crossings of THIS blob are allowed to overlap each
             // other (that overlap is the intersection).
             if (crossings.some(cr => cr.cells.some(c => usedCells.has(`${c.x},${c.y}`)))) continue;
+
+            crossingGroupId++;
 
             for (const crossing of crossings) {
                 // Open any boundary walls the bridge lands on so the shore is walkable.
@@ -1445,8 +1452,11 @@ class Architect {
                     // behind when the bridge burns instead of revealing the void below.
                     // Orientation (dir) is recorded per cell, but the final box-drawing
                     // tile is chosen from bridge-cell adjacency in spawnPendingBridges so
-                    // the intersection cell becomes a proper "+" junction.
-                    this.pendingBridgeSpawns.push({ x: c.x, y: c.y, dir: crossing.dir });
+                    // the intersection cell becomes a proper "+" junction. crossingGroup
+                    // scopes that adjacency test to this blob's own crossings.
+                    this.pendingBridgeSpawns.push({
+                        x: c.x, y: c.y, dir: crossing.dir, crossingGroup: crossingGroupId
+                    });
                     usedCells.add(ck);
                 }
                 console.log(`  Bridge: ${crossing.length} tiles (${crossing.dir === 'h' ? 'horizontal' : 'vertical'})`);
@@ -2460,13 +2470,20 @@ class Architect {
         // vertical crossing meet, the shared cell becomes a "+" (or a T at a wall)
         // junction. Endpoints (one connection) fall back to the straight tile for
         // their axis. Every pattern maps to a tile in data/static-tiles.json.
-        const cellSet = new Set(this.pendingBridgeSpawns.map(p => `${p.x},${p.y}`));
-        const has = (x, y) => cellSet.has(`${x},${y}`);
+        // Keyed by crossing group, not by bare position: two unrelated bridges that
+        // happen to run alongside each other must not read as connected, or a
+        // vertical run picks up a phantom east/west neighbour and renders as a T or
+        // a corner. Cells of one blob's h and v crossings share a group, so a real
+        // intersection still resolves to "+".
+        const cellSet = new Set(
+            this.pendingBridgeSpawns.map(p => `${p.crossingGroup}:${p.x},${p.y}`)
+        );
+        const has = (group, x, y) => cellSet.has(`${group}:${x},${y}`);
         const tileNameFor = (pos) => {
-            const n = has(pos.x, pos.y - 1);
-            const s = has(pos.x, pos.y + 1);
-            const e = has(pos.x + 1, pos.y);
-            const w = has(pos.x - 1, pos.y);
+            const n = has(pos.crossingGroup, pos.x, pos.y - 1);
+            const s = has(pos.crossingGroup, pos.x, pos.y + 1);
+            const e = has(pos.crossingGroup, pos.x + 1, pos.y);
+            const w = has(pos.crossingGroup, pos.x - 1, pos.y);
             const count = (n ? 1 : 0) + (s ? 1 : 0) + (e ? 1 : 0) + (w ? 1 : 0);
             if (count >= 3) {
                 if (n && s && e && w) return 'WHITE_BOX_VERTICAL_HORIZONTAL'; // +

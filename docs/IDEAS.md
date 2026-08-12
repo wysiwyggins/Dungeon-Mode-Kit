@@ -1,8 +1,6 @@
 
 ## Bugs
 
-- I just saw a vertical bridge that was made out of horizontal box drawing tiles, however on another level I saw a correct vertical box drawing tile vertical bridge, so this issue is intermittent. might have been related to a stairway being placed below the bridge.
-
 ## Tweaks
 
 - sidebar message when an actor other than the player picks up an item. I feel like message worthy events should be covered already by general underlying logic rather than doing this case by case.

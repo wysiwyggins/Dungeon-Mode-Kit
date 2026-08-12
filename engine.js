@@ -5418,6 +5418,24 @@ class Actor extends Entity {
             return false;
         }
 
+        // Pickups are reported for whoever the player can actually watch doing it:
+        // "You pick up a dagger" for the player, "A goblin picks up a dagger" for
+        // anyone else standing on a visible tile. Off-screen NPC pickups stay silent
+        // so the log doesn't narrate things the player has no way of knowing.
+        // trailing text is appended after the sentence period, e.g. " (3 total)".
+        const announcePickup = (trailing = '', options) => {
+            const input = this.engine.inputManager;
+            const named = input?.getEntityNameWithArticle(item)
+                || (item.getDisplayName ? item.getDisplayName() : item.name);
+            if (this.isPlayerControlled()) {
+                input?.showMessage(`You pick up ${named}.${trailing}`, options);
+            } else if (this.engine.isTileVisible(this.x, this.y)) {
+                const actorNamed = input?.getEntityNameWithArticle(this, { capitalize: true })
+                    || this.name;
+                input?.showMessage(`${actorNamed} picks up ${named}.${trailing}`, options);
+            }
+        };
+
         // Merge into an existing, indistinguishable stack (see Item.canStackWith)
         if (item.getAttribute('stackable')) {
             const existing = this.inventory.find(inv => inv.canStackWith(item));
@@ -5426,11 +5444,10 @@ class Actor extends Entity {
                 this.engine.entityManager.removeEntity(item);
                 if (this.isPlayerControlled()) {
                     this.engine.playSound(item.getAttribute('pickup_sound') || 'tone3');
-                    const named = this.engine.inputManager?.getEntityNameWithArticle(item)
-                        || (item.getDisplayName ? item.getDisplayName() : item.name);
-                    this.engine.inputManager?.showMessage(
-                        `You pick up ${named}. (${existing.count} total)`
-                    );
+                    // Only the player's own stack count is meaningful to report.
+                    announcePickup(` (${existing.count} total)`);
+                } else {
+                    announcePickup();
                 }
                 return true;
             }
@@ -5471,21 +5488,21 @@ class Actor extends Entity {
             this.inventory = this.inventory.filter(i => i !== item);
         }
 
-        // Play pickup sound and show message if this is the player
+        // The pickup sound is the player's own feedback, so it stays player-only;
+        // the message goes to anyone the player can see (announcePickup decides).
         if (this.isPlayerControlled()) {
-            const pickupSound = item.getAttribute('pickup_sound') || 'tone3';
-            this.engine.playSound(pickupSound);
+            this.engine.playSound(item.getAttribute('pickup_sound') || 'tone3');
+        }
 
-            // Show pickup message in description element
+        if (pickupEffect && item.value && this.isPlayerControlled()) {
+            // Value only reads as meaningful for the player's own take.
             const named = this.engine.inputManager?.getEntityNameWithArticle(item)
                 || (item.getDisplayName ? item.getDisplayName() : item.name);
-
-            // Show value if item had one
-            if (pickupEffect && item.value) {
-                this.engine.inputManager?.showMessage(`You pick up ${named} worth ${item.value}.`, { style: 'discovery' });
-            } else {
-                this.engine.inputManager?.showMessage(`You pick up ${named}.`, { style: 'discovery' });
-            }
+            this.engine.inputManager?.showMessage(
+                `You pick up ${named} worth ${item.value}.`, { style: 'discovery' }
+            );
+        } else {
+            announcePickup('', { style: 'discovery' });
         }
 
         // Auto-equip wearable items. NPCs always auto-equip; the player only
@@ -13685,11 +13702,11 @@ class RenderSystem {
         const tileset = PIXI.Loader.shared.resources.tiles;
         if (!tileset) return;
 
-        // The darkness overlay wants the translucent FULL_BLOCK, not the opaque
-        // variant addBaseAndShadows paints — shadowcasting reads better when the
-        // tile it dims through still lets some of the art below show up.
-        const blockCoords = this.engine.spriteLibrary.getTileByName('FULL_BLOCK')
-            || { x: 9, y: 9 };
+        // The darkness overlay must use OPAQUE_FULL_BLOCK. The translucent FULL_BLOCK
+        // has gaps that let unexplored fog-of-war cells show through underneath cast
+        // shadows on dark levels, so hidden map is faintly readable.
+        const blockCoords = this.engine.spriteLibrary.getTileByName('OPAQUE_FULL_BLOCK')
+            || { x: 0, y: 10 };
         const rect = new PIXI.Rectangle(
             blockCoords.x * globalVars.TILE_WIDTH,
             blockCoords.y * globalVars.TILE_HEIGHT,
