@@ -132,21 +132,22 @@ class Architect {
      * Rules are tried in order and the FIRST match wins, so put the most specific
      * rule first. A rule is `{ when, paint }`:
      *
-     *   when(ctx, x, y) → truthy to apply this rule at this cell
-     *   paint           → a tileId to write, or a function (ctx, x, y) → tileId.
-     *                     Returning null writes nothing and ends the cell (a rule
-     *                     can match purely to veto later rules).
+     *   when(tileContext, x, y) → truthy to apply this rule at this cell
+     *   paint                   → a tileId to write, or a function
+     *                     (tileContext, x, y) → tileId. Returning null writes
+     *                     nothing and ends the cell (a rule can match purely to
+     *                     veto later rules).
      *
-     * The `ctx` handed to callbacks carries the helpers a neighbour-sensitive rule
-     * needs, all layer-aware and bounds-safe:
+     * The `tileContext` handed to callbacks carries the helpers a neighbour-sensitive
+     * rule needs:
      *
-     *   ctx.get(x, y)            tileId on the target layer (null if empty/OOB)
-     *   ctx.is(x, y, v)          target-layer tile equals v (v may be an array)
-     *   ctx.on(layer, x, y)      tileId on any other layer
-     *   ctx.isOn(layer,x,y,v)    same equality test against another layer
-     *   ctx.inBounds(x, y)
-     *   ctx.width / ctx.height
-     *   ctx.paint(x, y, tileId)  write immediately — for rules that fill a run
+     *   tileContext.get(x, y)            tileId on the target layer (null if empty/OOB)
+     *   tileContext.is(x, y, v)          target-layer tile equals v (v may be an array)
+     *   tileContext.on(layer, x, y)      tileId on any other layer
+     *   tileContext.isOn(layer,x,y,v)    same equality test against another layer
+     *   tileContext.inBounds(x, y)
+     *   tileContext.width / tileContext.height
+     *   tileContext.paint(x, y, tileId)  write immediately — for rules that fill a run
      *
      * Options:
      *   passes  (1)         run the whole grid N times; later passes see earlier output
@@ -177,7 +178,7 @@ class Architect {
         const matches = (tileId, value) =>
             Array.isArray(value) ? value.includes(tileId) : tileId === value;
 
-        const ctx = {
+        const tileContext = {
             width: this.width,
             height: this.height,
             inBounds: (x, y) => x >= 0 && x < this.width && y >= 0 && y < this.height,
@@ -199,10 +200,10 @@ class Architect {
 
                     for (const rule of rules) {
                         if (!rule || typeof rule.when !== 'function') continue;
-                        if (!rule.when(ctx, x, y)) continue;
+                        if (!rule.when(tileContext, x, y)) continue;
 
                         const tileId = typeof rule.paint === 'function'
-                            ? rule.paint(ctx, x, y)
+                            ? rule.paint(tileContext, x, y)
                             : rule.paint;
                         if (tileId !== null && tileId !== undefined) {
                             this.setTile(layerName, x, y, tileId);
@@ -4411,48 +4412,43 @@ class Architect {
      * 
      **/
     addBaseAndShadows() {
-        // The three tile values live in globalVars (globals.js) — restyle every abyss
-        // in the game from there. SHADE and DIAGONAL are what this pass PAINTS;
-        // VOID_TILE_IDS is the wider set it RECOGNIZES as void, and it accepts both
-        // the transparent and opaque tile families because hand-authored Tiled maps
-        // embed either one (dungeon/map.tmj ships opaque, the rest transparent).
-        // Narrowing recognition to just the paint values would make maps in the other
-        // family stop registering as void, and this pass would draw nothing at all.
+        // The three tile values live in globalVars (globals.js)
         const SHADE = globalVars.VOID_SHADE;
         const DIAGONAL = globalVars.VOID_DIAGONAL;
 
         // Flat void on the FLOOR layer means void, not walkable floor.
-        const hasFloor = (ctx, x, y) => {
-            const t = ctx.on('floor', x, y);
+        const hasFloor = (tileContext, x, y) => {
+            const t = tileContext.on('floor', x, y);
             return t !== null && !globalVars.VOID_FLOOR_FILLS.includes(t);
         };
 
         // Void this pass hasn't painted over yet. Excluding the paint values is what
         // stops the automaton re-reading its own output as fresh input.
-        const isUnpaintedVoid = (ctx, x, y) => {
-            const bg = ctx.get(x, y);
+        const isUnpaintedVoid = (tileContext, x, y) => {
+            const bg = tileContext.get(x, y);
             if (bg === null || bg === SHADE || bg === DIAGONAL) return false;
             return globalVars.VOID_TILE_IDS.includes(bg);
         };
 
         // Only unpainted void with no floor is eligible; every rule below assumes it.
-        const eligible = (ctx, x, y) => isUnpaintedVoid(ctx, x, y) && !hasFloor(ctx, x, y);
+        const eligible = (tileContext, x, y) =>
+            isUnpaintedVoid(tileContext, x, y) && !hasFloor(tileContext, x, y);
 
         this.applyTilePattern('background', [
             // 1. Start a diagonal at the top-left corner of a cliff drop.
             {
-                when: (ctx, x, y) => eligible(ctx, x, y) &&
-                    hasFloor(ctx, x, y - 1) &&
-                    (hasFloor(ctx, x - 1, y) || !hasFloor(ctx, x - 1, y - 1)),
+                when: (tileContext, x, y) => eligible(tileContext, x, y) &&
+                    hasFloor(tileContext, x, y - 1) &&
+                    (hasFloor(tileContext, x - 1, y) || !hasFloor(tileContext, x - 1, y - 1)),
                 paint: DIAGONAL
             },
 
             // 2. Continue the diagonal down-right: reads the cell rule 1 wrote
             //    up-left of here, plus shade already laid down directly above.
             {
-                when: (ctx, x, y) => eligible(ctx, x, y) &&
-                    ctx.is(x - 1, y - 1, DIAGONAL) &&
-                    ctx.is(x, y - 1, SHADE),
+                when: (tileContext, x, y) => eligible(tileContext, x, y) &&
+                    tileContext.is(x - 1, y - 1, DIAGONAL) &&
+                    tileContext.is(x, y - 1, SHADE),
                 paint: DIAGONAL
             },
 
@@ -4460,14 +4456,14 @@ class Architect {
             //    the run stays void, floorless and sheltered from above. Paints the
             //    whole run itself, so it returns null to avoid a second write here.
             {
-                when: (ctx, x, y) => eligible(ctx, x, y) &&
-                    ctx.is(x - 1, y, DIAGONAL) &&
-                    (hasFloor(ctx, x, y - 1) || ctx.is(x, y - 1, SHADE)),
-                paint: (ctx, x, y) => {
-                    for (let xPos = x; xPos < ctx.width; xPos++) {
-                        if (!eligible(ctx, xPos, y)) break;
-                        if (!hasFloor(ctx, xPos, y - 1) && !ctx.is(xPos, y - 1, SHADE)) break;
-                        ctx.paint(xPos, y, SHADE);
+                when: (tileContext, x, y) => eligible(tileContext, x, y) &&
+                    tileContext.is(x - 1, y, DIAGONAL) &&
+                    (hasFloor(tileContext, x, y - 1) || tileContext.is(x, y - 1, SHADE)),
+                paint: (tileContext, x, y) => {
+                    for (let xPos = x; xPos < tileContext.width; xPos++) {
+                        if (!eligible(tileContext, xPos, y)) break;
+                        if (!hasFloor(tileContext, xPos, y - 1) && !tileContext.is(xPos, y - 1, SHADE)) break;
+                        tileContext.paint(xPos, y, SHADE);
                     }
                     return null;
                 }
