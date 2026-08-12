@@ -14,10 +14,8 @@
 - We should be able to turn off biomes on a multi-level prototype and just use defaults- change floor plan section name to 'biome plan' or something, add a toggle to disable
 - evenly place more braziers or torches in large shaped rooms. Maybe we should switch to torch actors as walls and a single brazier in the middle of some large, shaped rooms.
 - flip the weapon tile that flashes during attacks in the direction of the actor being attacked.
-- "press travel to go" in tab-selected targeting should be "press [explore key] to go" with [explore key] being the actual key set to explore (x by default).
 - item names and descriptions should be able to use template variables like [color] too, not just unidentified_description. How does the lever actor get color words in its name when paired? I would have expected to see that in the actor data, not just hardcoded, this would show a reusable precedent for templated strings in data.
 - should the "map generator" section in prototype defaults be a biomes/single generator/authored map radio button selection? We can eliminate some of this with the single level/multi level toggle. A single level is either a single generator or an authored map, hiding biome stuff. A multi level is either a single generator or biomes with level overrides for authored maps. the current "No procedural generator — the map comes from a hand-authored .tmj. Placed features below still apply." message when a single generator default isn't enabled is misleading, and when the section is disabled we don't expect to be able to set placed features, despite the message saying otherwise.
-- word lists in data should be named in a way that indicates they are just words, 'attacks.json' sounds like a list of reusable actor attacks, not a list of random verbs for describing them
 
 ---
 

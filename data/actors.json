@@ -21,7 +21,7 @@
       "remains": "skull",
       "accuracy": 50,
       "opaque": false,
-      "strength": 1
+      "strength": 5
     },
     "stats": {
       "health": {

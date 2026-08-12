@@ -888,7 +888,7 @@ class InputManager {
 
         this.exploreArmed = true;
         this.exploreArmedTarget = target;
-        this.showMessage(`Explore: press [${this.getKeyForAction('explore', 'explore')}] again to travel.`);
+        this.showMessage(`Explore: press [${this.getKeyForAction('explore', 'x')}] again to travel.`);
     }
 
     /**
@@ -1039,7 +1039,9 @@ class InputManager {
         this.exploreArmedTarget = { ...target, travel: true };
 
         const label = target.entity?.name || (target.kind === 'item' ? 'item' : 'target');
-        const goKey = this.getKeyForAction('explore', 'explore');
+        // Fall back to the default binding rather than the action name — an unbound
+        // explore would otherwise render as the useless "press [explore] to go".
+        const goKey = this.getKeyForAction('explore', 'x');
         this.showMessage(`Target: ${label} (${this.targetCycleIndex + 1}/${targets.length}) — press [${goKey}] to go.`);
     }
 

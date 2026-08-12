@@ -407,7 +407,7 @@ Templates support substitution tokens in `[brackets]`:
 | `[glyph_name]` | Random runic name assigned to this item type (requires `random_glyph_name: true`) |
 | `[reagents.reagents]` | Random entry from `data/reagents.json` |
 | `[substances.substances]` | Random entry from `data/substances.json` |
-| `[adjectives.yucky]` | Random entry from the `yucky` list in `data/adjectives.json` |
+| `[adjectives.yucky]` | Random entry from the `adjectives.yucky` list in `data/words.json` |
 | `[item_name]` | The item's current display name (identified or not) |
 
 ### Potions

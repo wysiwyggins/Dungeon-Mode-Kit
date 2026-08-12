@@ -304,7 +304,7 @@ Attack descriptions use template substitution:
 - `[actor_name]`: The attacker's name
 - `[attacked_actor_name]`: The target's name
 - `[weapon_name]`: Equipped weapon's name (if any)
-- `[attacks.melee_verbs]`: Random verb from `attacks.json` melee_verbs array
+- `[attacks.melee_verbs]`: Random verb from the `attacks.melee_verbs` list in `words.json`
 - `[attacks.miss_verbs]`: Random verb from miss_verbs array
 - `[a-an]`: Automatically selects "a" or "an" based on following word
 

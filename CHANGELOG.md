@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `applyState()` works on **any** actor now — a tree can burn, a boulder can get stuck. Only mind-states (anything altering how a holder takes turns) and player-perception states still need `sentient`/`controlled`, derived from properties the states already had. New `applyCreatureState()` for callers that mean "affect a creature."
 - A prototype's `actors.json` **supplements** the base actor instead of replacing it, so an override states only what it changes. **Behavior change:** six overrides that omitted keys their base declares now inherit them — `arena/player` and `labyrinth/player` gain `sentient`. Use `null` to unset deliberately.
 - 25 actors converted to types, cutting 57 lines from `actors.json`.
+- All random word lists consolidated into `data/words.json`].
 - Dropped the vestigial `sighted` attribute from the actor editor.
 
 ### Fixed

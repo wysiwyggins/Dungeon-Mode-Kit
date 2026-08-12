@@ -973,14 +973,12 @@ class DungeonEngine {
     async loadGlobalData() {
         try {
             // Load global entity definitions
-            const [actorsRes, itemsRes, personalitiesRes, entitiesRes, colorsRes, adjectivesRes, attacksRes, reagentsRes, substancesRes, statesRes, wordsRes, effectsRes, keybindingsRes, fungiTypesRes, biomesRes, typesRes] = await Promise.all([
+            const [actorsRes, itemsRes, personalitiesRes, entitiesRes, colorsRes, reagentsRes, substancesRes, statesRes, wordsRes, effectsRes, keybindingsRes, fungiTypesRes, biomesRes, typesRes] = await Promise.all([
                 fetch(`${globalVars.BASE_PATH}/data/actors.json`),
                 fetch(`${globalVars.BASE_PATH}/data/items.json`),
                 fetch(`${globalVars.BASE_PATH}/data/personalities.json`),
                 fetch(`${globalVars.BASE_PATH}/data/entities.json`),
                 fetch(`${globalVars.BASE_PATH}/data/colors.json`),
-                fetch(`${globalVars.BASE_PATH}/data/adjectives.json`),
-                fetch(`${globalVars.BASE_PATH}/data/attacks.json`),
                 fetch(`${globalVars.BASE_PATH}/data/reagents.json`),
                 fetch(`${globalVars.BASE_PATH}/data/substances.json`),
                 fetch(`${globalVars.BASE_PATH}/data/states.json`),
@@ -998,8 +996,6 @@ class DungeonEngine {
             this.globalEntities = await entitiesRes.json();
             const colorsData = await colorsRes.json();
             this.globalColors = colorsData.colors || [];
-            this.globalAdjectives = await adjectivesRes.json();
-            this.globalAttacks = await attacksRes.json();
 
             // Load reagents and sample a random subset to keep in memory
             const fullReagents = await reagentsRes.json();
@@ -1011,8 +1007,13 @@ class DungeonEngine {
             // Load actor states (burning, poisoned, stunned, etc.)
             this.globalStates = await statesRes.json();
 
-            // Load scroll glyph words for scroll name generation
+            // Every random word list lives in words.json, namespaced by topic
+            // (attacks, defenses, adjectives, scrolls). The `[file.category]`
+            // description templates name those namespaces, so the slices below
+            // keep the template syntax stable now that the files are merged.
             this.globalWords = await wordsRes.json();
+            this.globalAdjectives = this.globalWords.adjectives || {};
+            this.globalAttacks = this.globalWords.attacks || {};
 
             // Load visual effects definitions
             this.globalEffects = await effectsRes.json();
@@ -1039,8 +1040,7 @@ class DungeonEngine {
                 personalities: Object.keys(this.globalPersonalities).length,
                 entities: Object.keys(this.globalEntities).length,
                 colors: this.globalColors.length,
-                adjectives: Object.keys(this.globalAdjectives).length,
-                attacks: Object.keys(this.globalAttacks).length,
+                wordLists: Object.keys(this.globalWords).length,
                 reagents: Object.keys(this.globalReagents).length,
                 substances: this.globalSubstances?.substances?.length || 0,
                 states: Object.keys(this.globalStates).length,
@@ -1055,6 +1055,7 @@ class DungeonEngine {
             this.globalPersonalities = {};
             this.globalEntities = {};
             this.globalColors = [];
+            this.globalWords = {};
             this.globalAdjectives = {};
             this.globalAttacks = {};
             this.globalReagents = {};
@@ -3764,7 +3765,7 @@ class Prototype {
         if (this.glyphNameAssignments.has(itemType)) {
             return this.glyphNameAssignments.get(itemType);
         }
-        const words = this.engine.globalWords?.scroll_glyphs;
+        const words = this.engine.globalWords?.scrolls?.scroll_glyphs;
         if (words && words.length > 0) {
             const name = `${randomElement(words)} ${randomElement(words)}`;
             this.glyphNameAssignments.set(itemType, name);
