@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed actors falling twice in collapsable floors and pushable actors not triggering collapse.
 - `apply_state_radius` counted immune creatures in its "N creatures are affected" message.
 - `docs/ACTORS.md` claimed actors are `flammable` by default; the engine defaults it to `false`.
+- an attempt to fix an intermittent bridge box-drawing tile bug, needs testing
 
 ## [1.16b]
 
