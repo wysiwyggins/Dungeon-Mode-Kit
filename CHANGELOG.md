@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ### Changed
 
 - refactored addBaseAndShadows() away from old hardcoded tile id's that prevented tinting backgrounds and re-included background layer in the lighting pass
+- The darkness overlay was using the opaque full block picked up during that refactor; back to the translucent `FULL_BLOCK`, now resolved by name rather than by hardcoded spritesheet coordinates.
 - The weapon tile that flashes during an attack now points at the actor being hit, mirroring horizontally, vertically, or both for a diagonal.
 - Type based state immunity tweaks.
 - The keybindings screen's private key-name formatter moved to `InputManager.formatKeyName()` and is shared.

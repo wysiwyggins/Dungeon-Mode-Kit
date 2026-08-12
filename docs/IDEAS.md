@@ -1,8 +1,6 @@
 
 ## Bugs
 
-- addBaseAndShadows could be generalized to a sort of cellular automata backround function that makes tile pattern on the background layer using changeable rules with addBaseAndShadows as it's initial use. (The ambient light tinting bug that prompted this is fixed — the function's read sentinel is now separate from its paint values, which is the prerequisite for making the rules configurable.)
-
 - I just saw a vertical bridge that was made out of horizontal box drawing tiles, however on another level I saw a correct vertical box drawing tile vertical bridge, so this issue is intermittent. might have been related to a stairway being placed below the bridge.
 
 ## Tweaks
@@ -18,6 +16,12 @@
 ## Feature ideas
 
 ## extend tab targeting to item throwing, staffs and wands
+
+- we use a key [tab by default] to cycle through explore targets, extend this to throwing and spell targets. Also we should start with the nearest hostile already targeted in throw or spell targeting mode
+
+## other actors need to be able to use stairs
+
+- a monster should be able to chase a player actor from one level to another. How does brogue handle this?
 
 ## remaning types refactor work
 

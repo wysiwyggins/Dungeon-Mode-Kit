@@ -13685,9 +13685,14 @@ class RenderSystem {
         const tileset = PIXI.Loader.shared.resources.tiles;
         if (!tileset) return;
 
+        // The darkness overlay wants the translucent FULL_BLOCK, not the opaque
+        // variant addBaseAndShadows paints — shadowcasting reads better when the
+        // tile it dims through still lets some of the art below show up.
+        const blockCoords = this.engine.spriteLibrary.getTileByName('FULL_BLOCK')
+            || { x: 9, y: 9 };
         const rect = new PIXI.Rectangle(
-            0 * globalVars.TILE_WIDTH,
-            10 * globalVars.TILE_HEIGHT,
+            blockCoords.x * globalVars.TILE_WIDTH,
+            blockCoords.y * globalVars.TILE_HEIGHT,
             globalVars.TILE_WIDTH,
             globalVars.TILE_HEIGHT
         );
