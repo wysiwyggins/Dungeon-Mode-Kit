@@ -88,7 +88,7 @@ Defined on items, shown when the item is used:
 **Supported variables:**
 
 - `[item_name]` - The item's display name (identification-aware)
-- `[adjectives.category]` - Random adjective from `data/adjectives.json`
+- `[adjectives.category]` - Random adjective from the `adjectives` list in `data/words.json`
 - `[a-an]` - Automatic article based on following word
 - `[key]` - Any template variable or attribute on the item
 
@@ -106,8 +106,8 @@ Defined on actors, shown when they attack:
 
 - `[actor_name]` - The attacking actor's name
 - `[attacked_actor_name]` - The target's name
-- `[attacks.category]` - Random verb from `data/attacks.json`
-- `[adjectives.category]` - Random adjective from `data/adjectives.json`
+- `[attacks.category]` - Random verb from the `attacks` list in `data/words.json`
+- `[adjectives.category]` - Random adjective from the `adjectives` list in `data/words.json`
 - `[a-an]` - Automatic article based on following word
 
 ### Automatic Articles (`[a-an]`)
@@ -161,8 +161,25 @@ Processing happens after all other substitutions, so it works with random adject
 
 | File                  | Purpose                                                   |
 |-----------------------|-----------------------------------------------------------|
-| `data/adjectives.json`| Random adjective categories (e.g., "yucky": ["foul"])     |
-| `data/attacks.json`   | Random attack verbs (e.g., "melee_verbs": ["slashes"])    |
+| `data/words.json`     | All random word lists, namespaced by topic: `attacks`, `defenses`, `adjectives`, `scrolls` |
+
+Every list of random words for flavor text lives in `data/words.json`, grouped
+into a top-level namespace. The `[namespace.category]` template syntax reads
+those namespaces directly, so `[attacks.melee_verbs]` resolves to a random entry
+from `words.json` → `attacks` → `melee_verbs`:
+
+```json
+{
+  "attacks":    { "melee_verbs": ["swipes at"], "miss_verbs": ["swings wide of"] },
+  "defenses":   { "dodge_verbs": ["ducks"] },
+  "adjectives": { "yucky": ["foul"], "wine_descriptions": ["oaky"] },
+  "scrolls":    { "scroll_glyphs": ["zelgo"] }
+}
+```
+
+Adding a namespace here doesn't automatically make it available to templates —
+the resolvers in `engine.js` name the namespaces they accept. Word lists are
+global only; unlike actors or biomes, a prototype can't override them.
 
 ## Future: Full History Viewer
 
