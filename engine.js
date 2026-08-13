@@ -4748,10 +4748,6 @@ class Actor extends Entity {
     hasAttribute(key) {
         if (super.hasAttribute(key)) return true;
         for (const state of Object.values(this.states)) {
-            // grants_immunity and grants_attribute work identically — both make
-            // hasAttribute report a key the actor's own data never set. They stay
-            // separate so a state reads as what it means: fireproof_temp grants an
-            // immunity, superheated grants a capability (ignites).
             const granted = state.data?.grants_immunity;
             if (granted === key || (Array.isArray(granted) && granted.includes(key))) return true;
             const attr = state.data?.grants_attribute;
