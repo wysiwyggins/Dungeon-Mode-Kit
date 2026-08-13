@@ -1204,7 +1204,7 @@ class DungeonEngine {
 
         this.turnSpeed = this.currentPrototype?.config.turn_speed ?? 50;
         this.observerPaused = false;
-        console.log(`Turn engine initialized with ${this.scheduler._queue._events.length} scheduled actors`);
+        console.log(`Turn engine initialized with ${this.scheduler._queue._events.len()} scheduled actors`);
         console.log(`Observer mode: ${!this.hasControlledActor}, turn speed: ${this.turnSpeed}ms`);
         this.turnEngine.start();
         if (!this.hasControlledActor) {

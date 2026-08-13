@@ -3,6 +3,7 @@
 
 ## Tweaks
 
+- Don't allow pushing actors into stairs even though stairs are not solid
 - list of keymappings in help should also be zebra striped like inventory
 - We should be able to turn off biomes on a multi-level prototype and just use defaults- change floor plan section name to 'biome plan' or something, add a toggle to disable
 - item names and descriptions should be able to use template variables like [color] too, not just unidentified_description. How does the lever actor get color words in its name when paired? I would have expected to see that in the actor data, not just hardcoded, this would show a reusable precedent for templated strings in data.
