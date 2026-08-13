@@ -166,6 +166,16 @@
     "on_remove_message": "The fire immunity wears off."
   },
 
+  "superheated": {
+    "name": "Superheated",
+    "duration": 5,
+    "tint": "#ff5511",
+    "grants_attribute": "ignites",
+    "effect_description": "You are glowing with absorbed heat",
+    "on_apply_message": "[actor_name] glows red-hot!",
+    "on_remove_message": "[actor_name] cools down."
+  },
+
   "telepathic": {
     "name": "Telepathic",
     "duration": 150,

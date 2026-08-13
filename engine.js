@@ -4748,8 +4748,14 @@ class Actor extends Entity {
     hasAttribute(key) {
         if (super.hasAttribute(key)) return true;
         for (const state of Object.values(this.states)) {
-            const immunity = state.data?.grants_immunity;
-            if (immunity === key || (Array.isArray(immunity) && immunity.includes(key))) return true;
+            // grants_immunity and grants_attribute work identically — both make
+            // hasAttribute report a key the actor's own data never set. They stay
+            // separate so a state reads as what it means: fireproof_temp grants an
+            // immunity, superheated grants a capability (ignites).
+            const granted = state.data?.grants_immunity;
+            if (granted === key || (Array.isArray(granted) && granted.includes(key))) return true;
+            const attr = state.data?.grants_attribute;
+            if (attr === key || (Array.isArray(attr) && attr.includes(key))) return true;
         }
         return false;
     }
@@ -5058,6 +5064,15 @@ class Actor extends Entity {
         // Process active states (burning, poisoned, stunned, etc.)
         this.processStates();
         if (this.isDead) return Promise.resolve(); // Died from state effect
+
+        // Tick states on actors that never take a turn of their own. Only actors
+        // with a personality (or the player) are scheduled, so a state applied to
+        // inert terrain — a pushable wall left superheated by lava — would otherwise
+        // never decrement and never expire. Piggyback on the controlled actor's turn
+        // so the sweep happens exactly once per round.
+        if (this.isPlayerControlled()) {
+            this.engine.entityManager.processUnscheduledStates();
+        }
 
         // Check if incapacitated by a state (stunned, sleeping, etc.)
         if (this.isIncapacitated()) {
@@ -6223,6 +6238,19 @@ class Actor extends Entity {
             // Hallucination: tick per-turn floor tile changes for player
             if (stateData.hallucinating && this.isPlayerControlled()) {
                 this.engine.renderer?.tickHallucination();
+            }
+
+            // A state granting `ignites` (superheated) sets fire to flammable
+            // neighbors, the way a fire actor does. Solid carriers fill their own
+            // tile, so unlike fire this reaches out to the cardinal neighbors.
+            const grantsIgnite = stateData.grants_attribute === 'ignites' ||
+                (Array.isArray(stateData.grants_attribute) && stateData.grants_attribute.includes('ignites'));
+            if (grantsIgnite && !this.isDead) {
+                const em = this.engine.entityManager;
+                em.consumeFlammableAt(this, this.x, this.y);
+                for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+                    em.consumeFlammableAt(this, this.x + dx, this.y + dy);
+                }
             }
 
             // Decrement duration
@@ -11753,6 +11781,23 @@ class EntityManager {
 
         this.invalidateActorPosCache();
         return true;
+    }
+
+    /**
+     * Tick states on actors that are not in the scheduler.
+     *
+     * Only actors with a personality (or the player) are scheduled, so inert
+     * terrain — a pushable wall, a door, a statue — never calls act() and never
+     * reaches processStates(). Without this sweep a state applied to such an actor
+     * would last forever. Called once per round from the controlled actor's turn.
+     */
+    processUnscheduledStates() {
+        for (const actor of this.actors) {
+            if (actor.isDead) continue;
+            if (actor.personality || actor.hasAttribute('controlled')) continue;
+            if (!actor.states || Object.keys(actor.states).length === 0) continue;
+            actor.processStates();
+        }
     }
 
     /**

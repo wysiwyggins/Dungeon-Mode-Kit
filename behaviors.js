@@ -851,6 +851,16 @@ const BehaviorLibrary = {
             // Only incinerate solid actors or liquids
             if (!isSolid && !isLiquid) continue;
 
+            // Non-flammable solids (stone walls, metal) don't burn — they soak up the
+            // heat instead and carry it back out as `superheated`, igniting whatever
+            // they touch for a few turns. Refreshed every turn they stay in the lava,
+            // so the countdown only starts once they leave.
+            if (isSolid && !other.hasAttribute('flammable')) {
+                const superheated = actor.engine.globalStates?.superheated;
+                if (superheated) other.applyState?.('superheated', superheated);
+                continue;
+            }
+
             console.log(`${actor.name} incinerates ${other.name}!`);
 
             // Show incineration message for visible actors
