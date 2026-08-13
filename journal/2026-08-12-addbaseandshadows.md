@@ -59,3 +59,5 @@ Its rules:
 ... are now data passed to a general `applyTilePattern(layer, rules)` that walks any layer and applies an ordered list of `{ when, paint }` rules, first match winning. `addBaseAndShadows` is a short method that hands it the globals and gets out of the way.
 Now that I've separated this into two methods, the new applyTilePattern uses an input for an ordered rule list object. I will try unpack and document this when I touch it again.
 I'm imagining a future visual editor that would let you make other kind of pattern flood fill rules. I don't know what someone might use that for, but I do know I got very invested in the different [pattern generators](https://wileywiggins.com/p5/patterns/) I was making with the same tileset. Maybe the tilePattern method and a visual rule editor could be used to make things like forest or building generators, or patterns of grass and vegetation using the various dotted tiles.
+
+**update*- there's [loong documetation](/docs/TILE_PATTERNS.md) of this thing now.

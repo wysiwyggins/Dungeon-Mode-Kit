@@ -241,7 +241,7 @@ const eligible = (tileContext, x, y) =>
 }
 ```
 
-Rule 3 shows both escape-hatch idioms at once. It paints a whole horizontal run itself rather than one cell, so it uses `tileContext.paint` — and it returns `null` so the driver doesn't write the origin cell a second time. The cells it painted ahead of the cursor are still visited later, but by then `eligible` rejects them, because `isUnpaintedVoid` excludes `SHADE`.
+Rule 3 paints a whole horizontal run itself rather than one cell, so it uses `tileContext.paint` — and it returns `null` so the driver doesn't write the origin cell a second time. The cells it painted ahead of the cursor are still visited later, but by then `eligible` rejects them, because `isUnpaintedVoid` excludes `SHADE`.
 
 The whole pattern is **idempotent** for the same reason: running it over already-shaded background matches nothing. It is called on both the generation path (`engine.js`, after the map is built) and the save-restore path, and running twice is harmless.
 
