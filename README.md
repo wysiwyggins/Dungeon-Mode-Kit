@@ -59,6 +59,7 @@ Prototype JSON files are merged with global `data/` files at load — you only n
 - [ITEMS.md](docs/ITEMS.md) — Full item attribute reference, use effects, equipment
 - [COMBAT.md](docs/COMBAT.md) — Hit/damage math, weapon types, equipment slots
 - [LIGHTING.md](docs/LIGHTING.md) — Darkness, fog of war, light source configuration
+- [TILE_PATTERNS.md](docs/TILE_PATTERNS.md) — Rule-driven tile painting, authoring patterns from data
 - [SOUNDS.md](docs/SOUNDS.md) — Sound system, audio sprite, adding new sounds
 - [CHANGELOG.md](CHANGELOG.md) — Version history
 

@@ -14,6 +14,7 @@
     "collision_description": "You punch the [attacked_actor_name]!",
     "death_sound": "ouch",
     "attributes": {
+      "solid": true,
       "flammable": true,
       "controlled": true,
       "sentient": true,
@@ -168,6 +169,7 @@
     "tint": "#fffece",
     "personality": "stationed_ranged",
     "attributes": {
+      "solid": true,
       "hostile": true,
       "flammable": false,
       "breakable": true,
@@ -204,6 +206,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
+      "solid": true,
       "flammable": true,
       "hostile": true,
       "sentient": true,
@@ -235,6 +238,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] lashes at the [attacked_actor_name]!",
     "attributes": {
+      "solid": true,
       "flammable": true,
       "hostile": true,
       "sentient": true,
@@ -264,6 +268,7 @@
     "collision_sound": "hit",
     "collision_description": "[actor_name] [attacks.melee_verbs] [attacked_actor_name]!",
     "attributes": {
+      "solid": true,
       "flammable": true,
       "hostile": true,
       "sentient": true,
@@ -402,6 +407,7 @@
     },
     "collision_sound": "hit",
     "attributes": {
+      "solid": true,
       "flammable": true,
       "hostile": true,
       "sentient": true,
@@ -521,6 +527,7 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
+      "solid": true,
       "flammable": true,
       "flies": true,
       "hostile": true,
@@ -1071,18 +1078,13 @@
       "lode": "uranium_nugget"
     }
   },
-  "torch": {
+  "wall_torch": {
     "type": "terrain",
-    "name": "torch",
-    "tileIndexBase": "OPAQUE_DARK_SHADE",
-    "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
-    "tint": "#ffaa00",
+    "name": "mounted torch",
+    "tileIndexBase": "TORCH_ON_WALL",
+    "tileIndexTop": "OPAQUE_LIGHT_SHADE",
+    "tint": "#ffd877",
     "effect": "flicker_tint",
-    "animationSide": "fire",
-    "sideOffset": {
-      "dx": 0,
-      "dy": -1
-    },
     "lightRadius": 8,
     "attributes": {
       "breakable": true,
@@ -1090,8 +1092,7 @@
       "remains": "rubble",
       "ornament": true
     }
-  }
-  ,
+  },
   "pushable_wall": {
     "name": "wall",
     "tileIndexBase": "OPAQUE_MEDIUM_SHADE",

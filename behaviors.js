@@ -2650,9 +2650,12 @@ const BehaviorLibrary = {
 
         if (!target) return false;
 
+        // Destination tiles are empty, so only the path between matters: anything
+        // solid other than the blinker itself blocks the line.
         const isBlocked = (x, y) => {
-            const tile = mapManager?.wallMap?.[y]?.[x];
-            return tile && tile.tileId > 0;
+            if (!actor.hasFloorAt(x, y) && !actor.hasPlatformAt(x, y)) return true;
+            const actorAt = entityManager.getSolidActorAt(x, y);
+            return actorAt && actorAt !== actor;
         };
 
         const candidates = [];
@@ -2724,8 +2727,8 @@ const BehaviorLibrary = {
 
             if (dist <= attackRange && dist < nearestDist) {
                 const isBlocked = (x, y) => {
-                    const tile = actor.engine.mapManager?.wallMap?.[y]?.[x];
-                    return tile && tile.tileId > 0;
+                    const actorAt = entityManager.getSolidActorAt(x, y);
+                    return actorAt && actorAt !== actor && actorAt !== other;
                 };
                 if (hasLineOfSight(actor.x, actor.y, other.x, other.y, isBlocked)) {
                     target = other;
@@ -2791,10 +2794,6 @@ const BehaviorLibrary = {
         // Find nearest visible player-controlled target in range
         let target = null;
         let nearestDist = Infinity;
-        const isBlocked = (x, y) => {
-            const tile = mapManager?.wallMap?.[y]?.[x];
-            return tile && tile.tileId > 0;
-        };
 
         for (const other of entityManager.actors) {
             if (other === actor || other.isDead) continue;
@@ -2803,6 +2802,10 @@ const BehaviorLibrary = {
             const dx = other.x - actor.x;
             const dy = other.y - actor.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
+            const isBlocked = (x, y) => {
+                const actorAt = entityManager.getSolidActorAt(x, y);
+                return actorAt && actorAt !== actor && actorAt !== other;
+            };
             if (dist >= minDistance && dist <= attackRange && dist < nearestDist &&
                 hasLineOfSight(actor.x, actor.y, other.x, other.y, isBlocked)) {
                 target = other;

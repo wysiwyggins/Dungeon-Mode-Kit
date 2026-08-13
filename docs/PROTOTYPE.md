@@ -174,7 +174,7 @@ Interior doors are aligned with each other and with the exterior windows, produc
 | `torchChance` | number | `40` | Percent chance to place a brazier in a room (higher than brogue's 30 — temples are lit). |
 | `wall_types` | array | `[{ "type": "brick_wall", "weight": 100 }]` | Weighted wall types. **Note:** the shared post-generation pass converts ~2% of interior walls to pushable secret walls, but only walls of type `wall`. So the `brick_wall` default disables that; set `[{ "type": "wall", "weight": 100 }]` to get secret passages in the villa walls. |
 
-The generator reuses existing actors — `column` for the colonnade, `fortification` for windows (solid but see-through, so it reads as a barred opening), `brick_wall`, and `brazier`. No new art is required.
+The generator reuses existing actors — `column` for the colonnade, `fortification` for windows (solid but see-through, so it reads as a barred opening), `brick_wall`, `wall_torch` for wall sconces, and `brazier` for freestanding centrepieces. No new art is required.
 
 **Region-targeted spawning.** The generator publishes two named regions, `sanctum` and `portico`. A `random_actors` or `random_items` entry can name one to confine its spawns, which is how a boss is placed in the room built for it:
 

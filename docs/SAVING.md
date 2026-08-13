@@ -118,9 +118,9 @@ When returning to a previously visited floor, the saved state is restored — al
 |-------|-------------|
 | `width`, `height` | Map dimensions |
 | `floorMap` | Walkable terrain tiles |
-| `wallMap` | Wall entity layer |
 | `backgroundMap` | Background/void tiles |
 | `wildcardMap` | Procedural generation markers |
+| `overlayMap` | Tiles drawn above the rest |
 | `walkableTiles` | Array of walkable tile positions |
 
 ## Not Yet Implemented

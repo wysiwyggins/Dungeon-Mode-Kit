@@ -2835,7 +2835,7 @@ class DungeonEngine {
     /**
      * Pick a tile to place a stairway on.
      *
-     * Prefers a wall niche — a room floor tile flush against a wall, where braziers go —
+     * Prefers a wall niche — a room floor tile flush against a wall, where torches go —
      * so stairs read as built into the architecture instead of dropped in the middle of a
      * room or blocking a corridor. Falls back to any free walkable tile when a map has no
      * such niche (a cave with no straight walls, a tiny map, or one already crowded with
@@ -2865,7 +2865,7 @@ class DungeonEngine {
 
     /**
      * Pick a tile for a stairway, preferring a wall niche so it can be framed with
-     * braziers.
+     * mounted torches.
      *
      * `preferredRegion` names a region the map generator published (see
      * Architect.namedRegions) to place the stairway inside — e.g. 'portico' so the
@@ -2931,7 +2931,7 @@ class DungeonEngine {
             const niches = pool.tiles.filter(t => this.entityManager.isWallNicheTile(t.x, t.y));
             if (niches.length === 0) continue;
             if (pool.name !== 'map') console.log(`Stairway placed in the "${pool.name}" region`);
-            // Among niches, prefer one that can actually be framed with braziers.
+            // Among niches, prefer one that can actually be framed with torches.
             // Some niches are geometric accidents — a gap in a colonnade reads as a
             // 3-neighbour tile but has ornaments, not plain wall, to either side — and
             // a stairway there ends up unframed.
@@ -2945,7 +2945,7 @@ class DungeonEngine {
     }
 
     /**
-     * Flank a stairway with braziers, the way an architect would frame a doorway.
+     * Flank a stairway with mounted torches, the way an architect would frame a doorway.
      *
      * A stairway in a wall niche has one wall behind it; the two tiles to either side
      * *along* that wall are the sconce positions. Each is only replaced if it's currently
@@ -2956,7 +2956,7 @@ class DungeonEngine {
      */
     /**
      * The wall actors either side of the tile a stairway at (x, y) backs onto — the
-     * two sconce positions. Shared by flankStairwayWithBraziers and by
+     * two sconce positions. Shared by flankStairwayWithTorches and by
      * pickStairwayTile, which uses it to prefer a niche that can actually be framed.
      *
      * @returns {Actor[]} 0-2 replaceable wall actors
@@ -2964,7 +2964,7 @@ class DungeonEngine {
     stairwaySconceWalls(x, y) {
         const mm = this.mapManager;
         // A usable sconce spot is a non-floor tile occupied by nothing but a plain wall
-        // actor, which the brazier replaces (the same swap the map generator does for its
+        // actor, which the torch replaces (the same swap the map generator does for its
         // own wall torches). Walls are spawned as actors before stairways are placed, so
         // requiring an *empty* tile here would find nothing. Anything else standing there
         // — a door, a gate, another stairway — disqualifies the spot.
@@ -2980,20 +2980,21 @@ class DungeonEngine {
             if (only.hasAttribute('stairway') || !only.hasAttribute('solid')) return null;
             // `ornament` marks a solid that is deliberately placed architecture — a
             // colonnade column, a window grille. Those carry a paint_tile like any
-            // wall, but swapping one for a brazier would eat the very structure a
-            // generator just built.
+            // wall, but swapping one for a torch would eat the very structure a
+            // generator just built. This also keeps the pass off the generator's own
+            // wall torches, which are ornaments too.
             if (only.hasAttribute('ornament')) return null;
             return only.getAttribute('paint_tile') ? only : null;
         };
 
         // Locate the wall the stairway backs onto, then step along that wall in both
         // directions. The sconces are the two wall tiles either side of the stairway's
-        // own backing tile — e.g. a stairway with wall above gets braziers at the wall
+        // own backing tile — e.g. a stairway with wall above gets torches at the wall
         // tiles up-left and up-right of it, framing the stairs.
         //
         // "Backs onto a wall" must be decided by what stands on the tile, NOT by
         // floorMap: generators give wall tiles a floorMap entry too (a wall sits *on*
-        // a floor tile), so a floorMap test finds no wall anywhere and no brazier is
+        // a floor tile), so a floorMap test finds no wall anywhere and no torch is
         // ever placed.
         const back = [{ dx: 0, dy: -1 }, { dx: 0, dy: 1 }, { dx: -1, dy: 0 }, { dx: 1, dy: 0 }]
             .find(d => wallActorAt(x + d.dx, y + d.dy));
@@ -3007,25 +3008,25 @@ class DungeonEngine {
         ].filter(Boolean);
     }
 
-    /** Whether a stairway at (x, y) could be framed with braziers on both sides. */
+    /** Whether a stairway at (x, y) could be framed with torches on both sides. */
     canFlankStairwayAt(x, y) {
         return this.stairwaySconceWalls(x, y).length === 2;
     }
 
-    flankStairwayWithBraziers(stairway) {
-        const brazierData = this.currentPrototype.getActorData('brazier');
-        if (!brazierData) return;
+    flankStairwayWithTorches(stairway) {
+        const torchData = this.currentPrototype.getActorData('wall_torch');
+        if (!torchData) return;
 
         const { x, y } = stairway;
         let placed = 0;
         for (const wall of this.stairwaySconceWalls(x, y)) {
             const pos = { x: wall.x, y: wall.y };
             this.entityManager.removeEntity(wall);
-            this.entityManager.addEntity(new Actor(pos.x, pos.y, 'brazier', brazierData, this));
+            this.entityManager.addEntity(new Actor(pos.x, pos.y, 'wall_torch', torchData, this));
             placed++;
         }
         if (placed) this.entityManager.invalidateActorPosCache();
-        if (placed) console.log(`Flanked stairway at (${x}, ${y}) with ${placed} brazier(s)`);
+        if (placed) console.log(`Flanked stairway at (${x}, ${y}) with ${placed} mounted torch(es)`);
     }
 
     /**
@@ -3087,7 +3088,7 @@ class DungeonEngine {
         const stairway = new Actor(tile.x, tile.y, stairwayType, stairwayData, this);
         if (escapeExit) this.makeEscapeExit(stairway);
         this.entityManager.addEntity(stairway);
-        this.flankStairwayWithBraziers(stairway);
+        this.flankStairwayWithTorches(stairway);
         console.log(`Spawned ${stairwayType} at (${tile.x}, ${tile.y})`);
     }
 
@@ -3166,7 +3167,7 @@ class DungeonEngine {
 
         const stairway = new Actor(tile.x, tile.y, stairwayType, stairwayData, this);
         this.entityManager.addEntity(stairway);
-        this.flankStairwayWithBraziers(stairway);
+        this.flankStairwayWithTorches(stairway);
         console.log(`Spawned ${stairwayType} at (${tile.x}, ${tile.y})`);
     }
 
@@ -8526,12 +8527,7 @@ class Actor extends Entity {
 
         // Floor check removed - pushing into voids is allowed (actor will fall)
 
-        // Check for walls don't need this since all walls in play are actors
-        /* const wallTile = this.engine.mapManager.wallMap[y][x];
-        if (wallTile !== null) {
-            return false;
-        } */
-
+        // No wall check needed — all walls in play are actors
         // Check for blocking actors
         const actorAt = this.engine.entityManager.getSolidActorAt(x, y);
         if (actorAt) {
@@ -11357,7 +11353,7 @@ class EntityManager {
     }
 
     /**
-     * A wall-niche tile: a room floor tile set against a wall, the way braziers are
+     * A wall-niche tile: a room floor tile set against a wall, the way wall torches are
      * placed. Stairways look deliberate here and don't obstruct traffic, unlike a
      * stairway dropped in open floor or mid-corridor.
      *

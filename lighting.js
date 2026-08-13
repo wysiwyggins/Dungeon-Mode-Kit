@@ -87,11 +87,6 @@ class LightingManager {
             return false;
         }
 
-        const wallTile = this.engine.mapManager.wallMap[y][x];
-        if (wallTile !== null) {
-            return false;
-        }
-
         const actorAtTile = this._solidActorCache?.get(x * 10000 + y);
         if (actorAtTile
                 && !actorAtTile.hasAttribute('controlled')
@@ -111,11 +106,6 @@ class LightingManager {
         // Light source's own tile always passes light
         if (this.currentSource && x === this.currentSource.x && y === this.currentSource.y) {
             return true;
-        }
-
-        const wallTile = this.engine.mapManager.wallMap[y][x];
-        if (wallTile !== null) {
-            return false;
         }
 
         // Mirrors visionPasses' actor test: a solid actor blocks light unless it's

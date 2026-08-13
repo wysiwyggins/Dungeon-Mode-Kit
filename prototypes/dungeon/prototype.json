@@ -148,6 +148,11 @@
           "min": 3,
           "max": 4
         }
+      },
+      "random_items": {
+        "phial": {
+          "chance": 100
+        }
       }
     },
     "26": {

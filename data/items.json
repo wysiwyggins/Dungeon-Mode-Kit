@@ -121,6 +121,21 @@
       "description": "A burned-out torch. Useless."
     }
   },
+  "phial": {
+    "name": "phial",
+    "tileIndex": "WHITE_FEMALE_SYMBOL",
+    "tint": "#BBECEC",
+    "flickerTint": true,
+    "identified": false,
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "flammable": false,
+      "light_source": true,
+      "lightRadius": 8,
+      "description": "A glass drop that radiates a cool, penetrating light."
+    }
+  },
   "sword": {
     "name": "sword",
     "tileIndex": "CROSS",

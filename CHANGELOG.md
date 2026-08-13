@@ -9,10 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `MapManager.applyTilePattern(layer, rules, options)` — paints a tile pattern onto a layer by evaluating an ordered `{ when, paint }` rule list at every cell, first match winning. `addBaseAndShadows` is now three rules over it instead of hand-rolled nested loops.
+- `MapManager.applyTilePattern(layer, rules, options)` — paints a tile pattern onto a layer by evaluating an ordered `{ when, paint }` rule list at every cell, first match winning. `addBaseAndShadows` is now three rules over it instead of hand-rolled nested loops. See [docs/TILE_PATTERNS.md](docs/TILE_PATTERNS.md).
 - Void tile ids live in `globalVars` (`VOID_FILL`/`VOID_SHADE`/`VOID_DIAGONAL`, plus the `VOID_TILE_IDS` recognition set), so an abyss can be restyled from one place instead of five scattered literals.
 - Actor **types** — reusable bundles of actor defaults, inherited with `"type": "beast"`. Defaults in `data/types.json`, per-prototype overrides in `prototypes/<name>/types.json`, resolved in `Prototype.getActorData()`. Ships `beast`, `undead`, `humanoid`, `terrain`. The actor's own keys win; `attributes`/`stats`/`collision_effect` merge one level deep, `null` unsets. See [docs/TYPES.md](docs/TYPES.md).
 - Type dropdown in the actor editor, showing what the selected type contributes.
+- documentation for architect.js' applyTilePattern method
 
 ### Changed
 
@@ -29,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed tab targeting offered water, lava, fire, gas clouds and **hidden traps** as travel destinations.
 - A floor's up and down stairways could generate right next to each other, making the floor skippable in a step. `pickStairwayTile` now prefers tiles at least `STAIRWAY_MIN_SEPARATION` (8) tiles from the already-placed stairway.
 - burning state damage per turn added
+- swapped out the braziers that flank generated stairways with an adjusted torch actor, now called wall_torch
 
 ### Fixed
 

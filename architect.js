@@ -3,6 +3,11 @@ const TILED_FLIP_H = 0x80000000;
 const TILED_FLIP_V = 0x40000000;
 const TILED_FLIP_D = 0x20000000;
 
+// pendingWallSpawns types that are free-standing architecture rather than part of
+// a wall run. Non-opaque, so a light source replacing one becomes a `brazier`;
+// everything else becomes a `wall_torch`.
+const FREESTANDING_WALL_TYPES = new Set(['column']);
+
 class Architect {
     constructor(options = {}) {
         this.width = options.width || 30;
@@ -10,7 +15,6 @@ class Architect {
 
         this.backgroundMap = this.createEmptyMap();
         this.floorMap = this.createEmptyMap();
-        this.wallMap = this.createEmptyMap();
         this.wildcardMap = this.createEmptyMap();
         this.overlayMap = this.createEmptyMap();
 
@@ -65,12 +69,13 @@ class Architect {
         );
     }
 
+    // Layer names match the Tiled layer names exactly (see docs/MAP.md).
+    // There is no wall layer: walls are actors, queued as pending spawns.
     getLayer(layerName) {
         const layers = {
             'background': this.backgroundMap,
             'floor': this.floorMap,
-            'wall': this.wallMap,
-            'wildcard': this.wildcardMap,
+            'wildcards': this.wildcardMap,
             'overlay': this.overlayMap
         };
         return layers[layerName] || null;
@@ -134,14 +139,21 @@ class Architect {
      * Paint a tile pattern onto a layer by evaluating an ordered rule list at every
      * cell — a small cellular automaton with designer-supplied rules.
      *
+     * See docs/TILE_PATTERNS.md for the full rule-authoring guide.
+     *
+     * layerName is one of 'background', 'floor', 'wildcards', 'overlay' — the same
+     * names Tiled uses. An unknown name warns and returns 0.
+     *
      * Rules are tried in order and the FIRST match wins, so put the most specific
      * rule first. A rule is `{ when, paint }`:
      *
-     *   when(tileContext, x, y) → truthy to apply this rule at this cell
+     *   when(tileContext, x, y) → truthy to claim this cell. Claiming it is what
+     *                     ends the cell — no later rule is tried, whatever paint
+     *                     does. A rule that matches and paints null is a veto.
      *   paint                   → a tileId to write, or a function
      *                     (tileContext, x, y) → tileId. Returning null writes
-     *                     nothing and ends the cell (a rule can match purely to
-     *                     veto later rules).
+     *                     nothing (it does not clear the cell — only
+     *                     tileContext.paint can write).
      *
      * The `tileContext` handed to callbacks carries the helpers a neighbour-sensitive
      * rule needs:
@@ -156,15 +168,12 @@ class Architect {
      *
      * Options:
      *   passes  (1)         run the whole grid N times; later passes see earlier output
-     *   order   ('rows')    'rows' = top-left → bottom-right, 'reverse' = the inverse.
-     *                       Scan order is load-bearing for self-referential rules, so
-     *                       it is explicit rather than implied.
+     *   order   ('rows')    'rows' = top-left → bottom-right, 'reverse' = the inverse
      *
-     * IMPORTANT — rules read the same layer they write, within a single pass. That
-     * is what lets a pattern propagate (a diagonal continuing from the cell up-left of
-     * it), and it is also why a rule must not treat its own output as fresh input
-     * unless it means to. Guard on the values you paint, the way addBaseAndShadows
-     * excludes its paint values from `isUnpaintedVoid`.
+     * IMPORTANT — rules read the same layer they write, within a single pass, which
+     * is what lets a pattern propagate (a diagonal continuing from the cell up-left
+     * of it). Guard on the values you paint, the way addBaseAndShadows excludes its
+     * paint values from `isUnpaintedVoid`.
      *
      * @returns {number} count of cells painted
      */
@@ -241,7 +250,6 @@ class Architect {
 
             this.backgroundMap = this.createEmptyMap();
             this.floorMap = this.createEmptyMap();
-            this.wallMap = this.createEmptyMap();
             this.wildcardMap = this.createEmptyMap();
             this.overlayMap = this.createEmptyMap();
 
@@ -287,12 +295,11 @@ class Architect {
     processBackgroundLayer(layer) {
         console.log('Processing background layer...');
 
-        // Authored maps were painted with the transparent void tiles (a designer
+        // Authored maps are painted with the transparent void tiles (a designer
         // fills the background with FULL_BLOCK per docs/MAP.md), but a transparent
         // glyph has no pixels for the lighting pass to tint, so ambient_light can't
-        // reach it. Remap the transparent family onto whatever the configured void
-        // style is, so authored maps match procedurally generated ones. Any other
-        // background tile a designer painted is decorative and passes through as-is.
+        // reach it. Remap the transparent family onto the configured void style.
+        // Any other background tile a designer painted passes through as-is.
         const VOID_REMAP = {
             217: globalVars.VOID_FILL,      // FULL_BLOCK
             178: globalVars.VOID_SHADE,     // DARK_SHADE
@@ -463,7 +470,6 @@ class Architect {
 
         this.backgroundMap = this.createEmptyMap();
         this.floorMap = this.createEmptyMap();
-        this.wallMap = this.createEmptyMap();
         this.wildcardMap = this.createEmptyMap();
         this.overlayMap = this.createEmptyMap();
         this.walkableTiles = [];
@@ -652,18 +658,14 @@ class Architect {
 
             case 'brogue': {
                 // maxRooms is optional in prototype data: when omitted, scale it to
-                // the map area (~200 tiles per room+corridor footprint) so larger
-                // maps fill out instead of staying sparse at the old flat 35.
-                // The divisor leaves gaps between rooms for corridors to snake
-                // through — packing too tightly (a smaller divisor) starves the
-                // generator of the space corridors need. Clamped so tiny/huge maps
-                // stay sane. An explicit maxRooms wins.
+                // the map area (~200 tiles per room+corridor footprint), clamped so
+                // tiny/huge maps stay sane. The divisor leaves gaps between rooms
+                // for corridors to snake through. An explicit maxRooms wins.
                 const autoMaxRooms = Math.min(120, Math.max(8,
                     Math.round((this.width * this.height) / 200)));
                 // maxAttempts is the practical limiter (many attempts fail to place),
-                // so it must scale with the room target or large maps stall well
-                // short of maxRooms. ~4x the target gives enough headroom to reach it
-                // despite fails; clamped. An explicit maxAttempts wins.
+                // so it scales with the room target: ~4x, clamped. An explicit
+                // maxAttempts wins.
                 const autoMaxAttempts = Math.min(600, Math.max(50, autoMaxRooms * 4));
                 const brogueCfg = {
                     maxRooms: options.maxRooms || autoMaxRooms,
@@ -694,13 +696,10 @@ class Architect {
                 const dungeonGrid = Array.from({ length: this.height }, () => new Uint8Array(this.width));
                 const rooms = [];
 
-                // Seed the first room in a randomly-chosen corner rather than the
-                // map center. Rooms attach outward from the seed, so a center seed
-                // makes play radiate from the middle — on large scrolling maps that
-                // clusters everything on the viewport seams. Seeding from a random
-                // corner spreads rooms across the whole map, and randomizing which
-                // corner keeps maps from feeling same-y. (margin keeps the room's
-                // 1-tile wall border off the map edge.)
+                // Seed the first room in a randomly-chosen corner. Rooms attach
+                // outward from the seed, so a corner seed spreads them across the
+                // whole map instead of clustering them in the middle. (margin keeps
+                // the room's 1-tile wall border off the map edge.)
                 const firstType = this._brogueMakeRoom('rectangle', brogueCfg);
                 const margin = 2;
                 const cornerX = ROT.RNG.getUniform() < 0.5;  // true = left, false = right
@@ -822,11 +821,10 @@ class Architect {
                     porticoDepth: options.porticoDepth ?? 3,
                     columnSpacing: options.columnSpacing ?? 2,
                     // Stage 7 — openings. doorChance/torchChance/wall_types are
-                    // consumed by _brogueFinalizeMap. torchChance is higher than
-                    // brogue's 30 because temples are lit. brick_wall as the
-                    // default also disables the shared pushable-wall conversion
-                    // pass below (it skips any type !== 'wall'); switch to 'wall'
-                    // to get secret passages in the villa walls.
+                    // consumed by _brogueFinalizeMap. brick_wall as the default
+                    // also disables the shared pushable-wall conversion pass below
+                    // (it skips any type !== 'wall'); switch to 'wall' to get
+                    // secret passages in the villa walls.
                     doorChance: options.doorChance ?? 55,
                     torchChance: options.torchChance ?? 40,
                     wall_types: options.wall_types || [{ type: 'brick_wall', weight: 100 }],
@@ -857,7 +855,7 @@ class Architect {
                 this._brogueFinalizeMap(dungeonGrid, records, this.width, this.height, palCfg);
 
                 // Decoration runs AFTER finalize on purpose: finalize's torch pass
-                // would otherwise convert a column into a brazier, and its
+                // would otherwise convert a column into a wall torch, and its
                 // perimeter rule would rewrite one as metal_wall.
                 this._palladianPlaceColumns(plan, portico, palCfg);
                 this._palladianPlaceWindows(openings);
@@ -1009,10 +1007,9 @@ class Architect {
         }
 
         // Blobs carve without asking whether the map survives it, so connectivity
-        // is restored here rather than protected up front. This has to precede
-        // generateBridges: the bridge worthiness gate measures how far the
-        // walk-around is, so it should be measuring the repaired map — otherwise
-        // a chasm gets a causeway and a rope bridge side by side.
+        // is restored here rather than protected up front. Must precede
+        // generateBridges, whose worthiness gate measures the walk-around distance
+        // and should be measuring the repaired map.
         if (options.lakes || options.abyss) {
             this.repairBlobConnectivity(options.connectivity_repair || {});
         }
@@ -1024,9 +1021,8 @@ class Architect {
         if (options.collapsing_floors) {
             this.generateCollapsingFloors(options.collapsing_floors);
             // Collapsing floors punch fresh holes in ground the repair above
-            // already signed off on, and a patch dropped across the mouth of a
-            // corridor severs the map just as an abyss blob would. Sweep again so
-            // the trap stays a trap rather than a dead end.
+            // already signed off on, and a patch across a corridor mouth severs the
+            // map just as an abyss blob would. Sweep again.
             this.repairBlobConnectivity(options.connectivity_repair || {});
         }
 
@@ -1064,9 +1060,7 @@ class Architect {
      * Lakes and abysses, generated the way Brogue does it (designLakes,
      * Architect.c:2562): the shape is built off-map by a cellular automaton and
      * then stamped at a random position, carving through whatever it lands on —
-     * rock, room wall or floor alike. Nothing here consults room bounds, which is
-     * the point: a blob that bites the side off a room and spills into the rock
-     * beyond turns two neat boxes into one open area.
+     * rock, room wall or floor alike. Nothing here consults room bounds.
      *
      * config: { count, types, minSize, maxSize, mask?, requireFloorOverlap? }
      * `mask` (a Set of "x,y") hard-confines every cell a blob may write, used by
@@ -1164,9 +1158,8 @@ class Architect {
         }
 
         // Anything a blob covered is gone: walls bitten open, doors drowned,
-        // torches and braziers swallowed. Rock-eating blobs cover far more ground
-        // than the old floor-bound ones, so braziers and pushable walls need the
-        // same treatment the other spawn arrays already got.
+        // torches and braziers swallowed. Every spawn array gets the same
+        // treatment.
         const covered = (p) => allBlobCells.has(`${p.x},${p.y}`);
         this.pendingWallSpawns = this.pendingWallSpawns.filter(p => !covered(p));
         this.pendingDoorSpawns = this.pendingDoorSpawns.filter(p => !covered(p));
@@ -1190,11 +1183,9 @@ class Architect {
 
     /**
      * Cells no blob may ever touch: the metal_wall ring that seals the map, plus
-     * the outermost row and column outright. Removing the old metal_wall filter
-     * from the growth set (blobs now eat rock) took away the only thing that kept
-     * them off the map edge, so this is that guard rebuilt explicitly. Row 0 also
-     * matters on its own: every wall-spawn site in this file is guarded `y > 0`,
-     * so a blob up there would leave floor with no wall above it.
+     * the outermost row and column outright. Row 0 matters on its own: every
+     * wall-spawn site in this file is guarded `y > 0`, so a blob up there would
+     * leave floor with no wall above it.
      */
     _blobProtectedPerimeter() {
         const protectedCells = new Set();
@@ -1216,9 +1207,8 @@ class Architect {
      * Translates the cell-count sizing the config files use (minSize/maxSize)
      * into the canvas dimensions _brogueMakeCavern wants. A B5678/S45678 blob
      * settles at roughly half its canvas, so a canvas of area (target / 0.5)
-     * lands near the requested size — near, not exact, which is how Brogue works
-     * too (createBlobOnGrid never targets a count). The random aspect keeps every
-     * lake from sharing one silhouette; Brogue's own run 30x15 down to 20x10.
+     * lands near the requested size — near, not exact. The random aspect keeps
+     * every lake from sharing one silhouette; Brogue's own run 30x15 down to 20x10.
      */
     _blobPickCanvas(minSize, maxSize) {
         const targetCells = ROT.RNG.getUniformInt(minSize, maxSize);
@@ -1240,9 +1230,8 @@ class Architect {
 
     /**
      * Writes one blob's cells. The shape wins over whatever was there: rock, room
-     * wall and open floor all become part of the lake or chasm, which is what
-     * bites room edges open (Brogue's designLakes sets DUNGEON = FLOOR for every
-     * covered cell, destroying the walls under it).
+     * wall and open floor all become part of the lake or chasm (Brogue's
+     * designLakes sets DUNGEON = FLOOR for every covered cell).
      */
     _blobStampAt(cells, type) {
         const isAbyss = (type === 'abyss');
@@ -1256,7 +1245,6 @@ class Architect {
                 // void background, nothing above it.
                 this.floorMap[y][x] = null;
                 this.backgroundMap[y][x] = { tileId: globalVars.VOID_FILL, layer: 'background' };
-                this.wallMap[y][x] = null;
                 this.overlayMap[y][x] = null;
                 continue;
             }
@@ -1268,22 +1256,19 @@ class Architect {
                 this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
             }
             this.backgroundMap[y][x] = null;
-            this.wallMap[y][x] = null;
             this.overlayMap[y][x] = null;
             liquidTarget.push({ x, y });
         }
     }
 
     /**
-     * Rings the carved region with walls. The old version only ringed cells that
-     * used to be walls, which was fine when blobs could not leave the dungeon
-     * footprint — now most of a blob's edge borders raw rock, and without this
-     * the lake would bleed into undifferentiated black with no cliff at all.
+     * Rings the carved region with walls, giving the lake a cliff edge where it
+     * borders raw rock.
      *
-     * Walls get floor written under them because that is this file's convention
-     * everywhere else, and it is what lets generateBridges punch a boundary wall
-     * into a landing. The pushed entry is deliberately typeless: spawnPendingWalls
-     * defaults it to 'wall', and the bridge landing test looks for exactly that.
+     * Walls get floor written under them, per this file's convention, which is
+     * what lets generateBridges punch a boundary wall into a landing. The pushed
+     * entry is typeless: spawnPendingWalls defaults it to 'wall', and the bridge
+     * landing test looks for exactly that.
      */
     _blobRingBoundaryWalls(blobCells, perimeterProtected) {
         const existingWallSet = new Set(this.pendingWallSpawns.map(p => `${p.x},${p.y}`));
@@ -1410,7 +1395,6 @@ class Architect {
                     // leave generateBridges and generateCollapsingFloors still
                     // seeing abyss here.
                     this.backgroundMap[cell.y][cell.x] = null;
-                    this.wallMap[cell.y][cell.x] = null;
                     this.walkableTiles.push({ x: cell.x, y: cell.y });
                     this._causewayCells.add(`${cell.x},${cell.y}`);
                 }
@@ -1484,14 +1468,12 @@ class Architect {
 
     /**
      * Finds the shortest crossing from an orphaned region to anything already
-     * connected — the narrowest neck, so the causeway is a short hop at a
-     * plausible spot rather than a trek across the widest part of the chasm.
+     * connected — the narrowest neck, so the causeway is a short hop rather than
+     * a trek across the widest part of the chasm.
      *
-     * A straight cardinal ray is not enough: an abyss that severs a room complex
-     * usually leaves it touching the void along a ragged diagonal, where no
-     * single row or column happens to run from one shore to the other. So this
-     * is a breadth-first flood through the barrier itself, which finds a crossing
-     * whenever one exists at any angle.
+     * A breadth-first flood through the barrier itself, rather than a cardinal
+     * ray, so it finds a crossing at any angle: an abyss that severs a room
+     * complex usually leaves it touching the void along a ragged diagonal.
      */
     _blobFindNeck(orphan, label, connectedLabels, isBarrier, maxNeckLength) {
         const cardinalDirs = [[1,0],[-1,0],[0,1],[0,-1]];
@@ -1550,14 +1532,13 @@ class Architect {
     }
 
     /**
-     * Carves a wandering route from one shore to the other. Deliberately not a
-     * straight line: a ruler-straight span reads as a bridge, and bridges are
-     * generateBridges' job — this is meant to look like land the chasm failed to
-     * take. Biased toward the goal so it always arrives, capped so it always ends.
+     * Carves a wandering route from one shore to the other. Not a straight line —
+     * that reads as a bridge, which is generateBridges' job; this should look like
+     * land the chasm failed to take. Biased toward the goal so it always arrives,
+     * capped so it always ends.
      *
      * A step only counts if it lands on a barrier cell, so a jog out onto solid
-     * shore costs nothing and the path clips itself to the chasm, hugging the
-     * shoreline where there is one.
+     * shore costs nothing and the path clips itself to the chasm.
      */
     _blobCarveCauseway(from, to, isBarrier) {
         const path = [];
@@ -1579,9 +1560,8 @@ class Architect {
             let dx;
             let dy;
             if (jogStepsLeft > 0) {
-                // A jog has to run for a few steps to be worth anything: wander a
-                // single step and the next one corrects it straight back, giving a
-                // line straight enough to be mistaken for a bridge.
+                // A jog runs for a few steps: wander only one and the next step
+                // corrects it straight back.
                 [dx, dy] = jogDirection;
                 jogStepsLeft--;
             } else if (ROT.RNG.getUniform() < 0.3) {
@@ -1860,15 +1840,14 @@ class Architect {
                     const ck = `${c.x},${c.y}`;
                     if (usedCells.has(ck)) continue;
                     // Leave the cell as abyss (floorMap null, void background) and let the
-                    // rope_bridge platform actor provide footing — exactly like a
-                    // collapsing_floor. Do NOT lay real floor here: that would (a) make
-                    // addBaseAndShadows treat the cell as floor and skip the cliffside
-                    // shadow it gives the rest of the abyss, and (b) leave a floor tile
-                    // behind when the bridge burns instead of revealing the void below.
+                    // rope_bridge platform actor provide footing — like a collapsing_floor.
+                    // Do NOT lay real floor here: it would make addBaseAndShadows skip the
+                    // cliffside shadow, and leave a floor tile behind when the bridge burns
+                    // instead of revealing the void below.
                     // Orientation (dir) is recorded per cell, but the final box-drawing
                     // tile is chosen from bridge-cell adjacency in spawnPendingBridges so
-                    // the intersection cell becomes a proper "+" junction. crossingGroup
-                    // scopes that adjacency test to this blob's own crossings.
+                    // the intersection cell becomes a "+" junction. crossingGroup scopes
+                    // that adjacency test to this blob's own crossings.
                     this.pendingBridgeSpawns.push({
                         x: c.x, y: c.y, dir: crossing.dir, crossingGroup: crossingGroupId
                     });
@@ -1904,9 +1883,7 @@ class Architect {
         const wallSet = new Set(this.pendingWallSpawns.map(p => `${p.x},${p.y}`));
         const bridgeSet = new Set(this.pendingBridgeSpawns.map(p => `${p.x},${p.y}`));
         // Collapsing a floor out from under a lake would leave the water actor
-        // hanging over the void, and a pool that drops you through is not what a
-        // pool is. Lakes reach much further now that they carve rock, so these
-        // two features meet far more often than they used to.
+        // hanging over the void.
         const liquidSet = new Set([
             ...this.pendingLakeSpawns,
             ...this.pendingSewageSpawns,
@@ -2483,10 +2460,8 @@ class Architect {
 
         if (regionSet.size === 0) return;
 
-        // `mask` fences the blobs to the region. This used to work by temporarily
-        // narrowing walkableTiles, which only held while blobs grew outward from a
-        // walkable seed — now that they stamp a shape wherever it lands and eat
-        // rock on the way, an unfenced blob would chew straight through the
+        // `mask` fences the blobs to the region: they stamp a shape wherever it
+        // lands and eat rock on the way, so an unfenced blob would chew through the
         // hand-authored map around the region. requireFloorOverlap is dropped
         // because the region is entirely floor already.
         const config = {
@@ -2546,14 +2521,12 @@ class Architect {
 
     /**
      * Wildcard counterpart to the full-floor 'palladian' case: drops a villa inside a
-     * single wildcard region so a temple can be one feature of a larger floor rather
-     * than the whole floor.
+     * single wildcard region, so a temple can be one feature of a larger floor.
      *
      * Reuses every stage helper unchanged by having _palladianBuildGrid center the plan
      * inside the region's bounding box — the plan it returns is in world coordinates, so
      * carving, openings, columns and windows all work as they do on a full floor. Only
-     * the finalize step differs (see _palladianFinalizeRegion): it must not iterate or
-     * repaint the rest of the map.
+     * the finalize step differs (see _palladianFinalizeRegion).
      */
     generatePalladianAt(startX, startY, width, height, context = null) {
         const mapGenConfig = context?.getMapGeneratorConfig?.() || {};
@@ -2578,9 +2551,8 @@ class Architect {
         };
 
         // The mask is the region as authored, which may be an irregular blob. The plan
-        // is fitted to the bounding box, so a non-rectangular region can clip it; that
-        // is the map author's choice and the mask keeps the clip from corrupting
-        // neighbouring geometry.
+        // is fitted to the bounding box, so a non-rectangular region can clip it; the
+        // mask keeps that clip from corrupting neighbouring geometry.
         const mask = new Set();
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
@@ -2618,7 +2590,7 @@ class Architect {
         this._palladianFinalizeRegion(dungeonGrid, records, mask, cfg);
 
         // Same ordering rule as the full-floor path: decoration must run after
-        // finalize, or the torch pass converts a column into a brazier.
+        // finalize, or the torch pass converts a column into a wall torch.
         this._palladianPlaceColumns(plan, portico, cfg);
         this._palladianPlaceWindows(openings);
         this._palladianPublishRegions(dungeonGrid, plan, records, portico);
@@ -2784,16 +2756,17 @@ class Architect {
             return;
         }
 
-        // Wall mounts use the `torch` actor (sideOffset puts the flame above the
-        // mount); the freestanding centrepiece is a `brazier`, spawned separately.
-        const actorData = context.getActorData('torch');
+        // Wall mounts use the `wall_torch` actor (display name "mounted torch"),
+        // distinct from the takeable `torch` item. The freestanding centrepiece is
+        // a `brazier`, spawned separately.
+        const actorData = context.getActorData('wall_torch');
         if (!actorData) {
-            console.warn('No torch actor data found');
+            console.warn('No wall_torch actor data found');
             return;
         }
 
         for (const pos of this.pendingTorchSpawns) {
-            context.createActor(pos.x, pos.y, 'torch', actorData);
+            context.createActor(pos.x, pos.y, 'wall_torch', actorData);
         }
 
         console.log(`Spawned ${this.pendingTorchSpawns.length} wall torch actors`);
@@ -2923,11 +2896,9 @@ class Architect {
         // vertical crossing meet, the shared cell becomes a "+" (or a T at a wall)
         // junction. Endpoints (one connection) fall back to the straight tile for
         // their axis. Every pattern maps to a tile in data/static-tiles.json.
-        // Keyed by crossing group, not by bare position: two unrelated bridges that
-        // happen to run alongside each other must not read as connected, or a
-        // vertical run picks up a phantom east/west neighbour and renders as a T or
-        // a corner. Cells of one blob's h and v crossings share a group, so a real
-        // intersection still resolves to "+".
+        // Keyed by crossing group, not by bare position, so two unrelated bridges
+        // running alongside each other don't read as connected. Cells of one blob's
+        // h and v crossings share a group, so a real intersection resolves to "+".
         const cellSet = new Set(
             this.pendingBridgeSpawns.map(p => `${p.crossingGroup}:${p.x},${p.y}`)
         );
@@ -3209,10 +3180,9 @@ class Architect {
         }
 
         // Skip rooms another feature has already taken — a switch puzzle's gated
-        // room, or a generator-reserved room like a palladian sanctum. Without this
-        // the treasure room can land on top of one, walling off its extra entrances
-        // and locking the door, which reads as a generator bug rather than a
-        // mechanic. (_placeSwitchPuzzle_gatedRoom already honours this set.)
+        // room, or a generator-reserved room like a palladian sanctum. Landing on
+        // one would wall off its extra entrances and lock the door.
+        // (_placeSwitchPuzzle_gatedRoom already honours this set.)
         const eligibleRooms = this.diggerRooms.filter((room, idx) => {
             if (this.claimedRoomIndices.has(idx)) return false;
             let count = 0;
@@ -3507,10 +3477,7 @@ class Architect {
 
         // Calculate new grid dimensions. Extend to i = len + 1 (one past the
         // corridor tip) so the forward-facing door site — which sits at tip + dv —
-        // lands INSIDE the padded grid. Without this the padding stopped exactly at
-        // the tip, so the forward door fell out of bounds and was dropped, leaving
-        // most corridor-rooms with zero door sites and thus unplaceable (the real
-        // reason long corridors almost never appeared).
+        // lands INSIDE the padded grid.
         let padLeft = 0, padRight = 0, padTop = 0, padBottom = 0;
         for (let i = 1; i <= len + 1; i++) {
             const nx = site.localX + dv.dx * i;
@@ -3574,12 +3541,9 @@ class Architect {
         const dirVecs = { north: { dx: 0, dy: -1 }, south: { dx: 0, dy: 1 }, east: { dx: 1, dy: 0 }, west: { dx: -1, dy: 0 } };
         // Corridor cells get a relaxed adjacency rule: unlike room bodies (which
         // must keep a clear 3x3 gap so they don't fuse), a 1-wide corridor is
-        // *meant* to run alongside walls and thread past room corners. Requiring a
-        // clear 3x3 around every corridor cell rejects almost all corridors in a
-        // populated map (only a fully-clear channel fits), which is why long/
-        // winding hallways never appeared. For corridor cells we only forbid
-        // ORTHOGONAL adjacency to foreign floor (prevents fusing two passages
-        // side-by-side); diagonal proximity is allowed so corridors can hug walls.
+        // meant to run alongside walls and thread past room corners. For corridor
+        // cells only ORTHOGONAL adjacency to foreign floor is forbidden (prevents
+        // fusing two passages side-by-side); diagonal proximity is allowed.
         const corridorSet = new Set(corridorCells.map(c => c.x + ',' + c.y));
 
         // Collect attachment targets: empty cells adjacent to existing floor
@@ -3834,18 +3798,16 @@ class Architect {
     //
     // A (2m+1) x n array of variously-dimensioned rectangles ("bays"), mirrored
     // about a north-south axis, with adjacent bays separated by exactly ONE wall
-    // thickness. The odd count must be on the columns, since the axis is N-S.
+    // thickness. The odd count is on the columns, since the axis is N-S.
     //
     // Two invariants everything downstream leans on:
     //
-    //  - The central column's interior width is ODD. You cannot bisect an
-    //    even-width column on a tile grid, so forcing it odd makes axisX an exact
+    //  - The central column's interior width is ODD, which makes axisX an exact
     //    tile column and mirror(x) = 2*axisX - x exact.
     //
-    //  - Symmetry is MIRROR-BY-CONSTRUCTION. We roll the west half and assign the
-    //    east half from it. There is deliberately no "mirror afterwards" pass to
-    //    get wrong, and no rounding that could differ between the two sides.
-    //    Every later stage follows the same discipline.
+    //  - Symmetry is MIRROR-BY-CONSTRUCTION: roll the west half, assign the east
+    //    half from it. There is no "mirror afterwards" pass. Every later stage
+    //    follows the same discipline.
 
     /**
      * @param {object} cfg - palladian config
@@ -3896,8 +3858,7 @@ class Architect {
         // MARGIN of 2, not 1. The villa's own exterior wall must not sit at x=1 or
         // y=1: _brogueFinalizeMap's perimeter gap-fill (its pass 3) writes a
         // metal_wall in any perimeter cell adjacent to floor, which would land at
-        // x=0/y=0 — outside the reserve, and on row 0 where its own `y > 0` guards
-        // then drop things inconsistently.
+        // x=0/y=0 — outside the reserve, and on row 0 where `y > 0` guards apply.
         const MARGIN = 2;
         const fits = () => {
             const { w, h } = footprint();
@@ -3917,10 +3878,7 @@ class Architect {
                 for (let c = 0; c < nCols; c++) {
                     if (c === mid) {
                         // The central column must stay ODD to be bisected by the
-                        // axis, so it shrinks by 2. Rounding it back UP to odd here
-                        // instead would hand it a tile back every pass, and on a
-                        // heavily-degraded plan it would end up grotesquely wider
-                        // than its neighbours.
+                        // axis, so it shrinks by 2 rather than rounding back up.
                         widths[c] = Math.max(3, widths[c] - 2);
                     } else {
                         widths[c] = Math.max(2, widths[c] - 1);
@@ -3933,9 +3891,8 @@ class Architect {
             if (nCols > 1) {
                 // Drop the outermost pair. splice() lops off the two EAST-most
                 // entries, which shifts the centre, so re-establish both invariants
-                // afterwards: the new centre must be odd (to be bisected by the
-                // axis) and the surviving east half must be re-mirrored from the
-                // west. Skipping the re-mirror silently yields an asymmetric plan.
+                // afterwards: the new centre must be odd, and the surviving east
+                // half must be re-mirrored from the west.
                 nCols -= 2;
                 widths.splice(nCols);
                 const newAxis = (nCols - 1) / 2;
@@ -3955,10 +3912,8 @@ class Architect {
         // Dropping column pairs shifts the axis, so recompute it.
         const finalAxisCol = (nCols - 1) / 2;
 
-        // The plan's whole reason for existing is bilateral symmetry, and every
-        // downstream stage assumes it. Assert it here, where a violation is one
-        // array to inspect, rather than discovering it later as an unexplained
-        // tile mismatch halfway across the map.
+        // Every downstream stage assumes bilateral symmetry; check it here while a
+        // violation is still one array to inspect.
         if (widths[finalAxisCol] % 2 === 0) {
             console.error(`Palladian: central width ${widths[finalAxisCol]} is even; cannot be bisected`);
             return null;
@@ -3971,9 +3926,9 @@ class Architect {
         }
         const { w: footprintW, h: footprintH } = footprint();
 
-        // Center the FOOTPRINT and derive the axis from it. Do not try to center
-        // axisX on this.width/2 — that reintroduces off-by-one asymmetry when the
-        // map width and the footprint width differ in parity.
+        // Center the FOOTPRINT and derive the axis from it. Centering axisX on
+        // this.width/2 instead introduces off-by-one asymmetry when the map width
+        // and the footprint width differ in parity.
         const X0 = area.x + Math.max(MARGIN, Math.floor((area.width - footprintW) / 2));
         const Y0 = area.y + Math.max(MARGIN, Math.floor((area.height - footprintH - porticoDepth) / 2));
 
@@ -3990,9 +3945,8 @@ class Architect {
             y += heights[r] + 1;
         }
 
-        // This single assertion pins the whole one-wall-thickness scheme, and
-        // catches the off-by-one class of bug at its source rather than as a
-        // mysterious 2-tile-thick wall much later.
+        // Pins the one-wall-thickness scheme; catches off-by-ones at their source
+        // rather than as a 2-tile-thick wall much later.
         for (let c = 0; c + 1 < nCols; c++) {
             if (colX[c + 1][0] !== colX[c][1] + 2) {
                 console.error(`Palladian: column spacing broken at ${c} (${colX[c][1]} -> ${colX[c + 1][0]})`);
@@ -4054,15 +4008,12 @@ class Architect {
     // Stage 3: room layout by concatenation.
     //
     // Start with one room per bay, then merge adjacent bays. The paper permits AT
-    // MOST ONE non-rectangular room, and it must be bisected by the axis — that
-    // room is the sanctum, and the constraint is enforced structurally: phase A
-    // builds the one non-rectangular room, and phase B rejects any merge that
-    // would create a second.
+    // MOST ONE non-rectangular room, bisected by the axis — the sanctum. Enforced
+    // structurally: phase A builds it, phase B rejects any merge creating a second.
     //
     // Bays in a column share an x-span and bays in a row share a y-span, so a
     // bay-set that is a rectangle in GRID space is always a rectangle in TILE
-    // space too. That equivalence is what makes the tartan grid pleasant to work
-    // with: the rectangularity test is pure integer bookkeeping.
+    // space too — which makes the rectangularity test pure integer bookkeeping.
     _palladianLayoutRooms(dungeonGrid, plan, cfg) {
         const { nCols, nRows, axisCol } = plan;
         const key = (c, r) => `${c},${r}`;
@@ -4223,10 +4174,9 @@ class Architect {
         }
 
         // Carve away the dividing walls, driven by FINAL room membership rather
-        // than the log of attempted merges. Union-find can make two bays
-        // same-room transitively — merge A-B and B-C and A is now C's roommate
-        // without A|C ever being an entry in the log — and a wall left standing
-        // inside a room would read as a floating stub.
+        // than the log of attempted merges: union-find makes bays same-room
+        // transitively (merge A-B and B-C and A is C's roommate without A|C ever
+        // appearing in the log).
         for (let r = 0; r < nRows; r++) {
             for (let c = 0; c < nCols; c++) {
                 const here = find(key(c, r));
@@ -4345,7 +4295,7 @@ class Architect {
     // Stage 6: the colonnade.
     //
     // Pushed to pendingWallSpawns AFTER _brogueFinalizeMap, so finalize's torch
-    // pass can't convert a column into a brazier and its perimeter rule can't
+    // pass can't convert a column into a wall torch and its perimeter rule can't
     // rewrite one as metal_wall. The column tiles stay in walkableTiles, which is
     // correct: spawnPendingWalls creates solid actors there before any random
     // spawning, and getAvailableTiles filters by actor occupancy.
@@ -4357,8 +4307,7 @@ class Architect {
 
         let n = Math.floor((span - 1) / (cfg.columnSpacing + 1)) + 1;
         // An odd count puts a column ON the axis, blocking the principal doorway.
-        // Palladio never does this: the axis is always an intercolumniation. This
-        // one rule is what makes the colonnade read as architecture, not a fence.
+        // The axis is always an intercolumniation.
         if (n % 2 === 1) n--;
         if (n < 2) return;
 
@@ -4369,16 +4318,14 @@ class Architect {
         }
     }
 
-    // Stage 7: windows, doors, and enfilade.
-    //
-    // This stage also delivers connectivity, so it is the one to be careful in.
+    // Stage 7: windows, doors, and enfilade. This stage also delivers connectivity.
     //
     // Doors are positioned BY ALIGNMENT, not randomly. Two registries hold the
     // sight-lines established so far, seeded from the exterior window centres;
     // each interior door prefers to reuse an existing line and only establishes a
-    // new one when it must. That greedy rule is the whole enfilade mechanism: the
-    // doors chain onto the window centres and you get a straight sight-line from
-    // a window on one flank, through every intervening room, out the other side.
+    // new one when it must. That greedy rule is the enfilade mechanism: doors
+    // chain onto the window centres, giving a straight sight-line from a window on
+    // one flank, through every intervening room, out the other side.
     _palladianAddOpenings(dungeonGrid, plan, rooms, portico, cfg) {
         const { axisX } = plan;
         const mirrorX = (x) => 2 * axisX - x;
@@ -4461,9 +4408,7 @@ class Architect {
         //
         // A mirrored pair is decided ATOMICALLY — one y for both twins, and the
         // twin is carved even if this side turned out not to need a door. Testing
-        // each side independently is how symmetry breaks: merges are mirrored, so
-        // the two sides almost always agree, but "almost" leaves a lone door with
-        // no counterpart on the far side of the villa.
+        // each side independently would leave a lone door with no counterpart.
         for (let r = 0; r < plan.nRows; r++) {
             for (let c = 0; c + 1 < plan.nCols; c++) {
                 const wallX = plan.colX[c][1] + 1;
@@ -4528,10 +4473,9 @@ class Architect {
         return null;
     }
 
-    // Carve one opening and attribute it to the rooms on both sides. Doors are
-    // recorded on BOTH adjoining rooms: addDoor is idempotent, every room needs at
-    // least one door to be eligible for treasure rooms and switch puzzles, and
-    // two-sided doors let gated-room puzzles pick a sensible gate tile.
+    // Carve one opening and attribute it to the rooms on both sides. addDoor is
+    // idempotent, and every room needs at least one door to be eligible for
+    // treasure rooms and switch puzzles.
     _palladianRegisterDoor(dungeonGrid, plan, rooms, x, y, axial) {
         if (x < 1 || x > this.width - 2 || y < 1 || y > this.height - 2) return;
         if (dungeonGrid[y][x] >= 1) return;
@@ -4549,10 +4493,9 @@ class Architect {
         }
     }
 
-    // 4-way flood fill over walkable cells. _brogueBFS is deliberately not reused:
-    // it is a capped-distance point-to-point search that returns -1 for both
-    // "unreachable" and "over budget", which is right for its loop heuristics and
-    // useless for a connectivity check.
+    // 4-way flood fill over walkable cells. _brogueBFS is not reused: it is a
+    // capped-distance point-to-point search returning -1 for both "unreachable"
+    // and "over budget", which cannot answer a connectivity question.
     _palladianFloodFill(dungeonGrid, sx, sy) {
         const seen = new Set();
         if (sx < 0 || sy < 0 || sx >= this.width || sy >= this.height) return seen;
@@ -4573,10 +4516,9 @@ class Architect {
         return seen;
     }
 
-    // The door pass covers every adjacency rather than a sample, so the plan should
-    // already be connected — but verify rather than assume. An off-by-one in an
-    // overlap, or an in-antis recess eating a bay's only opening, can still orphan
-    // a room.
+    // The door pass covers every adjacency, so the plan should already be
+    // connected — but an off-by-one in an overlap, or an in-antis recess eating a
+    // bay's only opening, can still orphan a room.
     _palladianEnsureConnected(dungeonGrid, plan, rooms, portico) {
         const mirrorX = (x) => 2 * plan.axisX - x;
         const start = portico
@@ -4622,9 +4564,8 @@ class Architect {
                         if (!seen.has(`${p.ox},${p.oy}`)) continue;
                         dungeonGrid[p.wy][p.wx] = 1;
                         room.doors.push({ x: p.wx, y: p.wy });
-                        // Mirror every repair. Skipping this would silently break the
-                        // one invariant the generator exists to maintain; if the twin's
-                        // room was already connected the extra opening is harmless.
+                        // Mirror every repair. If the twin's room was already
+                        // connected the extra opening is harmless.
                         const mx = mirrorX(p.wx);
                         if (mx !== p.wx && mx >= 1 && mx <= this.width - 2 && dungeonGrid[p.wy][mx] < 1) {
                             dungeonGrid[p.wy][mx] = 1;
@@ -4639,9 +4580,8 @@ class Architect {
     }
 
     // Build the ROT.js-Room-duck-typed records that diggerRooms consumers expect.
-    // _brogueMakeRoomRecord is reused rather than hand-rolled: its getLeft/getDoors/
-    // addDoor shape is consumed by spawnTreasureRoom, _placeSwitchPuzzle_gatedRoom
-    // and finalize's torch pass, and a second implementation would invite drift.
+    // The getLeft/getDoors/addDoor shape from _brogueMakeRoomRecord is consumed by
+    // spawnTreasureRoom, _placeSwitchPuzzle_gatedRoom and finalize's torch pass.
     _palladianMakeRecords(dungeonGrid, plan, rooms, portico, openings) {
         // A room that swallowed the whole grid has no interior adjacency, so the
         // door pass never gave it one. Its exterior openings are its entrances —
@@ -4694,9 +4634,8 @@ class Architect {
     }
 
     // Exterior window openings get a see-through solid actor. `fortification` is
-    // solid with opaque:false, so you can see through it but not walk through it —
-    // exactly a barred window, and it keeps the villa's envelope sealed. Pushed
-    // after finalize for the same reason as the colonnade.
+    // solid with opaque:false — a barred window, keeping the villa's envelope
+    // sealed. Pushed after finalize for the same reason as the colonnade.
     _palladianPlaceWindows(openings) {
         for (const w of openings.windows) {
             this.pendingWallSpawns.push({ x: w.x, y: w.y, type: 'fortification' });
@@ -4799,7 +4738,8 @@ class Architect {
             }
         }
 
-        // Brazier spawns per room, count scaled to room size and spaced apart.
+        // Room lighting: wall torches per room, count scaled to room size and spaced
+        // apart, plus a centre brazier in halls big enough to warrant one.
         for (const room of rooms) {
             if (ROT.RNG.getPercentage() > cfg.torchChance) continue;
             const roomWalls = [];
@@ -4879,22 +4819,16 @@ class Architect {
     }
 
     /**
-     * Light one room: wall-mounted `torch` actors spaced around its walls, plus a
+     * Light one room: wall-mounted `wall_torch` actors spaced around its walls, plus a
      * freestanding `brazier` in the middle of a very large room.
      *
-     * The old behaviour was a single brazier per room at a uniformly random wall
-     * cell, which left a big hall lit by one corner sconce. Torch count comes from
-     * floor area rather than the bounding box, because an L/T/+ shaped room's bbox
-     * includes cells that are not floor and would overstate its size.
-     *
-     * Wall placement is farthest-point: seed with a random eligible wall, then keep
-     * taking the candidate that maximises distance to the nearest torch already
-     * chosen. That reads as evenly spaced on straight walls and still does something
-     * sensible on a concave shape, without needing to know the shape.
+     * Torch count scales with floor area, not the bounding box. Wall placement is
+     * farthest-point: seed with a random eligible wall, then repeatedly take the
+     * candidate maximising distance to the nearest torch already chosen.
      *
      * Chosen wall cells are removed from pendingWallSpawns, since the torch actor
-     * replaces the wall actor there. The centre brazier sits on floor instead and
-     * takes no wall cell — it is not solid, so it blocks neither movement nor sight.
+     * replaces the wall actor there. The centre brazier sits on floor and takes no
+     * wall cell.
      *
      * @param {Array<{x:number,y:number}>} roomWalls - eligible wall cells for this
      *   room, already filtered by the caller (mask, wall type, etc.)
@@ -4948,14 +4882,25 @@ class Architect {
             chosen.push(candidates.splice(bestIndex, 1)[0]);
         }
 
+        // The light replaces the actor on the chosen cell, so it must match that
+        // actor's opacity. Wall-run cells become `wall_torch` (opaque, like the wall
+        // it replaces); free-standing architecture becomes a `brazier` (non-opaque,
+        // like the column), preserving sightlines through a colonnade.
+        let extraBraziers = 0;
         for (const pos of chosen) {
-            this.pendingTorchSpawns.push({ x: pos.x, y: pos.y });
+            if (FREESTANDING_WALL_TYPES.has(pos.type)) {
+                this.pendingBrazierSpawns.push({ x: pos.x, y: pos.y });
+                extraBraziers++;
+            } else {
+                this.pendingTorchSpawns.push({ x: pos.x, y: pos.y });
+            }
             const idx = this.pendingWallSpawns.findIndex(p => p.x === pos.x && p.y === pos.y);
             if (idx !== -1) this.pendingWallSpawns.splice(idx, 1);
         }
 
-        const braziers = this.queueCentreBrazier(room, floorTileCount, floorSet) ? 1 : 0;
-        return { torches: chosen.length, braziers };
+        const braziers = (this.queueCentreBrazier(room, floorTileCount, floorSet) ? 1 : 0)
+            + extraBraziers;
+        return { torches: chosen.length - extraBraziers, braziers };
     }
 
     /**
@@ -5093,7 +5038,6 @@ class Architect {
             width: this.width,
             height: this.height,
             floorMap: this.floorMap,
-            wallMap: this.wallMap,
             backgroundMap: this.backgroundMap,
             wildcardMap: this.wildcardMap,
             overlayMap: this.overlayMap,
@@ -5105,7 +5049,6 @@ class Architect {
         this.width = data.width;
         this.height = data.height;
         this.floorMap = data.floorMap;
-        this.wallMap = data.wallMap;
         this.backgroundMap = data.backgroundMap;
         this.wildcardMap = data.wildcardMap;
         this.overlayMap = data.overlayMap || this.createEmptyMap();
@@ -5115,7 +5058,6 @@ class Architect {
     cleanup() {
         this.backgroundMap = this.createEmptyMap();
         this.floorMap = this.createEmptyMap();
-        this.wallMap = this.createEmptyMap();
         this.wildcardMap = this.createEmptyMap();
         this.overlayMap = this.createEmptyMap();
         this.walkableTiles = [];

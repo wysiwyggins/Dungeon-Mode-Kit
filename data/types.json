@@ -6,6 +6,7 @@
     "domain": "actor",
     "description": "Animals and vermin. A mind, but no hands and no possessions. Hunts or is hostile.",
     "attributes": {
+      "solid": true,
       "sentient": true,
       "flammable": true,
       "hostile": true,
@@ -20,6 +21,7 @@
     "domain": "actor",
     "description": "non-hostile animals.",
     "attributes": {
+      "solid": true,
       "sentient": true,
       "flammable": true,
       "opaque": false,
@@ -37,6 +39,7 @@
     "domain": "actor",
     "description": "The animate dead in various states of decay.",
     "attributes": {
+      "solid": true,
       "sentient": true,
       "flammable": true,
       "hostile": true,
@@ -52,6 +55,7 @@
     "domain": "actor",
     "description": "Upright folk who carry things.",
     "attributes": {
+      "solid": true,
       "sentient": true,
       "flammable": true,
       "opaque": false,
@@ -65,6 +69,7 @@
     "domain": "actor",
     "description": "Upright folk who carry things.",
     "attributes": {
+      "solid": true,
       "sentient": true,
       "flammable": true,
       "opaque": false,
