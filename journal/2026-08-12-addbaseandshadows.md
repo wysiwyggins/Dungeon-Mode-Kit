@@ -49,13 +49,13 @@ A version very close to this ended up in DMK, but of course it was very brittle 
 In DMK I am endeavoring to make reusable utility functions that can flex and have easy to edit surfaces. In Unity when you make variables public they show up as UI controls and fields that you can tweak easily as you test, looking for the right settings for things as you develop game-feel.
 
 In addition to the hard-coded tile id's, the lighting pass in DMK skipped any cell without a floor tile, and void cells are floorless by definition, so the one code path that could have colored them was excluded from doing so. Background sprites now carry the ambient hue directly, and the shadow art uses the opaque variants of the same glyphs. As for the tile id's hard coded into the method logic, recognition and painting are now separate concerns. All four tile values now live in `globals.js`, so an abyss can be restyled from one place instead of five scattered literals in two files. Then the method itself got taken apart.
-Its three rules:
+Its rules:
 
 - start a diagonal at a cliff corner
 - continue it down-right
 - flood the shadow body rightward
+- full block black tiles to the left
+
 ... are now data passed to a general `applyTilePattern(layer, rules)` that walks any layer and applies an ordered list of `{ when, paint }` rules, first match winning. `addBaseAndShadows` is a short method that hands it the globals and gets out of the way.
-
-Now that I've separated this into two methods, the new applyTilePattern uses an input for an ordered rule list object, which I will admit is something dirty that I got from Mephisto in exchange for $20. I will try to do better when I touch this again and either learn why it is this way or make something (probably worse) that at least I understand better. Sorry mom, sorry god. 😤
-
+Now that I've separated this into two methods, the new applyTilePattern uses an input for an ordered rule list object. I will try unpack and document this when I touch it again.
 I'm imagining a future visual editor that would let you make other kind of pattern flood fill rules. I don't know what someone might use that for, but I do know I got very invested in the different [pattern generators](https://wileywiggins.com/p5/patterns/) I was making with the same tileset. Maybe the tilePattern method and a visual rule editor could be used to make things like forest or building generators, or patterns of grass and vegetation using the various dotted tiles.

@@ -41,23 +41,23 @@
         ],
         "crossWidth": [
           7,
-          14
+          20
         ],
         "crossHeight": [
           7,
-          14
+          20
         ],
         "circularRadius": [
           2,
-          7
+          8
         ],
         "cavernWidth": [
           10,
-          18
+          20
         ],
         "cavernHeight": [
           10,
-          18
+          20
         ],
         "abyss": {
           "count": [

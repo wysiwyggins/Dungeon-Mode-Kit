@@ -20,7 +20,7 @@
       "inventory": 5,
       "remains": "skull",
       "accuracy": 50,
-      "opaque": false,
+      "opaque": true,
       "strength": 5
     },
     "stats": {
@@ -1072,20 +1072,17 @@
     }
   },
   "torch": {
+    "type": "terrain",
     "name": "torch",
     "tileIndexBase": "OPAQUE_DARK_SHADE",
     "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
-    "sideOffset": {
-      "dx": 0,
-      "dy": -1
-    },
     "tint": "#ffaa00",
     "effect": "flicker_tint",
     "animationSide": "fire",
+    "lightRadius": 8,
     "attributes": {
       "breakable": true,
       "light_source": true,
-      "light_radius": 8,
       "remains": "rubble"
     }
   },
@@ -1454,7 +1451,7 @@
     "flickerTint": true,
     "lightRadius": 10,
     "attributes": {
-      "opaque": true,
+      "opaque": false,
       "flammable": false,
       "light_source": true
     }

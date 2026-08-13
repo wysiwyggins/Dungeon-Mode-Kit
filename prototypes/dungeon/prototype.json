@@ -197,7 +197,7 @@
               "lava"
             ],
             "minSize": 5,
-            "maxSize": 20
+            "maxSize": 30
           },
           "bridges": {
             "max": 2

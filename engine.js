@@ -1633,6 +1633,7 @@ class DungeonEngine {
         this.mapManager.spawnPendingWalls(architectContext);
         this.mapManager.spawnPendingDoors(architectContext);
         this.mapManager.spawnPendingTorches(architectContext);
+        this.mapManager.spawnPendingBraziers(architectContext);
         this.mapManager.spawnPendingLava(architectContext);
         this.mapManager.spawnPendingLakes(architectContext);
         this.mapManager.spawnPendingSewage(architectContext);

@@ -3,9 +3,7 @@
 
 ## Tweaks
 
-- sidebar message when an actor other than the player picks up an item. I feel like message worthy events should be covered already by general underlying logic rather than doing this case by case.
 - We should be able to turn off biomes on a multi-level prototype and just use defaults- change floor plan section name to 'biome plan' or something, add a toggle to disable
-- evenly place more braziers or torches in large shaped rooms. Maybe we should switch to torch actors as walls and a single brazier in the middle of some large, shaped rooms.
 - item names and descriptions should be able to use template variables like [color] too, not just unidentified_description. How does the lever actor get color words in its name when paired? I would have expected to see that in the actor data, not just hardcoded, this would show a reusable precedent for templated strings in data.
 - should the "map generator" section in prototype defaults be a biomes/single generator/authored map radio button selection? We can eliminate some of this with the single level/multi level toggle. A single level is either a single generator or an authored map, hiding biome stuff. A multi level is either a single generator or biomes with level overrides for authored maps. the current "No procedural generator — the map comes from a hand-authored .tmj. Placed features below still apply." message when a single generator default isn't enabled is misleading, and when the section is disabled we don't expect to be able to set placed features, despite the message saying otherwise.
 
