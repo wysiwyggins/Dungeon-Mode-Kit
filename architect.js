@@ -161,7 +161,7 @@ class Architect {
      *                       it is explicit rather than implied.
      *
      * IMPORTANT — rules read the same layer they write, within a single pass. That
-     * is what lets a shape propagate (a diagonal continuing from the cell up-left of
+     * is what lets a pattern propagate (a diagonal continuing from the cell up-left of
      * it), and it is also why a rule must not treat its own output as fresh input
      * unless it means to. Guard on the values you paint, the way addBaseAndShadows
      * excludes its paint values from `isUnpaintedVoid`.
@@ -1319,18 +1319,6 @@ class Architect {
         }
     }
 
-    /**
-     * Rebuilt from map state rather than patched, because one stamp can turn rock
-     * into new walkable shore, open floor into abyss, and a room wall into liquid
-     * floor all at once — three different edits to this list, easy to get wrong
-     * incrementally.
-     *
-     * Liquid cells stay walkable: water, sewage and lava are all non-solid actors
-     * standing on real floor, so the engine treats them as passable and only the
-     * abyss (no floor) actually blocks. Lava is the exception, and only because
-     * walkableTiles is what the engine draws random actor and stairway positions
-     * from — a down-staircase in a lava lake is not a fair level.
-     */
     _blobRebuildWalkableTiles(liquidCells, hazardCells) {
         const wallSet = new Set(this.pendingWallSpawns.map(p => `${p.x},${p.y}`));
         const seen = new Set();
@@ -1356,21 +1344,6 @@ class Architect {
         this.walkableTiles = rebuilt;
     }
 
-    /**
-     * Blobs are committed without any passability gate, so this is where the map
-     * is made whole again: anything an abyss stranded gets a winding floor
-     * causeway back to the mainland.
-     *
-     * Brogue takes the opposite bargain — it rejects a lake that would disrupt
-     * passability (lakeDisruptsPassability, Architect.c:2512) and never repairs.
-     * Committing first and repairing after keeps the big rock-eating shapes that
-     * make rooms read as open areas, at the cost of needing this pass.
-     *
-     * Only the abyss can strand anything. Water, sewage and lava are non-solid
-     * actors on real floor, so the player walks through them and they never
-     * disconnect the map; a dry route across lava is a separate comfort, not a
-     * correctness fix.
-     */
     repairBlobConnectivity(config = {}) {
         const minOrphanSize = config.minOrphanSize ?? 6;
         const maxNeckLength = config.maxNeckLength ?? 40;
@@ -1384,11 +1357,6 @@ class Architect {
         let causeways = 0;
         let ignoredLedges = 0;
 
-        // Re-labelled every round rather than once up front: each causeway makes
-        // new cells walkable, which changes both what counts as mainland and
-        // where the next orphan is allowed to land. Working from a stale labelling
-        // leaves the second and later orphans unable to see the ground just carved
-        // for the first.
         for (let round = 0; ; round++) {
             const { regions, label } = this._blobLabelOpenRegions();
             const orphans = regions
@@ -1446,10 +1414,6 @@ class Architect {
                     this.walkableTiles.push({ x: cell.x, y: cell.y });
                     this._causewayCells.add(`${cell.x},${cell.y}`);
                 }
-
-                // Deliberately unwalled. A strip of floor with void either side is
-                // exactly the narrow-land-bridge look, and the void cells keep
-                // their cliff shading for free because they stay floorless.
                 causeways++;
                 joinedAny = true;
                 // Only one carve per round: the labelling this loop is reading is
@@ -1457,7 +1421,7 @@ class Architect {
                 break;
             }
 
-            if (!joinedAny) break; // nothing left that can be reached
+            if (!joinedAny) break;
         }
 
         if (ignoredLedges > 0) {
@@ -1473,7 +1437,7 @@ class Architect {
      * _palladianFloodFill, but reads live map state instead of a grid so it can
      * run after carving, and labels all components rather than one.
      *
-     * Liquid counts as open, because it is: only the abyss actually blocks. Pass
+     * Liquid counts as open, only the abyss actually blocks. Pass
      * extraBlocked to treat something else as a barrier too (the lava dry-path
      * pass uses it to ask which regions are reachable without walking through fire).
      */
@@ -2730,7 +2694,6 @@ class Architect {
             }
         }
 
-        // Braziers, count scaled to room size and spaced along that room's own walls.
         for (const room of rooms) {
             if (ROT.RNG.getPercentage() > cfg.torchChance) continue;
             const roomWalls = this.pendingWallSpawns.filter(p =>
@@ -4758,11 +4721,6 @@ class Architect {
         if (sanctum) this.namedRegions.sanctum = tilesOf(sanctum);
         const porticoRec = records.find(r => r.isPortico);
         if (porticoRec) this.namedRegions.portico = tilesOf(porticoRec);
-
-        // The portico IS the villa's entrance, so that's where the stairs up belong —
-        // arriving in the middle of an interior room reads as a mistake. Only a hint:
-        // mechanics.up_stairway_region overrides it, and if the portico has no free
-        // tile the engine falls back to the whole map.
         if (this.namedRegions.portico?.length) {
             this.suggestedStairwayRegions.up = 'portico';
         }

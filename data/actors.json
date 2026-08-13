@@ -1079,13 +1079,19 @@
     "tint": "#ffaa00",
     "effect": "flicker_tint",
     "animationSide": "fire",
+    "sideOffset": {
+      "dx": 0,
+      "dy": -1
+    },
     "lightRadius": 8,
     "attributes": {
       "breakable": true,
       "light_source": true,
-      "remains": "rubble"
+      "remains": "rubble",
+      "ornament": true
     }
-  },
+  }
+  ,
   "pushable_wall": {
     "name": "wall",
     "tileIndexBase": "OPAQUE_MEDIUM_SHADE",
