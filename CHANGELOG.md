@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A floor's up and down stairways could generate right next to each other, making the floor skippable in a step. `pickStairwayTile` now prefers tiles at least `STAIRWAY_MIN_SEPARATION` (8) tiles from the already-placed stairway.
 - burning state damage per turn added
 - swapped out the braziers that flank generated stairways with an adjusted torch actor, now called wall_torch
+- Don't need to force render top on liquids any more to get the wading effect, removed the render attributes on them.
+- Removed the old unused drain actor.
 
 ### Fixed
 
