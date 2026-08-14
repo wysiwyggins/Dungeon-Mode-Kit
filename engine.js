@@ -8558,6 +8558,16 @@ class Actor extends Entity {
             return false;
         }
 
+        // Stairways are non-solid so actors can walk onto them, but a boulder parked
+        // on one can hide it or wall off the only route between floors. Treat them as
+        // push-blocking: the shove fails and the pushable stays put, same as shoving
+        // it against a wall.
+        const blocksPush = this.engine.entityManager.getActorsAt(x, y)
+            .some(a => !a.isDead && a.hasAttribute('stairway'));
+        if (blocksPush) {
+            return false;
+        }
+
         return true;
     }
 

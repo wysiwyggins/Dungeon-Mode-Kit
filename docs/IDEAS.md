@@ -3,12 +3,9 @@
 
 ## Tweaks
 
-- while the first ui window spawned (like i for inventory/info) is smart enough to not spawn on top of the player actor, subsequent ui windows aren't. so if the player is at the top of the viewport and wants to throw an item at something nearby, the item verb window spawns on top of them, making targeting impossible
-- Don't allow pushing actors into stairs even though stairs are not solid
-- list of keymappings in help should also be zebra striped like inventory
-- We should be able to turn off biomes on a multi-level prototype and just use defaults- change floor plan section name to 'biome plan' or something, add a toggle to disable
 - item names and descriptions should be able to use template variables like [color] too, not just unidentified_description. How does the lever actor get color words in its name when paired? I would have expected to see that in the actor data, not just hardcoded, this would show a reusable precedent for templated strings in data.
 - should the "map generator" section in prototype defaults be a biomes/single generator/authored map radio button selection? We can eliminate some of this with the single level/multi level toggle. A single level is either a single generator or an authored map, hiding biome stuff. A multi level is either a single generator or biomes with level overrides for authored maps. the current "No procedural generator — the map comes from a hand-authored .tmj. Placed features below still apply." message when a single generator default isn't enabled is misleading, and when the section is disabled we don't expect to be able to set placed features, despite the message saying otherwise.
+- in prototype-editor we should be able to turn off biomes on a multi-level prototype and just use defaults- change 'floor plan' section name to 'biome plan' or something, add a top toggle to disable it to use defaults only
 
 ---
 

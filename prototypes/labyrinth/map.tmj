@@ -196,9 +196,9 @@
                 {
                  "height":30,
                  "id":20,
-                 "name":"down stairs",
+                 "name":"up stairs",
                  "rotation":0,
-                 "type":"locked_down_stairway",
+                 "type":"locked_up_stairway",
                  "visible":true,
                  "width":40,
                  "x":840,

@@ -3,8 +3,6 @@
   "description": "It's dark inside these winding corridors. \nSlay the beast to escape. \nPress 'i' for info.",
   "loaded_sound": "levelout",
   "turn_speed": 50,
-  "previous_level": "default",
-  "next_level": "Catacombs",
   "mechanics": {
     "fog_of_war": true,
     "darkness": true,

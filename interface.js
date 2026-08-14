@@ -4933,13 +4933,23 @@ class InterfaceManager {
         if (diagSummary) lines.push(`Diag: ${diagSummary}`);
         if (moveSummary || diagSummary) lines.push('');
 
+        // Track which lines are keybinding rows so they can be zebra-striped. Headers,
+        // the movement summary and blank separators are skipped, and the two groups
+        // (actions, globals) stripe as one continuous run so the alternation doesn't
+        // restart across the blank line between them.
+        const bindingLines = [];
+        const pushBinding = (keys, desc) => {
+            bindingLines.push({ lineIndex: lines.length });
+            lines.push(` ${pad(keys, kw)}${desc}`);
+        };
+
         const actionActions = bindings.actions ? Object.values(bindings.actions) : [];
         const seen = new Set();
         for (const action of actionActions) {
             if (seen.has(action)) continue;
             seen.add(action);
             const desc = actionDescriptions[action] || action;
-            lines.push(` ${pad(pickKeys(action), kw)}${desc}`);
+            pushBinding(pickKeys(action), desc);
         }
         lines.push('');
 
@@ -4949,9 +4959,9 @@ class InterfaceManager {
             if (globalSeen.has(action)) continue;
             globalSeen.add(action);
             const desc = actionDescriptions[action] || action;
-            lines.push(` ${pad(pickKeys(action), kw)}${desc}`);
+            pushBinding(pickKeys(action), desc);
         }
-        lines.push(` ${pad('?', kw)}Help`);
+        pushBinding('?', 'Help');
         lines.push('');
         lines.push('?/Esc to close');
 
@@ -4967,6 +4977,9 @@ class InterfaceManager {
 
         const boxContainer = this.createBox(menuId, x, y, boxWidth, boxHeight);
         if (!boxContainer) return;
+
+        // Zebra-stripe the keybinding rows
+        this.drawListStripes(boxContainer, bindingLines, contentWidth, padding);
 
         const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
         const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;

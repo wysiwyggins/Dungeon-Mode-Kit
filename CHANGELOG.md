@@ -37,6 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - swapped out the braziers that flank generated stairways with an adjusted torch actor, now called wall_torch
 - Don't need to force render top on liquids any more to get the wading effect, removed the render attributes on them.
 - Removed the old unused drain actor.
+- tweaks to lighting and fov
+- can't push a pushable actor into a stairway now
+- zebra striped lists extended to help window keys
 
 ### Fixed
 
