@@ -3,7 +3,7 @@
     "name": "Rodney",
     "tileIndexBase": "LEG",
     "tileIndexTop": "OPAQUE_DARK_SMILING_FACE",
-    "vision_range": 30,
+    "vision_range": 25,
     "collision_effect": {
       "health": "-{strength}"
     },

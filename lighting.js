@@ -11,6 +11,7 @@ class LightingManager {
         this.height = 0;
 
         this.lightMap = [];
+        this.losMap = [];
         this.exploredMap = [];
         this.fov = null;
         this.currentSource = null;
@@ -46,6 +47,18 @@ class LightingManager {
 
         this.visibilityMap = Array.from({ length: height }, () =>
             Array.from({ length: width }, () => false)
+        );
+
+        // Line of sight independent of light: how far into the dark you can make out
+        // terrain. Distinct from visibilityMap, which stays "lit AND seen" because ~36
+        // gameplay callers key off it (targeting, autoexplore, the sidebar, entity
+        // rendering) — a monster standing unlit 25 tiles away must not become a target
+        // just because the wall behind it is faintly readable.
+        //
+        // Stores FOV distance rather than a boolean, as `r + 1` so radius 0 is truthy.
+        // getDarknessAlpha ramps on that distance to fade the edge of vision.
+        this.losMap = Array.from({ length: height }, () =>
+            Array.from({ length: width }, () => 0)
         );
 
         this.exploredMap = Array.from({ length: height }, () =>
@@ -201,6 +214,7 @@ class LightingManager {
         for (let y = 0; y < this.height; y++) {
             const lightRow = this.lightMap[y];
             const visRow = this.visibilityMap[y];
+            const losRow = this.losMap[y];
             for (let x = 0; x < this.width; x++) {
                 const tile = lightRow[x];
                 tile.intensity = this.ambientLight;
@@ -208,6 +222,7 @@ class LightingManager {
                 tile.g = ambientG;
                 tile.b = ambientB;
                 visRow[x] = false;
+                losRow[x] = 0;
             }
         }
 
@@ -384,24 +399,54 @@ class LightingManager {
         return entity;
     }
 
+    /**
+     * Two different questions get answered here, and conflating them was the bug:
+     *
+     *   losMap        — can I make out the shape of this terrain? (geometry + vision range)
+     *   visibilityMap — can I perceive something standing here?   (that also needs light)
+     *
+     * FOV always casts to the actor's full vision range. A held light governs how
+     * BRIGHTLY you see, never how FAR. The reverse — clamping FOV to the torch radius —
+     * shrank a 30-tile view to 6 while carrying a torch, and an environmental-light scan
+     * swept the full 30 while carrying nothing, so losing your torch appeared to IMPROVE
+     * your sight.
+     */
     computeVisibility() {
         // FOV is cast from every viewpoint actor: the controlled player AND any
         // `pov`-tagged actor (e.g. an AI hero in an observer prototype), so a
         // dark/fog level renders around whatever we're seeing through.
         const viewpointActors = this.engine.entityManager.getViewpointActors();
 
-        for (const actor of viewpointActors) {
-            const baseRange = actor.getEffectiveVisionRange();
-            const lightRange = this.getActorLightRange(actor);
-            const effectiveRange = Math.min(baseRange, lightRange);
+        this._gradientRange = 0;
 
-            this.visionFov.compute(actor.x, actor.y, effectiveRange, (x, y, r, visibility) => {
+        for (const actor of viewpointActors) {
+            const range = actor.getEffectiveVisionRange();
+
+            // The dark-terrain gradient is anchored to the light you actually carry, so
+            // it can't be used to map a level you have no light for: with a torch you
+            // read terrain out to full vision range and it fades into black; with
+            // nothing at all you're back to feeling your way one tile at a time.
+            const gradientRange = this.getPersonalLightRadius(actor) > 0 ? range : 1;
+            if (gradientRange > this._gradientRange) this._gradientRange = gradientRange;
+
+            // dark_vision used to work by dodging the FOV clamp. With the clamp gone
+            // that's a no-op, so state it directly: these actors perceive without light.
+            const darkVision = actor.hasAttribute('dark_vision');
+
+            this.visionFov.compute(actor.x, actor.y, range, (x, y, r, visibility) => {
                 if (x < 0 || x >= this.width || y < 0 || y >= this.height) return;
-                if (visibility > 0) {
-                    if (r <= 1 || this.lightMap[y][x].intensity > 0) {
-                        this.visibilityMap[y][x] = true;
-                        this.exploredMap[y][x] = true;
-                    }
+                if (visibility <= 0) return;
+
+                // Nearest viewpoint wins, so two light-bearers don't darken each other.
+                if (r <= gradientRange && (this.losMap[y][x] === 0 || r + 1 < this.losMap[y][x])) {
+                    this.losMap[y][x] = r + 1;
+                }
+
+                // Unchanged gate. exploredMap stays behind it too — terrain you only
+                // dimly made out isn't terrain you've mapped.
+                if (darkVision || r <= 1 || this.lightMap[y][x].intensity > 0) {
+                    this.visibilityMap[y][x] = true;
+                    this.exploredMap[y][x] = true;
                 }
             });
 
@@ -481,18 +526,21 @@ class LightingManager {
     getBeaconRange(actor) {
         const configured = this.engine.currentPrototype?.config?.mechanics?.beacon_range;
         if (typeof configured === 'number') return configured;
-        return Math.ceil(Math.hypot(this.width, this.height)); // whole map (effectively unlimited)
+        // Default to how far the actor can actually see. Previously the whole map, which
+        // let a torch on the far side of the level show through as a pinprick regardless
+        // of vision range; a beacon you can't see shouldn't be drawn.
+        return actor?.getEffectiveVisionRange?.() ?? Math.ceil(Math.hypot(this.width, this.height));
     }
 
-    getActorLightRange(actor) {
-        if (this.ambientLight >= 0.5) {
-            return actor.getEffectiveVisionRange();
-        }
-
-        if (actor.hasAttribute('dark_vision')) {
-            return actor.getEffectiveVisionRange();
-        }
-
+    /**
+     * Radius of the light this actor carries on its own body — a burning torch, a phial,
+     * a worn glowing ring, or the `light_source` attribute on the actor itself. Returns 0
+     * when the actor carries nothing lit, which is the "am I in the dark?" test.
+     *
+     * Deliberately ignores environmental light: a wall torch across the room lights the
+     * room, but it isn't yours and doesn't travel with you.
+     */
+    getPersonalLightRadius(actor) {
         if ((actor.hasAttribute('controlled') || actor.hasAttribute('pov')) && this.playerAutoLight) {
             return this.playerLightRadius;
         }
@@ -513,32 +561,7 @@ class LightingManager {
             }
         }
 
-        if (personalLightRadius > 0) {
-            return personalLightRadius;
-        }
-
-        // No personal light — check for nearby environmental light sources
-        // (wall torches, fire elementals, lava glow, etc.)
-        const visionRange = actor.getEffectiveVisionRange();
-        let maxLitDist = 1;
-        const ax = actor.x;
-        const ay = actor.y;
-        for (let dy = -visionRange; dy <= visionRange; dy++) {
-            const ty = ay + dy;
-            if (ty < 0 || ty >= this.height) continue;
-            for (let dx = -visionRange; dx <= visionRange; dx++) {
-                const tx = ax + dx;
-                if (tx < 0 || tx >= this.width) continue;
-                if (this.lightMap[ty][tx].intensity > 0) {
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist > maxLitDist && dist <= visionRange) {
-                        maxLitDist = dist;
-                    }
-                }
-            }
-        }
-
-        return Math.ceil(maxLitDist);
+        return personalLightRadius;
     }
 
     getLightLevel(x, y) {
@@ -649,6 +672,15 @@ class LightingManager {
             } else {
                 return { alpha: 0.85, useSolidTexture: false };
             }
+        } else if (this.losMap?.[y]?.[x]) {
+            // In line of sight and within vision range, but past the reach of any light:
+            // the fade at the edge of the field of view. Ramps 0.85 -> 0.97 with distance
+            // so there's no hard ring where the torchlight stops. Crossing fog's 0.92 on
+            // the way out is intended — terrain you're straining to make out in the dark
+            // should read as murkier than a corridor you already walked.
+            const dist = this.losMap[y][x] - 1;
+            const t = Math.min(1, dist / Math.max(1, this._gradientRange || 1));
+            return { alpha: 0.85 + 0.12 * t, useSolidTexture: false };
         } else if (fogOfWar && explored) {
             return { alpha: 0.92, useSolidTexture: false };
         } else {
@@ -803,6 +835,16 @@ class LightingManager {
             return { alpha: fogOfWar ? 0.92 : 0.85 };
         }
 
+        // Unlit terrain inside the vision gradient. Overlay sprites render ABOVE the
+        // darkness layer and carry their dimming as a tint, so without this an arch or
+        // canopy would sit undimmed over gradient-band floor — the exact seam this
+        // function exists to prevent. Same ramp as getDarknessAlpha.
+        if (this.losMap?.[y]?.[x]) {
+            const dist = this.losMap[y][x] - 1;
+            const t = Math.min(1, dist / Math.max(1, this._gradientRange || 1));
+            return { alpha: 0.85 + 0.12 * t };
+        }
+
         // Never seen: fully black, same as the floor beneath it.
         return { alpha: 1.0 };
     }
@@ -886,6 +928,7 @@ class LightingManager {
 
         this.lightMap = [];
         this.visibilityMap = [];
+        this.losMap = [];
         this.exploredMap = [];
         this.fov = null;
         this.visionFov = null;

@@ -132,7 +132,20 @@ This separation allows for scenarios like:
 
 ### Visibility System
 
-Each controlled actor has a `vision_range` property (default 8) that determines how far they can see. Visibility is computed as the union of all controlled actors' FOV using `ROT.FOV.PreciseShadowcasting`.
+Each viewpoint actor — the controlled player, plus any `pov`-tagged actor — has a `vision_range` property (default 8) that determines how far they can see. Visibility is computed as the union of all viewpoint actors' FOV using `ROT.FOV.PreciseShadowcasting`.
+
+**Light radius controls how brightly you see; vision range controls how far.** A held torch never shrinks your field of view. Past the reach of your light, terrain stays readable out to `vision_range` and fades into black (see the gradient band in the table below), so you get an edge that falls off rather than a hard circle.
+
+Two maps back this, and the distinction matters:
+
+| Map | Means | Drives |
+|-----|-------|--------|
+| `losMap` | Line of sight within vision range, regardless of light | Terrain darkness only |
+| `visibilityMap` | Lit *and* seen | Entities, targeting, autoexplore, sidebar, `exploredMap` |
+
+Keeping them separate is what stops a monster standing unlit 25 tiles away from rendering, becoming a throw target, or halting auto-explore just because the wall behind it is faintly visible. Terrain you merely make out in the gradient is *not* marked explored — you have to light a room to map it.
+
+The gradient is anchored to light you actually carry (a burning torch, a phial, a worn glowing ring, or `player_auto_light`). With no personal light at all on a dark level, vision collapses to adjacent tiles as before, so losing your torch stays dangerous.
 
 **Vision Blocking:**
 - Wall tiles block vision
@@ -157,7 +170,7 @@ Darkness alpha values are designed to create a monotonically increasing gradient
 |-------|---------------|-------------------|-------------------|-------------|
 | Visible + fully lit | 0 | Based on color | Shown, animated | Bright, colored |
 | Visible + partially lit | 0.85 × (1 - intensity) | 0.5 × intensity | Shown, animated | Gradual falloff (0 to 0.85) |
-| Visible + unlit | 0.85 | 0 | Shown, animated | Beyond light radius but within vision |
+| In LOS + unlit (gradient) | 0.85 + 0.12 × (dist / gradient range) | 0 | **Hidden** | Beyond light radius but within vision — terrain only, fading 0.85 → 0.97 |
 | Explored (fog) | 0.92 | 0 | Shown, static, dark tint | Remembered but not currently seen |
 | Unexplored | 1.0 | 0 | Hidden | Solid black |
 | Observer mode | Based on light | Based on light | Always shown, animated | No visibility restriction |
@@ -170,7 +183,14 @@ Animated sprites (fire, water, etc.) only play their animations when within a co
 
 | Property | Default | Description |
 |----------|---------|-------------|
-| `vision_range` | `8` | Tiles of vision range for controlled actors |
+| `vision_range` | `8` | How far the actor can see, in tiles. Shipped prototypes override this (the dungeon player uses 30). Effective range adds passive state bonuses and ring `wear_effect.visionRange`. |
+| `dark_vision` | `false` | Perceives entities within FOV without needing light |
+
+### Prototype Mechanics
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `beacon_range` | the actor's effective vision range | How far distant unobstructed light sources show as lone lit tiles on a dark level. Set a number to override; previously defaulted to the whole map. |
 
 ## Performance Notes
 
