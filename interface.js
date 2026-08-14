@@ -104,39 +104,62 @@ class InterfaceManager {
         };
     }
 
-    /**
-     * Choose a box position that keeps the playable actor visible.
-     *
-     * A window centered in the viewport lands exactly where the player usually is,
-     * so this dodges VERTICALLY: player in the upper half puts the box low, player
-     * in the lower half puts it high. X is left centered — horizontal placement is
-     * the caller's business, and pushing boxes sideways makes centered modals read
-     * as misaligned.
-     *
-     * @param {number} boxWidth - Box width in tiles
-     * @param {number} boxHeight - Box height in tiles
-     * @returns {{x: number, y: number}} Box origin in tile coords
-     */
-    placeBoxAwayFromPlayer(boxWidth, boxHeight) {
+    placeBoxAwayFromPlayer(boxWidth, boxHeight, options = {}) {
         const vis = this.getVisibleArea();
         const player = this.engine.entityManager?.player;
 
-        const x = vis.originX + Math.floor((vis.width - boxWidth) / 2);
-        // Centered vertically is the fallback when there's no player to dodge.
-        let y = vis.originY + Math.floor((vis.height - boxHeight) / 2);
+        const minX = vis.originX;
+        const minY = vis.originY;
+        // Inset one tile from the far edge so the frame isn't clipped. Math.max keeps
+        // this sane when the box is bigger than the viewport.
+        const maxX = Math.max(minX, vis.originX + vis.width - boxWidth - 1);
+        const maxY = Math.max(minY, vis.originY + vis.height - boxHeight - 1);
 
-        if (player) {
-            // Inset one tile from the viewport edge so the frame isn't clipped.
-            const highY = vis.originY + 1;
-            const lowY = vis.originY + vis.height - boxHeight - 1;
-            y = player.y < vis.originY + vis.height / 2 ? lowY : highY;
+        const centerX = Math.max(minX, vis.originX + Math.floor((vis.width - boxWidth) / 2));
+        const centerY = Math.max(minY, vis.originY + Math.floor((vis.height - boxHeight) / 2));
+
+        // Centered is the fallback when there's no player to dodge.
+        if (!player) return { x: centerX, y: centerY };
+
+        const inUpperHalf = player.y < vis.originY + vis.height / 2;
+        const highY = minY + 1;
+        const lowY = maxY;
+
+        const ys = [
+            ...(options?.preferY || []),
+            inUpperHalf ? lowY : highY,   // the half the player isn't in
+            inUpperHalf ? highY : lowY,   // the other one, if that failed
+            // Flush to the edge, no margin. Last resort for a tall box, where this is
+            // sometimes the only row that clears the player.
+            minY, maxY,
+        ];
+        const xs = [
+            ...(options?.preferX || []),
+            centerX,                      // keep modals centered when we can
+            maxX, minX,
+            player.x + 1,                 // columns that just clear the player
+            player.x - boxWidth,
+        ];
+
+        // Drop out-of-range candidates rather than clamping them — clamping folds
+        // distinct options onto the same edge, discarding the escapes we built.
+        const inY = ys.filter(v => v >= minY && v <= maxY);
+        const inX = xs.filter(v => v >= minX && v <= maxX);
+
+        const covers = (bx, by) =>
+            player.x >= bx && player.x < bx + boxWidth &&
+            player.y >= by && player.y < by + boxHeight;
+
+        for (const cy of inY) {
+            for (const cx of inX) {
+                if (!covers(cx, cy)) return { x: cx, y: cy };
+            }
         }
 
-        // Clamp: on a viewport shorter than the box, lowY goes negative. Better to
-        // clip the bottom than to start off-screen with the title lost.
+        // Nothing clears the player: the box is too big. Keep the preferred position.
         return {
-            x: Math.max(vis.originX, x),
-            y: Math.max(vis.originY, y),
+            x: Math.max(minX, Math.min(inX[0] ?? centerX, maxX)),
+            y: Math.max(minY, Math.min(inY[0] ?? centerY, maxY)),
         };
     }
 
@@ -837,18 +860,15 @@ class InterfaceManager {
         const boxWidth = contentWidth + (padding * 2) + 2;
         const boxHeight = contentHeight + (padding * 2) + 2;
 
-        // Calculate Y position based on existing boxes in stack
-        let yPosition = 0;
-        for (const stackedId of this.textBoxStack) {
-            const stackedBox = this.boxes.get(stackedId);
-            if (stackedBox && stackedBox._boxHeight) {
-                yPosition += stackedBox._boxHeight;
-            }
-        }
-
-        // Center horizontally within visible area
-        const x = vis.originX + Math.floor((vis.width - boxWidth) / 2);
-        const y = vis.originY + yPosition;
+        // Offset of this box within the stack, and the stack's full height once it's
+        // added. Text boxes stack downward and have to move as a group, so the dodge is
+        // computed for the whole column — placing each box independently would scatter
+        // them. Width is this box's own, since they're centered individually.
+        const stackOffset = this.textBoxStackHeight();
+        const { x, y: stackTop } = this.placeBoxAwayFromPlayer(
+            boxWidth, stackOffset + boxHeight
+        );
+        const y = stackTop + stackOffset;
 
         // Create the box
         const boxContainer = this.createBox(id, x, y, boxWidth, boxHeight, {
@@ -936,14 +956,40 @@ class InterfaceManager {
     }
 
     /**
+     * Combined height in tiles of the text boxes currently stacked.
+     * @returns {number}
+     */
+    textBoxStackHeight() {
+        let total = 0;
+        for (const id of this.textBoxStack) {
+            const box = this.boxes.get(id);
+            if (box?._boxHeight) total += box._boxHeight;
+        }
+        return total;
+    }
+
+    /**
      * Reposition all text boxes in the stack to fill gaps
      */
     repositionTextBoxStack() {
-        let yPosition = 0;
+        // Re-dodge the player for the shrunken stack: removing a box frees up room, and
+        // the remaining ones may now fit somewhere that was too tight before. Widest box
+        // wins, since they share a column.
+        let widest = 1;
+        for (const id of this.textBoxStack) {
+            const box = this.boxes.get(id);
+            if (box?._boxWidth > widest) widest = box._boxWidth;
+        }
+        const { y: stackTop } = this.placeBoxAwayFromPlayer(widest, this.textBoxStackHeight());
+
+        let yPosition = stackTop;
         for (const id of this.textBoxStack) {
             const box = this.boxes.get(id);
             if (box) {
                 box.y = yPosition * globalVars.TILE_HEIGHT;
+                // Keep _boxY in step — click hit-testing reads it, so leaving it at the
+                // old row makes the box unclickable where it now appears.
+                box._boxY = yPosition;
                 if (box._boxHeight) {
                     yPosition += box._boxHeight;
                 }
@@ -1384,33 +1430,25 @@ class InterfaceManager {
         const boxWidth = contentWidth + (padding * 2) + 2;
         const boxHeight = contentHeight + (padding * 2) + 2;
 
-        // Position next to player info box
+        // This menu belongs to the player_info box, so it prefers sitting flush against
+        // it and sharing its top — the pair then reads as one panel. Those are only
+        // preferences: the shared placement rule drops them if they'd put the box on the
+        // player. (Y here used to be a flat vis.originY + 1, the top of the viewport,
+        // which is exactly where the player stands when they're in the upper half.)
         const playerInfoBox = this.boxes.get('player_info');
         const vis = this.getVisibleArea();
-        let x;
 
+        const preferX = [];
+        const preferY = [];
         if (playerInfoBox && playerInfoBox._boxX !== undefined) {
-            // Position adjacent to player info box
-            const playerInfoRight = playerInfoBox._boxX + playerInfoBox._boxWidth;
-            const playerInfoLeft = playerInfoBox._boxX;
-
-            // Try to place on the opposite side from player info
-            if (playerInfoLeft - vis.originX > boxWidth) {
-                // Place to the left of player info
-                x = playerInfoLeft - boxWidth;
-            } else if (playerInfoRight + boxWidth < vis.originX + vis.width) {
-                // Place to the right of player info
-                x = playerInfoRight;
-            } else {
-                // Fallback: overlap slightly
-                x = Math.max(vis.originX, vis.originX + vis.width - boxWidth - 1);
-            }
-        } else {
-            // Fallback positioning
-            x = vis.originX + Math.floor((vis.width - boxWidth) / 2);
+            const infoLeft = playerInfoBox._boxX;
+            const infoRight = infoLeft + playerInfoBox._boxWidth;
+            if (infoLeft - vis.originX > boxWidth) preferX.push(infoLeft - boxWidth);
+            if (infoRight + boxWidth < vis.originX + vis.width) preferX.push(infoRight);
+            if (playerInfoBox._boxY !== undefined) preferY.push(playerInfoBox._boxY);
         }
 
-        const y = vis.originY + 1;
+        const { x, y } = this.placeBoxAwayFromPlayer(boxWidth, boxHeight, { preferX, preferY });
 
         // Create the box
         const boxContainer = this.createBox('item_action_menu', x, y, boxWidth, boxHeight);

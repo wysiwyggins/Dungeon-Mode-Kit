@@ -14,17 +14,14 @@
 
 ## Feature ideas
 
-## extend tab targeting to item throwing, staffs and wands
-
-- we use a key [tab by default] to cycle through explore targets, extend this to throwing and spell targets. Also we should start with the nearest hostile already targeted in throw or spell targeting mode
-
 ## other actors need to be able to use stairs
 
 - a monster should be able to chase a player actor from one level to another. How does brogue handle this?
 
-## remaning types refactor work
+## remaning 'types' refactor work
 
-- Items have a backwards version of this: 8 hollow meta-entries (`potion`, `food`, `weapon`, `armor`, `staff`, `scroll`, `ring`, `wand`) hold `random_type` lists pointing *down* at their members, while each of the 16 potions restates the same seven "this is a potion" attributes. Inverting it would let `item_catalog` pools be derived from membership instead of hand-maintained arrays that drift when you add an item. `types.json` already has a `domain` field reserved for this.
+- Earlier I added '[types](TYPES.md)' to actors, this pattern should be extended to items.
+- Items already have a 'backwards' version of this: 8 hollow meta-entries (`potion`, `food`, `weapon`, `armor`, `staff`, `scroll`, `ring`, `wand`) hold `random_type` lists pointing *down* at their members, while each of the 16 potions restates the same seven "this is a potion" attributes. Inverting it would let `item_catalog` pools be derived from membership instead of hand-maintained arrays that drift when you add an item. `types.json` already has a `domain` field reserved for this.
 - `Entity.type` still holds the entity *id* (`actor.type === 'goblin'`), so an actor's type is read as `actor.data.type`. Renaming the id field to `Entity.id` would free the word — ~50 call sites plus a save-format shim, and no data file would change.
 - Types don't inherit from types (single hop, like `$alias`). Probably fine; revisit if a `dire_beast` wants to extend `beast`.
 
