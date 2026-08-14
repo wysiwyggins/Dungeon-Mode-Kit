@@ -385,6 +385,35 @@ Items that recharge and fire spells use `charge_stat` and `uses`:
 }
 ```
 
+### Aim targeting (`target_filter`)
+
+While aiming a throw or a zap, the target-cycling key (`Tab` by default, bound to the
+`cycle_target` action) steps through valid targets nearest-first, and the nearest one is
+selected automatically when aiming begins. The mouse still overrides the keyboard pick.
+
+`target_filter` is an optional array on an item that says what it may cycle to. Omit it and
+the item gets a sensible default — thrown items offer `["hostile", "trap"]`, zapped items
+offer `["hostile"]` — so most items need no entry at all.
+
+| Token | Cycles to |
+|---|---|
+| `hostile` | Enemies (hostile personality, `hostile` attribute, or `collision_effect`) |
+| `ally` | Non-hostile creatures with a health stat — for beneficial effects |
+| `trap` | Traps, so a thrown object can spring one from a safe distance |
+| `tile` | Open floor the caster could stand on — for self-teleport effects |
+
+Tokens combine as a union, so `["hostile", "trap"]` cycles both.
+
+```json
+"target_filter": ["tile"]
+```
+
+**Unidentified items ignore `target_filter` entirely** and offer the same
+`["hostile", "ally"]` list as every other unidentified item. This is deliberate: if an
+unknown staff skipped your allies, its target list would tell you it was offensive before
+you had identified it. Every unknown item cycling the same list means comparing two of them
+against each other leaks nothing either. Once identified, the item's real filter applies.
+
 ---
 
 ## Identification System

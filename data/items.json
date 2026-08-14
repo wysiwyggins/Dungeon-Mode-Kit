@@ -981,6 +981,7 @@
       "uses": 2,
       "spell_range": 8,
       "spell_effect": { "blink_self": true },
+      "target_filter": ["tile"],
       "projectile_tile": "OPAQUE_WHITE_DIAMOND_SUITE",
       "projectile_tint": "#AADDFF",
       "spell_name": "Blinking",

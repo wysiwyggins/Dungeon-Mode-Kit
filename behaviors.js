@@ -387,15 +387,6 @@ const BehaviorLibrary = {
         return result.moved;
     },
 
-    /**
-     * Cloud/mist specific anti-stacking. Unlike avoid_crowding (which jellies use
-     * to scatter and which only moves same-type actors apart), this collapses any
-     * gas sharing this tile down to a single actor with two density levels:
-     * cloud (dense) absorbs everything; two+ mists concentrate into one cloud.
-     * Delegates to EntityManager.resolveGasStacking so the spawn-time hook and the
-     * per-turn pass share identical rules. Returns true (turn consumed) only if
-     * this actor was merged away, so the now-dead actor stops running behaviors.
-     */
     merge_clouds: (actor) => {
         const em = actor.engine.entityManager;
         if (em._gasDensity(actor) === 0) return false;

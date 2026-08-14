@@ -8,6 +8,12 @@
 // uppercase answer fires its own keydown first.
 const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'AltGraph', 'Dead']);
 
+// Default aim-target categories, used when an item declares no `target_filter`.
+// Throwing includes traps so a thrown object can spring one from a safe distance;
+// zapping is enemies-only, since most staffs and wands are offensive.
+const THROW_DEFAULT_TARGETS = ['hostile', 'trap'];
+const SPELL_DEFAULT_TARGETS = ['hostile'];
+
 class InterfaceManager {
     constructor(engine) {
         this.engine = engine;
@@ -2144,6 +2150,145 @@ class InterfaceManager {
     }
 
     // ========================================================================
+    // AIM TARGETING (shared by throw and spell aiming)
+    // ========================================================================
+
+    /**
+     * Which item is currently being aimed, and what it targets by default.
+     * Throwing offers traps as well as enemies so a thrown object can spring one
+     * from a safe distance; a zap is enemies-only unless the item says otherwise.
+     * @returns {{item: Object, defaults: string[], origin: Object}|null}
+     */
+    getAimContext() {
+        if (this.throwAimingMode) {
+            return {
+                item: this.throwItem,
+                defaults: THROW_DEFAULT_TARGETS,
+                origin: this.engine.entityManager?.player
+            };
+        }
+        if (this.spellAimingMode) {
+            return {
+                item: this.spellItem,
+                defaults: SPELL_DEFAULT_TARGETS,
+                origin: this.spellCaster
+            };
+        }
+        return null;
+    }
+
+    /**
+     * Aim at a target by writing its position into hoveredTile.
+     *
+     * Both aiming modes read their target solely from inputManager.hoveredTile, so
+     * pointing them somewhere is just a matter of setting it. A later mouse move
+     * overwrites this, which is intended — the mouse always wins.
+     *
+     * @param {{x: number, y: number}} target - The chosen target
+     */
+    applyAimTarget(target) {
+        const inputManager = this.engine.inputManager;
+        if (!inputManager || !target) return;
+        inputManager.hoveredTile.x = target.x;
+        inputManager.hoveredTile.y = target.y;
+    }
+
+    /**
+     * Point at the nearest valid target when an aiming mode opens.
+     * @param {string[]} defaults - Fallback tokens when the item declares no target_filter
+     * @returns {Object|null} The seeded target, or null if there was nothing to aim at
+     */
+    seedAimTarget(defaults) {
+        const ctx = this.getAimContext();
+        if (!ctx) return null;
+
+        const tokens = getAimTargetTokens(ctx.item, defaults);
+        const targets = collectAimTargets(this.engine, tokens, ctx.origin);
+        if (targets.length === 0) return null;
+
+        this.aimTargets = targets;
+        this.aimTargetIndex = 0;
+        this.applyAimTarget(targets[0]);
+        return targets[0];
+    }
+
+    /**
+     * Advance to the next target, wrapping around. Rebuilds the candidate list each
+     * press so a target that died or walked out of sight since the last press drops
+     * out, matching how cycleTarget handles travel targets.
+     *
+     * @returns {boolean} True if a target was selected
+     */
+    cycleAimTarget() {
+        const ctx = this.getAimContext();
+        if (!ctx) return false;
+
+        const tokens = getAimTargetTokens(ctx.item, ctx.defaults);
+        const targets = collectAimTargets(this.engine, tokens, ctx.origin);
+        if (targets.length === 0) {
+            this.engine.inputManager?.showMessage('No targets in view.');
+            return false;
+        }
+
+        // Keep the cycle anchored to the actor we were last pointing at, so a list
+        // that reordered (something moved closer) doesn't jump us back to the start.
+        const current = this.aimTargets?.[this.aimTargetIndex]?.entity;
+        const resumeAt = current ? targets.findIndex(t => t.entity === current) : -1;
+        const index = (resumeAt >= 0 ? resumeAt + 1 : 0) % targets.length;
+
+        this.aimTargets = targets;
+        this.aimTargetIndex = index;
+        this.applyAimTarget(targets[index]);
+
+        // Redraw through the mode's own path renderer.
+        if (this.throwAimingMode) this.updateThrowPath();
+        else if (this.spellAimingMode) this.updateSpellPath();
+
+        this.announceAimTarget(targets[index]);
+        return true;
+    }
+
+    /**
+     * Report the current aim target and its position in the cycle.
+     * @param {Object} target - The selected target
+     */
+    announceAimTarget(target) {
+        const total = this.aimTargets?.length || 1;
+        // Tile targets carry no entity — name the spot instead of saying "target".
+        const label = target.entity?.name || `spot (${target.x}, ${target.y})`;
+        this.engine.inputManager?.showMessage(`Target: ${label} (${this.aimTargetIndex + 1}/${total})`);
+    }
+
+    /**
+     * Was this key press the "cycle target" action?
+     *
+     * Resolved through the keymap rather than compared to a literal, so a player who
+     * rebinds target cycling off Tab still gets it inside the aiming modes.
+     *
+     * @param {KeyboardEvent} [event] - The raw keydown event
+     * @returns {boolean}
+     */
+    isCycleTargetKey(event) {
+        if (!event) return false;
+        return this.engine.inputManager?.getActionForKey(event) === 'cycle_target';
+    }
+
+    /**
+     * Was this key press the "confirm target" action? (Enter by default.)
+     *
+     * The keyboard equivalent of clicking the aimed tile, so a throw or a zap can be
+     * completed without reaching for the mouse. Resolved through the keymap for the
+     * same reason as isCycleTargetKey — the binding is the player's to change.
+     *
+     * @param {KeyboardEvent} [event] - The raw keydown event
+     * @returns {boolean}
+     */
+    isConfirmTargetKey(event) {
+        if (!event) return false;
+        return this.engine.inputManager?.getActionForKey(event) === 'confirm_target';
+    }
+
+    // ========================================================================
     // THROW AIMING MODE
     // ========================================================================
 
@@ -2154,19 +2299,30 @@ class InterfaceManager {
     enterThrowAimingMode(item) {
         this.throwAimingMode = true;
         this.throwItem = item;
+        this.aimTargets = null;
+        this.aimTargetIndex = -1;
 
         // Close the menus but keep player reference
         this.closeItemActionMenu();
         this.removeBox('player_info');
         this.inventoryMode = false;
 
-        // Show instruction message
-        this.showTextBox('throw_instructions', 'Aim with mouse, click to throw. Esc to cancel.', {
+        // Start aimed at the nearest valid target so the mode is usable without a
+        // mouse — hoveredTile sits at -1,-1 until the pointer moves over the canvas,
+        // which would otherwise leave a keyboard player with nothing aimed at.
+        const seeded = this.seedAimTarget(THROW_DEFAULT_TARGETS);
+
+        const im = this.engine.inputManager;
+        const cycleKey = im?.getKeyForAction('cycle_target', 'Tab') || 'Tab';
+        const confirmKey = im?.getKeyForAction('confirm_target', 'Enter') || 'Enter';
+        this.showTextBox('throw_instructions',
+            `[${cycleKey}] to target, [${confirmKey}] or click to throw. Esc to cancel.`, {
             dismissOnMove: false
         });
 
         // Update the throw path based on current mouse position
         this.updateThrowPath();
+        if (seeded) this.announceAimTarget(seeded);
     }
 
     /**
@@ -3037,11 +3193,21 @@ class InterfaceManager {
      * @param {string} key - The key pressed
      * @returns {boolean} True if key was handled
      */
-    handleThrowKey(key) {
+    handleThrowKey(key, event) {
         if (!this.throwAimingMode) return false;
 
         if (key === 'Escape') {
             this.exitThrowAimingMode();
+            return true;
+        }
+
+        if (this.isCycleTargetKey(event)) {
+            this.cycleAimTarget();
+            return true;
+        }
+
+        if (this.isConfirmTargetKey(event)) {
+            this.executeThrow();
             return true;
         }
 
@@ -3082,13 +3248,28 @@ class InterfaceManager {
         this.spellCaster = caster;
         this.currentPlayer = caster;
 
+        this.aimTargets = null;
+        this.aimTargetIndex = -1;
+
         // Close any open menus
         this.closeItemActionMenu();
         this.removeBox('player_info');
         this.inventoryMode = false;
 
+        // Start aimed at the nearest valid target, so zapping works without a mouse.
+        const seeded = this.seedAimTarget(SPELL_DEFAULT_TARGETS);
+
+        const im = this.engine.inputManager;
+        const cycleKey = im?.getKeyForAction('cycle_target', 'Tab') || 'Tab';
+        const confirmKey = im?.getKeyForAction('confirm_target', 'Enter') || 'Enter';
+        this.showTextBox('spell_instructions',
+            `[${cycleKey}] to target, [${confirmKey}] or click to cast. Esc to cancel.`, {
+            dismissOnMove: false
+        });
+
         // Update the spell path based on current mouse position
         this.updateSpellPath();
+        if (seeded) this.announceAimTarget(seeded);
     }
 
     /**
@@ -3262,6 +3443,9 @@ class InterfaceManager {
 
         // Hide the line path
         this.engine.renderer?.hideLinePath();
+
+        // Remove instruction message
+        this.removeTextBox('spell_instructions');
 
         // Re-enable normal tile highlight
         this.engine.renderer?.hideTileHighlight();
@@ -3704,16 +3888,31 @@ class InterfaceManager {
 
     /**
      * Handle keyboard input during spell aiming mode
+     *
+     * Consumes every key while aiming, matching handleThrowKey. It used to fall
+     * through on unrecognized keys, which let target-cycling reach the global
+     * handler and start an explore preview in the middle of a cast.
+     *
      * @param {string} key - The key pressed
+     * @param {KeyboardEvent} [event] - The raw event, for resolving keybindings
      * @returns {boolean} True if key was handled
      */
-    handleSpellAimingKey(key) {
+    handleSpellAimingKey(key, event) {
         if (!this.spellAimingMode) return false;
         if (key === 'Escape') {
             this.exitSpellAimingMode();
             return true;
         }
-        return false;
+        if (this.isCycleTargetKey(event)) {
+            this.cycleAimTarget();
+            return true;
+        }
+        if (this.isConfirmTargetKey(event)) {
+            this.executeSpell();
+            return true;
+        }
+        if (MODIFIER_KEYS.has(key)) return false;
+        return true;
     }
 
     /**

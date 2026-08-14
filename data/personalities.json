@@ -346,6 +346,8 @@
     ]
   },
 
+  
+
   "trap": {
     "name": "Trap",
     "hostile": false,
@@ -463,12 +465,12 @@
 
   "scavenger": {
     "name": "Scavenger",
-    "hostile": false,
-    "search_radius": 15,
+    "preferred_distance": 6,
+    "search_radius": 10,
     "behaviors": [
-      "flee_from_danger",
-      "seek_item",
-      "random_walk"
+      "random_walk",
+      "maintain_distance",
+      "seek_item"
     ]
   },
 

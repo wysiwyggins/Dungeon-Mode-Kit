@@ -17,6 +17,147 @@
  * @param {Object} actor - The candidate actor
  * @returns {boolean} True if the actor is worth offering as a travel target
  */
+/**
+ * Is this actor hostile to the player?
+ *
+ * The single definition of "hostile" for targeting and threat notices. Three ways
+ * an actor can qualify, because hostility isn't stored in one place: most creatures
+ * declare it on their personality, some carry it as a bare attribute (turrets, which
+ * have no mind to give a personality), and hazards like fire announce themselves
+ * with collision_effect instead.
+ *
+ * @param {Object} actor - The candidate actor
+ * @returns {boolean} True if the actor should be treated as an enemy
+ */
+function isHostileActor(actor) {
+    if (!actor?.hasAttribute) return false;
+    return !!(actor.hasAttribute('collision_effect') ||
+              actor.personality?.hostile ||
+              actor.hasAttribute('hostile'));
+}
+
+/**
+ * Category predicates for aim targeting, keyed by the token used in an item's
+ * `target_filter`. Each answers "is this actor a valid stop for this token?".
+ *
+ * Kept separate from isTravelTarget: that asks "would the player walk here", which
+ * excludes exactly the things you most want to aim at (traps, fire, lava).
+ */
+const AIM_TARGET_PREDICATES = {
+    // Enemies. The common case, and the default for both throwing and zapping.
+    //
+    // Solidity is what separates a creature from the diffuse terrain that also reads
+    // as hostile: mist and sewer gas carry an (empty) collision_effect, so they pass
+    // the hostility test and used to turn up as throw targets. Note this gate can't
+    // be applied to the whole target list — every trap is non-solid, and traps are
+    // deliberately targetable.
+    hostile: (actor) => isHostileActor(actor) && actor.hasAttribute('solid'),
+
+    // Friendlies worth a beneficial effect: has a health stat to affect, isn't an
+    // enemy, isn't scenery, and isn't the caster themselves.
+    ally: (actor) => !isHostileActor(actor) &&
+                     !actor.hasAttribute('trap') &&
+                     !actor.hasAttribute('controlled') &&
+                     actor.hasAttribute('solid') &&
+                     actor.stats?.health !== undefined,
+
+    // Traps, so a thrown object can spring one from a safe distance. A trap flagged
+    // hidden is skipped — offering it as a target would give away its position.
+    // Nothing sets that flag today; the guard is here so the token stays honest if
+    // hidden traps are ever added.
+    trap: (actor) => actor.hasAttribute('trap') && !actor.hidden
+};
+
+/**
+ * Tokens that select map tiles rather than actors. Handled separately because
+ * collectAimTargets walks the actor list, and these need a tile scan instead.
+ */
+const AIM_TILE_TOKENS = new Set(['tile']);
+
+/**
+ * Build the list of aim targets for a throw or a zap, nearest first.
+ *
+ * Unlike collectTargets (used by travel), candidates are NOT probed for a walkable
+ * path — you can throw across a chasm or over water, so reachability on foot is the
+ * wrong test. Straight-line distance is all that matters.
+ *
+ * @param {Object} engine - The engine, for FOV and entity lookups
+ * @param {string[]} tokens - Category tokens from an item's target_filter
+ * @param {Object} [origin] - Actor to measure distance from (defaults to the player)
+ * @returns {Array<{x: number, y: number, entity: Object, dist: number}>} Sorted candidates
+ */
+function collectAimTargets(engine, tokens, origin = null) {
+    const em = engine?.entityManager;
+    const from = origin || em?.player;
+    if (!em || !from) return [];
+
+    const preds = tokens.map(t => AIM_TARGET_PREDICATES[t]).filter(Boolean);
+    const wantsTiles = tokens.some(t => AIM_TILE_TOKENS.has(t));
+    // Tile tokens have no entry in AIM_TARGET_PREDICATES, so bail out only when
+    // neither kind of token matched — otherwise a ["tile"] filter returns nothing.
+    if (preds.length === 0 && !wantsTiles) return [];
+
+    const candidates = [];
+
+    // Tile tokens scan the map instead of the actor list. Used by self-teleport
+    // effects (staff of blinking), where the useful target is open floor and an
+    // enemy-only list would point everywhere except where you want to go.
+    if (wantsTiles) {
+        for (let y = 0; y < (engine.mapManager?.height || 0); y++) {
+            for (let x = 0; x < (engine.mapManager?.width || 0); x++) {
+                if (x === from.x && y === from.y) continue;
+                if (!engine.isTileVisible(x, y)) continue;
+                if (from.isPassableAt && !from.isPassableAt(x, y)) continue;
+                candidates.push({
+                    x, y,
+                    entity: null,
+                    dist: Math.max(Math.abs(x - from.x), Math.abs(y - from.y))
+                });
+            }
+        }
+    }
+
+    for (const actor of em.actors) {
+        if (actor.isDead || actor === from) continue;
+        if (!engine.isTileVisible(actor.x, actor.y)) continue;
+        // Same invisibility rule the sidebar uses: an invisible actor stays off the
+        // list unless it's one of yours.
+        if (actor.hasStateProperty?.('invisible') && !actor.hasAttribute('controlled')) continue;
+        // Union semantics — matching any one token is enough.
+        if (!preds.some(p => p(actor))) continue;
+
+        candidates.push({
+            x: actor.x,
+            y: actor.y,
+            entity: actor,
+            dist: Math.max(Math.abs(actor.x - from.x), Math.abs(actor.y - from.y))
+        });
+    }
+
+    candidates.sort((a, b) => a.dist - b.dist);
+    return candidates;
+}
+
+/**
+ * Which target categories should an item offer?
+ *
+ * An unidentified staff or wand must not reveal its nature through its target list:
+ * if it skipped your allies, you'd know it was offensive before learning anything.
+ * So identification is checked FIRST and overrides target_filter entirely, and every
+ * unidentified item returns the same uniform list — comparing two unknown items
+ * against each other leaks nothing either.
+ *
+ * @param {Object} item - The item being aimed
+ * @param {string[]} defaultTokens - Tokens to use when the item declares none
+ * @returns {string[]} Category tokens for collectAimTargets
+ */
+function getAimTargetTokens(item, defaultTokens) {
+    if (item && item.identified === false) return ['hostile', 'ally'];
+    const declared = item?.getAttribute?.('target_filter');
+    if (Array.isArray(declared) && declared.length > 0) return declared;
+    return defaultTokens;
+}
+
 function isTravelTarget(actor) {
     if (!actor?.hasAttribute) return false;
 
@@ -223,6 +364,23 @@ class InputManager {
      * @param {KeyboardEvent} event
      * @returns {string|undefined} The bound action, if any
      */
+    /**
+     * Resolve a raw keydown event to its bound action name, checking both maps.
+     *
+     * The inverse of getKeyForAction, and the one to use when deciding whether a key
+     * press means a given action: modal handlers (throw/spell aiming) receive raw
+     * events before the normal dispatch runs, so comparing event.key to a literal
+     * like 'Tab' would ignore the player's keybindings. Ask for the action instead.
+     *
+     * @param {KeyboardEvent} event - The raw keydown event
+     * @returns {string|undefined} The bound action name, or undefined if unbound
+     */
+    getActionForKey(event) {
+        if (!event) return undefined;
+        return this.lookupBinding(this.keyMap, event) ??
+               this.lookupBinding(this.globalKeyMap || {}, event);
+    }
+
     lookupBinding(map, event) {
         let prefix = '';
         if (event.ctrlKey) prefix += 'Ctrl+';
@@ -1649,14 +1807,16 @@ class InputManager {
             return;
         }
 
-        // Check if throw aiming mode wants to handle this key first
-        if (this.engine.interfaceManager?.handleThrowKey(event.key)) {
+        // Check if throw aiming mode wants to handle this key first. The full event
+        // goes along with the key so the handler can resolve keybindings (target
+        // cycling) rather than matching literal key names.
+        if (this.engine.interfaceManager?.handleThrowKey(event.key, event)) {
             event.preventDefault();
             return;
         }
 
         // Check if spell aiming mode wants to handle this key
-        if (this.engine.interfaceManager?.handleSpellAimingKey(event.key)) {
+        if (this.engine.interfaceManager?.handleSpellAimingKey(event.key, event)) {
             event.preventDefault();
             return;
         }
@@ -1756,7 +1916,9 @@ class InputManager {
         // preview (the first-press "press again to travel" state), so a stale path
         // never lingers behind the next thing the player does. (x)plore commits it
         // and Tab advances it, so neither should cancel it here.
-        if (action !== 'explore' && action !== 'cycle_target') this.cancelExplorePreview();
+        if (action !== 'explore' && action !== 'cycle_target' && action !== 'confirm_target') {
+            this.cancelExplorePreview();
+        }
 
         // Handle movement actions
         if (this.directions[action]) {
@@ -1828,6 +1990,15 @@ class InputManager {
 
         // Handle other actions
         switch (action) {
+            // Commit whatever is currently targeted. The aiming modes intercept this
+            // key before it reaches here (throwing / zapping at the aimed tile); out
+            // here it confirms a travel target armed by cycle_target, so the same key
+            // means "go with that" in all three contexts. With nothing armed it does
+            // nothing rather than falling through to a stray action.
+            case 'confirm_target':
+                if (this.exploreArmed) this.commitExplore();
+                break;
+
             case 'wait':
                 console.log(`${player.name} waits.`);
                 this.showMessage("You wait.");

@@ -40,7 +40,8 @@
     "s": "jam_spike",
     "c": "catalog",
     "x": "explore",
-    "Tab": "cycle_target"
+    "Tab": "cycle_target",
+    "Enter": "confirm_target"
   },
 
   "global": {
@@ -58,6 +59,7 @@
     "jam_spike":      "Jam a spike into a door",
     "explore":        "Auto-explore",
     "cycle_target":   "Cycle travel targets",
+    "confirm_target": "Confirm target (throw / zap)",
     "discovery":      "Discovery progress",
     "toggle_pause":   "Toggle pause",
     "reload":         "Reload / restart"
