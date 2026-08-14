@@ -3,6 +3,7 @@
 
 ## Tweaks
 
+- while the first ui window spawned (like i for inventory/info) is smart enough to not spawn on top of the player actor, subsequent ui windows aren't. so if the player is at the top of the viewport and wants to throw an item at something nearby, the item verb window spawns on top of them, making targeting impossible
 - Don't allow pushing actors into stairs even though stairs are not solid
 - list of keymappings in help should also be zebra striped like inventory
 - We should be able to turn off biomes on a multi-level prototype and just use defaults- change floor plan section name to 'biome plan' or something, add a toggle to disable
@@ -55,6 +56,10 @@
 - In addition to clicking we should have a keyboard-only way to select actors and items and getting info (tab to cycle through objects of interest works now- we add mode-aware action button (enter) to view info, or select when throwing/zapping)
 - because the canvas viewport is prototype definable, could this be too much text for the canvas? we might need to implement paging in ui windows for overflow (paging is more desirable than scrolling)
 - if possible, clicking an actor or item name in the sidebar could highlight its tiles in the canvas and bring up the info canvas textbox
+
+### Looping sound
+
+- spooky looping wind when you're standing next to an abyss and a message (would add both looping sound and adjacent proximity messages)
 
 ### Dialogue
 

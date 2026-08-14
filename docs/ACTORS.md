@@ -583,6 +583,7 @@ Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a fu
 | `horizontal_bounce` | Walk left/right, reversing on walls. | — |
 | `vertical_bounce` | Walk up/down, reversing on walls. | — |
 | `flee_from_danger` | Flee harmful tiles, thrown-item hits, or low health. | `health_threshold` (default: 0.25) |
+| `requires_liquid` | Aquatic gate — halts the behavior chain (helpless, skips the turn) whenever the actor is stranded out of liquid, and falls through normally while submerged. Place it first in the list (e.g. eel). Pairs with the movement guards that stop the actor beaching itself and the `getEffectiveDefense` penalty that leaves it defenseless on dry land. | — |
 
 **Combat:**
 
@@ -593,6 +594,7 @@ Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a fu
 | `ranged_attack` | Fire projectile at visible target using actor's `collision_effect`. | `attack_range` (default: 5), `ranged_cooldown` (default: 2) |
 | `shoot_at_target` | Stationary turret — shoots inventory ammo at target. | `attack_range` (default: 8) |
 | `bolt_attack` | Lightning bolt along line to target on cooldown. | `attack_range`, `bolt_cooldown`, `bolt_damage` |
+| `spray_web` | Spray a cone of web actors toward the nearest visible controlled target. Webs are non-solid and apply `stuck` on contact, so the target must struggle free. Cooldown- and line-of-sight-gated, modeled on `bolt_attack`. | `spray_range` (default: 6), `spray_cooldown` (default: 4), `spray_arc` (default: 2, half-width in tiles at max range), `spray_min_distance` (default: 0), `web_type` (default: `'web'`), `spray_sound` |
 | `apply_aura` | Chance to apply a status effect to adjacent actors each turn. | `aura_state`, `aura_chance` (default: 25), `aura_duration`, `aura_hostile_only` (default: true) |
 | `heal_ally` | Heal the most wounded adjacent non-controlled actor. | `heal_amount` (default: 5), `heal_sound` (default: `'tone5'`) |
 
@@ -603,6 +605,7 @@ Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a fu
 | `guard_area` | Guard home position, alert allies on spotting threat. | `vision_range`, `memory_duration`, `alert_allies` |
 | `pursue_intruders` | Chase alerted target, remember last known position. | `memory_duration` |
 | `follow_thread` | Follow thread trail entities toward the trail owner. | — |
+| `ambush` | Lie in wait just inside a room beside its entryway, springing only when the target comes into view. Keeps ambushers out of corridors and off arbitrary wall corners. Walks toward the nearest ambush spot within `ambush_radius`; falls through to normal pursuit when the target is visible, when already alerted (e.g. after being hit), or when no spot exists. | `ambush_radius` (default: 6) |
 
 **Utility:**
 
@@ -618,6 +621,7 @@ Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a fu
 | `blink_away` | Teleport away from an adjacent target (or toward a distant one) on cooldown. Leaves `blink_spawn` actor at origin if set. | `blink_range` (default: 8), `blink_cooldown` (default: 5), `preferred_distance` (default: 4), `blink_spawn` (optional actor type) |
 | `countdown` | Decrement counter each turn; at zero, reset and call the behavior named in `countdown_event`. | `interval` (default: 5), `countdown_event` (default: `toggle_and_propagate`), `countdown_sound` |
 | `countdown_display` | Update base tile to show remaining countdown as a digit. | `countdown_display` (set to `"digit"`) |
+| `clock_tick` | Convenience composite for clocks: runs `countdown` then `countdown_display` in digit mode on the same turn, so one behavior gives a ticking, self-displaying counter. Always consumes the turn. | `interval` (default: 5, or actor's `clock_interval`), `countdown_event` (default: `toggle_and_propagate`), `countdown_sound` |
 | `toggle_and_propagate` | Flip `toggled` attribute and propagate switch effects to linked actors. | — |
 
 **Environmental:**
@@ -630,6 +634,7 @@ Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a fu
 | `cloud_disperse` | Edge clouds disperse into mist. | `disperse_to`, `disperse_threshold`, `disperse_chance` |
 | `cloud_affect_actors` | Apply cloud's collision_effect/apply_state to actors in tile. | — |
 | `cloud_lifetime` | Countdown and remove cloud. | — |
+| `merge_clouds` | Collapse gas sharing this tile into a single actor with two density levels — cloud absorbs everything, two or more mists concentrate into one cloud. Unlike `avoid_crowding` (which moves same-type actors apart), this merges them. Consumes the turn only when this actor is the one absorbed. | — |
 | `mist_fade` | Isolated mist fades away. | `fade_threshold`, `fade_chance` |
 | `incinerate_entities` | Destroy items/actors on lava. | `spawn_on_incinerate` |
 | `steam_generation` | Generate steam when adjacent to water. | `steam_type`, `steam_chance` |

@@ -122,20 +122,21 @@
 // ---- Behavior definitions ----
 
 const BEHAVIOR_CATEGORIES = [
-    { name: 'Combat', behaviors: ['attack_adjacent', 'ranged_attack', 'shoot_at_target', 'bolt_attack', 'pickpocket_adjacent', 'defend_self'] },
-    { name: 'Movement', behaviors: ['random_walk', 'pursue_target', 'maintain_distance', 'blink_away', 'flee_from_danger', 'flee_with_loot', 'wander_to_wall', 'requires_liquid'] },
-    { name: 'Patrol / Guard', behaviors: ['patrol', 'guard_area', 'pursue_intruders', 'follow_thread'] },
+    { name: 'Combat', behaviors: ['attack_adjacent', 'ranged_attack', 'shoot_at_target', 'bolt_attack', 'spray_web', 'pickpocket_adjacent', 'defend_self'] },
+    { name: 'Movement', behaviors: ['random_walk', 'pursue_target', 'maintain_distance', 'blink_away', 'flee_from_danger', 'flee_with_loot', 'wander_to_wall', 'requires_liquid', 'explore', 'avoid_crowding'] },
+    { name: 'Patrol / Guard', behaviors: ['patrol', 'guard_area', 'pursue_intruders', 'follow_thread', 'ambush', 'hunt'] },
     { name: 'Chain Creatures', behaviors: ['chain_head_ai', 'chain_body_follow', 'chain_scatter'] },
     { name: 'Environmental', behaviors: [
         'incinerate_entities', 'steam_generation', 'fire_spread', 'fire_burn_out',
         'cloud_spread', 'cloud_affect_actors', 'cloud_disperse', 'cloud_lifetime', 'mist_fade',
         'liquid_color_mix', 'strip_inventory', 'drift_ground_items', 'drain_suction',
-        'cellular_automaton_step', 'cellular_transform', 'emit_cloud'
+        'cellular_automaton_step', 'cellular_transform', 'emit_cloud',
+        'merge_clouds', 'apply_state_on_tile'
     ]},
     { name: 'Special', behaviors: [
         'summon_actor', 'heal_ally', 'seek_item', 'mine_nearby_wall',
         'trap_check_trigger', 'apply_aura', 'horizontal_bounce', 'vertical_bounce',
-        'countdown', 'countdown_display', 'toggle_and_propagate'
+        'countdown', 'countdown_display', 'clock_tick', 'toggle_and_propagate'
     ]}
 ];
 
@@ -146,6 +147,7 @@ const BEHAVIOR_HINTS = {
     ranged_attack: 'Fire a projectile at a visible target',
     shoot_at_target: 'Stationary ranged attack (turret-style)',
     bolt_attack: 'Fire a lightning bolt at a target',
+    spray_web: 'Spray a cone of sticky webs at a target',
     pickpocket_adjacent: 'Steal an item from an adjacent target',
     defend_self: 'Attack adjacent threat when cornered',
     random_walk: 'Move in a random valid direction',
@@ -156,10 +158,14 @@ const BEHAVIOR_HINTS = {
     flee_with_loot: 'Run away after stealing an item',
     wander_to_wall: 'Move toward nearest wall',
     requires_liquid: 'Aquatic gate — skip turn (helpless) when stranded out of liquid; place first (eel)',
+    explore: 'Auto-explore the level, grabbing items on the way',
+    avoid_crowding: 'Step apart from same-type actors sharing space',
     patrol: 'Walk a random pattern within patrol_range of home',
     guard_area: 'Watch for intruders, alert allies',
     pursue_intruders: 'Chase last known intruder position',
     follow_thread: 'Follow a thread trail left by the player',
+    ambush: 'Lie in wait beside a room entrance, spring when seen',
+    hunt: 'Chase the quarry type set by the actor\'s hunts attribute',
     chain_head_ai: 'Chain creature head movement',
     chain_body_follow: 'Chain creature body follows head',
     chain_scatter: 'Chain segments scatter when head dies',
@@ -179,6 +185,8 @@ const BEHAVIOR_HINTS = {
     cellular_automaton_step: 'Conway-style cell update',
     cellular_transform: 'Transform based on neighbor count',
     emit_cloud: 'Periodically spawn a cloud nearby',
+    merge_clouds: 'Collapse gas stacked on this tile into one actor',
+    apply_state_on_tile: 'Apply the actor\'s apply_state to whoever stands here',
     summon_actor: 'Summon an actor on cooldown',
     heal_ally: 'Heal a nearby wounded ally',
     seek_item: 'Move toward nearest ground item',
@@ -189,6 +197,7 @@ const BEHAVIOR_HINTS = {
     vertical_bounce: 'Move up/down, reverse at walls',
     countdown: 'Decrement a counter each turn, fire event at zero',
     countdown_display: 'Update tile to show countdown digit',
+    clock_tick: 'Run countdown and digit display together (clock)',
     toggle_and_propagate: 'Toggle state and propagate switch effects'
 };
 
@@ -196,6 +205,8 @@ const BEHAVIOR_PARAMS = {
     patrol: ['patrol_range'],
     guard_area: ['memory_duration'],
     pursue_intruders: ['memory_duration'],
+    ambush: ['ambush_radius'],
+    explore: ['explore_mark_radius'],
     maintain_distance: ['preferred_distance'],
     flee_from_danger: ['health_threshold'],
     flee_with_loot: ['loot_search_radius'],
@@ -206,6 +217,7 @@ const BEHAVIOR_PARAMS = {
     emit_cloud: ['emit_from_type', 'emit_type', 'emit_chance', 'emit_cap', 'cloud_lifetime'],
     blink_away: ['blink_range', 'blink_cooldown', 'preferred_distance', 'blink_spawn', 'blink_sound', 'blink_effect'],
     bolt_attack: ['attack_range', 'bolt_cooldown', 'bolt_damage', 'bolt_sound', 'bolt_effect'],
+    spray_web: ['spray_range', 'spray_cooldown', 'spray_arc', 'spray_min_distance', 'web_type', 'spray_sound'],
     ranged_attack: ['attack_range', 'ranged_cooldown', 'hit_sound', 'miss_sound'],
     shoot_at_target: ['attack_range', 'hit_sound', 'miss_sound'],
     incinerate_entities: ['spawn_on_incinerate', 'spawn_on_liquid_incinerate'],

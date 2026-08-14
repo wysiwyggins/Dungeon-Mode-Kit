@@ -337,13 +337,12 @@
 
   "kobold_miner": {
     "name": "Kobold Miner",
-    "hostile": false,
     "behaviors": [
-      "flee_from_danger",
-      "defend_self",
-      "mine_nearby_wall",
+      "random_walk",
       "wander_to_wall",
-      "random_walk"
+      "mine_nearby_wall",
+      "flee_from_danger",
+      "defend_self"
     ]
   },
 
@@ -498,20 +497,6 @@
       "blink_away",
       "attack_adjacent",
       "pursue_target",
-      "random_walk"
-    ]
-  },
-
-  "hive_queen": {
-    "name": "Hive Queen",
-    "hostile": true,
-    "summon_type": "drone",
-    "summon_cooldown": 4,
-    "summon_cap": 5,
-    "behaviors": [
-      "summon_actor",
-      "flee_from_danger",
-      "attack_adjacent",
       "random_walk"
     ]
   },

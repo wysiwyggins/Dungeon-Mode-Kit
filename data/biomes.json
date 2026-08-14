@@ -5,8 +5,8 @@
       "options": {
         "map_width": 100,
         "map_height": 100,
-        "loopMinDistance": 20,
-        "maxLoops": 5,
+        "loopMinDistance": 15,
+        "maxLoops": 7,
         "roomWeights": {
           "rectangle": 40,
           "cross": 25,
@@ -25,15 +25,15 @@
           "maxSize": 40
         },
         "bridges": {
-          "max": 4
+          "max": 5
         },
         "corridorLength": [
           1,
-          12
+          20
         ],
         "rectWidth": [
           4,
-          14
+          20
         ],
         "rectHeight": [
           4,
@@ -49,7 +49,7 @@
         ],
         "circularRadius": [
           2,
-          8
+          10
         ],
         "cavernWidth": [
           10,
@@ -69,7 +69,13 @@
           ],
           "minSize": 15,
           "maxSize": 40
-        }
+        },
+        "collapsing_floors": {
+          "max": 2,
+          "minSize": 1,
+          "maxSize": 1
+        },
+        "corridorChance": 30
       }
     },
     "mechanics": {

@@ -960,7 +960,8 @@
     "attributes": {
       "opaque": true,
       "flammable": true,
-      "breakable": true
+      "breakable": true,
+      "crushable": true
     }
   },
   "fungus": {
@@ -1083,7 +1084,7 @@
     "name": "mounted torch",
     "tileIndexBase": "TORCH_ON_WALL",
     "tileIndexTop": "OPAQUE_LIGHT_SHADE",
-    "tint": "#ffd877",
+    "tint": "#ffb43f",
     "effect": "flicker_tint",
     "lightRadius": 8,
     "attributes": {
@@ -1332,7 +1333,7 @@
     "name": "rope bridge",
     "tileIndexBase": "WHITE_BOX_HORIZONTAL",
     "tileIndexTop": "BLANK",
-    "tint": "#8B6914",
+    "tint": "#ecbc6f",
     "attributes": {
       "solid": false,
       "flammable": true,
