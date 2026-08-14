@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - documentation for architect.js' applyTilePattern method
 - experimenting with a superheated state for non-flammable actors
 - states can grant attributes now
+- the tab (default key) to cycle interaction from explore walk targets has been extended to throwing and staffs/wands
+- return now commits to a target for both walking and throwing/spells- states can grant attributes now
 
 ### Changed
 
