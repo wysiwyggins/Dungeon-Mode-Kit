@@ -8,10 +8,10 @@
         "loopMinDistance": 15,
         "maxLoops": 7,
         "roomWeights": {
-          "rectangle": 40,
-          "cross": 25,
-          "circular": 20,
-          "cavern": 15
+          "rectangle": 50,
+          "cross": 10,
+          "circular": 10,
+          "cavern": 30
         },
         "lakes": {
           "count": [
@@ -19,10 +19,13 @@
             3
           ],
           "types": [
-            "water"
+            "water",
+            "water",
+            "water",
+            "sewage"
           ],
           "minSize": 15,
-          "maxSize": 40
+          "maxSize": 45
         },
         "bridges": {
           "max": 5

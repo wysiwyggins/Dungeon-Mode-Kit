@@ -413,6 +413,116 @@ function processArticleTemplates(text) {
     });
 }
 
+/**
+ * Flatten every random word list into one "namespace.category" -> string[] map.
+ *
+ * Built once at load so a template can name any list the data files define without
+ * engine.js knowing that namespace exists. Adding a category to words.json is
+ * enough to make `[namespace.category]` work.
+ *
+ * words.json nests by topic ({attacks: {melee_verbs: [...]}}); reagents.json and
+ * substances.json are flat ({reagents: [...]}), so they get their filename as the
+ * namespace. That yields `reagents.reagents` and `substances.substances` — the
+ * tokens the shipped data already uses.
+ *
+ * @param {Object} sources - { words, reagents, substances }
+ * @returns {Object<string, string[]>} Flat registry keyed "namespace.category"
+ */
+function buildWordRegistry({ words, reagents, substances } = {}) {
+    const registry = {};
+
+    for (const [namespace, categories] of Object.entries(words || {})) {
+        if (!categories || typeof categories !== 'object' || Array.isArray(categories)) continue;
+        for (const [category, list] of Object.entries(categories)) {
+            if (Array.isArray(list) && list.length) registry[`${namespace}.${category}`] = list;
+        }
+    }
+
+    for (const [namespace, source] of [['reagents', reagents], ['substances', substances]]) {
+        for (const [category, list] of Object.entries(source || {})) {
+            if (Array.isArray(list) && list.length) registry[`${namespace}.${category}`] = list;
+        }
+    }
+
+    return registry;
+}
+
+/**
+ * Resolve `[token]` templates in a string. The one resolver — display names,
+ * descriptions and messages all route through here.
+ *
+ * Resolution order, first hit wins:
+ *   1. `[a-an]`             deferred to processArticleTemplates, which needs the
+ *                           resolved word after it to pick the article
+ *   2. ctx.providers[key]   caller-specific keys ([damage], [attacked_actor_name])
+ *   3. word registry /      order depends on ctx.memoize — see below
+ *      subject.templateVars
+ *   4. subject[key]         own properties
+ *   5. getAttribute(key)    data attributes
+ *   6. the token itself     unknown keys pass through, so authored prose that
+ *                           happens to contain brackets survives intact
+ *
+ * `memoize` is the identity-vs-event distinction. A name is rendered on every
+ * hover and must not change between renders, so its random picks are cached into
+ * templateVars and templateVars is consulted first. A message is read once, so it
+ * re-rolls for variety and only falls back to templateVars for assigned values
+ * like color or material.
+ *
+ * @param {string} template - Text possibly containing [token]s
+ * @param {Object} subject - Entity supplying templateVars, properties and attributes
+ * @param {Object} [ctx]
+ * @param {Object<string, function>} [ctx.providers] - key -> thunk. Lazy, so an
+ *        unused [item_name] never recurses into getDisplayName().
+ * @param {boolean} [ctx.memoize=false] - Cache word picks for a stable result
+ * @param {Object} [ctx.registry] - Word registry; defaults to the subject's engine
+ * @returns {string} The resolved text (unchanged if it held no tokens)
+ */
+function resolveTemplate(template, subject, ctx = {}) {
+    // Most names carry no template at all; skip the regex entirely for those.
+    if (typeof template !== 'string' || template.indexOf('[') === -1) return template;
+
+    const providers = ctx.providers || {};
+    const memoize = ctx.memoize === true;
+    const registry = ctx.registry || subject?.engine?.globalWordRegistry || {};
+    const vars = subject?.templateVars;
+
+    const resolved = template.replace(/\[([^\]]+)\]/g, (match, key) => {
+        if (key.toLowerCase() === 'a-an') return match;
+
+        // hasOwnProperty, not a truthiness check: [critical_chance] must be able
+        // to resolve to 0 rather than falling through to the lookups below.
+        if (Object.prototype.hasOwnProperty.call(providers, key)) {
+            const value = providers[key]();
+            return (value === undefined || value === null) ? match : value;
+        }
+
+        const list = registry[key];
+        if (memoize) {
+            if (vars && vars[key] !== undefined) return vars[key];
+            if (list && list.length) {
+                const picked = randomElement(list);
+                if (vars) vars[key] = picked;
+                return picked;
+            }
+        } else {
+            if (list && list.length) return randomElement(list);
+            if (vars && vars[key] !== undefined) return vars[key];
+        }
+
+        if (subject && subject[key] !== undefined && typeof subject[key] !== 'object') {
+            return subject[key];
+        }
+
+        const attr = subject?.getAttribute?.(key);
+        if (attr !== undefined && attr !== null && typeof attr !== 'object') return attr;
+
+        return match;
+    });
+
+    // After substitution, so the article sees the word it will actually precede.
+    return processArticleTemplates(resolved);
+}
+
 // ============================================================================
 // PATHFINDING UTILITIES
 // ============================================================================
@@ -1015,6 +1125,15 @@ class DungeonEngine {
             this.globalAdjectives = this.globalWords.adjectives || {};
             this.globalAttacks = this.globalWords.attacks || {};
 
+            // One flat "namespace.category" map over every word list, so templates
+            // can name any of them without engine.js listing the namespaces it
+            // accepts. Built after sampleReagents so it points at the sampled set.
+            this.globalWordRegistry = buildWordRegistry({
+                words: this.globalWords,
+                reagents: this.globalReagents,
+                substances: this.globalSubstances
+            });
+
             // Load visual effects definitions
             this.globalEffects = await effectsRes.json();
 
@@ -1040,7 +1159,7 @@ class DungeonEngine {
                 personalities: Object.keys(this.globalPersonalities).length,
                 entities: Object.keys(this.globalEntities).length,
                 colors: this.globalColors.length,
-                wordLists: Object.keys(this.globalWords).length,
+                wordLists: Object.keys(this.globalWordRegistry).length,
                 reagents: Object.keys(this.globalReagents).length,
                 substances: this.globalSubstances?.substances?.length || 0,
                 states: Object.keys(this.globalStates).length,
@@ -1058,6 +1177,7 @@ class DungeonEngine {
             this.globalWords = {};
             this.globalAdjectives = {};
             this.globalAttacks = {};
+            this.globalWordRegistry = {};
             this.globalReagents = {};
             this.globalSubstances = { substances: [] };
             this.globalStates = {};
@@ -4503,111 +4623,65 @@ class Item extends Entity {
     }
 
     /**
-     * Get the use description with template substitution
-     * Supports [item_name], [key], and [adjectives.category] for random adjective selection
+     * Template providers for the numbers a description quotes — [damage], [defense]
+     * and friends. These aren't generic: `damage` means "collision_effect.health,
+     * absolute, plus enchantment", which is weapon domain knowledge and belongs here
+     * rather than in the shared resolver.
+     *
+     * Thunks, so a description that doesn't mention a stat never computes it.
+     *
+     * @returns {Object<string, function>} Provider map for resolveTemplate
+     */
+    _statProviders() {
+        // Any key of wear_effect/passive_effect is quotable — this is what makes
+        // [visionRange] work on ring_of_awareness. Spread first so the explicit,
+        // enchantment-aware entries below win where they overlap.
+        const effectKeys = {};
+        for (const slot of ['wear_effect', 'passive_effect']) {
+            const effect = this.getAttribute(slot);
+            if (!effect || typeof effect !== 'object') continue;
+            for (const [key, value] of Object.entries(effect)) {
+                effectKeys[key] = () => value;
+            }
+        }
+
+        return {
+            ...effectKeys,
+            damage: () => Math.abs(this.getAttribute('collision_effect')?.health || 0)
+                + (this.enchantment || 0),
+            defense: () => (this.getAttribute('wear_effect')?.defense
+                || this.getAttribute('passive_effect')?.defense || 0) + (this.enchantment || 0),
+            strength: () => this.getAttribute('wear_effect')?.strength
+                || this.getAttribute('passive_effect')?.strength || 0,
+            knockback: () => this.getAttribute('knockback_distance') || 1,
+            critical_chance: () => this.getAttribute('critical_chance') || 0,
+            lifesteal: () => this.getAttribute('lifesteal_percent') || 0,
+            mining_power: () => this.getAttribute('mining_power') || 0
+        };
+    }
+
+    /**
+     * The message shown when this item is used. Re-rolls its random words on every
+     * call — it's read once per use, so variety is the point.
      * @returns {string|null} The processed use description or null if none
      */
     getUseDescription() {
         if (!this.useDescription) return null;
-
-        let result = this.useDescription.replace(/\[([^\]]+)\]/g, (match, key) => {
-            // Skip [a-an] - will be processed after all other substitutions
-            if (key.toLowerCase() === 'a-an') {
-                return match;
-            }
-
-            // Handle adjectives.category syntax (e.g., [adjectives.yucky])
-            if (key.startsWith('adjectives.')) {
-                const category = key.substring('adjectives.'.length);
-                const adjectives = this.engine.globalAdjectives?.[category];
-                if (adjectives && adjectives.length > 0) {
-                    return adjectives[Math.floor(Math.random() * adjectives.length)];
-                }
-                return match;
-            }
-
-            // Handle special item_name key
-            if (key === 'item_name') {
-                return this.getDisplayName();
-            }
-
-            // Check templateVars
-            if (this.templateVars[key] !== undefined) {
-                return this.templateVars[key];
-            }
-
-            // Check item properties
-            if (this[key] !== undefined) {
-                return this[key];
-            }
-
-            // Check attributes
-            const attrValue = this.getAttribute(key);
-            if (attrValue !== undefined) {
-                return attrValue;
-            }
-
-            // Return the key itself if no substitution found
-            return match;
+        return resolveTemplate(this.useDescription, this, {
+            providers: { item_name: () => this.getDisplayName() }
         });
-
-        // Process [a-an] templates after all other substitutions
-        return processArticleTemplates(result);
     }
 
+    /**
+     * The item's description, with the numbers it quotes filled in. Memoized: this
+     * panel is re-read as the player browses, so a word that changed each time
+     * would read as a rendering glitch.
+     * @returns {string|null}
+     */
     getDescription() {
         const raw = this.getAttribute('description');
         if (!raw) return null;
-        return raw.replace(/\[([^\]]+)\]/g, (match, key) => {
-            if (key.includes('.')) {
-                const [file, category] = key.split('.');
-                let source = null;
-                if (file === 'substances') source = this.engine.globalSubstances;
-                else if (file === 'adjectives') source = this.engine.globalAdjectives;
-                else if (file === 'reagents') source = this.engine.globalReagents;
-                if (source?.[category]?.length) {
-                    if (this.templateVars[key] !== undefined) return this.templateVars[key];
-                    const val = source[category][Math.floor(Math.random() * source[category].length)];
-                    this.templateVars[key] = val;
-                    return val;
-                }
-                return match;
-            }
-            if (key === 'damage') {
-                const base = Math.abs(this.getAttribute('collision_effect')?.health || 0);
-                return base + (this.enchantment || 0);
-            }
-            if (key === 'defense') {
-                const wearDef = this.getAttribute('wear_effect')?.defense || 0;
-                const passiveDef = this.getAttribute('passive_effect')?.defense || 0;
-                return (wearDef || passiveDef) + (this.enchantment || 0);
-            }
-            if (key === 'strength') {
-                return this.getAttribute('wear_effect')?.strength
-                    || this.getAttribute('passive_effect')?.strength || 0;
-            }
-            if (key === 'knockback') {
-                return this.getAttribute('knockback_distance') || 1;
-            }
-            if (key === 'critical_chance') {
-                return this.getAttribute('critical_chance') || 0;
-            }
-            if (key === 'lifesteal') {
-                return this.getAttribute('lifesteal_percent') || 0;
-            }
-            if (key === 'mining_power') {
-                return this.getAttribute('mining_power') || 0;
-            }
-            const wearEff = this.getAttribute('wear_effect');
-            if (wearEff && wearEff[key] !== undefined) return wearEff[key];
-            const passive = this.getAttribute('passive_effect');
-            if (passive && passive[key] !== undefined) return passive[key];
-            if (this.templateVars[key] !== undefined) return this.templateVars[key];
-            if (this[key] !== undefined) return this[key];
-            const attr = this.getAttribute(key);
-            if (attr !== undefined && typeof attr !== 'object') return attr;
-            return match;
-        });
+        return resolveTemplate(raw, this, { memoize: true, providers: this._statProviders() });
     }
 
     /**
@@ -7932,53 +8006,50 @@ class Actor extends Entity {
 
         if (!template) return null;
 
-        let result = template.replace(/\[([^\]]+)\]/g, (match, key) => {
-            // Skip [a-an] - will be processed after all other substitutions
-            if (key.toLowerCase() === 'a-an') {
-                return match;
-            }
+        // Re-rolls: this fires on every swing, which is where [attacks.melee_verbs]
+        // earns its keep.
+        const result = resolveTemplate(template, this, { providers: this._nameProviders(target) });
+        return this._hideAnonymousArticle(result);
+    }
 
-            // Handle attacks.category for random attack verbs
-            if (key.startsWith('attacks.')) {
-                const category = key.substring('attacks.'.length);
-                const attacks = this.engine.globalAttacks?.[category];
-                if (attacks && attacks.length > 0) {
-                    return attacks[Math.floor(Math.random() * attacks.length)];
-                }
-                return match;
-            }
-            // Handle adjectives.category
-            if (key.startsWith('adjectives.')) {
-                const category = key.substring('adjectives.'.length);
-                const adjectives = this.engine.globalAdjectives?.[category];
-                if (adjectives && adjectives.length > 0) {
-                    return adjectives[Math.floor(Math.random() * adjectives.length)];
-                }
-                return match;
-            }
-            // Handle special keys
-            if (key === 'actor_name') {
-                // Hidden (submerged/invisible) non-player attackers aren't named.
-                if (!this.isPlayerControlled() && this.hasStateProperty('invisible')) return 'something';
-                return this.name;
-            }
-            if (key === 'attacked_actor_name') {
-                return target.name;
-            }
-            if (key === 'weapon_name') {
-                const weapon = this.getEquippedWeapon();
-                return weapon ? weapon.name : match; // Keep placeholder if no weapon
-            }
-            return match;
-        });
+    /**
+     * Template providers for the names a combat line quotes.
+     *
+     * Actor names go through getDisplayName(), so an actor whose name is itself a
+     * template ("[color] lever") reads correctly in a message. Weapon names stay
+     * raw: getDisplayName() would fold in the cursed prefix and enchantment suffix,
+     * turning "with a sword" into "with a Cursed sword +2" — and [a-an] would then
+     * take its article from "Cursed".
+     *
+     * @param {Actor} [target] - The actor being acted upon, if any
+     * @returns {Object<string, function>} Provider map for resolveTemplate
+     */
+    _nameProviders(target) {
+        return {
+            actor_name: () => this.isAnonymous() ? 'something' : this.getDisplayName(),
+            attacked_actor_name: () => target?.getDisplayName?.() ?? target?.name,
+            // undefined keeps the placeholder, matching the old "no weapon" behavior.
+            weapon_name: () => this.getEquippedWeapon()?.name
+        };
+    }
 
-        // Drop the article in front of a hidden attacker: "The something" -> "Something".
-        if (!this.isPlayerControlled() && this.hasStateProperty('invisible')) {
-            result = result.replace(/^The something\b/, 'Something').replace(/\bthe something\b/g, 'something');
-        }
+    /**
+     * Whether this actor is hidden from the player and so goes unnamed in messages.
+     * @returns {boolean}
+     */
+    isAnonymous() {
+        return !this.isPlayerControlled() && this.hasStateProperty('invisible');
+    }
 
-        // Process [a-an] templates after all other substitutions
-        return processArticleTemplates(result);
+    /**
+     * Drop the article in front of an unnamed attacker: "The something" -> "Something".
+     * A grammar fix on the finished sentence, so it runs after substitution.
+     * @param {string} text
+     * @returns {string}
+     */
+    _hideAnonymousArticle(text) {
+        if (!this.isAnonymous()) return text;
+        return text.replace(/^The something\b/, 'Something').replace(/\bthe something\b/g, 'something');
     }
 
     /**
@@ -8584,38 +8655,8 @@ class Actor extends Entity {
      * @returns {string} Processed message
      */
     _processMessageTemplate(template, target) {
-        let result = template.replace(/\[([^\]]+)\]/g, (match, key) => {
-            // Handle attacks.category for random attack verbs
-            if (key.startsWith('attacks.')) {
-                const category = key.substring('attacks.'.length);
-                const attacks = this.engine.globalAttacks?.[category];
-                if (attacks && attacks.length > 0) {
-                    return attacks[Math.floor(Math.random() * attacks.length)];
-                }
-                return match;
-            }
-            // Handle special keys
-            if (key === 'actor_name') {
-                // Hidden (submerged/invisible) non-player attackers aren't named.
-                if (!this.isPlayerControlled() && this.hasStateProperty('invisible')) return 'something';
-                return this.name;
-            }
-            if (key === 'attacked_actor_name') {
-                return target.name;
-            }
-            if (key === 'weapon_name') {
-                const weapon = this.getEquippedWeapon();
-                return weapon ? weapon.name : match;
-            }
-            return match;
-        });
-
-        // Drop the article in front of a hidden attacker: "The something" -> "Something".
-        if (!this.isPlayerControlled() && this.hasStateProperty('invisible')) {
-            result = result.replace(/^The something\b/, 'Something').replace(/\bthe something\b/g, 'something');
-        }
-
-        return result;
+        const result = resolveTemplate(template, this, { providers: this._nameProviders(target) });
+        return this._hideAnonymousArticle(result);
     }
 
     /**
