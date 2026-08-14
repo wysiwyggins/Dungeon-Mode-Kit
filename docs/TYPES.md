@@ -1,8 +1,9 @@
 # Types
 
-A **type** is a named bundle of defaults an actor inherits by declaring `"type": "beast"`.
+A **type** is a named bundle of defaults an entity inherits by declaring `"type": "beast"`.
+Both actors and items use them.
 
-The point is to **say what a thing is once, instead of restating it on every actor**. A rat,
+The point is to **say what a thing is once, instead of restating it on every entity**. A rat,
 a jackal and a spider are all beasts: each one had to declare `sentient`, `flammable`,
 `opaque`, an inventory size and what it leaves behind when it dies. That's five lines of
 bookkeeping per creature before you get to the three that make it a *rat*. A type holds the
@@ -12,6 +13,11 @@ The second benefit is that broad rules become expressible. `states.json` has alw
 `poison_immune` immunity flag, but no actor declared it — annotating every skeleton, ghast
 and wraith by hand was more trouble than the feature was worth. `undead` declares it once
 and all of them get it.
+
+The third is that **membership replaces bookkeeping**. Item types used to be inverted: eight
+hollow `items.json` entries held `random_type` arrays pointing down at their members, so
+adding a potion meant remembering to edit a list somewhere else. Now an item declaring
+`"type": "potion"` *is* a potion, and the spawn pools are derived from that.
 
 ## Where types live
 
@@ -28,12 +34,25 @@ At load, `Prototype.loadAssets()` merges them:
 this.types = { ...globalTypes, ...prototypeTypes };
 ```
 
-Resolution happens in `Prototype.getActorData()`, which every spawn path funnels through, so
-the rest of the engine only ever sees one flat actor definition and needs no knowledge of
-types. Results are cached per actor id.
+Resolution happens in `Prototype.getActorData()` and `Prototype.getItemData()`, which every
+spawn path funnels through, so the rest of the engine only ever sees one flat definition and
+needs no knowledge of types. Results are cached per entity id.
 
-Types are edited by hand for now; the **Actor Editor** (`editors/actor-editor.html`) has a
-Type dropdown that shows what the selected type contributes.
+Both the **Actor Editor** and the **Item Editor** have a Type dropdown showing what the
+selected type contributes.
+
+## Domains
+
+One file holds both kinds, so each type says which it is:
+
+```jsonc
+"beast":  { "domain": "actor", ... }
+"potion": { "domain": "item",  ... }
+```
+
+`domain` is enforced. An item resolves only against `domain: "item"` types; an actor resolves
+against everything else, so a type predating the field still works. A mismatch logs a warning
+and the entity is used as-is.
 
 ## Shape
 
@@ -52,9 +71,15 @@ Type dropdown that shows what the selected type contributes.
 }
 ```
 
-A type may declare any key an actor can — most usefully `attributes`, `stats` and
-`personality`. Three keys are the type's own bookkeeping and are never inherited: `name`,
-`description` and `domain`. (Inheriting `name` would rename every beast to "Beast".)
+A type may declare any key its entity can — most usefully `attributes`, `stats` and
+`personality`. `description` and `domain` are the type's own bookkeeping and are never
+inherited.
+
+`name` is the exception, and it differs by domain. **Actors don't inherit it** — that would
+rename every beast to "Beast". **Items do**, because for an item `name` is the unidentified
+display noun: you see *a scroll* before you know which one, and all eleven scrolls agree on
+it. Item types whose members each have their own noun (`weapon`, `armor`, `staff`, `food`)
+simply don't declare one.
 
 ## Merge rules
 
@@ -116,14 +141,46 @@ For `items.json`, `personalities.json`, `effects.json`, `biomes.json` and `types
 itself, a prototype entry replaces the base definition outright — anything it leaves out is
 gone, so each definition has to be self-contained.
 
-## Built-in types
+**So a prototype item that shadows a base item must restate its `type`.** Nothing is layered,
+so leaving it out drops the defaults rather than keeping them:
+
+```jsonc
+// prototypes/arena/items.json — the type is what keeps this short
+"defense_potion": {
+  "type": "potion",
+  "random_color": null,        // it has a deliberate blue, not a random one
+  "tint": "#4444FF",
+  "identified": true,
+  "attributes": { "use_effect": { "defense": 5 } }
+}
+```
+
+## Built-in actor types
 
 | Type | Grants | Notes |
 | ---- | ------ | ----- |
-| `beast` | `sentient`, `flammable`, `opaque: false`, `inventory: 0`, `remains: blood` | Says nothing about temper — a deer and a jackal are both beasts, so each declares its own `hostile` |
+| `beast` | `sentient`, `flammable`, `hostile`, `opaque: false`, `inventory: 0`, `remains: blood` | Animals and vermin — a mind, but no hands |
+| `prey` | as `beast` but `hostile: false`, plus `default_items: [meat]` | Non-hostile animals |
 | `undead` | `sentient`, `flammable`, `hostile`, `dark_vision`, `poison_immune`, `gas_immune`, `remains: skull` | Nothing left to poison and no breath to hold, but fire still finds them |
 | `humanoid` | `sentient`, `flammable`, `opaque: false`, `inventory: 1`, `remains: skull` | Upright folk who carry things. No `hostile` — a guard may be friendly |
+| `arcane` | as `humanoid` but `remains: blood`, plus `default_items: [potion, scroll]` | Spellcasters, who start with something to read and something to drink |
 | `terrain` | `solid`, `flammable: false`, `pushable: false`, `conductive: false`, `remains: rubble` | Mindless, so it can burn or be stuck but never confused |
+
+## Built-in item types
+
+Naming one of these instead of an item id spawns a random member — see
+[PROTOTYPE.md](PROTOTYPE.md#item-pools-item-types).
+
+| Type | Grants | Notes |
+| ---- | ------ | ----- |
+| `potion` | `name: potion`, `random_color`, `consumable`, `stackable`, `breakable`, `use_verb: Drink` | Colour-coded until identified |
+| `food` | `consumable`, `stackable`, `mass_noun`, `flammable`, `use_verb: Eat` | Members name themselves (meat, apple) |
+| `weapon` | `weapon`, `enchantable`, `attack_sound`, `collision_sound`, `stackable: false` | Damage and reach are per-weapon |
+| `armor` | `enchantable`, `enchant_range: [-1, 2]`, `stackable: false` | The slot (`wearable`) is per-piece |
+| `staff` | `name`-less, `random_material`, `charge_stat: pow`, `treasure_loot`, `use_verb: Zap` | Recharges over time; `per_turn` is what distinguishes it from a wand |
+| `scroll` | `name: scroll`, `random_glyph_name`, `consumable`, `use_ceremony`, `use_verb: Read` | Titled with nonsense glyphs until read |
+| `ring` | `name: ring`, `random_material`, `wearable: ring`, `stackable: false` | Material-coded until identified |
+| `wand` | `name: wand`, `random_color`, `charge_stat: pow`, `uses: 3`, `spell_range: 50` | Fixed charges, no recharge |
 
 ## Types and states
 
@@ -137,9 +194,30 @@ picture, but in short:
   Only states that act on a mind — anything that alters how its holder takes turns, plus the
   player-perception effects — still require `sentient` or `controlled`.
 
+## Types and item pools
+
+For items, the type does a second job: it *is* the spawn pool. Every item declaring
+`"type": "potion"` is a member, so `item_catalog` and `random_items` can name `potion` and get
+a random one — no list to maintain. Adding a potion is one line:
+
+```jsonc
+"sleep_potion": {
+  "type": "potion",
+  "identified_template": "Potion of Slumber",
+  "attributes": { "use_effect": { "apply_state": "asleep" } }
+}
+```
+
+An item with no type is in no pool, which is how the torches, keys and treasure stay out of the
+random draws. For a curated pool that isn't simply "everything of this type", an item entry may
+carry an explicit `random_type` array instead; it wins over derived membership.
+
 ## Adding a type
 
-1. Add an entry to `data/types.json` (or a prototype's `types.json`).
+1. Add an entry to `data/types.json` (or a prototype's `types.json`), with a `domain`.
 2. Put only what's genuinely shared by the whole family in it. If members disagree about a
    value, leave it out and let each declare its own.
-3. Add `"type": "<key>"` to the actors, and delete the attributes the type now supplies.
+3. Add `"type": "<key>"` to the entities, and delete what the type now supplies.
+
+A useful check: resolve a member before and after and diff them. If anything changed, the type
+is claiming something its members don't actually agree on.

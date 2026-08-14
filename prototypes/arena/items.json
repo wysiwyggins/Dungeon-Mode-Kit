@@ -1,39 +1,25 @@
 {
   "defense_potion": {
-    "name": "Potion",
-    "tileIndex": "FEMALE_SYMBOL",
-    "flipV": true,
+    "type": "potion",
+    "random_color": null,
     "tint": "#4444FF",
     "identified": true,
     "identified_template": "Potion of Iron Skin",
     "use_description": "Your skin hardens!",
     "attributes": {
-      "pickupable": true,
-      "visible": true,
-      "stackable": true,
-      "consumable": true,
-      "breakable": true,
-      "use_verb": "Drink",
       "use_effect": { "defense": 5 },
       "description": "A blue potion that increases defense."
     }
   },
 
   "accuracy_potion": {
-    "name": "Potion",
-    "tileIndex": "FEMALE_SYMBOL",
-    "flipV": true,
+    "type": "potion",
+    "random_color": null,
     "tint": "#FFFF44",
     "identified": true,
     "identified_template": "Potion of Precision",
     "use_description": "Your aim steadies!",
     "attributes": {
-      "pickupable": true,
-      "visible": true,
-      "stackable": true,
-      "breakable": true,
-      "consumable": true,
-      "use_verb": "Drink",
       "use_effect": { "accuracy": 10 },
       "description": "A yellow potion that increases accuracy."
     }

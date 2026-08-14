@@ -3647,10 +3647,13 @@ class Prototype {
         for (const [category, catConfig] of Object.entries(catalogConfig)) {
             let pool = catConfig.pool;
 
-            // If no explicit pool, fall back to the random_type pool from items.json
+            // No explicit pool: derive it from type membership, so adding an item
+            // that declares this type is enough to put it in the pool. A raw
+            // items.json entry with random_type still wins as a curated override.
             if (!pool) {
-                const metaItem = this.getItemData(category);
-                if (metaItem?.random_type) {
+                pool = this.getItemsOfType(category);
+                const metaItem = this.items[category];
+                if (Array.isArray(metaItem?.random_type)) {
                     pool = [...metaItem.random_type];
                 }
             }
@@ -3861,9 +3864,12 @@ class Prototype {
         if (!this._resolvedActors) this._resolvedActors = {};
         if (this._resolvedActors[actorType]) return this._resolvedActors[actorType];
 
+        // types.json holds both domains. Anything not explicitly an item type is
+        // fair game — a prototype types.json that predates `domain` and omits it
+        // keeps resolving, but an item type can never leak into an actor.
         const typeDef = this.types?.[def.type];
-        if (!typeDef) {
-            console.warn(`Actor '${actorType}' declares unknown type '${def.type}'`);
+        if (!typeDef || typeDef.domain === 'item') {
+            console.warn(`Actor '${actorType}' declares unknown actor type '${def.type}'`);
             this._resolvedActors[actorType] = def;
             return def;
         }
@@ -3878,10 +3884,101 @@ class Prototype {
     }
 
 
-    getItemData(itemType) {
-        return this.items[itemType] || null;
+    /**
+     * Item ids belonging to an item type, derived from membership.
+     *
+     * Inverts the old hand-maintained `random_type` arrays: an item declaring
+     * `"type": "potion"` IS a potion, so adding one can't forget to update a
+     * list somewhere else. Built once and cached — item libraries are static
+     * for the life of a prototype.
+     *
+     * @param {string} typeKey - An item type key (e.g. 'potion')
+     * @returns {string[]} Item ids declaring that type; empty if none do
+     */
+    getItemsOfType(typeKey) {
+        if (!this._itemsByType) {
+            this._itemsByType = {};
+            for (const [id, def] of Object.entries(this.items)) {
+                if (id.startsWith('_') || !def?.type) continue;
+                (this._itemsByType[def.type] ||= []).push(id);
+            }
+        }
+        return this._itemsByType[typeKey] || [];
     }
-    
+
+    /**
+     * Look up an item definition, resolving its `type` if it declares one.
+     *
+     * The item mirror of getActorData: every `new Item()` funnels through here,
+     * so resolving at this one point keeps the Item constructor and everything
+     * downstream receiving a single flat definition.
+     *
+     * Also accepts a bare item TYPE ('potion'), which means "roll a member of
+     * that type" — the job the hollow `random_type` meta-entries used to do.
+     * Callers that construct an Item must prefer `resolved.id` over the string
+     * they passed in, or a rolled item would carry the category as its id and
+     * every potion would share one colour and one identification state.
+     *
+     * @param {string} itemType - An item id ('health_potion') or item type ('potion')
+     * @returns {Object|null} The resolved definition, or null if unknown
+     */
+    getItemData(itemType) {
+        const def = this.items[itemType];
+
+        if (!def) {
+            // Not an item id. If it names an item type, roll one of its members.
+            // Prefer the run's active catalog so a default_items entry or a Tiled
+            // placement can't leak a type this run deliberately excluded.
+            const typeDef = this.types?.[itemType];
+            if (typeDef?.domain === 'item') {
+                const pool = this.getItemsOfType(itemType);
+                const rolled = this.getCatalogTypeForCategory(itemType)
+                    || (pool.length ? pool[Math.floor(ROT.RNG.getUniform() * pool.length)] : null);
+                if (!rolled) {
+                    console.warn(`Item type '${itemType}' has no members to roll`);
+                    return null;
+                }
+                const resolved = this.getItemData(rolled);
+                return resolved ? { ...resolved, id: rolled } : null;
+            }
+            return null;
+        }
+
+        // An explicit random_type is still honoured: a hand-curated pool that
+        // isn't simply "everything declaring this type".
+        if (Array.isArray(def.random_type) && def.random_type.length) {
+            const rolled = this.getCatalogTypeForCategory(itemType)
+                || def.random_type[Math.floor(ROT.RNG.getUniform() * def.random_type.length)];
+            const resolved = this.getItemData(rolled);
+            if (!resolved) {
+                console.warn(`Item '${itemType}' random_type names unknown item '${rolled}'`);
+                return null;
+            }
+            return { ...resolved, id: rolled };
+        }
+
+        if (!def.type) return def;
+
+        if (!this._resolvedItems) this._resolvedItems = {};
+        if (this._resolvedItems[itemType]) return this._resolvedItems[itemType];
+
+        const typeDef = this.types?.[def.type];
+        if (!typeDef || typeDef.domain !== 'item') {
+            console.warn(`Item '${itemType}' declares unknown item type '${def.type}'`);
+            this._resolvedItems[itemType] = def;
+            return def;
+        }
+
+        // `name` IS inherited here, unlike actors: for an item it's the
+        // unidentified display noun ("you see a scroll"), a genuine property of
+        // the category rather than bookkeeping about the type.
+        const { description, domain, ...inheritable } = typeDef;
+        const resolved = mergeEntityDef(inheritable, def);
+        this._resolvedItems[itemType] = resolved;
+        return resolved;
+    }
+
+
     getPersonality(personalityName) {
         const entry = this.personalities[personalityName];
         if (!entry) return null;
@@ -4771,7 +4868,9 @@ class Actor extends Entity {
             }
 
 
-            const item = new Item(-1, -1, itemType, itemData, this.engine);
+            // `itemType` may name a category ("potion"); getItemData rolled a
+            // member and reports it as .id, which must be the instance's id.
+            const item = new Item(-1, -1, itemData.id || itemType, itemData, this.engine);
             item.owner = this; // Track item owner for per-turn stat messages
 
             this.inventory.push(item);
@@ -10801,16 +10900,9 @@ class EntityManager {
                     continue;
                 }
 
-                // Resolve random_type pool: use catalog if available, else full pool
-                if (itemData.random_type && Array.isArray(itemData.random_type)) {
-                    resolvedType = prototype.getCatalogTypeForCategory(itemType)
-                        || randomElement(itemData.random_type);
-                    itemData = prototype.getItemData(resolvedType);
-                    if (!itemData) {
-                        console.warn(`random_items: random_type "${resolvedType}" not found`);
-                        continue;
-                    }
-                }
+                // getItemData already rolled if itemType named a category, and
+                // reports which member it picked.
+                resolvedType = itemData.id || resolvedType;
 
                 const tileIndex = Math.floor(ROT.RNG.getUniform() * availableTiles.length);
                 const tile = availableTiles[tileIndex];
@@ -10836,18 +10928,15 @@ class EntityManager {
                     break;
                 }
 
-                // Resolve random_type pool: use catalog if available, else full pool
-                let spawnType = itemType;
-                let spawnData = itemData;
-                if (itemData.random_type && Array.isArray(itemData.random_type)) {
-                    spawnType = prototype.getCatalogTypeForCategory(itemType)
-                        || randomElement(itemData.random_type);
-                    spawnData = prototype.getItemData(spawnType);
-                    if (!spawnData) {
-                        console.warn(`random_items: random_type "${spawnType}" not found`);
-                        continue;
-                    }
+                // Re-resolve per iteration: if itemType names a category, each of
+                // the `count` spawns should roll its own member rather than all
+                // sharing the one rolled above.
+                const spawnData = prototype.getItemData(itemType);
+                if (!spawnData) {
+                    console.warn(`random_items: No item data found for "${itemType}"`);
+                    continue;
                 }
+                const spawnType = spawnData.id || itemType;
 
                 const tileIndex = Math.floor(ROT.RNG.getUniform() * availableTiles.length);
                 const tile = availableTiles[tileIndex];
@@ -10956,10 +11045,11 @@ class EntityManager {
         }
 
         // 3. Spawn a random weapon or staff inside the room
-        const lootCandidates = Object.entries(prototype.items).filter(([_type, data]) => {
-            const attrs = data.attributes || {};
-            return attrs.weapon || attrs.treasure_loot;
-        });
+        // Resolve before filtering: `weapon` and `treasure_loot` now live on the
+        // item's type, so the raw definitions no longer carry them.
+        const lootCandidates = Object.keys(prototype.items)
+            .map(id => [id, prototype.getItemData(id)])
+            .filter(([, data]) => data?.attributes?.weapon || data?.attributes?.treasure_loot);
 
         if (lootCandidates.length > 0 && roomTiles.length > 0) {
             const [lootType, lootData] = lootCandidates[Math.floor(ROT.RNG.getUniform() * lootCandidates.length)];
@@ -11077,7 +11167,8 @@ class EntityManager {
                 continue;
             }
 
-            const item = new Item(tileX, tileY, itemType, itemData, this.engine);
+            // A Tiled object may name a category ("potion") — use the rolled member.
+            const item = new Item(tileX, tileY, itemData.id || itemType, itemData, this.engine);
             this.addEntity(item);
 
             console.log(`Spawned ${itemType} at tile (${tileX}, ${tileY})`);
@@ -12016,7 +12107,7 @@ class EntityManager {
             return null;
         }
 
-        const item = new Item(x, y, itemType, itemData, this.engine);
+        const item = new Item(x, y, itemData.id || itemType, itemData, this.engine);
         this.addEntity(item);
 
         return item;
@@ -14383,7 +14474,10 @@ window.giveItem = (itemType, count = 1) => {
         return;
     }
     for (let i = 0; i < count; i++) {
-        const item = new Item(-1, -1, itemType, itemData, engine);
+        // Re-resolve each time so `giveItem('potion', 3)` rolls three potions
+        // rather than three copies of one.
+        const rolled = engine.currentPrototype.getItemData(itemType) || itemData;
+        const item = new Item(-1, -1, rolled.id || itemType, rolled, engine);
         item.owner = player;
         player.inventory.push(item);
     }

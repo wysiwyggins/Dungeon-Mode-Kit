@@ -9,6 +9,30 @@
    ========================================================================= */
 "use strict";
 
+/**
+ * The set of names usable as an item_catalog category or a biome item row.
+ *
+ * These are item types (data/types.json with domain "item") — an item declaring
+ * one is a member, so the pools follow the library instead of being restated.
+ * A raw items.json entry with random_type still counts: it's the escape hatch
+ * for a hand-curated pool that isn't simply "everything of this type".
+ *
+ * @param {Object} items - data/items.json
+ * @param {Object} types - data/types.json
+ * @returns {Set<string>} Category names
+ */
+function collectPoolItemIds(items, types) {
+    const ids = new Set();
+    for (const [k, v] of Object.entries(types || {})) {
+        if (k.startsWith('_')) continue;
+        if (v && v.domain === 'item') ids.add(k);
+    }
+    for (const [k, v] of Object.entries(items || {})) {
+        if (v && v.random_type) ids.add(k);
+    }
+    return ids;
+}
+
 /* =========================================================================
    Reusable widget builders
    Each returns a DOM node and wires onChange to mutate the model + re-output.

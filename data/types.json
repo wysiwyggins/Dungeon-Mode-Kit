@@ -1,6 +1,4 @@
 {
-  "_comment": "Actor types: reusable bundles of defaults an actor inherits with \"type\": \"<key>\". An actor's own keys always win over its type's. attributes, stats and collision_effect merge one level deep; every other key replaces wholesale. Types do not inherit from other types. The optional \"domain\" field marks what a type is for — only \"actor\" is resolved today; \"item\" is reserved so items can share this file later.",
-
   "beast": {
     "name": "beast",
     "domain": "actor",
@@ -31,7 +29,7 @@
     },
     "default_items": [
         "meat"
-    ]
+      ]
   },
 
   "undead": {
@@ -79,7 +77,7 @@
     "default_items": [
         "potion",
         "scroll"
-    ]
+      ]
   },
 
   "terrain": {
@@ -92,6 +90,163 @@
       "pushable": false,
       "conductive": false,
       "remains": "rubble"
+    }
+  },
+
+  "potion": {
+    "name": "potion",
+    "domain": "item",
+    "description": "Glass vials of unknown liquid. Drunk once, then gone.",
+    "flipV": true,
+    "identified": false,
+    "random_color": true,
+    "tileIndex": "FEMALE_SYMBOL",
+    "unidentified_template": "[color] potion",
+    "attributes": {
+      "break_sound": "glass",
+      "breakable": true,
+      "consumable": true,
+      "flammable": false,
+      "pickupable": true,
+      "stackable": true,
+      "use_verb": "Drink",
+      "visible": true
+    }
+  },
+
+  "food": {
+    "name": "food",
+    "domain": "item",
+    "description": "Things to eat. Stack, and restore nutrition.",
+    "attributes": {
+      "consumable": true,
+      "flammable": true,
+      "mass_noun": true,
+      "pickupable": true,
+      "stackable": true,
+      "use_verb": "Eat",
+      "visible": true
+    }
+  },
+
+  "weapon": {
+    "name": "weapon",
+    "domain": "item",
+    "description": "Things you swing. Enchantable, and never stack.",
+    "identified": false,
+    "attributes": {
+      "attack_sound": "bow",
+      "collision_sound": "hit",
+      "enchantable": true,
+      "pickupable": true,
+      "stackable": false,
+      "visible": true,
+      "weapon": true
+    }
+  },
+
+  "armor": {
+    "name": "armor",
+    "domain": "item",
+    "description": "Worn protection. Enchantable, and never stacks.",
+    "identified": false,
+    "attributes": {
+      "enchant_range": [
+          -1,
+          2
+        ],
+      "enchantable": true,
+      "pickupable": true,
+      "stackable": false,
+      "visible": true
+    }
+  },
+
+  "staff": {
+    "name": "staff",
+    "domain": "item",
+    "description": "Rechargeable casting implements. Recover charge over time.",
+    "identified": false,
+    "random_material": true,
+    "tileIndex": "SOLIDUS",
+    "unidentified_template": "[material] staff",
+    "attributes": {
+      "charge_stat": "pow",
+      "deferred": true,
+      "description": "A [material] staff.",
+      "pickupable": true,
+      "stackable": false,
+      "treasure_loot": true,
+      "use_effect": "targeted_spell",
+      "use_verb": "Zap",
+      "visible": true
+    }
+  },
+
+  "scroll": {
+    "name": "scroll",
+    "domain": "item",
+    "description": "Single-use written magic. Read aloud, then consumed.",
+    "identified": false,
+    "random_glyph_name": true,
+    "tileIndex": "BEAMED_EIGHTH_NOTES",
+    "unidentified_template": "[glyph_name] scroll",
+    "attributes": {
+      "consumable": true,
+      "description": "A scroll with strange runic markings.",
+      "pickupable": true,
+      "stackable": true,
+      "use_ceremony": true,
+      "use_verb": "Read",
+      "visible": true
+    }
+  },
+
+  "ring": {
+    "name": "ring",
+    "domain": "item",
+    "description": "Worn trinkets with a passive effect. Material-coded until identified.",
+    "identified": false,
+    "random_material": true,
+    "tileIndex": "WHITE_RING",
+    "unidentified_template": "[material] ring",
+    "attributes": {
+      "pickupable": true,
+      "stackable": false,
+      "visible": true,
+      "wearable": "ring"
+    }
+  },
+
+  "wand": {
+    "name": "wand",
+    "domain": "item",
+    "description": "Limited-charge casting implements. No recharge.",
+    "identified": false,
+    "random_color": true,
+    "stats": {
+      "pow": {
+        "max": 300,
+        "start": 300,
+        "per_turn": 0
+      }
+    },
+    "tileIndex": "EXCLAMATION_MARK",
+    "unidentified_template": "[color] wand",
+    "attributes": {
+      "cast_sound": "magic",
+      "charge_stat": "pow",
+      "deferred": true,
+      "description": "A slender wand.",
+      "enchantable": true,
+      "pickupable": true,
+      "projectile_tile": "OPAQUE_WHITE_DIAMOND_SUITE",
+      "spell_range": 50,
+      "stackable": false,
+      "use_effect": "targeted_spell",
+      "use_verb": "Zap",
+      "uses": 3,
+      "visible": true
     }
   }
 }

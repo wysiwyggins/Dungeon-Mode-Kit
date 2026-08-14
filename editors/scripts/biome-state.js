@@ -61,19 +61,17 @@ async function fetchJSON(url) {
 }
 
 async function loadBaseData() {
-    const [actors, items, library] = await Promise.all([
+    const [actors, items, library, types] = await Promise.all([
         fetchJSON('../data/actors.json'),
         fetchJSON('../data/items.json'),
         fetchJSON(BIOME_LIBRARY_PATH),
+        fetchJSON('../data/types.json'),
     ]);
     state.baseActors = actors;
     state.baseItems = items;
+    state.baseTypes = types;
     state.library = library || {};
-    state.poolItemIds = new Set();
-    for (const [k, v] of Object.entries(items)) {
-        const rt = v.random_type || (v.attributes && v.attributes.random_type);
-        if (rt) state.poolItemIds.add(k);
-    }
+    state.poolItemIds = collectPoolItemIds(items, types);
     rebuildMergedIds();
 }
 
@@ -84,7 +82,11 @@ async function loadBaseData() {
 function rebuildMergedIds() {
     state.mergedActors = { ...state.baseActors };
     state.mergedActorIds = Object.keys(state.baseActors).sort();
-    state.mergedItemIds = Object.keys(state.baseItems).sort();
+    // Item types are spawnable names too — "potion" means "roll a potion".
+    state.mergedItemIds = [...new Set([
+        ...Object.keys(state.baseItems),
+        ...state.poolItemIds,
+    ])].sort();
 }
 
 /* =========================================================================

@@ -295,23 +295,28 @@ Each pattern defines:
 
 Can be set at the prototype level or per-floor.
 
-### Item Pools (random_type)
+### Item Pools (item types)
 
-Some item IDs in `items.json` are **pool entries** rather than real items. They contain a `random_type` array — when spawned, the engine picks a random member from the pool.
+Naming an **item type** instead of an item ID spawns a random member of that type. The pool is
+derived from membership: every item declaring `"type": "potion"` is a potion, so adding one is
+enough to put it in the pool — there is no list to keep in sync. See [TYPES.md](TYPES.md).
+
+The built-in item types are `potion`, `food`, `weapon`, `armor`, `staff`, `scroll`, `ring` and
+`wand`.
 
 ```json
-"potion": {
-  "random_type": ["health_potion", "poison_potion", "strength_potion", ...]
-},
-"weapon": {
-  "random_type": ["sword", "dagger", "club", "warhammer", "axe", "rapier", "spear", "mace"]
-},
-"armor": {
-  "random_type": ["leather_armor", "chainmail", "scale_mail", "plate", "helmet"]
+// data/items.json — declaring the type is the whole membership step
+"health_potion": {
+  "type": "potion",
+  "identified_template": "Aqua Vita",
+  "attributes": { "use_effect": { "health": 20 } }
 }
 ```
 
-Use pool IDs in `random_items` to spawn a random item from a category:
+For a hand-curated pool that isn't simply "everything of this type", an item entry may still carry
+an explicit `random_type` array, which wins over derived membership.
+
+Use type names in `random_items` to spawn a random item from a category:
 
 ```json
 "random_items": {
@@ -321,7 +326,8 @@ Use pool IDs in `random_items` to spawn a random item from a category:
 }
 ```
 
-Built-in pools: `potion`, `scroll`, `staff`, `weapon`, `armor`. Prototypes can define their own pools in their `items.json`.
+A prototype can add its own item types in `prototypes/<name>/types.json`, or add members to a
+built-in type just by declaring it on an item in its `items.json`.
 
 ---
 
@@ -343,7 +349,7 @@ The `item_catalog` defines which item categories are active for the prototype, h
 |-------|------|-------------|
 | `count` | number | (Optional) Randomly select this many types from the pool at the start of a run. Omit to use all types. |
 | `weight` | number | Relative probability when drawing from the budget system. Higher = more common. |
-| `pool` | array | (Optional) Explicit list of item type IDs. If omitted, uses the `random_type` pool from items.json. |
+| `pool` | array | (Optional) Explicit list of item IDs. If omitted, the pool is every item declaring this type (or the category's `random_type` array, if it has one). |
 
 **How `count` works:** If the potion pool has 16 types and `count` is 10, the engine shuffles the pool and picks 10 at random when the prototype loads. Only those 10 potion types will appear for the entire run.
 

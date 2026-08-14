@@ -63,6 +63,11 @@
                     <input type="text" id="f-name" placeholder="Display name">
                 </div>
                 <div class="field-row">
+                    <label>Type</label>
+                    <select id="f-type"></select>
+                </div>
+                <div class="hint" id="type-hint" style="margin:-4px 0 8px 0"></div>
+                <div class="field-row">
                     <label>Description</label>
                     <textarea id="f-description" rows="2" placeholder="Flavor text (in attributes)"></textarea>
                 </div>
@@ -492,6 +497,7 @@ let state = {
     tileNames: [],
     spritesheetImg: null,
     items: {},
+    types: {},
     protoItems: {},
     mergedItems: {},
     protoItemKeys: new Set(),
@@ -528,14 +534,19 @@ function loadSpritesheet() {
 }
 
 async function loadBaseData() {
-    const [tilesData, items] = await Promise.all([
+    const [tilesData, items, types] = await Promise.all([
         fetchJSON(TILE_DATA_PATH),
         fetchJSON('../data/items.json'),
+        fetchJSON('../data/types.json'),
     ]);
     TILE_W = tilesData.tilePixelWidth || TILE_W;
     TILE_H = tilesData.tilePixelHeight || TILE_H;
     state.tileMap = tilesData.tiles || {};
     state.items = items;
+    // One types.json holds both domains; only item types apply here.
+    state.types = Object.fromEntries(
+        Object.entries(types || {}).filter(([k, v]) => !k.startsWith('_') && v?.domain === 'item')
+    );
 
     state.tileNames = Object.keys(state.tileMap).sort();
     state.reverseTileMap = {};
@@ -592,7 +603,8 @@ function populateItemDropdown() {
             const opt = document.createElement('option');
             opt.value = k;
             const item = state.mergedItems[k];
-            const display = item.name || (item.random_type ? 'random pool' : k);
+            // `name` may come from the item's type, so resolve before labelling.
+            const display = resolvedItem(item).name || (item.random_type ? 'random pool' : k);
             const prefix = state.protoItemKeys.has(k) ? '◆ ' : '';
             opt.textContent = `${prefix}${k} (${display})`;
             optgroup.appendChild(opt);
@@ -765,7 +777,11 @@ function renderPreview() {
     const tintEffectName = document.getElementById('f-tint_effect').value;
     if (tintEffectName) tint = getEffectTint(tint, tintEffectName, performance.now());
 
-    const tile = state.currentTiles.tileIndex;
+    // Fall back to the type's tile so a typed item previews as it will look in
+    // game. Only for drawing — the slot stays empty so saving doesn't restate
+    // an inherited value as if the item declared it.
+    const typeDef = state.types?.[document.getElementById('f-type').value];
+    const tile = state.currentTiles.tileIndex || typeDef?.tileIndex || null;
     const flipH = document.getElementById('f-flipH').checked;
     const flipV = document.getElementById('f-flipV').checked;
 
@@ -1291,6 +1307,8 @@ function parseValue(str) {
 
 function clearForm() {
     document.getElementById('f-name').value = '';
+    document.getElementById('f-type').value = '';
+    updateTypeHint();
     document.getElementById('f-description').value = '';
     document.getElementById('item-key').value = '';
 
@@ -1391,6 +1409,8 @@ function populateForm(key, data) {
         return;
     }
 
+    document.getElementById('f-type').value = data.type || '';
+    updateTypeHint();
     document.getElementById('f-name').value = data.name || '';
 
     // Tile
@@ -1588,6 +1608,10 @@ function readForm() {
     }
 
     const obj = {};
+
+    // First, so it reads as the entry's headline the way the data files do.
+    const type = document.getElementById('f-type').value;
+    if (type) obj.type = type;
 
     const name = document.getElementById('f-name').value.trim();
     if (name) obj.name = name;
@@ -1977,10 +2001,65 @@ const ITEM_TEMPLATES = {
     }
 };
 
+// ---- Item types ----
+
+/** Fill the Type dropdown from the item-domain entries of data/types.json. */
+function populateTypeDropdown() {
+    const sel = document.getElementById('f-type');
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">— none —</option>';
+    for (const k of Object.keys(state.types || {}).sort()) {
+        const opt = document.createElement('option');
+        opt.value = k;
+        opt.textContent = `${k} (${state.types[k].name || k})`;
+        sel.appendChild(opt);
+    }
+    if (prev) sel.value = prev;
+}
+
+/**
+ * Show what the selected type contributes, so it's clear which values an item
+ * inherits rather than declares. Anything the item sets itself overrides these.
+ */
+function updateTypeHint() {
+    const hint = document.getElementById('type-hint');
+    if (!hint) return;
+    const key = document.getElementById('f-type').value;
+    const def = key && state.types?.[key];
+    if (!def) { hint.textContent = ''; return; }
+    const attrs = Object.entries(def.attributes || {})
+        .map(([k, v]) => `${k}: ${v}`).join(', ');
+    hint.textContent = (def.description ? def.description + ' ' : '')
+        + (attrs ? `Inherits — ${attrs}` : '');
+}
+
+/**
+ * An item's effective definition, with its type's defaults layered underneath.
+ *
+ * Mirrors Prototype.getItemData in engine.js. The form deliberately edits the
+ * raw entry — you author what an item declares, not what it inherits — but
+ * anything that shows the item as it will appear in game wants this.
+ */
+function resolvedItem(data) {
+    const def = state.types?.[data?.type];
+    if (!def) return data || {};
+    const { description, domain, ...inherit } = def;
+    return {
+        ...inherit,
+        ...data,
+        attributes: { ...(inherit.attributes || {}), ...(data.attributes || {}) },
+        stats: { ...(inherit.stats || {}), ...(data.stats || {}) },
+    };
+}
+
 // ---- Item category helper ----
 
 function getItemCategory(data) {
     if (data.random_type) return 'pool';
+    // A declared type is the authoritative answer. The guesswork below is the
+    // fallback for the items that don't declare one (torches, keys, treasure),
+    // and it reads raw definitions, so it can't see attributes a type supplies.
+    if (data.type) return data.type;
     const a = data.attributes || {};
     if (a.weapon) return 'weapon';
     if (a.wearable === 'ring') return 'ring';
@@ -2109,6 +2188,8 @@ function initEventListeners() {
     document.getElementById('btn-add-pickup-effect').addEventListener('click', () => addKVRow('pickup-effect-list', '', ''));
     document.getElementById('btn-add-random-type').addEventListener('click', () => addStringRow('random-type-list', ''));
 
+    document.getElementById('f-type').addEventListener('change', updateTypeHint);
+
     document.getElementById('f-name').addEventListener('input', (e) => {
         const key = e.target.value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
         document.getElementById('item-key').value = key;
@@ -2152,6 +2233,7 @@ async function init() {
     initTintSync();
 
     await Promise.all([loadBaseData(), loadSpritesheet()]);
+    populateTypeDropdown();   // before loadPrototype, which populates the form
     await loadPrototype('');
 
     initItemFilter();

@@ -48,23 +48,21 @@ async function fetchJSON(url) {
 }
 
 async function loadBaseData() {
-    const [actors, items, sounds, biomes, protoIndex] = await Promise.all([
+    const [actors, items, sounds, biomes, protoIndex, types] = await Promise.all([
         fetchJSON('../data/actors.json'),
         fetchJSON('../data/items.json'),
         fetchJSON('../data/sounds.json'),
         fetchJSON('../data/biomes.json'),
         fetchJSON('../data/prototypes.json'),
+        fetchJSON('../data/types.json'),
     ]);
     state.baseActors = actors;
     state.baseItems = items;
     state.baseBiomes = biomes;
+    state.baseTypes = types;
     state.prototypeNames = Array.isArray(protoIndex.prototypes) ? protoIndex.prototypes : [];
     state.soundIds = Object.keys(sounds.sprite || {}).sort();
-    state.poolItemIds = new Set();
-    for (const [k, v] of Object.entries(items)) {
-        const rt = v.random_type || (v.attributes && v.attributes.random_type);
-        if (rt) state.poolItemIds.add(k);
-    }
+    state.poolItemIds = collectPoolItemIds(items, types);
 }
 
 async function loadPrototype(name) {
@@ -104,9 +102,12 @@ function rebuildMergedIds() {
         ...Object.keys(state.baseActors),
         ...Object.keys(state.protoActors),
     ])].sort();
+    // Item types are spawnable names too — "potion" means "roll a potion" — so
+    // they belong in the dropdowns alongside concrete ids.
     state.mergedItemIds = [...new Set([
         ...Object.keys(state.baseItems),
         ...Object.keys(state.protoItems),
+        ...state.poolItemIds,
     ])].sort();
 }
 

@@ -17,10 +17,11 @@
 
 ## remaning 'types' refactor work
 
-- Earlier I added '[types](TYPES.md)' to actors, this pattern should be extended to items.
-- Items already have a 'backwards' version of this: 8 hollow meta-entries (`potion`, `food`, `weapon`, `armor`, `staff`, `scroll`, `ring`, `wand`) hold `random_type` lists pointing *down* at their members, while each of the 16 potions restates the same seven "this is a potion" attributes. Inverting it would let `item_catalog` pools be derived from membership instead of hand-maintained arrays that drift when you add an item. `types.json` already has a `domain` field reserved for this.
-- `Entity.type` still holds the entity *id* (`actor.type === 'goblin'`), so an actor's type is read as `actor.data.type`. Renaming the id field to `Entity.id` would free the word — ~50 call sites plus a save-format shim, and no data file would change.
+- ~~Earlier I added '[types](TYPES.md)' to actors, this pattern should be extended to items.~~ Done — 8 item types, `domain` now enforced.
+- ~~Items already have a 'backwards' version of this: 8 hollow meta-entries hold `random_type` lists pointing *down* at their members.~~ Done — the metas are gone and pools derive from membership. `random_type` survives as a curated-pool override.
+- `Entity.type` still holds the entity *id* (`actor.type === 'goblin'`). Renaming the id field to `Entity.id` would free the word — ~66 call sites (engine.js, behaviors.js, interface.js, arena.html; architect.js is exempt, its `.type` hits are wall/region records). No save-compat burden: saves are in-memory only. Deferred — `Item` never stores `this.data`, so the collision is notional, and `serialize`/`deserialize` have to move atomically or floor transitions drop entities.
 - Types don't inherit from types (single hop, like `$alias`). Probably fine; revisit if a `dire_beast` wants to extend `beast`.
+- Three sites read `.id` on actors, which is always `undefined`: `engine.js:9417` stores it as a trail's `ownerId`, `engine.js:9432` compares `undefined === undefined` (so any actor backtrack-removes any other's trail), and `behaviors.js:315` finds the first living actor instead of the owner. Real bug, unrelated to types; needs a genuine owner reference, not the type id.
 
 ### Patrol behavior
 

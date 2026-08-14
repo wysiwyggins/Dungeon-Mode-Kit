@@ -598,7 +598,7 @@ Rings provide bonuses while carried in inventory — they don't need to be equip
 
 Rings can also use `light_source: true` to emit light while carried (no fuel stat needed — glows permanently).
 
-The `ring` pool entry spawns a random ring type. Add `"ring"` to `item_catalog` or `random_items` to include rings in a prototype.
+`ring` is an item type: naming it spawns a random ring. Add `"ring"` to `item_catalog` or `random_items` to include rings in a prototype.
 
 ---
 
@@ -642,7 +642,7 @@ Wands are single-target charged items that apply effects at range. Like staves, 
 
 These can be combined with the area-effect properties (`center`, `radius`, `outer`) used by staves. A spell with only single-target properties fires a projectile but spawns no area actors.
 
-The `wand` pool entry spawns a random wand type. Add `"wand"` to `item_catalog` or `random_items` to include wands in a prototype.
+`wand` is an item type: naming it spawns a random wand. Add `"wand"` to `item_catalog` or `random_items` to include wands in a prototype.
 
 ---
 
