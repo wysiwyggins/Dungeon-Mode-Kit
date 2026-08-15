@@ -45,11 +45,11 @@
             "expandedObjectLayers": [
                 3
             ],
-            "scale": 0.3324,
-            "selectedLayer": 2,
+            "scale": 0.7197,
+            "selectedLayer": 6,
             "viewCenter": {
-                "x": 800.2406738868835,
-                "y": 598.676293622142
+                "x": 911.4908989856885,
+                "y": 675.2813672363485
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/hunger_game/map.tmj": {
@@ -77,11 +77,11 @@
             "expandedObjectLayers": [
                 3
             ],
-            "scale": 0.3355,
+            "scale": 0.5149,
             "selectedLayer": 3,
             "viewCenter": {
-                "x": 798.8077496274218,
-                "y": 599.1058122205662
+                "x": 838.9978636628471,
+                "y": 685.5700135948728
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/mine/map.tmj": {

@@ -4164,11 +4164,31 @@ class Entity {
      */
     getDisplayName() {
         const color = this.getColorName?.();
-        if (!color) return this.name;
+
+        // A name may be a template ("[color] lever"), which lets the data decide
+        // where the colour word goes instead of the engine gluing it on the front.
+        // Feed the paired colour in directly: an Entity has no templateVars bag,
+        // and this is the one variable the base class knows how to supply.
+        const declaresColor = typeof this.name === 'string' && this.name.includes('[color]');
+        const resolved = resolveTemplate(this.name, this, {
+            memoize: true,
+            providers: color ? { color: () => color } : {}
+        });
+        if (declaresColor) {
+            // The name said where the colour goes, so don't also prefix it. An
+            // unpaired switch never gets a colour (initializeSwitchTints skips
+            // groups with no targets), so drop the token rather than show it.
+            return color ? resolved : resolved.replace(/\[color\]\s*/g, '');
+        }
+        if (resolved !== this.name) return resolved;
+
+        // Fallback for entities that carry a colour but don't say where it goes —
+        // doors, gates and pedestals. Keeps their names reading as they always have.
+        if (!color) return resolved;
 
         // Don't double up if the name already carries the color (e.g. authored that way).
-        if (this.name.toLowerCase().includes(color.toLowerCase())) return this.name;
-        return `${color} ${this.name}`;
+        if (resolved.toLowerCase().includes(color.toLowerCase())) return resolved;
+        return `${color} ${resolved}`;
     }
 
     /**
@@ -4421,7 +4441,9 @@ class Item extends Entity {
 
                 // Show message when item becomes ready
                 if (!wasReady && isReady && stat.ready_message && this.owner?.isPlayerControlled()) {
-                    const message = stat.ready_message.replace('[item_name]', this.getDisplayName ? this.getDisplayName() : this.name);
+                    const message = resolveTemplate(stat.ready_message, this, {
+                        providers: { item_name: () => this.getDisplayName() }
+                    });
                     this.owner.engine.inputManager?.showMessage(message);
                 }
             }
@@ -4546,70 +4568,38 @@ class Item extends Entity {
     }
 
     /**
-     * Get the display name based on identification status
-     * Processes templates like "[color] [name]" or "[name] of [reagents.reagents]"
-     * Supports [file.key] syntax for random selection from global data (reagents, adjectives)
+     * The name shown to the player.
+     *
+     * An item's name is a template: the identified/unidentified template if it has
+     * one, otherwise its plain `name`, which may itself carry tokens. Memoized, so
+     * a random word picked for the name stays put across renders instead of the
+     * item appearing to rename itself on every hover.
+     *
      * @returns {string} The name to display
      */
     getDisplayName() {
         const template = this.identified ? this.identifiedTemplate : this.unidentifiedTemplate;
 
-        // If no template, return base name with enchantment suffix
-        if (!template) {
-            let name = this.name;
-            if (this.identified !== false) {
-                if (this.enchantment < 0 && this.hasAttribute('cursed')) {
-                    name = `Cursed ${name}`;
-                }
-                if (this.enchantment && this.enchantment !== 0) {
-                    const sign = this.enchantment > 0 ? '+' : '';
-                    name += ` ${sign}${this.enchantment}`;
-                }
-            }
-            return name;
-        }
-
-        // Process template by replacing [key] or [file.key] with values
-        return template.replace(/\[([^\]]+)\]/g, (match, key) => {
-            // Check templateVars first (includes previously resolved random values)
-            if (this.templateVars[key] !== undefined) {
-                return this.templateVars[key];
-            }
-
-            // Handle file.key syntax (e.g., [reagents.reagents], [adjectives.yucky])
-            if (key.includes('.')) {
-                const [file, category] = key.split('.');
-                let dataSource = null;
-
-                if (file === 'reagents') {
-                    dataSource = this.engine.globalReagents;
-                } else if (file === 'adjectives') {
-                    dataSource = this.engine.globalAdjectives;
-                } else if (file === 'substances') {
-                    dataSource = this.engine.globalSubstances;
-                }
-
-                if (dataSource && dataSource[category] && dataSource[category].length > 0) {
-                    // Pick a random value and store it so it's consistent
-                    const randomValue = randomElement(dataSource[category]);
-                    this.templateVars[key] = randomValue;
-                    return randomValue;
-                }
-                return match;
-            }
-
-            // Check item properties
-            if (this[key] !== undefined) {
-                return this[key];
-            }
-            // Check attributes
-            const attrValue = this.getAttribute(key);
-            if (attrValue !== undefined) {
-                return attrValue;
-            }
-            // Return the key itself if no substitution found
-            return match;
+        let name = resolveTemplate(template || this.name, this, {
+            memoize: true,
+            // The raw noun, so "[item_name] of [reagents.reagents]" can build on it
+            // without recursing back into this method.
+            providers: { item_name: () => this.name }
         });
+
+        // Decoration sits outside the template: it applies whether or not the item
+        // has one (an identified staff still shows its +2), and it stays out of the
+        // resolver so interface.js can spot the "Cursed" prefix for colouring.
+        if (this.identified !== false) {
+            if (this.enchantment < 0 && this.hasAttribute('cursed')) {
+                name = `Cursed ${name}`;
+            }
+            if (this.enchantment && this.enchantment !== 0) {
+                const sign = this.enchantment > 0 ? '+' : '';
+                name += ` ${sign}${this.enchantment}`;
+            }
+        }
+        return name;
     }
 
     /**
@@ -4735,6 +4725,10 @@ class Actor extends Entity {
     constructor(x, y, type, data, engine) {
         super(x, y, type, engine);
         this.name = data.name || type;
+        // Per-instance template variables, the same seam Item has. Lets an actor's
+        // name or message read "[color] lever" and take the paired colour from data,
+        // instead of the engine gluing a colour word onto the front of the name.
+        this.templateVars = { ...(data.template_vars || {}) };
         this.height = 2;
         this.tint = parseTint(data.tint);
         this.originalTint = this.tint;
@@ -4883,6 +4877,7 @@ class Actor extends Entity {
             const assignedColor = engine.currentPrototype.assignLockColor();
             if (assignedColor) {
                 this.setAttribute('lock_color', assignedColor.color);
+                this.templateVars.color = assignedColor.color;
                 this.tint = parseTint(assignedColor.hex);
             }
         }
@@ -5041,11 +5036,13 @@ class Actor extends Entity {
 
         const sound = this.data?.switch_sound || this.getAttribute('collision_sound') || 'tap2';
         this.engine.playSound?.(sound);
-        // `[name]` in an authored switch_message resolves to the color-aware name, so a
-        // lever can read "You pull the fire brick lever." without the data file having to
-        // know a color was assigned. Falls back to the plain name when uncolored.
-        const message = (this.data?.switch_message || `${this.getNameWithArticle(true)} clicks.`)
-            .replace(/\[name\]/g, () => this.getNameWithArticle());
+        // `[name]` in an authored switch_message resolves to the full display name with
+        // its article, so a lever reads "You pull the fire brick lever." Anything else
+        // the shared resolver knows — [color], a word list — works here too.
+        const template = this.data?.switch_message || `${this.getNameWithArticle(true)} clicks.`;
+        const message = resolveTemplate(template, this, {
+            providers: { name: () => this.getNameWithArticle() }
+        });
         this.engine.inputManager?.showMessage(message, { x: this.x, y: this.y });
 
         this._propagateSwitchEffects(nowToggled);
@@ -8035,10 +8032,17 @@ class Actor extends Entity {
 
     /**
      * Whether this actor is hidden from the player and so goes unnamed in messages.
+     *
+     * Two separate ways to be unseen, and both must anonymize: the `invisible`
+     * state (temporary, from a potion) and the `visible: false` attribute
+     * (permanent — ghasts, portals, gas traps). Checking only the state let a
+     * ghast announce itself by name as it attacked.
+     *
      * @returns {boolean}
      */
     isAnonymous() {
-        return !this.isPlayerControlled() && this.hasStateProperty('invisible');
+        if (this.isPlayerControlled()) return false;
+        return this.hasStateProperty('invisible') || !this.hasAttribute('visible');
     }
 
     /**
@@ -9130,7 +9134,12 @@ class Actor extends Entity {
                         // "you need the amulet" text) over the generic locked message.
                         const lockedMsg = actorAtTarget.getAttribute('collision_description')
                             || `${actorAtTarget.getNameWithArticle(true)} is locked.`;
-                        this.engine.inputManager?.showMessage(lockedMsg);
+                        // Resolved against the actor being bumped, not the bumper.
+                        this.engine.inputManager?.showMessage(
+                            resolveTemplate(lockedMsg, actorAtTarget, {
+                                providers: { name: () => actorAtTarget.getNameWithArticle() }
+                            })
+                        );
                     }
                     // feedbackShown: the plunk3 + "is locked" message above is the
                     // player's feedback; suppress the input layer's "bump into a wall".
@@ -9149,7 +9158,11 @@ class Actor extends Entity {
             if (this.isPlayerControlled() &&
                 actorAtTarget.hasAttribute('collision_description') &&
                 !actorAtTarget.hasAttribute('collision_effect')) {
-                this.engine.inputManager?.showMessage(actorAtTarget.getAttribute('collision_description'));
+                this.engine.inputManager?.showMessage(
+                    resolveTemplate(actorAtTarget.getAttribute('collision_description'), actorAtTarget, {
+                        providers: { name: () => actorAtTarget.getNameWithArticle() }
+                    })
+                );
                 return { moved: false, actionTaken: true };
             }
 
@@ -9297,14 +9310,22 @@ class Actor extends Entity {
         // blood and rubble are entities, and either should narrate the same way. Solid
         // actors are skipped because you never end a move on top of one.
         if (this.isPlayerControlled()) {
+            // Resolved against the thing being stepped on, so its own [color] or a
+            // word list reads correctly. An untemplated string is returned as-is.
+            const describeWalk = (entity) => this.engine.inputManager?.showMessage(
+                resolveTemplate(entity.getAttribute('walk_description'), entity, {
+                    providers: { name: () => entity.getNameWithArticle() }
+                })
+            );
+
             const entityAtTarget = this.engine.entityManager.getEntityAt(newX, newY);
             if (entityAtTarget && entityAtTarget.hasAttribute('walk_description')) {
-                this.engine.inputManager?.showMessage(entityAtTarget.getAttribute('walk_description'));
+                describeWalk(entityAtTarget);
             }
             for (const other of this.engine.entityManager.getActorsAt(newX, newY)) {
                 if (other === this || other.isDead || other.hasAttribute('solid')) continue;
                 if (!other.hasAttribute('walk_description')) continue;
-                this.engine.inputManager?.showMessage(other.getAttribute('walk_description'));
+                describeWalk(other);
             }
         }
 
@@ -10247,6 +10268,7 @@ class Actor extends Entity {
         return {
             ...super.serialize(),
             stats: JSON.parse(JSON.stringify(this.stats)),
+            templateVars: { ...this.templateVars },
             inventory: this.inventory.map(item => item.serialize()),
             personality: this.personality?.name,
             isDead: this.isDead,
@@ -10271,6 +10293,7 @@ class Actor extends Entity {
     deserialize(data) {
         super.deserialize(data);
         if (data.stats) this.stats = JSON.parse(JSON.stringify(data.stats));
+        if (data.templateVars) this.templateVars = { ...data.templateVars };
         if (data.isDead !== undefined) this.isDead = data.isDead;
         if (data.facing !== undefined) this.facing = data.facing;
         if (data.states) this.states = JSON.parse(JSON.stringify(data.states));
@@ -10464,6 +10487,10 @@ class EntityManager {
             const applyColor = (a) => {
                 a.tint = tint;
                 a.setAttribute('lock_color', color.color);
+                // Mirrors reconcileKeyDoorColors: the attribute drives lock matching,
+                // the template var drives the name. An actor whose data says
+                // "[color] lever" picks the word up from here.
+                if (a.templateVars) a.templateVars.color = color.color;
                 tinted.add(a);
             };
 
@@ -10683,7 +10710,13 @@ class EntityManager {
     randomizeFungusAppearance(actor) {
         const engine = this.engine;
         if (engine.globalFungiTypes?.length) {
-            actor.name = randomElement(engine.globalFungiTypes);
+            const fungiType = randomElement(engine.globalFungiTypes);
+            // Publish as a template var so the data decides how it reads — a name of
+            // "[fungi_type]" gives today's bare "puffballs", but a description can
+            // also say "A glowing patch of [fungi_type]". Assigning actor.name
+            // directly would overwrite whatever the data file authored.
+            actor.templateVars.fungi_type = fungiType;
+            if (!actor.name.includes('[')) actor.name = fungiType;
         }
         if (engine.globalColors?.length) {
             actor.tint = parseTint(randomElement(engine.globalColors).hex);

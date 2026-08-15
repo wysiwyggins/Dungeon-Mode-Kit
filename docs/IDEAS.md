@@ -1,6 +1,8 @@
 
 ## Bugs
 
+- adding an eel to the sewage in the test prototype revealed that we don't get the hidden actor name from a submerged actor as we would an invisible one, and it would be nice if a submerged actor's name and tiles were only revealed when the player is submerged too. Currently the name is never hidden, the tiles are always hidden.
+
 ## Tweaks
 
 - item names and descriptions should be able to use template variables like [color] too, not just unidentified_description. How does the lever actor get color words in its name when paired? I would have expected to see that in the actor data, not just hardcoded, this would show a reusable precedent for templated strings in data.

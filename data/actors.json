@@ -127,10 +127,10 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
     "attributes": {
-      "light_source": true,
       "accuracy": 70,
       "defense": 10,
-      "inventory": 0
+      "inventory": 0,
+      "visible": false
     },
     "stats": {
       "health": 60
@@ -953,7 +953,7 @@
   },
   "tall_fungus": {
     "name": "mushrooms",
-    "description": "A tall cluster of [fungi_types]",
+    "description": "A tall cluster of [fungi_type]",
     "tileIndexBase": "THREE_MUSHROOM_STALKS",
     "tileIndexTop": "THREE_MUSHROOM_CAPS",
     "tint": "#371a94",
@@ -966,7 +966,7 @@
   },
   "fungus": {
     "name": "fungus",
-    "description": "A glowing patch of [fungi_types]",
+    "description": "A glowing patch of [fungi_type]",
     "tileIndexBase": {
       "x": 11,
       "y": 16
@@ -1184,7 +1184,7 @@
     }
   },
   "lever": {
-    "name": "lever",
+    "name": "[color] lever",
     "tileIndexBase": "LEVER_BASE",
     "tileIndexTop": "LEVER_HANDLE",
     "tileIndexBase_toggled": "LEVER_HANDLE",
@@ -1198,7 +1198,7 @@
       "toggled": false,
       "opaque": false
     },
-    "collision_description": "a lever",
+    "collision_description": "[a-an] [color] lever",
     "switch_message": "You pull [name].",
     "switch_effects": {
       "solid": false,

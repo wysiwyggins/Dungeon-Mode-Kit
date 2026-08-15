@@ -73,7 +73,51 @@ Older messages use CSS classes for visual hierarchy (defined in `_typography.scs
 
 ## Template System
 
-Items and actors can define templated descriptions that are processed at runtime.
+Any player-facing string in the data files can contain `[token]`s, resolved at
+runtime by one shared function — `resolveTemplate` in `engine.js`. That includes
+**names**, not just descriptions:
+
+| Field | On | Resolved |
+| --- | --- | --- |
+| `name` | items, actors | memoized |
+| `unidentified_template` / `identified_template` | items | memoized |
+| `description` | items | memoized |
+| `use_description` | items | re-rolled |
+| `collision_description` | actors, weapons | re-rolled |
+| `walk_description`, `switch_message` | actors | re-rolled |
+
+**Memoized vs re-rolled** is the difference between an identity and an event. A
+name is drawn on every hover, so its random picks are cached — otherwise the thing
+would appear to rename itself. A message is read once, so it re-rolls and you get
+variety. Nothing in the data has to say which; it follows from the field.
+
+An unknown token is left alone rather than blanked, so prose containing brackets
+survives intact.
+
+### Names
+
+A name can carry a token, which is how an entity says *where* a generated word
+belongs instead of the engine deciding:
+
+```json
+"lever": {
+  "name": "[color] lever",
+  "collision_description": "[a-an] [color] lever",
+  "switch_message": "You pull [name]."
+}
+```
+
+A lever paired to a machine is assigned a colour (`initializeSwitchTints`), which
+lands in `templateVars.color` and reads as "the fire brick lever". Write
+`"lever, [color]"` and it reads that way instead — the word order is the data's.
+
+Entities that carry a colour but *don't* mention it in their name (doors, gates)
+fall back to a colour prefix, so they read as they always have.
+
+`templateVars` holds these per-instance values. It's seeded from an optional
+`template_vars` object in the data, then filled by whatever assigns randomness:
+`random_color`, `random_material`, `random_glyph_name`, key/door pairing, switch
+pairing, fungus type.
 
 ### Item Use Descriptions (`use_description`)
 
@@ -177,9 +221,13 @@ from `words.json` → `attacks` → `melee_verbs`:
 }
 ```
 
-Adding a namespace here doesn't automatically make it available to templates —
-the resolvers in `engine.js` name the namespaces they accept. Word lists are
-global only; unlike actors or biomes, a prototype can't override them.
+Adding a namespace here **does** make it available to templates: every list is
+flattened into one `namespace.category` registry at load (`buildWordRegistry` in
+`engine.js`), so no code names the namespaces it accepts. `data/reagents.json` and
+`data/substances.json` are flat rather than nested, so they take their filename as
+the namespace — hence `[reagents.reagents]` and `[substances.substances]`.
+
+Word lists are global only; unlike actors or biomes, a prototype can't override them.
 
 ## Future: Full History Viewer
 
