@@ -1,10 +1,13 @@
 
 ## Bugs
 
+- it's easy to not realize there are more sections overflowed to the right in the actor editor, need a ui convention for showing designers they can scroll right
 - adding an eel to the sewage in the test prototype revealed that we don't get the hidden actor name from a submerged actor as we would an invisible one, and it would be nice if a submerged actor's name and tiles were only revealed when the player is submerged too. Currently the name is never hidden, the tiles are always hidden.
+- I just picked up a key and it was consumed by passing through an unlocked generic dooor, something I thought I'd already fixed. unlocked doors should never consume a key.
 
 ## Tweaks
 
+- food should be an item category option in the random items section of the biome editor
 - item names and descriptions should be able to use template variables like [color] too, not just unidentified_description. How does the lever actor get color words in its name when paired? I would have expected to see that in the actor data, not just hardcoded, this would show a reusable precedent for templated strings in data.
 - should the "map generator" section in prototype defaults be a biomes/single generator/authored map radio button selection? We can eliminate some of this with the single level/multi level toggle. A single level is either a single generator or an authored map, hiding biome stuff. A multi level is either a single generator or biomes with level overrides for authored maps. the current "No procedural generator — the map comes from a hand-authored .tmj. Placed features below still apply." message when a single generator default isn't enabled is misleading, and when the section is disabled we don't expect to be able to set placed features, despite the message saying otherwise.
 - in prototype-editor we should be able to turn off biomes on a multi-level prototype and just use defaults- change 'floor plan' section name to 'biome plan' or something, add a top toggle to disable it to use defaults only
@@ -24,6 +27,7 @@
 - `Entity.type` still holds the entity *id* (`actor.type === 'goblin'`). Renaming the id field to `Entity.id` would free the word — ~66 call sites (engine.js, behaviors.js, interface.js, arena.html; architect.js is exempt, its `.type` hits are wall/region records). No save-compat burden: saves are in-memory only. Deferred — `Item` never stores `this.data`, so the collision is notional, and `serialize`/`deserialize` have to move atomically or floor transitions drop entities.
 - Types don't inherit from types (single hop, like `$alias`). Probably fine; revisit if a `dire_beast` wants to extend `beast`.
 - Three sites read `.id` on actors, which is always `undefined`: `engine.js:9417` stores it as a trail's `ownerId`, `engine.js:9432` compares `undefined === undefined` (so any actor backtrack-removes any other's trail), and `behaviors.js:315` finds the first living actor instead of the owner. Real bug, unrelated to types; needs a genuine owner reference, not the type id.
+- item-editor still has new item from template rather than type selection
 
 ### Patrol behavior
 

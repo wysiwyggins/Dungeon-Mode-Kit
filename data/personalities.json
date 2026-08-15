@@ -341,8 +341,8 @@
       "random_walk",
       "wander_to_wall",
       "mine_nearby_wall",
-      "flee_from_danger",
-      "defend_self"
+      "defend_self",
+      "flee_from_danger"
     ]
   },
 

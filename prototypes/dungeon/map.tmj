@@ -332,29 +332,7 @@
          "draworder":"topdown",
          "id":6,
          "name":"items",
-         "objects":[
-                {
-                 "height":30,
-                 "id":52,
-                 "name":"",
-                 "rotation":0,
-                 "type":"sword",
-                 "visible":true,
-                 "width":40,
-                 "x":600,
-                 "y":840
-                }, 
-                {
-                 "height":30,
-                 "id":53,
-                 "name":"",
-                 "rotation":0,
-                 "type":"ring",
-                 "visible":true,
-                 "width":40,
-                 "x":720,
-                 "y":870
-                }],
+         "objects":[],
          "opacity":1,
          "type":"objectgroup",
          "visible":true,
