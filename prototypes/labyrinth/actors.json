@@ -12,12 +12,42 @@
       "inventory": 5,
       "strength": 10,
       "remains": "skull",
-      "accuracy": 40,
-      "defense": 6
+      "accuracy": 50
     },
     "stats": {
       "health": 100
+    }
+  },
+  "minotaur": {
+    "name": "Asterion",
+    "description": "An immense man with the head of a bull.",
+    "tileIndexBase": "STRONG_TORSO",
+    "tileIndexTop": "CABESA_DE_VACA",
+    "flipBaseH": true,
+    "tint": "#ffd9a8",
+    "personality": "stationed_melee",
+    "collision_effect": {
+      "health": "-{strength}"
     },
-    "default_items": ["torch"]
+    "collision_sound": "hit",
+    "attributes": {
+      "solid": true,
+      "flammable": true,
+      "hostile": true,
+      "sentient": true,
+      "follows_thread": true,
+      "proper_named": true,
+      "accuracy": 40,
+      "defense": 8,
+      "strength": 8,
+      "inventory": 1,
+      "remains": "skull"
+    },
+    "stats": {
+      "health": 130
+    },
+    "default_items": [
+      "horns"
+    ]
   }
 }

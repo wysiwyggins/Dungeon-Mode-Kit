@@ -31,5 +31,34 @@
     "stats": {
       "health": 50
     }
+  },
+  "minotaur": {
+    "name": "Asterion",
+    "description": "An immense man with the head of a bull.",
+    "tileIndexBase": "STRONG_TORSO",
+    "tileIndexTop": "CABESA_DE_VACA",
+    "flipBaseH": true,
+    "tint": "#ffd9a8",
+    "personality": "stationed_melee",
+    "collision_effect": {
+      "health": "-{strength}"
+    },
+    "collision_sound": "hit",
+    "attributes": {
+      "solid": true,
+      "flammable": true,
+      "hostile": true,
+      "sentient": true,
+      "follows_thread": true,
+      "proper_named": true,
+      "accuracy": 80,
+      "defense": 8,
+      "strength": 8,
+      "inventory": 1,
+      "remains": "skull"
+    },
+    "stats": {
+      "health": 130
+    }
   }
 }
