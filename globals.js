@@ -1,3 +1,5 @@
+// globals is an artifact of the old roguelike protoype and can probably just be folded into engine.
+//there's no reason why the shadow background tiles need to be defined here
 let tiles = [];
 let tileMap = [];
 let spritesheet;
@@ -26,26 +28,9 @@ const globalVars = {
   CANVAS_ROWS: 60,
   SPRITESHEET_COLS: 23,
   SPRITESHEET_ROWS: 12,
-  MAX_TILES: 65 * 60, // CANVAS_COLS * CANVAS_ROWS
 
   // ---------------------------------------------------------------------------
   // Void background tiles
-  //
-  // The bottomless-pit look: an abyss cell has one of these on the background
-  // layer and NOTHING on the floor layer. Change VOID_FILL / VOID_SHADE /
-  // VOID_DIAGONAL to restyle every abyss in the game from one place.
-  //
-  // Opaque variants are the default because a transparent glyph has no pixels
-  // for the lighting pass to tint, so ambient_light could never reach the
-  // background layer (see LightingManager.getBackgroundTint).
-  //
-  // VOID_TILE_IDS is the recognition set and must stay a SUPERSET of the three
-  // paint values above. Hand-authored Tiled maps embed these numbers literally
-  // — prototypes/dungeon/map.tmj uses the opaque family, every other map ships
-  // the transparent one — so both families have to keep reading as "void"
-  // no matter which the paint constants point at. Recognition and painting are
-  // deliberately separate concerns: narrowing this set to just the current
-  // paint values would make existing maps stop registering as abyss.
   // ---------------------------------------------------------------------------
   VOID_FILL: 231,      // OPAQUE_FULL_BLOCK — flat void
   VOID_SHADE: 207,     // OPAQUE_DARK_SHADE — shadow body under a cliff lip

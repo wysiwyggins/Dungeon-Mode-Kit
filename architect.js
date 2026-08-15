@@ -22,7 +22,6 @@ class Architect {
 
         this.pendingWallSpawns = [];
         this.pendingDoorSpawns = [];
-        // Wall-mounted torch actors; centre braziers are freestanding, tracked apart.
         this.pendingTorchSpawns = [];
         this.pendingBrazierSpawns = [];
         this.pendingLavaSpawns = [];
@@ -68,9 +67,6 @@ class Architect {
             Array.from({ length: this.width }, () => null)
         );
     }
-
-    // Layer names match the Tiled layer names exactly (see docs/MAP.md).
-    // There is no wall layer: walls are actors, queued as pending spawns.
     getLayer(layerName) {
         const layers = {
             'background': this.backgroundMap,
@@ -140,40 +136,6 @@ class Architect {
      * cell — a small cellular automaton with designer-supplied rules.
      *
      * See docs/TILE_PATTERNS.md for the full rule-authoring guide.
-     *
-     * layerName is one of 'background', 'floor', 'wildcards', 'overlay' — the same
-     * names Tiled uses. An unknown name warns and returns 0.
-     *
-     * Rules are tried in order and the FIRST match wins, so put the most specific
-     * rule first. A rule is `{ when, paint }`:
-     *
-     *   when(tileContext, x, y) → truthy to claim this cell. Claiming it is what
-     *                     ends the cell — no later rule is tried, whatever paint
-     *                     does. A rule that matches and paints null is a veto.
-     *   paint                   → a tileId to write, or a function
-     *                     (tileContext, x, y) → tileId. Returning null writes
-     *                     nothing (it does not clear the cell — only
-     *                     tileContext.paint can write).
-     *
-     * The `tileContext` handed to callbacks carries the helpers a neighbour-sensitive
-     * rule needs:
-     *
-     *   tileContext.get(x, y)            tileId on the target layer (null if empty/OOB)
-     *   tileContext.is(x, y, v)          target-layer tile equals v (v may be an array)
-     *   tileContext.on(layer, x, y)      tileId on any other layer
-     *   tileContext.isOn(layer,x,y,v)    same equality test against another layer
-     *   tileContext.inBounds(x, y)
-     *   tileContext.width / tileContext.height
-     *   tileContext.paint(x, y, tileId)  write immediately — for rules that fill a run
-     *
-     * Options:
-     *   passes  (1)         run the whole grid N times; later passes see earlier output
-     *   order   ('rows')    'rows' = top-left → bottom-right, 'reverse' = the inverse
-     *
-     * IMPORTANT — rules read the same layer they write, within a single pass, which
-     * is what lets a pattern propagate (a diagonal continuing from the cell up-left
-     * of it). Guard on the values you paint, the way addBaseAndShadows excludes its
-     * paint values from `isUnpaintedVoid`.
      *
      * @returns {number} count of cells painted
      */
@@ -294,12 +256,8 @@ class Architect {
 
     processBackgroundLayer(layer) {
         console.log('Processing background layer...');
-
-        // Authored maps are painted with the transparent void tiles (a designer
-        // fills the background with FULL_BLOCK per docs/MAP.md), but a transparent
-        // glyph has no pixels for the lighting pass to tint, so ambient_light can't
-        // reach it. Remap the transparent family onto the configured void style.
-        // Any other background tile a designer painted passes through as-is.
+        //why are we still doing this remap? globals already has both opaque and transparent background tiles
+        //and we don't use the transparent for background any more, just fix it
         const VOID_REMAP = {
             217: globalVars.VOID_FILL,      // FULL_BLOCK
             178: globalVars.VOID_SHADE,     // DARK_SHADE
