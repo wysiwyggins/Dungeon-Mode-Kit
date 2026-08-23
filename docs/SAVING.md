@@ -48,6 +48,11 @@ Returns a plain object with:
 | `name` | Display name |
 | `attributes` | All attributes as an array of `[key, value]` pairs |
 | `tint` | Color tint value |
+| `isEntity` | Always `true` — discriminator for deserialization |
+
+`fillColor` and `tileIndex` are deliberately **not** saved: they are re-derived from
+`data/entities.json` on restore, so editing that file updates existing saves rather than
+leaving a stale look frozen into them.
 
 ### Item.serialize()
 
@@ -80,7 +85,13 @@ Fully restores stats, personality, dead state, active states, and reconstructs i
 
 ### EntityManager.deserializeEntities(data)
 
-Reconstructs all entities from serialized data. Uses `isActor` / `isItem` discriminator fields to determine entity type, creates instances from prototype definitions, and calls `deserialize()` on each.
+Reconstructs all entities from serialized data. Uses the `isActor` / `isItem` / `isEntity` discriminator fields to determine entity type, creates instances from prototype definitions, and calls `deserialize()` on each.
+
+The three are tested **in that order**, because Item and Actor records spread the base
+payload and therefore carry `isEntity` as well. Plain entities (decorations, rubble,
+blood) take the `isEntity` branch and are rebuilt with `spawnEntity()` rather than
+`addEntity()` — the latter creates sprites for Items but not for plain Entities, so an
+entity restored through it would exist but never be drawn.
 
 ## saveGameState() / restoreGameState()
 

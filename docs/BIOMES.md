@@ -65,6 +65,7 @@ prototype's own top-level defaults.
 | `items` | array | Depth-ranged item catalog. Rows use `type` (an **`item_catalog` category**, not an item id) plus `min`/`max`/`freq`. |
 | `item_budget` | object | Same budget shape as `actor_budget`. |
 | `traps`, `fungus` | object | Hazard count ramp: `{ min_depth, intercept, slope, max }`. `fungus` also takes `tall_chance` (0–1). |
+| `decorations` | array | Cosmetic entity scatter. Rows: `{ entity, pattern, density, min, max, freq, region? }`. See [Decorations](#decorations). |
 | `map_generator` | object | `{ type, options }`, applied to every floor in the biome. |
 | `mechanics` | object | Flags merged over the prototype's (see Precedence). |
 
@@ -110,6 +111,59 @@ Which gives, for that spec: floor 1 → none (below `min_depth`), floor 2 → 4�
 floor 5 → 12–13, floor 8 → 19–20, floor 12 → 29–30 (clamped at `max` from here down). The
 result is a small band around the computed count so consecutive floors aren't identical.
 
+### Decorations
+
+Purely cosmetic entities scattered across the floor at generation — moss beside water,
+rubble against the walls, a skull in an empty hall. They come from
+[`data/entities.json`](../data/entities.json), never block movement, and print their
+`walk_description` when you step on them.
+
+```json
+"decorations": [
+  { "entity": "moss",     "pattern": "near_liquid",  "density": 0.25, "min": 1, "max": 8,  "freq": 60 },
+  { "entity": "rubble",   "pattern": "wall_hugging", "density": 0.08, "min": 0, "max": 20 },
+  { "entity": "sediment", "pattern": "clusters",     "density": 0.05, "min": 0, "max": 12, "freq": 40 },
+  { "entity": "skull",    "pattern": "room_floor",   "density": 0.01, "min": 0, "max": 3,  "freq": 25 }
+]
+```
+
+| Field | Default | Meaning |
+|-------|---------|---------|
+| `entity` | **required** | A key in `data/entities.json`. Unknown → warning, row skipped. |
+| `pattern` | `"scatter"` | Where it may land — see the table below. |
+| `density` | `0.1` | Fraction of the tiles *matching the pattern* to fill, before clamping. |
+| `min` | `0` | Hard floor on the **count**. |
+| `max` | `min` | Hard ceiling on the **count**. |
+| `freq` | `100` | Percent chance the row runs at all on a given floor. |
+| `region` | — | Optional `namedRegions` key (`largest_room`, `sanctum`, `portico`, `treasure_room`). Unknown → warning, whole map. |
+
+> **`min`/`max` mean COUNT here, not depth.** In an `actors` or `items` catalog row the
+> same two names are a *depth window*. A decoration row has no depth window — use `freq`,
+> or put the biome on a narrower `floor_plan` range. This is the easiest thing in the file
+> to misread; the biome editor labels the control "count" for that reason.
+
+**Density proposes, min/max dispose.** The count scales with how much of *this* floor
+matches the pattern, then clamps. With `density: 0.25, min: 1, max: 8`: a floor with 12
+water-adjacent tiles gets `round(12 × 0.25) = 3`; one with 200 gets 50, clamped to 8.
+
+| Pattern | Lands on |
+|---------|----------|
+| `scatter` | Any walkable tile. `density` does all the work. |
+| `clusters` | Same tiles, but grown in patches around a few seeds rather than spread evenly. |
+| `wall_hugging` | Tiles with a wall (any solid actor) among their 8 neighbours. |
+| `near_liquid` | Tiles beside water, sewage **or lava**. |
+| `room_floor` | Open room interiors only — tiles with ≥3 walkable cardinal neighbours. Never corridors. |
+
+An unrecognised pattern warns and falls back to `scatter`; a typo never blanks a floor.
+
+Decorations are placed **after every actor, item, stairway and the player**, so one never
+sits under a monster or blocks a door, and two rows never stack on the same tile. They are
+saved with the floor, so revisiting a level shows the same arrangement rather than a
+reshuffle.
+
+Unlike the catalogs, decoration rows are **not** run through the budget raffle — an
+authored "1–8 moss" means what it says.
+
 ## Precedence
 
 Every floor's config resolves in three tiers — **floor override > biome > prototype root**:
@@ -123,7 +177,9 @@ Two rules to keep straight:
 - **`mechanics` is deep-merged** (one level): root, then biome, then floor. So a biome can
   set `treasure_room` while inheriting the root's `darkness`.
 - **Everything else replaces wholesale.** A biome's `map_generator` fully replaces the root's,
-  *including its `options`* — biome map generators must be self-contained.
+  *including its `options`* — biome map generators must be self-contained. Same for
+  `decorations`: a floor override that wants the biome's list plus one more must restate
+  the whole list.
 
 ## The `item_catalog` contract
 

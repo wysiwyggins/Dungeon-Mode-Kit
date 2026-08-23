@@ -8,6 +8,31 @@ const TILED_FLIP_D = 0x20000000;
 // everything else becomes a `wall_torch`.
 const FREESTANDING_WALL_TYPES = new Set(['column']);
 
+// Neighbour offsets used by the helpers below and by applyTilePattern's tileContext.
+const TP_DIRS4 = [[0, -1], [-1, 0], [1, 0], [0, 1]];
+const TP_DIRS8 = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
+
+/**
+ * True when any of the 8 neighbours of (x, y) satisfies `pred(x, y)` — the
+ * "is this cell next to floor?" test.
+ * Inside a tile pattern use tileContext.any8, whose predicate also takes the context.
+ */
+function anyNeighbor8(pred, x, y) {
+    for (const [dx, dy] of TP_DIRS8) {
+        if (pred(x + dx, y + dy)) return true;
+    }
+    return false;
+}
+
+/** How many of the 8 neighbours of (x, y) satisfy `pred`. */
+function countNeighbors8(pred, x, y) {
+    let n = 0;
+    for (const [dx, dy] of TP_DIRS8) {
+        if (pred(x + dx, y + dy)) n++;
+    }
+    return n;
+}
+
 class Architect {
     constructor(options = {}) {
         this.width = options.width || 30;
@@ -102,6 +127,42 @@ class Architect {
         }
     }
 
+    /**
+     * Seal the outer ring so the map can't be walked off: every perimeter cell that
+     * isn't floor and isn't already a queued wall becomes a metal_wall.
+     *
+     * @param {(x:number,y:number)=>boolean} hasFloor  is this cell floor?
+     * @param {number} mapW  width to sweep
+     * @param {number} mapH  height to sweep
+     */
+    _fillPerimeterGaps(hasFloor, mapW, mapH) {
+        const isPerimeter = (px, py) => px === 0 || px === mapW - 1 || py === 0 || py === mapH - 1;
+        const pendingWallSet = new Set(this.pendingWallSpawns.map(p => `${p.x},${p.y}`));
+        for (let y = 0; y < mapH; y++) {
+            for (let x = 0; x < mapW; x++) {
+                if (!isPerimeter(x, y)) continue;
+                if (hasFloor(x, y)) continue;
+                if (pendingWallSet.has(`${x},${y}`)) continue;
+                if (!anyNeighbor8(hasFloor, x, y)) continue;
+
+                this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                this.pendingWallSpawns.push({ x, y, type: 'metal_wall' });
+            }
+        }
+    }
+
+    /** Pick a wall type from a [{ type, weight }] table, weighted by `weight`. */
+    _pickWeightedWallType(wallTypes) {
+        if (!wallTypes || wallTypes.length === 0) return 'wall';
+        const totalWeight = wallTypes.reduce((sum, wt) => sum + wt.weight, 0);
+        let roll = ROT.RNG.getUniform() * totalWeight;
+        for (const wt of wallTypes) {
+            roll -= wt.weight;
+            if (roll <= 0) return wt.type;
+        }
+        return wallTypes[0].type;
+    }
+
     getNeighbors(layerName, x, y) {
         return {
             n:  this.getTile(layerName, x, y - 1),
@@ -137,7 +198,18 @@ class Architect {
      *
      * See docs/TILE_PATTERNS.md for the full rule-authoring guide.
      *
-     * @returns {number} count of cells painted
+     * Writes tiles. To place entities on the floor instead, use
+     * EntityManager.placeBiomeDecorations in engine.js.
+     *
+     * @param {string} layerName  background | floor | wildcards | overlay
+     * @param {Array}  rules      ordered [{ when, paint, collect? }]; first match wins
+     * @param {object} options    { passes, order, bounds, collect }
+     *   - bounds  {x1,y1,x2,y2} inclusive. Limits which cells are visited; rules can
+     *             still read, and ctx.paint can still write, anywhere on the map.
+     *   - collect true -> returns Array<{x,y}>; 'set' -> returns Set<"x,y">.
+     *             Painting still happens as normal. Set `collect: false` on a rule
+     *             to leave the cells it matches out of the result.
+     * @returns {number|Array|Set} painted count, or the matched cells when collecting
      */
     applyTilePattern(layerName, rules, options = {}) {
         const layer = this.getLayer(layerName);
@@ -145,11 +217,29 @@ class Architect {
             console.warn(`applyTilePattern: unknown layer "${layerName}"`);
             return 0;
         }
-        if (!Array.isArray(rules) || rules.length === 0) return 0;
+
+        const collectMode = options.collect;
+        const asSet = collectMode === 'set';
+        const collected = collectMode ? (asSet ? new Set() : []) : null;
+        const emptyResult = () => (collectMode ? collected : 0);
+
+        if (!Array.isArray(rules) || rules.length === 0) return emptyResult();
 
         const passes = options.passes ?? 1;
         const reverse = options.order === 'reverse';
         let painted = 0;
+
+        // Cells to visit. Defaults to the whole map.
+        const b = options.bounds;
+        const x1 = Math.max(0, b?.x1 ?? 0);
+        const y1 = Math.max(0, b?.y1 ?? 0);
+        const x2 = Math.min(this.width - 1, b?.x2 ?? this.width - 1);
+        const y2 = Math.min(this.height - 1, b?.y2 ?? this.height - 1);
+        if (x2 < x1 || y2 < y1) {
+            // An inverted or off-map box visits nothing.
+            console.warn(`applyTilePattern: empty bounds on "${layerName}"`, b);
+            return emptyResult();
+        }
 
         const matches = (tileId, value) =>
             Array.isArray(value) ? value.includes(tileId) : tileId === value;
@@ -165,14 +255,29 @@ class Architect {
             paint: (x, y, tileId) => {
                 this.setTile(layerName, x, y, tileId);
                 painted++;
-            }
+            },
+            // Neighbour tests. `pred` takes (tileContext, x, y) — the same shape as
+            // a rule's `when`, so the two are interchangeable. Off-map neighbours are
+            // passed to `pred` and read as null; check ctx.inBounds if that matters.
+            count4: (pred, x, y) => {
+                let n = 0;
+                for (const [dx, dy] of TP_DIRS4) if (pred(tileContext, x + dx, y + dy)) n++;
+                return n;
+            },
+            count8: (pred, x, y) => {
+                let n = 0;
+                for (const [dx, dy] of TP_DIRS8) if (pred(tileContext, x + dx, y + dy)) n++;
+                return n;
+            },
+            any4: (pred, x, y) => TP_DIRS4.some(([dx, dy]) => pred(tileContext, x + dx, y + dy)),
+            any8: (pred, x, y) => TP_DIRS8.some(([dx, dy]) => pred(tileContext, x + dx, y + dy))
         };
 
         for (let pass = 0; pass < passes; pass++) {
-            for (let i = 0; i < this.height; i++) {
-                const y = reverse ? this.height - 1 - i : i;
-                for (let j = 0; j < this.width; j++) {
-                    const x = reverse ? this.width - 1 - j : j;
+            for (let i = 0; i <= y2 - y1; i++) {
+                const y = reverse ? y2 - i : y1 + i;
+                for (let j = 0; j <= x2 - x1; j++) {
+                    const x = reverse ? x2 - j : x1 + j;
 
                     for (const rule of rules) {
                         if (!rule || typeof rule.when !== 'function') continue;
@@ -185,13 +290,19 @@ class Architect {
                             this.setTile(layerName, x, y, tileId);
                             painted++;
                         }
+                        // A rule can both paint and be collected. collect:false
+                        // matches the cell but keeps it out of the result.
+                        if (collected && rule.collect !== false) {
+                            if (asSet) collected.add(`${x},${y}`);
+                            else collected.push({ x, y });
+                        }
                         break; // first match wins
                     }
                 }
             }
         }
 
-        return painted;
+        return collected ?? painted;
     }
 
     // ========================================================================
@@ -466,21 +577,11 @@ class Architect {
                     }, 1);
                 }
                 const wallTypes = options.wall_types || [{ type: 'wall', weight: 100 }];
-                const totalWeight = wallTypes.reduce((sum, wt) => sum + wt.weight, 0);
 
                 for (let y = 0; y < this.height; y++) {
                     for (let x = 0; x < this.width; x++) {
                         if (!floorTiles.has(`${x},${y}`)) {
-                            let roll = ROT.RNG.getUniform() * totalWeight;
-                            let wallType = wallTypes[0].type;
-                            for (const wt of wallTypes) {
-                                roll -= wt.weight;
-                                if (roll <= 0) {
-                                    wallType = wt.type;
-                                    break;
-                                }
-                            }
-                            this.pendingWallSpawns.push({ x, y, type: wallType });
+                            this.pendingWallSpawns.push({ x, y, type: this._pickWeightedWallType(wallTypes) });
                         }
                     }
                 }
@@ -591,21 +692,12 @@ class Architect {
                 }
 
                 const infernalWallTypes = options.wall_types || [{ type: 'wall', weight: 100 }];
-                const infernalTotalWeight = infernalWallTypes.reduce((sum, wt) => sum + wt.weight, 0);
+
 
                 for (let y = 0; y < this.height; y++) {
                     for (let x = 0; x < this.width; x++) {
                         if (!infernalFloorTiles.has(`${x},${y}`)) {
-                            let roll = ROT.RNG.getUniform() * infernalTotalWeight;
-                            let wallType = infernalWallTypes[0].type;
-                            for (const wt of infernalWallTypes) {
-                                roll -= wt.weight;
-                                if (roll <= 0) {
-                                    wallType = wt.type;
-                                    break;
-                                }
-                            }
-                            this.pendingWallSpawns.push({ x, y, type: wallType });
+                            this.pendingWallSpawns.push({ x, y, type: this._pickWeightedWallType(infernalWallTypes) });
                         }
                     }
                 }
@@ -853,7 +945,7 @@ class Architect {
                 });
 
                 const diggerWallTypes = options.wall_types || [{ type: 'wall', weight: 100 }];
-                const diggerTotalWeight = diggerWallTypes.reduce((sum, wt) => sum + wt.weight, 0);
+
 
                 const hasDiggerFloor = (fx, fy) => diggerFloorTiles.has(`${fx},${fy}`);
 
@@ -861,24 +953,11 @@ class Architect {
                     for (let x = 0; x < this.width; x++) {
                         if (diggerFloorTiles.has(`${x},${y}`)) continue;
 
-                        const adjacentToFloor =
-                            hasDiggerFloor(x - 1, y) || hasDiggerFloor(x + 1, y) ||
-                            hasDiggerFloor(x, y - 1) || hasDiggerFloor(x, y + 1) ||
-                            hasDiggerFloor(x - 1, y - 1) || hasDiggerFloor(x + 1, y - 1) ||
-                            hasDiggerFloor(x - 1, y + 1) || hasDiggerFloor(x + 1, y + 1);
+                        const adjacentToFloor = anyNeighbor8(hasDiggerFloor, x, y);
 
                         if (adjacentToFloor && y > 0) {
-                            let roll = ROT.RNG.getUniform() * diggerTotalWeight;
-                            let wallType = diggerWallTypes[0].type;
-                            for (const wt of diggerWallTypes) {
-                                roll -= wt.weight;
-                                if (roll <= 0) {
-                                    wallType = wt.type;
-                                    break;
-                                }
-                            }
                             this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
-                            this.pendingWallSpawns.push({ x, y, type: wallType });
+                            this.pendingWallSpawns.push({ x, y, type: this._pickWeightedWallType(diggerWallTypes) });
                         }
                     }
                 }
@@ -892,25 +971,7 @@ class Architect {
                     }
                 }
 
-                const pendingWallSet = new Set(this.pendingWallSpawns.map(p => `${p.x},${p.y}`));
-                for (let y = 0; y < this.height; y++) {
-                    for (let x = 0; x < this.width; x++) {
-                        if (!isPerimeter(x, y)) continue;
-                        if (diggerFloorTiles.has(`${x},${y}`)) continue;
-                        if (pendingWallSet.has(`${x},${y}`)) continue;
-
-                        const adj =
-                            hasDiggerFloor(x - 1, y) || hasDiggerFloor(x + 1, y) ||
-                            hasDiggerFloor(x, y - 1) || hasDiggerFloor(x, y + 1) ||
-                            hasDiggerFloor(x - 1, y - 1) || hasDiggerFloor(x + 1, y - 1) ||
-                            hasDiggerFloor(x - 1, y + 1) || hasDiggerFloor(x + 1, y + 1);
-
-                        if (adj) {
-                            this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
-                            this.pendingWallSpawns.push({ x, y, type: 'metal_wall' });
-                        }
-                    }
-                }
+                this._fillPerimeterGaps(hasDiggerFloor, this.width, this.height);
 
                 const rooms = generator.getRooms();
                 this.diggerRooms = rooms;
@@ -1848,25 +1909,28 @@ class Architect {
             ...this.pendingLavaSpawns
         ].map(p => `${p.x},${p.y}`));
 
-        const cardinalDirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
-        const edgeTiles = [];
-
-        for (let y = 1; y < this.height - 1; y++) {
-            for (let x = 1; x < this.width - 1; x++) {
-                if (!hasFloor(x, y)) continue;
-                if (wallSet.has(`${x},${y}`)) continue;
-                if (bridgeSet.has(`${x},${y}`)) continue;
-                if (liquidSet.has(`${x},${y}`)) continue;
+        // Collect the floor tiles sitting on the lip of an abyss. Nothing is
+        // painted; the rule only marks cells.
+        const edgeTiles = this.applyTilePattern('floor', [{
+            when: (ctx, x, y) => {
+                if (!hasFloor(x, y)) return false;
+                if (wallSet.has(`${x},${y}`)) return false;
+                if (bridgeSet.has(`${x},${y}`)) return false;
+                if (liquidSet.has(`${x},${y}`)) return false;
                 // A causeway is somebody's only way home; don't drop it out.
-                if (this._causewayCells.has(`${x},${y}`)) continue;
-                const adjacentToAbyss = cardinalDirs.some(([dx, dy]) => isAbyss(x + dx, y + dy));
-                if (adjacentToAbyss) {
-                    edgeTiles.push({ x, y });
-                }
-            }
-        }
+                if (this._causewayCells.has(`${x},${y}`)) return false;
+                return ctx.any4((c, nx, ny) => isAbyss(nx, ny), x, y);
+            },
+            paint: null
+        }], {
+            collect: true,
+            bounds: { x1: 1, y1: 1, x2: this.width - 2, y2: this.height - 2 }
+        });
 
         if (edgeTiles.length === 0) return;
+
+        // Patches grow cardinally out from each seed tile.
+        const cardinalDirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
 
         for (let i = edgeTiles.length - 1; i > 0; i--) {
             const j = Math.floor(ROT.RNG.getUniform() * (i + 1));
@@ -2221,7 +2285,13 @@ class Architect {
         console.log(`Dungeon generated: ${floorCells.size} floor tiles, ${filteredWallPositions.length} walls, ${doorPositions.length} doors, ${torchPositions.length} torches`);
     }
 
-    generateCaveAt(startX, startY, width, height, context = null) {
+    /**
+     * Carve a cellular-automaton cave inside a wildcard region, queueing walls
+     * around its edges. `wildcardType` is which region cells to claim; `label` names
+     * the generator in the log. Anything else the biome adds, such as lava lakes,
+     * is applied by the caller afterwards.
+     */
+    _generateCaveRegion(wildcardType, label, startX, startY, width, height, context = null) {
         const mapGenConfig = context?.getMapGeneratorConfig?.() || {};
 
         const cave = new ROT.Map.Cellular(width, height, {
@@ -2240,51 +2310,40 @@ class Architect {
         const floorCells = new Set();
         const wallPositions = [];
 
+        // The region is a hole in an authored map, so only carve cells it claims.
+        const claims = (worldX, worldY) =>
+            worldX < this.width && worldY < this.height &&
+            this.wildcardMap[worldY][worldX]?.type === wildcardType;
+
+        const carveFloor = (worldX, worldY, localX, localY) => {
+            this.backgroundMap[worldY][worldX] = null;
+            this.floorMap[worldY][worldX] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+            this.walkableTiles.push({ x: worldX, y: worldY });
+            floorCells.add(`${localX},${localY}`);
+        };
+
         cave.create((x, y, value) => {
             const worldX = startX + x;
             const worldY = startY + y;
-
-            if (worldX < this.width && worldY < this.height) {
-                const wildcard = this.wildcardMap[worldY][worldX];
-                if (!wildcard || wildcard.type !== 'cave') {
-                    return;
-                }
-
-                if (value === 0) {
-                    this.backgroundMap[worldY][worldX] = null;
-                    this.floorMap[worldY][worldX] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
-                    this.walkableTiles.push({ x: worldX, y: worldY });
-                    floorCells.add(`${x},${y}`);
-                }
-            }
+            if (value === 0 && claims(worldX, worldY)) carveFloor(worldX, worldY, x, y);
         });
 
         cave.connect((x, y, value) => {
             const worldX = startX + x;
             const worldY = startY + y;
-
-            if (value === 0 && worldX < this.width && worldY < this.height) {
-                const wildcard = this.wildcardMap[worldY][worldX];
-                if (wildcard && wildcard.type === 'cave' && !this.floorMap[worldY][worldX]) {
-                    this.backgroundMap[worldY][worldX] = null;
-                    this.floorMap[worldY][worldX] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
-                    this.walkableTiles.push({ x: worldX, y: worldY });
-                    floorCells.add(`${x},${y}`);
-                }
+            if (value === 0 && claims(worldX, worldY) && !this.floorMap[worldY][worldX]) {
+                carveFloor(worldX, worldY, x, y);
             }
         }, 1);
 
+        // Whatever the automaton left solid becomes a wall, on a floor tile so it
+        // sits on ground rather than over the void.
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
                 if (floorCells.has(`${x},${y}`)) continue;
-
                 const worldX = startX + x;
                 const worldY = startY + y;
-
-                if (worldX >= this.width || worldY >= this.height) continue;
-
-                const wildcard = this.wildcardMap[worldY][worldX];
-                if (!wildcard || wildcard.type !== 'cave') continue;
+                if (!claims(worldX, worldY)) continue;
 
                 this.backgroundMap[worldY][worldX] = null;
                 this.floorMap[worldY][worldX] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
@@ -2293,128 +2352,33 @@ class Architect {
         }
 
         const wallTypes = mapGenConfig.wall_types || [{ type: 'wall', weight: 100 }];
-        const totalWeight = wallTypes.reduce((sum, wt) => sum + wt.weight, 0);
-
         for (const pos of wallPositions) {
-            let roll = ROT.RNG.getUniform() * totalWeight;
-            let wallType = wallTypes[0].type;
-            for (const wt of wallTypes) {
-                roll -= wt.weight;
-                if (roll <= 0) {
-                    wallType = wt.type;
-                    break;
-                }
-            }
-            this.pendingWallSpawns.push({ x: pos.x, y: pos.y, type: wallType });
+            this.pendingWallSpawns.push({ x: pos.x, y: pos.y, type: this._pickWeightedWallType(wallTypes) });
         }
 
-        console.log(`Cave generated: ${floorCells.size} floor tiles, ${wallPositions.length} walls`);
+        console.log(`${label} generated: ${floorCells.size} floor tiles, ${wallPositions.length} walls`);
+        return { floorCells, wallPositions };
+    }
+
+    generateCaveAt(startX, startY, width, height, context = null) {
+        return this._generateCaveRegion('cave', 'Cave', startX, startY, width, height, context);
     }
 
     generateInfernalAt(startX, startY, width, height, context = null) {
-        const mapGenConfig = context?.getMapGeneratorConfig?.() || {};
-
-        const cave = new ROT.Map.Cellular(width, height, {
-            born: mapGenConfig.born || [5, 6, 7, 8],
-            survive: mapGenConfig.survive || [4, 5, 6, 7, 8],
-            topology: mapGenConfig.topology || 8
-        });
-
-        cave.randomize(mapGenConfig.probability || 0.5);
-
-        const iterations = mapGenConfig.iterations || 4;
-        for (let i = 0; i < iterations; i++) {
-            cave.create();
-        }
-
-        const floorCells = new Set();
-        const wallPositions = [];
-
-        cave.create((x, y, value) => {
-            const worldX = startX + x;
-            const worldY = startY + y;
-
-            if (worldX < this.width && worldY < this.height) {
-                const wildcard = this.wildcardMap[worldY][worldX];
-                if (!wildcard || wildcard.type !== 'infernal') {
-                    return;
-                }
-
-                if (value === 0) {
-                    this.backgroundMap[worldY][worldX] = null;
-                    this.floorMap[worldY][worldX] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
-                    this.walkableTiles.push({ x: worldX, y: worldY });
-                    floorCells.add(`${x},${y}`);
-                }
-            }
-        });
-
-        cave.connect((x, y, value) => {
-            const worldX = startX + x;
-            const worldY = startY + y;
-
-            if (value === 0 && worldX < this.width && worldY < this.height) {
-                const wildcard = this.wildcardMap[worldY][worldX];
-                if (wildcard && wildcard.type === 'infernal' && !this.floorMap[worldY][worldX]) {
-                    this.backgroundMap[worldY][worldX] = null;
-                    this.floorMap[worldY][worldX] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
-                    this.walkableTiles.push({ x: worldX, y: worldY });
-                    floorCells.add(`${x},${y}`);
-                }
-            }
-        }, 1);
-
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                if (floorCells.has(`${x},${y}`)) continue;
-
-                const worldX = startX + x;
-                const worldY = startY + y;
-
-                if (worldX >= this.width || worldY >= this.height) continue;
-
-                const wildcard = this.wildcardMap[worldY][worldX];
-                if (!wildcard || wildcard.type !== 'infernal') continue;
-
-                this.backgroundMap[worldY][worldX] = null;
-                this.floorMap[worldY][worldX] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
-                wallPositions.push({ x: worldX, y: worldY });
-            }
-        }
-
-        const wallTypes = mapGenConfig.wall_types || [{ type: 'wall', weight: 100 }];
-        const totalWeight = wallTypes.reduce((sum, wt) => sum + wt.weight, 0);
-
-        for (const pos of wallPositions) {
-            let roll = ROT.RNG.getUniform() * totalWeight;
-            let wallType = wallTypes[0].type;
-            for (const wt of wallTypes) {
-                roll -= wt.weight;
-                if (roll <= 0) {
-                    wallType = wt.type;
-                    break;
-                }
-            }
-            this.pendingWallSpawns.push({ x: pos.x, y: pos.y, type: wallType });
-        }
-
-        console.log(`Infernal cave generated: ${floorCells.size} floor tiles, ${wallPositions.length} walls`);
+        return this._generateCaveRegion('infernal', 'Infernal cave', startX, startY, width, height, context);
     }
 
     generateAbyssAt(startX, startY, width, height, context = null) {
-        const regionSet = new Set();
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                const wx = startX + x;
-                const wy = startY + y;
-                if (wx < this.width && wy < this.height) {
-                    const wildcard = this.wildcardMap[wy][wx];
-                    if (wildcard && wildcard.type === 'abyss' && this.floorMap[wy][wx]) {
-                        regionSet.add(`${wx},${wy}`);
-                    }
-                }
-            }
-        }
+        // The region's cells, in world coordinates. Reads wildcardMap directly
+        // rather than ctx.get, which returns a tileId and not the wildcard's type.
+        const regionSet = this.applyTilePattern('wildcards', [{
+            when: (ctx, x, y) =>
+                this.wildcardMap[y][x]?.type === 'abyss' && !!this.floorMap[y][x],
+            paint: null
+        }], {
+            collect: 'set',
+            bounds: { x1: startX, y1: startY, x2: startX + width - 1, y2: startY + height - 1 }
+        });
 
         if (regionSet.size === 0) return;
 
@@ -2511,16 +2475,15 @@ class Architect {
         // The mask is the region as authored, which may be an irregular blob. The plan
         // is fitted to the bounding box, so a non-rectangular region can clip it; the
         // mask keeps that clip from corrupting neighbouring geometry.
-        const mask = new Set();
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                const wx = startX + x;
-                const wy = startY + y;
-                if (wx < 0 || wx >= this.width || wy < 0 || wy >= this.height) continue;
-                const wildcard = this.wildcardMap[wy][wx];
-                if (wildcard && wildcard.type === 'palladian') mask.add(`${wx},${wy}`);
-            }
-        }
+        // The region's cells, in world coordinates. Reads wildcardMap directly
+        // rather than ctx.get, which returns a tileId and not the wildcard's type.
+        const mask = this.applyTilePattern('wildcards', [{
+            when: (ctx, x, y) => this.wildcardMap[y][x]?.type === 'palladian',
+            paint: null
+        }], {
+            collect: 'set',
+            bounds: { x1: startX, y1: startY, x2: startX + width - 1, y2: startY + height - 1 }
+        });
         if (mask.size === 0) return;
 
         const plan = this._palladianBuildGrid(cfg, { x: startX, y: startY, width, height });
@@ -2592,24 +2555,12 @@ class Architect {
 
         const hasFloor = (fx, fy) => floorSet.has(`${fx},${fy}`);
         const wallTypes = cfg.wall_types;
-        const totalWeight = wallTypes.reduce((sum, wt) => sum + wt.weight, 0);
-        const pickWallType = () => {
-            let roll = ROT.RNG.getUniform() * totalWeight;
-            for (const wt of wallTypes) {
-                roll -= wt.weight;
-                if (roll <= 0) return wt.type;
-            }
-            return wallTypes[0].type;
-        };
+        const pickWallType = () => this._pickWeightedWallType(wallTypes);
 
         for (const key of mask) {
             const [x, y] = key.split(',').map(Number);
             if (floorSet.has(key)) continue;
-            const adj =
-                hasFloor(x - 1, y) || hasFloor(x + 1, y) ||
-                hasFloor(x, y - 1) || hasFloor(x, y + 1) ||
-                hasFloor(x - 1, y - 1) || hasFloor(x + 1, y - 1) ||
-                hasFloor(x - 1, y + 1) || hasFloor(x + 1, y + 1);
+            const adj = anyNeighbor8(hasFloor, x, y);
             if (!adj || y === 0) continue;
 
             this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
@@ -4639,53 +4590,26 @@ class Architect {
 
         const hasFloor = (fx, fy) => floorSet.has(`${fx},${fy}`);
         const wallTypes = cfg.wall_types;
-        const totalWeight = wallTypes.reduce((sum, wt) => sum + wt.weight, 0);
         const isPerimeter = (px, py) => px === 0 || px === mapW - 1 || py === 0 || py === mapH - 1;
 
         for (let y = 0; y < mapH; y++) {
             for (let x = 0; x < mapW; x++) {
                 if (floorSet.has(`${x},${y}`)) continue;
-                const adj =
-                    hasFloor(x - 1, y) || hasFloor(x + 1, y) ||
-                    hasFloor(x, y - 1) || hasFloor(x, y + 1) ||
-                    hasFloor(x - 1, y - 1) || hasFloor(x + 1, y - 1) ||
-                    hasFloor(x - 1, y + 1) || hasFloor(x + 1, y + 1);
+                const adj = anyNeighbor8(hasFloor, x, y);
 
                 if (adj && y > 0) {
                     this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
                     if (secretWallSet.has(`${x},${y}`)) {
                         this.pendingPushableWallSpawns.push({ x, y });
                     } else {
-                        let roll = ROT.RNG.getUniform() * totalWeight;
-                        let wallType = wallTypes[0].type;
-                        for (const wt of wallTypes) {
-                            roll -= wt.weight;
-                            if (roll <= 0) { wallType = wt.type; break; }
-                        }
+                        const wallType = this._pickWeightedWallType(wallTypes);
                         this.pendingWallSpawns.push({ x, y, type: isPerimeter(x, y) ? 'metal_wall' : wallType });
                     }
                 }
             }
         }
 
-        // Fill perimeter gaps (same as digger)
-        const pendingWallSet = new Set(this.pendingWallSpawns.map(p => `${p.x},${p.y}`));
-        for (let y = 0; y < mapH; y++) {
-            for (let x = 0; x < mapW; x++) {
-                if (!isPerimeter(x, y)) continue;
-                if (floorSet.has(`${x},${y}`)) continue;
-                if (pendingWallSet.has(`${x},${y}`)) continue;
-                const adj =
-                    hasFloor(x - 1, y) || hasFloor(x + 1, y) ||
-                    hasFloor(x, y - 1) || hasFloor(x, y + 1) ||
-                    hasFloor(x - 1, y - 1) || hasFloor(x + 1, y - 1) ||
-                    hasFloor(x - 1, y + 1) || hasFloor(x + 1, y + 1);
-                if (adj) {
-                    this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
-                    this.pendingWallSpawns.push({ x, y, type: 'metal_wall' });
-                }
-            }
-        }
+        this._fillPerimeterGaps(hasFloor, mapW, mapH);
 
         // Door spawns
         for (let y = 0; y < mapH; y++) {

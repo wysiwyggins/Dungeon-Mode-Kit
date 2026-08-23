@@ -19,10 +19,13 @@
    Required from the host page (the globals contract):
      commit(), render()        — from the page's own render file
      state.mergedActorIds      — actor ids for the depth catalog dropdown
+     state.mergedEntityIds     — entity ids for the decorations dropdown
      isFloor()                 — false in the standalone editor, which short-circuits
                                  section()'s "override on this floor" branch
      totalFloors()             — upper bound for the depth sliders
-     CATEGORY_KEYS, GEN_TYPES  — from proto-state.js
+     CATEGORY_KEYS, GEN_TYPES, DECORATION_PATTERNS
+                               — from proto-state.js and biome-state.js. Both must
+                                 define all three; this file is loaded by both editors.
      EditorTemplate            — lib/editor-template.js (+ Handlebars)
    Plus the widgets in proto-widgets.js (el, section, dualRange, weightEditor, ...).
 
@@ -524,6 +527,15 @@ function biomeCard(biomes, name, opts = {}) {
     body.appendChild(subTitle('hazards (ramp with depth)', 'Count grows with depth: clamp(intercept + depth·slope, 0, max), active from min_depth.'));
     body.appendChild(hazardRampEditor(biome, 'traps', 'traps'));
     body.appendChild(hazardRampEditor(biome, 'fungus', 'fungus'));
+
+    // floor decorations
+    if (!Array.isArray(biome.decorations)) biome.decorations = [];
+    const decoCat = collapsibleSubSection('decorations (floor scatter)',
+        `biome:${name}:decorations`, `${biome.decorations.length} row(s)`,
+        'Decorative entities scattered on the floor at generation. Each row picks an entity from entities.json and a placement pattern. Purely cosmetic — they never block movement.');
+    decoCat.body.appendChild(decorationsEditor(biome.decorations));
+    body.appendChild(decoCat.det);
+
     return card;
 }
 
@@ -688,4 +700,78 @@ function hazardRampEditor(biome, key, label) {
     dInput.addEventListener('input', upd); upd();
     wrap.appendChild(el('div', { class: 'field-row' }, labelEl('count at depth'), dInput, prev));
     return wrap;
+}
+
+/* Floor-decoration editor: rows of { entity, pattern, density, min, max, freq,
+   region? }. Looks like depthCatalogEditor but is separate, because a decoration
+   row's min/max is a COUNT where a catalog row's is a depth window. */
+function decorationsEditor(rows) {
+    const wrap = el('div', { class: 'depth-catalog' });
+
+    function redraw() {
+        wrap.innerHTML = '';
+        rows.forEach((row, i) => wrap.appendChild(decorationRow(rows, i, redraw)));
+
+        // add row. Entities may repeat — two rows of rubble with different patterns
+        // is valid — so nothing is filtered out of the dropdown.
+        const addSel = el('select', { class: 'wlabel-sel' });
+        addSel.appendChild(el('option', { value: '' }, '+ add decoration…'));
+        for (const c of (state.mergedEntityIds || [])) {
+            addSel.appendChild(el('option', { value: c }, c));
+        }
+        addSel.addEventListener('change', () => {
+            if (!addSel.value) return;
+            rows.push({ entity: addSel.value, pattern: 'scatter', density: 0.1, min: 0, max: 10, freq: 100 });
+            commit(); redraw();
+        });
+        wrap.appendChild(el('div', { class: 'weight-row' }, addSel));
+    }
+    redraw();
+    return wrap;
+}
+
+function decorationRow(rows, i, redraw) {
+    const row = rows[i];
+    const line = el('div', { class: 'depth-row' });
+
+    // entity selector, keeping a value that isn't in the list
+    const sel = el('select', { class: 'wlabel-sel' });
+    for (const c of (state.mergedEntityIds || [])) sel.appendChild(el('option', { value: c }, c));
+    if (!(state.mergedEntityIds || []).includes(row.entity)) {
+        sel.appendChild(el('option', { value: row.entity }, row.entity + ' (?)'));
+    }
+    sel.value = row.entity;
+    sel.addEventListener('change', () => { row.entity = sel.value; commit(); redraw(); });
+
+    // placement pattern
+    const patSel = el('select', { class: 'wlabel-sel',
+        title: 'Where this decoration may land. scatter = anywhere walkable; clusters = the same but in patches; wall_hugging = touching a wall; near_liquid = beside water, sewage or lava; room_floor = open room interiors only, never corridors.' });
+    for (const p of DECORATION_PATTERNS) patSel.appendChild(el('option', { value: p }, p));
+    if (!DECORATION_PATTERNS.includes(row.pattern)) {
+        patSel.appendChild(el('option', { value: row.pattern }, row.pattern + ' (?)'));
+    }
+    patSel.value = row.pattern || 'scatter';
+    patSel.addEventListener('change', () => { row.pattern = patSel.value; commit(); });
+
+    const rm = el('button', { class: 'remove-btn' }, '×');
+    rm.addEventListener('click', () => { rows.splice(i, 1); commit(); redraw(); });
+
+    // how much of the matching area to fill, before the count clamp
+    const densityWrap = sliderRow('density', row, 'density', { min: 0, max: 1, step: 0.05, decimals: 2, def: 0.1,
+        tip: 'Fraction of the tiles matching this pattern to fill, before the count clamp. Scales with how much of the floor qualifies.' });
+
+    // a count, not a depth window
+    const countWrap = el('div', { class: 'sub' },
+        labelEl('count', 'Hard floor and ceiling on how many are placed, after density is applied.'),
+        dualRange(row, 'min', 'max', { min: 0, max: 30 }));
+
+    const freqWrap = sliderRow('freq %', row, 'freq', { min: 0, max: 100, suffix: '%', def: 100,
+        tip: 'Chance this row runs at all on a given floor. 100 = always.' });
+
+    const regionWrap = fieldRow('region', row, 'region', {
+        tip: 'Optional: confine to a named region the generator published (e.g. largest_room, sanctum, portico). Leave blank for the whole map.' });
+
+    line.append(el('div', { class: 'depth-row-head' }, sel, patSel, rm),
+        densityWrap, countWrap, freqWrap, regionWrap);
+    return el('div', { class: 'pattern-box' }, line);
 }

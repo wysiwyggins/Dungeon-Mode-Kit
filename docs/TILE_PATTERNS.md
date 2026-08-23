@@ -1,8 +1,28 @@
 # Tile Patterns
 
-This is a document for me (the developer) rather than designers, for now nobody is going to touch this method, which is overly complex for what it currently does in preparation for future things like a visual editor that might use it.
+This is a document for me (the developer) rather than designers. The method is
+still ahead of its uses, in preparation for future things like a visual editor.
 
-`MapManager.applyTilePattern(layerName, rules, options)` lives in `architect.js`. It walks every cell of a layer, tries your rules in order, and paints the first one that matches. `addBaseAndShadows` (the diagonal cliff shading on abyss edges) is the only pattern that uses it at the moment, and it is the worked example at the bottom of this doc.
+`MapManager.applyTilePattern(layerName, rules, options)` lives in `architect.js`. It walks every cell of a layer (or a sub-rectangle of it), tries your rules in order, and paints the first one that matches. `addBaseAndShadows` (the diagonal cliff shading on abyss edges) is the worked example at the bottom of this doc.
+
+### Who calls this
+
+| Caller | Layer | Mode |
+| -------- | ------- | ------ |
+| `addBaseAndShadows` | `background` | paint — the 45° cliff shading |
+| `generateCollapsingFloors` | `floor` | collect — floor tiles on an abyss lip |
+| `generateAbyssAt` | `wildcards` | collect (`'set'`) — the region mask for blob placement |
+| `generatePalladianAt` | `wildcards` | collect (`'set'`) — same, for a villa footprint |
+
+### What this is *not*
+
+Tile patterns write **tiles**. Placing entities — the biome `decorations` feature —
+is not a tile pattern and deliberately does not go through this method: decorations
+place Entities rather than tiles, their placement rules read *actor* positions
+(walls, liquids) which are not a tile layer, they need a global count budget, and
+they need a per-cell RNG roll (which would make rule *order* silently change map
+output for a given seed). That lives in `EntityManager.placeBiomeDecorations`
+(`engine.js`) as a candidate-set → filter → sample pass. See [BIOMES.md](BIOMES.md).
 
 This doc explains what a rule is, when it fires, what it can read, what it can write, and in what order cells are visited.
 
@@ -26,9 +46,9 @@ const written = mapManager.applyTilePattern('background', rules, { passes: 1 });
 | ----------- | ------ | ------------- |
 | `layerName` | string | Which layer to read and write. See the table below. |
 | `rules` | array | Ordered list of `{ when, paint }`. First match wins. |
-| `options` | object | Optional. `passes` and `order` — see [Scan model](#scan-model). |
+| `options` | object | Optional. `passes`, `order` and `bounds` — see [Scan model](#scan-model); `collect` — see [Collect mode](#collect-mode). |
 
-**Returns** the number of tiles **written**, not the number of cells changed. Repainting the same cell on three passes counts as three. Writes made through `tileContext.paint()` are included in the count.
+**Returns** the number of tiles **written** — not the number of cells changed — *unless* you pass `collect`, in which case it returns the cells instead. See [Collect mode](#collect-mode). Repainting the same cell on three passes counts as three. Writes made through `tileContext.paint()` are included in the count.
 
 ```js
 // 2 cells, 3 passes, a rule that always matches
@@ -118,8 +138,37 @@ Every callback receives the same `tileContext` object. It is built once per `app
 | `isOn` | `(layer, x, y, value)` | Whether another layer matches `value` |
 | `inBounds` | `(x, y)` | Whether the coordinate is on the map |
 | `paint` | `(x, y, tileId)` | Writes immediately; no return |
+| `count4` | `(pred, x, y)` | How many of the 4 cardinal neighbours satisfy `pred` (0–4) |
+| `count8` | `(pred, x, y)` | How many of the 8 neighbours satisfy `pred` (0–8) |
+| `any4` | `(pred, x, y)` | Whether any cardinal neighbour satisfies `pred` |
+| `any8` | `(pred, x, y)` | Whether any of the 8 neighbours satisfies `pred` |
 | `width` | number | Map width in tiles |
 | `height` | number | Map height in tiles |
+
+### Neighbour tests take a predicate
+
+`pred` has the signature `(tileContext, x, y) => boolean` — **the same shape as a
+rule's `when`**. A helper written for one works as the other with no adapter:
+
+```js
+const hasFloor = (ctx, x, y) => ctx.on('floor', x, y) !== null;
+
+{ when: (ctx, x, y) => ctx.any8(hasFloor, x, y), paint: 231 }   // touches floor
+{ when: (ctx, x, y) => ctx.count4(hasFloor, x, y) >= 3, paint: 158 }  // room interior
+```
+
+Predicate-taking rather than value-taking is deliberate: real rules need compound
+tests ("is void **and** has no floor"), and a plain value test is still short —
+`ctx.count8((c, nx, ny) => c.is(nx, ny, 158), x, y)`.
+
+Off-map neighbours are still passed to `pred`, where `get`/`on` return `null` for
+them, so they normally test false. A predicate that needs a different edge policy
+should check `ctx.inBounds` itself.
+
+> `architect.js` also has module-scope `anyNeighbor8(pred, x, y)` and
+> `countNeighbors8(pred, x, y)` for generator code that isn't inside a tile pattern.
+> **Those take a plain `(x, y)` predicate**, not `(ctx, x, y)` — the generators that
+> use them already have `(x, y)` closures in hand. Don't mix the two signatures up.
 
 ### Empty and off-map both read as `null`
 
@@ -163,6 +212,27 @@ reverse:  2,1  1,1  0,1  2,0  1,0  0,0
 
 > `passes` and `order: 'reverse'` both work, but nothing in the kit currently uses them — `addBaseAndShadows` is a single forward pass. Treat them as functional but unexercised.
 
+### Bounds
+
+`bounds: { x1, y1, x2, y2 }` (inclusive, clamped to the map) restricts the sweep to
+a sub-rectangle. Omitted, it is the whole map — so a caller that passes no options
+iterates exactly as it always did.
+
+```js
+// only the interior, never the outer ring
+mapManager.applyTilePattern('floor', rules,
+    { bounds: { x1: 1, y1: 1, x2: mapManager.width - 2, y2: mapManager.height - 2 } });
+```
+
+**Bounds restricts *visiting*, not *reading*.** Rules may still read any cell on the
+map, and `ctx.paint` may still write anywhere — `paint` is documented below as a
+free escape hatch, and boxing it in would break that.
+
+This is what lets a region generator stop doing `worldX = startX + x` arithmetic
+with a hand-written edge check on every cell. An inverted or fully off-map box
+visits nothing, logs a warning, and returns the empty result for the mode you asked
+for.
+
 ### Rules read the layer they write
 
 There is no double-buffering. Within a single pass, a rule reading `(x-1, y)` sees the new value if that cell was already visited, and the old value if it hasn't been reached yet.
@@ -170,6 +240,45 @@ There is no double-buffering. Within a single pass, a rule reading `(x-1, y)` se
 This is the feature that makes propagation possible, and it is also the main way patterns go wrong. If your rule can match the tiles your own pattern paints, it will re-consume its own output. The fix is to keep two separate sets of tile ids — the ones you **recognise** as input, and the ones you **paint** — and exclude the paint values from the recognition test. `addBaseAndShadows` does this in `isUnpaintedVoid`.
 
 ---
+
+## Collect mode
+
+Sometimes you want the sweep to *find* cells rather than paint them — "every floor
+tile on the lip of an abyss", "every cell this wildcard region claims". `collect`
+makes the driver hand those back.
+
+```js
+const edges = mapManager.applyTilePattern('floor', [{ when: isAbyssEdge, paint: null }],
+                                          { collect: true });
+```
+
+| `options.collect` | Return value |
+| ------------------- | -------------- |
+| absent / falsy | `number` — cells painted. **Unchanged.** |
+| `true` | `Array<{x, y}>` |
+| `'set'` | `Set<string>` of `"x,y"` keys |
+
+`'set'` exists because a mask handed to `generateOverlayBlobs` wants exactly that
+shape, and building an array to convert and discard it over a 100×100 map is waste
+the driver can avoid with one `if`.
+
+**Collect is additive, not a mode switch.** Rules are still tried in order, first
+match still wins, and a `paint` that returns a tile id **still writes**. A rule can
+both record a cell and paint it.
+
+A cell is collected when a rule claims it, unless that rule sets `collect: false` —
+the opt-out for a veto rule that exists only to shield cells from the rules below:
+
+```js
+mapManager.applyTilePattern('floor', [
+    { when: isProtected, paint: null, collect: false },  // claims, records nothing
+    { when: isCandidate, paint: null }                   // recorded
+], { collect: true });
+```
+
+The `painted` counter still increments in collect mode; it just isn't what comes
+back. With `passes > 1`, array mode can return the same cell more than once —
+`'set'` is the dedup answer.
 
 ## Worked example: `addBaseAndShadows`
 
@@ -312,6 +421,8 @@ A frontend has to supply four things itself:
 - **Painting replaces the whole cell.** `setTile` writes a fresh cell object, so any `flipH` / `flipV` / `flipD` flags a Tiled map set on that tile are discarded when a pattern paints over it.
 - **A wrong layer name is a silent no-op** — it returns `0` and logs a warning, but nothing fails. There are only four: `background`, `floor`, `wildcards`, `overlay`.
 - **The return value counts writes, not cells.** Don't read it as "cells changed".
+- **The return *type* depends on `options.collect`** — a number normally, an array or a `Set` when collecting. Only reachable by opting in.
+- **`bounds` restricts visiting, not reading or `ctx.paint`.** A rule can still read and paint outside the box.
 - **Ids, not names.** Rules deal in numbers; there is no name lookup inside `MapManager`.
 - **One name in `data/static-tiles.json` has a stray space** — `OPAQUE_BLACK_LOWER_LEFT_TRIANGLE_WITH_DARK_SHADE_UPPER_RIGHT _TRIANGLE`. Nothing is broken today because `globals.js` hardcodes the id (`372`), but a `getTileIdByName` lookup using the sensible spelling returns `null`.
 

@@ -558,6 +558,8 @@ const BehaviorLibrary = {
     },
 
     heal_ally: (actor, data) => {
+        // brogue has abilities like this as inherent in specific monsters,
+        //  but should dmk depend on objects with charges like the player's? 
         const healAmount = data.heal_amount ?? 5;
         const healSound = data.heal_sound || 'tone5';
         const entityManager = actor.engine.entityManager;

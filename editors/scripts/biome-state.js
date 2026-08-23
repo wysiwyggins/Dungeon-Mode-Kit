@@ -30,6 +30,8 @@ const state = {
     mergedActorIds: [],   // sorted ids for the depth-catalog dropdown
     mergedActors: {},
     mergedItemIds: [],
+    baseEntities: {},     // data/entities.json
+    mergedEntityIds: [],  // sorted ids for the decorations dropdown
     poolItemIds: new Set(),
     // Editor-only: the floor count the designer is DESIGNING FOR. A biome does
     // not own a floor count (the prototype that uses it does), so this is never
@@ -41,6 +43,9 @@ const state = {
 // two editors have no common state file; if a third editor needs them, extract.
 const CATEGORY_KEYS = ['potion','scroll','staff','weapon','armor','ring','wand'];
 const GEN_TYPES = ['brogue','digger','arena','infernal','palladian'];
+// Placement patterns for a biome `decorations` row. Kept identical to
+// proto-state.js and to DECORATION_PATTERN_NAMES in engine.js.
+const DECORATION_PATTERNS = ['scatter','clusters','wall_hugging','near_liquid','room_floor'];
 
 const BIOME_LIBRARY_PATH = '../data/biomes.json';
 const DESIGN_FLOORS_KEY = 'biomeEditorDesignFloors';
@@ -61,15 +66,17 @@ async function fetchJSON(url) {
 }
 
 async function loadBaseData() {
-    const [actors, items, library, types] = await Promise.all([
+    const [actors, items, library, types, entities] = await Promise.all([
         fetchJSON('../data/actors.json'),
         fetchJSON('../data/items.json'),
         fetchJSON(BIOME_LIBRARY_PATH),
         fetchJSON('../data/types.json'),
+        fetchJSON('../data/entities.json'),
     ]);
     state.baseActors = actors;
     state.baseItems = items;
     state.baseTypes = types;
+    state.baseEntities = entities;
     state.library = library || {};
     state.poolItemIds = collectPoolItemIds(items, types);
     rebuildMergedIds();
@@ -87,6 +94,8 @@ function rebuildMergedIds() {
         ...Object.keys(state.baseItems),
         ...state.poolItemIds,
     ])].sort();
+    // Entities are global: there is no per-prototype entities.json to merge in.
+    state.mergedEntityIds = Object.keys(state.baseEntities || {}).sort();
 }
 
 /* =========================================================================

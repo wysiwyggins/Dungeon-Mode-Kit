@@ -320,14 +320,6 @@
   },
   "clock_behavior": { "$alias": "timed_switch" },
 
-  "drain": {
-    "name": "Drain",
-    "hostile": false,
-    "behaviors": ["drain_suction"],
-    "suction_range": 2
-  },
-  "drain_behavior": { "$alias": "drain" },
-
   "cellular_automaton": {
     "name": "Cellular Automaton",
     "hostile": false,
@@ -338,7 +330,7 @@
   "kobold_miner": {
     "name": "Kobold Miner",
     "behaviors": [
-      "random_walk",
+      "explore",
       "wander_to_wall",
       "mine_nearby_wall",
       "defend_self",

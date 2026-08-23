@@ -21,6 +21,8 @@ const state = {
     mergedActorIds: [],   // sorted ids for dropdowns
     mergedActors: {},     // id -> actor def (proto override base), for attribute lookups
     mergedItemIds: [],
+    baseEntities: {},     // data/entities.json
+    mergedEntityIds: [],  // sorted ids for the decorations dropdown
     baseBiomes: {},       // data/biomes.json — the default library
     protoBiomes: {},      // prototypes/<name>/biomes.json — this prototype's own
     protoName: '',        // directory name of the loaded prototype ('' when blank)
@@ -33,6 +35,10 @@ const state = {
 
 const CATEGORY_KEYS = ['potion','scroll','staff','weapon','armor','ring','wand'];
 const GEN_TYPES = ['brogue','digger','arena','infernal','palladian'];
+// Placement patterns for a biome `decorations` row. Kept identical to
+// biome-state.js, which the shared biome-sections.js also reads, and to
+// DECORATION_PATTERN_NAMES in engine.js.
+const DECORATION_PATTERNS = ['scatter','clusters','wall_hugging','near_liquid','room_floor'];
 
 /* =========================================================================
    Data loading
@@ -48,18 +54,20 @@ async function fetchJSON(url) {
 }
 
 async function loadBaseData() {
-    const [actors, items, sounds, biomes, protoIndex, types] = await Promise.all([
+    const [actors, items, sounds, biomes, protoIndex, types, entities] = await Promise.all([
         fetchJSON('../data/actors.json'),
         fetchJSON('../data/items.json'),
         fetchJSON('../data/sounds.json'),
         fetchJSON('../data/biomes.json'),
         fetchJSON('../data/prototypes.json'),
         fetchJSON('../data/types.json'),
+        fetchJSON('../data/entities.json'),
     ]);
     state.baseActors = actors;
     state.baseItems = items;
     state.baseBiomes = biomes;
     state.baseTypes = types;
+    state.baseEntities = entities;
     state.prototypeNames = Array.isArray(protoIndex.prototypes) ? protoIndex.prototypes : [];
     state.soundIds = Object.keys(sounds.sprite || {}).sort();
     state.poolItemIds = collectPoolItemIds(items, types);
@@ -109,6 +117,8 @@ function rebuildMergedIds() {
         ...Object.keys(state.protoItems),
         ...state.poolItemIds,
     ])].sort();
+    // Entities are global: there is no per-prototype entities.json to merge in.
+    state.mergedEntityIds = Object.keys(state.baseEntities || {}).sort();
 }
 
 /* Fill a <select> with the prototype names from data/prototypes.json, preserving

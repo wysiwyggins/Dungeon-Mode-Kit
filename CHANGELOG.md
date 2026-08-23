@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.18b]
+
+### Added
+
+- **Floor decorations** — a biome can scatter cosmetic entities across its floors with a `decorations` block: `{ entity, pattern, density, min, max, freq, region? }`. Five placement patterns — `scatter`, `clusters`, `wall_hugging`, `near_liquid`, `room_floor` — with `density` scaling the count to how much of the floor qualifies and `min`/`max` clamping it. This gives `data/entities.json` its first generation-time use: `moss`, `sediment`, `mud`, `hole`, `blood` and `slime` previously had no spawn path at all. See [docs/BIOMES.md](docs/BIOMES.md#decorations).
+- **decorations (floor scatter)** section in the biome editor, with an entity dropdown fed from `data/entities.json` and a pattern picker.
+- `applyTilePattern` gains three extensions: neighbour tests on `tileContext` (`count4`/`count8`/`any4`/`any8`, taking a `(ctx, x, y)` predicate — the same shape as a rule's `when`); `options.bounds` to restrict the sweep to a sub-rectangle; and `options.collect` to return the matched cells (as an array, or a `Set` of `"x,y"`) instead of a paint count. See [docs/TILE_PATTERNS.md](docs/TILE_PATTERNS.md).
+
+### Fixed
+
+- **Plain entities were silently dropped on save/load and on floor revisit.** `Entity.serialize()` emitted no type discriminator, so `deserializeEntities()` — which branched only on `isActor` and `isItem` — matched neither and discarded the record without a warning. Dug rubble, blood and slime vanished whenever you left a floor and came back. Entities now serialize an `isEntity` flag and are restored through `spawnEntity`, which also re-derives their sprite from `entities.json`. (`liquid_track`, which has no `entities.json` entry, is still dropped — a known remaining gap.)
+- `fungus.cluster` was read by the engine but never forwarded by `resolveBiome`, so a biome had no way to turn fungus clustering off.
+
+### Changed
+
+- `generateCollapsingFloors`, `generateAbyssAt` and `generatePalladianAt` now use `applyTilePattern` in collect mode instead of hand-rolled nested loops — taking the method from one caller to four.
+- `generateCaveAt` and `generateInfernalAt` were 90 verbatim-identical lines apart from one type string; both now delegate to a shared `_generateCaveRegion`.
+- The perimeter-gap fill, duplicated between the digger and brogue generators (the brogue copy was commented "same as digger"), is now `_fillPerimeterGaps`.
+- The weighted wall-type roll, written out inline in five generators, is now `_pickWeightedWallType`.
+- The eight-term `hasFloor(x±1, y±1) || ...` adjacency chain, repeated verbatim at five sites, is now `anyNeighbor8`. (`behaviors.js` holds a sixth copy, left alone.)
+
 ## [1.17b]
 
 ### Added

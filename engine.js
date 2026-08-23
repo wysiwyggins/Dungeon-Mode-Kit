@@ -222,6 +222,13 @@ const ALL_DIRS = [
     {dx: -1, dy: 1},  {dx: 0, dy: 1},  {dx: 1, dy: 1}
 ];
 
+// Placement patterns a biome `decorations` row may name. Anything else warns and
+// falls back to 'scatter'. Mirrored by DECORATION_PATTERNS in
+// editors/scripts/{biome,proto}-state.js, which fills the editor dropdown.
+const DECORATION_PATTERN_NAMES = new Set([
+    'scatter', 'clusters', 'wall_hugging', 'near_liquid', 'room_floor'
+]);
+
 /**
  * Brogue-style "no cutting corners": a diagonal move is blocked when one of the
  * two orthogonally-adjacent corner cells is a blocker. `isCornerBlocker(x, y)`
@@ -1809,6 +1816,11 @@ class DungeonEngine {
             if (vp) this.snapViewportToTile(vp.x, vp.y);
         }
 
+        // Scatter the biome's floor decorations. Runs after every actor is placed so
+        // it can see walls and liquids and keep off occupied tiles. restoreFloor does
+        // not call this: on a revisit the decorations come back from the save.
+        this.entityManager.placeBiomeDecorations(floorConfig);
+
         // Spawn body segment chains for any chain_head actors
         this.entityManager.spawnChainCreatures();
 
@@ -2284,6 +2296,9 @@ class DungeonEngine {
             random_items: floorOverride.random_items ?? biome.random_items ?? config.random_items ?? {},
             traps: floorOverride.traps ?? biome.traps ?? config.traps ?? null,
             fungus: floorOverride.fungus ?? biome.fungus ?? config.fungus ?? null,
+            // Replaces wholesale, like every key but mechanics — a floor override
+            // restates the whole list.
+            decorations: floorOverride.decorations ?? biome.decorations ?? config.decorations ?? null,
             map_generator: floorOverride.map_generator ?? biome.map_generator ?? config.map_generator,
             mechanics: { ...(config.mechanics || {}), ...(biome.mechanics || {}), ...(floorOverride.mechanics || {}) },
             switch_puzzles: floorOverride.switch_puzzles ?? config.switch_puzzles ?? null,
@@ -2336,7 +2351,14 @@ class DungeonEngine {
         if (biome.traps) out.traps = this._rampRange(biome.traps, floor);
         if (biome.fungus) {
             const r = this._rampRange(biome.fungus, floor);
-            if (r) out.fungus = { ...r, tall_chance: biome.fungus.tall_chance };
+            // `cluster` passes through as-is; spawnRandomFungus treats undefined as
+            // clustered, so only an explicit false turns clustering off.
+            if (r) out.fungus = { ...r, tall_chance: biome.fungus.tall_chance, cluster: biome.fungus.cluster };
+        }
+        // Decorations pass through as authored: no depth ramp and no budget raffle,
+        // since each row carries its own freq and min/max count.
+        if (Array.isArray(biome.decorations) && biome.decorations.length) {
+            out.decorations = biome.decorations;
         }
         if (biome.map_generator) out.map_generator = biome.map_generator;
         if (biome.mechanics) out.mechanics = biome.mechanics;
@@ -4276,7 +4298,10 @@ class Entity {
             type: this.type,
             name: this.name,
             attributes: Array.from(this.attributes.entries()),
-            tint: this.tint
+            tint: this.tint,
+            // Tells deserializeEntities to rebuild this as a plain Entity. Actor and
+            // Item records carry it too, but add their own flag, which is checked first.
+            isEntity: true
         };
     }
 
@@ -10778,6 +10803,153 @@ class EntityManager {
         console.log(`fungus: Spawned ${patches} patch(es)`);
     }
 
+    /**
+     * Scatter the biome's decorative entities — moss, rubble, skulls — across the
+     * floor. Each row is { entity, pattern?, density?, min?, max?, freq?, region? };
+     * see docs/BIOMES.md § Decorations for what the fields mean.
+     *
+     * Call once per generated floor, after every actor is placed and the renderer
+     * exists. Don't call it when restoring a floor — those decorations are saved.
+     */
+    placeBiomeDecorations(floorConfig) {
+        const rows = floorConfig?.decorations;
+        if (!Array.isArray(rows) || rows.length === 0) return;
+
+        const mm = this.engine.mapManager;
+        const walkable = mm?.walkableTiles;
+        if (!walkable || walkable.length === 0) {
+            console.warn('decorations: No walkable tiles available');
+            return;
+        }
+
+        // Tiles already taken, extended as we place so two rows never stack.
+        const occupied = new Set();
+        for (const entity of this.entities) occupied.add(`${entity.x},${entity.y}`);
+        for (const actor of this.actors) if (!actor.isDead) occupied.add(`${actor.x},${actor.y}`);
+        for (const item of this.items) occupied.add(`${item.x},${item.y}`);
+
+        // Walls, water and lava are actors rather than tiles, so the patterns below
+        // test actors. Actors are solid unless their data says otherwise.
+        const isSolid = (x, y) => !!this.getSolidActorAt(x, y);
+        // near_liquid counts lava as well as water and sewage. Lava has no `liquid`
+        // attribute, since that flag governs wading and extinguishing.
+        const isLiquid = (x, y) =>
+            this.getActorsAt(x, y).some(actor => actor.hasAttribute('liquid') || actor.type === 'lava');
+        const anyNeighbor = (pred, x, y) =>
+            ALL_DIRS.some(dir => pred(x + dir.dx, y + dir.dy));
+
+        const patternAccepts = (pattern, x, y) => {
+            switch (pattern) {
+                case 'wall_hugging': return anyNeighbor(isSolid, x, y);
+                case 'near_liquid':  return anyNeighbor(isLiquid, x, y);
+                // Maps carry no room metadata: a room interior is a tile with 3+
+                // walkable cardinal neighbours, the same test the ambush behavior uses.
+                case 'room_floor':   return this._walkableCardinalCount(x, y) >= 3;
+                case 'scatter':
+                case 'clusters':     return true;
+                default:             return true;
+            }
+        };
+
+        const place = (row, tile) => {
+            const entity = this.spawnEntity(row.entity, tile.x, tile.y);
+            if (entity) occupied.add(`${tile.x},${tile.y}`);
+            return entity;
+        };
+
+        for (const row of rows) {
+            if (!row || !row.entity) continue;
+
+            const entityData = this.engine.globalEntities?.[row.entity];
+            if (!entityData) {
+                console.warn(`decorations: entity "${row.entity}" not in entities.json; skipping row`);
+                continue;
+            }
+            // Without a tileIndex or a fillColor there is nothing to draw.
+            if (!entityData.tileIndex && !entityData.fillColor) {
+                console.warn(`decorations: entity "${row.entity}" has no tileIndex or fillColor; it will be invisible`);
+            }
+
+            let pattern = row.pattern ?? 'scatter';
+            if (!DECORATION_PATTERN_NAMES.has(pattern)) {
+                console.warn(`decorations: unknown pattern "${pattern}" for "${row.entity}"; using scatter`);
+                pattern = 'scatter';
+            }
+
+            // Chance this row runs on this floor at all. Absent means always.
+            if (row.freq != null && ROT.RNG.getPercentage() > row.freq) continue;
+
+            const min = row.min ?? 0;
+            const max = row.max ?? min;
+            if (max <= 0) continue;
+
+            // Optionally confine the row to a named region, as traps and fungus do.
+            let pool = walkable;
+            if (row.region) {
+                const regionTiles = mm.namedRegions?.[row.region];
+                if (regionTiles && regionTiles.length) {
+                    pool = regionTiles;
+                } else {
+                    const available = Object.keys(mm.namedRegions || {}).join(', ') || 'none';
+                    console.warn(`decorations: region "${row.region}" not provided by this floor's generator (available: ${available}); using whole map`);
+                }
+            }
+
+            const candidates = pool.filter(tile =>
+                !occupied.has(`${tile.x},${tile.y}`) && patternAccepts(pattern, tile.x, tile.y));
+            if (candidates.length === 0) {
+                console.warn(`decorations: no "${pattern}" tiles available for "${row.entity}"`);
+                continue;
+            }
+
+            // Scale the count to how much of this floor matches the pattern, then
+            // clamp it to the row's min/max.
+            const density = row.density ?? 0.1;
+            let want = Math.round(candidates.length * density);
+            want = Math.max(min, Math.min(max, want));
+            want = Math.min(want, candidates.length);
+            if (want <= 0) continue;
+
+            let placed = 0;
+            if (pattern === 'clusters') {
+                // Pick a few anchor tiles and grow a patch outward from each.
+                const unused = new Set(candidates.map(tile => `${tile.x},${tile.y}`));
+                const patchCount = Math.max(1, Math.ceil(want / 4));
+                const patchSize = Math.ceil(want / patchCount) - 1;
+
+                for (let patch = 0; patch < patchCount && placed < want; patch++) {
+                    const unusedTiles = candidates.filter(tile => unused.has(`${tile.x},${tile.y}`));
+                    if (unusedTiles.length === 0) break;
+                    const anchor = unusedTiles[Math.floor(ROT.RNG.getUniform() * unusedTiles.length)];
+                    unused.delete(`${anchor.x},${anchor.y}`);
+                    if (place(row, anchor)) placed++;
+
+                    for (let grown = 0; grown < patchSize && placed < want; grown++) {
+                        const nearAnchor = candidates.filter(tile =>
+                            unused.has(`${tile.x},${tile.y}`) &&
+                            Math.max(Math.abs(tile.x - anchor.x), Math.abs(tile.y - anchor.y)) <= 2);
+                        if (nearAnchor.length === 0) break;
+                        const tile = nearAnchor[Math.floor(ROT.RNG.getUniform() * nearAnchor.length)];
+                        unused.delete(`${tile.x},${tile.y}`);
+                        if (place(row, tile)) placed++;
+                    }
+                }
+            } else {
+                // Partial shuffle — only draws as many tiles as we need.
+                const shuffled = candidates.slice();
+                for (let i = 0; i < want; i++) {
+                    const swap = i + Math.floor(ROT.RNG.getUniform() * (shuffled.length - i));
+                    const tile = shuffled[swap];
+                    shuffled[swap] = shuffled[i];
+                    shuffled[i] = tile;
+                    if (place(row, tile)) placed++;
+                }
+            }
+
+            console.log(`decorations: Placed ${placed} "${row.entity}" (${pattern}, ${candidates.length} candidate tiles)`);
+        }
+    }
+
     spawnRandomTraps(getAvailableTiles, floorConfig, tilesIn = null) {
         const trapsConfig = floorConfig?.traps;
         if (!trapsConfig) return;
@@ -12071,7 +12243,7 @@ class EntityManager {
      * @param {number} y - Y coordinate
      * @returns {Entity|null} The spawned entity or null if type not found
      */
-    spawnEntity(entityType, x, y) {
+    spawnEntity(entityType, x, y, overrides = null) {
         const entityData = this.engine.globalEntities?.[entityType];
         if (!entityData) {
             console.warn(`Entity type '${entityType}' not found in entities.json`);
@@ -12094,6 +12266,19 @@ class EntityManager {
         if (entityData.attributes) {
             for (const [key, value] of Object.entries(entityData.attributes)) {
                 entity.setAttribute(key, value);
+            }
+        }
+
+        // Optional per-instance overrides, such as a saved entity being restored.
+        // fillColor and tileIndex can't be overridden — they always come from
+        // entities.json, so editing that file also updates existing saves.
+        if (overrides) {
+            if (overrides.name !== undefined) entity.name = overrides.name;
+            if (overrides.tint !== undefined && overrides.tint !== null) entity.tint = overrides.tint;
+            if (overrides.attributes) {
+                for (const [key, value] of overrides.attributes) {
+                    entity.setAttribute(key, value);
+                }
             }
         }
 
@@ -12205,6 +12390,11 @@ class EntityManager {
                 const item = new Item(entityData.x, entityData.y, entityData.type, itemDef, this.engine);
                 item.deserialize(entityData);
                 this.addEntity(item);
+            } else if (entityData.isEntity) {
+                // Plain decorative entities: rubble, moss, blood. spawnEntity adds it
+                // to this.entities and makes the sprite, so don't call addEntity too.
+                // liquid_track has no entities.json entry and is dropped here.
+                this.spawnEntity(entityData.type, entityData.x, entityData.y, entityData);
             }
         }
     }

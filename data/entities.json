@@ -26,12 +26,47 @@
       "visible": true
     }
   },
+  "mud": {
+    "name": "mud",
+    "tileIndex": null,
+    "fillColor": "#442F38",
+    "attributes": {
+      "visible": true
+    }
+  },
   "rubble": {
-    "name": "Rubble",
+    "name": "rubble",
     "tileIndex": "IMPERFECT_DOTTED_LIGHT_SHADE",
     "attributes": {
       "visible": true,
       "walk_description": "You crunch through loose rubble."
+    }
+  },
+  "sediment": {
+    "name": "sediment",
+    "tileIndex": "OPAQUE_DOTTED_LIGHT_SHADE",
+    "tint": "#9A9B73",
+    "attributes": {
+      "visible": true,
+      "walk_description": "The ground is softer here."
+    }
+  },
+  "moss": {
+    "name": "moss",
+    "tileIndex": "IMPERFECT_DOTTED_WHITE_SHADE",
+    "tint": "#96d35f",
+    "attributes": {
+      "visible": true,
+      "walk_description": "Patches of moss and lichen show where moisture has been."
+    }
+  },
+  "hole": {
+    "name": "hole",
+    "tileIndex": "SHALLOW_GRAVE",
+    "tint": "#aa7942",
+    "attributes": {
+      "visible": true,
+      "walk_description": "A shallow hole in the floor."
     }
   },
   "log": {
@@ -52,14 +87,6 @@
   "thread_trail": {
     "name": "Thread",
     "tileIndex": "WHITE_BOX_HORIZONTAL",
-    "attributes": {
-      "visible": true,
-      "ignore_darkness": true
-    }
-  },
-  "magic_sigil":  {
-    "name": "Sigil",
-    "tileIndex": "EVIL_EYE",
     "attributes": {
       "visible": true,
       "ignore_darkness": true

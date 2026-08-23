@@ -236,7 +236,40 @@
       "slope": 1,
       "max": 9,
       "tall_chance": 0.25
-    }
+    },
+    "decorations": [
+      {
+        "entity": "moss",
+        "pattern": "near_liquid",
+        "density": 0.25,
+        "min": 1,
+        "max": 8,
+        "freq": 60
+      },
+      {
+        "entity": "rubble",
+        "pattern": "wall_hugging",
+        "density": 0.08,
+        "min": 0,
+        "max": 20
+      },
+      {
+        "entity": "sediment",
+        "pattern": "clusters",
+        "density": 0.05,
+        "min": 0,
+        "max": 12,
+        "freq": 40
+      },
+      {
+        "entity": "skull",
+        "pattern": "room_floor",
+        "density": 0.01,
+        "min": 0,
+        "max": 3,
+        "freq": 25
+      }
+    ]
   },
   "depths": {
     "map_generator": {
@@ -435,7 +468,32 @@
       "slope": 0.4,
       "max": 12,
       "tall_chance": 0.35
-    }
+    },
+    "decorations": [
+      {
+        "entity": "rubble",
+        "pattern": "wall_hugging",
+        "density": 0.1,
+        "min": 0,
+        "max": 24
+      },
+      {
+        "entity": "moss",
+        "pattern": "near_liquid",
+        "density": 0.2,
+        "min": 0,
+        "max": 8,
+        "freq": 50
+      },
+      {
+        "entity": "skull",
+        "pattern": "room_floor",
+        "density": 0.015,
+        "min": 0,
+        "max": 5,
+        "freq": 40
+      }
+    ]
   },
   "infernal": {
     "map_generator": {
@@ -561,6 +619,31 @@
       "intercept": 10,
       "slope": 1.2,
       "max": 40
-    }
+    },
+    "decorations": [
+      {
+        "entity": "sediment",
+        "pattern": "near_liquid",
+        "density": 0.3,
+        "min": 1,
+        "max": 14,
+        "freq": 80
+      },
+      {
+        "entity": "rubble",
+        "pattern": "wall_hugging",
+        "density": 0.12,
+        "min": 0,
+        "max": 26
+      },
+      {
+        "entity": "skull",
+        "pattern": "clusters",
+        "density": 0.02,
+        "min": 0,
+        "max": 8,
+        "freq": 60
+      }
+    ]
   }
 }
