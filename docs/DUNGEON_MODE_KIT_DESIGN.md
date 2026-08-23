@@ -18,17 +18,15 @@
 
 Based on previous experiments — [grotto roguelike](https://github.com/wysiwyggins/grotto_roguelike), [didaktik gama](https://github.com/wysiwyggins/Didaktik-Gama)
 
-### Core Philosophy
+Dungeon Mode Kit is a [tileset](https://codeberg.org/wysiwyggins/Dungeon-Mode-Kit/src/branch/main/docs/tiles.pdf), sound fx sprite (of sounds mostly made by recording and manipulating [one real instrument](https://larkinthemorning.com/products/round-sansula-thumb-piano)), and scripts that sit on top of some existing javascript libraries to allow for the quick prototyping of roguelike games using the free tilemap editor [Tiled](https://www.mapeditor.org) and human-readable data files, separate from code. The ultimate goal would be an online suite of tools with their own tilemap editor, similar to [Bitsy](https://www.bitsy.org). Where DMK diverges from Bitsy is that it allows the creation of games with mixed procedurally generated maps and authored maps. [ZZT](https://zzt.org) is also an inspiration.
 
-- **Modular**: Reusable tiles, actors, items, and behaviors that combine in different ways. Visual style (tiles fit together) mirrors code style (data-driven components).
-- **Embeddable**: Canvas games integrated into web pages.
-- **Rapid Prototyping**: Quick prototypes rather than one large specific game. Prototypes are essentially different games without continuity between them, although they can load one another.
+---
 
-Modular reusable systems live in the scripts. Specific design happens in the data files and maps in `/prototypes/`. Default actors, items, etc. are in `/data/` and prototypes override same-named entries or add new ones. New actors and items can have wholly new attributes on top of established ones.
+In DMK, reusable methods live in scripts (Engine, Architect, Lighting, Effects ...). Specific design happens in the data files and maps in `/prototypes/`. Default actors, items, etc. are in `/data/` and prototypes override same-named entries or add new ones. New actors and items can have wholly new attributes on top of established ones.
 
 All prototypes use the same character spritesheet for a unified visual language. Sprites are tiles which can be used for actors (usually two tiles), items (one tile), or map tiles. Prototypes can load one another as exits but are essentially different games. Prototypes can also have multiple floors, and floors can be larger than the viewport (scrolling).
 
-An HTML sidebar displays actor stats and visible items alongside the game canvas, but the engine can run without it.
+An HTML sidebar displays actor stats and visible items alongside the game canvas, but the engine can run without it, and it can be repositioned with css.
 
 ## Technical Architecture
 
