@@ -83,15 +83,13 @@ Maps are authored in [Tiled](https://www.mapeditor.org/) or generated procedural
 
 **Wildcards** are special tiles painted on a tile layer that the engine replaces with procedural content at runtime — dungeon rooms, caves, mazes, lava pools, or Actor spawn points. This allows mixing hand-crafted and generated content on the same map.
 
-**Tile patterns.** `MapManager.applyTilePattern(layer, rules, options)` in `architect.js` paints a tile pattern onto a layer by evaluating an ordered rule list at every cell — a small cellular automaton with caller-supplied rules. Each rule is `{ when, paint }`; the first matching rule wins, so specific rules go first. Rules read the same layer they write within a pass, which is what lets a shape propagate across cells. `addBaseAndShadows` (the diagonal cliff shading on abyss edges) is built from three such rules and is the reference example. The void tile values it paints live in `globalVars` (`VOID_FILL` / `VOID_SHADE` / `VOID_DIAGONAL`), so an abyss can be restyled from one place. See [TILE_PATTERNS.md](TILE_PATTERNS.md) for the rule contract and how to author patterns from data.
-
-See [MAP.md](MAP.md), [PROTOTYPE.md](PROTOTYPE.md), [Tile Index](/docs/tiles.pdf), [Wildcard Tile Key](/docs/TILED_KEY.pdf).
+See [MAP.md](MAP.md), [PROTOTYPE.md](PROTOTYPE.md), [Tile Index](/docs/tiles.pdf), [Wildcard Tile Key](/docs/TILED_KEY.pdf), [Tile_Patterns](/docs/TILE_PATTERNS.md).
 
 ## Prototype System
 
-A prototype is a self-contained level or game variant. The `prototype.json` config controls mechanics (lighting, fog of war, viewport), map generation, entity spawning, win conditions, and progression to other prototypes.
+A **prototype** is a self-contained level or game variant. The `prototype.json` config controls mechanics (lighting, fog of war, viewport), map generation, entity spawning, win conditions, and progression to other prototypes.
 
-Prototypes can have multiple floors with per-floor overrides. Floors are linked by stairways; prototypes are linked by portals and `next_level`/`previous_level` fields.
+Prototypes can have multiple floors, both generated and authored overrides for specific floors. Floors are linked by stairways; (prototypes can also be linked by portals and `next_level`/`previous_level` fields, but this is an artifact of an older design)
 
 See [PROTOTYPE.md](PROTOTYPE.md).
 
