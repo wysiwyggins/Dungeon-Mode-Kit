@@ -33,7 +33,7 @@ Like the visibility of the eel's tile, the player character's knowledge of its n
 
 Writing all of this down made me split the whole business in two: sight (is it drawn) and knowledge (is it understood). DMK also already has known and unknown items with greeked or color/material names until they are identified through use, which is a pretty standard roguelike mechanic. Unkown names are randomly assigned but *stable* for the session, which is what makes them learnable rather than merely arbitrary; a cloudy potion is the same cloudy potion all run. Hallucination is the clean inverse: it corrupts appearance while leaving knowledge intact. What you know stays correct, what you see does not. Brogue has a nice list of what items have been discovered and what haven't, and I've tried to replicate that here with the catalog action, which depends on some prototype settings in order to build that catalog.
 
-![/assets/images/shadows.png]
+![tilemap of shadows cast by a brazier](/assets/images/shadows.png)
 
 This sprint as given me an idea for the first small prototype that focuses on this subject— a brazier casts light and also blocks vision, moving around it, a player actor with no torch has both a line-of-sight dead zone beyond the brazier and a shadow cast behind the player by the brazier's light, and the two 'shadows' mirror one another. One is a shadow of "unknowing," although that shadow is filled with a memory of another perspective.
 
