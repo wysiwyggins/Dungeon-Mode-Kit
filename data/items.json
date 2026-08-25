@@ -405,7 +405,7 @@
 
   "gold_nugget": {
     "name": "gold nugget",
-    "tileIndex": "WHITE_THALER_SIGN",
+    "tileIndex": "WHITE_ASTERISK",
     "tint": "#FFD700",
     "ignore_darkness": true,
     "random_value": [1, 10],
@@ -440,7 +440,7 @@
 
   "uranium_nugget": {
     "name": "uranium nugget",
-    "tileIndex": "WHITE_THALER_SIGN",
+    "tileIndex": "WHITE_ASTERISK",
     "tint": "#cce8b5",
     "flickerTint": true,
     "ignore_darkness": true,
