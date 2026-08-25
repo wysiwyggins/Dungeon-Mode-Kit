@@ -4508,7 +4508,7 @@ class InterfaceManager {
         const visibleActors = actors.filter(a =>
             this.engine.isTileVisible(a.x, a.y) &&
             a.stats && Object.keys(a.stats).length > 0 &&
-            (!a.hasStateProperty?.('invisible') || a.hasAttribute('controlled'))
+            (!a.isUnseen?.() || a.hasAttribute('controlled'))
         );
 
         // Sort: controlled actors first, then non-controlled by distance to the

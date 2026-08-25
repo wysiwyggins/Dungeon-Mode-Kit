@@ -2290,7 +2290,8 @@ class Architect {
      * around its edges. `wildcardType` is which region cells to claim; `label` names
      * the generator in the log. Anything else the biome adds, such as lava lakes,
      * is applied by the caller afterwards.
-     */
+
+    */
     _generateCaveRegion(wildcardType, label, startX, startY, width, height, context = null) {
         const mapGenConfig = context?.getMapGeneratorConfig?.() || {};
 

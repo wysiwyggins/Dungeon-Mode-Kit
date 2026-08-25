@@ -6278,7 +6278,7 @@ class Actor extends Entity {
     }
 
     _updateInvisibilitySprites() {
-        const isInvisible = this.hasStateProperty('invisible');
+        const isInvisible = this.isUnseen();
         if (isInvisible && this.isPlayerControlled()) {
             const alpha = 0.35;
             if (this.spriteBase) this.spriteBase.alpha = alpha;
@@ -6299,8 +6299,10 @@ class Actor extends Entity {
                 if (this.spriteEquipment[slot]) this.spriteEquipment[slot].alpha = 1;
             }
             if (this.spriteBase) this.spriteBase.visible = true;
-            if (this.spriteTop) this.spriteTop.visible = true;
-            if (this.spriteSide) this.spriteSide.visible = true;
+            // Under the surface only the body reads through the water, so a
+            // revealed-but-still-submerged eel must not sprout head and side again.
+            if (this.spriteTop) this.spriteTop.visible = !this.isSubmerged;
+            if (this.spriteSide) this.spriteSide.visible = !this.isSubmerged;
         }
     }
 
@@ -8042,18 +8044,57 @@ class Actor extends Entity {
     }
 
     /**
+     * Whether sight alone fails to find this actor: the `invisible` state
+     * (temporary, from a potion) or deep water hiding an ambusher. Shared by the
+     * sprite passes and the sidebar so they can't drift apart.
+     * @returns {boolean}
+     */
+    isUnseen() {
+        return this.hasStateProperty('invisible') || this.isConcealedBySubmersion();
+    }
+
+    /**
      * Whether this actor is hidden from the player and so goes unnamed in messages.
      *
-     * Two separate ways to be unseen, and both must anonymize: the `invisible`
-     * state (temporary, from a potion) and the `visible: false` attribute
-     * (permanent — ghasts, portals, gas traps). Checking only the state let a
-     * ghast announce itself by name as it attacked.
+     * Anything sight can't find, plus the `visible: false` attribute (permanent —
+     * ghasts, portals, gas traps). Checking only the state let a ghast announce
+     * itself by name as it attacked.
      *
      * @returns {boolean}
      */
     isAnonymous() {
         if (this.isPlayerControlled()) return false;
-        return this.hasStateProperty('invisible') || !this.hasAttribute('visible');
+        return this.isUnseen() || !this.hasAttribute('visible');
+    }
+
+    /**
+     * Is the deep liquid hiding this actor from the viewer right now?
+     *
+     * An eel hides at the waterline: from above the surface breaks up any sight of
+     * it, but a viewer who has gone under is in the same medium and meets it face
+     * to face. Derived live from `isSubmerged` on both sides rather than applied as
+     * a state, so it can never go stale, and so it stays distinct from real
+     * invisibility.
+     *
+     * Opt-in with `conceals_when_submerged`: the designer picks which creatures the
+     * water hides (an eel, not a wading ogre).
+     *
+     * @returns {boolean}
+     */
+    isConcealedBySubmersion() {
+        if (!this.isSubmerged) return false;
+        if (!this.hasAttribute('conceals_when_submerged')) return false;
+        if (this.hasAttribute('controlled')) return false;
+
+        const viewer = this.engine?.entityManager?.getPrimaryViewpoint?.();
+        if (!viewer || viewer === this) return false;
+        if (!viewer.isSubmerged) return true;
+
+        // Both under: only the same body of water puts them face to face.
+        const em = this.engine.entityManager;
+        const mine = em.getLiquidBodyIdAt(this.x, this.y);
+        const theirs = em.getLiquidBodyIdAt(viewer.x, viewer.y);
+        return mine === null || theirs === null || mine !== theirs;
     }
 
     /**
@@ -8568,28 +8609,19 @@ class Actor extends Entity {
                 }
             }
             else if (typeof value === 'boolean') {
-                // Special handling for locked attribute with color-locked doors
-                if (key === 'locked' && value === false && target.hasAttribute('color_locked')) {
+                // An unlock only applies to a door that is actually locked. A plain
+                // door is `lockable` with locked:false, so without that check a key
+                // was spent just walking through an open doorway.
+                const isUnlock = key === 'locked' && value === false && target.hasAttribute('locked');
+
+                if (isUnlock && target.hasAttribute('color_locked')) {
                     const targetLockColor = target.getAttribute('lock_color');
                     const sourceLockColor = source.lockColor;
 
                     if (targetLockColor && sourceLockColor && targetLockColor === sourceLockColor) {
-                        target.setAttribute(key, value);
                         console.log(`${source.name} (${sourceLockColor}) unlocks ${target.name} (${targetLockColor})!`);
+                        targetPassable = this._unlockTarget(target, key, value, source);
                         sourceApplied = true;
-                        this.engine.playSound?.('lock');
-                        target.open();
-                        this.engine.updateLighting();
-                        targetPassable = !target.hasAttribute('solid');
-
-                        if (this.isPlayerControlled()) {
-                            this.engine.inputManager?.showMessage(`The ${source.name} unlocks ${target.getNameWithArticle()}!`);
-                        }
-
-                        if (source.item && source.item.hasAttribute('consumable')) {
-                            this.inventory = this.inventory.filter(i => i !== source.item);
-                            console.log(`${source.name} was consumed`);
-                        }
                     } else {
                         console.log(`${source.name} (${sourceLockColor || 'no color'}) doesn't match ${target.name} (${targetLockColor})`);
                         if (this.isPlayerControlled() && targetLockColor) {
@@ -8598,34 +8630,20 @@ class Actor extends Entity {
                     }
                 }
                 else if (currentValue !== undefined) {
-                    // A {locked:false} utility effect from a key may open a GENERIC locked door
-                    // (lockable, no color_locked) — any key opens any generic door. But it must
-                    // NOT open: stairways (owned by the win-condition system) or gates
-                    // (switch/machine-driven). Color-locked doors are handled by the matched branch
-                    // above and never reach here. All other boolean effects set freely.
-                    const isKeyUnlock = key === 'locked' && value === false && source.item?.hasAttribute('key');
+                    // Any key opens any GENERIC locked door (lockable, no color_locked),
+                    // but never a stairway (owned by the win-condition system) or a gate
+                    // (switch/machine-driven). Color-locked doors took the branch above.
+                    // All other boolean effects set freely.
+                    const isKeyUnlock = isUnlock && source.item?.hasAttribute('key');
                     if (isKeyUnlock) {
                         const isGenericLockableDoor = target.hasAttribute('lockable') &&
                             !target.hasAttribute('color_locked') &&
                             !target.hasAttribute('stairway') &&
                             !target.hasAttribute('gate');
                         if (isGenericLockableDoor) {
-                            target.setAttribute(key, value);
                             console.log(`${source.name} unlocks ${target.name} (generic lock)`);
+                            targetPassable = this._unlockTarget(target, key, value, source);
                             sourceApplied = true;
-                            this.engine.playSound?.('lock');
-                            target.open();
-                            this.engine.updateLighting();
-                            targetPassable = !target.hasAttribute('solid');
-
-                            if (this.isPlayerControlled()) {
-                                this.engine.inputManager?.showMessage(`The ${source.name} unlocks ${target.getNameWithArticle()}!`);
-                            }
-
-                            if (source.item && source.item.hasAttribute('consumable')) {
-                                this.inventory = this.inventory.filter(i => i !== source.item);
-                                console.log(`${source.name} was consumed`);
-                            }
                         }
                         // else: not a key-openable lock (stairway/gate/non-lockable) — inert,
                         // key not consumed, player gets the standard locked-rejection feedback.
@@ -8643,6 +8661,34 @@ class Actor extends Entity {
         }
 
         return { applied: sourceApplied, targetPassable, targetShouldDie };
+    }
+
+    /**
+     * Open a lock the source just matched, and spend the key if it's consumable.
+     * Shared by the color-locked and generic-lock paths so the two can't drift.
+     *
+     * @param {Actor} target - The door/lock being opened
+     * @param {string} key - Attribute being cleared (always 'locked')
+     * @param {boolean} value - Value being set (always false)
+     * @param {Object} source - The effect source, carrying the item that unlocked it
+     * @returns {boolean} Whether the target is now passable
+     */
+    _unlockTarget(target, key, value, source) {
+        target.setAttribute(key, value);
+        this.engine.playSound?.('lock');
+        target.open();
+        this.engine.updateLighting();
+
+        if (this.isPlayerControlled()) {
+            this.engine.inputManager?.showMessage(`The ${source.name} unlocks ${target.getNameWithArticle()}!`);
+        }
+
+        if (source.item?.hasAttribute('consumable')) {
+            this.inventory = this.inventory.filter(i => i !== source.item);
+            console.log(`${source.name} was consumed`);
+        }
+
+        return !target.hasAttribute('solid');
     }
 
     /**
@@ -9864,29 +9910,13 @@ class Actor extends Entity {
 
         // Update viewport visibility when actors move
         if (this.engine.viewportEnabled) {
-            const ox = this.engine.sectionOriginX;
-            const oy = this.engine.sectionOriginY;
-            const vw = this.engine.viewportWidth;
-            const vh = this.engine.viewportHeight;
-            const inView = this.x >= ox && this.x < ox + vw &&
-                           this.y >= oy && this.y < oy + vh;
-            if (this.spriteBase) this.spriteBase.visible = inView;
-            if (this.spriteTop) {
-                const topInView = (this.y - 1) >= oy && (this.y - 1) < oy + vh &&
-                                  this.x >= ox && this.x < ox + vw;
-                this.spriteTop.visible = (inView || topInView) && !this.isSubmerged;
-            }
-            if (this.spriteSide) {
-                const sideOffset = this.getEffectiveSideOffset();
-                const sideX = this.x + sideOffset.dx;
-                const sideY = this.y + sideOffset.dy;
-                const sideInView = sideX >= ox && sideX < ox + vw &&
-                                   sideY >= oy && sideY < oy + vh;
-                this.spriteSide.visible = sideInView && !this.isSubmerged;
-            }
-            for (const slot of ['top', 'middle', 'lower']) {
-                if (this.spriteEquipment[slot]) this.spriteEquipment[slot].visible = inView;
-            }
+            this.engine.renderer?.applyViewportCulling(
+                this,
+                this.engine.sectionOriginX,
+                this.engine.sectionOriginY,
+                this.engine.viewportWidth,
+                this.engine.viewportHeight
+            );
         }
     }
 
@@ -9981,7 +10011,13 @@ class Actor extends Entity {
 
     /**
      * Submerge this actor (when entering a deep tile)
-     * Base sprite shows the top tile texture, top sprite becomes invisible
+     *
+     * A two-tile actor sinks: its head texture drops to the base position and the
+     * top tile goes away, so only the head reads at the waterline. That draws a
+     * body that is mostly underwater — it isn't what hides an ambusher. A
+     * single-tile actor (an eel: base LEO, top BLANK -> null) has no head to
+     * lower, so concealment is left to isConcealedBySubmersion().
+     *
      * @param {Actor} deepActor - The deep actor we're submerging in
      */
     submerge(deepActor) {
@@ -9989,6 +10025,7 @@ class Actor extends Entity {
 
         this.isSubmerged = true;
         this.submergedIn = deepActor;
+        this._submergedByTextureSwap = !!(this.spriteTop && this.spriteBase);
 
         // Store original textures for restoration
         if (this.spriteBase) {
@@ -9999,13 +10036,8 @@ class Actor extends Entity {
             this._originalTopVisible = this.spriteTop.visible;
         }
 
-        // Move top texture to base position (head now at floor level)
-        if (this.spriteTop && this.spriteBase) {
+        if (this._submergedByTextureSwap) {
             this.spriteBase.texture = this.spriteTop.texture;
-        }
-
-        // Hide top sprite
-        if (this.spriteTop) {
             this.spriteTop.visible = false;
         }
 
@@ -10057,13 +10089,6 @@ class Actor extends Entity {
         }
 
         console.log(`${this.name} submerges in ${deepActor?.name || 'deep liquid'}`);
-
-        // Aquatic ambushers (eels) vanish while submerged — they can still attack,
-        // but their attacks won't reveal them.
-        if (this.hasAttribute('conceals_when_submerged') && this.engine.globalStates?.invisible
-                && !this.hasState('invisible')) {
-            this.applyState('invisible', this.engine.globalStates.invisible, { duration: Infinity, silent: true });
-        }
     }
 
     /**
@@ -10106,12 +10131,7 @@ class Actor extends Entity {
 
         this.isSubmerged = false;
         this.submergedIn = null;
-
-        // Re-expose aquatic ambushers that hid via submersion.
-        if (this.hasAttribute('conceals_when_submerged') && this.hasState('invisible')) {
-            this.removeState('invisible');
-        }
-
+        this._submergedByTextureSwap = false;
         this._originalBaseTexture = null;
         this._originalTopTexture = null;
         this._originalTopVisible = null;
@@ -11616,6 +11636,60 @@ class EntityManager {
         return this._liquidPosCache.get(x * 10000 + y) || null;
     }
 
+    /**
+     * Id of the connected body of liquid at (x, y), or null if there's none.
+     * Separate lakes get different ids, so diving into one can't reveal the eel
+     * living in another. Connectivity runs through any liquid, shallow or deep —
+     * a lake pinched to a shallow ford is still one body, and an eel can swim
+     * those shallows between its deep pools.
+     *
+     * Rides on _getLiquidActorAt's cache, so it is rebuilt exactly when that is.
+     *
+     * @param {number} x
+     * @param {number} y
+     * @returns {number|null}
+     */
+    getLiquidBodyIdAt(x, y) {
+        this._getLiquidActorAt(x, y); // ensure _liquidPosCache is built
+        if (this._liquidBodySource !== this._liquidPosCache) {
+            this._liquidBodySource = this._liquidPosCache;
+            this._liquidBodyIds = this._labelLiquidBodies();
+        }
+        return this._liquidBodyIds.get(x * 10000 + y) ?? null;
+    }
+
+    /**
+     * Flood-fill every liquid cell into numbered connected bodies.
+     * @returns {Map<number, number>} position key -> body id
+     */
+    _labelLiquidBodies() {
+        const ids = new Map();
+        // 8-way: a diagonal pinch in a cavern lake still reads as one pool.
+        const dirs = [[0, -1], [0, 1], [-1, 0], [1, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]];
+        let nextId = 0;
+
+        for (const key of this._liquidPosCache.keys()) {
+            if (ids.has(key)) continue;
+            const bodyId = nextId++;
+            const stack = [key];
+            ids.set(key, bodyId);
+
+            while (stack.length) {
+                const cur = stack.pop();
+                const cx = Math.floor(cur / 10000);
+                const cy = cur % 10000;
+                for (const [dx, dy] of dirs) {
+                    const nKey = (cx + dx) * 10000 + (cy + dy);
+                    if (ids.has(nKey)) continue;
+                    if (!this._liquidPosCache.has(nKey)) continue;
+                    ids.set(nKey, bodyId);
+                    stack.push(nKey);
+                }
+            }
+        }
+        return ids;
+    }
+
     _getSolidActorAt(x, y) {
         if (!this._solidPosCache) {
             this._solidPosCache = new Map();
@@ -12670,31 +12744,56 @@ class RenderSystem {
         }
     }
 
+    /**
+     * Hide the sprites of an actor whose tiles fall outside the viewport.
+     *
+     * Each sprite is tested at its own tile, not the actor's: a top sprite one row
+     * up can peek into view while the base is off-screen, and a side sprite lives
+     * wherever its offset puts it. Submersion then hides everything that would sit
+     * above the waterline — only the base tile reads through the surface, which is
+     * why the `lower` equipment slot is exempt.
+     *
+     * Shared by Actor.updateSpritePositions (one actor, on move) and
+     * updateEntityVisibility (every actor, on section change) so the two can't
+     * disagree about what a submerged actor shows.
+     *
+     * @param {Actor} actor
+     * @param {number} originX - Viewport origin tile X
+     * @param {number} originY - Viewport origin tile Y
+     * @param {number} vpW - Viewport width in tiles
+     * @param {number} vpH - Viewport height in tiles
+     */
+    applyViewportCulling(actor, originX, originY, vpW, vpH) {
+        const inBox = (x, y) => x >= originX && x < originX + vpW &&
+                                y >= originY && y < originY + vpH;
+        const submerged = actor.isSubmerged;
+        const inView = inBox(actor.x, actor.y);
+
+        if (actor.spriteBase) actor.spriteBase.visible = inView;
+
+        if (actor.spriteTop) {
+            actor.spriteTop.visible = (inView || inBox(actor.x, actor.y - 1)) && !submerged;
+        }
+
+        if (actor.spriteSide) {
+            const { dx, dy } = actor.getEffectiveSideOffset();
+            actor.spriteSide.visible = inBox(actor.x + dx, actor.y + dy) && !submerged;
+        }
+
+        if (actor.spriteEquipment) {
+            // lower rides the base tile, so it stays readable underwater.
+            for (const slot of ['top', 'middle']) {
+                if (actor.spriteEquipment[slot]) actor.spriteEquipment[slot].visible = inView && !submerged;
+            }
+            if (actor.spriteEquipment.lower) actor.spriteEquipment.lower.visible = inView;
+        }
+    }
+
     updateEntityVisibility(originX, originY, vpW, vpH) {
         if (!this.engine.viewportEnabled) return;
         for (const actor of this.engine.entityManager.actors) {
             if (actor.isDead) continue;
-            const inView = actor.x >= originX && actor.x < originX + vpW &&
-                           actor.y >= originY && actor.y < originY + vpH;
-            if (actor.spriteBase) actor.spriteBase.visible = inView;
-            if (actor.spriteTop) {
-                const topInView = (actor.y - 1) >= originY && (actor.y - 1) < originY + vpH &&
-                                  actor.x >= originX && actor.x < originX + vpW;
-                actor.spriteTop.visible = (inView || topInView) && !actor.isSubmerged;
-            }
-            if (actor.spriteSide) {
-                const sideOffset = actor.getEffectiveSideOffset();
-                const sideX = actor.x + sideOffset.dx;
-                const sideY = actor.y + sideOffset.dy;
-                const sideInView = sideX >= originX && sideX < originX + vpW &&
-                                   sideY >= originY && sideY < originY + vpH;
-                actor.spriteSide.visible = sideInView && !actor.isSubmerged;
-            }
-            if (actor.spriteEquipment) {
-                for (const slot of ['top', 'middle', 'lower']) {
-                    if (actor.spriteEquipment[slot]) actor.spriteEquipment[slot].visible = inView && !actor.isSubmerged;
-                }
-            }
+            this.applyViewportCulling(actor, originX, originY, vpW, vpH);
             // Pause the animation of any sprite that just went invisible so PIXI stops
             // ticking it — a hidden AnimatedSprite still advances frames every tick
             // otherwise (the per-frame cost on bright scrolling levels crowded with
@@ -14284,8 +14383,8 @@ class RenderSystem {
                 continue;
             }
 
-            // Invisible actors: translucent for player, hidden for others
-            if (actor.hasStateProperty?.('invisible')) {
+            // Unseen actors: translucent for player, hidden for others.
+            if (actor.isUnseen?.()) {
                 if (actor.hasAttribute('controlled')) {
                     const alpha = 0.35;
                     if (actor.spriteBase) { actor.spriteBase.visible = vis.showBase; actor.spriteBase.alpha = alpha; }
@@ -14456,10 +14555,14 @@ class RenderSystem {
             if (actor.hasAttribute('controlled')) continue; // don't reveal the player/allies to themselves
 
             if (!telepathic) {
-                // Not (or no longer) telepathic: make sure a concealed creature that
-                // was revealed is hidden again. Invisible ones revert to their normal
-                // hidden state; anything else is left to the normal lighting path.
-                if (actor.hasStateProperty?.('invisible')) actor._updateInvisibilitySprites();
+                // Not (or no longer) telepathic: resync concealment in both
+                // directions. Tested by attribute rather than by current
+                // concealment, so the frame the player dives in also *restores* the
+                // eel it just revealed.
+                if (actor.hasStateProperty?.('invisible') ||
+                    actor.hasAttribute?.('conceals_when_submerged')) {
+                    actor._updateInvisibilitySprites();
+                }
                 continue;
             }
 
