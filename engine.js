@@ -1694,8 +1694,7 @@ class DungeonEngine {
      * @param {Object|null} playerState - Serialized player state to restore (null on first load)
      */
     async loadFloor(floor, entryDirection, playerState = null) {
-        // Silence feedback until the player begins play, so load-time state changes
-        // (e.g. stairway lock reconciliation) don't leak sounds/messages.
+        // Silence feedback until the player begins play
         this.gameplayStarted = false;
         const prototypeConfig = this.currentPrototype.config;
         const floorConfig = this.getFloorConfig(floor);
@@ -1742,10 +1741,7 @@ class DungeonEngine {
 
         await this.mapManager.processWildcards(architectContext);
 
-        // Check for treasure room before pending doors are promoted to actors.
-        // Reads the RESOLVED mechanics (`mechanics` above), not prototypeConfig, so a
-        // biome or a floor override can set its own rate — mechanics is the one key
-        // getFloorConfig deep-merges (root <- biome <- floor).
+        // Check for treasure room before pending doors are spawned
         const treasureRoomChance = mechanics.treasure_room ?? 0;
         let treasureRoomData = null;
         if (treasureRoomChance > 0 && ROT.RNG.getPercentage() <= treasureRoomChance) {
@@ -1816,9 +1812,7 @@ class DungeonEngine {
             if (vp) this.snapViewportToTile(vp.x, vp.y);
         }
 
-        // Scatter the biome's floor decorations. Runs after every actor is placed so
-        // it can see walls and liquids and keep off occupied tiles. restoreFloor does
-        // not call this: on a revisit the decorations come back from the save.
+        // Scatter the biome's floor decorations. Runs after every actor is placed to consider walls and fluids
         this.entityManager.placeBiomeDecorations(floorConfig);
 
         // Spawn body segment chains for any chain_head actors
@@ -2379,8 +2373,7 @@ class DungeonEngine {
     /**
      * Turn a depth-ranged biome catalog into a { id/type: {chance,min,max} } spawn
      * table by making `budget` weighted-raffle picks over the rows eligible at this
-     * depth (min <= floor <= max), weighted by `freq`. Mirrors Brogue's pickHordeType.
-     * `keyField` is the row's id key ('id' for actors, 'type' for item categories).
+     * depth (min <= floor <= max), weighted by `freq`.
      */
     _rollBiomeSpawns(rows, budget, floor, keyField = 'id') {
         const eligible = rows.filter(r => floor >= (r.min ?? 1) && floor <= (r.max ?? Infinity));
@@ -2449,7 +2442,9 @@ class DungeonEngine {
      * so a player who fell down can't simply walk back up. The only ways to reach floor
      * N+1 (descending N's down-stairway, or falling from N) both require N to have been
      * loaded first, so N is always present in sealedDownFloors before its up-stairway is
-     * needed — making the tracker an authoritative source of truth.
+     * needed. There should be a prototype level setting for an item that unlocks all stairways,
+     * i.e. the amulet of yendor is a win condition but also unlocks all staircases in case there
+     * is still a locked one above
      */
     isFloorDownSealed(floor) {
         return floor >= 1 && this.sealedDownFloors.has(floor);
@@ -2542,7 +2537,7 @@ class DungeonEngine {
      * Check prototype-level (game-win) conditions, distinct from the per-floor
      * win_conditions that govern stairway/gateway unlock. Reuses checkWinCondition().
      * Returns false when no win_state is declared, so prototypes without it never win
-     * the game — fully backward compatible.
+     * the game.
      */
     checkPrototypeWinConditions() {
         const conditions = this.currentPrototype?.config?.win_state?.conditions;
@@ -2586,10 +2581,6 @@ class DungeonEngine {
         this.renderer?.showWinScreen(this.viewportWidth, this.viewportHeight, lines);
     }
 
-    /**
-     * Build the centered text lines for the win screen. Basic version is a single
-     * completion line; tracked stats (kills, gold, etc.) can be appended here later.
-     */
     buildWinScreenLines(cfg, displayName) {
         const lines = [];
         lines.push(cfg?.win_state?.message || `You have completed ${displayName}`);
@@ -2674,8 +2665,7 @@ class DungeonEngine {
     }
 
     /**
-     * Apply a locked/unlocked state to a single live stairway actor (attributes + sprite).
-     * Idempotent and direction-aware (names "Stairs Up"/"Stairs Down" correctly), so it
+     * Apply a locked/unlocked state to a single live stairway actor
      * works for both the floor's own down-stairway and a paired up-stairway.
      */
     applyStairwayLockState(stairway, locked) {
@@ -2707,7 +2697,7 @@ class DungeonEngine {
 
     /**
      * Reconcile the current floor's up-stairway lock state against the seal tracker.
-     * The up-stairway leads up to the previous floor, so it must be locked iff that floor's
+     * The up-stairway leads up to the previous floor, so it must be locked if that floor's
      * down-way is sealed. Called on every floor entry (fresh load and restore) so a cached
      * floor whose paired seal changed while the player was away gets corrected — including
      * the sprite, which a deserialized open stairway would otherwise render as locked.
@@ -2717,10 +2707,6 @@ class DungeonEngine {
         if (!up) return;
 
         // The escape exit is gated by the prototype win_state, not the floor seal tracker.
-        // On a restored floor its attributes survive serialization but its sprite is rebuilt
-        // from the plain up_stairway def — so re-apply the sealed look (idempotent) and skip
-        // the seal-tracker logic entirely. Checked before the top-floor guard below because
-        // the escape exit lives on the (guarded) top floor.
         if (up.hasAttribute('escape_exit') || this.isEscapeExitActor(up)) {
             this.makeEscapeExit(up);
             return;
