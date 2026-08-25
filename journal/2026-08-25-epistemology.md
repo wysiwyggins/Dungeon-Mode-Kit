@@ -8,7 +8,7 @@ project: "Dungeon Mode Kit"
 
 # What is unseen and what is unkown
 
-The Dungeon Mode in my mind is focused on what is unseen versus what is unkown, and this is happening at many levels. Visual specificity is part of the experiment of DMK, starting with this quote from *Dungeon Hacks*:
+The Dungeon Mode in my mind is focused on what is unseen and what is unkown, and this is happening at many levels. For starters, visual specificity is part of the experiment of DMK, starting with this quote from *Dungeon Hacks*:
 
 > With each new element Toy and Wichman wrote into Rogue, the game became more and more absorbing. Rather than reveal the entire dungeon map when players set foot in a new level, the game showed only their immediate surroundings. Moving in any direction revealed more of the map—and the creatures lying in wait. The graphics were primitive, but the thrill and apprehension of exploring uncharted terrain, combined with the pseudo-intelligent behavior of the monsters and the permanency of death, drew players deeper into the fantasy.  "We [printed] descriptions as things happened to you, and we had various monsters that we created, and potions, and things like that," Wichman remembered. "It was interesting that we did end up having an atmosphere even though all you're looking at is letters and symbols. We got drawn into the world, and you would imagine yourself in the world. You'd see a letter 'T' on the screen, and it would startle you because you knew it was a troll."
 
