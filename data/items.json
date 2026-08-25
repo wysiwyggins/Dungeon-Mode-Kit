@@ -420,6 +420,23 @@
       "description": "A heavy lump of gold."
     }
   },
+  "thaler": {
+    "name": "thaler coin",
+    "tileIndex": "WHITE_THALER_SIGN",
+    "tint": "#FFD700",
+    "ignore_darkness": true,
+    "random_value": [1, 10],
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": false,
+      "flammable": false,
+      "pickup_effect": {
+        "wealth": "{value}"
+      },
+      "description": "A rough stamped gold coin."
+    }
+  },
 
   "uranium_nugget": {
     "name": "uranium nugget",
