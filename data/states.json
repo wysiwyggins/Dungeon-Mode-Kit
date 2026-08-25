@@ -130,10 +130,27 @@
     "duration": 15,
     "tint": "#99cc44",
     "skip_turn_chance": 0.25,
+    "skip_turn_message": "[You|The [actor_name]] [retch|retches]!",
+    "skip_turn_spawn": "vomit",
     "immunity": "gas_immune",
     "effect_description": "Your stomach churns",
     "on_apply_message": "[actor_name] feels nauseated!",
     "on_remove_message": "[actor_name]'s stomach settles."
+  },
+  "bleeding": {
+    "name": "Bleeding",
+    "duration": 25,
+    "tint": "#aa1122",
+    "skip_turn_chance": 0.2,
+    "skip_turn_message": "[You stagger as your wound reopens|The [actor_name] staggers, bleeding]!",
+    "skip_turn_spawn": "blood",
+    "skip_turn_effect": {
+      "health": -3
+    },
+    "immunity": "bloodless",
+    "effect_description": "You are bleeding freely",
+    "on_apply_message": "[actor_name] starts bleeding!",
+    "on_remove_message": "[actor_name]'s bleeding stops."
   },
 
   "starving": {

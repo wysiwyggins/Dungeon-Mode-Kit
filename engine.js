@@ -1538,7 +1538,7 @@ class DungeonEngine {
         if (player.hasStateProperty?.('hallucinating')) {
             this.renderer?.applyHallucinationEffect();
         }
-        if (player.hasStateProperty?.('random_movement')) {
+        if (player.isConfused()) {
             this.renderer?.applyConfusionEffect();
         }
     }
@@ -4733,6 +4733,16 @@ class Item extends Entity {
 }
 
 class Actor extends Entity {
+    /**
+     * State properties that act on a mind: they change how their holder takes turns,
+     * or are player-perception effects. A state declaring any of these needs
+     * `sentient` or `controlled` — see isMindState().
+     */
+    static MIND_STATE_PROPERTIES = [
+        'skip_turn', 'skip_turn_chance', 'skip_every_other_turn', 'extra_turn',
+        'random_movement', 'hallucinating', 'player_only'
+    ];
+
     constructor(x, y, type, data, engine) {
         super(x, y, type, engine);
         this.name = data.name || type;
@@ -5268,18 +5278,7 @@ class Actor extends Entity {
             }
         }
 
-        // Check if nauseated — random chance to skip turn
-        if (this.hasStateProperty('skip_turn_chance')) {
-            const chance = this.getStatePropertyValue('skip_turn_chance');
-            if (ROT.RNG.getUniform() < chance) {
-                const name = this.isPlayerControlled() ? 'You' : this.name;
-                const verb = this.isPlayerControlled() ? 'retch' : 'retches';
-                const pos = this.isPlayerControlled() ? null : { x: this.x, y: this.y };
-                this.engine.inputManager?.showMessage(`${name} ${verb}!`, pos);
-                this.engine.entityManager.spawnEntity('vomit', this.x, this.y);
-                return Promise.resolve();
-            }
-        }
+        if (this.rollStateTurnLoss()) return Promise.resolve();
 
         // Player-controlled actors lock the engine and wait for input
         if (this.isPlayerControlled()) {
@@ -6010,33 +6009,17 @@ class Actor extends Entity {
     /**
      * Does this state act on a mind, rather than on a body or a thing?
      *
-     * Derived from properties the state already declares instead of a separate
-     * field in states.json: everything on this list changes how its holder takes
-     * turns, or is a player-perception effect. A wall has no turn to skip and no
-     * view to scramble, so those states have nothing to act on.
-     *
-     * Mind-states: stunned, sleeping, paralyzed (skip_turn), confused
-     * (random_movement), nauseated (skip_turn_chance), slowed
-     * (skip_every_other_turn), hasted (extra_turn), hallucinating, and anything
-     * flagged player_only (starving, telepathic).
-     *
-     * Everything else — burning, poisoned, regenerating, blinded, flying,
-     * invisible, fireproof_temp, stuck — can attach to any actor.
+     * Derived from the properties a state already declares (see
+     * MIND_STATE_PROPERTIES) rather than a separate field in states.json — a wall
+     * has no turn to skip and no view to scramble. Everything else (burning,
+     * poisoned, stuck) can attach to any actor.
      *
      * @param {Object} stateData - State configuration from states.json
      * @returns {boolean} True if the state requires a mind
      */
     static isMindState(stateData) {
         if (!stateData) return false;
-        return Boolean(
-            stateData.skip_turn ||
-            stateData.skip_turn_chance ||
-            stateData.skip_every_other_turn ||
-            stateData.extra_turn ||
-            stateData.random_movement ||
-            stateData.hallucinating ||
-            stateData.player_only
-        );
+        return Actor.MIND_STATE_PROPERTIES.some(prop => stateData[prop]);
     }
 
     /**
@@ -6069,17 +6052,14 @@ class Actor extends Entity {
             return false;
         }
 
-        // Check if already has this state
+        let duration = options.duration ?? stateData.duration ?? 5;
+        if (duration === -1) duration = Infinity;
+
+        // Re-applying an active state extends it rather than stacking a second copy.
         if (this.states[stateName]) {
-            // Refresh duration if already present
-            let duration = options.duration ?? stateData.duration ?? 5;
-            if (duration === -1) duration = Infinity;
             this.states[stateName].duration = Math.max(this.states[stateName].duration, duration);
             return true;
         }
-
-        let duration = options.duration ?? stateData.duration ?? 5;
-        if (duration === -1) duration = Infinity;
 
         // Create state entry
         this.states[stateName] = {
@@ -6371,29 +6351,11 @@ class Actor extends Entity {
             }
 
             // Apply per-turn effect (e.g., poison damage)
-            if (stateData.per_turn_effect && this.stats) {
-                for (const [statKey, value] of Object.entries(stateData.per_turn_effect)) {
-                    if (this.stats[statKey] !== undefined) {
-                        const oldValue = this.stats[statKey].current;
-                        this.stats[statKey].current = Math.max(0, oldValue + value);
-
-                        // Show damage message for health effects
-                        if (statKey === 'health' && value < 0 && this.hasAttribute('visible')) {
-                            const stateName_display = stateData.name || stateName;
-                            const pos = this.isPlayerControlled() ? null : { x: this.x, y: this.y };
-                            this.engine.inputManager?.showMessage(
-                                `${this.name} takes ${Math.abs(value)} damage from ${stateName_display}!`, pos
-                            );
-                            this.flash?.();
-                        }
-
-                        // Check for death
-                        if (statKey === 'health' && this.stats[statKey].current <= 0) {
-                            this.die();
-                            return; // Stop processing states if dead
-                        }
-                    }
-                }
+            if (stateData.per_turn_effect) {
+                const died = this.applyStatEffect(
+                    stateData.per_turn_effect, stateData.name || stateName
+                );
+                if (died) return;
             }
 
             // Random state application (e.g., starving can cause fainting or nausea)
@@ -6448,16 +6410,36 @@ class Actor extends Entity {
     }
 
     /**
-     * Check if actor should skip their turn due to a state
-     * @returns {boolean} True if actor should skip turn
+     * Stunned, asleep or paralyzed — loses its turn and is helpless (easier to hit,
+     * open to a backstab).
+     * @returns {boolean}
      */
     isIncapacitated() {
-        for (const state of Object.values(this.states)) {
-            if (state.data.skip_turn) {
-                return true;
-            }
+        return this.hasStateProperty('skip_turn');
+    }
+
+    /**
+     * Confused — movement direction is randomized.
+     * @returns {boolean}
+     */
+    isConfused() {
+        return this.hasStateProperty('random_movement');
+    }
+
+    /**
+     * Chance to break free of every `stuck` state this turn. Only the states doing
+     * the holding are consulted, and the hardest of them governs, so escaping a web
+     * doesn't also lift you out of the quicksand it was strung over.
+     * @returns {number} 0–1
+     */
+    getEscapeChance() {
+        let hardest = null;
+        for (const s of Object.values(this.states)) {
+            if (!s.data.stuck) continue;
+            const chance = typeof s.data.escape_chance === 'number' ? s.data.escape_chance : 0.33;
+            if (hardest === null || chance < hardest) hardest = chance;
         }
-        return false;
+        return hardest ?? 0.33;
     }
 
     /**
@@ -6470,16 +6452,57 @@ class Actor extends Entity {
     }
 
     /**
-     * Get the max value of a numeric state property across all active states
-     * @param {string} prop - The state data property to check (e.g. 'skip_turn_chance')
-     * @returns {number} The highest value found, or 0 if none
+     * Find the active state with the highest (or lowest) value for a numeric
+     * property. Returns the state, not just the number, so the caller can read the
+     * rest of its data — the message and spawn belonging to the state that won.
+     *
+     * Distinguishes "no state declares this" (null) from "a state declares 0", which
+     * a bare number cannot: an escape_chance of 0 means inescapable.
+     *
+     * @param {string} prop - The state data property to rank by
+     * @param {Object} [options]
+     * @param {boolean} [options.lowest=false] - Rank ascending instead of descending
+     * @returns {{name: string, data: Object, value: number}|null}
      */
-    getStatePropertyValue(prop) {
-        let max = 0;
-        for (const s of Object.values(this.states)) {
-            if (s.data[prop] && s.data[prop] > max) max = s.data[prop];
+    findStateWithProperty(prop, { lowest = false } = {}) {
+        let best = null;
+        for (const [name, s] of Object.entries(this.states)) {
+            const value = s.data[prop];
+            if (typeof value !== 'number') continue;
+            if (!best || (lowest ? value < best.value : value > best.value)) {
+                best = { name, data: s.data, value };
+            }
         }
-        return max;
+        return best;
+    }
+
+    /**
+     * Roll a state's `skip_turn_chance`. On a hit the state's own data says what
+     * that looks like: skip_turn_message, _sound, _spawn, _effect. Adding a state
+     * that occasionally costs a turn needs no engine change.
+     * @returns {boolean} True if the actor loses its turn
+     */
+    rollStateTurnLoss() {
+        const state = this.findStateWithProperty('skip_turn_chance');
+        if (!state || ROT.RNG.getUniform() >= state.value) return false;
+
+        const data = state.data;
+        const pos = this.isPlayerControlled() ? null : { x: this.x, y: this.y };
+
+        if (data.skip_turn_message) {
+            this.engine.inputManager?.showMessage(
+                this.formatEventMessage(data.skip_turn_message), pos
+            );
+        }
+        if (data.skip_turn_sound) this.engine.playSound?.(data.skip_turn_sound);
+        if (data.skip_turn_spawn) {
+            this.engine.entityManager.spawnEntity(data.skip_turn_spawn, this.x, this.y);
+        }
+        if (data.skip_turn_effect) {
+            this.applyStatEffect(data.skip_turn_effect, data.name || state.name);
+        }
+
+        return !this.isDead;
     }
 
     /**
@@ -8044,6 +8067,58 @@ class Actor extends Entity {
     }
 
     /**
+     * Resolve an event message template, adding grammatical person on top of the
+     * usual [token]s: `"[You|The [actor_name]] [retch|retches]!"` picks the left
+     * branch for the player, the right for anyone else.
+     * @param {string} template
+     * @returns {string}
+     */
+    formatEventMessage(template) {
+        if (typeof template !== 'string') return template;
+
+        const second = this.isPlayerControlled();
+        // Split branches before resolving, so a nested [actor_name] is only
+        // resolved on the branch that survives.
+        const chosen = template.replace(/\[([^\[\]|]*(?:\[[^\]]*\][^\[\]|]*)*)\|([^\[\]|]*(?:\[[^\]]*\][^\[\]|]*)*)\]/g,
+            (_, you, it) => second ? you : it);
+
+        const result = resolveTemplate(chosen, this, { providers: this._nameProviders() });
+        return this._hideAnonymousArticle(result);
+    }
+
+    /**
+     * Apply a map of stat deltas, announcing health loss and handling death.
+     * Shared by per-turn effects and one-off state events so neither path can
+     * skip the death check.
+     * @param {Object<string, number>} effect - stat key -> delta
+     * @param {string} sourceName - Named in the damage message
+     * @returns {boolean} True if this killed the actor
+     */
+    applyStatEffect(effect, sourceName) {
+        if (!this.stats) return false;
+
+        for (const [statKey, value] of Object.entries(effect)) {
+            if (this.stats[statKey] === undefined) continue;
+
+            this.stats[statKey].current = Math.max(0, this.stats[statKey].current + value);
+
+            if (statKey === 'health' && value < 0 && this.hasAttribute('visible')) {
+                const pos = this.isPlayerControlled() ? null : { x: this.x, y: this.y };
+                this.engine.inputManager?.showMessage(
+                    `${this.name} takes ${Math.abs(value)} damage from ${sourceName}!`, pos
+                );
+                this.flash?.();
+            }
+
+            if (statKey === 'health' && this.stats[statKey].current <= 0) {
+                this.die();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Whether sight alone fails to find this actor: the `invisible` state
      * (temporary, from a potion) or deep water hiding an ambusher. Shared by the
      * sprite passes and the sidebar so they can't drift apart.
@@ -8308,7 +8383,7 @@ class Actor extends Entity {
 
             // Only roll if attacker has accuracy attribute AND target is not incapacitated
             // Skip hit roll for stationary objects (breakable actors without health) - always hit
-            const targetIncapacitated = target.hasStateProperty?.('skip_turn');
+            const targetIncapacitated = target.isIncapacitated?.();
             const targetIsStationary = target.hasAttribute('breakable') && (!target.stats || target.stats.health === undefined);
 
             if (attackerAccuracy !== null && !targetIncapacitated && !targetIsStationary) {
@@ -8425,7 +8500,7 @@ class Actor extends Entity {
                         }
 
                         // Backstab: bonus damage vs. unaware targets (stacks with crit, before strength scaling)
-                        const targetUnaware = target.hasStateProperty?.('skip_turn') ||
+                        const targetUnaware = target.isIncapacitated?.() ||
                                               (target.personality && !target._alerted);
                         if (targetUnaware) {
                             finalValue = Math.round(finalValue * BACKSTAB_MULTIPLIER);
@@ -8990,7 +9065,9 @@ class Actor extends Entity {
         // Stuck (held fast, e.g. engulfed by a jelly): each move attempt rolls to escape.
         // Success breaks free and the move proceeds this turn; failure wastes the turn.
         if (this.hasStateProperty('stuck')) {
-            const chance = this.getStatePropertyValue('escape_chance') || 0.33;
+            // Held by two things at once (webbed in quicksand): the hardest hold
+            // governs, so tearing the web still leaves you in the sand.
+            const chance = this.getEscapeChance();
             if (ROT.RNG.getUniform() < chance) {
                 for (const [name, s] of Object.entries(this.states)) {
                     if (s.data?.stuck) this.removeState(name); // emits the break-free message

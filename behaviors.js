@@ -19,7 +19,7 @@ class Personality {
 
     execute(actor) {
         // Confusion overrides normal AI — move randomly instead
-        if (actor.hasStateProperty('random_movement')) {
+        if (actor.isConfused()) {
             BehaviorLibrary.random_walk(actor);
             return;
         }
@@ -399,7 +399,7 @@ const BehaviorLibrary = {
     },
 
     random_walk: (actor) => {
-        const isConfused = actor.hasStateProperty('random_movement');
+        const isConfused = actor.isConfused();
 
         // A sentient, non-confused actor watches where it's going: only consider
         // valid moves, so it won't wander off a cliff or into a wall.

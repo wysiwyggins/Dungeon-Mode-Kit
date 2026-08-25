@@ -17,14 +17,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Plain entities were silently dropped on save/load and on floor revisit.** `Entity.serialize()` emitted no type discriminator, so `deserializeEntities()` — which branched only on `isActor` and `isItem` — matched neither and discarded the record without a warning. Dug rubble, blood and slime vanished whenever you left a floor and came back. Entities now serialize an `isEntity` flag and are restored through `spawnEntity`, which also re-derives their sprite from `entities.json`. (`liquid_track`, which has no `entities.json` entry, is still dropped — a known remaining gap.)
 - `fungus.cluster` was read by the engine but never forwarded by `resolveBiome`, so a biome had no way to turn fungus clustering off.
+- generic keys are no longer consumed by walking through unlocked doors
+- epistemology and visibility of submerged actors is improved
+- **`escape_chance` was read from the wrong states.**
 
 ### Changed
 
+- **States can lose a turn at random, entirely from data.** `skip_turn_chance` gains `skip_turn_message`, `skip_turn_sound`, `skip_turn_spawn` and `skip_turn_effect`, so a state that occasionally costs its holder the round describes its own message, sound, dropped entity and stat hit. Nausea's retch-and-spawn-vomit case was hardcoded in `Actor.act()`; it now lives in `states.json`
+- `Actor.applyStatEffect()` is shared by state per-turn effects and one-off state events, so neither path can skip the death check. `findStateWithProperty()` replaces `getStatePropertyValue()`, returning the winning state rather than just its number so the caller can read the rest of its data.
+- `isIncapacitated()` and the new `isConfused()` replace scattered raw `hasStateProperty('skip_turn')` / `('random_movement')` checks across `engine.js`, `input.js` and `behaviors.js` — the same concept had been spelled four different ways. `isMindState()`'s seven-term boolean chain is now the `Actor.MIND_STATE_PROPERTIES` list.
+- `RenderSystem.applyViewportCulling()` replaces two near-verbatim viewport-culling blocks in `Actor.updateSpritePositions` and `updateEntityVisibility`.
+- **Docs: explain data type options, don't enumerate the data.** some docs grooming, need to do more
 - `generateCollapsingFloors`, `generateAbyssAt` and `generatePalladianAt` now use `applyTilePattern` in collect mode instead of hand-rolled nested loops — taking the method from one caller to four.
-- `generateCaveAt` and `generateInfernalAt` were 90 verbatim-identical lines apart from one type string; both now delegate to a shared `_generateCaveRegion`.
-- The perimeter-gap fill, duplicated between the digger and brogue generators (the brogue copy was commented "same as digger"), is now `_fillPerimeterGaps`.
-- The weighted wall-type roll, written out inline in five generators, is now `_pickWeightedWallType`.
-- The eight-term `hasFloor(x±1, y±1) || ...` adjacency chain, repeated verbatim at five sites, is now `anyNeighbor8`. (`behaviors.js` holds a sixth copy, left alone.)
 
 ## [1.17b]
 

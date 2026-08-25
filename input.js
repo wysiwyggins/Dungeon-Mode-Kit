@@ -705,7 +705,7 @@ class InputManager {
         }
 
         // Don't show path when confused — player can't navigate reliably
-        if (player.hasStateProperty('random_movement')) {
+        if (player.isConfused()) {
             renderer.hideWalkPath();
             return;
         }
@@ -775,7 +775,7 @@ class InputManager {
         if (!player || player.isDead) return;
 
         // Don't auto-walk when confused
-        if (player.hasStateProperty('random_movement')) return;
+        if (player.isConfused()) return;
 
         const targetX = this.hoveredTile.x;
         const targetY = this.hoveredTile.y;
@@ -879,7 +879,7 @@ class InputManager {
         }
 
         // Stop auto-walk if player became confused mid-walk
-        if (player.hasStateProperty('random_movement')) {
+        if (player.isConfused()) {
             this.stopAutoWalk();
             return;
         }
@@ -1023,7 +1023,7 @@ class InputManager {
         // First press: compute & preview the next target, then arm it.
         const player = this.engine.entityManager?.player;
         if (!player || player.isDead) return;
-        if (player.hasStateProperty('random_movement')) {
+        if (player.isConfused()) {
             this.showMessage("You're too confused to explore.");
             return;
         }
@@ -1063,7 +1063,7 @@ class InputManager {
         this.exploreArmedTarget = null;
         this.targetCycleIndex = -1;
         if (!player || player.isDead) return;
-        if (player.hasStateProperty('random_movement')) {
+        if (player.isConfused()) {
             this.showMessage("You're too confused to explore.");
             this.engine.renderer?.hideWalkPath();
             return;
@@ -1170,7 +1170,7 @@ class InputManager {
 
         const player = this.engine.entityManager?.player;
         if (!player || player.isDead) return;
-        if (player.hasStateProperty('random_movement')) {
+        if (player.isConfused()) {
             this.showMessage("You're too confused to explore.");
             return;
         }
@@ -1212,7 +1212,7 @@ class InputManager {
 
         const player = this.engine.entityManager?.player;
         if (!player || player.isDead) { this.stopExplore(); return; }
-        if (player.hasStateProperty('random_movement')) {
+        if (player.isConfused()) {
             this.showMessage('You lose your focus.');
             this.stopExplore();
             return;
@@ -1925,7 +1925,7 @@ class InputManager {
             let dir = this.directions[action];
 
             // Confusion: randomize movement direction
-            if (player.hasStateProperty('random_movement')) {
+            if (player.isConfused()) {
                 const dirs = Object.values(this.directions);
                 dir = dirs[Math.floor(Math.random() * dirs.length)];
             }
@@ -1934,7 +1934,7 @@ class InputManager {
             const targetY = player.y + dir.dy;
 
             // Check for hazards that need confirmation (skip if hallucinating — player doesn't know)
-            const isConfused = player.hasStateProperty('random_movement');
+            const isConfused = player.isConfused();
             const isHallucinating = player.hasStateProperty('hallucinating');
             let hazardCheck = null;
             if (!isHallucinating) {

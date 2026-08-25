@@ -545,25 +545,9 @@ Use effects can apply states from `data/states.json` to the user:
 "use_effect": { "health": 20, "apply_state": "confused" }
 ```
 
-States have a `duration` in turns and can grant various properties:
-
-| State property | Effect |
-|---------------|--------|
-| `skip_turn` | Actor loses their turn each round |
-| `extra_turn` | Actor gets a bonus action each round |
-| `skip_every_other_turn` | Actor skips every other turn |
-| `random_movement` | Movement direction is randomized |
-| `per_turn_effect` | Stat change each turn (e.g. `{ "health": -2 }` for poison) |
-| `on_apply_effect` | Stat change applied once when state starts (e.g. `{ "visionRange": -3 }`) |
-| `grants_immunity` | Temporarily grants an immunity attribute (e.g. `"fireproof"`) |
-| `invisible` | Actor cannot be seen by enemies |
-| `telepathic` | Player can see all actors on the map |
-| `flying` | Actor can cross pits and water |
-| `hallucinating` | Visual distortion effect |
-| `remove_on_damage` | State ends when the actor takes damage |
-| `immunity` | Actors with this attribute are immune to the state |
-
-See `data/states.json` for the full list of defined states.
+A state lasts for its `duration` in turns and carries its own effects, messages and
+visuals. The named state must exist in `data/states.json`; see
+[ACTORS.md](ACTORS.md#state-properties) for the properties a state can declare.
 
 ---
 

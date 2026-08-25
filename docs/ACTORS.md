@@ -76,11 +76,15 @@ Actors are two tiles tall: `tileIndexTop` renders at head height (y-1), `tileInd
 
 ### Side Tiles
 
-The side tile renders at the same vertical level as the base but offset horizontally (or in any direction via `sideOffset`). It is purely cosmetic — it does not create a collision footprint. Side tiles have their own lighting query at their actual grid position, so a tail sticking around a corner into darkness will be hidden independently.
+The side tile sits at the base's vertical level, offset by `sideOffset`. It is purely
+cosmetic — no collision footprint — and is lit at its own grid position, so a tail
+reaching around a corner into darkness is hidden on its own.
 
 ### Facing
 
-When `facingEnabled` is `true`, the actor's sprites (base, top, side, and equipment) flip horizontally when the actor moves or attacks left vs. right. The `defaultFacing` field defines which direction the tile art was drawn for — when the actor faces the opposite direction, all sprites mirror and the side tile offset flips. Vertical-only movement preserves the current facing. Actors without `facingEnabled` are completely unaffected.
+With `facingEnabled`, all of an actor's sprites (base, top, side, equipment) mirror when it
+moves or attacks left vs. right, and the side offset flips with them. `defaultFacing`
+declares which way the art was drawn. Vertical-only movement preserves current facing.
 
 ## Core Attributes
 
@@ -88,7 +92,7 @@ When `facingEnabled` is `true`, the actor's sprites (base, top, side, and equipm
 | ----------- | ------ | ------------- |
 | `solid` | boolean | Blocks movement. Default `true`. |
 | `visible` | boolean | Rendered on the map. Default `true`. |
-| `flammable` | boolean | Can be set on fire. Default `true`. |
+| `flammable` | boolean | Can be set on fire. Default `false`. |
 | `hostile` | boolean | AI will attack the player. Default `false`. |
 | `sentient` | boolean | This actor has a mind: mind-states (sleep, confusion, stun) can be applied to it, telepathy reveals it, and it watches its footing while wandering (won't walk off a cliff unless confused). Usually supplied by a [type](TYPES.md). Default `false`. |
 | `controlled` | boolean | This is the player character |
@@ -153,80 +157,25 @@ Stats track numeric values that change over time or from damage. Define them in 
 
 ### Stat Dependencies
 
-Stats can depend on other stats or on attributes. These two sub-fields let you create relationships between stats without writing code.
+Two sub-fields relate stats to each other and to attributes without writing code. They
+compose — the player uses both, so health regeneration costs food and hunger scales with
+strength (see the player example at the end of this doc).
 
-#### `restore_from` — Stat Transfer
+**`restore_from`** — a stat's per-turn *gain* is debited from another stat. Health that
+regenerates from `nutrition` stops regenerating when nutrition is empty, and gains only
+what nutrition can afford, in whole points. Drains never trigger a transfer, so a stat
+already full or pushed negative by a cursed item costs nothing.
 
-Makes a stat's per-turn regeneration cost another stat. Each point gained is subtracted from the source stat.
+**`rate_scaled_by`** — multiplies `per_turn` by `attribute / 10`, so 10 is 1×, 15 is 1.5×,
+5 is 0.5×. Works with any attribute, and includes equipment bonuses from `wear_effect`.
+Higher strength means the same healing rate but faster hunger.
 
-```json
-"health": {
-    "max": 50,
-    "per_turn": 1,
-    "restore_from": "nutrition"
-}
-```
+Stat values stay whole numbers. A fractional rate is banked and spent once it reaches a
+whole point — a `-0.8`/turn drain spends `-1` on four turns of every five — so the long-run
+average is exact while every displayed value is an integer.
 
-Every turn that health regenerates, the same amount is deducted from nutrition. If nutrition is empty, health does not regenerate. If nutrition has less than the full amount, health only gains what nutrition can afford — in whole points, so a partial point left in the source is not transferable.
-
-Only per-turn **gains** trigger the transfer. If health is already full or the effective per-turn is negative (e.g., from a cursed item), no nutrition is spent.
-
-#### `rate_scaled_by` — Attribute-Scaled Rate
-
-Scales a stat's `per_turn` rate by an attribute value. The multiplier is `attribute / 10`, so an attribute of 10 means 1x (no change), 15 means 1.5x, and 5 means 0.5x.
-
-```json
-"nutrition": {
-    "max": 1000,
-    "per_turn": -1,
-    "rate_scaled_by": "strength"
-}
-```
-
-With strength 8, the effective drain is `-1 * (8 / 10) = -0.8` per turn. With strength 15, it becomes `-1.5` per turn. Equipment bonuses to the attribute (from `wear_effect`) are included in the calculation.
-
-Works with any attribute — not just the three combat attributes. For custom attributes, the same `value / 10` formula applies.
-
-**Stat values stay whole numbers.** Scaling produces a fractional *rate*, but a fraction is never written into the stat itself — the UI shows stats as integers, and fractions leak into dependent stats through `restore_from`. Instead the leftover fraction is banked per stat and spent once it accumulates to a whole point: a `-0.8`/turn drain spends `-1` on four of every five turns and `0` on the fifth. The long-run average matches the rate exactly (a `-0.8` drain removes exactly 800 over 1000 turns), so scaled rates behave as designed while every displayed value remains an integer.
-
-#### Combining Both
-
-The two fields compose naturally. Rodney's stat block in the dungeon prototype uses both:
-
-```json
-"stats": {
-    "health": {
-        "max": 50,
-        "per_turn": 1,
-        "restore_from": "nutrition"
-    },
-    "nutrition": {
-        "max": 1000,
-        "per_turn": -1,
-        "rate_scaled_by": "strength",
-        "fatal": true,
-        "death_message": "You starve to death!",
-        "warnings": [
-            { "threshold": 0.5, "message": "You are getting hungry." },
-            { "threshold": 0.25, "message": "You are very hungry." },
-            { "threshold": 0.1, "message": "You are starving!" }
-        ],
-        "condition_state": { "state": "starving", "threshold": 0.1 }
-    }
-}
-```
-
-Each turn with strength 8:
-
-1. Health gains 1 (if not full), debiting 1 from nutrition
-2. Nutrition drains at `1 * (8 / 10) = 0.8` from its own `per_turn` — applied as a whole point on 4 of every 5 turns (see above), averaging 0.8
-3. Total nutrition cost: ~1.8 per turn (healing + hunger)
-
-Equipping a Ring of Strength (+2, total 10) increases the drain to `1 * (10 / 10) = 1.0`, making total cost ~2.0 per turn. A stronger character heals at the same rate but gets hungrier faster.
-
-#### Processing Order
-
-Stats are processed in the order they appear in the JSON definition. When using `restore_from`, the source stat's own per-turn change is applied when it is reached in that order. Both orderings produce correct results — the source stat is debited immediately when the dependent stat gains, regardless of whether the source has been processed yet.
+Stats process in JSON order, but `restore_from` debits the source the moment the dependent
+stat gains, so either order gives the same result.
 
 ## States
 
@@ -235,45 +184,101 @@ States are temporary conditions. They are defined in `data/states.json` and can 
 **Most states apply to any actor** — walls, trees, doors and fire included. A tree can burn, a
 pushed boulder can be `stuck` in quicksand.
 
-Two kinds of state are still gated:
+Two kinds of state are gated, and the gate is **derived from the properties the state
+declares** — there is no separate field to set. A wall has no turn to skip and no view to
+scramble, so those states have nothing to act on.
 
-| Kind | Requires | Which states |
-| ---- | -------- | ------------ |
-| **Mind-states** — anything that changes how its holder takes turns | `sentient` or `controlled` | `stunned`, `sleeping`, `paralyzed` (`skip_turn`), `confused` (`random_movement`), `nauseated` (`skip_turn_chance`), `slowed` (`skip_every_other_turn`), `hasted` (`extra_turn`) |
-| **Player-perception states** | `controlled` | anything with `player_only: true` (`starving`, `telepathic`) or `hallucinating: true` |
-
-The gate is derived from the properties a state already declares — there is no separate field
-to set in `states.json`. A wall has no turn to skip and no view to scramble, so those states
-have nothing to act on.
+| Kind | Requires | Identified by |
+| ---- | -------- | ------------- |
+| **Mind-states** — change how the holder takes turns | `sentient` or `controlled` | `skip_turn`, `skip_turn_chance`, `skip_every_other_turn`, `extra_turn`, `random_movement`, `hallucinating`, `player_only` |
+| **Player-perception states** | `controlled` | `player_only` or `hallucinating` |
 
 Call `applyState()` to affect whatever is there, or `applyCreatureState()` where the caller
 specifically means "affect a creature" (a sleep-gas cloud shouldn't put a wall to sleep).
 
-**Built-in states:**
-
-| State | Effect | Immunity Attribute |
-| ------- | -------- | -------------------- |
-| `burning` | Damage per turn, attached fire visual | `fireproof` |
-| `poisoned` | Damage per turn | `poison_immune` |
-| `stunned` | Skips turns | — |
-| `sleeping` | Skips turns, removed on damage | — |
-| `confused` | Random movement | — |
-| `paralyzed` | Skips turns | `gas_immune` |
-| `hasted` | Extra turn per round | — |
-| `slowed` | Skips every other turn | — |
-| `regenerating` | Heals per turn | — |
-| `flying` | Immune to voids, lava, deep water submersion | — |
-| `hallucinating` | Scrambled visuals and tile names | — |
-| `starving` | Randomly causes fainting (sleep 2 turns, 8%) or nausea (12%) each turn. Applied automatically when nutrition drops below 10%, removed when it recovers. | — |
-
 ### State Properties
+
+Every property is optional. A state is just a bag of these, so new conditions are authored
+in `states.json` without engine changes — see that file for the states that ship.
+
+#### Duration and removal
 
 | Property | Type | Description |
 | ---------- | ------ | ------------- |
-| `duration` | number | Turns the state lasts. Use `-1` for infinite duration (converted to `Infinity` at runtime). |
-| `player_only` | boolean | State only applies to `controlled` actors (like `hallucinating`). |
-| `random_apply_states` | array | Each turn, rolls for sub-states in order; first success fires and stops. Each entry: `{ "state", "chance", "duration"?, "message"? }` |
-| `on_remove_message` | string | Message shown when the state is removed. |
+| `duration` | number | Turns the state lasts. `-1` is infinite (`Infinity` at runtime). Re-applying an active state extends it to the longer of the two rather than stacking. |
+| `immunity` | string | Actors with this attribute can't get the state at all. |
+| `remove_on_damage` | boolean | Ends when the holder takes damage (sleep). |
+| `player_only` | boolean | Only applies to `controlled` actors. |
+
+#### Each turn
+
+| Property | Type | Description |
+| ---------- | ------ | ------------- |
+| `per_turn_effect` | object | Stat change every turn — `{ "health": -2 }` for poison. Kills the holder if a fatal stat hits 0. |
+| `random_apply_states` | array | Rolls for sub-states in order; first success fires and stops. Entries: `{ "state", "chance", "duration"?, "message"? }` |
+| `escape_chance` | number | With `stuck`: 0–1 chance per move attempt to break free (default `0.33`). `0` is inescapable. Held by two things at once, the *lowest* chance governs. |
+
+#### How turns are taken
+
+Any of these makes it a mind-state.
+
+| Property | Type | Description |
+| ---------- | ------ | ------------- |
+| `skip_turn` | boolean | Loses every turn, and is helpless — easier to hit, open to backstab. |
+| `skip_every_other_turn` | boolean | Loses alternate turns. |
+| `extra_turn` | boolean | Acts twice per round. |
+| `random_movement` | boolean | Movement direction is randomized. |
+| `skip_turn_chance` | number | 0–1 chance per turn of losing the turn. See below. |
+
+#### Granted traits
+
+While active, the holder behaves as if it had the attribute.
+
+| Property | Type | Description |
+| ---------- | ------ | ------------- |
+| `grants_immunity` | string | Grants an immunity attribute (`"fireproof"`). |
+| `grants_attribute` | string or array | Grants any attribute — `"ignites"` makes the holder set fire to its neighbors. |
+| `on_apply_effect` | object | One-off stat/property change applied on start and reversed on removal (`{ "visionRange": -3 }`). |
+| `flying` | boolean | Hovers above the ground: no falling into voids, no submersion, immune to ground hazards (lava, fire), doesn't trigger traps or collapse platforms, and liquids don't douse it. |
+| `invisible`, `telepathic`, `stuck`, `hallucinating` | boolean | Flags the engine reads directly for that behavior. |
+
+#### Presentation
+
+| Property | Type | Description |
+| ---------- | ------ | ------------- |
+| `name` | string | Display name, used in the sidebar and damage messages. |
+| `tint` | string | Hex color washed over the holder's sprite while active. |
+| `effect_description` | string | Second-person flavor line ("Your stomach churns"). |
+| `attached_actor` | string | Actor spawned and kept on the holder's tile for the duration (`burning` → `fire`). Follows the holder and is removed with the state. |
+| `on_apply_message` / `on_remove_message` | string | Shown on start/end. `[actor_name]` resolves to the holder. |
+| `on_apply_sound` / `on_remove_sound` | string | Played on start/end. |
+
+#### Losing a turn at random
+
+`skip_turn_chance` rolls each turn; on a hit the actor loses the turn and the other
+`skip_turn_*` keys say what that looked like. If several states roll, the highest chance
+wins and supplies the message and spawn.
+
+| Property | Type | Description |
+| ---------- | ------ | ------------- |
+| `skip_turn_message` | string | Resolves `[token]`s plus `[second person\|third person]` alternatives. |
+| `skip_turn_sound` | string | Sound played when the turn is lost. |
+| `skip_turn_spawn` | string | Entity from `entities.json` dropped on the tile. |
+| `skip_turn_effect` | object | Stat change, same shape as `per_turn_effect`. |
+
+Composing those, a bleeding state is entirely data:
+
+```json
+"bleeding": {
+    "skip_turn_chance": 0.2,
+    "skip_turn_message": "[You stagger as your wound reopens|The [actor_name] staggers, bleeding]!",
+    "skip_turn_spawn": "blood",
+    "skip_turn_effect": { "health": -3 }
+}
+```
+
+`skip_turn_message` reads as "You stagger as your wound reopens!" for the player, "The eel
+staggers, bleeding!" for anyone else, and "Something staggers…" if the actor is unseen.
 
 ### Condition-Driven States
 
@@ -292,13 +297,12 @@ Stats can automatically apply and remove states based on thresholds using `condi
 
 ### Innate States
 
-Actors can spawn with permanent states using the `innate_states` array. These states are applied silently at creation with infinite duration — they never expire.
+`innate_states` applies states silently at creation with infinite duration — for actors
+that should always have one, like a bat that is always flying.
 
 ```json
 "innate_states": ["flying"]
 ```
-
-This is useful for actors that should always have a particular state (e.g., a bat that is always flying).
 
 ## Equipment
 
@@ -396,29 +400,19 @@ its `machine_id` — so a lever can open a distant gate, or a pressure plate can
 
 #### Paired Colors
 
-Actors linked by `machine_id` are tinted a shared random color from `colors.json`, and
-that color's **name** is stored on each of them as `lock_color`. The color is how a
-player tells one lever/gate pair from another, so it appears in descriptive text:
+Actors sharing a `machine_id` are tinted a shared random color from `colors.json` and
+store its name as `lock_color` — that color is how a player tells one lever/gate pair from
+another, so `switch_message: "You pull [name]."` reads *"You pull the fire brick lever."*
+Color-locked doors and keys use the same attribute via a separate pairing pass. Any message
+built with `getNameWithArticle()` picks the color up; uncolored actors read as before.
 
-- `switch_message: "You pull [name]."` → *"You pull the fire brick lever."*
-- Bumping the linked gate → *"The fire brick gate is locked."*
-
-Color-locked doors and their keys use the same `lock_color` attribute, assigned by a
-separate pairing pass. Any message built with `getNameWithArticle()` picks the color up
-automatically; uncolored actors read exactly as before (*"You pull the lever."*).
-
-Because generic names are lowercase in the data files, they read as prose mid-sentence.
-Reserve capitalized names for proper nouns, and mark those `proper_named` so no article
-is prepended.
+Keep generic names lowercase so they read as prose mid-sentence; reserve capitals for
+proper nouns and mark those `proper_named` to suppress the article.
 
 ### Splitting & Grabbing
 
-Jelly-type actors split when wounded.
-
-Jelly-type actors split when wounded. To *hold* an actor that stands on a tile (the "engulf"
-hook — e.g. quicksand applying `stuck`), use the `apply_state` attribute together with the
-`apply_state_on_tile` behavior (see Environmental behaviors), not the legacy `grab_state` /
-`grab_sound` fields below, which have **no readers** and are retained only for reference.
+Jelly-type actors split when wounded. To *hold* an actor standing on a tile (quicksand
+applying `stuck`), use `apply_state` with the `apply_state_on_tile` behavior.
 
 | Attribute / Field | Type | Description |
 | ------------------- | ------ | ------------- |
@@ -426,8 +420,6 @@ hook — e.g. quicksand applying `stuck`), use the `apply_state` attribute toget
 | `split_min_health` | number | Health floor below which the actor stops splitting (default `2`). |
 | `split_into` | string | Actor type spawned for each split-off piece. |
 | `split_sound` | string | Sound played on split. |
-| `grab_state` | string | *(Legacy, unused — use `apply_state` + `apply_state_on_tile` instead.)* |
-| `grab_sound` | string | *(Legacy, unused.)* |
 
 ### Traps
 
@@ -489,23 +481,10 @@ Effects only apply if the target has the target attribute. If `health` reaches 0
 ### Examples
 
 ```json
-// Simple melee attack
-"collision_effect": { "health": -5 }
-
-// Damage + poison
-"collision_effect": { "health": -3, "apply_state": "poisoned" }
-
-// State only (no damage) — e.g., a toad that causes hallucinations
-"collision_effect": { "apply_state": "hallucinating" }
-
-// Damage + paralysis
-"collision_effect": { "health": "-{strength}", "apply_state": "paralyzed" }
-
-// Key unlocking a door
-"collision_effect": { "locked": false }
-
-// Strength-scaled damage (weapon)
-"collision_effect": { "health": "-{strength}" }
+"collision_effect": { "health": -3, "apply_state": "poisoned" }   // damage + state
+"collision_effect": { "apply_state": "hallucinating" }            // state only
+"collision_effect": { "health": "-{strength}" }                   // strength-scaled
+"collision_effect": { "locked": false }                           // key unlocking a door
 ```
 
 ### Collision Sound & Description
@@ -519,17 +498,8 @@ Effects only apply if the target has the target attribute. If `health` reaches 0
 
 ## Death
 
-```json
-"death_sound": "ouch",
-"attributes": {
-  "remains": "skull"
-}
-```
-
-| Field | Description |
-|-------|-------------|
-| `death_sound` | Sound played when actor dies |
-| `remains` | Actor type spawned at this position on death |
+`death_sound` plays on death; the `remains` attribute names an actor spawned in place
+(a skull, a corpse). Actors with a `lifetime` expire instead, leaving nothing.
 
 ## Personality (AI)
 
@@ -666,7 +636,7 @@ Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a fu
 ## Actor Examples
 
 ```json
-// Basic enemy — hostile and sentient override defaults; solid/visible/flammable are inherited
+// Basic enemy
 "skeleton": {
   "name": "Skeleton",
   "tileIndexBase": "SKELETON_LEGS",
@@ -687,7 +657,7 @@ Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a fu
   }
 }
 
-// Color-locked door — flammable: false overrides the default
+// Color-locked door — needs a key whose lock_color matches
 "locked_door": {
   "name": "Door",
   "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
@@ -695,16 +665,10 @@ Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a fu
   "tileIndexBase_open": "DOOR_OPEN_BOTTOM",
   "tileIndexTop_open": "DOOR_OPEN_TOP",
   "random_color": true,
-  "attributes": {
-    "flammable": false,
-    "openable": true,
-    "color_locked": true,
-    "open": false,
-    "locked": true
-  }
+  "attributes": { "openable": true, "color_locked": true, "open": false, "locked": true }
 }
 
-// Fire — solid: false and flammable: false override defaults
+// Fire — non-solid, doesn't re-ignite itself, lights its surroundings
 "fire": {
   "name": "Fire",
   "tileIndexBase": "BLANK",
@@ -721,20 +685,6 @@ Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a fu
     "flammable": false,
     "light_source": true,
     "mass_noun": true
-  }
-}
-
-// portal — overrides all three boolean defaults
-"portal": {
-  "name": "portal",
-  "tileIndexBase": "FLOATING_LEGS_ON_WHITE_UPPER_GRADIENT",
-  "tileIndexTop": "OPAQUE_DOOR_TOP",
-  "attributes": {
-    "solid": false,
-    "visible": false,
-    "flammable": false,
-    "portal": true,
-    "hidden": true
   }
 }
 

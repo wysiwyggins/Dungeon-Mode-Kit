@@ -474,6 +474,7 @@
       "sentient": true,
       "aquatic": true,
       "conceals_when_submerged": true,
+      "gas_immune": true,
       "accuracy": 55,
       "defense": 4
     },

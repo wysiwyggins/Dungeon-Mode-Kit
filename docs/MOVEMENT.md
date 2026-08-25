@@ -5,7 +5,7 @@ This is the sequence inside `Actor.tryMove(newX, newY)` (`engine.js:~7148`), the
 
 1. **Hide walk-path highlight** (cosmetic).
 2. **Bounds check** — target off-map → return `{moved:false, actionTaken:false}` (no turn).
-3. **Stuck check** — if the mover `hasStateProperty('stuck')`, roll `escape_chance`: success → `removeState` and continue; failure → return `{moved:false, actionTaken:true}` (wastes the turn).
+3. **Stuck check** — if the mover `hasStateProperty('stuck')`, roll `getEscapeChance()` (the lowest `escape_chance` among the holding states, default `0.33`): success → `removeState` on every `stuck` state and continue; failure → return `{moved:false, actionTaken:true}` (wastes the turn).
 4. **Diagonal-corner block** — Brogue-style: can't cut diagonally past a wall/solid corner → return no-move.
 5. **Solid actor at target?** `getSolidActorAt(newX,newY)` (returns only actors with `solid`). **If a solid actor is there**, enter the *solid-actor branch* and do the first that applies:
    a. Same scutigera chain member → ignore (no-move).
