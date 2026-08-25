@@ -7,11 +7,32 @@ Entity is the base class for all game objects. Every Item and Actor is an Entity
 These fields are set in data files or by the engine at spawn time.
 
 | Field | Default | Description |
-|-------|---------|-------------|
+| ------- | --------- | ------------- |
 | `x`, `y` | required | Map coordinates |
 | `type` | required | Entity type identifier string (matches the key in the data JSON) |
 | `tint` | `#FFFFFF` | Color tint applied to the sprite. White means no tint. |
-| `zIndex` | `1` | Rendering depth. Higher values render on top. |
+| `zIndex` | `1` | Rendering depth. Higher values render on top. Assigned by the renderer, not authored in data — see below. |
+
+### Render order within the entity container
+
+Everything on a tile shares one container, so these values decide what covers what.
+The renderer assigns them; the only thing authored in data is an actor's
+`render_layer`, which picks its band.
+
+| zIndex | What |
+| -------- | ------ |
+| 5 | An entity's `fillColor` rectangle (blood, liquid tracks) |
+| 6 | An entity's tile sprite (rubble, moss, skull, hole) — floor dressing |
+| 6 | An actor with `render_layer: "bottom"` (pressure plate, rope bridge, collapsing floor) |
+| 7 | A dropped item on dry land (`ITEM_Z`) |
+| 10 / 11 | An actor's base / top sprite — the default band |
+| 11 | A dropped item in liquid, so it reads as floating |
+| 12 | Fire attached to a burning actor |
+| 14 | An actor with `render_layer: "top"` |
+
+The ordering that matters: an item sits **above** floor dressing, because something you
+can pick up must never hide under rubble or in a dug-out hole, and **below** actors,
+because a creature standing on an item should be drawn over it.
 
 ## Attributes System
 
@@ -31,7 +52,7 @@ All game logic data is stored in an **attributes Map**. Attributes are set from 
 Three methods on every entity interact with attributes:
 
 | Method | Description |
-|--------|-------------|
+| -------- | ------------- |
 | `getAttribute(key)` | Returns the value, or `undefined` if not set |
 | `setAttribute(key, value)` | Sets a value |
 | `hasAttribute(key)` | Returns `true` only if the attribute exists **and** is truthy |

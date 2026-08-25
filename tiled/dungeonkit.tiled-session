@@ -48,8 +48,8 @@
             "scale": 0.7197,
             "selectedLayer": 6,
             "viewCenter": {
-                "x": 457.1349173266639,
-                "y": 687.7865777407254
+                "x": 800.3334722801168,
+                "y": 600.2501042100877
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/hunger_game/map.tmj": {
@@ -80,8 +80,8 @@
             "scale": 0.5149,
             "selectedLayer": 3,
             "viewCenter": {
-                "x": 838.9978636628471,
-                "y": 685.5700135948728
+                "x": 800.1553699747523,
+                "y": 600.1165274810642
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/mine/map.tmj": {
@@ -132,8 +132,8 @@
             "scale": 0.7027,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 483.84801480005694,
-                "y": 466.7710260424079
+                "x": 799.7723068165647,
+                "y": 600.5407713106588
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/underworld/map.tmj": {

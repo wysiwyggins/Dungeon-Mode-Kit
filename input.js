@@ -530,6 +530,12 @@ class InputManager {
             return;
         }
 
+        // Check if in dig direction mode
+        if (this.engine.interfaceManager?.handleDigDirectionClick()) {
+            event.preventDefault();
+            return;
+        }
+
         // Check if any dialog wants to handle this click
         if (this.engine.interfaceManager?.handleDialogClick(this.hoveredTile.x, this.hoveredTile.y)) {
             return;
@@ -718,7 +724,7 @@ class InputManager {
 
         // Don't show path if UI is open
         const ui = this.engine.interfaceManager;
-        if (ui?.inventoryMode || ui?.confirmDialog || ui?.throwMenuMode || ui?.equipmentMenuMode || ui?.identifyMode || ui?.spikeDirectionMode) {
+        if (ui?.inventoryMode || ui?.confirmDialog || ui?.throwMenuMode || ui?.equipmentMenuMode || ui?.identifyMode || ui?.spikeDirectionMode || ui?.digDirectionMode) {
             renderer.hideWalkPath();
             return;
         }
@@ -1823,6 +1829,12 @@ class InputManager {
 
         // Check if spike direction mode wants to handle this key
         if (this.engine.interfaceManager?.handleSpikeDirectionKey(event.key)) {
+            event.preventDefault();
+            return;
+        }
+
+        // Check if dig direction mode wants to handle this key
+        if (this.engine.interfaceManager?.handleDigDirectionKey(event.key)) {
             event.preventDefault();
             return;
         }

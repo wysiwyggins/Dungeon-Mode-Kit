@@ -216,6 +216,13 @@ const CARDINAL_DIRS = [
     {dx: -1, dy: 0}, {dx: 1, dy: 0}
 ];
 
+// Where a dropped item sits in the entity container. Above floor dressing — an entity
+// with a tile renders at 6 (see createEntitySprite), and an item you can pick up must
+// never hide under rubble, moss or a dug-out hole — but below actors at 10/11, since an
+// item should never cover a creature standing on it. Items in liquid override this to
+// float at 11.
+const ITEM_Z = 7;
+
 const ALL_DIRS = [
     {dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1},
     {dx: -1, dy: 0},                   {dx: 1, dy: 0},
@@ -5421,6 +5428,60 @@ class Actor extends Entity {
     }
 
     /**
+     * Roll this actor's `drops` table: a weighted list of alternatives, exactly one
+     * of which wins. An entry with no `item` is the "nothing" outcome, so a drop
+     * chance needs no second attribute. `item` resolves as an item id, an item TYPE
+     * ("weapon" -> a random weapon, via getItemData), or an entity id ("skull") —
+     * which is what lets one table mix buried treasure with a bare skull.
+     *
+     * Independent of `lode`, which stays the single-item percentage drop it was.
+     * @returns {boolean} True if something was spawned
+     */
+    _rollDrops() {
+        const table = this.getAttribute('drops');
+        if (!Array.isArray(table) || table.length === 0) return false;
+
+        const weightOf = (row) => (typeof row?.weight === 'number' ? row.weight : 1);
+        const total = table.reduce((sum, row) => sum + Math.max(0, weightOf(row)), 0);
+        if (total <= 0) return false;
+
+        let roll = ROT.RNG.getUniform() * total;
+        let chosen = null;
+        for (const row of table) {
+            roll -= Math.max(0, weightOf(row));
+            if (roll < 0) { chosen = row; break; }
+        }
+        if (!chosen?.item) return false; // the "nothing" outcome
+
+        // Items first (ids and TYPE names both resolve through getItemData), then
+        // entities. getItemData is checked before spawnItem because spawnItem warns
+        // on a miss, which would be noise for a legitimate entity name.
+        const em = this.engine.entityManager;
+        const isItem = !!this.engine.currentPrototype?.getItemData?.(chosen.item);
+        const spawned = isItem
+            ? em.spawnItem(chosen.item, this.x, this.y)
+            : em.spawnEntity(chosen.item, this.x, this.y);
+
+        if (!spawned) {
+            console.warn(`${this.name}: drops entry '${chosen.item}' is neither an item nor an entity`);
+            return false;
+        }
+
+        // Items get an identification-aware article; entities just use their name.
+        const template = this.getAttribute('drop_message');
+        if (template && this.engine.inputManager) {
+            const named = isItem
+                ? this.engine.inputManager.getEntityNameWithArticle(spawned, { capitalize: true })
+                : spawned.name;
+            this.engine.inputManager.showMessage(
+                resolveTemplate(template, this, { providers: { name: () => named } }),
+                { x: this.x, y: this.y }
+            );
+        }
+        return true;
+    }
+
+    /**
      * Kill the actor
      * @param {boolean} spawnRemains - Whether to spawn remains entity (default: true)
      */
@@ -5488,6 +5549,9 @@ class Actor extends Entity {
                 this.engine.entityManager.spawnEntity(remains, this.x, this.y);
             }
 
+            // Weighted alternatives table (see _rollDrops), independent of `lode`.
+            this._rollDrops();
+
             // Check for lode drop (e.g., rock_wall drops gold_nugget)
             const lode = this.getAttribute('lode');
             const lodeChance = this.getAttribute('lode_chance') || 0;
@@ -5499,7 +5563,13 @@ class Actor extends Entity {
                         console.log(`${this.name} dropped ${droppedItem.name}!`);
                         if (this.engine.inputManager) {
                             const named = this.engine.inputManager.getEntityNameWithArticle(droppedItem, { capitalize: true });
-                            this.engine.inputManager.showMessage(`${named} falls from the rubble!`, { x: this.x, y: this.y });
+                            // Shares `drop_message` with the drops table, so an actor
+                            // narrates its own loot once. Default keeps the rubble line.
+                            const template = this.getAttribute('drop_message') || '[name] falls from the rubble!';
+                            this.engine.inputManager.showMessage(
+                                resolveTemplate(template, this, { providers: { name: () => named } }),
+                                { x: this.x, y: this.y }
+                            );
                         }
                     }
                 }
@@ -7940,6 +8010,11 @@ class Actor extends Entity {
                 return true;
             }
 
+            case 'dig': {
+                this.engine.interfaceManager?.enterDigDirectionMode(item, this);
+                return true;
+            }
+
             case 'darkness_field': {
                 const radius = item?.getAttribute('effect_radius') ?? 5;
                 let extinguished = false;
@@ -8267,9 +8342,14 @@ class Actor extends Entity {
      * Damage comes from equipped weapon OR actor's collision_effect (not both)
      * Utility effects (like keys unlocking doors) always apply
      * @param {Actor} target - The actor being collided with
+     * @param {Item} [withItem] - Use this item as the damage source instead of whatever
+     *   is equipped. For a tool wielded straight from the pack — the Dig verb — so its
+     *   `mining_power`, `dig_chance` and `condition` are the ones that count. Equipping
+     *   stays the requirement for bumping and attacking; this is the deliberate,
+     *   single-target use of an item you're only holding.
      * @returns {{effectApplied: boolean, targetPassable: boolean, targetKilled: boolean, attackAttempted: boolean}}
      */
-    applyCollisionEffects(target) {
+    applyCollisionEffects(target, withItem = null) {
         // Skip if target is already dead
         if (target.isDead) {
             return { effectApplied: false, targetPassable: true, targetKilled: false, attackAttempted: false };
@@ -8279,8 +8359,9 @@ class Actor extends Entity {
         let targetPassable = false;
         let targetShouldDie = false;
 
-        // Determine the damage source: equipped weapon takes priority, then actor's own effect
-        const equippedWeapon = this.getEquippedWeapon();
+        // Determine the damage source: an explicitly-wielded item wins, then the
+        // equipped weapon, then the actor's own effect.
+        const equippedWeapon = withItem || this.getEquippedWeapon();
 
         // Skip combat interaction with breakable objects (walls) unless we have a mining tool
         // These objects have no health stat and can only be damaged by mining
@@ -8593,12 +8674,25 @@ class Actor extends Entity {
                     // = always bites, preserving the old deterministic behaviour for tools
                     // that don't opt in), so designers can make a crude tool unreliable
                     // without the engine knowing anything about mattocks specifically.
-                    const digChance = source.item.getAttribute('dig_chance') ?? 1;
+                    //
+                    // The target may override it: how reliably a swing bites is as much
+                    // about what you're digging as what you're digging with. Rock turns a
+                    // blade aside; loose earth doesn't. Target-authored `dig_chance` wins,
+                    // so soft ground can be dependable even with a crude tool — the same
+                    // target-over-tool precedence `dig_fail_message` uses just below.
+                    const digChance = target.getAttribute('dig_chance')
+                        ?? source.item.getAttribute('dig_chance')
+                        ?? 1;
                     if (digChance < 1 && ROT.RNG.getUniform() >= digChance) {
                         sourceApplied = true;
                         if (source.sound) this.engine.playSound(source.sound);
                         if (this.isPlayerControlled()) {
-                            const miss = source.item.getAttribute('dig_fail_message')
+                            // Target first, then tool: "glances off the stone" reads
+                            // wrong when the target is soil, and only the target knows
+                            // what it's made of. Mirrors how collision_description
+                            // resolves against the target.
+                            const miss = target.getAttribute('dig_fail_message')
+                                || source.item.getAttribute('dig_fail_message')
                                 || `Your ${source.item.getDisplayName?.() ?? source.item.name} glances off ${target.getNameWithArticle()}.`;
                             this.engine.inputManager?.showMessage(miss);
                         }
@@ -8624,20 +8718,39 @@ class Actor extends Entity {
                         this.engine.playSound(source.sound);
                     }
 
-                    // Show mining progress message
+                    // Show mining progress message. `mine_messages` lets a target
+                    // narrate its own excavation — a grave turns over soil where a wall
+                    // cracks and crumbles — keyed by the progress band just reached
+                    // (0/25/50/75/100, string keys since it comes from JSON). Any band
+                    // the data omits falls back to the stone wording, so a target that
+                    // declares nothing reads exactly as it always did.
                     if (this.isPlayerControlled() && this.engine.inputManager) {
-                        const progress = Math.min(100, Math.floor((target._miningDamage / breakThreshold) * 100));
-                        if (target._miningDamage >= breakThreshold) {
-                            this.engine.inputManager.showMessage(`The ${target.name} crumbles!`);
-                        } else if (progress >= 75) {
-                            this.engine.inputManager.showMessage(`The ${target.name} is nearly broken.`);
-                        } else if (progress >= 50) {
-                            this.engine.inputManager.showMessage(`Cracks spread through the ${target.name}.`);
-                        } else if (progress >= 25) {
-                            this.engine.inputManager.showMessage(`The ${target.name} chips away.`);
-                        } else {
-                            this.engine.inputManager.showMessage(`You strike the ${target.name}.`);
-                        }
+                        const broke = target._miningDamage >= breakThreshold;
+                        const progress = broke
+                            ? 100
+                            : Math.min(100, Math.floor((target._miningDamage / breakThreshold) * 100));
+                        const band = broke ? 100
+                            : progress >= 75 ? 75
+                            : progress >= 50 ? 50
+                            : progress >= 25 ? 25
+                            : 0;
+                        const fallbacks = {
+                            100: `The ${target.name} crumbles!`,
+                            75: `The ${target.name} is nearly broken.`,
+                            50: `Cracks spread through the ${target.name}.`,
+                            25: `The ${target.name} chips away.`,
+                            0: `You strike the ${target.name}.`
+                        };
+                        const authored = target.getAttribute('mine_messages');
+                        const template = authored?.[band] ?? authored?.[String(band)] ?? fallbacks[band];
+                        this.engine.inputManager.showMessage(
+                            resolveTemplate(template, target, {
+                                providers: {
+                                    name: () => target.getNameWithArticle(),
+                                    tool_name: () => source.item.getDisplayName?.() ?? source.item.name
+                                }
+                            })
+                        );
                     }
 
                     if (target._miningDamage >= breakThreshold) {
@@ -10935,27 +11048,47 @@ class EntityManager {
         };
 
         const place = (row, tile) => {
-            const entity = this.spawnEntity(row.entity, tile.x, tile.y);
-            if (entity) occupied.add(`${tile.x},${tile.y}`);
-            return entity;
+            const spawned = row.actor
+                ? this.spawnActor(row.actor, tile.x, tile.y)
+                : this.spawnEntity(row.entity, tile.x, tile.y);
+            if (spawned) occupied.add(`${tile.x},${tile.y}`);
+            return spawned;
         };
 
         for (const row of rows) {
-            if (!row || !row.entity) continue;
+            // A row scatters an entity (inert dressing) or an actor (dressing that
+            // does something — a grave, a cairn). `id` stands in for whichever it is
+            // so the warnings below read the same either way.
+            const id = row?.entity || row?.actor;
+            if (!id) continue;
 
-            const entityData = this.engine.globalEntities?.[row.entity];
-            if (!entityData) {
-                console.warn(`decorations: entity "${row.entity}" not in entities.json; skipping row`);
-                continue;
-            }
-            // Without a tileIndex or a fillColor there is nothing to draw.
-            if (!entityData.tileIndex && !entityData.fillColor) {
-                console.warn(`decorations: entity "${row.entity}" has no tileIndex or fillColor; it will be invisible`);
+            if (row.actor) {
+                const actorData = this.engine.currentPrototype?.getActorData?.(row.actor);
+                if (!actorData) {
+                    console.warn(`decorations: actor "${row.actor}" not in actors.json; skipping row`);
+                    continue;
+                }
+                // Scattered dressing must never wall off a corridor, and solid actors
+                // are placed deliberately (by the generator or by hand in Tiled).
+                if (actorData.attributes?.solid !== false) {
+                    console.warn(`decorations: actor "${row.actor}" is solid; decorations must be walkable. Skipping row`);
+                    continue;
+                }
+            } else {
+                const entityData = this.engine.globalEntities?.[row.entity];
+                if (!entityData) {
+                    console.warn(`decorations: entity "${row.entity}" not in entities.json; skipping row`);
+                    continue;
+                }
+                // Without a tileIndex or a fillColor there is nothing to draw.
+                if (!entityData.tileIndex && !entityData.fillColor) {
+                    console.warn(`decorations: entity "${row.entity}" has no tileIndex or fillColor; it will be invisible`);
+                }
             }
 
             let pattern = row.pattern ?? 'scatter';
             if (!DECORATION_PATTERN_NAMES.has(pattern)) {
-                console.warn(`decorations: unknown pattern "${pattern}" for "${row.entity}"; using scatter`);
+                console.warn(`decorations: unknown pattern "${pattern}" for "${id}"; using scatter`);
                 pattern = 'scatter';
             }
 
@@ -10981,7 +11114,7 @@ class EntityManager {
             const candidates = pool.filter(tile =>
                 !occupied.has(`${tile.x},${tile.y}`) && patternAccepts(pattern, tile.x, tile.y));
             if (candidates.length === 0) {
-                console.warn(`decorations: no "${pattern}" tiles available for "${row.entity}"`);
+                console.warn(`decorations: no "${pattern}" tiles available for "${id}"`);
                 continue;
             }
 
@@ -11029,7 +11162,7 @@ class EntityManager {
                 }
             }
 
-            console.log(`decorations: Placed ${placed} "${row.entity}" (${pattern}, ${candidates.length} candidate tiles)`);
+            console.log(`decorations: Placed ${placed} "${id}" (${pattern}, ${candidates.length} candidate tiles)`);
         }
     }
 
@@ -13955,14 +14088,15 @@ class RenderSystem {
      */
     getItemZIndex(item) {
         const em = this.engine.entityManager;
-        if (!em) return 5;
+        if (!em) return ITEM_Z;
 
         // Check if there's a liquid actor at this position
         const liquidActor = em.getActorsAt(item.x, item.y)
             .find(a => a.hasAttribute('liquid'));
 
-        // Items in liquid float above actors (zIndex 11), otherwise below (zIndex 5)
-        return liquidActor ? 11 : 5;
+        // Items in liquid float above actors (zIndex 11), otherwise between the floor
+        // dressing and the actors standing on it.
+        return liquidActor ? 11 : ITEM_Z;
     }
 
     /**

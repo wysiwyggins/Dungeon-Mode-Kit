@@ -1,7 +1,7 @@
 
 ## Order of operations: an actor attempting to move into a tile
 
-This is the sequence inside `Actor.tryMove(newX, newY)` (`engine.js:~7148`), the single entry point for movement and bump-attacks (`moveBy` → `tryMove`). Steps run top to bottom; the **first** one that returns ends the turn's move attempt. `solid` here means the actor's runtime `solid` attribute (defaults to **true** unless the data sets `solid: false`).
+This is the sequence inside `Actor.tryMove(newX, newY)` (`engine.js:~9055`), the single entry point for movement and bump-attacks (`moveBy` → `tryMove`). Steps run top to bottom; the **first** one that returns ends the turn's move attempt. `solid` here means the actor's runtime `solid` attribute (defaults to **true** unless the data sets `solid: false`).
 
 1. **Hide walk-path highlight** (cosmetic).
 2. **Bounds check** — target off-map → return `{moved:false, actionTaken:false}` (no turn).
@@ -18,6 +18,12 @@ This is the sequence inside `Actor.tryMove(newX, newY)` (`engine.js:~7148`), the
    h. **`collision_description`** (and no `collision_effect`) → show flavor text → return.
    i. Otherwise → "blocks your way" → return `{moved:false, actionTaken: attackAttempted}`.
    **The solid branch never falls through to movement** — bumping a solid actor is an action in itself.
+   Note this is also why bumping only ever reaches **solid** actors: `getSolidActorAt` is the only
+   lookup here. A non-solid `breakable` (a grave you stand on) can't be dug this way; it's dug with a
+   mining tool's **Dig** verb, which calls `applyCollisionEffects` directly — the same thing
+   `mine_nearby_wall` (`behaviors.js:767`) does for AI miners, bypassing `tryMove` entirely. That verb
+   also accepts solid walls, where it does exactly what one bump would, and it passes its own tool to
+   `applyCollisionEffects` so a mattock still in the pack digs as well as an equipped one.
 6. **Floor/void check** — no floor/platform under target and not flying → step in and `fall()` to the next level → return `{moved:true}`.
 7. **Lunge attack style** (for reach weapons into empty tiles) → may handle and return.
 8. **Commit the move** — record last position, liquid-track tint, set facing, **`this.x=newX; this.y=newY`**, update sprite.

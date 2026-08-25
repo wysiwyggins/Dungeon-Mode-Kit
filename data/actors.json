@@ -1013,6 +1013,34 @@
       "breakable": false
     }
   },
+  "grave": {
+    "name": "grave",
+    "description": "A shallow grave. A mattock would open it.",
+    "tileIndexBase": "OPAQUE_DOTTED_LIGHT_SHADE",
+    "tint": "#6B4A2F",
+    "attributes": {
+      "solid": false,
+      "visible": true,
+      "breakable": true,
+      "render_layer": "bottom",
+      "break_threshold": 35,
+      "dig_chance": 1,
+      "remains": "hole",
+      "drops": [
+        { "item": "skull", "weight": 50 },
+        { "item": "gold_nugget", "weight": 20 },
+        { "item": "weapon", "weight": 10 },
+        { "item": "ring", "weight": 5 },
+        { "weight": 15 }
+      ],
+      "drop_message": "[name] comes free of the loose earth.",
+      "mine_messages": {
+        "100": "You break open the grave with your [tool_name]."
+      },
+      "walk_description": "A low mound of turned earth. Something is buried here.",
+      "death_sound": "plunk3"
+    }
+  },
   "rock_wall": {
     "type": "terrain",
     "name": "rock",

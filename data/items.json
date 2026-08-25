@@ -336,6 +336,8 @@
       "enchantable": true,
       "mining": true,
       "mining_power": 35,
+      "use_verb": "Dig",
+      "use_effect": "dig",
       "dig_chance": 0.5,
       "dig_fail_message": "Your mattock glances off the stone.",
       "degrade_per_use": 1,

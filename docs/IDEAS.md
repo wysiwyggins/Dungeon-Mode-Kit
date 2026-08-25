@@ -1,20 +1,20 @@
 
 ## Bugs
 
-- it's easy to not realize there are more sections overflowed to the right in the actor editor, need a ui convention for showing designers they can scroll right
-- adding an eel to the sewage in the test prototype revealed that we don't get the hidden actor name from a submerged actor as we would an invisible one, and it would be nice if a submerged actor's name and tiles were only revealed when the player is submerged too. Currently the name is never hidden, the tiles are always hidden.
-- I just picked up a key and it was consumed by passing through an unlocked generic dooor, something I thought I'd already fixed. unlocked doors should never consume a key.
-
 ## Tweaks
 
 - food should be an item category option in the random items section of the biome editor
-- item names and descriptions should be able to use template variables like [color] too, not just unidentified_description. How does the lever actor get color words in its name when paired? I would have expected to see that in the actor data, not just hardcoded, this would show a reusable precedent for templated strings in data.
-- should the "map generator" section in prototype defaults be a biomes/single generator/authored map radio button selection? We can eliminate some of this with the single level/multi level toggle. A single level is either a single generator or an authored map, hiding biome stuff. A multi level is either a single generator or biomes with level overrides for authored maps. the current "No procedural generator — the map comes from a hand-authored .tmj. Placed features below still apply." message when a single generator default isn't enabled is misleading, and when the section is disabled we don't expect to be able to set placed features, despite the message saying otherwise.
+- In the prototype-editor A single level is either a single generator or an authored map, hiding biome stuff. A multi level is either a single generator or biomes with level overrides for authored maps. the current "No procedural generator — the map comes from a hand-authored .tmj. Placed features below still apply." message when a single generator default isn't enabled is misleading, and when the section is disabled we don't expect to be able to set placed features, despite the message saying otherwise. Should the "map generator" section in prototype-editor defaults be a biomes/single generator/authored map radio button selection? We can eliminate some of this with the single level/multi level toggle.
 - in prototype-editor we should be able to turn off biomes on a multi-level prototype and just use defaults- change 'floor plan' section name to 'biome plan' or something, add a top toggle to disable it to use defaults only
+- it's easy to not realize there are more sections overflowed to the right in actor-editor.html, need a ui convention for showing designers they can scroll right
 
 ---
 
 ## Feature ideas
+
+## Search
+
+- typical brogue style searching. We don't have hidden doors yet (just pushable walls) but we have traps, and can make hidden doors and levers too for this feature. Big feature
 
 ## other actors need to be able to use stairs
 
@@ -43,7 +43,8 @@
 
 ### More digging
 
-- if the mattock could also be used to dig the floor instead of just the walls, we could dig up graves etc. I'm making a "SHALLOW_GRAVE" tile for a dug-up floor tile. On specific entities (a grave marker) this could have a chance of producing loot that it wouldn't on a regular floor tile.
+- ~~if the mattock could also be used to dig the floor instead of just the walls, we could dig up graves etc.~~ **Done** as the `grave` actor: a walkable `breakable` dug with the mattock's `Dig` inventory verb (a 1-tile picker), leaving the existing `hole` entity behind and rolling a weighted `drops` table for a skull or treasure. The verb is generic over any non-solid `breakable`, so a cairn or a compost heap needs data only.
+- What's left is digging **bare floor** — no actor there to target. The `Dig` verb is the place for it: when the picker finds no `breakable`, offer the floor itself and spawn a `hole`. That gives the "dig anywhere, but graves pay better" shape the original note wanted, with graves already paying.
 
 ### corner blocking as an actor attribute
 
@@ -102,7 +103,7 @@
 ### Actors & Creatures
 
 - [x] Auto-explore — pathfind through safe explored areas, stop on encounter [B]
-- [ ] Searching action to discover traps and eventually hidden doors
+
 - [x] Aquatic creatures — actors restricted to water tiles, can't be pushed onto land
 - [ ] Burrowing creatures — can move through wall tiles, leave tunnels behind
 - [x] Splitting creatures — on death, spawn smaller versions (slimes, oozes) [B]

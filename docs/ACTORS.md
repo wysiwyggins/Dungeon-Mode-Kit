@@ -101,7 +101,7 @@ declares which way the art was drawn. Vertical-only movement preserves current f
 | `dark_vision` | boolean | Actor can see and act normally without light (bypasses darkness AI penalties) |
 | `opaque` | boolean | Actor blocks line of sight for vision checks. Default `false` for most actors. |
 | `inventory` | number | Max items this actor can carry |
-| `remains` | string | Actor type spawned at this actor's position on death |
+| `remains` | string | Entity (from `entities.json`) spawned at this actor's position on death |
 | `mass_noun` | boolean | Suppress "the" article — use for clouds, water, etc. |
 | `proper_named` | boolean | Suppress "the" article — use for named characters |
 | `pack` | boolean | Spawn clustered together (within Manhattan distance 2) instead of scattered |
@@ -344,11 +344,36 @@ Items listed in `default_items` are added to the actor's inventory on spawn. Wea
 | `push_sound` | string | Sound played when this actor is pushed. Overrides the default `push1`. |
 | `conductive` | boolean | Bolt attacks pass through this actor to hit targets behind. Default `true` for most actors; set `false` on walls/pillars to block bolts. |
 | `breakable` | boolean | Can be destroyed by mining |
-| `break_threshold` | number | Mining damage required to break |
+| `break_threshold` | number | Mining damage required to break. Default `100`. |
 | `lode` | string | Item dropped when mined |
 | `lode_chance` | number | Percent chance (0–100) to drop lode item |
+| `mine_messages` | object | Per-target excavation messages, keyed by the progress band reached: `"25"`, `"50"`, `"75"`, `"100"` (and `"0"` for the first swing when the tool is weak enough to land under 25%). Bands you omit keep the default stone wording, so a wall that declares nothing reads as it always did. Tokens: `[name]`, `[tool_name]`. |
+| `dig_chance` | number | Chance a swing bites, `0`–`1`. Overrides the tool's own `dig_chance` — how reliably a swing lands is as much about what you're digging as what you're digging with, and rock turns a blade aside where loose earth doesn't. Set `1` for ground that always yields (a multi-swing dig where every turn visibly advances), or `0` for something no tool can open. Absent, the tool's value applies. |
+| `dig_fail_message` | string | Shown when a swing glances off. Authored here it overrides the tool's own message — only the target knows whether it is stone or soil. Pointless alongside `dig_chance: 1`, which never glances. |
 | `paint_tile` | string | Named tile that stands for this actor when painting a Tiled map — drawing that tile spawns this actor. Values must be unique across actors, or they collide. Also marks an actor as a "wall the engine may swap", e.g. for a stairway's flanking mounted torches. |
 | `ornament` | boolean | Marks a solid as deliberately-placed architecture (a colonnade column, a window grille) rather than part of a wall run. The engine won't repurpose these — a stairway's flanking torches skip them instead of eating the structure a generator just built. Default `false`. |
+
+#### Diggable, walkable actors
+
+A `breakable` actor is normally a wall: you mine it by walking into it, because every
+bump interaction is reached through the solid actor at the target tile. Combine
+`breakable: true` with `solid: false` and you get something you stand *on* and dig —
+a grave, a cairn, a compost heap — which no bump can reach. Those are dug with a
+mining tool's **Dig** verb from the inventory, which targets one tile in any
+direction including your own, and works whether or not the tool is equipped.
+
+Set `break_threshold` at or below the tool's `mining_power` for a one-action dig; leave
+it higher for a multi-swing job. A grave uses `35` (one mattock swing) where a rock wall
+takes the default `100` (three).
+
+Two things to know when authoring one:
+
+- Put its loot in `drops`, **not** `default_items`. Walking onto a non-solid actor
+  transfers its whole inventory to you automatically, so an inventory would hand the
+  player the contents without any digging.
+- `render_layer: "bottom"` puts it in the floor plane and tints it like floor, but
+  hides `tileIndexTop`/`tileIndexSide` — a bottom-layer actor draws `tileIndexBase`
+  only.
 
 ### Level Transitions
 
@@ -498,8 +523,33 @@ Effects only apply if the target has the target attribute. If `health` reaches 0
 
 ## Death
 
-`death_sound` plays on death; the `remains` attribute names an actor spawned in place
+`death_sound` plays on death; the `remains` attribute names an entity spawned in place
 (a skull, a corpse). Actors with a `lifetime` expire instead, leaving nothing.
+
+Three ways to leave loot, which compose:
+
+| | Fires | Yields |
+| ----------- | ------ | ------------- |
+| `remains` | always | one entity |
+| `lode` + `lode_chance` | a percentage roll | one item |
+| `drops` | always, one winner | one item **or** entity, chosen by weight |
+
+```json
+"drops": [
+  { "item": "skull", "weight": 50 },
+  { "item": "weapon", "weight": 10 },
+  { "weight": 40 }
+]
+```
+
+`drops` is a weighted list of alternatives — exactly one entry wins. Weights are
+relative, so they needn't total 100. An entry with **no `item`** is the "nothing"
+outcome, which is how a drop chance is expressed without a second attribute.
+
+`item` resolves in order as an item id, an item **type** (`"weapon"` rolls a random
+weapon), then an entity id (`"skull"`) — so one table can mix buried treasure with
+bare bones. `drop_message` narrates the result, with `[name]` supplying the item's
+article-aware name; it also overrides the default wording for a `lode` drop.
 
 ## Personality (AI)
 

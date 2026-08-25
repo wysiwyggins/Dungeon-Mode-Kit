@@ -415,6 +415,28 @@
                  "width":40,
                  "x":1080,
                  "y":1110
+                }, 
+                {
+                 "height":30,
+                 "id":125,
+                 "name":"",
+                 "rotation":0,
+                 "type":"grave",
+                 "visible":true,
+                 "width":40,
+                 "x":640,
+                 "y":690
+                }, 
+                {
+                 "height":30,
+                 "id":126,
+                 "name":"",
+                 "rotation":0,
+                 "type":"grave",
+                 "visible":true,
+                 "width":40,
+                 "x":720,
+                 "y":690
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -490,7 +512,7 @@
          "y":0
         }],
  "nextlayerid":9,
- "nextobjectid":125,
+ "nextobjectid":127,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",

@@ -65,7 +65,7 @@ prototype's own top-level defaults.
 | `items` | array | Depth-ranged item catalog. Rows use `type` (an **`item_catalog` category**, not an item id) plus `min`/`max`/`freq`. |
 | `item_budget` | object | Same budget shape as `actor_budget`. |
 | `traps`, `fungus` | object | Hazard count ramp: `{ min_depth, intercept, slope, max }`. `fungus` also takes `tall_chance` (0–1). |
-| `decorations` | array | Cosmetic entity scatter. Rows: `{ entity, pattern, density, min, max, freq, region? }`. See [Decorations](#decorations). |
+| `decorations` | array | Floor dressing scatter. Rows: `{ entity \| actor, pattern, density, min, max, freq, region? }`. See [Decorations](#decorations). |
 | `map_generator` | object | `{ type, options }`, applied to every floor in the biome. |
 | `mechanics` | object | Flags merged over the prototype's (see Precedence). |
 
@@ -113,23 +113,29 @@ result is a small band around the computed count so consecutive floors aren't id
 
 ### Decorations
 
-Purely cosmetic entities scattered across the floor at generation — moss beside water,
-rubble against the walls, a skull in an empty hall. They come from
-[`data/entities.json`](../data/entities.json), never block movement, and print their
-`walk_description` when you step on them.
+Floor dressing scattered at generation — moss beside water, rubble against the walls,
+a skull in an empty hall. It never blocks movement, and prints its `walk_description`
+when you step on it.
+
+A row names either an `entity` (inert, from [`data/entities.json`](../data/entities.json))
+or an `actor` (from [`data/actors.json`](../data/actors.json)) when the dressing needs to
+*do* something — a grave you can dig up. Actor rows must be `solid: false`, since
+scattered dressing may never wall off a corridor; a solid one is skipped with a warning.
 
 ```json
 "decorations": [
   { "entity": "moss",     "pattern": "near_liquid",  "density": 0.25, "min": 1, "max": 8,  "freq": 60 },
   { "entity": "rubble",   "pattern": "wall_hugging", "density": 0.08, "min": 0, "max": 20 },
   { "entity": "sediment", "pattern": "clusters",     "density": 0.05, "min": 0, "max": 12, "freq": 40 },
-  { "entity": "skull",    "pattern": "room_floor",   "density": 0.01, "min": 0, "max": 3,  "freq": 25 }
+  { "entity": "skull",    "pattern": "room_floor",   "density": 0.01, "min": 0, "max": 3,  "freq": 25 },
+  { "actor":  "grave",    "pattern": "room_floor",   "density": 0.004, "min": 0, "max": 2, "freq": 35 }
 ]
 ```
 
 | Field | Default | Meaning |
 |-------|---------|---------|
-| `entity` | **required** | A key in `data/entities.json`. Unknown → warning, row skipped. |
+| `entity` | one of these | A key in `data/entities.json`. Unknown → warning, row skipped. |
+| `actor` | one of these | A key in `data/actors.json`, and must be `solid: false`. Unknown or solid → warning, row skipped. |
 | `pattern` | `"scatter"` | Where it may land — see the table below. |
 | `density` | `0.1` | Fraction of the tiles *matching the pattern* to fill, before clamping. |
 | `min` | `0` | Hard floor on the **count**. |

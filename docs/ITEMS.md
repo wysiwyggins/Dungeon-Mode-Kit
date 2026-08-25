@@ -141,6 +141,22 @@ If `health` drops to 0 or below, the target dies. See [COMBAT.md](COMBAT.md). Ef
 | `enchantable` | Item can receive enchantment bonuses (from scrolls or on spawn) |
 | `enchant_range` | `[min, max]` — random enchantment rolled on spawn. E.g. `[-1, 3]`. |
 
+### Mining Tools
+
+| Attribute | Effect |
+|-----------|--------|
+| `mining: true` | Lets the item damage `breakable` actors. Without it, walking into a mineable wall just bumps. |
+| `mining_power` | Progress added per successful swing (default `25`). The target breaks once accumulated progress reaches its `break_threshold`, default `100`. |
+| `dig_chance` | Chance a swing bites, `0`–`1` (default `1` = always). A glancing swing costs the turn but causes no progress and no wear. A target may override this — soft ground yields to a crude tool that would skitter off rock. |
+| `dig_fail_message` | Shown on a glancing swing. A target may override this — see `dig_fail_message` in [ACTORS.md](ACTORS.md#physics), since only the target knows if it's stone or soil. |
+| `degrade_per_use` | `condition` spent per *productive* swing. Needs a `condition` stat, or the tool never wears out. |
+
+A mining tool digs walls by being **equipped** and walking into them. Give it
+`use_verb: "Dig"` and `use_effect: "dig"` as well, and it also offers a Dig action in
+the inventory — the only way to reach a walkable `breakable` such as a grave, and usable
+without equipping the tool at all. Equipping is still what lets you bump walls as you
+walk and swing the tool at enemies; the Dig verb is the deliberate one-target use.
+
 ---
 
 ## Use Effects (UI-Triggered)
@@ -182,6 +198,7 @@ Pass an object to modify stats, attributes, or apply states directly:
 | `"darkness_field"` | Extinguishes all light-source items within radius 5 |
 | `"enchant_item"` | Opens item picker; player selects an `enchantable` item to increase its enchantment by +1 |
 | `"remove_curse"` | Clears `cursed` attribute from all currently equipped items |
+| `"dig"` | Prompts for a tile within one step (including your own) and digs any `breakable` actor there — a grave underfoot, or a wall beside you. Works with the tool **in the pack**: the item you dug with supplies the `mining_power`, `dig_chance` and `condition`, so it needn't be equipped. Digging a wall this way is the same single swing as bumping it while equipped. Requires `mining: true` on the same item. |
 
 ### Magic Mapping
 

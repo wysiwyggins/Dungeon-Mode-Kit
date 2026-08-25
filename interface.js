@@ -65,6 +65,12 @@ class InterfaceManager {
         this.spikeCaster = null;
         this.spikeAdjacentDoors = null;
 
+        // Dig direction picker state
+        this.digDirectionMode = false;
+        this.digItem = null;
+        this.digCaster = null;
+        this.digCandidates = null;
+
         // Throw menu mode state (T key menu)
         this.throwMenuMode = false;
 
@@ -1756,7 +1762,7 @@ class InterfaceManager {
         }
 
         // Don't consume turn if we entered spell aiming or identify mode (handled by follow-up interaction)
-        if (this.spellAimingMode || this.identifyMode || this.enchantMode || this.spikeDirectionMode) {
+        if (this.spellAimingMode || this.identifyMode || this.enchantMode || this.spikeDirectionMode || this.digDirectionMode) {
             return;
         }
 
@@ -4088,6 +4094,143 @@ class InterfaceManager {
 
         if (match) {
             this.applySpikeToDirection(this.spikeItem, this.spikeCaster, match);
+        }
+
+        return true;
+    }
+
+    // ========================================================================
+    // DIG DIRECTION PICKER (Dig use_verb)
+    // ========================================================================
+
+    /**
+     * Pick a target for the Dig verb: any `breakable` within one tile, including the
+     * tile the digger is standing on (a grave is walkable, so standing on it is the
+     * common case) and including solid walls, which the verb digs exactly as bumping
+     * them while equipped would.
+     *
+     * The tool comes from the inventory, not the equipment slot — you can dig with a
+     * mattock you're only carrying. Equipping it is still what lets you bump walls and
+     * swing it at enemies; this is the deliberate, one-target use.
+     *
+     * The dig itself is just applyCollisionEffects, the same call behaviors.js
+     * `mine_nearby_wall` uses, so the whole mining pipeline (glance roll, progress,
+     * tool wear, loot on break) comes along unchanged.
+     */
+    enterDigDirectionMode(item, caster) {
+        if (!caster) return;
+
+        const candidates = [];
+        // The digger's own tile first, so a lone diggable underfoot needs no prompt.
+        const cells = [{ dx: 0, dy: 0 }, ...ALL_DIRS];
+        for (const dir of cells) {
+            const tx = caster.x + dir.dx;
+            const ty = caster.y + dir.dy;
+            const actors = this.engine.entityManager.getActorsAt(tx, ty);
+            for (const actor of actors) {
+                if (actor === caster || actor.isDead) continue;
+                if (!actor.hasAttribute('breakable')) continue;
+                candidates.push({ actor, dir });
+            }
+        }
+
+        if (candidates.length === 0) {
+            this.engine.inputManager?.showMessage('There is nothing here to dig.');
+            return;
+        }
+
+        if (candidates.length === 1) {
+            this.applyDigToDirection(item, caster, candidates[0]);
+            return;
+        }
+
+        this.digDirectionMode = true;
+        this.digItem = item;
+        this.digCaster = caster;
+        this.digCandidates = candidates;
+
+        this.closeItemActionMenu();
+        this.removeBox('player_info');
+        this.inventoryMode = false;
+
+        const here = candidates.some(c => c.dir.dx === 0 && c.dir.dy === 0);
+        this.showTextBox('dig_instructions',
+            here
+                ? 'Dig where? (movement keys, wait key for here, Esc to cancel)'
+                : 'Dig where? (movement keys, Esc to cancel)',
+            { dismissOnMove: false }
+        );
+    }
+
+    applyDigToDirection(item, caster, target) {
+        this.exitDigDirectionMode();
+
+        // Pass the tool explicitly: it may be sitting in the pack rather than the
+        // equipment slot, and its own mining_power/dig_chance/condition are the ones
+        // that should count. The tool isn't consumed — digging wears `condition` via
+        // degradeItem inside the mining path, so there's nothing to decrement here.
+        const result = caster.applyCollisionEffects(target.actor, item);
+        if (result?.attackAttempted) {
+            this.engine.inputManager?.onPlayerAction();
+        }
+    }
+
+    exitDigDirectionMode() {
+        this.digDirectionMode = false;
+        this.digItem = null;
+        this.digCaster = null;
+        this.digCandidates = null;
+        this.removeTextBox('dig_instructions');
+    }
+
+    handleDigDirectionKey(key) {
+        if (!this.digDirectionMode) return false;
+
+        if (key === 'Escape') {
+            this.exitDigDirectionMode();
+            return true;
+        }
+
+        // Resolve through the player's actual bindings so rebinding movement (or wait)
+        // in keybindings.json steers this prompt too.
+        const inputMgr = this.engine.inputManager;
+        const action = inputMgr?.keyMap?.[key];
+        if (!action) return true;
+
+        // The digger's own tile has no direction key, so the wait binding selects it.
+        const dir = action === 'wait'
+            ? { dx: 0, dy: 0 }
+            : inputMgr.directions?.[action];
+        if (!dir) return true;
+
+        const match = this.digCandidates?.find(
+            c => c.dir.dx === dir.dx && c.dir.dy === dir.dy
+        );
+
+        if (match) {
+            this.applyDigToDirection(this.digItem, this.digCaster, match);
+        } else {
+            this.engine.inputManager?.showMessage("There's nothing to dig that way.");
+        }
+
+        return true;
+    }
+
+    handleDigDirectionClick() {
+        if (!this.digDirectionMode || !this.digCaster) return false;
+
+        const inputManager = this.engine.inputManager;
+        if (!inputManager) return false;
+
+        const tx = inputManager.hoveredTile.x;
+        const ty = inputManager.hoveredTile.y;
+
+        const match = this.digCandidates?.find(
+            c => c.actor.x === tx && c.actor.y === ty
+        );
+
+        if (match) {
+            this.applyDigToDirection(this.digItem, this.digCaster, match);
         }
 
         return true;
