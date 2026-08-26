@@ -48,7 +48,7 @@
     "tint": "#9A9B73",
     "attributes": {
       "visible": true,
-      "walk_description": "The ground is softer here."
+      "walk_description": "You trod a small hill of soil and leaf litter."
     }
   },
   "moss": {

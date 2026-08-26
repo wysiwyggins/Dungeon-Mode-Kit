@@ -232,5 +232,116 @@
       }
     }
   },
-  "win_conditions": []
+  "win_conditions": [],
+  "map_generator": {
+    "type": "brogue",
+    "options": {
+      "map_width": 50,
+      "map_height": 50,
+      "maxAttempts": 15,
+      "corridorChance": 50,
+      "corridorLength": [
+        3,
+        12
+      ],
+      "lakes": {
+        "count": [
+          1,
+          2
+        ],
+        "types": [
+          "water",
+          "water",
+          "water",
+          "water",
+          "water",
+          "sewage",
+          "sewage",
+          "lava"
+        ],
+        "minSize": 15,
+        "maxSize": 60
+      },
+      "loopMinDistance": 10,
+      "maxLoops": 15,
+      "roomWeights": {
+        "rectangle": 4,
+        "cross": 1,
+        "circular": 1,
+        "cavern": 4
+      },
+      "rectWidth": [
+        3,
+        14
+      ],
+      "rectHeight": [
+        3,
+        15
+      ],
+      "crossWidth": [
+        7,
+        15
+      ],
+      "crossHeight": [
+        7,
+        16
+      ],
+      "circularRadius": [
+        2,
+        7
+      ],
+      "cavernWidth": [
+        8,
+        25
+      ],
+      "cavernHeight": [
+        8,
+        25
+      ],
+      "abyss": {
+        "count": [
+          1,
+          3
+        ],
+        "types": [
+          "abyss"
+        ],
+        "minSize": 15,
+        "maxSize": 50
+      },
+      "bridges": {
+        "max": 2
+      },
+      "collapsing_floors": {
+        "max": 2,
+        "minSize": 2,
+        "maxSize": 4
+      }
+    }
+  },
+  "traps": {
+    "min": 0,
+    "max": 5
+  },
+  "fungus": {
+    "min": 3,
+    "max": 8,
+    "tall_chance": 0.25
+  },
+  "switch_puzzles": {
+    "min": 0,
+    "max": 1,
+    "patterns": [
+      {
+        "type": "gated_room",
+        "weight": 1,
+        "switch_actor": "lever",
+        "target_actor": "door",
+        "switch_effects": {
+          "open": true
+        },
+        "switch_message": "The rusty lever moves!"
+      }
+    ]
+  }
 }
