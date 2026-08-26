@@ -1202,9 +1202,9 @@
     "effect_description": "Your senses sharpen",
     "attributes": {
       "wear_effect": {
-        "visionRange": 3
+        "awareness": 20
       },
-      "description": "+[visionRange] vision range while worn."
+      "description": "+[awareness] awareness while worn — you notice hidden things."
     }
   },
 

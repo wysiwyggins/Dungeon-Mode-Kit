@@ -1909,8 +1909,12 @@ const BehaviorLibrary = {
         // Mark this entity as having triggered
         actor._triggeredBy.add(actorVictim);
 
-        // Make the trap visible (stays visible permanently)
-        if (!actor.hasAttribute('visible')) {
+        // Springing a trap discovers it, permanently. reveal() handles the hidden
+        // case (building the sprites a concealed trap never had); the fallback
+        // covers a trap authored as plain `visible: false` with no hidden state.
+        if (actor.hasAttribute('hidden')) {
+            actor.reveal({ silent: true });
+        } else if (!actor.hasAttribute('visible')) {
             actor.setAttribute('visible', true);
             actor.engine.renderer?.createActorSprites(actor);
         }

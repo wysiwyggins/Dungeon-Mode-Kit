@@ -15,6 +15,8 @@ tables below say which is which.
 | Remembered | explored, not currently visible, `fogOfWar` | static actors only, dimmed `0x333333`, animation paused | n/a | no |
 | Invisible (state) | `invisible` state, e.g. potion | no (player: `alpha 0.35`) | "something" | no |
 | Invisible (attribute) | `visible: false` in actors.json | no | "something" | no |
+| Hidden, disguised | `hidden: true` + `_hidden` tiles | as the disguise (wall) | "something" | no |
+| Hidden, unsprited | `hidden: true`, no `_hidden` tiles | no | "something" | no |
 | Submerged | standing on a `deep` liquid actor | body only | yes | yes |
 | Concealed by water | submerged + `conceals_when_submerged` | no | "something" | no |
 | Telepathy-sensed | viewer has `telepathic`, target `sentient` | body only, `alpha 0.35` | yes | yes |
@@ -23,7 +25,9 @@ tables below say which is which.
 
 | Attribute | Meaning | Default |
 |---|---|---|
-| `visible` | Permanently unseen when false — ghast, portal, oculus, gas/fire traps | `true` |
+| `visible` | Permanently unseen when false — ghast, portal, oculus | `true` |
+| `hidden` | Concealed but **discoverable** — secret doors, levers, plates, traps | `false` |
+| `awareness` | Bonus to search strength; on an actor, or via a ring's `wear_effect` | `0` |
 | `conceals_when_submerged` | Deep liquid hides this actor from anyone above the surface | `false` |
 | `deep` | On a liquid actor: submerges whoever stands on it | `false` |
 | `opaque` | Blocks line of sight through this tile | `false` |
@@ -40,6 +44,9 @@ tables below say which is which.
 | `isConcealedBySubmersion()` | is deep water hiding this from the viewer | `isUnseen()` |
 | `getLiquidBodyIdAt(x, y)` | which connected pool a tile belongs to | shared-water reveal |
 | `getEntityVisibility(x, y)` | FOV/fog/light result per sprite | render passes |
+| `isDisguised()` | hidden **and** carrying `_hidden` tiles (wears a wall) | tile/tint pickers, bump guard |
+| `isUnsprited()` | should have no sprites at all (invisible, or hidden on floor) | both sprite-creation passes |
+| `reveal({silent})` | drop the disguise; builds sprites if it had none | search, magic map, springing a trap |
 
 ### Submersion
 
@@ -87,9 +94,72 @@ ford is one body. Pools are labelled by an 8-way flood fill cached alongside
   the same.
 - Static (no `personality`, not `controlled`) vs mobile decides remembered-area drawing:
   walls and doors persist dimmed, creatures do not.
-- Traps' `visible: false` is currently permanent — there is no search action yet.
+- `visible: false` means "has no sprite, ever"; `hidden: true` means "concealed but
+  findable". Keeping them separate is what lets traps be searchable while a ghast
+  stays permanently unseen.
 - Never reduce opacity on a controlled actor's sprite as a "hidden" signal; the `0.35`
   entries above are the established exceptions (self-invisibility and telepathy).
+
+---
+
+## Searching
+
+Hidden things are ordinary actors carrying `hidden: true`. Discovery flips that one
+attribute — nothing is created or swapped, so a found door keeps its `machine_id`
+links, its lock colour, and its place in the level. Because attributes serialize with
+the floor, a reveal survives leaving and coming back.
+
+### Two ways to be hidden
+
+Which one an actor gets is decided by whether it has `_hidden` tiles, and that follows
+from where it stands:
+
+| | Disguised | Unsprited |
+|---|---|---|
+| Data | `tileIndexBase_hidden` / `tileIndexTop_hidden` | no `_hidden` tiles |
+| Stands on | a tile that would otherwise be wall | open floor |
+| Renders as | ordinary wall (untinted, so machine colour can't betray it) | nothing; the floor shows through |
+| Examples | `hidden_door`, `hidden_lever` | `hidden_pressure_plate`, gas/fire traps |
+
+A wall-mounted actor *replaces* the wall actor on its tile, so making it merely
+invisible would leave a hole in the wall. That's the whole reason the disguise exists.
+
+### The search
+
+Ported from Brogue's `search()` (Movement.c:2122), inverted to iterate hidden actors
+rather than map cells. Chance at a tile is `strength - 10 × distance`, two-thirds that
+for `solid` things, and line of sight is required — no finding secrets around corners.
+
+| | Trigger | Strength | Radius |
+|---|---|---|---|
+| Passive | first time you stand on a tile | `30 + awareness` | strength-derived (~2, ~4 with the ring) |
+| Thorough | `(s)`, five turns, interruptible | `200` | capped at `5` |
+
+Radius is capped independently of strength for the thorough search, unlike Brogue's
+`strength / 10`. That's what makes a finished search *certain* inside its reach and
+silent outside it: "this area is clear" is a fact the player can act on, rather than a
+roll worth repeating. Both are retunable per prototype or per floor via
+`mechanics.search_radius`, `thorough_search_strength`, `passive_search_strength`
+(see [PROTOTYPE.md](PROTOTYPE.md)).
+
+### Other ways things get found
+
+| Route | Notes |
+|---|---|
+| Magic mapping | reveals every hidden actor on the floor, no LOS or distance test; silent, with a count |
+| Springing a trap | discovering it is part of setting it off |
+| Stepping on a plate | `toggle()` reveals first, so the effect never fires from nowhere |
+| Digging it out | disguised actors are `breakable`, like the wall they imitate |
+
+### Searching notes
+
+- A disguised actor is deliberately inert to every probe short of a search: it can't be
+  bumped open, Tab-targeted, hovered for a name, or spotlit by the overlay fade. Each of
+  those was a way the secret leaked before it was closed.
+- It is `breakable` on purpose — a mattock refusing to dig one spot would give it away
+  just as loudly.
+- Interrupting a thorough search spends the turns anyway ("You abandon your search"),
+  which is what stops it being free to spam.
 
 ---
 
@@ -107,7 +177,8 @@ named — the name is just a lie about its appearance rather than its nature.
 | Map tile | never drawn, no memory | entering line of sight |
 | Explored tile | drawn dimmed from memory, may be stale | re-entering line of sight |
 | Actor identity | "something" in messages | seeing it (see visibility above) |
-| Trap | `visible: false`, indistinguishable from floor | triggering it |
+| Trap | `hidden: true`, indistinguishable from floor | searching, or triggering it |
+| Secret door / lever | `hidden: true`, drawn as ordinary wall | searching, magic mapping, or digging it out |
 
 ### Item identification
 

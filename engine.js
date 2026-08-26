@@ -967,6 +967,10 @@ function getEuclideanDistance(x0, y0, x1, y1) {
  * Check if an actor is "important" enough that obscuring actors should go transparent.
  */
 function isImportantActor(actor) {
+    // Nothing concealed is "important" yet — fading the map art that covers a
+    // hidden door would spotlight the very tile the player is meant to find.
+    if (actor.hasAttribute('hidden')) return false;
+
     return actor.personality ||
            actor.hasAttribute('openable') ||
            actor.hasAttribute('stairway') ||
@@ -1703,6 +1707,12 @@ class DungeonEngine {
     async loadFloor(floor, entryDirection, playerState = null) {
         // Silence feedback until the player begins play
         this.gameplayStarted = false;
+
+        // Passive-search memory is keyed by bare coordinates, so it has to go when
+        // the coordinates start meaning somewhere else — otherwise a new floor
+        // arrives pre-searched wherever the last one had been walked.
+        this.inputManager?.searchedTiles?.clear();
+        this.inputManager?.stopSearch?.();
         const prototypeConfig = this.currentPrototype.config;
         const floorConfig = this.getFloorConfig(floor);
 
@@ -2909,6 +2919,92 @@ class DungeonEngine {
      */
     isTileExplored(x, y) {
         return this.lightingManager ? this.lightingManager.isExplored(x, y) : true;
+    }
+
+    /**
+     * The active mechanics block: a floor's own settings win over the prototype's,
+     * matching how loadFloor resolves viewport and darkness.
+     * @returns {Object} Mechanics settings (empty object if none defined)
+     */
+    getMechanics() {
+        // Guarded: getFloorConfig dereferences currentPrototype.config, and this can
+        // be reached from input before a prototype has finished loading.
+        if (!this.currentPrototype?.config) return {};
+        return this.getFloorConfig(this.currentFloor)?.mechanics
+            || this.currentPrototype.config.mechanics
+            || {};
+    }
+
+    /**
+     * Look for hidden things around an actor. A port of Brogue's search()
+     * (Movement.c:2122), inverted to iterate hidden actors rather than map cells,
+     * since in DMK the concealed things *are* actors and there are few of them.
+     *
+     * Strength sets the odds: the chance at a given tile is strength minus 10 per
+     * tile of distance, so a search fades out with range. Solid things (a door
+     * flush in a wall) are two-thirds as likely to be noticed as something lying
+     * on the floor.
+     *
+     * Radius is capped separately from strength rather than derived from it as
+     * Brogue does (radius = strength/10). Keeping the two independent is what lets
+     * a thorough search be *certain* within its reach and find nothing at all
+     * beyond it: a completed search means "this area is clear", so the player is
+     * never left wondering whether to search the same spot again. Designers can
+     * retune both per prototype or per floor via
+     * `mechanics.search_radius` / `mechanics.thorough_search_strength`.
+     *
+     * @param {Actor} actor - The searcher (normally the player)
+     * @param {number} strength - Search strength; 30 is a passive glance, 200 a
+     *   deliberate five-turn search
+     * @param {number} [maxRadius] - Hard cap on reach, in tiles. Defaults to the
+     *   strength-derived radius (Brogue's rule) when omitted.
+     * @returns {boolean} True if anything was found
+     */
+    searchFrom(actor, strength, maxRadius = null) {
+        if (!actor || strength <= 0) return false;
+
+        const radius = maxRadius === null
+            ? Math.floor(strength / 10)
+            : Math.min(Math.floor(strength / 10), maxRadius);
+        let foundSomething = false;
+
+        // Sight is blocked by solid actors that aren't see-through, matching
+        // LightingManager.visionPasses. The searcher and the thing being searched
+        // for are exempt below via hasLineOfSight's endpoint skipping.
+        const isBlocked = (x, y) => {
+            const solid = this.entityManager.getSolidActorAt(x, y);
+            return !!solid && !solid.isDead && solid.getAttribute('opaque') !== false;
+        };
+
+        // Copy: reveal() can spawn sprites and fire messages, and we don't want a
+        // live list mutating underneath the loop.
+        for (const other of [...this.entityManager.actors]) {
+            if (other === actor || other.isDead) continue;
+            if (!other.hasAttribute('hidden')) continue;
+
+            const distance = getChebyshevDistance(actor.x, actor.y, other.x, other.y);
+            if (distance > radius) continue;
+
+            // No finding secrets around corners. Deliberately *not* canSeeTarget:
+            // that clamps to vision range, which would cap a deep search at how far
+            // the actor can see, and it treats the wall a hidden door sits in as
+            // unwalkable. Searching is feeling along surfaces, not spotting things.
+            // hasLineOfSight skips both endpoints, so the target's own tile — and
+            // the wall it may be embedded in — never blocks the path to itself.
+            if (!hasLineOfSight(actor.x, actor.y, other.x, other.y, isBlocked)) continue;
+
+            let percent = strength - distance * 10;
+            if (other.hasAttribute('solid')) {
+                percent = Math.floor(percent * 2 / 3);
+            }
+            if (percent <= 0) continue;
+
+            if (ROT.RNG.getPercentage() <= Math.min(percent, 100)) {
+                if (other.reveal()) foundSomething = true;
+            }
+        }
+
+        return foundSomething;
     }
 
     /**
@@ -4642,7 +4738,7 @@ class Item extends Entity {
      */
     _statProviders() {
         // Any key of wear_effect/passive_effect is quotable — this is what makes
-        // [visionRange] work on ring_of_awareness. Spread first so the explicit,
+        // [awareness] work on ring_of_awareness. Spread first so the explicit,
         // enchantment-aware entries below win where they overlap.
         const effectKeys = {};
         for (const slot of ['wear_effect', 'passive_effect']) {
@@ -4900,6 +4996,13 @@ class Actor extends Entity {
         this.flipBaseV_toggled = data.flipBaseV_toggled || false;
         this.flipTopV_toggled = data.flipTopV_toggled || false;
 
+        // Disguise tiles for `hidden` actors that stand where a wall would be: a
+        // hidden door renders as ordinary wall until found, so it leaves no gap.
+        // Anything hidden on open floor (traps, pressure plates) omits these and
+        // simply goes unsprited instead — see RenderSystem.renderActors.
+        this.tileIndexBase_hidden = engine.spriteLibrary.resolveTile(data.tileIndexBase_hidden) || null;
+        this.tileIndexTop_hidden = engine.spriteLibrary.resolveTile(data.tileIndexTop_hidden) || null;
+
         // Handle random color assignment for color-locked doors
         if (data.random_color && this.hasAttribute('color_locked') && engine.currentPrototype) {
             const assignedColor = engine.currentPrototype.assignLockColor();
@@ -5043,9 +5146,118 @@ class Actor extends Entity {
         }
     }
 
+    /**
+     * Is this actor concealed and disguised as something else (a hidden door
+     * wearing wall tiles)? Such an actor is sprited and rendered — it just isn't
+     * rendered as itself. Hidden actors *without* disguise tiles go unsprited
+     * instead, which is the `isUnsprited` case below.
+     * @returns {boolean}
+     */
+    isDisguised() {
+        return this.hasAttribute('hidden') && !!this.tileIndexBase_hidden;
+    }
+
+    /**
+     * Should this actor have no sprites at all right now? True for hidden things
+     * lying on open floor (traps, pressure plates), which reveal the floor tile
+     * beneath them rather than a disguise.
+     * @returns {boolean}
+     */
+    isUnsprited() {
+        return !this.hasAttribute('visible')
+            || (this.hasAttribute('hidden') && !this.tileIndexBase_hidden);
+    }
+
+    /**
+     * The base tile to draw for this actor right now — its disguise while hidden,
+     * otherwise its true tile. Sprite creation and reveal both route through this
+     * so a disguised actor never flashes its real appearance.
+     * @returns {number|null}
+     */
+    getDisplayTileBase() {
+        return this.isDisguised() ? this.tileIndexBase_hidden : this.tileIndexBase;
+    }
+
+    /**
+     * Top-tile counterpart to getDisplayTileBase.
+     * @returns {number|null}
+     */
+    getDisplayTileTop() {
+        return this.isDisguised() ? this.tileIndexTop_hidden : this.tileIndexTop;
+    }
+
+    /**
+     * The tint to draw with. A disguised actor renders untinted so it matches the
+     * plain wall beside it — machine colouring (initializeSwitchTints) would
+     * otherwise paint a hidden lever's wall disguise in its machine's hue and
+     * announce it. The colour is still *assigned*, since it names the lever; it
+     * just isn't shown until the thing is found.
+     * @returns {number|null}
+     */
+    getDisplayTint() {
+        // 0xFFFFFF, not null: PIXI coerces a null tint to 0 and would paint the
+        // disguise solid black, which is even louder than the wrong colour.
+        return this.isDisguised() ? 0xFFFFFF : this.tint;
+    }
+
+    /**
+     * Discover this actor: drop the disguise and become what it really is.
+     * Mirrors open()/toggle() — flip the attribute, swap the sprites, announce it.
+     * A disguised actor already has sprites to retexture; an unsprited one (trap,
+     * pressure plate) needs them built now that it has something to show.
+     * @returns {boolean} True if it was hidden and is now revealed
+     */
+    reveal({ silent = false } = {}) {
+        if (!this.hasAttribute('hidden')) return false;
+
+        const wasUnsprited = this.isUnsprited();
+        this.setAttribute('hidden', false);
+
+        // A lever mounted in a wall is opaque while disguised so it doesn't cut a
+        // lever-shaped hole in the fog of war. Data can restore see-through-ness on
+        // discovery via `opaque_revealed: false`.
+        // (computeLighting rebuilds its solid-actor cache each pass, so the change
+        // takes effect on the next lighting update with no invalidation needed.)
+        if (this.data?.opaque_revealed !== undefined) {
+            this.setAttribute('opaque', this.data.opaque_revealed);
+        }
+
+        if (wasUnsprited) {
+            this.setAttribute('visible', true);
+            this.engine.renderer?.createActorSprites(this);
+        } else {
+            this.engine.renderer?.updateSpriteTexture(this.spriteBase, this.tileIndexBase);
+            this.engine.renderer?.updateSpriteTexture(this.spriteTop, this.tileIndexTop);
+            // The disguise suppressed any machine tint; now that it's dropped, the
+            // real colour has to be put on the sprites that were already built.
+            if (this.tint !== null && this.tint !== undefined) {
+                if (this.spriteBase) this.spriteBase.tint = this.tint;
+                if (this.spriteTop) this.spriteTop.tint = this.tint;
+            }
+        }
+
+        // A trap springing under your feet announces itself with its own message,
+        // and a lever you just pulled is self-evident — those callers pass silent.
+        if (!silent) {
+            this.playSound(this.data?.reveal_sound || 'lock');
+            const template = this.data?.reveal_message
+                || `You discover ${this.getNameWithArticle()}!`;
+            const message = resolveTemplate(template, this, {
+                providers: { name: () => this.getNameWithArticle() }
+            });
+            this.engine.inputManager?.showMessage(message, { x: this.x, y: this.y });
+        }
+        return true;
+    }
+
     toggle() {
         if (!this.hasAttribute('switchable')) return;
         if (this.hasAttribute('one_shot') && this.hasAttribute('toggled')) return;
+
+        // A hidden pressure plate can be trodden on before it's found; discovering
+        // it as it fires beats an effect erupting from an invisible source. Silent
+        // because switch_message is about to narrate the same moment.
+        this.reveal({ silent: true });
 
         const nowToggled = !this.hasAttribute('toggled');
         this.setAttribute('toggled', nowToggled);
@@ -7772,6 +7984,17 @@ class Actor extends Entity {
                 }
                 this.engine.renderer?.updateInfrastructureVisibility?.();
 
+                // Secrets are part of the layout, so mapping finds them the way
+                // Brogue's magic mapping discovers TM_IS_SECRET terrain — floor-wide,
+                // with no line of sight or distance test. Revealed silently and
+                // counted: a floor with a dozen traps would otherwise bury the
+                // scroll's own message under a dozen "you discover" lines.
+                let secretsFound = 0;
+                for (const actor of [...(this.engine.entityManager?.actors || [])]) {
+                    if (actor.isDead || !actor.hasAttribute('hidden')) continue;
+                    if (actor.reveal({ silent: true })) secretsFound++;
+                }
+
                 if (this.isPlayerControlled()) {
                     // Only claim to reveal the layout when there was fog hiding it.
                     const hasMachines = this.engine.renderer?.hasInfrastructureLinks?.() ?? true;
@@ -7786,6 +8009,16 @@ class Actor extends Entity {
                             : 'You already know this place well.';
                     }
                     this.engine.inputManager?.showMessage(message);
+
+                    // Separate line, because it's a different kind of news — and the
+                    // one that changes how the player walks the level.
+                    if (secretsFound > 0) {
+                        this.engine.inputManager?.showMessage(
+                            secretsFound === 1
+                                ? 'Something concealed here reveals itself.'
+                                : `${secretsFound} concealed things reveal themselves.`
+                        );
+                    }
                 }
                 return true;
             }
@@ -8214,7 +8447,7 @@ class Actor extends Entity {
      */
     isAnonymous() {
         if (this.isPlayerControlled()) return false;
-        return this.isUnseen() || !this.hasAttribute('visible');
+        return this.isUnseen() || !this.hasAttribute('visible') || this.hasAttribute('hidden');
     }
 
     /**
@@ -9335,6 +9568,16 @@ class Actor extends Entity {
                 return this.tryMove(newX, newY);
             }
 
+            // A disguised actor must behave exactly like the wall it's pretending to
+            // be. Without this, walking into a hidden door would swing it open and
+            // a hidden lever would throw itself — either one hands the player the
+            // secret for free and makes searching pointless. Hidden things on open
+            // floor (traps, pressure plates) are deliberately exempt: they're
+            // non-solid, you step *onto* them, and springing one is how they work.
+            if (actorAtTarget.isDisguised?.()) {
+                return { moved: false, actionTaken: false };
+            }
+
             if (actorAtTarget.hasAttribute('pausable')) {
                 actorAtTarget._paused = !actorAtTarget._paused;
                 const state = actorAtTarget._paused ? 'stops' : 'resumes';
@@ -10358,6 +10601,31 @@ class Actor extends Entity {
             }
         }
         return range;
+    }
+
+    /**
+     * Awareness: how good this actor is at noticing concealed things. Feeds the
+     * search strength in Engine.searchFrom — Brogue's rogue.awarenessBonus, where
+     * a Ring of Awareness contributes 20 per point of enchantment (Items.c:7259).
+     * @returns {number} Awareness bonus (0 for an actor with no sources)
+     */
+    getEffectiveAwareness() {
+        let base = this.getAttribute('awareness') || 0;
+
+        for (const slot of ['weapon', 'top', 'middle', 'lower', 'ring1', 'ring2']) {
+            const item = this.equipment[slot];
+            if (item) {
+                const wearEffect = item.getAttribute('wear_effect');
+                if (wearEffect && typeof wearEffect.awareness === 'number') {
+                    // Enchantment scales the ring the way it scales defense
+                    // (see getEffectiveDefense): each point is another full ring.
+                    base += wearEffect.awareness * (1 + (item.enchantment || 0));
+                }
+            }
+        }
+
+        base += this.getPassiveStatBonus('awareness');
+        return base;
     }
 
     canSeeTarget(target) {
@@ -13665,7 +13933,9 @@ class RenderSystem {
 
         // Render all actors
         for (const actor of entityManager.actors) {
-            if (!actor.hasAttribute('visible')) continue;
+            // Skips invisible actors and hidden-on-floor ones (traps, plates).
+            // A hidden actor with disguise tiles still renders — as its disguise.
+            if (actor.isUnsprited()) continue;
 
             // Skip actors that already have sprites (e.g., dynamically spawned
             // by spawnActor before renderActors runs)
@@ -13685,7 +13955,7 @@ class RenderSystem {
             // Render base sprite (static or animated)
             actor.spriteBase = this.createActorSprite(
                 actor,
-                actor.tileIndexBase,
+                actor.getDisplayTileBase(),
                 actor.animationBase,
                 actor.x * globalVars.TILE_WIDTH,
                 actor.y * globalVars.TILE_HEIGHT,
@@ -13696,7 +13966,7 @@ class RenderSystem {
             // Render top sprite (static or animated) - one tile above
             actor.spriteTop = this.createActorSprite(
                 actor,
-                actor.tileIndexTop,
+                actor.getDisplayTileTop(),
                 actor.animationTop,
                 actor.x * globalVars.TILE_WIDTH,
                 (actor.y - 1) * globalVars.TILE_HEIGHT,
@@ -13779,7 +14049,7 @@ class RenderSystem {
     }
 
     createActorSprites(actor) {
-        if (!actor.hasAttribute('visible')) return;
+        if (actor.isUnsprited?.() ?? !actor.hasAttribute('visible')) return;
 
         // Within the entity container, base/top sprites default to zIndex 10/11
         // (attached fire 12/13). The optional 'render_layer' attribute shifts an
@@ -13790,10 +14060,11 @@ class RenderSystem {
         const baseZ = isAttachedFire ? 12 : this._actorLayerBaseZ(actor);
         const topZ = baseZ + 1;
 
-        // Render base sprite (static or animated)
+        // Render base sprite (static or animated). getDisplayTileBase serves the
+        // disguise for a hidden door, so it spawns looking like wall.
         actor.spriteBase = this.createActorSprite(
             actor,
-            actor.tileIndexBase,
+            actor.getDisplayTileBase?.() ?? actor.tileIndexBase,
             actor.animationBase,
             actor.x * globalVars.TILE_WIDTH,
             actor.y * globalVars.TILE_HEIGHT,
@@ -13804,7 +14075,7 @@ class RenderSystem {
         // Render top sprite (static or animated) - one tile above
         actor.spriteTop = this.createActorSprite(
             actor,
-            actor.tileIndexTop,
+            actor.getDisplayTileTop?.() ?? actor.tileIndexTop,
             actor.animationTop,
             actor.x * globalVars.TILE_WIDTH,
             (actor.y - 1) * globalVars.TILE_HEIGHT,
@@ -13865,7 +14136,7 @@ class RenderSystem {
                 const startFrame = Math.floor(Math.random() * animFrames.length);
                 animSprite.gotoAndPlay(startFrame);
                 animSprite.zIndex = zIndex;
-                animSprite.tint = actor.tint;
+                animSprite.tint = actor.getDisplayTint?.() ?? actor.tint;
 
                 if (actor.effect) {
                     this.effectRunner.apply(actor.effect, animSprite, { baseTint: actor.tint });
@@ -13885,7 +14156,7 @@ class RenderSystem {
             const sprite = new PIXI.Sprite(texture);
 
             sprite.zIndex = zIndex;
-            sprite.tint = actor.tint;
+            sprite.tint = actor.getDisplayTint?.() ?? actor.tint;
 
             // Apply horizontal/vertical flip using anchor and scale
             // Set anchor to center for flipping, then adjust position

@@ -1,17 +1,21 @@
 
 ---
 
-date: 2026-08-25
+date: 2026-08-26
 author: Wiley Wiggins
 project: "Dungeon Mode Kit"
 ---
 
 # What is unseen and what is unkown
 
+## Scary letters
+
 The Dungeon Mode in my mind is focused on what is unseen and what is unkown, and this is happening at many levels. Visual specificity is part of the experiment of DMK, starting with this quote from *Dungeon Hacks*:
 
 > With each new element Toy and Wichman wrote into Rogue, the game became more and more absorbing. Rather than reveal the entire dungeon map when players set foot in a new level, the game showed only their immediate surroundings. Moving in any direction revealed more of the map—and the creatures lying in wait. The graphics were primitive, but the thrill and apprehension of exploring uncharted terrain, combined with the pseudo-intelligent behavior of the monsters and the permanency of death, drew players deeper into the fantasy.  "We [printed] descriptions as things happened to you, and we had various monsters that we created, and potions, and things like that," Wichman remembered. "It was interesting that we did end up having an atmosphere even though all you're looking at is letters and symbols. We got drawn into the world, and you would imagine yourself in the world. You'd see a letter 'T' on the screen, and it would startle you because you knew it was a troll."
 (Craddock. 2015)
+
+## The symbol, the image
 
 From *Framing uncertainty: computer game epistemologies*:
 
@@ -19,9 +23,25 @@ From *Framing uncertainty: computer game epistemologies*:
 
 The DMK tileset intentionally combines image blocks with symbol blocks and gives them all semantic names, acting more like a characterset than a modern spritesheet. I'm interested in how these elements can be combined and changed in that combination.
 
+## To see, to know
+
 Beyond visual specificity we are also concerned here with light and dark, and what is known and unknown, as when darkness, field of view and fog of war were introduced into dungeon games. I talk sometimes about my very first dungeon game experience, which wasn't a roguelike, but rather the TI-994a version of *Hunt the Wumpus*. A guessing game about drawing a map of places visited and using traces to guess at what lies in the blank "unknown" areas.
 
-This sprint I polished up some mechanics related to vision and epistemology with the eel as a test case. The eel is inherited pretty directly from Brogue with some adjustments. An eel underwater isn't invisible (actors like ghasts have a visible: false attribute)— it's concealed by a medium, and that's a different fact with different rules. A isConcealedBySubmersion returned bool stays distinct from real invisibility which allows the player to also submerge and see the eel, but only in the same body of water. Two viewers in separate ponds still can't see each other. "Connected" runs through any liquid, shallow or deep, so a lake pinched to a shallow ford is still one body — pools get labelled by an 8-way flood fill.
+This sprint I polished up some mechanics related to vision and epistemology. This included a new base "search" action that was a long time coming.
+
+Searching turned out to be less about the search and more about all the ways a secret gives itself away. The action itself is small, taken directly from other Rogue descendents: hidden things are just actors carrying a `hidden: true` attribute (now distinct from `visible: false`), and finding one flips that bool. Nothing is created or destroyed, so a discovered door keeps its machine links and its lock color — it was always a door, it just had a wall costume. That answers a question I'd left open in my notes for a long time ("is it actually one actor becoming another?"). It isn't. It's like existing door and lever actors that have two tile states, this is just a third.
+
+A wall-mounted secret can't simply be invisible. Walls in the kit are actors occupying a tile, so a hidden door *replaces* the wall that would be there — make it invisible and you get a hole, so it wears the plain wall tile. Things lying on open floor (traps, pressure plates) get blank tiles, because there the floor shows through and there's nothing to hide.
+
+Lots of little cleanup tasks followed- bumping into a hidden door swung it open. Machine tinting painted a concealed lever in its machine's colour. Tab-targeting listed it as a landmark; the overlay fade dimmed the map art covering it; a mattock refused to dig it while digging the wall beside it fine. Every one of these was a channel through which the game *knew* something the player character shouldn't, and leaked it. Sealing them was most of the work, and it clarified something: concealment isn't a property of the sprite, it's a property of every system that can answer a question about the tile. A secret is only secret if nothing will tell you about it.
+
+The searching itself is two speeds. There's a passive glance the first time you stand on any tile, weak and short-ranged, which rewards covering new ground rather than pacing back and forth. And there's the deliberate five-turn search, interruptible, that spends the turns whether or not it finishes — "you abandon your search." The one place I deviated from Brogue is that I capped its radius separately from its strength. Brogue derives one from the other, which gives a long probabilistic tail; in testing I was finding things seven tiles off and it felt like the search was reaching further than my attention was (Brogue feels like a different scale than DMK). Capping it means a finished search is *certain* within five tiles and finds nothing at all beyond, so "this area is clear" becomes a fact you can act on instead of a roll you might want to repeat. Designers can retune both per prototype, since the right reach depends on how big the rooms are.
+
+Magic mapping reveals everything hidden on the floor, eventually I will be splitting gas traps into separate vents and triggers, so the mapping scroll would have shown that connection anyway through "infrastructure sight"
+
+### I like eels except how they feels
+
+I also did some fundamental vision and knowledge tweaks with the eel as a test case. The eel is inherited pretty directly from Brogue with some adjustments. An eel underwater isn't invisible (actors like ghasts have a visible: false attribute)— it's concealed by a medium, and that's a different fact with different rules. A isConcealedBySubmersion returned bool stays distinct from real invisibility which allows the player to also submerge and see the eel, but only in the same body of water. Two viewers in separate ponds still can't see each other. "Connected" runs through any liquid, shallow or deep, so a lake pinched to a shallow ford is still one body — pools get labelled by an 8-way flood fill.
 
 Concealment is derived, not applied, it comes from isSubmerged on both sides rather than being set as a state, "so it can never go stale."
 
@@ -41,5 +61,7 @@ In a game like Brogue, being touched by the Toad enemy (or drinking a hallucinat
 ![tilemap of shadows cast by a brazier](../assets/images/shadows.png)
 
 This sprint as given me an idea for the first small prototype that focuses on this subject— a brazier casts light and also blocks vision. Moving around it, a player actor with no torch has both a line-of-sight dead zone beyond the brazier and a shadow cast behind the player by the brazier's light, and the two 'shadows' mirror one another. One is a shadow of "unknowing," although that shadow is filled with a memory of another perspective.
+
+###
 
 I've added a bunch of related tables in a new document called [/docs/EPISTEMOLOGY.md](EPISTEMOLOGY.md)

@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Floor decorations** — a biome can scatter floor dressing across its floors with a `decorations` block: `{ entity | actor, pattern, density, min, max, freq, region? }`. A row names an inert `entity`, or a non-solid `actor` when the dressing needs to do something (a grave). Five placement patterns, with `density` scaling the count to the qualifying floor area and `min`/`max` clamping it. Gives `data/entities.json` its first generation-time use. See [docs/BIOMES.md](docs/BIOMES.md#decorations).
+- The Search action!
+- `hidden` attribute (different from `visible`)
+- **Floor decorations** — a biome can scatter floor dressing across its floors with a `decorations` block: `{ entity | actor, pattern, density, min, max, freq, region? }`. Gives `data/entities.json` its first generation-time use. See [docs/BIOMES.md](docs/BIOMES.md#decorations).
 - **decorations (floor scatter)** section in the biome editor, with an entity dropdown fed from `data/entities.json` and a pattern picker.
 - `applyTilePattern` gains three extensions: neighbour tests on `tileContext` (`count4`/`count8`/`any4`/`any8`, taking a `(ctx, x, y)` predicate — the same shape as a rule's `when`); `options.bounds` to restrict the sweep to a sub-rectangle; and `options.collect` to return the matched cells (as an array, or a `Set` of `"x,y"`) instead of a paint count. See [docs/TILE_PATTERNS.md](docs/TILE_PATTERNS.md).
 - **Graves you dig up.** A walkable, sediment-shaped `grave` actor that a mattock opens in one dig action, leaving a `hole` and rolling a skull, a nugget, a random weapon, a random ring or nothing — all declared in data, so the engine has no idea graves exist. See [docs/ACTORS.md](docs/ACTORS.md#diggable-walkable-actors).

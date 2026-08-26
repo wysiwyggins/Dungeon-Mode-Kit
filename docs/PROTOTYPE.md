@@ -77,6 +77,17 @@ See [LIGHTING.md](LIGHTING.md) for the full lighting system reference.
 | `viewport_height` | number | map height | Visible height in tiles. When smaller than the map, the camera scrolls to follow the player. |
 | `ai_margin` | number | `5` | How many tiles beyond the viewport edge AI actors continue to take turns. Actors outside this margin skip their turn. Only applies when viewport scrolling is active; ignored (treated as infinite) when the full map is visible. |
 
+### Searching
+
+Tunables for the `(s)earch` action and hidden actors (any actor with `hidden: true` —
+secret doors, concealed levers, undiscovered traps). See `docs/ACTORS.md`.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `search_radius` | number | `5` | How far a completed five-turn search reaches, in tiles. Everything hidden within this radius and in line of sight is found; nothing outside it is. Capped independently of strength so a finished search reliably means "this area is clear" — raise it for sprawling maps, lower it to make searching a room a multi-position job. |
+| `thorough_search_strength` | number | `200` | Odds of the five-turn search. Chance at a tile is `strength - 10 × distance`, two-thirds that for solid things like a door set in a wall. At the default it is certain everywhere inside `search_radius`; drop it below ~`10 × search_radius × 1.5` and finds start becoming a dice roll the player may want to repeat. |
+| `passive_search_strength` | number | `30` | The glance you get for free the first time you stand on a tile. Uses a strength-derived radius rather than `search_radius`, so it naturally reaches ~2 tiles and the Ring of Awareness (`awareness`) widens it. Set to `0` to disable passive searching and make the search action the only way to find secrets. |
+
 ### Special Modes
 
 | Field | Type | Default | Description |

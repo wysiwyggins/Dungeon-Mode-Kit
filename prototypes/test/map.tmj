@@ -437,6 +437,17 @@
                  "width":40,
                  "x":720,
                  "y":690
+                }, 
+                {
+                 "height":30,
+                 "id":127,
+                 "name":"",
+                 "rotation":0,
+                 "type":"hidden_door",
+                 "visible":true,
+                 "width":40,
+                 "x":920,
+                 "y":540
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -512,7 +523,7 @@
          "y":0
         }],
  "nextlayerid":9,
- "nextobjectid":127,
+ "nextobjectid":128,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",

@@ -3,6 +3,24 @@
 // INPUT MANAGER
 // ============================================================================
 
+// A deliberate search takes this many turns, paying off entirely on the last one
+// (Brogue's STATUS_SEARCHING, Time.mm:2123).
+const SEARCH_TURNS = 5;
+
+// Strength of that payoff. High enough that everything in reach is found for
+// certain — the cost of a thorough search is the five turns, not the odds.
+const THOROUGH_SEARCH_STRENGTH = 200;
+
+// How far that reach extends, in tiles. Capped independently of strength (see
+// Engine.searchFrom) so the search is reliable inside the radius and silent
+// outside it, giving the player a clear "this area is clear" rather than a
+// fuzzy edge worth re-rolling. Brogue's uncapped radius/20 read as too generous
+// at this kit's map scale.
+const THOROUGH_SEARCH_RADIUS = 5;
+
+// The passive glance you get just for standing somewhere new, before awareness.
+const PASSIVE_SEARCH_STRENGTH = 30;
+
 /**
  * Is this actor somewhere the player would plausibly want to walk to?
  *
@@ -61,11 +79,10 @@ const AIM_TARGET_PREDICATES = {
                      actor.hasAttribute('solid') &&
                      actor.stats?.health !== undefined,
 
-    // Traps, so a thrown object can spring one from a safe distance. A trap flagged
-    // hidden is skipped — offering it as a target would give away its position.
-    // Nothing sets that flag today; the guard is here so the token stays honest if
-    // hidden traps are ever added.
-    trap: (actor) => actor.hasAttribute('trap') && !actor.hidden
+    // Traps, so a thrown object can spring one from a safe distance. An
+    // undiscovered trap is skipped — offering it as a target would give away its
+    // position.
+    trap: (actor) => actor.hasAttribute('trap') && !actor.hasAttribute('hidden')
 };
 
 /**
@@ -161,6 +178,11 @@ function getAimTargetTokens(item, defaultTokens) {
 function isTravelTarget(actor) {
     if (!actor?.hasAttribute) return false;
 
+    // An undiscovered secret is not a destination. Without this a hidden door or
+    // lever would show up as a Tab-stop and point straight at itself, since both
+    // qualify as landmarks below.
+    if (actor.hasAttribute('hidden')) return false;
+
     // Never route the player onto a hazard or into scenery.
     if (actor.hasAttribute('trap')) return false;
     if (actor.hasAttribute('liquid')) return false;
@@ -232,6 +254,15 @@ class InputManager {
         // path to the next target and "arms" it; a second press commits to walking.
         this.exploreArmed = false;     // Whether a target is previewed & awaiting confirm
         this.exploreArmedTarget = null; // The previewed target {x, y, kind}
+
+        // Searching for hidden things. A deliberate search is a five-turn
+        // commitment (Brogue's STATUS_SEARCHING) that pays off all at once on the
+        // last turn; searchedTiles is its passive counterpart, Brogue's
+        // SEARCHED_FROM_HERE — you glance around each tile the first time you
+        // stand on it, and re-treading old ground turns up nothing new.
+        this.searching = false;
+        this.searchTurnsLeft = 0;
+        this.searchedTiles = new Set();
         // Tab target-cycling: index into the last-built candidate list, so repeated
         // presses walk through reachable points of interest. Reset when the preview
         // is disarmed so the next cycle starts fresh from the nearest target.
@@ -1325,6 +1356,103 @@ class InputManager {
     }
 
     /**
+     * The low-grade search you do just by being somewhere — Brogue's
+     * playerTurnEnded pass (Time.mm:2244). Runs once per tile, so wandering back
+     * and forth over the same ground is not a way to grind out secrets; covering
+     * new ground is. Awareness widens both the radius and the odds.
+     * @param {Actor} player - The player actor
+     */
+    passiveSearch(player) {
+        if (!player || player.isDead) return;
+
+        const key = `${player.x},${player.y}`;
+        if (this.searchedTiles.has(key)) return;
+        this.searchedTiles.add(key);
+
+        const mechanics = this.engine.getMechanics?.() || {};
+        const base = mechanics.passive_search_strength ?? PASSIVE_SEARCH_STRENGTH;
+        // 0 means "off" outright, not "off unless you found a ring" — a designer
+        // switching passive search off wants the search action to be the only way
+        // in, and awareness shouldn't quietly reopen it.
+        if (base <= 0) return;
+
+        // Passive search keeps Brogue's strength-derived radius (no cap): it's weak
+        // enough that its own falloff limits it, and awareness widening the radius
+        // is the whole point of the Ring of Awareness.
+        this.engine.searchFrom?.(player, base + (player.getEffectiveAwareness?.() || 0));
+    }
+
+    /**
+     * Begin a deliberate search: five turns of standing still, with everything
+     * nearby found on the fifth. Interrupting it wastes the turns already spent,
+     * which is what makes it a real decision rather than a free action to spam.
+     */
+    startSearch() {
+        const player = this.engine.entityManager?.player;
+        if (!player || player.isDead) return;
+        if (this.searching) return;
+
+        this.searching = true;
+        this.searchTurnsLeft = SEARCH_TURNS;
+        this.resetNotableEventTracking();
+        this.showMessage('You begin searching…');
+        this.searchStep();
+    }
+
+    /**
+     * One turn of an in-progress search. Turns 1-4 only pass time; the payoff all
+     * lands on the last one.
+     */
+    searchStep() {
+        if (!this.searching) return;
+
+        const player = this.engine.entityManager?.player;
+        if (!player || player.isDead) { this.stopSearch(); return; }
+
+        this.searchTurnsLeft--;
+        const isFinalTurn = this.searchTurnsLeft <= 0;
+
+        // Spend the turn.
+        this.onPlayerAction();
+
+        if (isFinalTurn) {
+            const mechanics = this.engine.getMechanics?.() || {};
+            const strength = mechanics.thorough_search_strength ?? THOROUGH_SEARCH_STRENGTH;
+            const radius = mechanics.search_radius ?? THOROUGH_SEARCH_RADIUS;
+            const found = this.engine.searchFrom?.(player, strength, radius);
+            // reveal() already announced each individual find, so only report the
+            // blank result — otherwise a good search ends in a wall of text.
+            if (!found) {
+                this.showMessage('You finish searching the area, but find nothing.');
+            }
+            this.stopSearch();
+            return;
+        }
+
+        if (player.isDead) { this.stopSearch(); return; }
+
+        // Anything worth noticing aborts the search, and the turns already spent
+        // are gone — Brogue's "you abandon your search."
+        const event = this.checkNotableEvents();
+        if (event) {
+            this.showMessage(event);
+            this.showMessage('You abandon your search.');
+            this.stopSearch();
+            return;
+        }
+
+        setTimeout(() => this.searchStep(), this.autoWalkDelay);
+    }
+
+    /**
+     * Stop an in-progress search.
+     */
+    stopSearch() {
+        this.searching = false;
+        this.searchTurnsLeft = 0;
+    }
+
+    /**
      * Stop auto-explore and clean up its overlay/state.
      */
     stopExplore() {
@@ -1464,6 +1592,11 @@ class InputManager {
             this.stopExplore();
             cancelled = true;
         }
+        if (this.searching) {
+            this.stopSearch();
+            this.showMessage('You abandon your search.');
+            cancelled = true;
+        }
         return cancelled;
     }
 
@@ -1508,7 +1641,9 @@ class InputManager {
         const player = entityManager.player;
         const isHallucinating = player?.hasStateProperty?.('hallucinating');
 
-        if (actor && !actor.isDead && actor.hasAttribute('visible')) {
+        // A hidden actor keeps its name to itself — including a disguised one,
+        // which is `visible` because it renders wall tiles.
+        if (actor && !actor.isDead && actor.hasAttribute('visible') && !actor.hasAttribute('hidden')) {
             if (isHallucinating && !actor.isPlayerControlled()) {
                 // Determine which sprite is visually on top at this tile.
                 // spriteTop (zIndex 11) renders above spriteBase (zIndex 10),
@@ -2103,6 +2238,11 @@ class InputManager {
                 this.startExplore();
                 break;
 
+            case 'search':
+                // Like explore, the stepper spends the turns itself.
+                this.startSearch();
+                break;
+
             case 'cycle_target':
                 // Tab: preview/advance through reachable targets (arms one for the
                 // (x)plore/confirm press). No turn consumed — it's just targeting.
@@ -2125,6 +2265,8 @@ class InputManager {
             this.engine.interfaceManager?.updatePlayerInfo();
             return;
         }
+
+        this.passiveSearch(player);
 
         // Called after player takes an action - defer AI turns to next animation frame
         // so PIXI renders the player's move (with updated FOV) before enemies respond
@@ -2181,7 +2323,7 @@ class InputManager {
 
             // Warn about visible traps (traps that have been revealed)
             // Don't warn if there's an item on the trap - it won't trigger until item is moved
-            if (actor.hasAttribute('trap') && actor.hasAttribute('visible')) {
+            if (actor.hasAttribute('trap') && actor.hasAttribute('visible') && !actor.hasAttribute('hidden')) {
                 const itemOnTrap = entityManager.items.find(
                     i => i.x === targetX && i.y === targetY && !i.isDead
                 );

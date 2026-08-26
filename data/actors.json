@@ -1111,8 +1111,7 @@
     "attributes": {
       "solid": false,
       "visible": false,
-      "portal": true,
-      "hidden": true
+      "portal": true
     }
   },
   "gate": {
@@ -1214,6 +1213,76 @@
       "toggled": false,
       "one_shot": true,
       "render_layer": "bottom"
+    },
+    "collision_description": "a pressure plate",
+    "switch_message": "A stone depresses as you step on it.",
+    "switch_effects": {
+      "solid": false,
+      "open": true
+    }
+  },
+  "hidden_door": {
+    "name": "door",
+    "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
+    "tileIndexTop": "OPAQUE_DOOR_TOP",
+    "tileIndexTop_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
+    "tileIndexBase_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
+    "tileIndexBase_hidden": "OPAQUE_DARK_SHADE",
+    "tileIndexTop_hidden": "OPAQUE_MEDIUM_LIGHT_SHADE",
+    "reveal_message": "You discover a hidden door!",
+    "attributes": {
+      "flammable": false,
+      "conductive": false,
+      "openable": true,
+      "lockable": true,
+      "swings_shut": true,
+      "open": false,
+      "locked": false,
+      "solid": true,
+      "hidden": true,
+      "breakable": true
+    }
+  },
+  "hidden_lever": {
+    "name": "[color] lever",
+    "tileIndexBase": "LEVER_BASE",
+    "tileIndexTop": "LEVER_HANDLE",
+    "tileIndexBase_toggled": "LEVER_HANDLE",
+    "tileIndexTop_toggled": "LEVER_BASE",
+    "tileIndexBase_hidden": "OPAQUE_DARK_SHADE",
+    "tileIndexTop_hidden": "OPAQUE_MEDIUM_LIGHT_SHADE",
+    "flipBaseV_toggled": true,
+    "flipTopV_toggled": true,
+    "collision_sound": "push1",
+    "reveal_message": "You find a concealed lever!",
+    "opaque_revealed": false,
+    "attributes": {
+      "solid": true,
+      "switchable": true,
+      "toggled": false,
+      "hidden": true,
+      "breakable": true
+    },
+    "collision_description": "[a-an] [color] lever",
+    "switch_message": "You pull [name].",
+    "switch_effects": {
+      "solid": false,
+      "open": true
+    }
+  },
+  "hidden_pressure_plate": {
+    "name": "pressure plate",
+    "tileIndexBase": "INVERSE_BULLET",
+    "tileIndexTop": "BLANK",
+    "collision_sound": "push1",
+    "reveal_message": "You spot a pressure plate in the floor!",
+    "attributes": {
+      "solid": false,
+      "switchable": true,
+      "toggled": false,
+      "one_shot": true,
+      "render_layer": "bottom",
+      "hidden": true
     },
     "collision_description": "a pressure plate",
     "switch_message": "A stone depresses as you step on it.",
@@ -1613,7 +1682,8 @@
     "personality": "trap",
     "attributes": {
       "solid": false,
-      "visible": false,
+      "visible": true,
+      "hidden": true,
       "flammable": false,
       "trap": true,
       "trap_type": "poison_gas",
@@ -1631,7 +1701,8 @@
     "personality": "trap",
     "attributes": {
       "solid": false,
-      "visible": false,
+      "visible": true,
+      "hidden": true,
       "flammable": false,
       "trap": true,
       "trap_type": "fire",
@@ -1652,7 +1723,8 @@
     "personality": "trap",
     "attributes": {
       "solid": false,
-      "visible": false,
+      "visible": true,
+      "hidden": true,
       "flammable": false,
       "trap": true,
       "trap_type": "paralysis_gas",
@@ -1670,7 +1742,8 @@
     "personality": "trap",
     "attributes": {
       "solid": false,
-      "visible": false,
+      "visible": true,
+      "hidden": true,
       "flammable": false,
       "trap": true,
       "trap_type": "confusion_gas",

@@ -12,10 +12,6 @@
 
 ## Feature ideas
 
-## Search
-
-- typical brogue style searching. We don't have hidden doors yet (just pushable walls) but we have traps, and can make hidden doors and levers too for this feature. Big feature
-
 ## other actors need to be able to use stairs
 
 - a monster should be able to chase a player actor from one level to another. How does brogue handle this?
@@ -133,10 +129,6 @@
 - [ ] Wand of domination — tame a wounded enemy [B]
 - [ ] Wand of plenty — clone a creature [B]
 - [ ] Containers — chests, bags that hold multiple items
-
-### Dungeon Generation
-
-- [ ] Secret doors, requires search feature. right now there are just pushable walls which are already slightly visually distinct from walls. secret door would have wall tiles until discovered then door tiles. Or is it actually one actor becoming another?
 
 ### Lighting & Vision
 

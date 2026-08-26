@@ -3001,8 +3001,12 @@ class InterfaceManager {
             trap._needsReset = true;
         }
 
-        // Make the trap visible (stays visible permanently)
-        if (!trap.hasAttribute('visible')) {
+        // Springing a trap discovers it, permanently. reveal() handles the hidden
+        // case (a concealed trap has no sprites yet); the fallback covers a trap
+        // authored as plain `visible: false`. Silent — trap_message follows.
+        if (trap.hasAttribute('hidden')) {
+            trap.reveal({ silent: true });
+        } else if (!trap.hasAttribute('visible')) {
             trap.setAttribute('visible', true);
             this.engine.renderer?.createActorSprites(trap);
         }
