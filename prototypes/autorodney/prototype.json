@@ -17,7 +17,7 @@
     "type": "brogue",
     "options": {
       "map_width": 80, "map_height": 70,
-      "loopMinDistance": 18, "maxLoops": 4,
+      "loopMinDistance": 18, "maxLoops": 4, "secretWallChance": 4,
       "roomWeights": { "rectangle": 40, "cross": 25, "circular": 20, "cavern": 15 }
     }
   },

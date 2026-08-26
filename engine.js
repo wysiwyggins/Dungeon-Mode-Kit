@@ -1778,6 +1778,11 @@ class DungeonEngine {
         this.mapManager.spawnPendingLakes(architectContext);
         this.mapManager.spawnPendingSewage(architectContext);
         this.mapManager.spawnPendingPushableWalls(architectContext);
+        // After the plain walls, so a late wall can never land on top of a secret.
+        // Both generators keep the tiles clear of pendingWallSpawns already; the
+        // ordering is belt and braces.
+        this.mapManager.spawnPendingSecretDoors(architectContext);
+        this.mapManager.spawnPendingHiddenLevers(architectContext);
         this.mapManager.spawnPendingBridges(architectContext);
         this.mapManager.spawnPendingCollapsingFloors(architectContext);
 

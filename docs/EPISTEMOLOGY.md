@@ -119,7 +119,7 @@ from where it stands:
 | Data | `tileIndexBase_hidden` / `tileIndexTop_hidden` | no `_hidden` tiles |
 | Stands on | a tile that would otherwise be wall | open floor |
 | Renders as | ordinary wall (untinted, so machine colour can't betray it) | nothing; the floor shows through |
-| Examples | `hidden_door`, `hidden_lever` | `hidden_pressure_plate`, gas/fire traps |
+| Examples | `hidden_door`, `barred_hidden_door`, `hidden_lever` | `hidden_pressure_plate`, gas/fire traps |
 
 A wall-mounted actor *replaces* the wall actor on its tile, so making it merely
 invisible would leave a hole in the wall. That's the whole reason the disguise exists.
@@ -141,6 +141,35 @@ silent outside it: "this area is clear" is a fact the player can act on, rather 
 roll worth repeating. Both are retunable per prototype or per floor via
 `mechanics.search_radius`, `thorough_search_strength`, `passive_search_strength`
 (see [PROTOTYPE.md](PROTOTYPE.md)).
+
+### Where hidden things come from
+
+Hand-authored maps place the actors directly. Two generators also seed them, each in
+the idiom of the space it builds (rates in [PROTOTYPE.md](PROTOTYPE.md)):
+
+| Generator | What it hides | Why there |
+|---|---|---|
+| `brogue` | a share of dead-end shortcuts (`secretDoorChance`) | Brogue's own dead-end fixer already finds these cells: a blind corridor with a room just beyond the wall. Finding one is a real shortcut, so it rewards the search. |
+| `brogue` and others | interior walls with floor on both sides (`secretWallChance`, off by default) | the same pool the 2% pushable-wall pass draws from — a wall between two floors is a passage waiting to happen |
+| `palladian` | non-axial interior doors (`secretPassageChance`) | a tartan grid has no dead ends, so the villa's secret is a doorway that reads as blank wall. Never the axial door: it carries the enfilade. |
+
+Two invariants hold whatever the rates are set to, because a secret should be a
+shortcut and never a wall:
+
+- **Nothing is sealed behind only secrets.** Every Palladian room keeps at least one
+  door you can simply walk through. Verified at a 100% conceal rate.
+- **No lever is ever behind the door it opens.** A `barred_hidden_door` really does
+  block until its lever is pulled, and nothing else opens it, so a badly sited lever
+  would seal a room permanently. Each is placed only where it can be reached with
+  that door shut *and* every barred door already placed shut — which is also what
+  stops two passages holding each other's lever.
+- **Symmetry is never broken.** A concealed door and its mirror twin are converted as
+  a pair, as are their levers, so a villa can't be read for secrets by looking for
+  the side that doesn't match. `tools/palladian-dump.js` checks this.
+
+Some Palladian passages spawn as `barred_hidden_door` — locked, and linked by
+`machine_id` to a `hidden_lever` disguised as wall in one of the two rooms it joins.
+That takes two discoveries: the lever, then the door it opens.
 
 ### Other ways things get found
 

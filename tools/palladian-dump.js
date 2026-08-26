@@ -64,6 +64,10 @@ function buildGrid(a, w, h) {
     for (const p of a.pendingPushableWallSpawns) put(p.x, p.y, 'P');
     for (const p of a.pendingTorchSpawns) put(p.x, p.y, 't');
     for (const p of a.pendingDoorSpawns) put(p.x, p.y, '+');
+    // Concealed things read as wall in play; they get their own glyphs here so a
+    // dump shows where the secrets are.
+    for (const p of a.pendingSecretDoorSpawns || []) put(p.x, p.y, 'S');
+    for (const p of a.pendingHiddenLeverSpawns || []) put(p.x, p.y, 'L');
     return g;
 }
 
@@ -74,6 +78,11 @@ const symClass = (ch) => {
     if (SYM_EXEMPT.has(ch)) return '?';
     if (ch === '#' || ch === 'M') return '#';   // wall material is a weighted roll
     if (ch === '+' ) return '.';                // doorChance roll; the gap is what matters
+    // A secret door is a gap you have to find, so it mirrors a door; a hidden
+    // lever occupies a wall cell, so it mirrors a wall. Both pairs are converted
+    // atomically by the generator, so they must mirror exactly — not exempt.
+    if (ch === 'S') return '.';
+    if (ch === 'L') return '#';
     return ch;
 };
 
@@ -92,6 +101,10 @@ function check(a, w, h, label) {
     // Torches are walls that finalize moved out of pendingWallSpawns, so they
     // still enclose the villa.
     const torches = new Set(a.pendingTorchSpawns.map(p => `${p.x},${p.y}`));
+    // A hidden lever replaces the wall actor on its tile, so it still seals the
+    // envelope. A secret door is a door, and doors are floor for enclosure.
+    const levers = new Set((a.pendingHiddenLeverSpawns || []).map(p => `${p.x},${p.y}`));
+    const secrets = new Set((a.pendingSecretDoorSpawns || []).map(p => `${p.x},${p.y}`));
 
     // The generator publishes its plan for exactly this purpose; tile extents
     // can't be trusted to yield an integer axis on a degraded plan.
@@ -154,7 +167,8 @@ function check(a, w, h, label) {
                 if (!dx && !dy) continue;
                 const k = `${t.x + dx},${t.y + dy}`;
                 if (t.x + dx < 0 || t.x + dx >= w || t.y + dy < 0 || t.y + dy >= h) continue;
-                if (!floor.has(k) && !walls.has(k) && !push.has(k) && !doors.has(k) && !torches.has(k)) leak = k;
+                if (!floor.has(k) && !walls.has(k) && !push.has(k) && !doors.has(k) &&
+                    !torches.has(k) && !levers.has(k) && !secrets.has(k)) leak = k;
                 if (leak) break;
             }
         }
@@ -237,7 +251,7 @@ function render(res, w, h, a) {
     }
     console.log('');
     console.log('legend  . floor   # wall   M metal_wall   I column   W window(fortification)');
-    console.log('        + door    t torch  P pushable');
+    console.log('        + door    t torch  P pushable   S secret door   L hidden lever');
     const sanct = res.rooms.find(r => r.isSanctum);
     console.log(`rooms ${res.rooms.length}   floor ${res.floorCount}   ` +
         `sanctum ${sanct ? `${sanct.shape} @ ${sanct._x1},${sanct._y1}-${sanct._x2},${sanct._y2}` : 'none'}   ` +

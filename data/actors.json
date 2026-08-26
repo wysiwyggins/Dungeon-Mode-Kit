@@ -1243,6 +1243,29 @@
       "breakable": true
     }
   },
+  "barred_hidden_door": {
+    "name": "door",
+    "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
+    "tileIndexTop": "OPAQUE_DOOR_TOP",
+    "tileIndexTop_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
+    "tileIndexBase_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
+    "tileIndexBase_hidden": "OPAQUE_DARK_SHADE",
+    "tileIndexTop_hidden": "OPAQUE_MEDIUM_LIGHT_SHADE",
+    "reveal_message": "You discover a hidden door, barred fast.",
+    "collision_description": "The hidden door is barred. Something must work it.",
+    "attributes": {
+      "flammable": false,
+      "conductive": false,
+      "openable": true,
+      "lockable": true,
+      "swings_shut": true,
+      "open": false,
+      "locked": true,
+      "solid": true,
+      "hidden": true,
+      "breakable": true
+    }
+  },
   "hidden_lever": {
     "name": "[color] lever",
     "tileIndexBase": "LEVER_BASE",

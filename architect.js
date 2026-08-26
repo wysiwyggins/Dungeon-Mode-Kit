@@ -53,6 +53,11 @@ class Architect {
         this.pendingLakeSpawns = [];
         this.pendingSewageSpawns = [];
         this.pendingPushableWallSpawns = [];
+        // Secret doors, and the concealed levers that open them. Kept apart from
+        // pendingDoorSpawns so the blob/connectivity filters can drop them without
+        // having to tell an ordinary door from a hidden one.
+        this.pendingSecretDoorSpawns = [];
+        this.pendingHiddenLeverSpawns = [];
         this.pendingBridgeSpawns = [];
         this.pendingCollapsingFloorSpawns = [];
         // Floor carved across an abyss to reconnect a stranded region. Tracked so
@@ -726,6 +731,10 @@ class Architect {
                     maxLoops: options.maxLoops || 5,
                     doorChance: options.doorChance ?? 50,
                     torchChance: options.torchChance ?? 30,
+                    // Share of dead-end shortcuts that become findable secret doors
+                    // rather than pushable walls. Brogue's own dead-end fixer makes
+                    // these secret; DMK defaults to a mix.
+                    secretDoorChance: options.secretDoorChance ?? 35,
                     wall_types: options.wall_types || [{ type: 'wall', weight: 100 }],
                     roomWeights: {
                         rectangle: options.roomWeights?.rectangle ?? 30,
@@ -829,7 +838,8 @@ class Architect {
                 // Create loops
                 this._brogueMakeLoops(dungeonGrid, rooms, this.width, this.height, brogueCfg);
 
-                // Fix dead-end corridors with pushable walls
+                // Fix dead-end corridors with shortcuts — pushable walls, or
+                // secret doors that have to be searched out (secretDoorChance).
                 const secretWalls = this._brogueFixDeadEnds(dungeonGrid, this.width, this.height);
 
                 // Convert to framework output
@@ -846,7 +856,10 @@ class Architect {
                     `Corridors: ${corridorsPlaced} placed / ${corridorAttempts} tried ` +
                     `(${corridorFails} rejected; chance ${brogueCfg.corridorChance}%, len ${brogueCfg.corridorLength[0]}-${brogueCfg.corridorLength[1]}). ` +
                     `${this.walkableTiles.length} floor tiles (${fillPct}% fill), ` +
-                    `${this.pendingDoorSpawns.length} doors.`
+                    `${this.pendingDoorSpawns.length} doors, ` +
+                    // Dead-end conversions only. The shared wall pass runs after this
+                    // case returns and logs its own secret-door count separately.
+                    `${this.pendingSecretDoorSpawns.length} secret doors from dead ends.`
                 );
                 break;
             }
@@ -878,6 +891,11 @@ class Architect {
                     doorChance: options.doorChance ?? 55,
                     torchChance: options.torchChance ?? 40,
                     wall_types: options.wall_types || [{ type: 'brick_wall', weight: 100 }],
+                    // Stage 7b — concealed passages between apartments the plan
+                    // left unconnected, and the share of those barred by a hidden
+                    // lever rather than opening on discovery.
+                    secretPassageChance: options.secretPassageChance ?? 40,
+                    secretPassageLeverChance: options.secretPassageLeverChance ?? 35,
                 };
 
                 const dungeonGrid = Array.from({ length: this.height }, () => new Uint8Array(this.width));
@@ -900,9 +918,14 @@ class Architect {
                 const portico = this._palladianAddPortico(dungeonGrid, plan, palCfg);
                 const openings = this._palladianAddOpenings(dungeonGrid, plan, rooms, portico, palCfg);
                 this._palladianEnsureConnected(dungeonGrid, plan, rooms, portico);
+                // After EnsureConnected: a secret passage is a bonus route, never
+                // the one that makes the villa traversable. The connectivity pass
+                // must have already succeeded without it.
+                const secrets = this._palladianAddSecretPassages(dungeonGrid, plan, rooms, palCfg);
 
                 const records = this._palladianMakeRecords(dungeonGrid, plan, rooms, portico, openings);
                 this._brogueFinalizeMap(dungeonGrid, records, this.width, this.height, palCfg);
+                this._palladianQueueSecrets(secrets);
 
                 // Decoration runs AFTER finalize on purpose: finalize's torch pass
                 // would otherwise convert a column into a wall torch, and its
@@ -922,6 +945,7 @@ class Architect {
                     `sanctum ${sanctum ? sanctum.shape : 'none'}, ` +
                     `portico ${portico ? portico.style : 'none'}, ` +
                     `${openings.windows.length} windows, ${this.pendingDoorSpawns.length} doors, ` +
+                    `${secrets.doors.length} secret passages (${secrets.levers.length} lever-barred), ` +
                     `${this.walkableTiles.length} floor tiles.`
                 );
                 break;
@@ -1052,6 +1076,7 @@ class Architect {
             };
             const wallSet = new Set(this.pendingWallSpawns.map(p => `${p.x},${p.y}`));
             const converted = [];
+            let secretConverted = 0;
             for (let i = this.pendingWallSpawns.length - 1; i >= 0; i--) {
                 const wall = this.pendingWallSpawns[i];
                 if (wall.type && wall.type !== 'wall') continue;
@@ -1061,14 +1086,28 @@ class Architect {
                     (hasFloor(wall.x, wall.y - 1) && hasFloor(wall.x, wall.y + 1) &&
                      !wallSet.has(`${wall.x},${wall.y - 1}`) && !wallSet.has(`${wall.x},${wall.y + 1}`));
                 if (!betweenFloors) continue;
-                if (ROT.RNG.getPercentage() <= 2) {
+
+                // A wall with floor on both sides is a passage waiting to happen.
+                // The two chances are independent rolls against the same candidate
+                // pool, not a split of one: pushableWallChance is deliberately tiny
+                // (2%), so taking a share of it would make secret doors vanishingly
+                // rare. secretWallChance is its own rate, off by default so existing
+                // maps are unchanged. (Distinct from the brogue generator's
+                // secretDoorChance, which splits dead-end shortcuts.)
+                const secret = ROT.RNG.getPercentage() <= (options.secretWallChance ?? 0);
+                if (!secret && ROT.RNG.getPercentage() > (options.pushableWallChance ?? 2)) continue;
+
+                if (secret) {
+                    this.pendingSecretDoorSpawns.push({ x: wall.x, y: wall.y });
+                    secretConverted++;
+                } else {
                     this.pendingPushableWallSpawns.push({ x: wall.x, y: wall.y });
-                    this.pendingWallSpawns.splice(i, 1);
-                    converted.push(wall);
                 }
+                this.pendingWallSpawns.splice(i, 1);
+                converted.push(wall);
             }
             if (converted.length > 0) {
-                console.log(`Pushable wall generation: ${converted.length} pushable walls`);
+                console.log(`Pushable wall generation: ${converted.length - secretConverted} pushable walls, ${secretConverted} secret doors`);
             }
         }
 
@@ -1185,6 +1224,8 @@ class Architect {
         this.pendingTorchSpawns = this.pendingTorchSpawns.filter(p => !covered(p));
         this.pendingBrazierSpawns = this.pendingBrazierSpawns.filter(p => !covered(p));
         this.pendingPushableWallSpawns = this.pendingPushableWallSpawns.filter(p => !covered(p));
+        this.pendingSecretDoorSpawns = this.pendingSecretDoorSpawns.filter(p => !covered(p));
+        this.pendingHiddenLeverSpawns = this.pendingHiddenLeverSpawns.filter(p => !covered(p));
         // Liquid needs a floor to lie on. Testing the map rather than this call's
         // own void set also catches water queued by the earlier lakes pass on a
         // cell this pass has since turned into chasm — otherwise the actor spawns
@@ -2471,6 +2512,8 @@ class Architect {
             doorChance: mapGenConfig.doorChance ?? 55,
             torchChance: mapGenConfig.torchChance ?? 40,
             wall_types: mapGenConfig.wall_types || [{ type: 'brick_wall', weight: 100 }],
+            secretPassageChance: mapGenConfig.secretPassageChance ?? 40,
+            secretPassageLeverChance: mapGenConfig.secretPassageLeverChance ?? 35,
         };
 
         // The mask is the region as authored, which may be an irregular blob. The plan
@@ -2507,9 +2550,11 @@ class Architect {
         const portico = this._palladianAddPortico(dungeonGrid, plan, cfg);
         const openings = this._palladianAddOpenings(dungeonGrid, plan, rooms, portico, cfg);
         this._palladianEnsureConnected(dungeonGrid, plan, rooms, portico);
+        const secrets = this._palladianAddSecretPassages(dungeonGrid, plan, rooms, cfg);
 
         const records = this._palladianMakeRecords(dungeonGrid, plan, rooms, portico, openings);
         this._palladianFinalizeRegion(dungeonGrid, records, mask, cfg);
+        this._palladianQueueSecrets(secrets);
 
         // Same ordering rule as the full-floor path: decoration must run after
         // finalize, or the torch pass converts a column into a wall torch.
@@ -2786,6 +2831,82 @@ class Architect {
 
         console.log(`Spawned ${this.pendingPushableWallSpawns.length} pushable wall actors`);
         this.pendingPushableWallSpawns = [];
+    }
+
+    /**
+     * Secret doors and the concealed levers that work them.
+     *
+     * Both spawn as ordinary actors carrying `hidden: true`; the search action
+     * (see EPISTEMOLOGY.md) is what turns them up. A lever is linked to its door
+     * by machine_id, written here because the pair is only known at generation
+     * time — the actor data cannot name a partner it has not been placed beside.
+     */
+    spawnPendingSecretDoors(context) {
+        if (!this.pendingSecretDoorSpawns || this.pendingSecretDoorSpawns.length === 0) return;
+        if (!context || !context.getActorData || !context.createActor) {
+            console.warn('Cannot spawn secret doors without context');
+            return;
+        }
+
+        // A lever-driven passage uses the barred variant, which is locked: revealing
+        // it is not enough, the lever has to be found too. Without a lever the plain
+        // variant opens on a bump once discovered.
+        const plainData = context.getActorData('hidden_door');
+        if (!plainData) {
+            console.warn('No hidden_door actor data found');
+            return;
+        }
+        const barredData = context.getActorData('barred_hidden_door');
+
+        for (const pos of this.pendingSecretDoorSpawns) {
+            // No barred data means no locked door, and an unlocked door would open
+            // on a bump — so drop the lever's machine link rather than ship a
+            // passage whose lever does nothing.
+            const barred = !!pos.machine_id && !!barredData;
+            if (pos.machine_id && !barredData) {
+                console.warn('No barred_hidden_door actor data; secret door will not be lever-locked');
+            }
+            context.createActor(
+                pos.x, pos.y,
+                barred ? 'barred_hidden_door' : 'hidden_door',
+                this._withMachineId(barred ? barredData : plainData, barred ? pos.machine_id : null)
+            );
+        }
+
+        console.log(`Spawned ${this.pendingSecretDoorSpawns.length} secret door actors`);
+        this.pendingSecretDoorSpawns = [];
+    }
+
+    spawnPendingHiddenLevers(context) {
+        if (!this.pendingHiddenLeverSpawns || this.pendingHiddenLeverSpawns.length === 0) return;
+        if (!context || !context.getActorData || !context.createActor) {
+            console.warn('Cannot spawn hidden levers without context');
+            return;
+        }
+
+        const actorData = context.getActorData('hidden_lever');
+        if (!actorData) {
+            console.warn('No hidden_lever actor data found');
+            return;
+        }
+
+        for (const pos of this.pendingHiddenLeverSpawns) {
+            context.createActor(pos.x, pos.y, 'hidden_lever', this._withMachineId(actorData, pos.machine_id));
+        }
+
+        console.log(`Spawned ${this.pendingHiddenLeverSpawns.length} hidden lever actors`);
+        this.pendingHiddenLeverSpawns = [];
+    }
+
+    // Shallow copy of actor data with a machine_id folded into its attributes.
+    // Returns the original untouched when there is no id to add, so the common
+    // case allocates nothing.
+    _withMachineId(actorData, machineId) {
+        if (!machineId) return actorData;
+        return {
+            ...actorData,
+            attributes: { ...(actorData.attributes || {}), machine_id: machineId }
+        };
     }
 
     spawnPendingBridges(context) {
@@ -3696,7 +3817,7 @@ class Architect {
             }
         }
 
-        if (secretWalls.length > 0) console.log(`Brogue dead ends: ${secretWalls.length} pushable walls placed`);
+        if (secretWalls.length > 0) console.log(`Brogue dead ends: ${secretWalls.length} shortcuts placed`);
         return secretWalls;
     }
 
@@ -4365,6 +4486,281 @@ class Architect {
         return { windows, hAxes, vAxes };
     }
 
+    /**
+     * Stage 7b — concealed passages.
+     *
+     * A tartan grid has no dead ends, so the Brogue generator's secret-door trick
+     * (a shortcut hidden at the end of a blind corridor) has nowhere to go here.
+     * The villa's version is a doorway that reads as blank wall: the door pass
+     * connects every pair of adjacent rooms, so the raw material is an ordinary
+     * interior door, disguised rather than a passage cut somewhere new.
+     *
+     * Concealing a door changes the reading of the plan: an apartment whose other
+     * entrance is concealed becomes a private cabinet, which is the point of the
+     * type. Two rules keep it from also changing whether the villa is playable.
+     * Every room keeps at least one door that can simply be walked through, so a
+     * search is always a shortcut. And a lever-barred passage — which genuinely
+     * does block until its lever is pulled — only ever sites that lever where it
+     * can be reached with the door shut, counting every barred door already placed,
+     * so two passages can never hold each other's lever.
+     *
+     * The axial door is never touched. It carries the enfilade from the rear door
+     * through the sanctum and out the portico, and hiding it would break the one
+     * sight-line the generator exists to produce. Mirrored twins are converted as
+     * a pair, so the villa is never asymmetric about its axis.
+     */
+    _palladianAddSecretPassages(dungeonGrid, plan, rooms, cfg) {
+        const chance = cfg.secretPassageChance ?? 0;
+        if (chance <= 0) return { doors: [], levers: [] };
+
+        const { axisX } = plan;
+        const mirrorX = (x) => 2 * axisX - x;
+
+        // Interior doors only: grid 2. Exterior windows and the axial opening are
+        // carved as 1 and so are excluded automatically.
+        const interior = [];
+        for (let y = 1; y < this.height - 1; y++) {
+            for (let x = 1; x < this.width - 1; x++) {
+                if (dungeonGrid[y][x] !== 2) continue;
+                if (x === axisX) continue;               // never hide the enfilade
+                interior.push({ x, y });
+            }
+        }
+        if (interior.length === 0) return { doors: [], levers: [] };
+
+        const roomsAt = (x, y) => rooms.filter(rm =>
+            rm.doors.some(d => d.x === x && d.y === y));
+
+        // A room must keep at least one door the player can simply walk through, or
+        // the secret stops being a shortcut and becomes the only way in. Counting is
+        // done against a live set of concealed tiles rather than a per-room tally:
+        // a door is shared by the rooms on both sides (and the sanctum touches many),
+        // so decrementing per-room counters miscounts as soon as one door is claimed
+        // by two rooms.
+        const concealed = new Set();
+        const wouldStrand = (pts) => {
+            const trial = new Set([...concealed, ...pts.map(q => `${q.x},${q.y}`)]);
+            const affected = new Set(pts.flatMap(q => roomsAt(q.x, q.y)));
+            for (const rm of affected) {
+                if (!rm.doors.some(d => !trial.has(`${d.x},${d.y}`))) return true;
+            }
+            return false;
+        };
+
+        const doors = [], levers = [];
+        const taken = new Set();
+        // Every barred cell placed so far, so later passages account for them.
+        const barredSoFar = [];
+        // Wall cells already given to a lever. Two passages can otherwise pick the
+        // same cell and stack two levers on one tile.
+        const leverCells = new Set();
+
+        for (const pt of interior) {
+            const key = `${pt.x},${pt.y}`;
+            if (taken.has(key)) continue;                // already claimed as a twin
+            if (pt.x > axisX) continue;                  // west half drives; east mirrors
+            if (ROT.RNG.getPercentage() > chance) continue;
+
+            const twin = { x: mirrorX(pt.x), y: pt.y };
+            const pair = (twin.x !== pt.x && dungeonGrid[twin.y]?.[twin.x] === 2)
+                ? [pt, twin] : [pt];
+
+            // Both twins must survive the last-door test, or neither is hidden.
+            if (wouldStrand(pair)) continue;
+
+            for (const q of pair) concealed.add(`${q.x},${q.y}`);
+            for (const q of pair) {
+                taken.add(`${q.x},${q.y}`);
+                // Grid 1, not 2: finalize turns a 2 into an ordinary visible door.
+                dungeonGrid[q.y][q.x] = 1;
+            }
+
+            // Bar the pair or neither, and site the west lever only — the twin's
+            // lever is its mirror image. Rolling each side independently would put
+            // the two levers in unrelated places, which is visible asymmetry.
+            //
+            // A barred door DOES block passage until its lever is pulled, so unlike a
+            // plain concealed door it can strand: put the lever behind the door it
+            // opens and the room is sealed for good. The lever therefore has to go in
+            // whichever of the two rooms is still reachable with this door treated as
+            // wall — checked against the live grid, so earlier passages in this same
+            // pass are already accounted for.
+            // Reachability is tested against THIS pair plus every barred door already
+            // placed. Testing only this pair lets two passages each hold the other's
+            // lever — a deadlock neither search can break, since a barred door has no
+            // other opener.
+            this._palladianRegionCache = null;
+            const barred = ROT.RNG.getPercentage() <= (cfg.secretPassageLeverChance ?? 0);
+            const shut = [...pair, ...barredSoFar];
+            const hostRooms = barred
+                ? this._palladianRoomsReachableWithout(dungeonGrid, roomsAt(pt.x, pt.y), shut)
+                : [];
+            const candidate = (barred && hostRooms.length > 0)
+                ? this._palladianFindHiddenLeverSpot(dungeonGrid, plan, hostRooms, pt, leverCells)
+                : null;
+            // A reachable room is not enough: the lever is in a wall cell, and that
+            // cell has to border the part of the room that is still reachable.
+            const spot = (candidate &&
+                this._palladianCellReachableWithout(dungeonGrid, candidate, shut))
+                ? candidate : null;
+            // The twin's lever is the mirror of this one. The mirror of a wall cell is
+            // a wall cell, but only inside the villa envelope — and mirroring does not
+            // preserve reachability, since the twin door blocks a different region. So
+            // the reflected cell is checked for both.
+            const twinSpot = spot
+                ? { x: mirrorX(spot.x), y: spot.y }
+                : null;
+            const twinSpotOk = twinSpot &&
+                twinSpot.x >= 1 && twinSpot.x < this.width - 1 &&
+                dungeonGrid[twinSpot.y]?.[twinSpot.x] < 1 &&
+                !leverCells.has(`${twinSpot.x},${twinSpot.y}`) &&
+                this._palladianCellReachableWithout(dungeonGrid, twinSpot, shut);
+
+            if (!spot || (pair.length > 1 && !twinSpotOk)) {
+                doors.push(...pair);
+                continue;
+            }
+
+            const spots = pair.length > 1 ? [spot, twinSpot] : [spot];
+            pair.forEach((q, i) => {
+                const machineId = `palladian_secret_${doors.length}`;
+                doors.push({ ...q, machine_id: machineId });
+                levers.push({ ...spots[i], machine_id: machineId });
+                leverCells.add(`${spots[i].x},${spots[i].y}`);
+                barredSoFar.push({ x: q.x, y: q.y });
+            });
+        }
+
+        return { doors, levers };
+    }
+
+    /**
+     * Hand the finished secret passages to the spawn queues.
+     *
+     * Runs AFTER finalize, for the same reason the colonnade does: finalize
+     * queues a wall on every void cell touching floor, which includes the tile a
+     * hidden lever wants. Claiming the tile here — and dropping the wall finalize
+     * queued for it — is what stops the two actors landing on top of each other.
+     */
+    _palladianQueueSecrets(secrets) {
+        if (!secrets) return;
+        if (secrets.levers.length > 0) {
+            const claimed = new Set(secrets.levers.map(l => `${l.x},${l.y}`));
+            const free = (p) => !claimed.has(`${p.x},${p.y}`);
+            this.pendingWallSpawns = this.pendingWallSpawns.filter(free);
+            // Finalize's torch pass draws from pendingWallSpawns, so it may already
+            // have picked this tile before the wall itself was dropped.
+            this.pendingTorchSpawns = this.pendingTorchSpawns.filter(free);
+        }
+        this.pendingSecretDoorSpawns.push(...secrets.doors);
+        this.pendingHiddenLeverSpawns.push(...secrets.levers);
+    }
+
+    /**
+     * Which of a passage's two rooms are still reachable with that passage shut.
+     *
+     * Flood-fills the live grid from the largest open region with the barred cells
+     * treated as wall, then keeps the rooms that region touches. A lever sited in a
+     * room this returns can always be reached, so a barred passage can never seal
+     * itself off — the failure mode is permanent, since nothing else opens it.
+     */
+    _palladianRoomsReachableWithout(dungeonGrid, candidateRooms, barredCells) {
+        if (candidateRooms.length === 0) return [];
+        const region = this._palladianOpenRegionWithout(dungeonGrid, barredCells);
+        if (region.size === 0) return [];
+
+        // A room counts as reached when any of its own bay cells is in the region;
+        // its doors are not enough, since a door can be the barred cell itself.
+        return candidateRooms.filter(rm => rm.bays.some(b => {
+            for (let y = b.y1; y <= b.y2; y++) {
+                for (let x = b.x1; x <= b.x2; x++) {
+                    if (region.has(`${x},${y}`)) return true;
+                }
+            }
+            return false;
+        }));
+    }
+
+    /**
+     * The largest open region of the grid with `barredCells` treated as wall.
+     *
+     * Seeded from the largest component rather than an arbitrary tile: the player
+     * arrives by the stairs, which land in open floor, and the biggest component is
+     * the best proxy for that available at this stage. Memoized so the three checks
+     * for one passage share a single flood fill; the caller drops the cache when it
+     * moves to the next passage, since carving one mutates the grid.
+     */
+    _palladianOpenRegionWithout(dungeonGrid, barredCells) {
+        const blocked = new Set(barredCells.map(p => `${p.x},${p.y}`));
+        const cacheKey = [...blocked].sort().join('|');
+        if (this._palladianRegionCache?.key === cacheKey) return this._palladianRegionCache.region;
+
+        const open = (x, y) => dungeonGrid[y]?.[x] >= 1 && !blocked.has(`${x},${y}`);
+        const seenAll = new Set();
+        let best = new Set();
+        for (let y = 1; y < this.height - 1; y++) {
+            for (let x = 1; x < this.width - 1; x++) {
+                const k = `${x},${y}`;
+                if (seenAll.has(k) || !open(x, y)) continue;
+                const comp = new Set([k]);
+                const stack = [[x, y]];
+                while (stack.length) {
+                    const [cx, cy] = stack.pop();
+                    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                        const nx = cx + dx, ny = cy + dy, nk = `${nx},${ny}`;
+                        if (comp.has(nk) || !open(nx, ny)) continue;
+                        comp.add(nk);
+                        stack.push([nx, ny]);
+                    }
+                }
+                for (const c of comp) seenAll.add(c);
+                if (comp.size > best.size) best = comp;
+            }
+        }
+        this._palladianRegionCache = { key: cacheKey, region: best };
+        return best;
+    }
+
+    // Can the player stand next to this wall cell with the barred cells shut? A wall
+    // is worked from the floor beside it, so that is what has to be reachable.
+    _palladianCellReachableWithout(dungeonGrid, cell, barredCells) {
+        const region = this._palladianOpenRegionWithout(dungeonGrid, barredCells);
+        return [[1, 0], [-1, 0], [0, 1], [0, -1]]
+            .some(([dx, dy]) => region.has(`${cell.x + dx},${cell.y + dy}`));
+    }
+
+    /**
+     * A wall cell inside one of the passage's two rooms, to hide the lever in.
+     *
+     * The lever must be a wall the villa would have had anyway — it replaces the
+     * wall actor on its tile, so it has to sit on a cell that finalize is going to
+     * turn into wall (void in the grid, adjacent to that room's floor). Sitting it
+     * one room away from the door it opens is deliberate: finding the lever and
+     * finding the passage are two separate discoveries.
+     */
+    _palladianFindHiddenLeverSpot(dungeonGrid, plan, roomsPair, doorPt, taken = null) {
+        const spots = [];
+        for (const room of roomsPair) {
+            for (const b of room.bays) {
+                for (let y = b.y1 - 1; y <= b.y2 + 1; y++) {
+                    for (let x = b.x1 - 1; x <= b.x2 + 1; x++) {
+                        if (x < 1 || y < 1 || x >= this.width - 1 || y >= this.height - 1) continue;
+                        if (dungeonGrid[y][x] >= 1) continue;           // must be wall
+                        if (x === doorPt.x && y === doorPt.y) continue;
+                        if (taken?.has(`${x},${y}`)) continue;         // another lever has it
+                        // Needs floor beside it, or it is a wall nobody can reach.
+                        const reachable = [[1, 0], [-1, 0], [0, 1], [0, -1]]
+                            .some(([dx, dy]) => dungeonGrid[y + dy]?.[x + dx] >= 1);
+                        if (!reachable) continue;
+                        spots.push({ x, y });
+                    }
+                }
+            }
+        }
+        if (spots.length === 0) return null;
+        return spots[Math.floor(ROT.RNG.getUniform() * spots.length)];
+    }
+
     // Two bays need a door between them when they exist and are different rooms.
     // Same room means the dividing wall was already carved away by a merge.
     _palladianNeedsDoor(roomA, roomB) {
@@ -4601,7 +4997,14 @@ class Architect {
                 if (adj && y > 0) {
                     this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
                     if (secretWallSet.has(`${x},${y}`)) {
-                        this.pendingPushableWallSpawns.push({ x, y });
+                        // A dead-end shortcut is either a wall you shove or a door
+                        // you have to find. secretDoorChance splits them; the rest
+                        // stay pushable, which is the pre-search behaviour.
+                        if (ROT.RNG.getPercentage() <= (cfg.secretDoorChance ?? 0)) {
+                            this.pendingSecretDoorSpawns.push({ x, y });
+                        } else {
+                            this.pendingPushableWallSpawns.push({ x, y });
+                        }
                     } else {
                         const wallType = this._pickWeightedWallType(wallTypes);
                         this.pendingWallSpawns.push({ x, y, type: isPerimeter(x, y) ? 'metal_wall' : wallType });
@@ -4953,6 +5356,8 @@ class Architect {
         this.pendingLakeSpawns = [];
         this.pendingSewageSpawns = [];
         this.pendingPushableWallSpawns = [];
+        this.pendingSecretDoorSpawns = [];
+        this.pendingHiddenLeverSpawns = [];
         this.pendingBridgeSpawns = [];
         this.pendingCollapsingFloorSpawns = [];
         // Floor carved across an abyss to reconnect a stranded region. Tracked so

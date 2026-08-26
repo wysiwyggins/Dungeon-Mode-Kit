@@ -147,6 +147,13 @@ When no Tiled map file exists for a floor, the engine generates a procedural map
 | `sewage_chance` | number | Percent chance to spawn sewage (cellular, digger) |
 | `lava_chance` | number | Percent chance for lava pools (infernal) |
 | `wall_types` | array | Weighted wall types: `[{ "type": "rock_wall", "weight": 95 }]` |
+| `pushableWallChance` | number | Percent chance an interior wall with floor on both sides becomes a pushable wall (default `2`). Only applies to walls of type `wall`. |
+| `secretWallChance` | number | Percent chance the same wall becomes a **hidden door** instead — found by searching, not shoving (default `0`, off). Rolled independently of `pushableWallChance`, so it is not competing for a share of that 2%. |
+
+Both of the last two convert walls the generator was going to place anyway, so they
+scale with map area: the same percentage yields ~5× as many secrets on a 100×100 map
+as on a 50×50 one. Tune per prototype rather than reusing one number. See
+[EPISTEMOLOGY.md](EPISTEMOLOGY.md) for how hidden things are found.
 
 #### Brogue-Specific Options
 
@@ -161,6 +168,7 @@ When no Tiled map file exists for a floor, the engine generates a procedural map
 | `roomWeights` | object | `{ rectangle: 30, cross: 25, circular: 20, cavern: 25 }` | Relative weights for room types |
 | `loopMinDistance` | number | `20` | Minimum path distance between rooms before a loop shortcut is added |
 | `maxLoops` | number | `5` | Maximum loop connections to add |
+| `secretDoorChance` | number | `35` | Percent of **dead-end shortcuts** that become hidden doors rather than pushable walls. These are the cells Brogue's own dead-end fixer identifies — a blind corridor with a room one or two tiles beyond the wall — so they are the most rewarding thing a search can turn up. `0` restores the all-pushable behaviour. Distinct from the shared `secretWallChance` above, which converts ordinary interior walls. |
 
 #### Palladian-Specific Options
 
@@ -183,7 +191,9 @@ Interior doors are aligned with each other and with the exterior windows, produc
 | `columnSpacing` | number | `2` | Tiles between colonnade columns; `0` = no colonnade. The column count is forced **even** so the axis stays an open doorway — Palladio never blocks the axis with a column. |
 | `doorChance` | number | `55` | Percent chance a non-axial interior opening gets a door actor. Axial openings are always open, so the axial sight-line can't be closed off. |
 | `torchChance` | number | `40` | Percent chance to place a brazier in a room (higher than brogue's 30 — temples are lit). |
-| `wall_types` | array | `[{ "type": "brick_wall", "weight": 100 }]` | Weighted wall types. **Note:** the shared post-generation pass converts ~2% of interior walls to pushable secret walls, but only walls of type `wall`. So the `brick_wall` default disables that; set `[{ "type": "wall", "weight": 100 }]` to get secret passages in the villa walls. |
+| `wall_types` | array | `[{ "type": "brick_wall", "weight": 100 }]` | Weighted wall types. **Note:** the shared `pushableWallChance` / `secretWallChance` pass only converts walls of type `wall`, so the `brick_wall` default disables both. The villa gets its concealed routes from `secretPassageChance` below instead, which does not care about wall type. |
+| `secretPassageChance` | number | `40` | Percent chance a non-axial interior door is concealed — a doorway that reads as blank wall until searched out. The axial door is never eligible: it carries the enfilade, and hiding it would break the one sight-line the generator exists to produce. A room always keeps at least one door you can simply walk through, so a secret is a shortcut, never the only way in. Mirrored twins are concealed as a pair, so the villa never gives itself away by being asymmetric. |
+| `secretPassageLeverChance` | number | `35` | Percent of those concealed doorways that spawn as `barred_hidden_door` (locked) instead of `hidden_door`, paired by `machine_id` to a **hidden lever**. Finding the door is not enough — it stays shut until the lever is found and pulled. The lever is itself disguised as wall, sited in one of the two rooms the passage joins, and mirrored with its twin. |
 
 The generator reuses existing actors — `column` for the colonnade, `fortification` for windows (solid but see-through, so it reads as a barred opening), `brick_wall`, `wall_torch` for wall sconces, and `brazier` for freestanding centrepieces. No new art is required.
 

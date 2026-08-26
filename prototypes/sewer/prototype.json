@@ -103,7 +103,8 @@
         "max": 2,
         "minSize": 2,
         "maxSize": 4
-      }
+      },
+      "secretWallChance": 3
     }
   },
   "win_conditions": []
