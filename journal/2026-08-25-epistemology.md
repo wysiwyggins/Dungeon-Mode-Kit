@@ -36,6 +36,6 @@ Writing all of this down made me split the whole business in two: sight (is it d
 
 ![tilemap of shadows cast by a brazier](../assets/images/shadows.png)
 
-This sprint as given me an idea for the first small prototype that focuses on this subject— a brazier casts light and also blocks vision, moving around it, a player actor with no torch has both a line-of-sight dead zone beyond the brazier and a shadow cast behind the player by the brazier's light, and the two 'shadows' mirror one another. One is a shadow of "unknowing," although that shadow is filled with a memory of another perspective.
+This sprint as given me an idea for the first small prototype that focuses on this subject— a brazier casts light and also blocks vision. Moving around it, a player actor with no torch has both a line-of-sight dead zone beyond the brazier and a shadow cast behind the player by the brazier's light, and the two 'shadows' mirror one another. One is a shadow of "unknowing," although that shadow is filled with a memory of another perspective.
 
 I've added a bunch of related tables in a new document called [/docs/EPISTEMOLOGY.md](EPISTEMOLOGY.md)
