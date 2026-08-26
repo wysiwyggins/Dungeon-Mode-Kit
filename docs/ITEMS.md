@@ -157,6 +157,13 @@ the inventory — the only way to reach a walkable `breakable` such as a grave, 
 without equipping the tool at all. Equipping is still what lets you bump walls as you
 walk and swing the tool at enemies; the Dig verb is the deliberate one-target use.
 
+The verb also has a key: `dig` in the `actions` block of `keybindings.json` (`d` by
+default). Carrying exactly one item with `use_verb: "Dig"` — the normal case — goes
+straight to the direction picker, so the key is one press plus a direction. Carry two and
+it asks which tool first; carry none and it says so without costing a turn. Nothing about
+the key is specific to mining: it filters the pack by verb, so any item declaring
+`use_verb: "Dig"` is offered.
+
 ---
 
 ## Use Effects (UI-Triggered)

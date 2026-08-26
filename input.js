@@ -2073,6 +2073,24 @@ class InputManager {
                 }
                 break;
 
+            case 'dig':
+                // Straight to the direction picker when only one tool qualifies —
+                // a hotkey that still asked "dig with which?" would save nothing.
+                // Safe to read the pack directly: menu handlers all get first refusal
+                // in handleKeyDown, so no item menu is up and no letter selection is
+                // competing for this key.
+                if (this.engine.interfaceManager) {
+                    const diggers = player.inventory.filter(
+                        item => item.getAttribute('use_verb') === 'Dig'
+                    );
+                    if (diggers.length === 1) {
+                        player.useItem(diggers[0]);
+                    } else {
+                        this.engine.interfaceManager.showUseMenu(player, 'Dig', 'Dig with which?');
+                    }
+                }
+                break;
+
             case 'discovery':
                 if (this.engine.interfaceManager) {
                     this.engine.interfaceManager.toggleDiscoveryPanel();
