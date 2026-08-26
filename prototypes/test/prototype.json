@@ -3,31 +3,76 @@
   "loaded_sound": "tone3",
   "description": "Welcome to the Dungeon of Doom. \nFind the crown and wear it to clear the way downward. \nPress '?' for help. Use arrows/numpad or mouse to move.",
   "turn_speed": 50,
-  "win_conditions": ["wearing:crown"],
+  "win_conditions": [
+    "wearing:crown"
+  ],
   "win_state": {
-    "message": "You have escaped with the Crown of Testing"
+    "message": "You have escaped with the Crown of Testing",
+    "conditions": []
   },
   "mechanics": {
     "fog_of_war": false,
     "darkness": false
   },
-  "traps": { "min": 2, "max": 5 },
+  "traps": {
+    "min": 2,
+    "max": 5
+  },
   "random_actors": {
-      "skeleton": { "chance": 30, "min": 0, "max": 2 },
-      "bat": { "chance": 60, "min": 0, "max": 3 },
-      "monkey": { "chance": 30, "min": 0, "max": 1 },
-      "goblin": { "chance": 20, "min": 0, "max": 2 },
-      "dynamo": { "chance": 10, "min": 0, "max": 1 }
-
+    "skeleton": {
+      "chance": 30,
+      "min": 0,
+      "max": 2
     },
-    "random_items": {
-      "staff": { "chance": 100, "min": 1, "max": 2 },
-      "potion": { "chance": 100, "min": 1, "max": 1 },
-      "potion": { "chance": 100, "min": 1, "max": 1 },
-      "potion": { "chance": 70, "min": 1, "max": 1 },
-      "potion": { "chance": 70, "min": 1, "max": 1 },
-      "scroll": { "chance": 100, "min": 0, "max": 1 },
-      "scroll": { "chance": 100, "min": 0, "max": 1 },
-      "scroll": { "chance": 60, "min": 0, "max": 1 }
+    "bat": {
+      "chance": 60,
+      "min": 0,
+      "max": 3
+    },
+    "monkey": {
+      "chance": 30,
+      "min": 0,
+      "max": 1
+    },
+    "goblin": {
+      "chance": 20,
+      "min": 0,
+      "max": 2
+    },
+    "dynamo": {
+      "chance": 10,
+      "min": 0,
+      "max": 1
     }
+  },
+  "random_items": {
+    "staff": {
+      "chance": 100,
+      "min": 1,
+      "max": 2
+    },
+    "potion": {
+      "chance": 70
+    },
+    "scroll": {
+      "chance": 60,
+      "min": 0,
+      "max": 1
+    },
+    "hallucination_potion": {
+      "chance": 60,
+      "min": 0,
+      "max": 1
+    },
+    "mattock": {
+      "chance": 60,
+      "min": 0,
+      "max": 1
+    },
+    "weapon": {
+      "chance": 60,
+      "min": 0,
+      "max": 1
+    }
+  }
 }
