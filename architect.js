@@ -4,7 +4,7 @@ const TILED_FLIP_V = 0x40000000;
 const TILED_FLIP_D = 0x20000000;
 
 // pendingWallSpawns types that are free-standing architecture rather than part of
-// a wall run. Non-opaque, so a light source replacing one becomes a `brazier`;
+// a wall run. A light source replacing one becomes a `brazier`;
 // everything else becomes a `wall_torch`.
 const FREESTANDING_WALL_TYPES = new Set(['column']);
 
@@ -53,7 +53,7 @@ class Architect {
         this.pendingLakeSpawns = [];
         this.pendingSewageSpawns = [];
         this.pendingPushableWallSpawns = [];
-        // Secret doors, and the concealed levers that open them. Kept apart from
+        // Secret doors, includig barred secret doors with paired levers. Kept apart from
         // pendingDoorSpawns so the blob/connectivity filters can drop them without
         // having to tell an ordinary door from a hidden one.
         this.pendingSecretDoorSpawns = [];
@@ -137,8 +137,8 @@ class Architect {
      * isn't floor and isn't already a queued wall becomes a metal_wall.
      *
      * @param {(x:number,y:number)=>boolean} hasFloor  is this cell floor?
-     * @param {number} mapW  width to sweep
-     * @param {number} mapH  height to sweep
+     * @param {number} mapW 
+     * @param {number} mapH
      */
     _fillPerimeterGaps(hasFloor, mapW, mapH) {
         const isPerimeter = (px, py) => px === 0 || px === mapW - 1 || py === 0 || py === mapH - 1;
@@ -166,6 +166,99 @@ class Architect {
             if (roll <= 0) return wt.type;
         }
         return wallTypes[0].type;
+    }
+
+    _carveRect(dungeonGrid, x1, y1, x2, y2, value = 1) {
+        for (let y = Math.max(0, y1); y <= Math.min(this.height - 1, y2); y++) {
+            for (let x = Math.max(0, x1); x <= Math.min(this.width - 1, x2); x++) {
+                if (dungeonGrid[y][x] < value) dungeonGrid[y][x] = value;
+            }
+        }
+    }
+
+    _carveWanderingPath(from, to, isBarrier) {
+        const path = [];
+        const collected = new Set();
+        let x = from.x;
+        let y = from.y;
+        const stepCap = (Math.abs(to.x - from.x) + Math.abs(to.y - from.y)) * 6 + 40;
+        let jogDirection = null;
+        let jogStepsLeft = 0;
+
+        for (let step = 0; step < stepCap && (x !== to.x || y !== to.y); step++) {
+            const towardX = Math.sign(to.x - x);
+            const towardY = Math.sign(to.y - y);
+            // Whichever axis has further to go; the causeway closes that one and
+            // wanders on the other.
+            const preferX = Math.abs(to.x - x) > Math.abs(to.y - y);
+            const direct = preferX || towardY === 0 ? [towardX, 0] : [0, towardY];
+
+            let dx;
+            let dy;
+            if (jogStepsLeft > 0) {
+                // A jog runs for a few steps: wander only one and the next step
+                // corrects it straight back.
+                [dx, dy] = jogDirection;
+                jogStepsLeft--;
+            } else if (ROT.RNG.getUniform() < 0.3) {
+                // Turn across the direction of travel and commit to it.
+                const sideways = ROT.RNG.getUniform() < 0.5 ? 1 : -1;
+                [dx, dy] = preferX ? [0, towardY !== 0 ? towardY : sideways]
+                                   : [towardX !== 0 ? towardX : sideways, 0];
+                jogDirection = [dx, dy];
+                jogStepsLeft = 1 + Math.floor(ROT.RNG.getUniform() * 3);
+            } else {
+                [dx, dy] = direct;
+            }
+
+            // Every step is a single cardinal move, so the cells form one
+            // unbroken 4-connected run. A diagonal would leave the "path" as two
+            // corner-touching fragments the player cannot actually walk.
+            let nx = x + dx;
+            let ny = y + dy;
+            if (nx < 2 || nx >= this.width - 2 || ny < 2 || ny >= this.height - 2) {
+                nx = x + direct[0];
+                ny = y + direct[1];
+                jogStepsLeft = 0;
+                if (nx < 2 || nx >= this.width - 2 || ny < 2 || ny >= this.height - 2) break;
+            }
+
+            x = nx;
+            y = ny;
+            const key = `${x},${y}`;
+            // Only barrier cells need carving; steps that stray onto existing
+            // shore are already walkable and simply carry the path along.
+            if (isBarrier(x, y) && !collected.has(key)) {
+                collected.add(key);
+                path.push({ x, y });
+            }
+        }
+
+        return path;
+    }
+
+
+    // 4-way flood fill over walkable cells. _brogueBFS is not reused: it is a
+    // capped-distance point-to-point search returning -1 for both "unreachable"
+    // and "over budget", which cannot answer a connectivity question.
+    _floodFillRegion(dungeonGrid, sx, sy) {
+        const seen = new Set();
+        if (sx < 0 || sy < 0 || sx >= this.width || sy >= this.height) return seen;
+        if (dungeonGrid[sy][sx] < 1) return seen;
+        const queue = [[sx, sy]];
+        seen.add(`${sx},${sy}`);
+        while (queue.length) {
+            const [x, y] = queue.pop();
+            for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                const nx = x + dx, ny = y + dy;
+                if (nx < 0 || ny < 0 || nx >= this.width || ny >= this.height) continue;
+                const k = `${nx},${ny}`;
+                if (seen.has(k) || dungeonGrid[ny][nx] < 1) continue;
+                seen.add(k);
+                queue.push([nx, ny]);
+            }
+        }
+        return seen;
     }
 
     getNeighbors(layerName, x, y) {
@@ -532,7 +625,7 @@ class Architect {
     }
 
     // ========================================================================
-    // PROCEDURAL GENERATION (stub)
+    // PROCEDURAL GENERATION
     // ========================================================================
 
     generateProceduralMap(generatorConfig = {}) {
@@ -718,22 +811,25 @@ class Architect {
                 // for corridors to snake through. An explicit maxRooms wins.
                 const autoMaxRooms = Math.min(120, Math.max(8,
                     Math.round((this.width * this.height) / 200)));
-                // maxAttempts is the practical limiter (many attempts fail to place),
-                // so it scales with the room target: ~4x, clamped. An explicit
-                // maxAttempts wins.
                 const autoMaxAttempts = Math.min(600, Math.max(50, autoMaxRooms * 4));
+                const autoWindingCorridors = Math.min(16, Math.max(3,
+                    Math.round((this.width * this.height) / 1250)));
+               
+                options.secretWallChance ??= 3;
                 const brogueCfg = {
                     maxRooms: options.maxRooms || autoMaxRooms,
                     maxAttempts: options.maxAttempts || autoMaxAttempts,
                     corridorChance: options.corridorChance ?? 55,
                     corridorLength: options.corridorLength || [3, 9],
+
+                    maxWindingCorridors: options.maxWindingCorridors ?? autoWindingCorridors,
+                    windingLength: options.windingLength || [6, 22],
+                    windingBranchChance: options.windingBranchChance ?? 25,
                     loopMinDistance: options.loopMinDistance || 20,
                     maxLoops: options.maxLoops || 5,
                     doorChance: options.doorChance ?? 50,
                     torchChance: options.torchChance ?? 30,
-                    // Share of dead-end shortcuts that become findable secret doors
-                    // rather than pushable walls. Brogue's own dead-end fixer makes
-                    // these secret; DMK defaults to a mix.
+
                     secretDoorChance: options.secretDoorChance ?? 35,
                     wall_types: options.wall_types || [{ type: 'wall', weight: 100 }],
                     roomWeights: {
@@ -785,9 +881,9 @@ class Architect {
                 let consecutiveFails = 0;
                 let totalFails = 0;
                 let attemptsUsed = 0;
-                let corridorAttempts = 0;      // rooms that grew a corridor stub
-                let corridorsPlaced = 0;       // corridor-rooms that placed successfully
-                let corridorFails = 0;         // corridor-rooms that failed to place
+                let corridorAttempts = 0;
+                let corridorsPlaced = 0;
+                let corridorFails = 0;
                 let stopReason = 'maxAttempts reached';
                 let attempt = 0;
                 for (attempt = 0; attempt < brogueCfg.maxAttempts && roomsBuilt < brogueCfg.maxRooms; attempt++) {
@@ -838,8 +934,9 @@ class Architect {
                 // Create loops
                 this._brogueMakeLoops(dungeonGrid, rooms, this.width, this.height, brogueCfg);
 
-                // Fix dead-end corridors with shortcuts — pushable walls, or
-                // secret doors that have to be searched out (secretDoorChance).
+                const winding = this._brogueCarveWindingCorridors(
+                    dungeonGrid, rooms, this.width, this.height, brogueCfg
+                );
                 const secretWalls = this._brogueFixDeadEnds(dungeonGrid, this.width, this.height);
 
                 // Convert to framework output
@@ -857,9 +954,9 @@ class Architect {
                     `(${corridorFails} rejected; chance ${brogueCfg.corridorChance}%, len ${brogueCfg.corridorLength[0]}-${brogueCfg.corridorLength[1]}). ` +
                     `${this.walkableTiles.length} floor tiles (${fillPct}% fill), ` +
                     `${this.pendingDoorSpawns.length} doors, ` +
-                    // Dead-end conversions only. The shared wall pass runs after this
-                    // case returns and logs its own secret-door count separately.
-                    `${this.pendingSecretDoorSpawns.length} secret doors from dead ends.`
+                    `Winding: ${winding.carved} carved / ${winding.attempted} attempted ` +
+                    `(${winding.branches} branched, max ${brogueCfg.maxWindingCorridors}). ` +
+                    `${this.pendingSecretDoorSpawns.length} secret doors so far (dead ends).`
                 );
                 break;
             }
@@ -1069,6 +1166,10 @@ class Architect {
             this.repairBlobConnectivity(options.connectivity_repair || {});
         }
 
+        // Snapshot before the interior-wall pass so the summary below can report
+        // dead-end and interior-wall secret doors as one total.
+        const secretDoorsFromDeadEnds = this.pendingSecretDoorSpawns.length;
+
         if (this.pendingWallSpawns.length > 0) {
             const hasFloor = (x, y) => {
                 if (x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
@@ -1077,6 +1178,30 @@ class Architect {
             const wallSet = new Set(this.pendingWallSpawns.map(p => `${p.x},${p.y}`));
             const converted = [];
             let secretConverted = 0;
+            let secretRejected = 0;
+            let pushRejected = 0;
+            // How far apart the two sides must already be for a hidden door between
+            // them to be worth finding. 0 (the default) disables the test.
+            //
+            // Off by default because of what the candidate pool actually contains:
+            // the betweenFloors test below requires both opposing neighbours to be
+            // non-wall floor, which a wall *inside a wall run* never satisfies — its
+            // neighbours along the run are walls. So every candidate is an isolated
+            // stub tip poking into open floor, and measuring 3322 of them across
+            // caves and depths gave a detour of exactly 4 for 100% of them. Turning
+            // this gate on therefore rejects the entire pool and reinstates the
+            // secret-door drought rather than improving placement.
+            //
+            // Fixing that means widening betweenFloors to admit walls within a run,
+            // which also changes which walls become pushable — a bigger change than
+            // this gate. Until then the gate is here, correct, and dormant; set
+            // secretWallMinDetour to enable it once the pool is worth filtering.
+            const minDetour = options.secretWallMinDetour ?? 0;
+            // Pushable walls get the gate the secret-door path can't use. Their
+            // candidates come from the same pool, but unlike secret doors they are
+            // not load-bearing for anything, so thinning them costs nothing: half
+            // the raw pool measured as 4-tile walk-around stubs. 0 disables.
+            const pushMinDetour = options.pushableWallMinDetour ?? 8;
             for (let i = this.pendingWallSpawns.length - 1; i >= 0; i--) {
                 const wall = this.pendingWallSpawns[i];
                 if (wall.type && wall.type !== 'wall') continue;
@@ -1098,20 +1223,122 @@ class Architect {
                 if (!secret && ROT.RNG.getPercentage() > (options.pushableWallChance ?? 2)) continue;
 
                 if (secret) {
+                    // A secret door is only worth finding if it actually saves the
+                    // player a walk. Without this the pass happily hides a door
+                    // between two rooms already joined by an open corridor three
+                    // tiles away — mechanically a secret, practically a shortcut to
+                    // nowhere. Same test _brogueMakeLoops applies to its loops:
+                    // reject when the two sides are already close together.
+                    if (!this._isWorthwhileShortcut(wall, minDetour)) {
+                        secretRejected++;
+                        continue;
+                    }
                     this.pendingSecretDoorSpawns.push({ x: wall.x, y: wall.y });
                     secretConverted++;
                 } else {
+                    // Same test, and for the same reason: a pushable wall you can
+                    // simply step around is scenery, not a puzzle. Measured on the
+                    // raw pool, half of these were stub tips with a 4-tile detour.
+                    if (!this._isWorthwhileShortcut(wall, pushMinDetour)) {
+                        pushRejected++;
+                        continue;
+                    }
                     this.pendingPushableWallSpawns.push({ x: wall.x, y: wall.y });
                 }
                 this.pendingWallSpawns.splice(i, 1);
                 converted.push(wall);
             }
-            if (converted.length > 0) {
-                console.log(`Pushable wall generation: ${converted.length - secretConverted} pushable walls, ${secretConverted} secret doors`);
+            if (converted.length > 0 || secretRejected > 0) {
+                console.log(
+                    `Pushable wall generation: ${converted.length - secretConverted} pushable walls, ` +
+                    `${secretConverted} secret doors` +
+                    (secretRejected + pushRejected > 0
+                        ? ` (${secretRejected + pushRejected} rejected as pointless shortcuts)` : '')
+                );
             }
         }
 
-        console.log(`Procedural map generated with ${this.walkableTiles.length} walkable tiles`);
+        // The authoritative secret-door count. The per-pass lines above each see
+        // only their own share, and the dead-end one reads 0 on most maps, so state
+        // the total and its breakdown once, here, where both are known.
+        const secretDoorTotal = this.pendingSecretDoorSpawns.length;
+        console.log(
+            `Procedural map generated with ${this.walkableTiles.length} walkable tiles, ` +
+            `${secretDoorTotal} secret doors ` +
+            `(${secretDoorsFromDeadEnds} dead-end, ${secretDoorTotal - secretDoorsFromDeadEnds} interior-wall)`
+        );
+    }
+
+    /**
+     * Would a hidden door in this wall actually open a shortcut?
+     *
+     * Answers by walking the finished map from one side of the wall to the other,
+     * *without* going through the wall itself: if the detour is already short, the
+     * door saves nobody anything and shouldn't be a secret. This is the same
+     * judgement _brogueMakeLoops makes about loops, but it can't share
+     * _brogueBFS — that one reads the generator's dungeonGrid, which is out of
+     * scope by the time this pass runs and is stale anyway, since lakes, abysses,
+     * bridges and connectivity repair have all reshaped the map since. Walking
+     * floorMap instead measures the map the player will actually be dropped into,
+     * and gets abyss handling for free: blob cells clear floorMap, so a path is
+     * never routed across a chasm.
+     *
+     * Returns true when the sides are far apart, unreachable from each other, or
+     * beyond the search cap — all cases where the door is a genuine discovery.
+     *
+     * @param {{x:number,y:number}} wall     the candidate wall cell
+     * @param {number} minDetour  required existing walking distance; 0 disables
+     */
+    _isWorthwhileShortcut(wall, minDetour) {
+        if (!minDetour || minDetour <= 0) return true;
+
+        // floorMap alone is NOT walkability: a wall actor sits on a floor tile, so
+        // floorMap[y][x] is non-null for walls too. Testing it by itself lets the
+        // search walk straight through walls, which makes every detour look short
+        // and the whole test a no-op. The pending wall set is what makes it mean
+        // what it says.
+        const blocked = new Set(this.pendingWallSpawns.map(p => `${p.x},${p.y}`));
+        const walkable = (x, y) => {
+            if (x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
+            if (x === wall.x && y === wall.y) return false;   // never through the door
+            if (blocked.has(`${x},${y}`)) return false;
+            return this.floorMap[y][x] !== null;
+        };
+
+        // The pair of opposing floor cells this wall sits between. betweenFloors
+        // has already established that one of these axes holds.
+        const [a, b] = walkable(wall.x - 1, wall.y) && walkable(wall.x + 1, wall.y)
+            ? [{ x: wall.x - 1, y: wall.y }, { x: wall.x + 1, y: wall.y }]
+            : [{ x: wall.x, y: wall.y - 1 }, { x: wall.x, y: wall.y + 1 }];
+
+        // Cap the search at the distance we care about: anything further is "far
+        // enough" and there's no reason to keep expanding. Bounds the cost of
+        // running this per candidate wall.
+        const cap = minDetour;
+        const visited = new Set([`${a.x},${a.y}`]);
+        let frontier = [a];
+        let dist = 0;
+
+        while (frontier.length > 0 && dist < cap) {
+            dist++;
+            const next = [];
+            for (const cell of frontier) {
+                for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+                    const nx = cell.x + dx, ny = cell.y + dy;
+                    if (!walkable(nx, ny)) continue;
+                    const key = `${nx},${ny}`;
+                    if (visited.has(key)) continue;
+                    // Reached the far side within the cap — the detour is short, so
+                    // the door would be a shortcut to nowhere.
+                    if (nx === b.x && ny === b.y) return false;
+                    visited.add(key);
+                    next.push({ x: nx, y: ny });
+                }
+            }
+            frontier = next;
+        }
+
+        return true;
     }
 
     /**
@@ -1439,7 +1666,7 @@ class Architect {
                 // dead end; the neck's own BFS chain is the crossing that is
                 // guaranteed to join the two shores. Take the scenic route only
                 // when it actually reaches the far side.
-                const scenic = this._blobCarveCauseway(neck.from, neck.to, isAbyss);
+                const scenic = this._carveWanderingPath(neck.from, neck.to, isAbyss);
                 const reaches = scenic.length > 0 && scenic.some(c =>
                     Math.abs(c.x - neck.to.x) + Math.abs(c.y - neck.to.y) === 1);
                 const path = reaches ? scenic : neck.cells;
@@ -1478,7 +1705,7 @@ class Architect {
 
     /**
      * Labels every connected region of open floor. Modelled on
-     * _palladianFloodFill, but reads live map state instead of a grid so it can
+     * _floodFillRegion, but reads live map state instead of a grid so it can
      * run after carving, and labels all components rather than one.
      *
      * Liquid counts as open, only the abyss actually blocks. Pass
@@ -1590,77 +1817,6 @@ class Architect {
 
         return null;
     }
-
-    /**
-     * Carves a wandering route from one shore to the other. Not a straight line —
-     * that reads as a bridge, which is generateBridges' job; this should look like
-     * land the chasm failed to take. Biased toward the goal so it always arrives,
-     * capped so it always ends.
-     *
-     * A step only counts if it lands on a barrier cell, so a jog out onto solid
-     * shore costs nothing and the path clips itself to the chasm.
-     */
-    _blobCarveCauseway(from, to, isBarrier) {
-        const path = [];
-        const collected = new Set();
-        let x = from.x;
-        let y = from.y;
-        const stepCap = (Math.abs(to.x - from.x) + Math.abs(to.y - from.y)) * 6 + 40;
-        let jogDirection = null;
-        let jogStepsLeft = 0;
-
-        for (let step = 0; step < stepCap && (x !== to.x || y !== to.y); step++) {
-            const towardX = Math.sign(to.x - x);
-            const towardY = Math.sign(to.y - y);
-            // Whichever axis has further to go; the causeway closes that one and
-            // wanders on the other.
-            const preferX = Math.abs(to.x - x) > Math.abs(to.y - y);
-            const direct = preferX || towardY === 0 ? [towardX, 0] : [0, towardY];
-
-            let dx;
-            let dy;
-            if (jogStepsLeft > 0) {
-                // A jog runs for a few steps: wander only one and the next step
-                // corrects it straight back.
-                [dx, dy] = jogDirection;
-                jogStepsLeft--;
-            } else if (ROT.RNG.getUniform() < 0.3) {
-                // Turn across the direction of travel and commit to it.
-                const sideways = ROT.RNG.getUniform() < 0.5 ? 1 : -1;
-                [dx, dy] = preferX ? [0, towardY !== 0 ? towardY : sideways]
-                                   : [towardX !== 0 ? towardX : sideways, 0];
-                jogDirection = [dx, dy];
-                jogStepsLeft = 1 + Math.floor(ROT.RNG.getUniform() * 3);
-            } else {
-                [dx, dy] = direct;
-            }
-
-            // Every step is a single cardinal move, so the cells form one
-            // unbroken 4-connected run. A diagonal would leave the "path" as two
-            // corner-touching fragments the player cannot actually walk.
-            let nx = x + dx;
-            let ny = y + dy;
-            if (nx < 2 || nx >= this.width - 2 || ny < 2 || ny >= this.height - 2) {
-                nx = x + direct[0];
-                ny = y + direct[1];
-                jogStepsLeft = 0;
-                if (nx < 2 || nx >= this.width - 2 || ny < 2 || ny >= this.height - 2) break;
-            }
-
-            x = nx;
-            y = ny;
-            const key = `${x},${y}`;
-            // Only barrier cells need carving; steps that stray onto existing
-            // shore are already walkable and simply carry the path along.
-            if (isBarrier(x, y) && !collected.has(key)) {
-                collected.add(key);
-                path.push({ x, y });
-            }
-        }
-
-        return path;
-    }
-
     generateBridges(config) {
         const maxBridges = config.max || 1;
 
@@ -3264,9 +3420,58 @@ class Architect {
         const right = treasureRoom.getRight() + 1;
         const top = treasureRoom.getTop() - 1;
         const bottom = treasureRoom.getBottom() + 1;
+        const inSeal = (p) => p.x >= left && p.x <= right && p.y >= top && p.y <= bottom;
         for (const wall of this.pendingWallSpawns) {
-            if (wall.x >= left && wall.x <= right && wall.y >= top && wall.y <= bottom) {
+            if (inSeal(wall)) {
                 wall.type = 'metal_wall';
+            }
+        }
+
+        // A vault wall is not sealed just because it looks like one. A secret door
+        // or a pushable wall in the ring is a way in that this sweep used to miss
+        // entirely — it only ever upgraded pendingWallSpawns — so the loot could be
+        // reached by searching or shoving instead of by finding the key. Both
+        // queues are drained into metal_wall here, which is the whole point of the
+        // vault: exactly one way in, through the locked door.
+        const breaches = [];
+        this.pendingSecretDoorSpawns = this.pendingSecretDoorSpawns.filter(p => {
+            if (!inSeal(p)) return true;
+            breaches.push(p);
+            return false;
+        });
+        this.pendingPushableWallSpawns = this.pendingPushableWallSpawns.filter(p => {
+            if (!inSeal(p)) return true;
+            breaches.push(p);
+            return false;
+        });
+        for (const p of breaches) {
+            this.pendingWallSpawns.push({ x: p.x, y: p.y, type: 'metal_wall' });
+            this.walkableTiles = this.walkableTiles.filter(t => !(t.x === p.x && t.y === p.y));
+        }
+
+        // Finally, close any bare gap in the ring *around* the vault's own floor.
+        // Everything above can only upgrade a cell some queue already owns; a cell
+        // that is simply open floor belongs to nothing and survived every sweep.
+        //
+        // The ring is derived from the vault's actual tiles, not from the bbox
+        // border: for a cavern or cross-shaped room the bbox border cuts straight
+        // through the room's own interior, and sealing that walls the vault off
+        // from the inside — the door opens onto a plugged room.
+        const vaultTiles = new Set(roomTiles.map(t => `${t.x},${t.y}`));
+        const sealed = new Set(this.pendingWallSpawns.map(w => `${w.x},${w.y}`));
+        let gapsClosed = 0;
+        for (const t of roomTiles) {
+            for (const [dx, dy] of TP_DIRS8) {
+                const x = t.x + dx, y = t.y + dy;
+                if (x < 0 || y < 0 || x >= this.width || y >= this.height) continue;
+                if (vaultTiles.has(`${x},${y}`)) continue;              // the room itself
+                if (x === chosenDoor.x && y === chosenDoor.y) continue; // the way in
+                if (sealed.has(`${x},${y}`)) continue;
+                if (!this.floorMap[y] || this.floorMap[y][x] === null) continue;  // void
+                this.pendingWallSpawns.push({ x, y, type: 'metal_wall' });
+                this.walkableTiles = this.walkableTiles.filter(c => !(c.x === x && c.y === y));
+                sealed.add(`${x},${y}`);
+                gapsClosed++;
             }
         }
 
@@ -3281,7 +3486,9 @@ class Architect {
             .filter(t => walkableKeys.has(`${t.x},${t.y}`))
             .map(t => ({ x: t.x, y: t.y }));
 
-        console.log(`Treasure room: ${roomTiles.length} floor tiles, locked door at (${chosenDoor.x}, ${chosenDoor.y}), ${allEntrances.length - 1} extra entrance(s) walled off`);
+        console.log(`Treasure room: ${roomTiles.length} floor tiles, locked door at (${chosenDoor.x}, ${chosenDoor.y}), ${allEntrances.length - 1} extra entrance(s) walled off` +
+            (breaches.length > 0 ? `, ${breaches.length} secret/pushable breach(es) sealed` : '') +
+            (gapsClosed > 0 ? `, ${gapsClosed} open ring gap(s) closed` : ''));
         return { roomTiles, doorPos: chosenDoor };
     }
 
@@ -3785,6 +3992,283 @@ class Architect {
         return -1;
     }
 
+    /**
+     * Carves winding corridors through the rock left over after room accretion.
+     *
+     * The generator's other corridors (_brogueMaybeAddCorridor) are straight stubs
+     * glued onto a room's local grid *before* placement, so room and corridor have
+     * to fit as one rigid piece — which is why long ones mostly fail to place, and
+     * why none of them can ever turn. This pass works the other way round: the
+     * rooms are already down, so it treats the leftover rock as material and cuts
+     * into it. That is what makes a hallway able to wind.
+     *
+     * Corridors are meant to end in rock. A dead-end passage is the point, not a
+     * defect: _brogueFixDeadEnds runs straight after this and looks 2-3 tiles past
+     * each dead end for floor, turning it into a secret-door candidate. That is the
+     * Brogue shape where a corridor peters out and the wall at the end is a door.
+     *
+     * Must run AFTER _brogueMakeLoops (which would otherwise punch through the
+     * fresh 1-tile walls this creates and dissolve the dead ends) and BEFORE
+     * _brogueFixDeadEnds (which is what harvests them).
+     *
+     * Writes only to dungeonGrid. _brogueFinalizeMap derives floorMap, walls and
+     * walkableTiles from the finished grid, so a carved cell gets its wall ring
+     * for free.
+     */
+    _brogueCarveWindingCorridors(dungeonGrid, rooms, mapW, mapH, cfg) {
+        const budget = cfg.maxWindingCorridors ?? 0;
+        if (budget <= 0 || rooms.length === 0) return { carved: 0, attempted: 0 };
+
+        const [minLen, maxLen] = cfg.windingLength || [6, 22];
+        // Keep clear of the map edge: _brogueFinalizeMap skips row 0 when building
+        // its wall ring (its `y > 0` guard), so floor carved too near the top would
+        // never get capped. _carveWanderingPath clamps to the same inset.
+        const inBounds = (x, y) => x >= 2 && y >= 2 && x <= mapW - 3 && y <= mapH - 3;
+        const isRock = (x, y) => inBounds(x, y) && dungeonGrid[y][x] === 0;
+        const isFloor = (x, y) =>
+            x >= 0 && y >= 0 && x < mapW && y < mapH && dungeonGrid[y][x] >= 1;
+
+        // Cells this corridor has already claimed. Kept separate from the grid so a
+        // rejected path leaves nothing behind.
+        let claimed = new Set();
+
+        // Every room's wall ring, minus the cells that are the room itself. A
+        // corridor may pierce this ring at its own mouth but must never run along
+        // it: a passage carved flush against a room leaves no wall cell between the
+        // two, and spawnTreasureRoom's seal only upgrades cells that are ALREADY
+        // walls (it rewrites pendingWallSpawns entries inside the room's bbox+1).
+        // With no wall there to upgrade, a vault picked on that room keeps a wide
+        // open side and the loot is free. Reserving the ring keeps the wall that
+        // the seal depends on.
+        const roomRing = new Set();
+        const ringOf = [];
+        for (let r = 0; r < rooms.length; r++) {
+            const room = rooms[r];
+            const own = new Set();
+            for (let y = room._y1 - 1; y <= room._y2 + 1; y++) {
+                for (let x = room._x1 - 1; x <= room._x2 + 1; x++) {
+                    if (x < 0 || y < 0 || x >= mapW || y >= mapH) continue;
+                    if (dungeonGrid[y][x] === 0) { roomRing.add(`${x},${y}`); own.add(`${x},${y}`); }
+                }
+            }
+            ringOf.push(own);
+        }
+
+        // The 1-tile-wall rule. Eight neighbours, not four: a corridor that slips
+        // diagonally past a room corner would leave no wall cell between them, and
+        // _brogueFinalizeMap's anyNeighbor8 wall pass would then quietly fuse the
+        // corridor into the room.
+        const clearOfOtherFloor = (x, y, allowed) => {
+            for (const [dx, dy] of TP_DIRS8) {
+                const nx = x + dx, ny = y + dy;
+                const key = `${nx},${ny}`;
+                if (allowed.has(key)) continue;
+                if (isFloor(nx, ny)) return false;
+            }
+            return true;
+        };
+
+        // Seeds: a rock cell in a room's wall ring with the room on exactly one
+        // side and somewhere to go on the other. Carving here reads as a doorway
+        // punched in the room wall.
+        const seeds = [];
+        for (let r = 0; r < rooms.length; r++) {
+            const room = rooms[r];
+            for (let y = room._y1 - 1; y <= room._y2 + 1; y++) {
+                for (let x = room._x1 - 1; x <= room._x2 + 1; x++) {
+                    if (!isRock(x, y)) continue;
+                    for (const [dx, dy] of TP_DIRS4) {
+                        // floor behind, rock ahead and beyond
+                        if (!isFloor(x - dx, y - dy)) continue;
+                        if (!isRock(x + dx, y + dy)) continue;
+                        if (!isRock(x + dx * 2, y + dy * 2)) continue;
+                        seeds.push({ x, y, dx, dy, roomIndex: r });
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Fisher-Yates, matching _brogueMakeLoops. Not a sort: under a seeded RNG a
+        // stable order would carve every map from the same corner outward.
+        for (let i = seeds.length - 1; i > 0; i--) {
+            const j = Math.floor(ROT.RNG.getUniform() * (i + 1));
+            [seeds[i], seeds[j]] = [seeds[j], seeds[i]];
+        }
+
+        let carved = 0;
+        let attempted = 0;
+        let branches = 0;
+        const attemptCap = budget * 8;
+        let cursor = 0;
+
+        while (carved < budget && attempted < attemptCap) {
+            attempted++;
+
+            // Most corridors start at a room; the rest branch off the tip of one
+            // already carved, which turns a single dead end into a fork.
+            let seed = null;
+            const wantBranch = carved > 0 &&
+                ROT.RNG.getPercentage() <= (cfg.windingBranchChance ?? 0);
+            if (wantBranch) seed = this._brogueFindCorridorTip(dungeonGrid, mapW, mapH, isRock);
+            while (!seed && cursor < seeds.length) {
+                const cand = seeds[cursor++];
+                if (dungeonGrid[cand.y][cand.x] === 0) seed = cand;
+            }
+            if (!seed) break;   // out of seeds entirely
+
+            // Aim at another room, not at empty rock. A corridor that stops in
+            // open rock is a bare dead end: there is nothing on the far side of
+            // its last wall, so _brogueFixDeadEnds finds no floor within 2-3 tiles
+            // and never turns it into a secret door. Brogue almost never leaves a
+            // hallway hanging — a dead end is where a room is hiding. Targeting a
+            // room means the corridor peters out one wall short of something, and
+            // that wall is exactly what becomes the secret door.
+            const target = this._brogueFindCorridorTarget(rooms, seed, minLen, maxLen);
+            if (!target) continue;
+            const goal = target.goal;
+
+            claimed = new Set([`${seed.x},${seed.y}`]);
+            // The mouth is allowed to touch its own room; nothing else is.
+            const mouthAllowance = new Set([`${seed.x - seed.dx},${seed.y - seed.dy}`]);
+            // ...and the corridor has to be able to leave. The seed's own room ring
+            // wraps the mouth on every side, so treating it as off-limits stopped
+            // every path within two or three cells of where it started.
+            const ownRing = seed.roomIndex === undefined ? null : ringOf[seed.roomIndex];
+            // Same for the room's floor: the first corridor cell sits right beside
+            // it by construction, so the separation test has to know that this one
+            // room is allowed to be there. Only for the first couple of cells —
+            // after that the corridor is clear and the normal rule applies.
+            const ownFloor = seed.roomIndex === undefined ? null : rooms[seed.roomIndex];
+
+            // isBarrier stays deliberately loose — is this cell rock? Putting the
+            // separation rule in here instead would make the walk *skip* cells it
+            // isn't allowed to collect while still stepping past them, returning a
+            // list full of holes that the contiguity check below then cuts at the
+            // first one. (That bug cost ~90% of every path: 7 cells raw, 0.8 kept.)
+            // The rule belongs in the truncation pass, which can see the run so far.
+            const raw = this._carveWanderingPath(seed, goal, (x, y) => isRock(x, y));
+
+            // Walk the returned cells in order and stop at the first one that
+            // breaks a rule. _carveWanderingPath cannot do this itself: it still
+            // steps through cells it declines to collect, and its `collected` set
+            // is private, so it can neither keep off existing floor nor notice the
+            // path doubling back alongside itself.
+            const path = [];
+            let prev = seed;
+            for (const cell of raw) {
+                // A gap means the walk crossed ground it didn't collect; whatever
+                // follows is a disconnected fragment, not more corridor.
+                if (Math.abs(cell.x - prev.x) + Math.abs(cell.y - prev.y) !== 1) break;
+                // Stopping *against* a room is the goal, not a failure: the wall
+                // between this cell and the room is what _brogueFixDeadEnds turns
+                // into a secret door. So take the cell, then stop — the corridor
+                // ends here, one wall short of somewhere worth getting to.
+                // (Carving THROUGH the ring is still forbidden; that would fuse the
+                // corridor into the room and leave no wall to hide.)
+                const touchesRing = roomRing.has(`${cell.x},${cell.y}`) &&
+                    !(ownRing && ownRing.has(`${cell.x},${cell.y}`));
+                // Everything this corridor already owns is exempt from the
+                // separation test — a passage is obviously adjacent to itself.
+                // Only the seed's own room is additionally allowed.
+                if (touchesRing) break;
+                const allowed = new Set(claimed);
+                for (const k of mouthAllowance) allowed.add(k);
+                if (ownFloor && path.length < 2) {
+                    for (let yy = ownFloor._y1; yy <= ownFloor._y2; yy++)
+                        for (let xx = ownFloor._x1; xx <= ownFloor._x2; xx++)
+                            allowed.add(`${xx},${yy}`);
+                }
+                if (!clearOfOtherFloor(cell.x, cell.y, allowed)) break;
+                claimed.add(`${cell.x},${cell.y}`);
+                path.push(cell);
+                prev = cell;
+            }
+
+            if (path.length < minLen) continue;
+
+            // Commit. Body cells are plain floor; the mouth is a door cell so
+            // finalize can roll it against doorChance like any other doorway.
+            for (const cell of path) this._carveRect(dungeonGrid, cell.x, cell.y, cell.x, cell.y, 1);
+            this._carveRect(dungeonGrid, seed.x, seed.y, seed.x, seed.y, seed.roomIndex === undefined ? 1 : 2);
+
+            // Register the mouth on its room. This is load-bearing for
+            // spawnTreasureRoom, which builds its entrance list purely from
+            // getDoors(): a mouth it cannot see is an unsealed back way into the
+            // vault. Append only — that call keeps allEntrances[0] as the room's
+            // original door and walls off the rest, and `_doors` preserves
+            // insertion order because "x,y" keys are not integer indices.
+            if (seed.roomIndex !== undefined) rooms[seed.roomIndex].addDoor(seed.x, seed.y);
+            else branches++;
+
+            carved++;
+        }
+
+        return { carved, attempted, branches };
+    }
+
+    /**
+     * Pick a room for a corridor to head toward, and return an aim point just
+     * short of it.
+     *
+     * The aim point matters more than it looks. `_carveWanderingPath` stops when
+     * it reaches the goal, and the separation rule stops it one cell before it
+     * touches the room's wall ring — so aiming at the room's edge leaves the
+     * corridor ending against the room with a single wall between them. That wall
+     * is what `_brogueFixDeadEnds` sees floor behind, and what becomes the secret
+     * door. Aiming at bare rock instead is what produced hallways that simply
+     * stopped.
+     *
+     * Rooms nearer than minLen are skipped (nothing to wind through) and rooms
+     * further than maxLen * 2 are skipped (the walk would cap out before
+     * arriving, stranding the corridor in rock again).
+     */
+    _brogueFindCorridorTarget(rooms, seed, minLen, maxLen) {
+        const candidates = [];
+        for (const room of rooms) {
+            const cx = Math.round((room._x1 + room._x2) / 2);
+            const cy = Math.round((room._y1 + room._y2) / 2);
+            const dist = Math.abs(cx - seed.x) + Math.abs(cy - seed.y);
+            if (dist < minLen || dist > maxLen * 2) continue;
+            // Prefer rooms roughly ahead of the mouth: a target directly behind
+            // would send the corridor straight back around its own room.
+            const ahead = (cx - seed.x) * seed.dx + (cy - seed.y) * seed.dy;
+            if (ahead <= 0) continue;
+            candidates.push({ x: cx, y: cy, dist });
+        }
+        if (candidates.length === 0) return null;
+        const pick = candidates[Math.floor(ROT.RNG.getUniform() * candidates.length)];
+        return { goal: { x: pick.x, y: pick.y }, dist: pick.dist };
+    }
+
+    /**
+     * A carved corridor's far tip: floor with exactly one floor neighbour, with
+     * rock ahead to keep going into. Same shape as the dead-end test in
+     * _brogueFixDeadEnds, but looking for somewhere to branch rather than
+     * somewhere to hide a door.
+     */
+    _brogueFindCorridorTip(dungeonGrid, mapW, mapH, isRock) {
+        const tips = [];
+        for (let y = 2; y <= mapH - 3; y++) {
+            for (let x = 2; x <= mapW - 3; x++) {
+                if (dungeonGrid[y][x] < 1) continue;
+                let open = 0;
+                for (const [dx, dy] of TP_DIRS4) {
+                    if (dungeonGrid[y + dy][x + dx] >= 1) open++;
+                }
+                if (open !== 1) continue;
+                for (const [dx, dy] of TP_DIRS4) {
+                    if (dungeonGrid[y + dy][x + dx] >= 1) continue;
+                    if (isRock(x + dx, y + dy) && isRock(x + dx * 2, y + dy * 2)) {
+                        tips.push({ x: x + dx, y: y + dy, dx, dy });
+                    }
+                }
+            }
+        }
+        if (tips.length === 0) return null;
+        return tips[Math.floor(ROT.RNG.getUniform() * tips.length)];
+    }
+
     _brogueFixDeadEnds(dungeonGrid, mapW, mapH) {
         const cardinals = [[0, -1], [0, 1], [-1, 0], [1, 0]];
         const secretWalls = [];
@@ -4021,21 +4505,10 @@ class Architect {
         for (let r = 0; r < plan.nRows; r++) {
             for (let c = 0; c < plan.nCols; c++) {
                 const b = plan.bays[r][c];
-                this._palladianCarveRect(dungeonGrid, b.x1, b.y1, b.x2, b.y2);
+                this._carveRect(dungeonGrid, b.x1, b.y1, b.x2, b.y2);
             }
         }
     }
-
-    // Every carve goes through here. A Uint8Array row write past its length is
-    // SILENTLY DROPPED, so an out-of-bounds carve would otherwise fail invisibly.
-    _palladianCarveRect(dungeonGrid, x1, y1, x2, y2, value = 1) {
-        for (let y = Math.max(0, y1); y <= Math.min(this.height - 1, y2); y++) {
-            for (let x = Math.max(0, x1); x <= Math.min(this.width - 1, x2); x++) {
-                if (dungeonGrid[y][x] < value) dungeonGrid[y][x] = value;
-            }
-        }
-    }
-
     // Stage 3: room layout by concatenation.
     //
     // Start with one room per bay, then merge adjacent bays. The paper permits AT
@@ -4214,12 +4687,12 @@ class Architect {
                 // East-west divider.
                 if (c + 1 < nCols && find(key(c + 1, r)) === here) {
                     const wallX = plan.colX[c][1] + 1;
-                    this._palladianCarveRect(dungeonGrid, wallX, plan.rowY[r][0], wallX, plan.rowY[r][1]);
+                    this._carveRect(dungeonGrid, wallX, plan.rowY[r][0], wallX, plan.rowY[r][1]);
                 }
                 // North-south divider.
                 if (r + 1 < nRows && find(key(c, r + 1)) === here) {
                     const wallY = plan.rowY[r][1] + 1;
-                    this._palladianCarveRect(dungeonGrid, plan.colX[c][0], wallY, plan.colX[c][1], wallY);
+                    this._carveRect(dungeonGrid, plan.colX[c][0], wallY, plan.colX[c][1], wallY);
                 }
             }
         }
@@ -4232,7 +4705,7 @@ class Architect {
                     find(key(c, r + 1)), find(key(c + 1, r + 1))
                 ];
                 if (!roots.every(root => root === roots[0])) continue;
-                this._palladianCarveRect(
+                this._carveRect(
                     dungeonGrid,
                     plan.colX[c][1] + 1, plan.rowY[r][1] + 1,
                     plan.colX[c][1] + 1, plan.rowY[r][1] + 1
@@ -4311,12 +4784,12 @@ class Architect {
             // Carves through the exterior wall row at plan.bottom — that gap is the
             // principal doorway. The projecting block's own walls are the
             // surrounding zeros, which finalize turns into walls for free.
-            this._palladianCarveRect(dungeonGrid, spanX1, plan.bottom, spanX2, plan.bottom + depth);
+            this._carveRect(dungeonGrid, spanX1, plan.bottom, spanX2, plan.bottom + depth);
             colonnadeY = plan.bottom + depth;
         } else {
             // In antis: the recess eats the southern part of the south-row axial
             // bay, which is exactly what the term means. Enclosing walls come free.
-            this._palladianCarveRect(dungeonGrid, spanX1, plan.bottom - depth, spanX2, plan.bottom);
+            this._carveRect(dungeonGrid, spanX1, plan.bottom - depth, spanX2, plan.bottom);
             colonnadeY = plan.bottom;
         }
 
@@ -4798,30 +5271,6 @@ class Architect {
             room.doors.push({ x, y });
         }
     }
-
-    // 4-way flood fill over walkable cells. _brogueBFS is not reused: it is a
-    // capped-distance point-to-point search returning -1 for both "unreachable"
-    // and "over budget", which cannot answer a connectivity question.
-    _palladianFloodFill(dungeonGrid, sx, sy) {
-        const seen = new Set();
-        if (sx < 0 || sy < 0 || sx >= this.width || sy >= this.height) return seen;
-        if (dungeonGrid[sy][sx] < 1) return seen;
-        const queue = [[sx, sy]];
-        seen.add(`${sx},${sy}`);
-        while (queue.length) {
-            const [x, y] = queue.pop();
-            for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-                const nx = x + dx, ny = y + dy;
-                if (nx < 0 || ny < 0 || nx >= this.width || ny >= this.height) continue;
-                const k = `${nx},${ny}`;
-                if (seen.has(k) || dungeonGrid[ny][nx] < 1) continue;
-                seen.add(k);
-                queue.push([nx, ny]);
-            }
-        }
-        return seen;
-    }
-
     // The door pass covers every adjacency, so the plan should already be
     // connected — but an off-by-one in an overlap, or an in-antis recess eating a
     // bay's only opening, can still orphan a room.
@@ -4832,7 +5281,7 @@ class Architect {
             : { x: rooms[0].x1, y: rooms[0].y1 };
 
         for (let pass = 0; pass <= rooms.length; pass++) {
-            const seen = this._palladianFloodFill(dungeonGrid, start.x, start.y);
+            const seen = this._floodFillRegion(dungeonGrid, start.x, start.y);
             const reached = (room) => {
                 for (const b of room.bays) {
                     for (let y = b.y1; y <= b.y2; y++) {
@@ -4997,14 +5446,18 @@ class Architect {
                 if (adj && y > 0) {
                     this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
                     if (secretWallSet.has(`${x},${y}`)) {
-                        // A dead-end shortcut is either a wall you shove or a door
-                        // you have to find. secretDoorChance splits them; the rest
-                        // stay pushable, which is the pre-search behaviour.
-                        if (ROT.RNG.getPercentage() <= (cfg.secretDoorChance ?? 0)) {
-                            this.pendingSecretDoorSpawns.push({ x, y });
-                        } else {
-                            this.pendingPushableWallSpawns.push({ x, y });
-                        }
+                        // Every dead-end shortcut becomes a findable door.
+                        //
+                        // These cells are the wall at the end of a blind corridor
+                        // with floor 2-3 tiles behind it — the one spot the player
+                        // will actually think to search. Handing most of them to
+                        // pushable walls (which read as solid rock) is what leaves
+                        // hallways looking like they simply stop: in Brogue a dead
+                        // end is nearly always a room hiding behind a secret door,
+                        // not a shove puzzle. secretDoorChance still gates the
+                        // *interior-wall* pass below, where a wall between two open
+                        // spaces is a fair coin toss; here it is not.
+                        this.pendingSecretDoorSpawns.push({ x, y });
                     } else {
                         const wallType = this._pickWeightedWallType(wallTypes);
                         this.pendingWallSpawns.push({ x, y, type: isPerimeter(x, y) ? 'metal_wall' : wallType });

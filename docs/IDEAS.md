@@ -9,18 +9,32 @@
 - in prototype-editor we should be able to turn off biomes on a multi-level prototype and just use defaults- change 'floor plan' section name to 'biome plan' or something, add a top toggle to disable it to use defaults only
 - it's easy to not realize there are more sections overflowed to the right in actor-editor.html, need a ui convention for showing designers they can scroll right
 
+- an actor can currently have both the hasted and slowed states at once, they should probably cancel each other out.
+
+- the explore and target cycle actions know where secret doors are
+
 ---
 
 ## Feature ideas
+
+## Renaming/semantic remapping of generator and biomes
+
+- My main generator is called `brogue` from when I was studying Brogue's architect, but needs its own name now since it's fairly different. This could be the generic dungeon generator. List out and audit all the generators and what they do. Biomes should be able to combine generators in different ways so that designers can come up with their own cocktails of each.
+- `caverns` and `depths` biomes aren't actually that distinct from one another. Map out what all the actual strata are and create/name approprate biomes for the Dungeon prototype.
+- need an ossuary biome, which would need some nice new skull wall actors and that suggests:
 
 ## Actor selectors in biome editor
 
 - Add the ability to pick which actor is used as main walls
 - add the ability to define blob areas of actors other than just lava, sewage, or water
 
+## Bolt bounce logic for actors like metal walls
+
+- would probably add a new attribute like "reflective"
+
 ## other actors need to be able to use stairs
 
-- a monster should be able to chase a player actor from one level to another. How does brogue handle this?
+- a monster should be able to chase a player actor from one level to another.
 
 ## remaning 'types' refactor work
 

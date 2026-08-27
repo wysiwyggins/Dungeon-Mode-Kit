@@ -7,7 +7,7 @@
         "map_height": 100,
         "loopMinDistance": 15,
         "maxLoops": 7,
-        "secretDoorChance": 6,
+        "secretDoorChance": 35,
         "roomWeights": {
           "rectangle": 50,
           "cross": 10,
