@@ -3,6 +3,7 @@
 
 ## Tweaks
 
+- are the level span inputs of biome and prototype editor consistantly starting with 1 or 0? start with 0 since those are often hand edited maps
 - food should be an item category option in the random items section of the biome editor
 - In the prototype-editor A single-level prototype is either a generator or an authored map, hiding biome stuff. A multi-level prototype uses either basic map-generator or biomes with level overrides for authored maps. The current "No procedural generator — the map comes from a hand-authored .tmj. Placed features below still apply." message when a single generator default isn't enabled is misleading, and when the section is disabled we don't expect to be able to set placed features, despite the message saying otherwise. Should the "map generator" section in prototype-editor defaults be a biomes/single generator/authored map radio button selection? We can eliminate some of this with the single level/multi level toggle.
 - in prototype-editor we should be able to turn off biomes on a multi-level prototype and just use defaults- change 'floor plan' section name to 'biome plan' or something, add a top toggle to disable it to use defaults only
@@ -11,6 +12,11 @@
 ---
 
 ## Feature ideas
+
+## Actor selectors in biome editor
+
+- Add the ability to pick which actor is used as main walls
+- add the ability to define blob areas of actors other than just lava, sewage, or water
 
 ## other actors need to be able to use stairs
 

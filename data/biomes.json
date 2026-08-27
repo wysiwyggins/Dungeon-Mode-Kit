@@ -281,7 +281,7 @@
         "entity": "rubble",
         "pattern": "wall_hugging",
         "density": 0.08,
-        "min": 0,
+        "min": 1,
         "max": 20
       },
       {
@@ -296,16 +296,16 @@
         "entity": "skull",
         "pattern": "room_floor",
         "density": 0.01,
-        "min": 0,
-        "max": 3,
+        "min": 1,
+        "max": 4,
         "freq": 25
       },
       {
         "actor": "grave",
         "pattern": "near_liquid",
         "density": 0.004,
-        "min": 0,
-        "max": 2,
+        "min": 1,
+        "max": 4,
         "freq": 35,
         "entity": "slime"
       }

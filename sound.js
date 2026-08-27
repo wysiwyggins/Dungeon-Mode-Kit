@@ -17,7 +17,6 @@ class AudioManager {
 
     initHowler() {
         try {
-            // Use URLs from sprite data if available, otherwise construct default paths
             let urls = this.audioSpriteData.urls;
 
             // If URLs are relative and start with /, prepend BASE_PATH
@@ -29,7 +28,6 @@ class AudioManager {
                     return url;
                 });
             } else {
-                // Fallback to default paths
                 const basePath = `${globalVars.BASE_PATH}/assets/audio/effects`;
                 const formats = ['mp3', 'ogg', 'm4a'];
                 urls = formats.map(ext => `${basePath}.${ext}`);
@@ -67,19 +65,14 @@ class AudioManager {
         }
 
         try {
-            // Check if the sound exists in the sprite
             if (!this.audioSpriteData.sprite[soundName]) {
                 console.warn(`Sound '${soundName}' not found in audio sprite`);
                 return;
             }
-
             const id = this.sound.play(soundName);
-
-            // Apply optional volume adjustment
             if (options.volume !== undefined) {
                 this.sound.volume(options.volume * this.volume, id);
             }
-
             // Apply optional pitch/rate adjustment
             if (options.rate !== undefined) {
                 this.sound.rate(options.rate, id);
