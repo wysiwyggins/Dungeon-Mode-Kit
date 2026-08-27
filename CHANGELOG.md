@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `drop_message` replaces the hardcoded "falls from the rubble!" on `lode` drops, defaulting to that same string, so one attribute narrates both drop paths.
 - **Docs: explain data type options, don't enumerate the data.** some docs grooming, need to do more
 - `generateCollapsingFloors`, `generateAbyssAt` and `generatePalladianAt` now use `applyTilePattern` in collect mode instead of hand-rolled nested loops — taking the method from one caller to four.
+- a *lot* of changes to the brogue-style generator to try to get good secret door placement
 
 ## [1.17b]
 
