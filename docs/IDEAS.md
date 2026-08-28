@@ -11,7 +11,7 @@
 
 - an actor can currently have both the hasted and slowed states at once, they should probably cancel each other out.
 
-- the explore and target cycle actions know where secret doors are
+- ~~the explore and target cycle actions know where secret doors are~~ Done — target cycling was already guarded (`isTravelTarget`); the leak was `isOpenableDoorTile` (engine.js), which auto-explore and the walk-path preview share, treating an undiscovered secret door as a routable closed door. Same bug in the spike picker (interface.js), which offered — and with one neighbour silently auto-spiked — a hidden door. Both now test `hidden`.
 
 ---
 
@@ -28,6 +28,11 @@
 - Add the ability to pick which actor is used as main walls
 - add the ability to define blob areas of actors other than just lava, sewage, or water
 
+## Sound player page
+
+- page in /editors/ that let's me listen to everything in the howler soundfont as individual named sounds
+- maybe one day it will let me load a sound and automate rebuilding the audio sprite
+
 ## Bolt bounce logic for actors like metal walls
 
 - would probably add a new attribute like "reflective"
@@ -42,7 +47,7 @@
 - ~~Items already have a 'backwards' version of this: 8 hollow meta-entries hold `random_type` lists pointing *down* at their members.~~ Done — the metas are gone and pools derive from membership. `random_type` survives as a curated-pool override.
 - `Entity.type` still holds the entity *id* (`actor.type === 'goblin'`). Renaming the id field to `Entity.id` would free the word — ~66 call sites (engine.js, behaviors.js, interface.js, arena.html; architect.js is exempt, its `.type` hits are wall/region records). No save-compat burden: saves are in-memory only. Deferred — `Item` never stores `this.data`, so the collision is notional, and `serialize`/`deserialize` have to move atomically or floor transitions drop entities.
 - Types don't inherit from types (single hop, like `$alias`). Probably fine; revisit if a `dire_beast` wants to extend `beast`.
-- Three sites read `.id` on actors, which is always `undefined`: `engine.js:9417` stores it as a trail's `ownerId`, `engine.js:9432` compares `undefined === undefined` (so any actor backtrack-removes any other's trail), and `behaviors.js:315` finds the first living actor instead of the owner. Real bug, unrelated to types; needs a genuine owner reference, not the type id.
+- ~~Three sites read `.id` on actors, which is always `undefined`~~ Done — `_trailData` now holds `owner`, a direct actor reference, instead of an `ownerId` that was always `undefined`. `Entity` has no id field, so the backtrack guard compared `undefined === undefined` (any actor could rewind any trail) and `follow_thread`'s owner lookup matched the first living actor in spawn order. A reference is safe here because `_trailData` is never serialized. The wider `Entity.type`-holds-the-id rename above is still deferred.
 - item-editor still has new item from template rather than type selection
 
 ### Patrol behavior

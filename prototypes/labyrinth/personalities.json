@@ -1,0 +1,13 @@
+{
+  "minotaur": {
+    "name": "Minotaur",
+    "hostile": true,
+    "memory_duration": 4,
+    "behaviors": [
+      "guard_area",
+      "attack_adjacent",
+      "pursue_intruders",
+      "follow_thread"
+    ]
+  }
+}

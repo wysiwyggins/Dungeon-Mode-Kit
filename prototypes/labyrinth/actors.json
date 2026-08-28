@@ -25,7 +25,7 @@
     "tileIndexTop": "CABESA_DE_VACA",
     "flipBaseH": true,
     "tint": "#ffd9a8",
-    "personality": "stationed_melee",
+    "personality": "minotaur",
     "collision_effect": {
       "health": "-{strength}"
     },

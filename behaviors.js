@@ -312,7 +312,11 @@ const BehaviorLibrary = {
             targetY = next.y;
         } else {
             // At end of trail — head toward the trail owner
-            const owner = em.actors.find(a => a.id === trailData.ownerId && !a.isDead);
+            // trailData.owner is the actor itself (engine.js processTrailEffect), so
+            // no lookup is needed — only the liveness check. This used to scan for
+            // `a.id === trailData.ownerId`; both sides were undefined, so it matched
+            // the first living actor in spawn order and sent the follower after it.
+            const owner = trailData.owner?.isDead === false ? trailData.owner : null;
             if (owner) {
                 targetX = owner.x;
                 targetY = owner.y;

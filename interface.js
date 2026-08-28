@@ -3999,7 +3999,12 @@ class InterfaceManager {
             const ty = caster.y + dir.dy;
             const actors = this.engine.entityManager.getActorsAt(tx, ty);
             for (const actor of actors) {
+                // `hidden` first: an undiscovered secret door satisfies every other
+                // condition here, so without it the picker offers a door the player
+                // has no reason to know exists — and with only one neighbour it
+                // silently auto-spikes it, spending a spike on an invisible door.
                 if (actor.hasAttribute('openable') &&
+                    !actor.hasAttribute('hidden') &&
                     !actor.hasAttribute('open') &&
                     !actor.hasAttribute('locked') &&
                     !actor.hasAttribute('spiked')) {

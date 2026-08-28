@@ -759,16 +759,25 @@ function getNextPathStep(fromX, fromY, toX, toY, isPassable, options = {}) {
 
 /**
  * Whether a solid actor is a closed door an actor can open just by walking into
- * it — i.e. openable, currently closed, not locked, not spiked. Auto-routing
+ * it — i.e. openable, currently closed, not hidden, not locked, not spiked. Auto-routing
  * (explore + click-to-walk) treats these tiles as passable because the mover
  * bumps them open and steps through; locked/spiked doors need a key or attacking
  * and stay impassable.
+ *
+ * The `hidden` test is what keeps auto-routing honest. An undiscovered secret
+ * door is openable, closed and unlocked, so without it explore and the walk-path
+ * preview both path straight through a wall the player has no reason to believe
+ * is a door — which gives the secret away and makes searching pointless. It
+ * reads as a wall to the router until something reveals it. (`isTravelTarget` in
+ * input.js already refuses hidden actors for the same reason on the Tab-cycle
+ * side.) Barred secret doors were only ever safe here by accident, via `locked`.
  * @param {Actor} solid - the solid actor occupying the tile
  * @returns {boolean}
  */
 function isOpenableDoorTile(solid) {
     return !!solid &&
            solid.hasAttribute?.('openable') &&
+           !solid.hasAttribute('hidden') &&
            !solid.hasAttribute('open') &&
            !solid.hasAttribute('locked') &&
            !solid.hasAttribute('spiked');
@@ -10070,7 +10079,11 @@ class Actor extends Entity {
         if (!item._trailData) {
             item._trailData = {
                 positions: [],
-                ownerId: this.id
+                // A direct actor reference, not an id: Entity has no id field, so the
+                // old `this.id` was always undefined and every comparison against it
+                // passed for every actor. Safe to hold the object because _trailData
+                // is never serialized — it lives and dies with the floor's entities.
+                owner: this
             };
         }
 
@@ -10085,7 +10098,7 @@ class Actor extends Entity {
         }
 
         // Check for backtracking (only owner can remove trail, only the last tile)
-        if (effect.backtrack_removes && trailData.ownerId === this.id && trailData.positions.length > 0) {
+        if (effect.backtrack_removes && trailData.owner === this && trailData.positions.length > 0) {
             const lastSegment = trailData.positions[trailData.positions.length - 1];
 
             // Only remove if stepping onto the last tile in the trail (rewinding)

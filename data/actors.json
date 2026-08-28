@@ -1083,7 +1083,7 @@
     "tileIndexTop": "OPAQUE_LIGHT_SHADE",
     "tint": "#ffb43f",
     "effect": "flicker_tint",
-    "lightRadius": 8,
+    "lightRadius": 9,
     "attributes": {
       "breakable": true,
       "light_source": true,
