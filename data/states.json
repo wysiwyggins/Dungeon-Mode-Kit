@@ -59,6 +59,7 @@
     "duration": 20,
     "tint": "#88ffff",
     "extra_turn": true,
+    "cancels": "slowed",
     "effect_description": "You feel quick",
     "on_apply_message": "[actor_name] speeds up!",
     "on_remove_message": "[actor_name] slows back down."

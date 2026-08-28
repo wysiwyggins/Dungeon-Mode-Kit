@@ -6319,6 +6319,34 @@ class Actor extends Entity {
     }
 
     /**
+     * Find active states that the incoming state is opposed to.
+     *
+     * `cancels` is a state name or array of them, authored on either side of a
+     * pair. This reads it in both directions so `hasted: { cancels: "slowed" }`
+     * covers both orders of application without `slowed` naming `hasted` back —
+     * one declaration, no chance of the two drifting out of sync.
+     *
+     * @param {string} stateName - The state being applied
+     * @param {Object} stateData - Its definition from states.json
+     * @returns {string[]} Names of active states to remove instead of applying
+     */
+    _findOpposedStates(stateName, stateData) {
+        const asList = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
+        const cancels = asList(stateData.cancels);
+        const opposed = [];
+
+        for (const [activeName, active] of Object.entries(this.states)) {
+            if (activeName === stateName) continue;
+            // Forward: the incoming state names this one. Reverse: the active
+            // state named the incoming one.
+            if (cancels.includes(activeName) || asList(active.data?.cancels).includes(stateName)) {
+                opposed.push(activeName);
+            }
+        }
+        return opposed;
+    }
+
+    /**
      * Apply a temporary state to this actor.
      *
      * Works on ANY actor — walls, trees, doors and fire included. Only states
@@ -6346,6 +6374,21 @@ class Actor extends Entity {
         // Check immunity
         if (stateData.immunity && this.hasAttribute(stateData.immunity)) {
             return false;
+        }
+
+        // Opposed states annihilate instead of stacking. `cancels` is declared on
+        // one side only (hasted cancels slowed) and read symmetrically, so a state
+        // never has to know who opposes it — the pairing lives in states.json.
+        // Both sides go away: drinking a speed potion while slowed leaves you
+        // normal, not hasted, which is what "cancel each other out" means.
+        const opposed = this._findOpposedStates(stateName, stateData);
+        if (opposed.length > 0) {
+            for (const name of opposed) this.removeState(name);
+            // True, not false: something did happen. Callers read this return to
+            // decide whether the item is consumed and identified and whether to
+            // count the target as affected — a speed potion drunk while slowed
+            // has done its job, and reporting failure would hand the potion back.
+            return true;
         }
 
         let duration = options.duration ?? stateData.duration ?? 5;

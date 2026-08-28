@@ -207,6 +207,7 @@ in `states.json` without engine changes — see that file for the states that sh
 | ---------- | ------ | ------------- |
 | `duration` | number | Turns the state lasts. `-1` is infinite (`Infinity` at runtime). Re-applying an active state extends it to the longer of the two rather than stacking. |
 | `immunity` | string | Actors with this attribute can't get the state at all. |
+| `cancels` | string or array | Opposed states. Applying one onto the other removes *both* and applies neither — `hasted` cancels `slowed`, so a speed potion drunk while sluggish leaves you at normal speed. Read in both directions, so only one side of a pair declares it. The item still counts as used (consumed and identified). |
 | `remove_on_damage` | boolean | Ends when the holder takes damage (sleep). |
 | `player_only` | boolean | Only applies to `controlled` actors. |
 
