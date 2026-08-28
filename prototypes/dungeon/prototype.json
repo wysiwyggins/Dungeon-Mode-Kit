@@ -29,6 +29,9 @@
       "count": 10,
       "weight": 40
     },
+    "food": {
+      "weight": 25
+    },
     "staff": {
       "weight": 15
     },

@@ -216,7 +216,7 @@ function sectionWinState() {
         body.appendChild(fieldGrid(
             selectRow('via', ws, 'via', ['escape'], { blankLabel: '— reach exit (default) —', rerender: true,
                 tip: '“escape” = win by reaching a specific exit_floor with the conditions met. Blank = win on reaching any level exit.' }),
-            (ws.via === 'escape' ? fieldRow('exit_floor', ws, 'exit_floor', { type: 'number', tip: 'Floor number whose exit triggers the escape victory.' }) : null),
+            (ws.via === 'escape' ? fieldRow('exit_floor', ws, 'exit_floor', { type: 'number', min: 1, tip: 'Floor number whose exit triggers the escape victory. Floors are 1-based.' }) : null),
         ));
         body.appendChild(fieldRow('message', ws, 'message', { tip: 'Victory text shown to the player when the win_state is satisfied.' }));
         body.appendChild(subTitle('conditions', 'All of these must be true to win. e.g. holding:amulet, killed:minotaur, or a stat comparison.'));
@@ -312,8 +312,8 @@ function itemBudgetBody(obj, body) {
     if (obj.item_budget && typeof obj.item_budget === 'object') {
         const b = obj.item_budget;
         body.appendChild(fieldGrid(
-            fieldRow('base', b, 'base', { type: 'number', tip: 'Guaranteed number of budget items spawned each floor.' }),
-            fieldRow('max_extra', b, 'max_extra', { type: 'number', tip: 'Maximum additional items beyond base.' }),
+            fieldRow('base', b, 'base', { type: 'number', min: 0, tip: 'Guaranteed number of budget items spawned each floor.' }),
+            fieldRow('max_extra', b, 'max_extra', { type: 'number', min: 0, tip: 'Maximum additional items beyond base.' }),
         ));
         body.appendChild(sliderRow('extra_chance %', b, 'extra_chance', { min: 0, max: 100, suffix: '%', def: 0,
             tip: 'Chance to roll each additional item (up to max_extra). Higher = more loot.' }));
@@ -377,7 +377,7 @@ function trapsSwitchesBody(obj, body) {
     }, 'Scatter randomly-named/colored fungus patches. Short fungus is walkable and pops into a small spore cloud (random, usually-beneficial effect) when stepped on; tall fungus is a solid, sight-blocking, flammable cluster.'));
     if (obj.fungus) {
         body.appendChild(dualRangeRow('patches', obj.fungus, 'min', 'max', { min: 0, max: 20, tip: 'Min–max number of fungus patches placed on this floor. Each patch is an anchor plus a few clustered neighbors.' }));
-        body.appendChild(fieldRow('tall_chance', obj.fungus, 'tall_chance', { type: 'number', tip: 'Probability (0–1) that a given fungus is the tall, solid, sight-blocking variant instead of short walkable fungus. Default 0 (all short).' }));
+        body.appendChild(fieldRow('tall_chance', obj.fungus, 'tall_chance', { type: 'number', min: 0, max: 1, step: 0.05, tip: 'Probability (0–1) that a given fungus is the tall, solid, sight-blocking variant instead of short walkable fungus. Default 0 (all short).' }));
     }
     // switch_puzzles
     body.appendChild(toggleLine('switch_puzzles', !!obj.switch_puzzles, (on) => {
@@ -428,7 +428,7 @@ function patternBox(pat, i, sp, redraw) {
             { value: 'gated_corridor', label: 'gate a corridor' },
         ], { allowBlank: false,
             tip: 'Which part of the map the target actor blocks off: a whole room, or a corridor segment. The target actor and what the switch does to it are set below.' }),
-        fieldRow('weight', pat, 'weight', { type: 'number', tip: 'Relative likelihood this pattern is chosen vs. the others.' }),
+        fieldRow('weight', pat, 'weight', { type: 'number', min: 0, tip: 'Relative likelihood this pattern is chosen vs. the others.' }),
     ));
     box.appendChild(fieldGrid(
         // Only actors that can actually be a switch / a target are offered.
@@ -564,7 +564,7 @@ function multiLevelToggle() {
         commit(); render();
     }, 'A dungeon of several floors. Multi-level prototypes ramp difficulty by depth using biomes (see Biomes below) and can hand-author individual floors. Off = a single self-contained level.'));
     if (isMultiLevel()) {
-        wrap.appendChild(fieldRow('floors', p, 'floors', { type: 'number',
+        wrap.appendChild(fieldRow('floors', p, 'floors', { type: 'number', min: 1,
             tip: 'Total number of floors. Biomes are assigned to floor ranges in the Floor plan below.' }));
     }
     return wrap;

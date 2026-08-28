@@ -232,6 +232,12 @@
         "freq": 40
       },
       {
+        "type": "food",
+        "min": 2,
+        "max": 26,
+        "freq": 45
+      },
+      {
         "type": "weapon",
         "min": 2,
         "max": 26,
@@ -468,6 +474,12 @@
         "freq": 45
       },
       {
+        "type": "food",
+        "min": 9,
+        "max": 26,
+        "freq": 40
+      },
+      {
         "type": "weapon",
         "min": 9,
         "max": 26,
@@ -650,6 +662,12 @@
         "min": 20,
         "max": 26,
         "freq": 45
+      },
+      {
+        "type": "food",
+        "min": 20,
+        "max": 26,
+        "freq": 35
       },
       {
         "type": "wand",

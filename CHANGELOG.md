@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The Search action!
 - `hidden` attribute (different from `visible`)
-- **Floor decorations** — a biome can scatter floor dressing across its floors with a `decorations` block: `{ entity | actor, pattern, density, min, max, freq, region? }`. Gives `data/entities.json` its first generation-time use. See [docs/BIOMES.md](docs/BIOMES.md#decorations).
+- **Floor decorations** — a biome can scatter floor dressing across its floors with a `decorations` block: `{ entity | actor, pattern, density, min, max, freq, region? }`, the first generation-time use of `data/entities.json`. See [docs/BIOMES.md](docs/BIOMES.md#decorations).
 - **decorations (floor scatter)** section in the biome editor, with an entity dropdown fed from `data/entities.json` and a pattern picker.
 - `applyTilePattern` gains three extensions: neighbour tests on `tileContext` (`count4`/`count8`/`any4`/`any8`, taking a `(ctx, x, y)` predicate — the same shape as a rule's `when`); `options.bounds` to restrict the sweep to a sub-rectangle; and `options.collect` to return the matched cells (as an array, or a `Set` of `"x,y"`) instead of a paint count. See [docs/TILE_PATTERNS.md](docs/TILE_PATTERNS.md).
 - **Graves you dig up.** A walkable, sediment-shaped `grave` actor that a mattock opens in one dig action, leaving a `hole` and rolling a skull, a nugget, a random weapon, a random ring or nothing — all declared in data, so the engine has no idea graves exist. See [docs/ACTORS.md](docs/ACTORS.md#diggable-walkable-actors).
@@ -21,7 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Plain entities were silently dropped on save/load and on floor revisit.** `Entity.serialize()` emitted no type discriminator, so `deserializeEntities()` — which branched only on `isActor` and `isItem` — matched neither and discarded the record without a warning. Dug rubble, blood and slime vanished whenever you left a floor and came back. Entities now serialize an `isEntity` flag and are restored through `spawnEntity`, which also re-derives their sprite from `entities.json`. (`liquid_track`, which has no `entities.json` entry, is still dropped — a known remaining gap.)
+- **`food` was missing from the editors' item-category list and from the dungeon's spawn tables.** `CATEGORY_KEYS` now matches the `domain: "item"` types in `data/types.json`, and food is in the dungeon's `item_catalog` plus all three biomes, so it drops throughout instead of only from floor 1's hand-placed override.
+- **Editor number fields ignored their own bounds.** `fieldRow` accepted `min`/`max`/`step` but never set them on the input, so all 25 number fields in the biome and prototype editors were unbounded and a `min_depth` of 0 saved cleanly; depth and floor fields now clamp to 1, counts and sizes to 0 or 1, with `intercept` and `slope` left unbounded as signed ramp coefficients.
+- **Plain entities were silently dropped on save/load and on floor revisit.** `Entity.serialize()` emitted no type discriminator, so `deserializeEntities()` matched neither `isActor` nor `isItem` and discarded dug rubble, blood and slime whenever you left a floor and came back; entities now serialize an `isEntity` flag and restore through `spawnEntity`. (`liquid_track`, which has no `entities.json` entry, is still dropped.)
 - `fungus.cluster` was read by the engine but never forwarded by `resolveBiome`, so a biome had no way to turn fungus clustering off.
 - generic keys are no longer consumed by walking through unlocked doors
 - epistemology and visibility of submerged actors is improved
@@ -30,12 +32,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Editor constants that name engine vocabulary are shared, not duplicated.** `CATEGORY_KEYS`, `GEN_TYPES` and `DECORATION_PATTERNS` moved out of `proto-state.js`/`biome-state.js` into `editors/scripts/editor-constants.js`, loaded first by both editors, with each list pointing at the `data/` or `engine.js` counterpart it must not drift from.
 - **`Cancel` attribute lets states cancel one another out.**
-- **States can lose a turn at random, entirely from data.** `skip_turn_chance` gains `skip_turn_message`, `skip_turn_sound`, `skip_turn_spawn` and `skip_turn_effect`, so a state that occasionally costs its holder the round describes its own message, sound, dropped entity and stat hit. Nausea's retch-and-spawn-vomit case was hardcoded in `Actor.act()`; it now lives in `states.json`
+- **States can lose a turn at random, entirely from data.** `skip_turn_chance` gains `skip_turn_message`, `skip_turn_sound`, `skip_turn_spawn` and `skip_turn_effect`, so a state describes its own lost round. Nausea's retch-and-spawn-vomit case was hardcoded in `Actor.act()`; it now lives in `states.json`.
 - `Actor.applyStatEffect()` is shared by state per-turn effects and one-off state events, so neither path can skip the death check. `findStateWithProperty()` replaces `getStatePropertyValue()`, returning the winning state rather than just its number so the caller can read the rest of its data.
 - `isIncapacitated()` and the new `isConfused()` replace scattered raw `hasStateProperty('skip_turn')` / `('random_movement')` checks across `engine.js`, `input.js` and `behaviors.js` — the same concept had been spelled four different ways. `isMindState()`'s seven-term boolean chain is now the `Actor.MIND_STATE_PROPERTIES` list.
 - `RenderSystem.applyViewportCulling()` replaces two near-verbatim viewport-culling blocks in `Actor.updateSpritePositions` and `updateEntityVisibility`.
-- **Mining messages come from the target, not the engine.** The five progress strings were about stone ("Cracks spread through the…"). A target's optional `mine_messages` map, keyed by progress band (`"25"`/`"50"`/`"75"`/`"100"`), overrides them. Base is still stone related for walls. `[tool_name]` resolves in those templates. `dig_fail_message` and `dig_chance` are now authorable on the target too. A grave sets `dig_chance: 1`.
+- **Mining messages come from the target, not the engine.** The five progress strings were all about stone, so a target can now override them with a `mine_messages` map keyed by progress band (`"25"`/`"50"`/`"75"`/`"100"`), resolving `[tool_name]`. `dig_fail_message` and `dig_chance` are authorable on the target too.
 - `drop_message` replaces the hardcoded "falls from the rubble!" on `lode` drops, defaulting to that same string, so one attribute narrates both drop paths.
 - **Docs: explain data type options, don't enumerate the data.** some docs grooming, need to do more
 - `generateCollapsingFloors`, `generateAbyssAt` and `generatePalladianAt` now use `applyTilePattern` in collect mode instead of hand-rolled nested loops — taking the method from one caller to four.

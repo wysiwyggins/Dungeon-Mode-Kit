@@ -3,17 +3,20 @@
    -------------------------------------------------------------------------
    Counterpart to proto-state.js. These files are plain <script> src includes
    (no bundler) and share one global scope; load order matters:
-   biome-state -> proto-widgets -> biome-sections -> biome-render. The final
-   file calls init(). Do not wrap in IIFEs — cross-file references rely on the
-   shared top-level scope.
+   editor-constants -> biome-state -> proto-widgets -> biome-sections ->
+   biome-render. The final file calls init(). Do not wrap in IIFEs — cross-file
+   references rely on the shared top-level scope.
 
    This file's job is to satisfy the globals contract that the SHARED files
    (proto-widgets.js, biome-sections.js) expect, so they can be reused verbatim:
 
      state.mergedActorIds / mergedItemIds / poolItemIds
-     CATEGORY_KEYS, GEN_TYPES
      isFloor(), currentTarget(), inheritedValue()
      totalFloors()
+
+   CATEGORY_KEYS, GEN_TYPES and DECORATION_PATTERNS are part of that contract
+   too, but they name engine vocabulary rather than editor state, so they live
+   in editor-constants.js and are shared by both editors.
 
    commit() and render() live in biome-render.js.
    ========================================================================= */
@@ -38,14 +41,6 @@ const state = {
     // serialized — it only bounds the depth sliders and the depth preview.
     designFloors: 26,
 };
-
-// Kept identical to proto-state.js. Duplicated rather than shared because these
-// two editors have no common state file; if a third editor needs them, extract.
-const CATEGORY_KEYS = ['potion','scroll','staff','weapon','armor','ring','wand'];
-const GEN_TYPES = ['brogue','digger','arena','infernal','palladian'];
-// Placement patterns for a biome `decorations` row. Kept identical to
-// proto-state.js and to DECORATION_PATTERN_NAMES in engine.js.
-const DECORATION_PATTERNS = ['scatter','clusters','wall_hugging','near_liquid','room_floor'];
 
 const BIOME_LIBRARY_PATH = '../data/biomes.json';
 const DESIGN_FLOORS_KEY = 'biomeEditorDesignFloors';

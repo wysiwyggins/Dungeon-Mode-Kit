@@ -3,9 +3,12 @@
    -------------------------------------------------------------------------
    Extracted from prototype-editor.html. These files are plain <script> src
    includes (no bundler) and share one global scope; load order matters:
-   proto-state -> proto-widgets -> biome-sections -> proto-sections ->
-   proto-render. The final file calls init(). Do not wrap in IIFEs — cross-file
-   references rely on the shared top-level scope.
+   editor-constants -> proto-state -> proto-widgets -> biome-sections ->
+   proto-sections -> proto-render. The final file calls init(). Do not wrap in
+   IIFEs — cross-file references rely on the shared top-level scope.
+
+   Shared engine vocabulary (CATEGORY_KEYS, GEN_TYPES, DECORATION_PATTERNS)
+   lives in editor-constants.js, loaded first by both editors.
    ========================================================================= */
 "use strict";
 
@@ -32,13 +35,6 @@ const state = {
     activeFloor: 'proto', // 'proto' or a 1-based floor number (see currentTarget)
     prototypeCache: {},
 };
-
-const CATEGORY_KEYS = ['potion','scroll','staff','weapon','armor','ring','wand'];
-const GEN_TYPES = ['brogue','digger','arena','infernal','palladian'];
-// Placement patterns for a biome `decorations` row. Kept identical to
-// biome-state.js, which the shared biome-sections.js also reads, and to
-// DECORATION_PATTERN_NAMES in engine.js.
-const DECORATION_PATTERNS = ['scatter','clusters','wall_hugging','near_liquid','room_floor'];
 
 /* =========================================================================
    Data loading

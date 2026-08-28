@@ -137,8 +137,8 @@ function mapGeneratorBody(obj, body) {
         tip: 'Algorithm used to build the map: brogue (rooms + corridors + loops), digger (ROT.js dungeon), arena (open box), infernal (lava-heavy caverns), palladian (symmetrical villa — axial sanctum, portico, colonnade; good for a boss floor).' }));
     const o = mg.options;
     body.appendChild(fieldGrid(
-        fieldRow('map_width', o, 'map_width', { type: 'number', tip: 'Total map width in tiles (can exceed the viewport — the level then scrolls).' }),
-        fieldRow('map_height', o, 'map_height', { type: 'number', tip: 'Total map height in tiles (can exceed the viewport — the level then scrolls).' }),
+        fieldRow('map_width', o, 'map_width', { type: 'number', min: 1, tip: 'Total map width in tiles (can exceed the viewport — the level then scrolls).' }),
+        fieldRow('map_height', o, 'map_height', { type: 'number', min: 1, tip: 'Total map height in tiles (can exceed the viewport — the level then scrolls).' }),
     ));
 
     const t = mg.type || 'brogue';
@@ -148,15 +148,15 @@ function mapGeneratorBody(obj, body) {
             // from the map size (larger maps get more rooms). maxAttempts is also
             // auto-scaled to map size when left blank; expose it as an optional
             // override for fine-tuning density.
-            body.appendChild(fieldRow('maxAttempts', o, 'maxAttempts', { type: 'number', tip: 'Optional override: how many room-placement attempts the generator makes (the practical cap on how densely the map fills). Leave blank to auto-scale with map size. Larger = denser.' }));
+            body.appendChild(fieldRow('maxAttempts', o, 'maxAttempts', { type: 'number', min: 1, tip: 'Optional override: how many room-placement attempts the generator makes (the practical cap on how densely the map fills). Leave blank to auto-scale with map size. Larger = denser.' }));
             body.appendChild(sliderRow('corridorChance %', o, 'corridorChance', { min: 0, max: 100, suffix: '%', def: 0,
                 tip: 'Chance to connect a new room with a corridor (vs. an adjacent doorway). Default 30%.' }));
             body.appendChild(dualRangeArrayRow('corridorLength', o, 'corridorLength', { min: 1, max: 12, def: [3, 9],
                 tip: 'Min–max length (tiles) of generated corridors. Default 3–9.' }));
             body.appendChild(fieldGrid(
-                fieldRow('loopMinDistance', o, 'loopMinDistance', { type: 'number',
+                fieldRow('loopMinDistance', o, 'loopMinDistance', { type: 'number', min: 0,
                     tip: 'Two points must be at least this far apart (path distance) before a loop-back corridor connects them. Default 20.' }),
-                fieldRow('maxLoops', o, 'maxLoops', { type: 'number',
+                fieldRow('maxLoops', o, 'maxLoops', { type: 'number', min: 0,
                     tip: 'Maximum extra loop corridors added (creates alternate routes). Default 5.' }),
             ));
             body.appendChild(el('div', { class: 'sub-section' }, subTitle('roomWeights', 'Relative likelihood of each room shape. Bars show each shape’s share of the total.'),
@@ -230,9 +230,9 @@ function porticoEditor(o) {
             allowBlank: true,
             tip: 'prostyle: the porch projects out from the facade. in_antis: it is recessed into it. random: picked per floor. Blank = prostyle.' }));
         wrap.appendChild(fieldGrid(
-            fieldRow('porticoDepth', o, 'porticoDepth', { type: 'number',
+            fieldRow('porticoDepth', o, 'porticoDepth', { type: 'number', min: 0,
                 tip: 'Tiles the porch projects out (prostyle) or is recessed in (in antis). Default 3.' }),
-            fieldRow('columnSpacing', o, 'columnSpacing', { type: 'number',
+            fieldRow('columnSpacing', o, 'columnSpacing', { type: 'number', min: 1,
                 tip: 'Tiles between colonnade columns; 0 = no colonnade. The column count is forced even so the axis stays an open doorway. Default 2.' }),
         ));
     }
@@ -418,8 +418,8 @@ function regionGroup(o, key, title, opts) {
         grp.types = ['abyss'];
     }
     g.appendChild(fieldGrid(
-        fieldRow('minSize', grp, 'minSize', { type: 'number', tip: 'Smallest ' + opts.sizeTip }),
-        fieldRow('maxSize', grp, 'maxSize', { type: 'number', tip: 'Largest ' + opts.sizeTip }),
+        fieldRow('minSize', grp, 'minSize', { type: 'number', min: 1, tip: 'Smallest ' + opts.sizeTip }),
+        fieldRow('maxSize', grp, 'maxSize', { type: 'number', min: 1, tip: 'Largest ' + opts.sizeTip }),
     ));
     return g;
 }
@@ -444,10 +444,10 @@ function collapsingEditor(o) {
     return wrap;
 }
 function body_appendNum(wrap, c) {
-    wrap.appendChild(fieldRow('max', c, 'max', { type: 'number', tip: 'Maximum number of collapsing-floor patches per floor.' }));
+    wrap.appendChild(fieldRow('max', c, 'max', { type: 'number', min: 0, tip: 'Maximum number of collapsing-floor patches per floor.' }));
     wrap.appendChild(fieldGrid(
-        fieldRow('minSize', c, 'minSize', { type: 'number', tip: 'Smallest patch size (tiles).' }),
-        fieldRow('maxSize', c, 'maxSize', { type: 'number', tip: 'Largest patch size (tiles).' }),
+        fieldRow('minSize', c, 'minSize', { type: 'number', min: 1, tip: 'Smallest patch size (tiles).' }),
+        fieldRow('maxSize', c, 'maxSize', { type: 'number', min: 1, tip: 'Largest patch size (tiles).' }),
     ));
 }
 
@@ -461,7 +461,7 @@ function bridgesEditor(o) {
         commit(); render();
     }, tip));
     if (o.bridges) {
-        wrap.appendChild(fieldRow('max', o.bridges, 'max', { type: 'number', tip: 'Maximum bridges placed across lakes/abyss.' }));
+        wrap.appendChild(fieldRow('max', o.bridges, 'max', { type: 'number', min: 0, tip: 'Maximum bridges placed across lakes/abyss.' }));
     }
     return wrap;
 }
@@ -546,8 +546,8 @@ function budgetRow(obj, key, label) {
     return el('div', { class: 'sub-section' },
         subTitle(label, 'How many picks to place per floor: base guaranteed, then up to max_extra more at extra_chance% each.'),
         fieldGrid(
-            fieldRow('base', b, 'base', { type: 'number', tip: 'Guaranteed picks per floor.' }),
-            fieldRow('max_extra', b, 'max_extra', { type: 'number', tip: 'Maximum extra picks.' }),
+            fieldRow('base', b, 'base', { type: 'number', min: 0, tip: 'Guaranteed picks per floor.' }),
+            fieldRow('max_extra', b, 'max_extra', { type: 'number', min: 0, tip: 'Maximum extra picks.' }),
         ),
         sliderRow('extra_chance %', b, 'extra_chance', { min: 0, max: 100, suffix: '%', def: 0,
             tip: 'Chance to roll each extra pick.' }));
@@ -676,12 +676,12 @@ function hazardRampEditor(biome, key, label) {
     const h = biome[key];
     if (!h) return wrap;
     wrap.appendChild(fieldGrid(
-        fieldRow('min_depth', h, 'min_depth', { type: 'number', tip: 'Floor this hazard first appears on.' }),
-        fieldRow('max', h, 'max', { type: 'number', tip: 'Hard cap on count.' }),
+        fieldRow('min_depth', h, 'min_depth', { type: 'number', min: 1, tip: 'Floor this hazard first appears on. Floors are 1-based.' }),
+        fieldRow('max', h, 'max', { type: 'number', min: 0, tip: 'Hard cap on count.' }),
     ));
     wrap.appendChild(fieldGrid(
-        fieldRow('intercept', h, 'intercept', { type: 'number', tip: 'Base count at depth 0 (usually 0).' }),
-        fieldRow('slope', h, 'slope', { type: 'number', tip: 'Extra count per floor of depth.' }),
+        fieldRow('intercept', h, 'intercept', { type: 'number', tip: 'Where the count line is anchored before depth is added (usually 0). Not a floor number — floors start at 1. Unbounded: negative delays the ramp.' }),
+        fieldRow('slope', h, 'slope', { type: 'number', tip: 'Extra count per floor of depth. Unbounded: negative thins the hazard out as you descend.' }),
     ));
     if (key === 'fungus') {
         wrap.appendChild(sliderRow('tall_chance', h, 'tall_chance', { min: 0, max: 1, step: 0.05, decimals: 2, def: 0,

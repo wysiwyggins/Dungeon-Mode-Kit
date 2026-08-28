@@ -87,6 +87,13 @@ function fieldRow(label, obj, key, opts = {}) {
     }
     if (opts.placeholder) input.placeholder = opts.placeholder;
     if (opts.tip) input.setAttribute('title', opts.tip);
+    // Numeric bounds were accepted by callers but never forwarded, so every
+    // number field was unbounded — a depth of 0 or -3 saved fine even though
+    // floors are 1-based. Only set what the caller asked for: an omitted bound
+    // stays unbounded, which is right for signed values like `intercept`.
+    if (opts.min != null) input.min = opts.min;
+    if (opts.max != null) input.max = opts.max;
+    if (opts.step != null) input.step = opts.step;
     return el('div', { class: 'field-row' }, labelEl(label, opts.tip), input);
 }
 
