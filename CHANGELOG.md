@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`Cancel` attribute lets states cancel one another out.**
 - **States can lose a turn at random, entirely from data.** `skip_turn_chance` gains `skip_turn_message`, `skip_turn_sound`, `skip_turn_spawn` and `skip_turn_effect`, so a state that occasionally costs its holder the round describes its own message, sound, dropped entity and stat hit. Nausea's retch-and-spawn-vomit case was hardcoded in `Actor.act()`; it now lives in `states.json`
 - `Actor.applyStatEffect()` is shared by state per-turn effects and one-off state events, so neither path can skip the death check. `findStateWithProperty()` replaces `getStatePropertyValue()`, returning the winning state rather than just its number so the caller can read the rest of its data.
 - `isIncapacitated()` and the new `isConfused()` replace scattered raw `hasStateProperty('skip_turn')` / `('random_movement')` checks across `engine.js`, `input.js` and `behaviors.js` — the same concept had been spelled four different ways. `isMindState()`'s seven-term boolean chain is now the `Actor.MIND_STATE_PROPERTIES` list.

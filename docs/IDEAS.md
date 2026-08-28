@@ -9,7 +9,7 @@
 - in prototype-editor we should be able to turn off biomes on a multi-level prototype and just use defaults- change 'floor plan' section name to 'biome plan' or something, add a top toggle to disable it to use defaults only
 - it's easy to not realize there are more sections overflowed to the right in actor-editor.html, need a ui convention for showing designers they can scroll right
 
-- an actor can currently have both the hasted and slowed states at once, they should probably cancel each other out.
+- ~~an actor can currently have both the hasted and slowed states at once, they should probably cancel each other out.~~ Done — a `cancels` field on a state names its opposite; `applyState` reads it in both directions, so `hasted: { cancels: "slowed" }` covers either order of application and no second declaration can drift out of sync. Applying one onto the other removes both and applies neither. It returns `true`, because a cancellation is a real effect — returning `false` would have left the speed potion unconsumed and unidentified in your pack.
 
 - ~~the explore and target cycle actions know where secret doors are~~ Done — target cycling was already guarded (`isTravelTarget`); the leak was `isOpenableDoorTile` (engine.js), which auto-explore and the walk-path preview share, treating an undiscovered secret door as a routable closed door. Same bug in the spike picker (interface.js), which offered — and with one neighbour silently auto-spiked — a hidden door. Both now test `hidden`.
 
