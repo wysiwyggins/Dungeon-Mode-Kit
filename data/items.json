@@ -1285,5 +1285,43 @@
       "projectile_tint": "#FFAA00",
       "spell_name": "Beckoning"
     }
+  },
+
+  "thread": {
+    "name": "Ball of thread",
+    "tileIndex": "BALL_OF_THREAD",
+    "tint": "#CC0000",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": false,
+      "flammable": true,
+      "consumable": false,
+      "explosive": false,
+      "passive_effect": {
+        "type": "leave_trail",
+        "trail_type": "thread_trail",
+        "use_item_tint": true,
+        "backtrack_removes": true
+      },
+      "description": "A ball of red thread. Leaves a trail as you move."
+    }
+  },
+  "shield": {
+    "name": "Shield",
+    "tileIndex": "RIGHT_PARENTHESIS",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": false,
+      "flammable": false,
+      "consumable": false,
+      "explosive": false,
+      "passive_effect": {
+        "type": "stat_bonus",
+        "defense": 10
+      },
+      "description": "A large wooden shield. Provides defense while carried."
+    }
   }
 }

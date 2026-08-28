@@ -209,6 +209,11 @@ function rgbToHue(color) {
 // floors can still satisfy it, large enough that the pair isn't one step apart.
 const STAIRWAY_MIN_SEPARATION = 8;
 
+// How many hunters may chase the player through a stairway at once. The player arrives
+// with no room to retreat, so an uncapped pack is an unfair death rather than a tense
+// escape — two is enough to feel pursued.
+const MAX_STAIR_FOLLOWERS = 2;
+
 // ── Array / direction helpers ──────────────────────────────────────────
 
 const CARDINAL_DIRS = [
@@ -1068,6 +1073,7 @@ class DungeonEngine {
         this.floorStates = new Map();    // floor# → { entities: [...], map: {...} }
         this.pendingFallenActors = new Map(); // floor# → [serialized actor data]
         this.pendingFallenItems = new Map();  // floor# → [serialized item data] (items that fell through void/collapse)
+        this.pendingStairFollowers = new Map(); // floor# → [serialized actor data] (monsters that chased the player through a stairway)
         this.sealedDownFloors = new Set(); // floor#s whose down-stairway is sealed (win conditions unmet) → that floor's N+1 up-stairway must be locked
         this.mappedFloors = new Set();   // floor#s revealed by magic mapping; a lasting per-level reveal (layout + machine links) that survives leaving and returning
         this.gameplayStarted = false;    // false during the load sequence; gates sounds/messages so load-time state changes don't leak feedback before the player begins play
@@ -1673,6 +1679,9 @@ class DungeonEngine {
         await this.currentPrototype.loadAssets();
         this.currentFloor = 1;
         this.floorStates.clear();
+        this.pendingFallenActors.clear();
+        this.pendingFallenItems.clear();
+        this.pendingStairFollowers.clear();
         this.sealedDownFloors.clear();
         this.mappedFloors.clear();
 
@@ -1907,6 +1916,8 @@ class DungeonEngine {
 
         this.spawnPendingFallenActors();
         this.spawnPendingFallenItems();
+
+        this.spawnPendingStairFollowers();
 
         const startGameplay = () => {
             // Play has begun — feedback (sounds/messages) is allowed from here on,
@@ -2195,6 +2206,8 @@ class DungeonEngine {
 
         this.spawnPendingFallenActors();
         this.spawnPendingFallenItems();
+
+        this.spawnPendingStairFollowers();
 
         // Restoring a cached floor has no splash/click step — play resumes immediately,
         // so allow feedback before showing the floor banner below.
@@ -2522,6 +2535,9 @@ class DungeonEngine {
         // Reset floor state when transitioning to a new prototype
         this.currentFloor = 1;
         this.floorStates.clear();
+        this.pendingFallenActors.clear();
+        this.pendingFallenItems.clear();
+        this.pendingStairFollowers.clear();
         this.sealedDownFloors.clear();
         this.mappedFloors.clear();
         await this.loadPrototype(prototypeName, entryDirection, fromCutscene);
@@ -2851,10 +2867,77 @@ class DungeonEngine {
         if (config.next_level) {
             console.log(`Using gateway to transition to ${config.next_level}`);
             this.floorStates.clear();
+            this.pendingFallenActors.clear();
+            this.pendingFallenItems.clear();
+            this.pendingStairFollowers.clear();
             this.mappedFloors.clear();
             this.currentFloor = 1;
             await this.transitionToPrototype(config.next_level, true, 'from_above');
         }
+    }
+
+    /**
+     * Gather adjacent hunters that should chase the player onto the next floor.
+     *
+     * Must run BEFORE transitionToFloor, because saveFloorState() serializes every
+     * non-player entity into floorStates — a follower still standing on the departing
+     * floor would be cached there *and* carried forward, so it would appear twice.
+     *
+     * Followers leave via removeEntity rather than die(false) (which fall() uses): die()
+     * still announces a death, plays death_sound, and drops the actor's whole inventory,
+     * none of which should happen to something that merely walked downstairs.
+     *
+     * Opt-in per actor via `follows_stairs`, so no existing prototype changes behavior
+     * until a designer asks for it.
+     *
+     * @param {number} targetFloor - 1-indexed floor the player is heading to
+     * @returns {number} How many followers were queued
+     */
+    gatherStairFollowers(targetFloor) {
+        const player = this.entityManager?.player;
+        if (!player) return 0;
+
+        const candidates = this.entityManager.actors.filter(actor =>
+            actor !== player &&
+            !actor.isDead &&
+            actor.hasAttribute('follows_stairs') &&
+            actor.personality?.hostile &&
+            !actor.hasAttribute('controlled') &&
+            getChebyshevDistance(actor.x, actor.y, player.x, player.y) <= 1 &&
+            // Aware of its quarry: either provoked, or it can see the player right now.
+            // Without this a monster that merely happens to be standing beside the
+            // stairs (asleep, or wandering past) would tag along.
+            (actor._alerted || actor.canSeeTarget(player))
+        );
+
+        if (candidates.length === 0) return 0;
+
+        // Nearest first, capped: arriving beside a whole pack with no room to retreat is
+        // an unfair death, not a tense one.
+        candidates.sort((a, b) =>
+            getChebyshevDistance(a.x, a.y, player.x, player.y) -
+            getChebyshevDistance(b.x, b.y, player.x, player.y)
+        );
+
+        const followers = candidates.slice(0, MAX_STAIR_FOLLOWERS);
+
+        if (!this.pendingStairFollowers.has(targetFloor)) {
+            this.pendingStairFollowers.set(targetFloor, []);
+        }
+
+        for (const actor of followers) {
+            const serialized = actor.serialize();
+            // serialize() drops the AI's memory fields, so a deserialized follower would
+            // arrive with a blank slate and idle beside the player. Carry the hunt intent
+            // explicitly and reapply it on arrival.
+            serialized._followedStairs = true;
+            serialized._followerName = actor.name;
+            this.pendingStairFollowers.get(targetFloor).push(serialized);
+            this.entityManager.removeEntity(actor);
+            console.log(`${actor.name} follows the player to floor ${targetFloor}`);
+        }
+
+        return followers.length;
     }
 
     /**
@@ -2896,9 +2979,11 @@ class DungeonEngine {
         // NEW: stairways go between floors within the prototype
         const totalFloors = this.getTotalFloors();
         if (direction === 'down' && this.currentFloor < totalFloors) {
+            this.gatherStairFollowers(this.currentFloor + 1);
             await this.transitionToFloor(this.currentFloor + 1, 'from_above');
         } else if (direction === 'up') {
             if (this.currentFloor > 1) {
+                this.gatherStairFollowers(this.currentFloor - 1);
                 await this.transitionToFloor(this.currentFloor - 1, 'from_below');
             } else if (config.previous_level) {
                 await this.transitionToPrototype(config.previous_level, true, 'from_below');
@@ -3641,6 +3726,82 @@ class DungeonEngine {
     }
 
     /**
+     * Place monsters that chased the player through a stairway onto the newly-entered
+     * floor. Mirrors spawnPendingFallenActors, with two differences: no fall damage, and
+     * placement is next to the player rather than a random tile — a follower that landed
+     * across the map wouldn't read as having followed at all.
+     *
+     * Must run after the player is placed (restorePlayerOnFloor / spawnPlayerAtStairway)
+     * and before initializeTurnEngine(), which rebuilds the scheduler from
+     * entityManager.actors and so picks these up automatically.
+     */
+    spawnPendingStairFollowers() {
+        const pending = this.pendingStairFollowers.get(this.currentFloor);
+        if (!pending || pending.length === 0) return;
+
+        const player = this.entityManager.player;
+        const walkableTiles = this.mapManager.walkableTiles;
+        const placed = [];
+
+        for (const data of pending) {
+            const actorData = this.currentPrototype.getActorData(data.type);
+            if (!actorData) continue;
+
+            // Beside the player first, then beside the arrival stairway, then anywhere
+            // free — so a follower always lands somewhere legal even on a cramped floor.
+            let tile = player ? findAdjacentWalkable(player, this.entityManager) : null;
+
+            if (!tile) {
+                for (const dir of ['up', 'down']) {
+                    const stairway = this.entityManager.findActorByAttribute('stairway', dir);
+                    if (!stairway) continue;
+                    tile = findAdjacentWalkable(stairway, this.entityManager);
+                    if (tile) break;
+                }
+            }
+
+            if (!tile) {
+                const available = walkableTiles.filter(t =>
+                    !this.entityManager.getActorAt(t.x, t.y)
+                );
+                if (available.length === 0) continue;
+                tile = available[Math.floor(ROT.RNG.getUniform() * available.length)];
+            }
+
+            const actor = new Actor(tile.x, tile.y, data.type, actorData, this);
+            actor.deserialize(data);
+            actor.x = tile.x;
+            actor.y = tile.y;
+            this.entityManager.addEntity(actor);
+            this.renderer?.createActorSprite(actor);
+
+            // Restore the hunt. serialize() carries no AI memory, so without this the
+            // follower would arrive and idle — and in darkness canSeeTarget clamps its
+            // range to 1.5, so it can't always re-acquire on its own.
+            if (player) {
+                actor._alerted = true;
+                actor._alertTarget = player;
+                actor._alertTurns = actor.personality?.data?.memory_duration || 10;
+                actor._lastKnownTargetX = player.x;
+                actor._lastKnownTargetY = player.y;
+            }
+
+            placed.push(actor);
+            console.log(`${actor.name} followed the player to floor ${this.currentFloor} at (${tile.x}, ${tile.y})`);
+        }
+
+        if (placed.length === 1) {
+            this.inputManager?.showMessage(
+                `The ${placed[0].name} follows you!`, { x: placed[0].x, y: placed[0].y }
+            );
+        } else if (placed.length > 1) {
+            this.inputManager?.showMessage('You are followed!', { style: 'warning' });
+        }
+
+        this.pendingStairFollowers.delete(this.currentFloor);
+    }
+
+    /**
      * Clean up the current floor without destroying the app/renderer framework
      * Preserves prototype, assets, and audio — clears entities, map, and rendering
      */
@@ -3743,6 +3904,9 @@ class DungeonEngine {
         // Reset floor state
         this.currentFloor = 1;
         this.floorStates.clear();
+        this.pendingFallenActors.clear();
+        this.pendingFallenItems.clear();
+        this.pendingStairFollowers.clear();
         this.sealedDownFloors.clear();
         this.mappedFloors.clear();
     }
@@ -15397,6 +15561,9 @@ window.goToFloor = async (floorNumber) => {
     await engine.currentPrototype.loadAssets();
     engine.currentFloor = floorNumber;
     engine.floorStates.clear();
+    engine.pendingFallenActors.clear();
+    engine.pendingFallenItems.clear();
+    engine.pendingStairFollowers.clear();
     engine.sealedDownFloors.clear();
     engine.mappedFloors.clear();
     await engine.loadFloor(floorNumber, 'from_above');
