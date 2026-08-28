@@ -5,6 +5,8 @@
     .form-panel {
         column-width: $col;
         column-gap: $gap;
+        display: flex;
+        flex-flow: row wrap;
     }
     .form-panel > details.section {
         break-inside: avoid;        // don't split a section across columns

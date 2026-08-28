@@ -627,6 +627,8 @@ body.editor.actor-editor .form-panel {
        column-width: 460px;
   -moz-column-gap: 8px;
        column-gap: 8px;
+  display: flex;
+  flex-flow: row wrap;
 }
 body.editor.actor-editor .form-panel > details.section {
   -moz-column-break-inside: avoid;
@@ -645,6 +647,8 @@ body.editor.item-editor .form-panel {
        column-width: 460px;
   -moz-column-gap: 8px;
        column-gap: 8px;
+  display: flex;
+  flex-flow: row wrap;
 }
 body.editor.item-editor .form-panel > details.section {
   -moz-column-break-inside: avoid;
@@ -708,6 +712,8 @@ body.editor.personality-editor .form-panel {
        column-width: 460px;
   -moz-column-gap: 8px;
        column-gap: 8px;
+  display: flex;
+  flex-flow: row wrap;
 }
 body.editor.personality-editor .form-panel > details.section {
   -moz-column-break-inside: avoid;
@@ -881,6 +887,8 @@ body.editor.effects-editor .form-panel {
        column-width: 460px;
   -moz-column-gap: 8px;
        column-gap: 8px;
+  display: flex;
+  flex-flow: row wrap;
 }
 body.editor.effects-editor .form-panel > details.section {
   -moz-column-break-inside: avoid;
