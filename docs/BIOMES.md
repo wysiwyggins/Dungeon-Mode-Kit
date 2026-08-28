@@ -31,7 +31,8 @@ definition is self-contained. (Deep-merging would make `actors: []` ambiguous: "
 or "inherit the default's"?)
 
 Author them with the **Biome Editor** (`editors/biome-editor.html`). The prototype editor
-only *assigns* biomes, in its Floor plan section.
+only *assigns* biomes, in its Biome plan section — which is optional: switch it off and every
+floor uses the prototype's own defaults instead of ramping by depth.
 
 ## Assigning biomes to floors
 
@@ -195,7 +196,7 @@ skips it and **those items never spawn**.
 
 So a reusable biome is a contract against its host. Only `dungeon` and `sewer` currently
 define an `item_catalog` at all. The engine warns at load when a biome asks for a category
-the prototype doesn't provide, and the prototype editor flags it in the Floor plan section —
+the prototype doesn't provide, and the prototype editor flags it in the Biome plan section —
 but prefer widely-available categories (`potion`, `scroll`, `weapon`, `armor`) for biomes
 meant to travel.
 

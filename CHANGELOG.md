@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Biomes are now optional on a multi-level prototype.** The prototype editor's *Floor plan* is renamed **Biome plan** and gains the standard section toggle; switching it off drops `floor_plan` so every floor uses the prototype defaults — already a supported engine mode, since `resolveBiome` returns `{}` and `getFloorConfig` falls through.
 - **Editor constants that name engine vocabulary are shared, not duplicated.** `CATEGORY_KEYS`, `GEN_TYPES` and `DECORATION_PATTERNS` moved out of `proto-state.js`/`biome-state.js` into `editors/scripts/editor-constants.js`, loaded first by both editors, with each list pointing at the `data/` or `engine.js` counterpart it must not drift from.
 - **`Cancel` attribute lets states cancel one another out.**
 - **States can lose a turn at random, entirely from data.** `skip_turn_chance` gains `skip_turn_message`, `skip_turn_sound`, `skip_turn_spawn` and `skip_turn_effect`, so a state describes its own lost round. Nausea's retch-and-spawn-vomit case was hardcoded in `Actor.act()`; it now lives in `states.json`.

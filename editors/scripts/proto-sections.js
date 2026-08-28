@@ -159,7 +159,7 @@ function renderForm() {
         root.appendChild(sectionItemCatalog().det);
         root.appendChild(sectionSpawns(state.proto, { open: true }).det);
         if (isMultiLevel()) {
-            root.appendChild(sectionFloorPlan().det);
+            root.appendChild(sectionBiomePlan().det);
         }
         root.appendChild(sectionAdvanced().det);
     } else {
@@ -521,7 +521,7 @@ const KNOWN_TOP_KEYS = new Set([
     'name','description','loaded_sound','turn_speed','next_level','previous_level','intro_cutscene',
     'mechanics','win_state','win_conditions','map_generator','item_catalog','item_budget',
     'random_actors','random_items','traps','switch_puzzles','levels','cutscene',
-    // Multi-level / biome keys, edited by the Floor plan section.
+    // Multi-level / biome keys, edited by the Biome plan section.
     'floors','floor_plan','biomes',
 ]);
 // Top-of-form control: whether this prototype is a cutscene. A cutscene has no
@@ -548,7 +548,7 @@ function isMultiLevel() {
 }
 
 // Top-of-form switch between single-level and multi-level prototypes. Multi-level
-// reveals the floor count + Biomes + Floor plan tools; single-level hides all of
+// reveals the floor count + Biomes + Biome plan tools; single-level hides all of
 // that complexity. Turning it on seeds a small default (3 floors); turning it off
 // clears the biome/floor keys (and any levels[]).
 function multiLevelToggle() {
@@ -565,13 +565,13 @@ function multiLevelToggle() {
     }, 'A dungeon of several floors. Multi-level prototypes ramp difficulty by depth using biomes (see Biomes below) and can hand-author individual floors. Off = a single self-contained level.'));
     if (isMultiLevel()) {
         wrap.appendChild(fieldRow('floors', p, 'floors', { type: 'number', min: 1,
-            tip: 'Total number of floors. Biomes are assigned to floor ranges in the Floor plan below.' }));
+            tip: 'Total number of floors. Biomes are assigned to floor ranges in the Biome plan below, or leave that off to give every floor the prototype defaults.' }));
     }
     return wrap;
 }
 
 /* =========================================================================
-   Floor plan (multi-level prototypes) — see docs/BIOMES.md
+   Biome plan (multi-level prototypes) — see docs/BIOMES.md
    A biome is a reusable bundle of depth-ranged catalogs (actors/items) + hazard
    ramps + map/mechanics, and the engine (resolveBiome) turns it into per-floor
    spawn tables that ramp with depth — so you don't author every floor by hand.
@@ -584,11 +584,41 @@ function multiLevelToggle() {
 
 /* Assign biomes to inclusive floor ranges. Validates that ranges tile 1..floors
    without gaps/overlap, and that the biomes' item categories exist in the
-   prototype's item_catalog. */
-function sectionFloorPlan() {
+   prototype's item_catalog.
+
+   Optional: a multi-level prototype with no floor_plan is valid — resolveBiome
+   returns {} for every floor and getFloorConfig falls through to the prototype
+   defaults, so the toggle here is a real engine-supported mode, not a UI-only
+   hide. */
+function sectionBiomePlan() {
     const p = state.proto;
-    if (!Array.isArray(p.floor_plan)) p.floor_plan = [];
-    const { det, body } = section('Floor plan', { open: true });
+    // Biomes are optional on a multi-level prototype: with no floor_plan,
+    // resolveBiome returns {} and every floor falls through to the prototype
+    // defaults above. Note this is deliberately NOT `p.floor_plan.length` — an
+    // empty plan you're midway through authoring must stay enabled.
+    const usesBiomes = Array.isArray(p.floor_plan);
+    const { det, body, active } = section('Biome plan', {
+        open: true,
+        optional: {
+            isOn: usesBiomes,
+            enable: () => { if (!Array.isArray(p.floor_plan)) p.floor_plan = []; },
+            // Drop `biomes` too: an inline biomes block is legacy prototype
+            // content that only the plan reads, so leaving it would be dead data.
+            // Pin `floors` first — isMultiLevel() counts floor_plan as evidence of
+            // multi-level, so a legacy prototype carrying a plan but no explicit
+            // floor count would collapse to single-level the moment we delete it,
+            // hiding this very section. getTotalFloors() falls back to 1, so read
+            // the count the same way the engine would before dropping the plan.
+            disable: () => {
+                if (p.floors == null) p.floors = Array.isArray(p.levels) ? p.levels.length : 1;
+                delete p.floor_plan;
+                delete p.biomes;
+            },
+            hint: 'No biomes — every floor uses the prototype defaults above '
+                + '(map generator, spawns, item catalog). Enable to ramp content by depth instead.',
+        },
+    });
+    if (!active) return { det };
     // Names come from the biome LIBRARY (data/biomes.json + this prototype's
     // biomes.json), not from prototype.json — biomes aren't authored inline.
     const biomeNames = mergedBiomeNames();
