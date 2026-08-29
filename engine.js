@@ -2887,8 +2887,10 @@ class DungeonEngine {
      * still announces a death, plays death_sound, and drops the actor's whole inventory,
      * none of which should happen to something that merely walked downstairs.
      *
-     * Opt-in per actor via `follows_stairs`, so no existing prototype changes behavior
-     * until a designer asks for it.
+     * No opt-in flag: an actor standing next to the player and aware of them at the
+     * moment the player takes the stairs *is* pursuing — the adjacency is the evidence.
+     * A separate attribute would only restate what the situation already proves, and
+     * would leave every newly-added hostile silently unable to follow.
      *
      * @param {number} targetFloor - 1-indexed floor the player is heading to
      * @returns {number} How many followers were queued
@@ -2900,9 +2902,17 @@ class DungeonEngine {
         const candidates = this.entityManager.actors.filter(actor =>
             actor !== player &&
             !actor.isDead &&
-            actor.hasAttribute('follows_stairs') &&
             actor.personality?.hostile &&
             !actor.hasAttribute('controlled') &&
+            // Segmented creatures (the scutigera) can't cross a floor. Their parts are
+            // joined by live object references (_chainPrev/_chainNext/_chainHead) that
+            // serialize() can't carry, and the chain is only rebuilt by
+            // spawnChainCreatures() — which runs earlier in loadFloor() than this drain,
+            // and not at all in restoreFloor(). So a body segment would arrive linked to
+            // a destroyed actor, and a head would arrive permanently bodiless. Excluding
+            // the whole creature keeps it on its own floor, intact.
+            // (The same gap exists for a scutigera that falls; left alone here.)
+            !actor._chainHead &&
             getChebyshevDistance(actor.x, actor.y, player.x, player.y) <= 1 &&
             // Aware of its quarry: either provoked, or it can see the player right now.
             // Without this a monster that merely happens to be standing beside the
@@ -2926,13 +2936,10 @@ class DungeonEngine {
         }
 
         for (const actor of followers) {
-            const serialized = actor.serialize();
             // serialize() drops the AI's memory fields, so a deserialized follower would
-            // arrive with a blank slate and idle beside the player. Carry the hunt intent
-            // explicitly and reapply it on arrival.
-            serialized._followedStairs = true;
-            serialized._followerName = actor.name;
-            this.pendingStairFollowers.get(targetFloor).push(serialized);
+            // arrive with a blank slate and idle beside the player. The hunt intent is
+            // reapplied on arrival instead — see spawnPendingStairFollowers().
+            this.pendingStairFollowers.get(targetFloor).push(actor.serialize());
             this.entityManager.removeEntity(actor);
             console.log(`${actor.name} follows the player to floor ${targetFloor}`);
         }
@@ -3648,7 +3655,7 @@ class DungeonEngine {
             actor.x = tile.x;
             actor.y = tile.y;
             this.entityManager.addEntity(actor);
-            this.renderer?.createActorSprite(actor);
+            this.renderer?.createActorSprites(actor);
 
             if (fallDamage > 0 && actor.stats?.health) {
                 actor.modifyStat('health', -fallDamage);
@@ -3773,7 +3780,11 @@ class DungeonEngine {
             actor.x = tile.x;
             actor.y = tile.y;
             this.entityManager.addEntity(actor);
-            this.renderer?.createActorSprite(actor);
+            // Plural: createActorSprites builds the base/top pair and assigns them to
+            // the actor. The singular createActorSprite is the low-level helper it calls,
+            // and takes a tile index and position — passing it just the actor makes no
+            // visible sprite.
+            this.renderer?.createActorSprites(actor);
 
             // Restore the hunt. serialize() carries no AI memory, so without this the
             // follower would arrive and idle — and in darkness canSeeTarget clamps its

@@ -35,9 +35,9 @@
 
 - would probably add a new attribute like "reflective"
 
-## other actors need to be able to use stairs
+## ~~other actors need to be able to use stairs~~
 
-- a monster should be able to chase a player actor from one level to another.
+- ~~a monster should be able to chase a player actor from one level to another.~~ Done — a hostile actor adjacent to a player actor and aware of it when the player takes a stairway is carried to the destination floor and arrives beside them, still hunting. No opt-in attribute: the adjacency *is* the evidence of pursuit. Capped at 2 followers, so arriving beside a whole pack with no room to retreat can't happen. Multi-floor prototypes only (`floors`/`levels`); the legacy cross-prototype stairway path is deferred, since the target prototype may not even define the follower's actor type. Segmented creatures (the scutigera) are excluded — their parts are joined by live object references that can't cross a floor.
 
 ## remaning 'types' refactor work
 

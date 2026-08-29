@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - The Search action!
+- **Monsters chase you between floors.** segmented creatures are excluded, since their parts are joined by live object references that can't cross a floor. See [docs/ACTORS.md](docs/ACTORS.md#level-transitions) and [docs/SAVING.md](docs/SAVING.md#entities-in-transit-between-floors).
 - `hidden` attribute (different from `visible`)
 - **Floor decorations** — a biome can scatter floor dressing across its floors with a `decorations` block: `{ entity | actor, pattern, density, min, max, freq, region? }`, the first generation-time use of `data/entities.json`. See [docs/BIOMES.md](docs/BIOMES.md#decorations).
 - **decorations (floor scatter)** section in the biome editor, with an entity dropdown fed from `data/entities.json` and a pattern picker.

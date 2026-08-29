@@ -1,0 +1,11 @@
+{
+  "name": "Chase test",
+  "loaded_sound": "tone3",
+  "description": "Welcome to the Dungeon of Doom. \nPress '?' for help. Use arrow keys or mouse to move.",
+  "turn_speed": 50,
+  "mechanics": {
+    "fog_of_war": false,
+    "darkness": false
+  },
+  "floors": 2
+}

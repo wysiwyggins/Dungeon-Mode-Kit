@@ -114,12 +114,28 @@ Multi-level prototypes save and restore floor state when transitioning between f
 
 ```js
 engine.currentFloor    // 1-indexed current floor number
-engine.floorStates     // Map of floor# → { entities, map, rngState }
+engine.floorStates     // Map of floor# → { entities, map, explored, rngState }
 ```
 
-`saveFloorState()` serializes all non-player entities and the full map state. The player entity is serialized separately and carried across floors with inventory, stats, and equipment intact.
+`saveFloorState()` serializes all non-player entities and the full map state. The player entity is serialized separately and carried across floors with inventory, stats, and equipment intact. `explored` carries the fog-of-war reveal across the round trip — `restoreFloor()` builds a fresh `LightingManager` whose `initialize()` zeroes the explored map, so without it a revisited floor would re-fog entirely.
 
 When returning to a previously visited floor, the saved state is restored — all entities reappear in their last positions, and the map is exactly as it was left. The ROT.js RNG state is also saved per floor for deterministic regeneration if needed.
+
+### Entities in transit between floors
+
+Three queues hold entities that have left one floor but not yet been placed on the next. Each is a `Map` of destination floor# → array of serialized entities, drained when that floor is entered:
+
+```js
+engine.pendingFallenActors    // fell through a collapsing floor / pit
+engine.pendingFallenItems     // items that fell with them
+engine.pendingStairFollowers  // hostiles that chased the player through a stairway
+```
+
+`gatherStairFollowers()` fills the last of these, and it must run *before* `saveFloorState()`: a follower still on the live entity list when the floor is saved would be cached onto the floor it left *and* carried forward, appearing twice. Followers leave via `removeEntity()` rather than `die()`, so nothing dies, drops loot, or announces itself.
+
+All three drain after the player is placed and before `initializeTurnEngine()`, which rebuilds the scheduler from the live actor list — so arrivals are scheduled automatically. Because AI memory is not serialized, `spawnPendingStairFollowers()` reapplies the hunt state (`_alerted`, `_alertTarget`, `_lastKnownTargetX/Y`) on arrival.
+
+All three are cleared on a full prototype change, gateway transition, or engine cleanup — pending entities never survive into a different prototype.
 
 ### Map Serialization
 
