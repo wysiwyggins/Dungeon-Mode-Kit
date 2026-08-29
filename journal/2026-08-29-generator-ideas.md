@@ -11,6 +11,7 @@ Pulling these two items out of my ideas file to survive as a journal entry, I've
 Architect has gotten so complex that I now find much of it hard to read and working on it feels like churn. If it's this bad for me it will be a black box to anyone trying to design a prototype with anything but authored maps. What if there was an option to author a large tmj map and that got turned into wave function collapse rules? You could still use generator wildcard tiles on it if you wanted to have areas use one of the pre-existing generators.
 
 I used a WFC library called [DeBroglie](https://github.com/BorisTheBrave/DeBroglie) for a non-game project called [Archon](https://wileywiggins.com/archon.html), but that was C#. Is there a javascript library already made that I could use?
+(reminder to myself that Shiffman does a wave function collapse tutorial in p5,js, also [this](https://github.com/kchapelier/wavefunctioncollapse))
 
 Another thing I could do to untangle architect is to try to make it modular- i.e. the generators that are in there get componentized as separate files and when one is missing it fails gracefully to a fallback etc. we end up with a leaner architect that can use or not use the hairball generators, and on top of that we use wfc rules from handmade maps to let designers make their own generators, which could live in their own prototype folder.
 

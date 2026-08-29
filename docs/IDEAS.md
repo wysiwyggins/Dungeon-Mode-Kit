@@ -1,11 +1,11 @@
 
 ## Bugs
 
-- the secret door pass led to some occasional weird door placement, such as a secret door that connects to the corner of a rectangular room, which does not grant entry due to the rule that prevents diagonal movement next to a solid wall.
+- the secret door pass led to some occasional weird door placement, such as a secret door that connects to the corner of a rectangular room, which does not grant entry due to the rule that prevents diagonal movement next to a solid wall. I also found a secret door next to a regular door on a wall between two rooms. I feel like trying to fix this is going to turn into churn and overly complex architect code (it already has)
 
 ## Tweaks
 
-- play/pause is only meaningful on zero player prototypes, reclaim the space bar for wait/rest so we can use z for zap wands and staffs
+- play/pause action is only meaningful on zero player prototypes, reclaim the space bar for wait/rest so we can use z for zap wands and staffs. On zero player prototypes space can go back to being play/pause
 
 ---
 
@@ -13,8 +13,7 @@
 
 ## New procgen model
 
-- Architect has gotten so complex that I now find much of it incomprehensible and working on it feels like churn. If it's this bad for me it will be a black box to anyone trying to author a prototype with anything but authored maps. What if there was an option to author a large tmj map and that got turned into wave function collapse rules? You could still use generator wildcard tiles on it if you wanted to have areas use one of the pre-existing generators.
-- One thing I can do to untangle architect is to try to make it modular- i.e. the generators that are in there get componentized so when one is missing it fails gracefully to a fallback etc. we end up with a leaner architect that can use or not use the hairball generators, and on top of that we use wfc rules from handmade maps to let designers make their own generators, which could live in their own prototype folder.
+- See [journal entry](2026-08-29-generator-ideas.md)
 
 ## Renaming/semantic remapping of generator and biomes
 
