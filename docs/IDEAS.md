@@ -1,11 +1,19 @@
 
 ## Bugs
 
+- the secret door pass led to some occasional weird door placement, such as a secret door that connects to the corner of a rectangular room, which does not grant entry due to the rule that prevents diagonal movement next to a solid wall.
+
 ## Tweaks
+
+- play/pause is only meaningful on zero player prototypes, reclaim the space bar for wait/rest so we can use z for zap wands and staffs
 
 ---
 
 ## Feature ideas
+
+## New procgen model
+
+- Architect has gotten so complex that I now find much of it incomprehensible and working on it feels like churn. If it's this bad for me it will be a black box to anyone trying to author a prototype with anything but authored maps. What if there was an option to author a large tmj map and that got turned into wave function collapse rules? You could still use generator wildcard tiles on it if you wanted to have areas use one of the pre-existing generators.
 
 ## Renaming/semantic remapping of generator and biomes
 
