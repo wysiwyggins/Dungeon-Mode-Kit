@@ -553,11 +553,47 @@ class InputManager {
             }
         }
 
+        // Clicking another actor looks at it rather than walking to it. Travel to a
+        // monster's tile is still reachable — Tab picks it and (x)plore commits — so
+        // nothing is lost, and clicking a monster to read it is the commoner intent.
+        const looked = this.actorAtClick(this.hoveredTile.x, this.hoveredTile.y);
+        if (looked) {
+            this.engine.interfaceManager?.showActorInfo(looked, player);
+            return;
+        }
+
         // Clicking to travel supersedes any pending (x)plore preview.
         this.cancelExplorePreview();
 
         // Start auto-walk if there's a valid path
         this.startAutoWalk();
+    }
+
+    /**
+     * The actor a click at (x, y) is looking at, or null.
+     *
+     * Resolves a tall actor's head tile the same way the hover-describe pass does
+     * (base at y, top sprite at y-1), and only returns actors the player could
+     * legitimately name: visible, not hidden, on a currently-lit tile. A remembered
+     * actor on an explored-but-unseen tile is deliberately excluded — the map may
+     * remember where it was standing, but you cannot look at what you cannot see.
+     *
+     * @returns {Actor|null}
+     */
+    actorAtClick(x, y) {
+        const em = this.engine.entityManager;
+        if (!em) return null;
+
+        let actor = em.getActorAt(x, y);
+        if (!actor || actor.isDead) {
+            const below = em.getActorAt(x, y + 1);
+            actor = (below && !below.isDead && below.height === 2) ? below : null;
+        }
+        if (!actor || actor.isDead) return null;
+        if (!actor.hasAttribute('visible') || actor.hasAttribute('hidden')) return null;
+        if (!this.engine.isTileVisible(actor.x, actor.y)) return null;
+
+        return actor;
     }
 
     // ---- Touch input handlers ----
@@ -1197,7 +1233,15 @@ class InputManager {
         // Fall back to the default binding rather than the action name — an unbound
         // explore would otherwise render as the useless "press [explore] to go".
         const goKey = this.getKeyForAction('explore', 'x');
-        this.showMessage(`Target: ${label} (${this.targetCycleIndex + 1}/${targets.length}) — press [${goKey}] to go.`);
+        const position = `${this.targetCycleIndex + 1}/${targets.length}`;
+        // On an actor the confirm key looks instead of travelling, so say so — the
+        // two keys do different things here and the hint is the only place that shows.
+        if (target.kind === 'actor') {
+            const lookKey = this.getKeyForAction('confirm_target', 'Enter');
+            this.showMessage(`Target: ${label} (${position}) — [${lookKey}] to look, [${goKey}] to go.`);
+        } else {
+            this.showMessage(`Target: ${label} (${position}) — press [${goKey}] to go.`);
+        }
     }
 
     /**
@@ -1943,6 +1987,12 @@ class InputManager {
             return;
         }
 
+        // Check if the actor info panel wants this key (Esc closes it)
+        if (this.engine.interfaceManager?.handleActorInfoKey(event.key)) {
+            event.preventDefault();
+            return;
+        }
+
         // Check if throw menu wants to handle this key
         if (this.engine.interfaceManager?.handleThrowMenuKey(event.key)) {
             event.preventDefault();
@@ -2111,7 +2161,20 @@ class InputManager {
             // means "go with that" in all three contexts. With nothing armed it does
             // nothing rather than falling through to a stray action.
             case 'confirm_target':
-                if (this.exploreArmed) this.commitExplore();
+                // Mode-aware: on an armed ACTOR it looks rather than travels, the
+                // keyboard route to the same panel a click gives. Items and frontier
+                // picks still travel, so the key keeps one meaning per kind of thing
+                // rather than one meaning overall. Walking to a monster is still
+                // reachable — step toward it, or (x)plore, which always travels.
+                if (this.exploreArmed) {
+                    const armed = this.exploreArmedTarget;
+                    if (armed?.kind === 'actor' && armed.entity && !armed.entity.isDead) {
+                        this.cancelExplorePreview();
+                        this.engine.interfaceManager?.showActorInfo(armed.entity, player);
+                    } else {
+                        this.commitExplore();
+                    }
+                }
                 break;
 
             case 'wait':

@@ -22,7 +22,8 @@
       "remains": "skull",
       "accuracy": 50,
       "opaque": true,
-      "strength": 5
+      "strength": 5,
+      "tactician": true
     },
     "stats": {
       "health": {

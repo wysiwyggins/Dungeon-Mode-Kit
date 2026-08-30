@@ -68,8 +68,8 @@
 
 ### Actor info
 
-- clicking on an actor could show an info window instead of pathing to them with click to walk. This should show the monster name and description, later we can build out more procedural info like brogue.
-- In addition to clicking we should have a keyboard-only way to select actors and items and getting info (tab to cycle through objects of interest works now- we add mode-aware action button (enter) to view info, or select when throwing/zapping)
+- ~~clicking on an actor could show an info window instead of pathing to them with click to walk. This should show the monster name and description, later we can build out more procedural info like brogue.~~ Done — clicking a visible actor opens the panel; travel to its tile is still reachable via Tab + (x)plore. Went further than name+description: traits come from `data/attribute-info.json` and a Brogue-style two-sided combat forecast is gated behind `tactician`.
+- ~~In addition to clicking we should have a keyboard-only way to select actors and items and getting info (tab to cycle through objects of interest works now- we add mode-aware action button (enter) to view info, or select when throwing/zapping)~~ Partly done — Tab + Enter opens the panel for an **actor**; Enter still travels for items and frontier picks, and the aiming modes still intercept it first. Items don't have a look-panel yet (they have the inventory action menu instead), so the item half is outstanding.
 - because the canvas viewport is prototype definable, could this be too much text for the canvas? we might need to implement paging in ui windows for overflow (paging is more desirable than scrolling)
 - if possible, clicking an actor or item name in the sidebar could highlight its tiles in the canvas and bring up the info canvas textbox
 

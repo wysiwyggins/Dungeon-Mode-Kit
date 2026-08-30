@@ -43,8 +43,8 @@ Item JSON has two layers, and knowing which layer a property belongs to matters.
 | `identified` | boolean | `false` = starts unidentified |
 | `unidentified_template` | string | Display name before identification |
 | `identified_template` | string | Display name after identification |
-| `use_description` | string | Message template shown when item is used |
-| `effect_description` | string | Template variable for `[effect_description]` token |
+| `use_description` | string | Message template shown when item is used (see [Description fields](#description-fields)) |
+| `effect_description` | string | What the effect does, stated abstractly (see [Description fields](#description-fields)) |
 | `template_vars` | object | Additional template substitution variables |
 | `random_color` | boolean | Assign a random color per item type |
 | `random_glyph_name` | boolean | Assign a random runic name per item type |
@@ -54,7 +54,27 @@ Item JSON has two layers, and knowing which layer a property belongs to matters.
 
 Everything else goes in `attributes`. If you're not sure, put it in `attributes` — that's always safe.
 
-> **Note for actors:** The `Actor` constructor has a bridge that copies `collision_sound`, `collision_effect`, `collision_description`, and `death_sound` from root-level into attributes. Items have no such bridge. For items, these properties must be inside `attributes`.
+### Description fields
+
+Four fields describe an item to the player. They answer different questions and are
+deliberately not merged — a UI picks the one that fits the moment it is describing.
+All four resolve templates against the item, and all four are read from attributes
+(root-level authoring is bridged in, see the note below).
+
+| Field | Answers | Read by | Behaviour |
+|---|---|---|---|
+| `description` | What is it? | `getDescription()` | Memoized — the panel is re-read while browsing, so words must not change between renders. Callers hide it for unidentified items. |
+| `use_description` | What happened when I used it? | `getUseDescription()` | Re-rolls random words on every call — read once per use, so variety is the point. Supports `[item_name]` and `[effect_description]`. |
+| `effect_description` | What does the effect do? | `getEffectDescription()` | Memoized. Independent of using the item, so a UI can name an effect without implying the player just triggered it. An item with `random_effect` gets this from `templateVars` instead. |
+| `collision_description` | What happens when I hit something with it? | combat message templates | Resolved at hit time; a weapon's value overrides the attacker's. |
+
+Actors have their own `description`, read by `Actor.getDescription()` with the same
+memoization. It says nothing about whether the player has seen or identified the actor —
+that gating belongs to the caller.
+
+> **Note for actors:** The `Actor` constructor has a bridge that copies `collision_sound`, `collision_effect`, `collision_description`, `death_sound`, `death_description` and `description` from root-level into attributes.
+>
+> **Description fields bridge on items too.** `description`, `use_description`, `effect_description` and `collision_description` (`Item.DESCRIPTION_FIELDS`) may be authored at either level — the `Item` constructor copies root-level ones into attributes, and an explicit attribute wins over a root-level value of the same name. Every *other* root-level key on an item is still dropped unless it is in the extraction list above, so when in doubt use `attributes`.
 
 ---
 

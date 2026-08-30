@@ -86,6 +86,10 @@ class InterfaceManager {
 
         // Help window state
         this.helpWindowMode = false;
+
+        // Actor info panel: which actor is being looked at, if any
+        this.actorInfoMode = false;
+        this.actorInfoActor = null;
     }
 
     get container() {
@@ -367,6 +371,8 @@ class InterfaceManager {
         let activeBoxId = null;
         if (this.helpWindowMode) {
             activeBoxId = 'help_window';
+        } else if (this.actorInfoMode) {
+            activeBoxId = 'actor_info';
         } else if (this.confirmDialog) {
             activeBoxId = 'confirm_dialog';
         } else if (this.identifyMode) {
@@ -4962,6 +4968,157 @@ class InterfaceManager {
         }
 
         return true;
+    }
+
+    // ========================================================================
+    // ACTOR INFO
+    // ========================================================================
+
+    /**
+     * Esc / a second look-key press closes the actor info panel. Mirrors
+     * handleHelpKey; called from InputManager before normal dispatch so the panel
+     * swallows the key rather than the game acting on it.
+     * @returns {boolean} True if the key was consumed
+     */
+    handleActorInfoKey(key) {
+        if (this.actorInfoMode && key === 'Escape') {
+            this.closeActorInfo();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Describe an actor: what it is, what it can do, and — for a tactician — how a
+     * fight with it would go.
+     *
+     * Modelled on Brogue's monsterDetails (Monsters.c), which assembles flavour text,
+     * threat math, your-side math and a trait list into one panel. The combat lines
+     * are gated on the viewer's `tactician` attribute so a prototype decides whether
+     * its player reads fights numerically or has to judge them by eye.
+     *
+     * @param {Actor} actor - The actor to describe
+     * @param {Actor} [viewer] - Whose perspective the combat math is from
+     */
+    showActorInfo(actor, viewer = null) {
+        if (!actor) return;
+        viewer = viewer || this.engine.entityManager?.player || null;
+
+        this.hidePlayerInfo();
+        this.closeActorInfo();
+        this.clearTargetingHighlights();
+
+        this.actorInfoMode = true;
+        this.actorInfoActor = actor;
+
+        const boxId = 'actor_info';
+        const WRAP = 30;
+        const lines = [];
+
+        const name = actor.getDisplayName ? actor.getDisplayName() : actor.name;
+        lines.push(this.capitalize(name));
+        lines.push('');
+
+        const description = actor.getDescription?.();
+        if (description) {
+            for (const line of this.wrapText(description, WRAP)) lines.push(line);
+            lines.push('');
+        }
+
+        // Traits, joined as prose: "It flies, sees in the dark and burns easily."
+        const traits = actor.getTraitPhrases?.() || [];
+        if (traits.length) {
+            const joined = traits.length === 1
+                ? traits[0]
+                : `${traits.slice(0, -1).join(', ')} and ${traits[traits.length - 1]}`;
+            for (const line of this.wrapText(`It ${joined}.`, WRAP)) lines.push(line);
+            lines.push('');
+        }
+
+        // Combat math — opt-in per prototype via `tactician` on the viewing actor.
+        // Skipped when looking at yourself: the panel would be comparing you to you.
+        if (viewer && viewer !== actor && viewer.hasAttribute?.('tactician')) {
+            for (const line of this.buildCombatLines(actor, viewer, WRAP)) lines.push(line);
+        }
+
+        lines.push('Esc to close');
+
+        const padding = 1;
+        const contentWidth = Math.max(...lines.map(l => this.stripMarkup(l).length), 16);
+        const contentHeight = lines.length;
+        const boxWidth = contentWidth + (padding * 2) + 2;
+        const boxHeight = contentHeight + (padding * 2) + 2;
+
+        const { x, y } = this.placeBoxAwayFromPlayer(boxWidth, boxHeight);
+        const boxContainer = this.createBox(boxId, x, y, boxWidth, boxHeight);
+        if (!boxContainer) { this.actorInfoMode = false; return; }
+
+        const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
+        const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
+        for (let i = 0; i < lines.length; i++) {
+            this.renderTextLine(boxContainer, lines[i],
+                textStartX, textStartY + (i * globalVars.TILE_HEIGHT));
+        }
+
+        this.updateBoxOverlays();
+    }
+
+    /**
+     * The two-sided combat forecast, as wrapped lines. Both directions come from
+     * Actor.predictCombat, which shares its arithmetic with the live damage path, so
+     * these numbers are a promise the engine actually keeps.
+     * @returns {string[]}
+     */
+    buildCombatLines(actor, viewer, wrap) {
+        const out = [];
+        const push = (text) => {
+            for (const line of this.wrapText(text, wrap)) out.push(line);
+        };
+
+        const yours = viewer.predictCombat?.(actor);
+        const theirs = actor.predictCombat?.(viewer);
+
+        if (yours) {
+            if (yours.immune) {
+                push(`You cannot harm it.`);
+            } else if (yours.noDamage) {
+                push(`You deal it no direct damage.`);
+            } else {
+                let s = `You have a ${yours.hitChance}% chance to hit it`;
+                s += `, and could defeat it in ${yours.hitsToKill} hit${yours.hitsToKill === 1 ? '' : 's'}`;
+                // Only worth stating when a crit would actually save a swing.
+                if (yours.bestHitsToKill && yours.bestHitsToKill < yours.hitsToKill) {
+                    s += ` — ${yours.bestHitsToKill} with a lucky strike`;
+                }
+                push(s + '.');
+                if (yours.backstab) push('It has not noticed you.');
+            }
+            out.push('');
+        }
+
+        if (theirs) {
+            if (theirs.immune || theirs.noDamage) {
+                push(`It deals no direct damage.`);
+            } else {
+                const n = theirs.hitsToKill;
+                push(`It has a ${theirs.hitChance}% chance to hit you, and could defeat you in ${n} hit${n === 1 ? '' : 's'}.`);
+            }
+            out.push('');
+        }
+
+        return out;
+    }
+
+    closeActorInfo() {
+        if (!this.boxes.has('actor_info') && !this.actorInfoMode) return;
+        this.removeBox('actor_info');
+        this.actorInfoMode = false;
+        this.actorInfoActor = null;
+        this.updateBoxOverlays();
+    }
+
+    isActorInfoVisible() {
+        return this.boxes.has('actor_info');
     }
 
     // ========================================================================

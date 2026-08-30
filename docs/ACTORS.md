@@ -90,6 +90,7 @@ declares which way the art was drawn. Vertical-only movement preserves current f
 
 | Attribute | Type | Description |
 | ----------- | ------ | ------------- |
+| `description` | string | What this actor is, for info panels — read by `Actor.getDescription()`. A template, resolved and memoized. Says nothing about whether the player has seen or identified the actor; that gating is the caller's job. May be authored at root level or in `attributes` (the constructor bridges root-level ones in). |
 | `solid` | boolean | Blocks movement. Default `true`. |
 | `visible` | boolean | Rendered on the map. Default `true`. |
 | `flammable` | boolean | Can be set on fire. Default `false`. |
@@ -98,6 +99,7 @@ declares which way the art was drawn. Vertical-only movement preserves current f
 | `controlled` | boolean | This is the player character |
 | `pov` | boolean | Point-of-view actor: acts as the field-of-view and camera-follow origin even though it is **not** player-controlled. Use for an AI "hero" in a zero-player observer prototype so a dark/fog level renders around it (it carries the auto-light and the camera follows it). Turn/input logic still keys on `controlled`, not `pov`. |
 | `hunts` | string | Names a quarry the `hunt` behavior pursues: an actor **type** to kill (e.g. `"rat"`) or an item **type** to collect (e.g. `"meat"`). Independent of faction/hostility, so a hunter can chase quarry it isn't otherwise hostile to while still attacking its normal enemies. Requires the `hunt` behavior in the actor's personality. |
+| `tactician` | boolean | This actor reads fights numerically: info panels it opens include hit chances and hits-to-kill. See [Info Panel](#info-panel). Default `false`. |
 | `dark_vision` | boolean | Actor can see and act normally without light (bypasses darkness AI penalties) |
 | `opaque` | boolean | Actor blocks line of sight for vision checks. Default `false` for most actors. |
 | `inventory` | number | Max items this actor can carry |
@@ -677,6 +679,68 @@ Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a fu
 | `chain_head_ai` | Head segment pursues player, records path for body. | — |
 | `chain_body_follow` | Body segment follows previous segment's path. | — |
 | `chain_scatter` | Severed body segment wanders randomly. | — |
+
+## Info Panel
+
+Clicking a visible actor opens an info panel describing it, rather than walking there.
+The keyboard route is the same: `Tab` cycles targets, and on an actor the confirm key
+(`Enter` by default) looks instead of travelling. `Esc` closes it.
+
+The panel is built from three sources, each independently optional:
+
+1. **`description`** — the actor's own text (see [Core Attributes](#core-attributes)).
+2. **Traits** — phrases derived from the actor's attributes, joined into one sentence.
+3. **Combat forecast** — hit chances and hits-to-kill, both directions. Gated; see below.
+
+### Trait phrasing (`data/attribute-info.json`)
+
+An attribute is only ever mentioned if it has an entry in `data/attribute-info.json`,
+which maps an attribute name to the phrase the panel uses. This keeps engine plumbing
+(`paint_tile`, `render_layer`, `deferred`) invisible and means a new attribute reveals
+nothing until someone writes words for it.
+
+```json
+{
+  "flies": "flies",
+  "flammable": { "true": "burns easily", "false": "does not burn" }
+}
+```
+
+A string describes the truthy case only. An object may also speak for the falsy case —
+which is how "does not burn" gets said at all — and omitting a side keeps it silent.
+Phrases are verb phrases with no subject and no trailing period; the panel supplies the
+subject and the punctuation, rendering *"It flies and burns easily."* Order in the file
+is the order they read, so related traits can be grouped.
+
+Adding a trait needs no engine change.
+
+### Combat forecast (`tactician`)
+
+The two combat lines appear only when the **viewing** actor has `tactician: true`:
+
+> You have a 49% chance to hit it, and could defeat it in 5 hits.
+> It has a 40% chance to hit you, and could defeat you in 7 hits.
+
+This is a per-actor attribute rather than a prototype toggle, so it can be granted or
+lost mid-run — by a ring, a state, or the actor the player is currently controlling.
+Without it the panel still shows name, description and traits.
+
+The numbers come from `Actor.predictCombat(defender)`, which mirrors the live damage
+pipeline (base → critical → backstab → strength → enchantment) and shares its
+arithmetic with `applyCollisionEffects` via `Actor.scaleDamage`, so the forecast and the
+damage actually dealt cannot drift apart.
+
+Two details worth knowing when authoring:
+
+- **The numbers move.** They are computed against the world right now, so an unaware
+  monster shows its backstab figure (3× damage) and that figure changes the moment it
+  notices you. A static number would be wrong more often than this is surprising.
+- **A best case is only mentioned when it differs.** A weapon with
+  `weapon_proc: "critical"` adds *"— 3 with a lucky strike"* only when the critical
+  would actually save a swing.
+
+An actor with no `health` stat reports that it cannot be harmed; one whose
+`collision_effect` deals no health damage reports that it deals none.
 
 ## Sound Attributes
 

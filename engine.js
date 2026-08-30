@@ -1116,7 +1116,7 @@ class DungeonEngine {
     async loadGlobalData() {
         try {
             // Load global entity definitions
-            const [actorsRes, itemsRes, personalitiesRes, entitiesRes, colorsRes, reagentsRes, substancesRes, statesRes, wordsRes, effectsRes, keybindingsRes, fungiTypesRes, biomesRes, typesRes] = await Promise.all([
+            const [actorsRes, itemsRes, personalitiesRes, entitiesRes, colorsRes, reagentsRes, substancesRes, statesRes, wordsRes, effectsRes, keybindingsRes, fungiTypesRes, biomesRes, typesRes, attributeInfoRes] = await Promise.all([
                 fetch(`${globalVars.BASE_PATH}/data/actors.json`),
                 fetch(`${globalVars.BASE_PATH}/data/items.json`),
                 fetch(`${globalVars.BASE_PATH}/data/personalities.json`),
@@ -1130,7 +1130,8 @@ class DungeonEngine {
                 fetch(`${globalVars.BASE_PATH}/data/keybindings.json`),
                 fetch(`${globalVars.BASE_PATH}/data/fungi_types.json`),
                 fetch(`${globalVars.BASE_PATH}/data/biomes.json`),
-                fetch(`${globalVars.BASE_PATH}/data/types.json`)
+                fetch(`${globalVars.BASE_PATH}/data/types.json`),
+                fetch(`${globalVars.BASE_PATH}/data/attribute-info.json`)
             ]);
 
             this.globalActors = await actorsRes.json();
@@ -1185,6 +1186,11 @@ class DungeonEngine {
             // types.json (see loadAssets).
             this.globalTypes = await typesRes.json();
 
+            // Player-facing phrasing for actor attributes, used by the info panel.
+            // Only listed attributes are ever described, so engine plumbing stays
+            // invisible and a new attribute leaks nothing until someone words it.
+            this.globalAttributeInfo = await attributeInfoRes.json();
+
             console.log('Global data loaded:', {
                 actors: Object.keys(this.globalActors).length,
                 types: Object.keys(this.globalTypes).length,
@@ -1216,6 +1222,7 @@ class DungeonEngine {
             this.globalStates = {};
             this.globalEffects = {};
             this.globalFungiTypes = [];
+            this.globalAttributeInfo = {};
         }
     }
 
@@ -4581,6 +4588,26 @@ class Entity {
 }
 
 class Item extends Entity {
+    /**
+     * Player-facing description fields, all read from attributes. Each is a template
+     * resolved against the item (see resolveTemplate), and each answers a different
+     * question, so they are deliberately not merged:
+     *
+     *   description           — what the thing IS. Shown while browsing, so it is
+     *                           memoized and withheld until the item is identified.
+     *   use_description       — what happens WHEN YOU USE IT. Read once per use, so
+     *                           it re-rolls its random words for variety.
+     *   effect_description    — what the effect DOES, in the abstract. Reusable
+     *                           wherever an effect is named, independent of using it.
+     *   collision_description — what happens when you HIT something with it.
+     *
+     * Authoring either at root level or inside `attributes` works; the constructor
+     * bridges root-level ones in. Actors have the same bridge for their own set.
+     */
+    static DESCRIPTION_FIELDS = [
+        'description', 'use_description', 'effect_description', 'collision_description'
+    ];
+
     constructor(x, y, type, data, engine) {
         super(x, y, type, engine);
         this.name = data.name || type;
@@ -4652,8 +4679,16 @@ class Item extends Entity {
             this.identified = data.identified ?? true;
         }
 
-        // Use description template (shown when item is used)
-        this.useDescription = data.use_description || null;
+        // Description fields may be authored at root level or inside `attributes`;
+        // attributes is canonical, so root-level ones are bridged in here. Without
+        // this the constructor's fixed extraction list silently drops them — which
+        // is how 34 potions came to carry an `effect_description` nothing could read.
+        // Runs BEFORE the attributes loop so an explicit attribute wins over root.
+        for (const key of Item.DESCRIPTION_FIELDS) {
+            if (data[key] !== undefined && data[key] !== null) {
+                this.setAttribute(key, data[key]);
+            }
+        }
 
         if (data.attributes) {
             Object.entries(data.attributes).forEach(([key, value]) => {
@@ -4946,9 +4981,17 @@ class Item extends Entity {
      * @returns {string|null} The processed use description or null if none
      */
     getUseDescription() {
-        if (!this.useDescription) return null;
-        return resolveTemplate(this.useDescription, this, {
-            providers: { item_name: () => this.getDisplayName() }
+        const raw = this.getAttribute('use_description');
+        if (!raw) return null;
+        return resolveTemplate(raw, this, {
+            providers: {
+                item_name: () => this.getDisplayName(),
+                // Lets a use_description quote the effect without repeating its text.
+                // Falls back to templateVars for a rolled random effect, which is the
+                // path mystery_potion already used before the field was readable.
+                effect_description: () => this.getEffectDescription()
+                    ?? this.templateVars?.effect_description
+            }
         });
     }
 
@@ -4960,6 +5003,22 @@ class Item extends Entity {
      */
     getDescription() {
         const raw = this.getAttribute('description');
+        if (!raw) return null;
+        return resolveTemplate(raw, this, { memoize: true, providers: this._statProviders() });
+    }
+
+    /**
+     * What this item's effect does, stated independently of using it — so a UI can
+     * name the effect without claiming the player just drank it. Memoized like
+     * getDescription, since it is display text rather than a one-shot message.
+     *
+     * An item with `random_effect` has its rolled description in templateVars
+     * instead (generateRandomEffect), so that is the fallback.
+     * @returns {string|null}
+     */
+    getEffectDescription() {
+        const raw = this.getAttribute('effect_description')
+            ?? this.templateVars?.effect_description;
         if (!raw) return null;
         return resolveTemplate(raw, this, { memoize: true, providers: this._statProviders() });
     }
@@ -5140,6 +5199,11 @@ class Actor extends Entity {
         if (data.death_sound) {
             this.setAttribute('death_sound', data.death_sound);
         }
+        // What the actor IS, for info panels. Bridged like the fields above because
+        // 23 actors already author it at root level, where nothing could read it.
+        if (data.description) {
+            this.setAttribute('description', data.description);
+        }
         if (data.death_description) {
             this.setAttribute('death_description', data.death_description);
         }
@@ -5227,6 +5291,50 @@ class Actor extends Entity {
             if (attr === key || (Array.isArray(attr) && attr.includes(key))) return true;
         }
         return false;
+    }
+
+    /**
+     * What this actor IS, for info panels — the actor-side counterpart of
+     * Item.getDescription, and memoized for the same reason: the panel is re-read
+     * while the player looks at it, so a word that changed each time would read as
+     * a rendering glitch.
+     *
+     * Deliberately says nothing about whether the player has seen this actor or
+     * knows it; gating on visibility or identification belongs to the caller.
+     * @returns {string|null}
+     */
+    getDescription() {
+        const raw = this.getAttribute('description');
+        if (!raw) return null;
+        return resolveTemplate(raw, this, { memoize: true });
+    }
+
+    /**
+     * Observable traits, as phrases ready to join into a sentence.
+     *
+     * Driven entirely by data/attribute-info.json: an attribute is described only if
+     * it has an entry there, so engine plumbing stays invisible and a designer adding
+     * an attribute decides for themselves whether the player ever hears about it.
+     * Order follows the JSON, so related traits can be grouped by the author.
+     *
+     * @returns {string[]} Phrases with no subject and no trailing period
+     */
+    getTraitPhrases() {
+        const info = this.engine?.globalAttributeInfo;
+        if (!info) return [];
+
+        const phrases = [];
+        for (const [attr, entry] of Object.entries(info)) {
+            if (attr.startsWith('_')) continue;   // _comment and friends
+            const on = !!this.getAttribute(attr);
+            // A bare string describes the truthy case only; an object may also speak
+            // for the falsy one, which is how "does not burn" gets said at all.
+            const phrase = typeof entry === 'string'
+                ? (on ? entry : null)
+                : (entry && typeof entry === 'object' ? entry[on ? 'true' : 'false'] : null);
+            if (phrase) phrases.push(phrase);
+        }
+        return phrases;
     }
 
     /**
@@ -7083,6 +7191,115 @@ class Actor extends Entity {
 
         // Clamp to 5-95% - always some chance to hit/miss
         return Math.max(5, Math.min(95, Math.round(rawProbability)));
+    }
+
+    /**
+     * Scale a base damage magnitude by this actor's strength, optionally adding a
+     * weapon's enchantment — the deterministic tail of the damage pipeline.
+     *
+     * Extracted so applyCollisionEffects and predictCombat cannot drift: the live
+     * path and the number the info panel promises run the same arithmetic, and a
+     * change to the formula moves both at once. The random multipliers (critical,
+     * backstab) stay with the caller — one rolls them, the other reports them as a
+     * best case.
+     *
+     * Works in positive magnitudes; the live path carries damage as a negative delta
+     * and re-signs around this call. `enchanted` is opt-in because the live path adds
+     * enchantment separately (it also applies to non-`weapon` items), while the
+     * predictor wants the whole figure in one place.
+     *
+     * @param {number} baseDamage - Positive magnitude before scaling
+     * @param {Item|null} enchanted - Item whose enchantment to add, if any
+     * @returns {number} Damage after strength scaling and enchantment
+     */
+    scaleDamage(baseDamage, enchanted = null) {
+        // Rounds as if the value were still negative, which is how the live path has
+        // always scaled it. Math.round breaks halves toward +Infinity, so rounding a
+        // positive magnitude would turn 0.5 into 1 where the old code produced 0 —
+        // a real off-by-one on odd damage at low strength, not a cosmetic difference.
+        const scaled = -Math.round(-baseDamage * (this.getEffectiveStrength() / 10));
+        return scaled + (enchanted?.enchantment || 0);
+    }
+
+    /**
+     * What would happen if this actor attacked `defender`, computed without rolling
+     * anything or touching game state — the data behind the info panel's combat lines.
+     *
+     * Mirrors the live pipeline in applyCollisionEffects: base damage → critical →
+     * backstab → strength → enchantment, sharing scaleDamage so the two agree. The
+     * two random multipliers are reported rather than rolled, so the panel can say
+     * "typically N, up to M" instead of quoting one sampled outcome.
+     *
+     * Reads the CURRENT world: a sleeping target really is a backstab, so the numbers
+     * move as it wakes. That is deliberate — a static figure would be wrong more often.
+     *
+     * @param {Actor} defender - The actor being attacked
+     * @returns {Object|null} Prediction, or null if defender is missing
+     */
+    predictCombat(defender) {
+        if (!defender) return null;
+
+        const weapon = this.equipment?.weapon || null;
+        const result = {
+            hitChance: this.calculateHitProbability(defender),
+            damage: 0,          // typical damage per landed hit
+            maxDamage: 0,       // with every favourable multiplier
+            hitsToKill: null,   // at typical damage
+            bestHitsToKill: null,
+            noDamage: false,    // this attacker cannot hurt that defender
+            immune: false,      // defender has no health stat to reduce
+            backstab: false,    // a hit right now would be a backstab
+            canCrit: false
+        };
+
+        // Where the damage number comes from: the wielded weapon if it has one,
+        // otherwise the actor's own unarmed collision_effect.
+        const effect = weapon?.getAttribute('collision_effect')
+            ?? this.getAttribute('collision_effect');
+        const rawHealth = effect && typeof effect === 'object' ? effect.health : undefined;
+
+        // Damage may be authored as "-{strength}" rather than a number; the live path
+        // resolves it the same way, so reuse that resolver instead of re-parsing.
+        const resolved = this.resolveAttributeValue?.(rawHealth, this) ?? rawHealth;
+        const base = typeof resolved === 'number' ? Math.abs(Math.min(0, resolved)) : 0;
+
+        const targetHealth = defender.stats?.health;
+        const currentHP = typeof targetHealth === 'object'
+            ? targetHealth.current
+            : (typeof targetHealth === 'number' ? targetHealth : null);
+
+        if (currentHP === null || currentHP === undefined) {
+            result.immune = true;
+            return result;
+        }
+        if (base <= 0) {
+            result.noDamage = true;
+            return result;
+        }
+
+        result.backstab = !!(defender.isIncapacitated?.()
+            || (defender.personality && !defender._alerted));
+        result.canCrit = !!(weapon && this.getWeaponType?.(weapon) === 'critical');
+
+        // Typical: the multipliers that are certain right now (backstab is a fact
+        // about the target's current state, not a roll). Best: also lands the crit.
+        const typicalBase = base * (result.backstab ? BACKSTAB_MULTIPLIER : 1);
+        const bestBase = typicalBase * (result.canCrit ? 2 : 1);
+
+        result.damage = Math.max(0, this.scaleDamage(typicalBase, weapon));
+        result.maxDamage = Math.max(0, this.scaleDamage(bestBase, weapon));
+
+        if (result.damage <= 0) {
+            result.noDamage = true;
+            return result;
+        }
+
+        result.hitsToKill = Math.max(1, Math.ceil(currentHP / result.damage));
+        result.bestHitsToKill = result.maxDamage > 0
+            ? Math.max(1, Math.ceil(currentHP / result.maxDamage))
+            : null;
+
+        return result;
     }
 
     /**
@@ -9043,15 +9260,19 @@ class Actor extends Entity {
                             }
                         }
 
-                        // Apply strength multiplier: damage = base * (strength / 10)
+                        // Strength scaling, shared with predictCombat via scaleDamage so
+                        // the info panel's promise and the damage actually dealt can't
+                        // drift apart. Damage is carried as a negative delta here, so
+                        // scale the magnitude and re-sign. Enchantment is applied below,
+                        // outside this branch, because it also applies to damage from a
+                        // non-`weapon` item (a thrown enchanted flask, say).
                         const strength = source.sourceActor.getEffectiveStrength();
-                        const multiplier = strength / 10;
-                        const strengthScaledDamage = Math.round(finalValue * multiplier);
+                        const scaled = source.sourceActor.scaleDamage(-finalValue);
 
-                        if (multiplier !== 1) {
-                            console.log(`Strength scaling: ${finalValue} * ${multiplier.toFixed(2)} (str ${strength}) = ${strengthScaledDamage}`);
+                        if (strength !== 10) {
+                            console.log(`Strength scaling: ${-finalValue} -> ${scaled} (str ${strength})`);
                         }
-                        finalValue = strengthScaledDamage;
+                        finalValue = -scaled;
                     }
 
                     // Apply weapon enchantment bonus

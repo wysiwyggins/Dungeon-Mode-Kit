@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.19b]
+
+### Added
+
+### Changed
+
 ## [1.18b]
 
 ### Added
@@ -22,10 +28,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`pedestal` can be painted in Tiled.** It gains `paint_tile: WHITE_DOOR_TOP` (tile 371) — its own base tile, so what you paint is what you see. No engine change: `getActorWildcardType` already turns any actor's `paint_tile` into a wildcard.
 - **Every map generator can now be painted as a wildcard region.** Six had no marker tile: `dungeon` (197 `BOX_VERTICAL_HORIZONTAL`), `uniform` (142 `BLACK_SQUARE`), `rogue` (36 `NUMBER_SIGN`), `divided_maze` (232 `CROSS`), `icey_maze` (43 `ASTERISK`) and `arena` (44 `PLUS_SIGN`) — so the main generator, in particular, could be a whole floor but not one feature of one. Each fills the cells it leaves solid with walls honoring `wall_types`, so a painted region has its own boundary; the pre-existing `maze` (210) keeps its wall-less behaviour so no authored map changes. Regions too small for their generator degrade to walled open floor with a warning instead of throwing, which previously would have taken `loadFloor` down. `cave` (10) and `maze` (210) already covered `cellular` and `eller_maze` under older names. See [docs/MAP.md](docs/MAP.md#wildcard-tiles-generative-fills).
 
+### Added
+
+- **Actor info panels.** Clicking a visible actor now describes it instead of walking there; `Tab` then the confirm key (`Enter`) is the keyboard route, and `Esc` closes it. Modelled on Brogue's `monsterDetails`: name, description, a traits sentence, and — for a `tactician` — a two-sided combat forecast ("You have a 49% chance to hit it, and could defeat it in 5 hits"). Travel to a monster's tile is still reachable via `Tab` + `(x)plore`, so nothing was taken away. See [docs/ACTORS.md](docs/ACTORS.md#info-panel).
+- **`data/attribute-info.json`** — maps an actor attribute to the phrase the info panel uses for it. An attribute is described *only* if listed, so engine plumbing stays invisible and a new attribute reveals nothing until someone words it; a string covers the truthy case, an object (`{"true":…,"false":…}`) can also speak for the falsy one, which is how "does not burn" gets said. Adding a trait needs no engine change.
+- **`tactician` attribute** gates the combat forecast on the *viewing* actor, so it can be granted or lost mid-run rather than being fixed per prototype. Set on `player` by default.
+- **`Actor.predictCombat(defender)`** — hit chance, damage, and hits-to-kill in either direction, computed without rolling or mutating anything. Mirrors the live pipeline (base → critical → backstab → strength → enchantment) and reports the random multipliers rather than sampling them, so the panel can say "5 hits, 3 with a lucky strike". Reads the current world, so an unaware monster shows its backstab figure and that figure changes when it notices you.
+
+### Fixed
+
+- **Damage scaling rounded inconsistently once shared between call sites.** Extracting `Actor.scaleDamage` so `applyCollisionEffects` and `predictCombat` cannot drift exposed that `Math.round` breaks halves toward +Infinity: scaling a positive magnitude turned 0.5 into 1 where the old negative-delta path produced 0 — a real off-by-one on odd damage at low strength (the player's `strength: 5` halves every figure). `scaleDamage` now rounds as the live path always did; verified identical across 7,200 damage/strength/enchantment combinations.
+- **Two description fields were authored but unreadable.** `Item`'s constructor extracts a fixed list of root-level keys and silently drops the rest, so the `effect_description` on 34 potions resolved to nothing — and `Actor`'s root-to-attribute bridge omitted `description`, so the text on 23 actors was equally unreachable. Neither was visibly broken: the only item referencing the `[effect_description]` token is `mystery_potion`, which gets its copy from `templateVars` via `random_effect`, and nothing read actor descriptions at all. Both now bridge into attributes and are readable via `Item.getEffectDescription()` and `Actor.getDescription()`. As a side effect `use_description` is now stored as an attribute rather than a bare property, so it survives save/load, which it previously did not.
+
 ### Changed
 
+- **Description fields are standardized on attributes.** `description`, `use_description`, `effect_description` and `collision_description` are now listed in `Item.DESCRIPTION_FIELDS` and bridged in from root level if authored there, matching how `Actor` has always treated its own set; an explicit attribute wins over a root-level value of the same name. No data file needed editing. Each field answers a distinct question and they stay separate on purpose — see the new [Description fields](docs/ITEMS.md#description-fields) section, which is the reference for the forthcoming item/actor info windows.
 - **Space waits, `z` zaps.** Play/pause only ever meant anything in a zero-player prototype, so it no longer holds the space bar outright: space is bound to `wait` in the `actions` block, and reverts to play/pause when there is no living player to act for — the two share a key because a given prototype only ever wants one of them. That frees `z` (previously a second `wait` binding alongside `.` and Numpad5) for a new `zap` action, which opens the staff/wand picker, or aims straight away when you carry exactly one — the same shortcut `dig` uses. No data change was needed: the `staff` and `wand` types already declared `use_verb: "Zap"`, so `zap` filters the pack by verb and any item declaring that verb is offered. `toggle_pause` remains a bindable action for a prototype that wants pause on its own key. See [docs/ITEMS.md](docs/ITEMS.md#charged-items-staffs).
 - **The `brogue` map generator is now `dungeon`.** It was named after Brogue's architect while being studied, and has long since diverged. `brogue` still works as a silent alias in the dispatch, so prototypes outside this repo keep loading. The `dungeon` *wildcard region* type was renamed `digger_region` (it wraps ROT.js's Digger) to free the word — its tile IDs 9/16/152 are unchanged, so no authored `.tmj` needed editing. All 17 `_brogue*` helpers were renamed too: 14 private ones to `_dungeon*`, and the 3 with callers in other generators de-prefixed to `_finalizeMap`, `_makeRoomRecord` and `_makeCavernShape`. No behaviour change — verified with a seeded golden-map diff (`tools/generator-golden.js`). See [docs/GENERATOR_ROADMAP.md](docs/GENERATOR_ROADMAP.md).
+- **Biomes are now optional on a multi-level prototype.** The prototype editor's *Floor plan* is renamed **Biome plan** and gains the standard section toggle; switching it off drops `floor_plan` so every floor uses the prototype defaults — already a supported engine mode, since `resolveBiome` returns `{}` and `getFloorConfig` falls through.
+- **Editor constants that name engine vocabulary are shared, not duplicated.** `CATEGORY_KEYS`, `GEN_TYPES` and `DECORATION_PATTERNS` moved out of `proto-state.js`/`biome-state.js` into `editors/scripts/editor-constants.js`, loaded first by both editors, with each list pointing at the `data/` or `engine.js` counterpart it must not drift from.
+- **`Cancel` attribute lets states cancel one another out.**
+- **States can lose a turn at random, entirely from data.** `skip_turn_chance` gains `skip_turn_message`, `skip_turn_sound`, `skip_turn_spawn` and `skip_turn_effect`, so a state describes its own lost round. Nausea's retch-and-spawn-vomit case was hardcoded in `Actor.act()`; it now lives in `states.json`.
+- `Actor.applyStatEffect()` is shared by state per-turn effects and one-off state events, so neither path can skip the death check. `findStateWithProperty()` replaces `getStatePropertyValue()`, returning the winning state rather than just its number so the caller can read the rest of its data.
+- `isIncapacitated()` and the new `isConfused()` replace scattered raw `hasStateProperty('skip_turn')` / `('random_movement')` checks across `engine.js`, `input.js` and `behaviors.js` — the same concept had been spelled four different ways. `isMindState()`'s seven-term boolean chain is now the `Actor.MIND_STATE_PROPERTIES` list.
+- `RenderSystem.applyViewportCulling()` replaces two near-verbatim viewport-culling blocks in `Actor.updateSpritePositions` and `updateEntityVisibility`.
+- **Mining messages come from the target, not the engine.** The five progress strings were all about stone, so a target can now override them with a `mine_messages` map keyed by progress band (`"25"`/`"50"`/`"75"`/`"100"`), resolving `[tool_name]`. `dig_fail_message` and `dig_chance` are authorable on the target too.
+- `drop_message` replaces the hardcoded "falls from the rubble!" on `lode` drops, defaulting to that same string, so one attribute narrates both drop paths.
+- **Docs: explain data type options, don't enumerate the data.** some docs grooming, need to do more
+- `generateCollapsingFloors`, `generateAbyssAt` and `generatePalladianAt` now use `applyTilePattern` in collect mode instead of hand-rolled nested loops — taking the method from one caller to four.
+- a *lot* of changes to the ~~brogue~~dungeon-style generator to try to get good secret door placement
 
 ### Removed
 
@@ -43,21 +74,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - epistemology and visibility of submerged actors is improved
 - **`escape_chance` was read from the wrong states.**
 - **A dropped item was hidden underneath floor dressing.** Items on dry land rendered below any entity carrying a tile, so loot landing on rubble, moss, a skull or a dug-out hole vanished under it; items now render at `ITEM_Z` (7), above the dressing and still below actors.
-
-### Changed
-
-- **Biomes are now optional on a multi-level prototype.** The prototype editor's *Floor plan* is renamed **Biome plan** and gains the standard section toggle; switching it off drops `floor_plan` so every floor uses the prototype defaults — already a supported engine mode, since `resolveBiome` returns `{}` and `getFloorConfig` falls through.
-- **Editor constants that name engine vocabulary are shared, not duplicated.** `CATEGORY_KEYS`, `GEN_TYPES` and `DECORATION_PATTERNS` moved out of `proto-state.js`/`biome-state.js` into `editors/scripts/editor-constants.js`, loaded first by both editors, with each list pointing at the `data/` or `engine.js` counterpart it must not drift from.
-- **`Cancel` attribute lets states cancel one another out.**
-- **States can lose a turn at random, entirely from data.** `skip_turn_chance` gains `skip_turn_message`, `skip_turn_sound`, `skip_turn_spawn` and `skip_turn_effect`, so a state describes its own lost round. Nausea's retch-and-spawn-vomit case was hardcoded in `Actor.act()`; it now lives in `states.json`.
-- `Actor.applyStatEffect()` is shared by state per-turn effects and one-off state events, so neither path can skip the death check. `findStateWithProperty()` replaces `getStatePropertyValue()`, returning the winning state rather than just its number so the caller can read the rest of its data.
-- `isIncapacitated()` and the new `isConfused()` replace scattered raw `hasStateProperty('skip_turn')` / `('random_movement')` checks across `engine.js`, `input.js` and `behaviors.js` — the same concept had been spelled four different ways. `isMindState()`'s seven-term boolean chain is now the `Actor.MIND_STATE_PROPERTIES` list.
-- `RenderSystem.applyViewportCulling()` replaces two near-verbatim viewport-culling blocks in `Actor.updateSpritePositions` and `updateEntityVisibility`.
-- **Mining messages come from the target, not the engine.** The five progress strings were all about stone, so a target can now override them with a `mine_messages` map keyed by progress band (`"25"`/`"50"`/`"75"`/`"100"`), resolving `[tool_name]`. `dig_fail_message` and `dig_chance` are authorable on the target too.
-- `drop_message` replaces the hardcoded "falls from the rubble!" on `lode` drops, defaulting to that same string, so one attribute narrates both drop paths.
-- **Docs: explain data type options, don't enumerate the data.** some docs grooming, need to do more
-- `generateCollapsingFloors`, `generateAbyssAt` and `generatePalladianAt` now use `applyTilePattern` in collect mode instead of hand-rolled nested loops — taking the method from one caller to four.
-- a *lot* of changes to the brogue-style generator to try to get good secret door placement
 
 ## [1.17b]
 
