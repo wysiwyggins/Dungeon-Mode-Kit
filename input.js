@@ -1983,7 +1983,18 @@ class InputManager {
 
         // Player-specific actions require a living player
         const player = this.engine.entityManager?.player;
-        if (!player || player.isDead) return;
+
+        // With no player to act for, `wait` has no meaning, so its key reverts to
+        // play/pause — the only thing there is to control in an observer prototype.
+        // This is why the two share a key rather than each holding one: a given
+        // prototype only ever wants one of them. Bind them separately to split them.
+        if (!player || player.isDead) {
+            if (this.lookupBinding(this.keyMap, event) === 'wait') {
+                event.preventDefault();
+                this.engine.toggleObserverPause();
+            }
+            return;
+        }
 
         // Block input while incapacitated (paralyzed, stunned, etc.)
         if (player.isIncapacitated()) return;
@@ -2144,6 +2155,23 @@ class InputManager {
             case 'equipment_menu':
                 if (this.engine.interfaceManager) {
                     this.engine.interfaceManager.toggleEquipmentMenu(player);
+                }
+                break;
+
+            // Picks the item; the staff/wand's own `targeted_spell` use_effect takes
+            // it from there into aiming mode, so this needs no zap logic of its own.
+            // Skips the menu for a lone staff, matching 'dig' below — carrying one
+            // is the common case, and aiming is a second prompt regardless.
+            case 'zap':
+                if (this.engine.interfaceManager) {
+                    const zappable = player.inventory.filter(
+                        item => item.getAttribute('use_verb') === 'Zap'
+                    );
+                    if (zappable.length === 1) {
+                        player.useItem(zappable[0]);
+                    } else {
+                        this.engine.interfaceManager.showUseMenu(player, 'Zap', 'Zap which?');
+                    }
                 }
                 break;
 

@@ -5,7 +5,7 @@
 
 ## Tweaks
 
-- play/pause action is only meaningful on zero player prototypes, reclaim the space bar for wait/rest so we can use z for zap wands and staffs. On zero player prototypes space can go back to being play/pause
+- ~~play/pause action is only meaningful on zero player prototypes, reclaim the space bar for wait/rest so we can use z for zap wands and staffs. On zero player prototypes space can go back to being play/pause~~ (done: space is bound to `wait` and falls back to play/pause when there is no player; `z` is now the `zap` action, which reuses the existing `use_verb: "Zap"` already declared by the staff and wand types)
 
 ---
 

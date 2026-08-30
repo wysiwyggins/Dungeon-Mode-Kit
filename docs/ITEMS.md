@@ -373,6 +373,12 @@ A stat with `display_label` is shown automatically in inventory. Items without `
 
 Items that recharge and fire spells use `charge_stat` and `uses`:
 
+Both the `staff` and `wand` types declare `use_verb: "Zap"`, which is bound to the `zap`
+action (`z` by default). Like `dig`, the key filters the pack by verb rather than by type,
+so any item declaring `use_verb: "Zap"` is offered. Carrying exactly one goes straight to
+aiming; carry two and it asks which first. Picking one hands off to its `use_effect` —
+`targeted_spell` for both, which enters aiming mode.
+
 | Attribute | Description |
 |-----------|-------------|
 | `charge_stat` | Name of the stat that tracks charge |

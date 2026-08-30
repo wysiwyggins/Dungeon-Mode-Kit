@@ -5090,12 +5090,17 @@ class InterfaceManager {
             lines.push(` ${pad(keys, kw)}${desc}`);
         };
 
+        // In an observer prototype the `wait` key pauses instead (InputManager.handleKeyDown),
+        // so it has to be described as what it actually does here, not as what it is bound to.
+        const observing = !this.engine.hasControlledActor;
+
         const actionActions = bindings.actions ? Object.values(bindings.actions) : [];
         const seen = new Set();
         for (const action of actionActions) {
             if (seen.has(action)) continue;
             seen.add(action);
-            const desc = actionDescriptions[action] || action;
+            const effective = (observing && action === 'wait') ? 'toggle_pause' : action;
+            const desc = actionDescriptions[effective] || effective;
             pushBinding(pickKeys(action), desc);
         }
         lines.push('');

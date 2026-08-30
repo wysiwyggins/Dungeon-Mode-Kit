@@ -29,12 +29,13 @@
   },
 
   "actions": {
-    "z": "wait",
+    " ": "wait",
     ".": "wait",
     "Numpad5": "wait",
     "i": "player_info",
     "t": "throw_item",
     "e": "equipment_menu",
+    "z": "zap",
     "q": "quaff",
     "r": "read_scroll",
     "s": "search",
@@ -47,7 +48,6 @@
   },
 
   "global": {
-    " ": "toggle_pause",
     "R": "reload"
   },
 
@@ -56,6 +56,7 @@
     "player_info":    "Inventory / info",
     "throw_item":     "Throw an item",
     "equipment_menu": "Equipment menu",
+    "zap":            "Zap a staff or wand",
     "quaff":          "Quaff a potion",
     "read_scroll":    "Read a scroll",
     "jam_spike":      "Jam a spike into a door",
