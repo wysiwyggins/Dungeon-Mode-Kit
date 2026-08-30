@@ -3,19 +3,10 @@
 // INPUT MANAGER
 // ============================================================================
 
-// A deliberate search takes this many turns, paying off entirely on the last one
-// (Brogue's STATUS_SEARCHING, Time.mm:2123).
+// A deliberate search takes this many turns
 const SEARCH_TURNS = 5;
 
-// Strength of that payoff. High enough that everything in reach is found for
-// certain — the cost of a thorough search is the five turns, not the odds.
 const THOROUGH_SEARCH_STRENGTH = 200;
-
-// How far that reach extends, in tiles. Capped independently of strength (see
-// Engine.searchFrom) so the search is reliable inside the radius and silent
-// outside it, giving the player a clear "this area is clear" rather than a
-// fuzzy edge worth re-rolling. Brogue's uncapped radius/20 read as too generous
-// at this kit's map scale.
 const THOROUGH_SEARCH_RADIUS = 5;
 
 // The passive glance you get just for standing somewhere new, before awareness.
@@ -24,25 +15,12 @@ const PASSIVE_SEARCH_STRENGTH = 30;
 /**
  * Is this actor somewhere the player would plausibly want to walk to?
  *
- * Deliberately narrower than isImportantActor, which answers a different question
- * (should obscuring sprites go transparent) and counts anything with a personality.
- * Terrain has personalities too — water, lava, fire, gas and clouds all run one to
- * drive spreading — so reusing it offered the player a Tab-stop on a lava pool.
- *
- * Hidden traps are excluded outright: listing one would give away its position, and
- * a revealed trap is still not a destination.
- *
  * @param {Object} actor - The candidate actor
  * @returns {boolean} True if the actor is worth offering as a travel target
  */
 /**
  * Is this actor hostile to the player?
  *
- * The single definition of "hostile" for targeting and threat notices. Three ways
- * an actor can qualify, because hostility isn't stored in one place: most creatures
- * declare it on their personality, some carry it as a bare attribute (turrets, which
- * have no mind to give a personality), and hazards like fire announce themselves
- * with collision_effect instead.
  *
  * @param {Object} actor - The candidate actor
  * @returns {boolean} True if the actor should be treated as an enemy
@@ -236,9 +214,9 @@ class InputManager {
         this.messageStack = [];
 
         // Auto-walk state
-        this.autoWalkPath = null; // Current path being walked
-        this.autoWalkIndex = 0; // Current position in path
-        this.autoWalking = false; // Whether auto-walk is in progress
+        this.autoWalkPath = null; 
+        this.autoWalkIndex = 0;
+        this.autoWalking = false;
         this.autoWalkDelay = 100; // Milliseconds between steps (2 steps per second)
 
         // Auto-explore state (the (x)plore action). Reuses the auto-walk stepper
@@ -250,16 +228,8 @@ class InputManager {
         this.exploreStepsTaken = 0;    // Steps taken this whole explore session
         this.exploreHpSnapshot = null; // Player HP at the last step (stop-on-damage)
         this.exploreStateSnapshot = null; // Harmful-state set at last step (stop-on-bad-state)
-        // Two-step (Brogue-style) targeting: first (x)plore press previews the
-        // path to the next target and "arms" it; a second press commits to walking.
-        this.exploreArmed = false;     // Whether a target is previewed & awaiting confirm
-        this.exploreArmedTarget = null; // The previewed target {x, y, kind}
-
-        // Searching for hidden things. A deliberate search is a five-turn
-        // commitment (Brogue's STATUS_SEARCHING) that pays off all at once on the
-        // last turn; searchedTiles is its passive counterpart, Brogue's
-        // SEARCHED_FROM_HERE — you glance around each tile the first time you
-        // stand on it, and re-treading old ground turns up nothing new.
+        this.exploreArmed = false;
+        this.exploreArmedTarget = null;
         this.searching = false;
         this.searchTurnsLeft = 0;
         this.searchedTiles = new Set();
@@ -1037,7 +1007,7 @@ class InputManager {
     }
 
     /**
-     * The (x)plore action, Brogue-style two-step targeting:
+     * The (x)plore action
      *   1st press → compute the next explore target and preview the path to it
      *               (like a mouseover), arming it but NOT moving.
      *   2nd press → commit: begin auto-exploring along that path.
@@ -1050,7 +1020,6 @@ class InputManager {
             this.stopExplore();
             return;
         }
-
         // Second press: a target is already previewed → commit and walk.
         if (this.exploreArmed) {
             this.commitExplore();
@@ -1072,8 +1041,6 @@ class InputManager {
             return;
         }
 
-        // Preview the path to the target (mouseover-style). If it isn't actually
-        // reachable from here, don't arm — report and bail.
         const path = this.engine.renderer?.showWalkPath(player.x, player.y, target.x, target.y);
         if (!path || path.length <= 1) {
             this.showMessage('Nothing left to reach.');
@@ -1117,7 +1084,7 @@ class InputManager {
         this.exploring = true;
         this.exploreLegPath = null;
         this.exploreLegIndex = 0;
-        this.exploreStepsTaken = 0; // steps taken this whole session (not per-leg)
+        this.exploreStepsTaken = 0;
         this.exploreHpSnapshot = player.stats?.health?.current ?? null;
         this.exploreStateSnapshot = new Set(Object.keys(player.states || {}));
 
@@ -1138,7 +1105,7 @@ class InputManager {
         if (!this.exploreArmed) return false;
         this.exploreArmed = false;
         this.exploreArmedTarget = null;
-        this.targetCycleIndex = -1; // next Tab cycle restarts from the nearest target
+        this.targetCycleIndex = -1;
         this.engine.renderer?.hideWalkPath();
         return true;
     }
@@ -1149,11 +1116,6 @@ class InputManager {
      *   - ground items the player can currently perceive, and
      *   - travel-worthy actors (creatures, doors/openables, stairways, gateways),
      *     excluding the player and controlled allies.
-     * Reachability is probed with renderer.computeWalkPath, which paths to an
-     * occupied end tile (so a solid door/stairway/monster tile is a valid
-     * destination) and returns null when unreachable — the same rules the drawn
-     * preview uses. We reuse the returned path's length for distance sorting so we
-     * only path once per candidate.
      * @returns {Array<{x:number, y:number, kind:string, entity:object, path:Array, dist:number}>}
      */
     collectTargets() {
@@ -1169,8 +1131,6 @@ class InputManager {
             if (!canPerceive) return;
             const key = `${entity.x},${entity.y}`;
             if (seen.has(key)) return;
-            // computeWalkPath paths to the (possibly occupied) end tile without
-            // drawing sprites; null = unreachable. Same rules as the drawn preview.
             const path = engine.renderer?.computeWalkPath(player.x, player.y, entity.x, entity.y);
             if (!path || path.length <= 1) return;
             seen.add(key);
@@ -1430,9 +1390,6 @@ class InputManager {
         }
 
         if (player.isDead) { this.stopSearch(); return; }
-
-        // Anything worth noticing aborts the search, and the turns already spent
-        // are gone — Brogue's "you abandon your search."
         const event = this.checkNotableEvents();
         if (event) {
             this.showMessage(event);

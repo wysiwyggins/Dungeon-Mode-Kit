@@ -19,8 +19,14 @@
 // to pick it in the biome catalog or the prototype's item_catalog.
 const CATEGORY_KEYS = ['potion','scroll','food','staff','weapon','armor','ring','wand'];
 
-// Map generators, matching the `type` cases in Architect.generateMap.
-const GEN_TYPES = ['brogue','digger','arena','infernal','palladian'];
+// Map generators, matching the `type` cases in Architect.generateProceduralMap.
+// Ordered by capability, not alphabetically: the first five build walls (and so
+// support wall_types, doors and torches); the rest are thin ROT.js wrappers that
+// carve floor only, leaving no walls, rooms or regions for anything downstream to
+// decorate. 'brogue' is still accepted by the engine as a legacy alias for
+// 'dungeon' but is deliberately not offered here.
+const GEN_TYPES = ['dungeon','palladian','infernal','digger','cellular',
+                   'uniform','rogue','arena','divided_maze','icey_maze','eller_maze'];
 
 // Placement patterns for a biome `decorations` row.
 // Mirrors DECORATION_PATTERN_NAMES in engine.js.

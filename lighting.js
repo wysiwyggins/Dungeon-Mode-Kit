@@ -891,7 +891,7 @@ class LightingManager {
      *
      * Same light-color + darkness compositing as getOverlayTint. Uses
      * getOverlayDarknessAlpha rather than getDarknessAlpha so an explored cliff edge
-     * keeps its ambient colour instead of being clipped to black the moment the
+     * keeps its ambient color instead of being clipped to black the moment the
      * player loses line of sight to it. Returns 0xRRGGBB; 0xFFFFFF means untinted.
      */
     getBackgroundTint(x, y, fogOfWar = false) {

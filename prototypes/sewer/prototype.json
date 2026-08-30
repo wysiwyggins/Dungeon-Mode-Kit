@@ -59,7 +59,7 @@
     }
   },
   "map_generator": {
-    "type": "brogue",
+    "type": "dungeon",
     "options": {
       "map_width": 100,
       "map_height": 100,

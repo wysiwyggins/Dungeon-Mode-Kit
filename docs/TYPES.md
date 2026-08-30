@@ -173,7 +173,7 @@ Naming one of these instead of an item id spawns a random member — see
 
 | Type | Grants | Notes |
 | ---- | ------ | ----- |
-| `potion` | `name: potion`, `random_color`, `consumable`, `stackable`, `breakable`, `use_verb: Drink` | Colour-coded until identified |
+| `potion` | `name: potion`, `random_color`, `consumable`, `stackable`, `breakable`, `use_verb: Drink` | color-coded until identified |
 | `food` | `consumable`, `stackable`, `mass_noun`, `flammable`, `use_verb: Eat` | Members name themselves (meat, apple) |
 | `weapon` | `weapon`, `enchantable`, `attack_sound`, `collision_sound`, `stackable: false` | Damage and reach are per-weapon |
 | `armor` | `enchantable`, `enchant_range: [-1, 2]`, `stackable: false` | The slot (`wearable`) is per-piece |

@@ -15,7 +15,7 @@ A guide to building levels in [Tiled](https://www.mapeditor.org/) for Dungeon Mo
 The fastest way to start. Good starter templates:
 
 - `prototypes/arena/` — simplest hand-built map
-- `prototypes/catacombs/` — wildcard-based procedural map
+- `prototypes/sewer/` — wildcard-based procedural map
 
 Steps:
 
@@ -52,7 +52,7 @@ Some existing maps include a `ui` tile layer — the engine ignores it completel
 
 **background** — Fill entirely with ![FULL_BLOCK](../assets/images/FULL_BLOCK.png) `FULL_BLOCK` (tile 217, solid black) or its opaque twin `OPAQUE_FULL_BLOCK` (tile 231). The engine clears background behind floor tiles automatically, so this just fills the void. You can also paint other decorative tiles here for effect.
 
-Prefer the **opaque** variant on levels that use `ambient_light`: a transparent glyph has no pixels for the lighting pass to tint, so the void reads flat black instead of picking up the level's colour. Both are recognized as void either way (`globalVars.VOID_TILE_IDS`), so existing maps keep working.
+Prefer the **opaque** variant on levels that use `ambient_light`: a transparent glyph has no pixels for the lighting pass to tint, so the void reads flat black instead of picking up the level's color. Both are recognized as void either way (`globalVars.VOID_TILE_IDS`), so existing maps keep working.
 
 **floor** — Paint walkable areas. ![FLOOR](../assets/images/FLOOR.png) `FLOOR` (tile 158) is the standard floor tile, but any tiles can be used for decorative effect. Leave cells empty (null or tile 0) for impassable void.
 
@@ -103,15 +103,42 @@ Paint a region on the `wildcards` layer and the engine fills it with procedural 
 
 | Generator | Tile | Tile ID | What It Creates |
 |-----------|------|---------|-----------------|
-| Dungeon | ![PRISON_WINDOW](../assets/images/PRISON_WINDOW.png) | 16 | Walled rooms + corridors + doors |
+| Digger region | ![PRISON_WINDOW](../assets/images/PRISON_WINDOW.png) | 16 | Walled rooms + corridors + doors |
 | Cave | ![INVERSE_BULLET](../assets/images/INVERSE_BULLET.png) | 10 | Organic cave shapes |
 | Infernal | ![OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE_AND_OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE](../assets/images/OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE_AND_OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE.png) | 230 | Cave + lava pools |
 | Maze | ![DESERET_CAPITAL_LETTER_ES](../assets/images/DESERET_CAPITAL_LETTER_ES.png) | 210 | Perfect maze corridors |
 | Room | ![INVERTED_CHECKER_BOARD](../assets/images/INVERTED_CHECKER_BOARD.png) | 143 | Single walled room |
+| Dungeon | ![BOX_VERTICAL_HORIZONTAL](../assets/images/BOX_VERTICAL_HORIZONTAL.png) | 197 | Rooms + corridors + loops + secret doors — the main generator |
+| Uniform | ![BLACK_SQUARE](../assets/images/BLACK_SQUARE.png) | 142 | Evenly distributed rooms |
+| Rogue | ![NUMBER_SIGN](../assets/images/NUMBER_SIGN.png) | 36 | Classic grid of rooms (needs a region ~22 tiles a side) |
+| Divided maze | ![CROSS](../assets/images/CROSS.png) | 232 | Recursive-division maze |
+| Icey maze | ![ASTERISK](../assets/images/ASTERISK.png) | 43 | Maze with regularity control |
+| Arena | ![PLUS_SIGN](../assets/images/PLUS_SIGN.png) | 44 | Open walled box |
 | Item spawn | ![BLACK_KEY](../assets/images/BLACK_KEY.png) | 12 | Random items from `random_items` config |
 | Actor spawn | ![OPAQUE_WHITE_SMILING_FACE](../assets/images/OPAQUE_WHITE_SMILING_FACE.png) | 3 | Random actors from `random_actors` config |
 
-Tile 16 (`PRISON_WINDOW`) is the recommended dungeon wildcard. Tiles 9 (`OPAQUE_INVERSE_DIAMOND_SUITE`) and 152 (`OPAQUE_PRISON_WINDOW`) also work — all three generate the same dungeon layout. Tile 144 (`CHECKER_BOARD`) is an alternate room tile. There's also an `abyss` generator (tile 218) — see the full list below.
+Every map generator now has a wildcard, so anything you can set as a floor's
+`map_generator` can also be painted as a region. Two predate the rest and keep their
+older, generic names: **Cave** (tile 10) is the `cellular` generator and **Maze**
+(tile 210) is `eller_maze`.
+
+One difference worth knowing: a region generator fills whatever it leaves solid with
+walls, honoring `wall_types`, so a painted region has its own boundary instead of
+bleeding into the surrounding floor. **Maze (tile 210) is the exception** — it predates
+that convention and carves floor only, leaving its "walls" as whatever you already
+painted there. Use Divided maze or Icey maze if you want a maze that walls itself.
+
+**There is no abyss wildcard.** To put a hole in an authored map, just don't paint floor
+there — the unpainted area *is* the void, exactly where you outlined it. A wildcard would
+only add randomness you didn't ask for. If you *want* randomly-placed chasms, that's the
+`abyss` option on a floor's `map_generator` (see [PROTOTYPE.md](PROTOTYPE.md)), which
+scatters organic blobs and is what the `depths` and `infernal` biomes use.
+
+Tile 16 (`PRISON_WINDOW`) is the recommended `digger_region` wildcard. Tiles 9 (`OPAQUE_INVERSE_DIAMOND_SUITE`) and 152 (`OPAQUE_PRISON_WINDOW`) also generate the same layout. Tile 144 (`CHECKER_BOARD`) is an alternate room tile.
+
+This region wildcard is named `digger_region` internally (it wraps ROT.js's Digger) and is
+unrelated to the `dungeon` **map generator** in [PROTOTYPE.md](PROTOTYPE.md). The tile IDs
+have never changed, so existing maps need no edit.
 
 See **[TILED_KEY.md](TILED_KEY.md)** ([printable PDF](TILED_KEY.pdf)) for the complete, authoritative list of generator and actor wildcard tiles.
 
@@ -120,7 +147,7 @@ See **[TILED_KEY.md](TILED_KEY.md)** ([printable PDF](TILED_KEY.pdf)) for the co
 - Paint a large contiguous region for best results
 - You can combine multiple wildcard types on the same map
 - Hand-painted floor tiles are preserved — wildcards only fill their own region
-- See `prototypes/catacombs/map.tmj` (dungeon) and `prototypes/mine/map.tmj` (cave) for examples
+- See `prototypes/sewer/map.tmj` (digger region, tile 152) and `prototypes/mine/map.tmj` (cave, tile 10) for examples
 
 ---
 
@@ -184,7 +211,7 @@ Link prototypes together using `next_level` and `previous_level` in `prototype.j
 
 ```json
 {
-  "next_level": "catacombs",
+  "next_level": "sewer",
   "previous_level": "default"
 }
 ```

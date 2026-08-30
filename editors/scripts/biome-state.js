@@ -104,7 +104,7 @@ function currentBiome() {
 // so a biome created here and one created there start identical.
 function blankBiome() {
     return {
-        map_generator: { type: 'brogue', options: { map_width: 60, map_height: 50 } },
+        map_generator: { type: 'dungeon', options: { map_width: 60, map_height: 50 } },
         actors: [],
         actor_budget: { base: 3, extra_chance: 60, max_extra: 3 },
     };

@@ -95,11 +95,11 @@ function sectionMapGenerator(obj, opts = {}) {
     // At proto level the section is optional (disable → no generator config, e.g.
     // a prototype driven by a hand-authored map.tmj). At floor level the floor
     // "override" toggle already serves that role, so no separate enable toggle.
-    const sectionOpts = { ...opts, defaultValue: { type: 'brogue', options: {} } };
+    const sectionOpts = { ...opts, defaultValue: { type: 'dungeon', options: {} } };
     if (!opts.inheritKey) {
         sectionOpts.optional = {
             isOn: obj.map_generator != null,
-            enable: () => { obj.map_generator = { type: 'brogue', options: {} }; },
+            enable: () => { obj.map_generator = { type: 'dungeon', options: {} }; },
             disable: () => { delete obj.map_generator; },
             hint: 'No procedural generator — the map comes from a hand-authored .tmj. Placed features below still apply.',
         };
@@ -130,20 +130,22 @@ function sectionMapGenerator(obj, opts = {}) {
 }
 
 function mapGeneratorBody(obj, body) {
-    if (!obj.map_generator) obj.map_generator = { type: 'brogue', options: {} };
+    if (!obj.map_generator) obj.map_generator = { type: 'dungeon', options: {} };
     const mg = obj.map_generator;
     if (!mg.options) mg.options = {};
     body.appendChild(selectRow('type', mg, 'type', GEN_TYPES, { allowBlank: false, rerender: true,
-        tip: 'Algorithm used to build the map: brogue (rooms + corridors + loops), digger (ROT.js dungeon), arena (open box), infernal (lava-heavy caverns), palladian (symmetrical villa — axial sanctum, portico, colonnade; good for a boss floor).' }));
+        tip: 'Algorithm used to build the map. Wall-building: dungeon (rooms + corridors + loops + secrets), palladian (symmetrical villa — axial sanctum, portico, colonnade; good for a boss floor), infernal (lava-heavy caverns), digger (ROT.js rooms + corridors), cellular (organic cave). Floor-only — these carve open space but build no walls, doors or torches: uniform, rogue, arena (open box), divided_maze, icey_maze, eller_maze.' }));
     const o = mg.options;
     body.appendChild(fieldGrid(
         fieldRow('map_width', o, 'map_width', { type: 'number', min: 1, tip: 'Total map width in tiles (can exceed the viewport — the level then scrolls).' }),
         fieldRow('map_height', o, 'map_height', { type: 'number', min: 1, tip: 'Total map height in tiles (can exceed the viewport — the level then scrolls).' }),
     ));
 
-    const t = mg.type || 'brogue';
-    if (t === 'brogue' || t === 'infernal') {
-        if (t === 'brogue') {
+    // 'brogue' is the engine's legacy alias for 'dungeon'; treat them as one so a
+    // biome still saying 'brogue' renders its full form instead of a bare size panel.
+    const t = (mg.type === 'brogue' ? 'dungeon' : mg.type) || 'dungeon';
+    if (t === 'dungeon' || t === 'infernal') {
+        if (t === 'dungeon') {
             // maxRooms is intentionally not exposed: the engine auto-computes it
             // from the map size (larger maps get more rooms). maxAttempts is also
             // auto-scaled to map size when left blank; expose it as an optional
@@ -164,7 +166,7 @@ function mapGeneratorBody(obj, body) {
             body.appendChild(roomSizeEditor(o));
         }
         body.appendChild(carvedRegionsEditor(o));
-        if (t === 'brogue') {
+        if (t === 'dungeon') {
             body.appendChild(bridgesEditor(o));
             body.appendChild(collapsingEditor(o));
         }
@@ -242,7 +244,7 @@ function porticoEditor(o) {
 // dual range writing to an array [min,max] at obj[key]
 //
 // Rendering this row must NOT create obj[key]. Merely expanding a section used to
-// seed every field it contains, so viewing the palladian or brogue room-size form
+// seed every field it contains, so viewing the palladian or dungeon room-size form
 // wrote a full set of redundant overrides into the prototype JSON — indistinguishable
 // from values a designer had actually chosen, and impossible to get rid of.
 //
@@ -274,8 +276,8 @@ function dualRangeRow(label, obj, minKey, maxKey, opts = {}) {
     return el('div', { class: 'sub' }, labelEl(label, opts.tip), dualRange(obj, minKey, maxKey, opts));
 }
 
-// Per-shape size ranges for the brogue generator. Defaults mirror architect.js's
-// `case 'brogue'` block — keep them in sync, since they're what the engine falls back
+// Per-shape size ranges for the dungeon generator. Defaults mirror architect.js's
+// `case 'dungeon'` block — keep them in sync, since they're what the engine falls back
 // to when a key is absent and what the sliders seed an unset field with.
 //
 // Exposing these is what makes room-size variation tunable per biome: roomWeights

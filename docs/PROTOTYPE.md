@@ -119,19 +119,29 @@ When no Tiled map file exists for a floor, the engine generates a procedural map
 
 ### Generator Types
 
-| Type | Description |
-|------|-------------|
-| `digger` | Rooms connected by corridors (default) |
-| `cellular` | Cave-like organic shapes |
-| `uniform` | Evenly distributed rooms |
-| `rogue` | Classic roguelike grid rooms (no walls) |
-| `brogue` | Brogue-style rooms (rectangle, cross, circular, cavern) attached via corridors and loops |
-| `divided_maze` | Recursive division maze |
-| `icey_maze` | Maze with regularity control |
-| `eller_maze` | Perfect maze (Eller's algorithm) |
-| `arena` | Simple empty rectangle |
-| `infernal` | Cave with lava pools |
-| `palladian` | Symmetrical villa: a mirrored grid of rooms around a central axial sanctum, with a columned portico. Built for boss floors and vaults |
+**Walls?** matters more than it looks. A generator that builds walls also queues doors,
+torches and `wall_types`, and publishes rooms as named regions — so region-targeted
+stairways, treasure rooms and switch puzzles have something to attach to. The floor-only
+generators carve open space and nothing else; a biome using one gets no walls, doors,
+torches or room regions no matter what else it configures.
+
+| Type | Walls? | Rooms? | Description |
+|------|:------:|:------:|-------------|
+| `dungeon` | yes | yes | Rooms (rectangle, cross, circular, cavern) attached via corridors, plus loops, dead-end secret doors and lakes. The main generator |
+| `palladian` | yes | yes | Symmetrical villa: a mirrored grid of rooms around a central axial sanctum, with a columned portico. Built for boss floors and vaults |
+| `infernal` | yes | — | Cave with lava pools |
+| `digger` | yes | yes | Rooms connected by corridors (the fallback when a type is unknown) |
+| `cellular` | yes | — | Cave-like organic shapes |
+| `uniform` | — | — | Evenly distributed rooms, floor only |
+| `rogue` | — | — | Classic roguelike grid rooms, floor only |
+| `arena` | — | — | Simple empty rectangle |
+| `divided_maze` | — | — | Recursive division maze |
+| `icey_maze` | — | — | Maze with regularity control |
+| `eller_maze` | — | — | Perfect maze (Eller's algorithm) |
+
+`brogue` is the former name of `dungeon`, from when it was written while studying Brogue's
+architect. The engine still accepts it as a silent alias, so old prototypes keep loading,
+but new work should say `dungeon`.
 
 ### Common Options
 
@@ -190,7 +200,7 @@ Interior doors are aligned with each other and with the exterior windows, produc
 | `porticoDepth` | number | `3` | Tiles the porch projects out or is recessed in. Clamped to fit the map. |
 | `columnSpacing` | number | `2` | Tiles between colonnade columns; `0` = no colonnade. The column count is forced **even** so the axis stays an open doorway — Palladio never blocks the axis with a column. |
 | `doorChance` | number | `55` | Percent chance a non-axial interior opening gets a door actor. Axial openings are always open, so the axial sight-line can't be closed off. |
-| `torchChance` | number | `40` | Percent chance to place a brazier in a room (higher than brogue's 30 — temples are lit). |
+| `torchChance` | number | `40` | Percent chance to place a brazier in a room (higher than the dungeon generator's 30 — temples are lit). |
 | `wall_types` | array | `[{ "type": "brick_wall", "weight": 100 }]` | Weighted wall types. **Note:** the shared `pushableWallChance` / `secretWallChance` pass only converts walls of type `wall`, so the `brick_wall` default disables both. The villa gets its concealed routes from `secretPassageChance` below instead, which does not care about wall type. |
 | `secretPassageChance` | number | `40` | Percent chance a non-axial interior door is concealed — a doorway that reads as blank wall until searched out. The axial door is never eligible: it carries the enfilade, and hiding it would break the one sight-line the generator exists to produce. A room always keeps at least one door you can simply walk through, so a secret is a shortcut, never the only way in. Mirrored twins are concealed as a pair, so the villa never gives itself away by being asymmetric. |
 | `secretPassageLeverChance` | number | `35` | Percent of those concealed doorways that spawn as `barred_hidden_door` (locked) instead of `hidden_door`, paired by `machine_id` to a **hidden lever**. Finding the door is not enough — it stays shut until the lever is found and pulled. The lever is itself disguised as wall, sited in one of the two rooms the passage joins, and mirrored with its twin. |
@@ -221,7 +231,7 @@ A generator can publish named areas that spawn entries target with `"region"`. A
 
 | Region | Published by | Description |
 |--------|--------------|-------------|
-| `largest_room` | `brogue`, `digger`, `palladian` | The biggest single room by floor area — a natural arena for a guaranteed boss or a hoard. |
+| `largest_room` | `dungeon`, `digger`, `palladian` | The biggest single room by floor area — a natural arena for a guaranteed boss or a hoard. |
 | `treasure_room` | any generator, when the `treasure_room` mechanic fires | The locked vault's interior. Target it to put a guardian inside with the loot. |
 | `sanctum` | `palladian` | The axial cross-hall, when the plan has one. |
 | `portico` | `palladian` | The entrance courtyard. Also where the entry stairway lands by default. |
@@ -572,7 +582,7 @@ Prototypes are linked together using `next_level` and `previous_level`.
 {
   "name": "The Mines",
   "previous_level": "default",
-  "next_level": "catacombs"
+  "next_level": "sewer"
 }
 ```
 

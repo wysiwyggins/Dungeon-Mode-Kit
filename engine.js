@@ -3042,21 +3042,8 @@ class DungeonEngine {
     }
 
     /**
-     * Look for hidden things around an actor. A port of Brogue's search()
-     * (Movement.c:2122), inverted to iterate hidden actors rather than map cells,
-     * since in DMK the concealed things *are* actors and there are few of them.
-     *
-     * Strength sets the odds: the chance at a given tile is strength minus 10 per
-     * tile of distance, so a search fades out with range. Solid things (a door
-     * flush in a wall) are two-thirds as likely to be noticed as something lying
-     * on the floor.
-     *
-     * Radius is capped separately from strength rather than derived from it as
-     * Brogue does (radius = strength/10). Keeping the two independent is what lets
-     * a thorough search be *certain* within its reach and find nothing at all
-     * beyond it: a completed search means "this area is clear", so the player is
-     * never left wondering whether to search the same spot again. Designers can
-     * retune both per prototype or per floor via
+     * Look for hidden things around an actor. ]
+     * Designers can retune both per prototype or per floor via
      * `mechanics.search_radius` / `mechanics.thorough_search_strength`.
      *
      * @param {Actor} actor - The searcher (normally the player)
@@ -4337,7 +4324,7 @@ class Prototype {
      * that type" — the job the hollow `random_type` meta-entries used to do.
      * Callers that construct an Item must prefer `resolved.id` over the string
      * they passed in, or a rolled item would carry the category as its id and
-     * every potion would share one colour and one identification state.
+     * every potion would share one color and one identification state.
      *
      * @param {string} itemType - An item id ('health_potion') or item type ('potion')
      * @returns {Object|null} The resolved definition, or null if unknown
@@ -4466,8 +4453,8 @@ class Entity {
         const color = this.getColorName?.();
 
         // A name may be a template ("[color] lever"), which lets the data decide
-        // where the colour word goes instead of the engine gluing it on the front.
-        // Feed the paired colour in directly: an Entity has no templateVars bag,
+        // where the color word goes instead of the engine gluing it on the front.
+        // Feed the paired color in directly: an Entity has no templateVars bag,
         // and this is the one variable the base class knows how to supply.
         const declaresColor = typeof this.name === 'string' && this.name.includes('[color]');
         const resolved = resolveTemplate(this.name, this, {
@@ -4475,14 +4462,14 @@ class Entity {
             providers: color ? { color: () => color } : {}
         });
         if (declaresColor) {
-            // The name said where the colour goes, so don't also prefix it. An
-            // unpaired switch never gets a colour (initializeSwitchTints skips
+            // The name said where the color goes, so don't also prefix it. An
+            // unpaired switch never gets a color (initializeSwitchTints skips
             // groups with no targets), so drop the token rather than show it.
             return color ? resolved : resolved.replace(/\[color\]\s*/g, '');
         }
         if (resolved !== this.name) return resolved;
 
-        // Fallback for entities that carry a colour but don't say where it goes —
+        // Fallback for entities that carry a color but don't say where it goes —
         // doors, gates and pedestals. Keeps their names reading as they always have.
         if (!color) return resolved;
 
@@ -4892,7 +4879,7 @@ class Item extends Entity {
 
         // Decoration sits outside the template: it applies whether or not the item
         // has one (an identified staff still shows its +2), and it stays out of the
-        // resolver so interface.js can spot the "Cursed" prefix for colouring.
+        // resolver so interface.js can spot the "Cursed" prefix for coloring.
         if (this.identified !== false) {
             if (this.enchantment < 0 && this.hasAttribute('cursed')) {
                 name = `Cursed ${name}`;
@@ -5039,8 +5026,8 @@ class Actor extends Entity {
         super(x, y, type, engine);
         this.name = data.name || type;
         // Per-instance template variables, the same seam Item has. Lets an actor's
-        // name or message read "[color] lever" and take the paired colour from data,
-        // instead of the engine gluing a colour word onto the front of the name.
+        // name or message read "[color] lever" and take the paired color from data,
+        // instead of the engine gluing a color word onto the front of the name.
         this.templateVars = { ...(data.template_vars || {}) };
         this.height = 2;
         this.tint = parseTint(data.tint);
@@ -5377,15 +5364,15 @@ class Actor extends Entity {
 
     /**
      * The tint to draw with. A disguised actor renders untinted so it matches the
-     * plain wall beside it — machine colouring (initializeSwitchTints) would
+     * plain wall beside it — machine coloring (initializeSwitchTints) would
      * otherwise paint a hidden lever's wall disguise in its machine's hue and
-     * announce it. The colour is still *assigned*, since it names the lever; it
+     * announce it. The color is still *assigned*, since it names the lever; it
      * just isn't shown until the thing is found.
      * @returns {number|null}
      */
     getDisplayTint() {
         // 0xFFFFFF, not null: PIXI coerces a null tint to 0 and would paint the
-        // disguise solid black, which is even louder than the wrong colour.
+        // disguise solid black, which is even louder than the wrong color.
         return this.isDisguised() ? 0xFFFFFF : this.tint;
     }
 
@@ -5418,7 +5405,7 @@ class Actor extends Entity {
             this.engine.renderer?.updateSpriteTexture(this.spriteBase, this.tileIndexBase);
             this.engine.renderer?.updateSpriteTexture(this.spriteTop, this.tileIndexTop);
             // The disguise suppressed any machine tint; now that it's dropped, the
-            // real colour has to be put on the sprites that were already built.
+            // real color has to be put on the sprites that were already built.
             if (this.tint !== null && this.tint !== undefined) {
                 if (this.spriteBase) this.spriteBase.tint = this.tint;
                 if (this.spriteTop) this.spriteTop.tint = this.tint;
@@ -8215,12 +8202,6 @@ class Actor extends Entity {
                     this.engine.renderer?.updateDarkness(lm, fogOfWar);
                 }
                 this.engine.renderer?.updateInfrastructureVisibility?.();
-
-                // Secrets are part of the layout, so mapping finds them the way
-                // Brogue's magic mapping discovers TM_IS_SECRET terrain — floor-wide,
-                // with no line of sight or distance test. Revealed silently and
-                // counted: a floor with a dozen traps would otherwise bury the
-                // scroll's own message under a dozen "you discover" lines.
                 let secretsFound = 0;
                 for (const actor of [...(this.engine.entityManager?.actors || [])]) {
                     if (actor.isDead || !actor.hasAttribute('hidden')) continue;

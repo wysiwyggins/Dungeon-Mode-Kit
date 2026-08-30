@@ -292,6 +292,20 @@
     }
   },
 
+  "salt_water_potion": {
+    "type": "potion",
+    "identified_template": "Potion of Salt Water",
+    "use_description": "You gag on the salty water.",
+    "description": "It induces vomiting",
+    "attributes": {
+      "use_effect": {
+        "apply_state": "nauseated"
+      },
+      "use_sound": "swallow"
+    }
+  },
+
+
   "powder_keg": {
     "name": "powder keg",
     "tileIndex": "EMPHASIZED_EXCLAMATION_MARK",

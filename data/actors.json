@@ -1334,6 +1334,7 @@
     "tileIndexBase": "WHITE_DOOR_TOP",
     "tileIndexTop": "WHITE_DIAMOND_SUITE",
     "attributes": {
+      "paint_tile": "WHITE_DOOR_TOP",
       "solid": true,
       "pedestal": true,
       "display_inventory": true

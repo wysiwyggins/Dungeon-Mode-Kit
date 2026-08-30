@@ -1,15 +1,13 @@
 # Epistemology
 
-What the player can see, and what the player can know. Two separate systems: sight
-(is it drawn) and knowledge (is it understood). Several independent rules stack; the
-tables below say which is which.
+**What the player character can see, and what the player character can know**
 
 ## Visibility
 
 ### The states
 
 | State | Set by | Drawn? | Named? | In sidebar? |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Visible | default (`visible: true` in constructor) | yes | yes | yes |
 | Unlit / out of FOV | `lightingManager` | no | n/a | no |
 | Remembered | explored, not currently visible, `fogOfWar` | static actors only, dimmed `0x333333`, animation paused | n/a | no |
@@ -24,7 +22,7 @@ tables below say which is which.
 ### Attributes
 
 | Attribute | Meaning | Default |
-|---|---|---|
+| --- | --- | --- |
 | `visible` | Permanently unseen when false — ghast, portal, oculus | `true` |
 | `hidden` | Concealed but **discoverable** — secret doors, levers, plates, traps | `false` |
 | `awareness` | Bonus to search strength; on an actor, or via a ring's `wear_effect` | `0` |
@@ -35,50 +33,22 @@ tables below say which is which.
 | `sentient` | Eligible for telepathy reveal | `false` |
 | `controlled` | Player-driven; never hidden from itself, shown at `alpha 0.35` instead | `false` |
 
-### Predicates
-
-| Method | Answers | Used by |
-|---|---|---|
-| `isUnseen()` | invisible state **or** concealed by water | sprite passes, sidebar |
-| `isAnonymous()` | `isUnseen()` **or** `visible: false` | message templates |
-| `isConcealedBySubmersion()` | is deep water hiding this from the viewer | `isUnseen()` |
-| `getLiquidBodyIdAt(x, y)` | which connected pool a tile belongs to | shared-water reveal |
-| `getEntityVisibility(x, y)` | FOV/fog/light result per sprite | render passes |
-| `isDisguised()` | hidden **and** carrying `_hidden` tiles (wears a wall) | tile/tint pickers, bump guard |
-| `isUnsprited()` | should have no sprites at all (invisible, or hidden on floor) | both sprite-creation passes |
-| `reveal({silent})` | drop the disguise; builds sprites if it had none | search, magic map, springing a trap |
-
 ### Submersion
 
 Two separate things, often confused:
 
 | Concern | Mechanism | Applies to |
-|---|---|---|
+| --- | --- | --- |
 | Looking underwater | `submerge()` moves the top texture to the base slot and hides the top | actors with **both** a base and a top tile |
 | Being hidden underwater | `isConcealedBySubmersion()`, derived live | actors with `conceals_when_submerged` |
 
 A single-tile actor (eel: base `LEO`, top `BLANK` → `null`, so no `spriteTop`) has no
 head to lower, so the first does nothing for it and only the second hides it.
 
-#### What a submerged actor still shows
-
-Only the base tile reads through the surface.
-
-| Sprite | While submerged |
-|---|---|
-| base | shown |
-| top | hidden |
-| side | hidden |
-| equipment `top`, `middle` | hidden (sit above the base tile) |
-| equipment `lower` | shown (rides the base tile) |
-
-Applied by `RenderSystem.applyViewportCulling()` and the lighting pass, which share
-this rule.
-
 #### Who sees a concealed actor
 
 | Viewer | Result |
-|---|---|
+| --- | --- |
 | Above the surface | hidden, unnamed |
 | Submerged in the same connected body of liquid | fully visible and named |
 | Submerged in a different body | hidden, unnamed |
@@ -106,7 +76,7 @@ ford is one body. Pools are labelled by an 8-way flood fill cached alongside
 
 Hidden things are ordinary actors carrying `hidden: true`. Discovery flips that one
 attribute — nothing is created or swapped, so a found door keeps its `machine_id`
-links, its lock colour, and its place in the level. Because attributes serialize with
+links, its lock color, and its place in the level. Because attributes serialize with
 the floor, a reveal survives leaving and coming back.
 
 ### Two ways to be hidden
@@ -115,10 +85,10 @@ Which one an actor gets is decided by whether it has `_hidden` tiles, and that f
 from where it stands:
 
 | | Disguised | Unsprited |
-|---|---|---|
+| --- | --- | --- |
 | Data | `tileIndexBase_hidden` / `tileIndexTop_hidden` | no `_hidden` tiles |
 | Stands on | a tile that would otherwise be wall | open floor |
-| Renders as | ordinary wall (untinted, so machine colour can't betray it) | nothing; the floor shows through |
+| Renders as | ordinary wall (untinted, so machine color can't betray it) | nothing; the floor shows through |
 | Examples | `hidden_door`, `barred_hidden_door`, `hidden_lever` | `hidden_pressure_plate`, gas/fire traps |
 
 A wall-mounted actor *replaces* the wall actor on its tile, so making it merely
@@ -126,12 +96,8 @@ invisible would leave a hole in the wall. That's the whole reason the disguise e
 
 ### The search
 
-Ported from Brogue's `search()` (Movement.c:2122), inverted to iterate hidden actors
-rather than map cells. Chance at a tile is `strength - 10 × distance`, two-thirds that
-for `solid` things, and line of sight is required — no finding secrets around corners.
-
 | | Trigger | Strength | Radius |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Passive | first time you stand on a tile | `30 + awareness` | strength-derived (~2, ~4 with the ring) |
 | Thorough | `(s)`, five turns, interruptible | `200` | capped at `5` |
 
@@ -148,9 +114,9 @@ Hand-authored maps place the actors directly. Two generators also seed them, eac
 the idiom of the space it builds (rates in [PROTOTYPE.md](PROTOTYPE.md)):
 
 | Generator | What it hides | Why there |
-|---|---|---|
-| `brogue` | a share of dead-end shortcuts (`secretDoorChance`) | Brogue's own dead-end fixer already finds these cells: a blind corridor with a room just beyond the wall. Finding one is a real shortcut, so it rewards the search. |
-| `brogue` and others | interior walls with floor on both sides (`secretWallChance`, off by default) | the same pool the 2% pushable-wall pass draws from — a wall between two floors is a passage waiting to happen |
+| --- | --- | --- |
+| `dungeon` | a share of dead-end shortcuts (`secretDoorChance`) | The dead-end fixer already finds these cells: a blind corridor with a room just beyond the wall. Finding one is a real shortcut, so it rewards the search. |
+| `dungeon` and others | interior walls with floor on both sides (`secretWallChance`, off by default) | the same pool the 2% pushable-wall pass draws from — a wall between two floors is a passage waiting to happen |
 | `palladian` | non-axial interior doors (`secretPassageChance`) | a tartan grid has no dead ends, so the villa's secret is a doorway that reads as blank wall. Never the axial door: it carries the enfilade. |
 
 Two invariants hold whatever the rates are set to, because a secret should be a
@@ -174,7 +140,7 @@ That takes two discoveries: the lever, then the door it opens.
 ### Other ways things get found
 
 | Route | Notes |
-|---|---|
+| --- | --- |
 | Magic mapping | reveals every hidden actor on the floor, no LOS or distance test; silent, with a count |
 | Springing a trap | discovering it is part of setting it off |
 | Stepping on a plate | `toggle()` reveals first, so the effect never fires from nowhere |
@@ -200,7 +166,7 @@ named — the name is just a lie about its appearance rather than its nature.
 ### What can be unknown
 
 | Thing | Unknown means | Becomes known by |
-|---|---|---|
+| --- | --- | --- |
 | Item type | shows an appearance name ("cloudy potion") | using, reading, or a scroll of identify |
 | Item enchantment | `+N` hidden on weapons/armor | equipping (cursed reveals itself), identify |
 | Map tile | never drawn, no memory | entering line of sight |
@@ -212,7 +178,7 @@ named — the name is just a lie about its appearance rather than its nature.
 ### Item identification
 
 | Property | Value |
-|---|---|
+| --- | --- |
 | Stored on | `Item.identified` (bool), `prototype.identifiedTypes` (Set) |
 | Scope | **per type** — identifying one cloudy potion identifies all of them |
 | Exception | `enchantable` items (weapons, armor) identify **per instance** |
@@ -226,7 +192,7 @@ An unknown item is labelled by a randomly assigned, **stable** appearance — th
 kind of potion looks the same all session, so it's learnable.
 
 | Flag | Names by | Source | Example |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `random_color` | color word | `colors.json` | cloudy potion |
 | `random_material` | material | `substances.json` | iron ring |
 | `random_glyph_name` | runic two-word name | generated | scroll of "vas kandar" |
@@ -243,5 +209,3 @@ Keys are a special case: their color comes from `getKeyColor()` and is written t
   `"identified": false`.
 - Identification is knowledge, not sight: an unidentified item is drawn normally.
 - Cursed items force `identified = true` on equip, so the curse announces itself.
-- Hallucination (`hallucinating` state) corrupts *appearance* without touching
-  knowledge — what you know stays correct, what you see does not.

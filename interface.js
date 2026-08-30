@@ -3080,8 +3080,6 @@ class InterfaceManager {
                 }
             }
         }
-
-        // Trap remains on tile (Brogue-style) - no die() call
     }
 
     /**
@@ -3089,12 +3087,9 @@ class InterfaceManager {
      * first (matching what happens when an actor steps onto it), then let the item
      * fall through the resulting void to the floor below.
      *
-     * The item is placed by placeThrownItem before this runs (a collapsible floor is
-     * a platform, so it is not "void" until collapsed). If the item is still a live,
-     * placed entity when the floor gives way, it drops to the next floor.
      * @param {number} x - Landing tile X
      * @param {number} y - Landing tile Y
-     * @param {Item} item - The item that landed
+     * @param {Item} item
      */
     checkCollapseTrigger(x, y, item) {
         const entityManager = this.engine.entityManager;

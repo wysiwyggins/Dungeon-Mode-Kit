@@ -11,14 +11,9 @@
 
 ## Feature ideas
 
-## New procgen model
-
-- See [journal entry](2026-08-29-generator-ideas.md)
-
 ## Renaming/semantic remapping of generator and biomes
 
-- My main generator is called `brogue` from when I was studying Brogue's architect, but needs its own name now since it's fairly different. This could be the generic dungeon generator. List out and audit all the generators and what they do. Biomes should be able to combine generators in different ways so that designers can come up with their own cocktails of each.
-- `caverns` and `depths` biomes aren't actually that distinct from one another. Map out what all the actual strata are and create/name approprate biomes for the Dungeon prototype.
+- `caverns` and `depths` biomes aren't actually that distinct from one another. Map out what all the actual strata are and create/name approprate biomes for the Dungeon prototype. (On inspection they're less alike than they look: `caves` weights cavern rooms with water/sewage and a high secret-door rate, `depths` shifts to geometric rooms and adds abyss blobs, collapsing floors and lava. The restratification is still worth doing.)
 - need an ossuary biome, which would need some nice new skull wall actors and that suggests:
 
 ## Actor selectors in biome editor

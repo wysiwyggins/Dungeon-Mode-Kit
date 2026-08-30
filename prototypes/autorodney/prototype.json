@@ -14,7 +14,7 @@
   },
   "win_conditions": [],
   "map_generator": {
-    "type": "brogue",
+    "type": "dungeon",
     "options": {
       "map_width": 80, "map_height": 70,
       "loopMinDistance": 18, "maxLoops": 4, "secretWallChance": 4,

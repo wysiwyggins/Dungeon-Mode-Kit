@@ -238,7 +238,7 @@ class Architect {
     }
 
 
-    // 4-way flood fill over walkable cells. _brogueBFS is not reused: it is a
+    // 4-way flood fill over walkable cells. _dungeonBFS is not reused: it is a
     // capped-distance point-to-point search returning -1 for both "unreachable"
     // and "over budget", which cannot answer a connectivity question.
     _floodFillRegion(dungeonGrid, sx, sy) {
@@ -548,18 +548,26 @@ class Architect {
 
     getWildcardType(tileId, context = null) {
         const builtinWildcards = {
-            210: 'maze',
-            9: 'dungeon',
-            16: 'dungeon',
-            152: 'dungeon',
-            10: 'cave',
+            210: 'maze',            // DESERET_CAPITAL_LETTER_ES — Eller's maze
+            9: 'digger_region',
+            16: 'digger_region',
+            152: 'digger_region',
+            10: 'cave',             // INVERSE_BULLET — the cellular generator
             230: 'infernal',
             143: 'room',
             144: 'room',
             226: 'palladian',       // CROWN
             12: 'item_spawn',
             3: 'actor_spawn',
-            218: 'abyss'
+            // One marker per map generator that had none. 'cave' and 'maze' above
+            // already cover `cellular` and `eller_maze` under older, generic names,
+            // so they are not repeated here.
+            197: 'dungeon',         // BOX_VERTICAL_HORIZONTAL — the main generator
+            142: 'uniform',         // BLACK_SQUARE
+            36: 'rogue',            // NUMBER_SIGN
+            232: 'divided_maze',    // CROSS
+            43: 'icey_maze',        // ASTERISK
+            44: 'arena'             // PLUS_SIGN
         };
 
         if (builtinWildcards[tileId]) {
@@ -804,7 +812,11 @@ class Architect {
                 break;
             }
 
-            case 'brogue': {
+            // 'brogue' is the generator's original name, from when it was written
+            // while studying Brogue's architect. It has diverged since; the name is
+            // kept as a silent alias so prototypes outside this repo keep loading.
+            case 'brogue':
+            case 'dungeon': {
                 // maxRooms is optional in prototype data: when omitted, scale it to
                 // the map area (~200 tiles per room+corridor footprint), clamped so
                 // tiny/huge maps stay sane. The divisor leaves gaps between rooms
@@ -816,7 +828,7 @@ class Architect {
                     Math.round((this.width * this.height) / 1250)));
                
                 options.secretWallChance ??= 3;
-                const brogueCfg = {
+                const dungeonCfg = {
                     maxRooms: options.maxRooms || autoMaxRooms,
                     maxAttempts: options.maxAttempts || autoMaxAttempts,
                     corridorChance: options.corridorChance ?? 55,
@@ -855,7 +867,7 @@ class Architect {
                 // outward from the seed, so a corner seed spreads them across the
                 // whole map instead of clustering them in the middle. (margin keeps
                 // the room's 1-tile wall border off the map edge.)
-                const firstType = this._brogueMakeRoom('rectangle', brogueCfg);
+                const firstType = this._dungeonMakeRoom('rectangle', dungeonCfg);
                 const margin = 2;
                 const cornerX = ROT.RNG.getUniform() < 0.5;  // true = left, false = right
                 const cornerY = ROT.RNG.getUniform() < 0.5;  // true = top,  false = bottom
@@ -874,7 +886,7 @@ class Architect {
                         }
                     }
                 }
-                rooms.push(this._brogueMakeRoomRecord(firstType.grid, firstType.width, firstType.height, cx, cy, []));
+                rooms.push(this._makeRoomRecord(firstType.grid, firstType.width, firstType.height, cx, cy, []));
 
                 // Attach rooms via cellophane sliding
                 let roomsBuilt = 1;
@@ -886,20 +898,20 @@ class Architect {
                 let corridorFails = 0;
                 let stopReason = 'maxAttempts reached';
                 let attempt = 0;
-                for (attempt = 0; attempt < brogueCfg.maxAttempts && roomsBuilt < brogueCfg.maxRooms; attempt++) {
+                for (attempt = 0; attempt < dungeonCfg.maxAttempts && roomsBuilt < dungeonCfg.maxRooms; attempt++) {
                     attemptsUsed = attempt + 1;
-                    const type = this._broguePickRoomType(brogueCfg.roomWeights);
-                    let room = this._brogueMakeRoom(type, brogueCfg);
-                    let doorSites = this._brogueFindDoorSites(room.grid, room.width, room.height);
+                    const type = this._dungeonPickRoomType(dungeonCfg.roomWeights);
+                    let room = this._dungeonMakeRoom(type, dungeonCfg);
+                    let doorSites = this._dungeonFindDoorSites(room.grid, room.width, room.height);
                     if (doorSites.length === 0) continue;
 
-                    const corrResult = this._brogueMaybeAddCorridor(room.grid, room.width, room.height, doorSites, brogueCfg);
+                    const corrResult = this._dungeonMaybeAddCorridor(room.grid, room.width, room.height, doorSites, dungeonCfg);
                     const hadCorridor = corrResult.hasCorridor;
                     if (hadCorridor) corridorAttempts++;
                     room = { grid: corrResult.grid, width: corrResult.width, height: corrResult.height };
                     doorSites = corrResult.doorSites;
 
-                    const placement = this._broguePlaceRoom(dungeonGrid, room.grid, room.width, room.height, doorSites, this.width, this.height, corrResult.corridorCells);
+                    const placement = this._dungeonPlaceRoom(dungeonGrid, room.grid, room.width, room.height, doorSites, this.width, this.height, corrResult.corridorCells);
                     if (!placement) {
                         consecutiveFails++;
                         totalFails++;
@@ -920,7 +932,7 @@ class Architect {
                     }
                     dungeonGrid[placement.doorWorldY][placement.doorWorldX] = 2;
 
-                    const record = this._brogueMakeRoomRecord(
+                    const record = this._makeRoomRecord(
                         room.grid, room.width, room.height,
                         placement.offsetX, placement.offsetY,
                         [{ x: placement.doorWorldX, y: placement.doorWorldY }]
@@ -929,33 +941,33 @@ class Architect {
                     roomsBuilt++;
                 }
 
-                if (roomsBuilt >= brogueCfg.maxRooms) stopReason = `maxRooms reached (${brogueCfg.maxRooms})`;
+                if (roomsBuilt >= dungeonCfg.maxRooms) stopReason = `maxRooms reached (${dungeonCfg.maxRooms})`;
 
                 // Create loops
-                this._brogueMakeLoops(dungeonGrid, rooms, this.width, this.height, brogueCfg);
+                this._dungeonMakeLoops(dungeonGrid, rooms, this.width, this.height, dungeonCfg);
 
-                const winding = this._brogueCarveWindingCorridors(
-                    dungeonGrid, rooms, this.width, this.height, brogueCfg
+                const winding = this._dungeonCarveWindingCorridors(
+                    dungeonGrid, rooms, this.width, this.height, dungeonCfg
                 );
-                const secretWalls = this._brogueFixDeadEnds(dungeonGrid, this.width, this.height);
+                const secretWalls = this._dungeonFixDeadEnds(dungeonGrid, this.width, this.height);
 
                 // Convert to framework output
-                this._brogueFinalizeMap(dungeonGrid, rooms, this.width, this.height, brogueCfg, secretWalls);
+                this._finalizeMap(dungeonGrid, rooms, this.width, this.height, dungeonCfg, secretWalls);
 
                 const mapArea = this.width * this.height;
                 const fillPct = ((this.walkableTiles.length / mapArea) * 100).toFixed(1);
                 const maxRoomsSource = options.maxRooms ? 'explicit' : 'auto';
                 console.log(
-                    `Brogue map ${this.width}x${this.height} (${mapArea} tiles): ` +
-                    `${roomsBuilt} rooms placed (maxRooms ${brogueCfg.maxRooms} [${maxRoomsSource}], ` +
-                    `maxAttempts ${brogueCfg.maxAttempts}) — stopped: ${stopReason}. ` +
+                    `Dungeon map ${this.width}x${this.height} (${mapArea} tiles): ` +
+                    `${roomsBuilt} rooms placed (maxRooms ${dungeonCfg.maxRooms} [${maxRoomsSource}], ` +
+                    `maxAttempts ${dungeonCfg.maxAttempts}) — stopped: ${stopReason}. ` +
                     `${attemptsUsed} attempts, ${totalFails} placement fails. ` +
                     `Corridors: ${corridorsPlaced} placed / ${corridorAttempts} tried ` +
-                    `(${corridorFails} rejected; chance ${brogueCfg.corridorChance}%, len ${brogueCfg.corridorLength[0]}-${brogueCfg.corridorLength[1]}). ` +
+                    `(${corridorFails} rejected; chance ${dungeonCfg.corridorChance}%, len ${dungeonCfg.corridorLength[0]}-${dungeonCfg.corridorLength[1]}). ` +
                     `${this.walkableTiles.length} floor tiles (${fillPct}% fill), ` +
                     `${this.pendingDoorSpawns.length} doors, ` +
                     `Winding: ${winding.carved} carved / ${winding.attempted} attempted ` +
-                    `(${winding.branches} branched, max ${brogueCfg.maxWindingCorridors}). ` +
+                    `(${winding.branches} branched, max ${dungeonCfg.maxWindingCorridors}). ` +
                     `${this.pendingSecretDoorSpawns.length} secret doors so far (dead ends).`
                 );
                 break;
@@ -981,7 +993,7 @@ class Architect {
                     porticoDepth: options.porticoDepth ?? 3,
                     columnSpacing: options.columnSpacing ?? 2,
                     // Stage 7 — openings. doorChance/torchChance/wall_types are
-                    // consumed by _brogueFinalizeMap. brick_wall as the default
+                    // consumed by _finalizeMap. brick_wall as the default
                     // also disables the shared pushable-wall conversion pass below
                     // (it skips any type !== 'wall'); switch to 'wall' to get
                     // secret passages in the villa walls.
@@ -1006,7 +1018,7 @@ class Architect {
                     for (let y = 2; y < this.height - 2; y++) {
                         for (let x = 2; x < this.width - 2; x++) dungeonGrid[y][x] = 1;
                     }
-                    this._brogueFinalizeMap(dungeonGrid, [], this.width, this.height, palCfg);
+                    this._finalizeMap(dungeonGrid, [], this.width, this.height, palCfg);
                     break;
                 }
 
@@ -1021,7 +1033,7 @@ class Architect {
                 const secrets = this._palladianAddSecretPassages(dungeonGrid, plan, rooms, palCfg);
 
                 const records = this._palladianMakeRecords(dungeonGrid, plan, rooms, portico, openings);
-                this._brogueFinalizeMap(dungeonGrid, records, this.width, this.height, palCfg);
+                this._finalizeMap(dungeonGrid, records, this.width, this.height, palCfg);
                 this._palladianQueueSecrets(secrets);
 
                 // Decoration runs AFTER finalize on purpose: finalize's torch pass
@@ -1217,7 +1229,7 @@ class Architect {
                 // pool, not a split of one: pushableWallChance is deliberately tiny
                 // (2%), so taking a share of it would make secret doors vanishingly
                 // rare. secretWallChance is its own rate, off by default so existing
-                // maps are unchanged. (Distinct from the brogue generator's
+                // maps are unchanged. (Distinct from the dungeon generator's
                 // secretDoorChance, which splits dead-end shortcuts.)
                 const secret = ROT.RNG.getPercentage() <= (options.secretWallChance ?? 0);
                 if (!secret && ROT.RNG.getPercentage() > (options.pushableWallChance ?? 2)) continue;
@@ -1227,7 +1239,7 @@ class Architect {
                     // player a walk. Without this the pass happily hides a door
                     // between two rooms already joined by an open corridor three
                     // tiles away — mechanically a secret, practically a shortcut to
-                    // nowhere. Same test _brogueMakeLoops applies to its loops:
+                    // nowhere. Same test _dungeonMakeLoops applies to its loops:
                     // reject when the two sides are already close together.
                     if (!this._isWorthwhileShortcut(wall, minDetour)) {
                         secretRejected++;
@@ -1275,8 +1287,8 @@ class Architect {
      * Answers by walking the finished map from one side of the wall to the other,
      * *without* going through the wall itself: if the detour is already short, the
      * door saves nobody anything and shouldn't be a secret. This is the same
-     * judgement _brogueMakeLoops makes about loops, but it can't share
-     * _brogueBFS — that one reads the generator's dungeonGrid, which is out of
+     * judgement _dungeonMakeLoops makes about loops, but it can't share
+     * _dungeonBFS — that one reads the generator's dungeonGrid, which is out of
      * scope by the time this pass runs and is stale anyway, since lakes, abysses,
      * bridges and connectivity repair have all reshaped the map since. Walking
      * floorMap instead measures the map the player will actually be dropped into,
@@ -1348,8 +1360,8 @@ class Architect {
      * rock, room wall or floor alike. Nothing here consults room bounds.
      *
      * config: { count, types, minSize, maxSize, mask?, requireFloorOverlap? }
-     * `mask` (a Set of "x,y") hard-confines every cell a blob may write, used by
-     * generateAbyssAt to keep a wildcard region's blobs off the authored map.
+     * `mask` (a Set of "x,y") hard-confines every cell a blob may write, so a caller can
+     * fence blobs to a sub-area instead of the whole floor.
      */
     generateOverlayBlobs(config) {
         if (!config || !config.count) return;
@@ -1387,7 +1399,7 @@ class Architect {
 
         for (let i = 0; i < count; i++) {
             const type = types[Math.floor(ROT.RNG.getUniform() * types.length)];
-            const shape = this._brogueMakeCavern(this._blobPickCanvas(minSize, maxSize));
+            const shape = this._makeCavernShape(this._blobPickCanvas(minSize, maxSize));
 
             let placed = null;
             for (let attempt = 0; attempt < PLACEMENT_ATTEMPTS; attempt++) {
@@ -1492,7 +1504,7 @@ class Architect {
 
     /**
      * Translates the cell-count sizing the config files use (minSize/maxSize)
-     * into the canvas dimensions _brogueMakeCavern wants. A B5678/S45678 blob
+     * into the canvas dimensions _makeCavernShape wants. A B5678/S45678 blob
      * settles at roughly half its canvas, so a canvas of area (target / 0.5)
      * lands near the requested size — near, not exact. The random aspect keeps
      * every lake from sharing one silhouette; Brogue's own run 30x15 down to 20x10.
@@ -1508,7 +1520,7 @@ class Architect {
         return {
             cavernWidth: [canvasWidth, canvasWidth],
             cavernHeight: [canvasHeight, canvasHeight],
-            // _brogueMakeCavern falls back to _brogueMakeRectangle when the
+            // _makeCavernShape falls back to _dungeonMakeRectangle when the
             // automaton produces fewer than 6 cells, and that reads these.
             rectWidth: [Math.max(2, Math.floor(canvasWidth / 2)), Math.max(3, canvasWidth - 1)],
             rectHeight: [Math.max(2, Math.floor(canvasHeight / 2)), Math.max(3, canvasHeight - 1)]
@@ -2225,10 +2237,9 @@ class Architect {
 
         const mazes = regions.filter(r => r.type === 'maze');
         const rooms = regions.filter(r => r.type === 'room');
-        const abysses = regions.filter(r => r.type === 'abyss');
-        const others = regions.filter(r => r.type !== 'maze' && r.type !== 'room' && r.type !== 'abyss');
+        const others = regions.filter(r => r.type !== 'maze' && r.type !== 'room');
 
-        for (const { region, type } of [...mazes, ...rooms, ...others, ...abysses]) {
+        for (const { region, type } of [...mazes, ...rooms, ...others]) {
             await this.generateWildcardContent(region, type, context);
         }
     }
@@ -2271,8 +2282,26 @@ class Architect {
             case 'maze':
                 this.generateMazeAt(region.x, region.y, region.width, region.height);
                 break;
+            case 'digger_region':
+                this.generateDiggerRegionAt(region.x, region.y, region.width, region.height, context);
+                break;
             case 'dungeon':
-                this.generateDungeonAt(region.x, region.y, region.width, region.height, context);
+                this.generateDungeonRegionAt(region.x, region.y, region.width, region.height, context);
+                break;
+            case 'uniform':
+                this.generateUniformAt(region.x, region.y, region.width, region.height, context);
+                break;
+            case 'rogue':
+                this.generateRogueAt(region.x, region.y, region.width, region.height, context);
+                break;
+            case 'divided_maze':
+                this.generateDividedMazeAt(region.x, region.y, region.width, region.height, context);
+                break;
+            case 'icey_maze':
+                this.generateIceyMazeAt(region.x, region.y, region.width, region.height, context);
+                break;
+            case 'arena':
+                this.generateArenaAt(region.x, region.y, region.width, region.height, context);
                 break;
             case 'cave':
                 this.generateCaveAt(region.x, region.y, region.width, region.height, context);
@@ -2285,9 +2314,6 @@ class Architect {
                 break;
             case 'palladian':
                 this.generatePalladianAt(region.x, region.y, region.width, region.height, context);
-                break;
-            case 'abyss':
-                this.generateAbyssAt(region.x, region.y, region.width, region.height, context);
                 break;
             case 'item_spawn':
                 break;
@@ -2351,7 +2377,123 @@ class Architect {
         });
     }
 
-    generateDungeonAt(startX, startY, width, height, context = null) {
+    /**
+     * Runs a plain ROT.Map generator inside one wildcard region and walls whatever it
+     * leaves solid.
+     *
+     * The six generators this serves (uniform, rogue, divided_maze, icey_maze, arena,
+     * and the region form of the maze family) build no walls of their own: as full-floor
+     * generators the map edge bounds them, but a region is a hole in an authored map, so
+     * an uncarved cell would just show whatever the designer already painted there and
+     * the region would have no edge. Filling the remainder — the same thing
+     * _generateCaveRegion and generateDiggerRegionAt do — is what makes a painted region
+     * read as a place rather than a smudge.
+     *
+     * `maze` (tile 210) deliberately does NOT come through here. It predates this and
+     * carves floor only; routing it here would put walls into existing authored maps.
+     *
+     * @param {string} wildcardType  region tag to claim cells by
+     * @param {() => ROT.Map} makeGenerator  builds the generator at region size
+     * @param {string} label         for the console line
+     */
+    _generateRotRegion(wildcardType, makeGenerator, label, startX, startY, width, height, context = null) {
+        const mapGenConfig = context?.getMapGeneratorConfig?.() || {};
+        const floorCells = new Set();
+        const wallPositions = [];
+
+        const claims = (worldX, worldY) =>
+            worldX < this.width && worldY < this.height &&
+            this.wildcardMap[worldY][worldX]?.type === wildcardType;
+
+        const carve = (x, y, value) => {
+            const worldX = startX + x;
+            const worldY = startY + y;
+            if (value !== 0 || !claims(worldX, worldY)) return;
+            this.backgroundMap[worldY][worldX] = null;
+            this.floorMap[worldY][worldX] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+            this.walkableTiles.push({ x: worldX, y: worldY });
+            floorCells.add(`${x},${y}`);
+        };
+
+        // Some ROT generators throw on a region smaller than their own structure needs
+        // — Rogue subdivides into a 3x3 cell grid and wants ~22 tiles a side, IceyMaze
+        // wants 3. A designer painting a small patch shouldn't get a broken floor, and a
+        // generator that throws takes loadFloor down with it, so fall back to open floor
+        // (what Arena would have produced) and say so.
+        try {
+            makeGenerator().create(carve);
+        } catch (e) {
+            console.warn(`${label}: region ${width}x${height} is too small for this generator (${e.message}); filling it as open floor instead`);
+            floorCells.clear();
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const isEdge = (x === 0 || x === width - 1 || y === 0 || y === height - 1);
+                    if (!isEdge) carve(x, y, 0);
+                }
+            }
+        }
+
+        // Whatever the generator left solid becomes a wall, on a floor tile so it sits
+        // on ground rather than over the void.
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                if (floorCells.has(`${x},${y}`)) continue;
+                const worldX = startX + x;
+                const worldY = startY + y;
+                if (!claims(worldX, worldY)) continue;
+                this.backgroundMap[worldY][worldX] = null;
+                this.floorMap[worldY][worldX] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                wallPositions.push({ x: worldX, y: worldY });
+            }
+        }
+
+        const wallTypes = mapGenConfig.wall_types || [{ type: 'wall', weight: 100 }];
+        for (const pos of wallPositions) {
+            this.pendingWallSpawns.push({ x: pos.x, y: pos.y, type: this._pickWeightedWallType(wallTypes) });
+        }
+
+        console.log(`${label} generated: ${floorCells.size} floor tiles, ${wallPositions.length} walls`);
+        return { floorCells, wallPositions };
+    }
+
+    generateUniformAt(startX, startY, width, height, context = null) {
+        const cfg = context?.getMapGeneratorConfig?.() || {};
+        const make = () => new ROT.Map.Uniform(width, height, {
+            roomWidth: cfg.roomWidth || [3, 9],
+            roomHeight: cfg.roomHeight || [3, 5],
+            roomDugPercentage: cfg.roomDugPercentage || 0.1
+        });
+        return this._generateRotRegion('uniform', make, 'Uniform region', startX, startY, width, height, context);
+    }
+
+    generateRogueAt(startX, startY, width, height, context = null) {
+        const cfg = context?.getMapGeneratorConfig?.() || {};
+        const make = () => new ROT.Map.Rogue(width, height, {
+            cellWidth: cfg.cellWidth || 3,
+            cellHeight: cfg.cellHeight || 3,
+            roomWidth: cfg.roomWidth || [3, 9],
+            roomHeight: cfg.roomHeight || [3, 5]
+        });
+        return this._generateRotRegion('rogue', make, 'Rogue region', startX, startY, width, height, context);
+    }
+
+    generateDividedMazeAt(startX, startY, width, height, context = null) {
+        const make = () => new ROT.Map.DividedMaze(width, height);
+        return this._generateRotRegion('divided_maze', make, 'Divided maze region', startX, startY, width, height, context);
+    }
+
+    generateIceyMazeAt(startX, startY, width, height, context = null) {
+        const cfg = context?.getMapGeneratorConfig?.() || {};
+        const make = () => new ROT.Map.IceyMaze(width, height, cfg.regularity || 0);
+        return this._generateRotRegion('icey_maze', make, 'Icey maze region', startX, startY, width, height, context);
+    }
+
+    generateArenaAt(startX, startY, width, height, context = null) {
+        const make = () => new ROT.Map.Arena(width, height);
+        return this._generateRotRegion('arena', make, 'Arena region', startX, startY, width, height, context);
+    }
+
+    generateDiggerRegionAt(startX, startY, width, height, context = null) {
         const minDimension = Math.min(width, height);
 
         const maxRoomWidth = Math.min(12, Math.max(7, Math.floor(width / 4)));
@@ -2366,7 +2508,7 @@ class Architect {
             dugPercentage: dugPercentage
         });
 
-        console.log(`Dungeon generation: ${width}x${height}, rooms ${3}-${maxRoomWidth} x ${3}-${maxRoomHeight}, corridors 2-${maxCorridorLength}, dug ${(dugPercentage * 100).toFixed(0)}%`);
+        console.log(`Digger region: ${width}x${height}, rooms ${3}-${maxRoomWidth} x ${3}-${maxRoomHeight}, corridors 2-${maxCorridorLength}, dug ${(dugPercentage * 100).toFixed(0)}%`);
 
         const floorCells = new Set();
         const wallPositions = [];
@@ -2378,7 +2520,7 @@ class Architect {
 
             if (worldX < this.width && worldY < this.height) {
                 const wildcard = this.wildcardMap[worldY][worldX];
-                if (!wildcard || wildcard.type !== 'dungeon') {
+                if (!wildcard || wildcard.type !== 'digger_region') {
                     return;
                 }
 
@@ -2404,7 +2546,7 @@ class Architect {
                 if (worldX >= this.width || worldY >= this.height) continue;
 
                 const wildcard = this.wildcardMap[worldY][worldX];
-                if (!wildcard || wildcard.type !== 'dungeon') continue;
+                if (!wildcard || wildcard.type !== 'digger_region') continue;
 
                 const adjacentToFloor =
                     (inBounds(x - 1, y) && hasFloor(x - 1, y)) ||
@@ -2436,7 +2578,7 @@ class Architect {
 
                 if (worldX < this.width && worldY < this.height && worldY > 0) {
                     const wildcard = this.wildcardMap[worldY][worldX];
-                    if (wildcard && wildcard.type === 'dungeon') {
+                    if (wildcard && wildcard.type === 'digger_region') {
                         if (ROT.RNG.getPercentage() <= 50) {
                             doorPositions.push({ x: worldX, y: worldY });
                         }
@@ -2566,36 +2708,6 @@ class Architect {
         return this._generateCaveRegion('infernal', 'Infernal cave', startX, startY, width, height, context);
     }
 
-    generateAbyssAt(startX, startY, width, height, context = null) {
-        // The region's cells, in world coordinates. Reads wildcardMap directly
-        // rather than ctx.get, which returns a tileId and not the wildcard's type.
-        const regionSet = this.applyTilePattern('wildcards', [{
-            when: (ctx, x, y) =>
-                this.wildcardMap[y][x]?.type === 'abyss' && !!this.floorMap[y][x],
-            paint: null
-        }], {
-            collect: 'set',
-            bounds: { x1: startX, y1: startY, x2: startX + width - 1, y2: startY + height - 1 }
-        });
-
-        if (regionSet.size === 0) return;
-
-        // `mask` fences the blobs to the region: they stamp a shape wherever it
-        // lands and eat rock on the way, so an unfenced blob would chew through the
-        // hand-authored map around the region. requireFloorOverlap is dropped
-        // because the region is entirely floor already.
-        const config = {
-            count: [1, Math.max(1, Math.floor(regionSet.size / 40))],
-            types: ['abyss'],
-            minSize: Math.min(10, Math.floor(regionSet.size / 4)),
-            maxSize: Math.floor(regionSet.size / 2),
-            mask: regionSet,
-            requireFloorOverlap: 0
-        };
-
-        this.generateOverlayBlobs(config);
-    }
-
     generateRoomAt(startX, startY, width, height, context = null) {
         const wallPositions = [];
 
@@ -2637,6 +2749,160 @@ class Architect {
         }
 
         this.pendingWallSpawns.push(...wallPositions);
+    }
+
+    /**
+     * Wildcard counterpart to the full-floor 'dungeon' case: rooms, corridors, loops and
+     * dead-end secret doors inside a single wildcard region.
+     *
+     * Builds on a full-map-sized grid rather than a region-sized one, so every stage
+     * helper (_dungeonPlaceRoom, _dungeonMakeLoops, _dungeonCarveWindingCorridors,
+     * _dungeonFixDeadEnds) takes world coordinates and needs no change — they already
+     * accept mapW/mapH as parameters. Placement is kept inside the region by seeding
+     * there and rejecting any room that lands outside the mask.
+     *
+     * Finalizes through _palladianFinalizeRegion, which despite the name is the generic
+     * region finalizer: mask-clipped, APPENDS its rooms instead of assigning
+     * this.diggerRooms, and skips the perimeter/metal_wall rule that would wall the
+     * region off from the rest of the floor.
+     */
+    generateDungeonRegionAt(startX, startY, width, height, context = null) {
+        const o = context?.getMapGeneratorConfig?.() || {};
+
+        // Scale room count to the region rather than the whole map. The divisor is ~100
+        // where the full-floor case uses ~200: a region has no map-edge margin to lose
+        // and rooms are rejected for straying outside the mask, so a looser budget is
+        // what actually fills it. Measured on a 28x28 region, this lands near the ~40%
+        // open-floor fill a full floor gets; raising it further changes nothing, since
+        // placement saturates.
+        const autoMaxRooms = Math.min(40, Math.max(2, Math.round((width * height) / 100)));
+        const cfg = {
+            maxRooms: o.maxRooms || autoMaxRooms,
+            maxAttempts: o.maxAttempts || Math.min(300, Math.max(30, autoMaxRooms * 8)),
+            corridorChance: o.corridorChance ?? 55,
+            corridorLength: o.corridorLength || [3, 9],
+            maxWindingCorridors: o.maxWindingCorridors ?? Math.min(6, Math.max(1, Math.round((width * height) / 1250))),
+            windingLength: o.windingLength || [6, 22],
+            windingBranchChance: o.windingBranchChance ?? 25,
+            loopMinDistance: o.loopMinDistance || 20,
+            maxLoops: o.maxLoops || 5,
+            doorChance: o.doorChance ?? 50,
+            torchChance: o.torchChance ?? 30,
+            secretDoorChance: o.secretDoorChance ?? 0,
+            secretWallChance: o.secretWallChance ?? 0,
+            wall_types: o.wall_types || [{ type: 'wall', weight: 100 }],
+            roomWeights: o.roomWeights || { rectangle: 50, cross: 10, circular: 10, cavern: 30 },
+            rectWidth: o.rectWidth || [4, 12], rectHeight: o.rectHeight || [4, 14],
+            crossWidth: o.crossWidth || [7, 20], crossHeight: o.crossHeight || [7, 22],
+            circularRadius: o.circularRadius || [2, 10],
+            cavernWidth: o.cavernWidth || [8, 20], cavernHeight: o.cavernHeight || [8, 15],
+        };
+
+        const mask = new Set();
+        for (let y = startY; y < Math.min(startY + height, this.height); y++) {
+            for (let x = startX; x < Math.min(startX + width, this.width); x++) {
+                if (this.wildcardMap[y][x]?.type === 'dungeon') mask.add(`${x},${y}`);
+            }
+        }
+        if (mask.size === 0) return;
+
+        const dungeonGrid = Array.from({ length: this.height }, () => new Uint8Array(this.width));
+        const rooms = [];
+
+        // Only cells the region claims may be dug. Everything downstream reads the grid,
+        // so confining writes here confines the whole generator.
+        const fits = (grid, w, h, ox, oy) => {
+            for (let ry = 0; ry < h; ry++) {
+                for (let rx = 0; rx < w; rx++) {
+                    if (grid[ry][rx] !== 1) continue;
+                    if (!mask.has(`${ox + rx},${oy + ry}`)) return false;
+                }
+            }
+            return true;
+        };
+
+        const first = this._dungeonMakeRoom('rectangle', cfg);
+        let seeded = false;
+        for (let tries = 0; tries < 60 && !seeded; tries++) {
+            const ox = startX + Math.floor(ROT.RNG.getUniform() * Math.max(1, width - first.width));
+            const oy = startY + Math.floor(ROT.RNG.getUniform() * Math.max(1, height - first.height));
+            if (!fits(first.grid, first.width, first.height, ox, oy)) continue;
+            for (let ry = 0; ry < first.height; ry++) {
+                for (let rx = 0; rx < first.width; rx++) {
+                    if (first.grid[ry][rx] === 1) dungeonGrid[oy + ry][ox + rx] = 1;
+                }
+            }
+            rooms.push(this._makeRoomRecord(first.grid, first.width, first.height, ox, oy, []));
+            seeded = true;
+        }
+        if (!seeded) {
+            // No room fit. Rather than leave the painted region as untouched background
+            // — a hole in the floor the designer didn't ask for — fall back to a walled
+            // open space, the same degradation the ROT region generators use.
+            console.warn(`Dungeon region: ${width}x${height} is too small to seed a room; filling it as open floor instead`);
+            const wallTypes = cfg.wall_types;
+            for (const key of mask) {
+                const [x, y] = key.split(',').map(Number);
+                this.backgroundMap[y][x] = null;
+                this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                const edge = !mask.has(`${x - 1},${y}`) || !mask.has(`${x + 1},${y}`) ||
+                             !mask.has(`${x},${y - 1}`) || !mask.has(`${x},${y + 1}`);
+                if (edge && y > 0) {
+                    this.pendingWallSpawns.push({ x, y, type: this._pickWeightedWallType(wallTypes) });
+                } else {
+                    this.walkableTiles.push({ x, y });
+                }
+            }
+            return;
+        }
+
+        let built = 1;
+        for (let attempt = 0; attempt < cfg.maxAttempts && built < cfg.maxRooms; attempt++) {
+            const type = this._dungeonPickRoomType(cfg.roomWeights);
+            const room = this._dungeonMakeRoom(type, cfg);
+            let doorSites = this._dungeonFindDoorSites(room.grid, room.width, room.height);
+            const corr = this._dungeonMaybeAddCorridor(room.grid, room.width, room.height, doorSites, cfg);
+            if (corr.grid) { room.grid = corr.grid; room.width = corr.width; room.height = corr.height; doorSites = corr.doorSites; }
+
+            const placement = this._dungeonPlaceRoom(
+                dungeonGrid, room.grid, room.width, room.height, doorSites,
+                this.width, this.height, corr.corridorCells || []);
+            if (!placement) continue;
+
+            // _dungeonPlaceRoom only proposes a position — the caller stamps it. So an
+            // out-of-region placement is simply skipped, never undone.
+            if (!fits(room.grid, room.width, room.height, placement.offsetX, placement.offsetY) ||
+                !mask.has(`${placement.doorWorldX},${placement.doorWorldY}`)) {
+                continue;
+            }
+
+            for (let ry = 0; ry < room.height; ry++) {
+                for (let rx = 0; rx < room.width; rx++) {
+                    if (room.grid[ry][rx] === 1) dungeonGrid[placement.offsetY + ry][placement.offsetX + rx] = 1;
+                }
+            }
+            dungeonGrid[placement.doorWorldY][placement.doorWorldX] = 2;
+
+            rooms.push(this._makeRoomRecord(
+                room.grid, room.width, room.height, placement.offsetX, placement.offsetY,
+                [{ x: placement.doorWorldX, y: placement.doorWorldY }]));
+            built++;
+        }
+
+        this._dungeonMakeLoops(dungeonGrid, rooms, this.width, this.height, cfg);
+        this._dungeonCarveWindingCorridors(dungeonGrid, rooms, this.width, this.height, cfg);
+
+        // Clip anything the loop/corridor passes pushed outside the region before it
+        // reaches the finalizer, which would otherwise paint it.
+        for (let y = 0; y < this.height; y++) {
+            for (let x = 0; x < this.width; x++) {
+                if (dungeonGrid[y][x] && !mask.has(`${x},${y}`)) dungeonGrid[y][x] = 0;
+            }
+        }
+
+        this._palladianFinalizeRegion(dungeonGrid, rooms, mask, cfg);
+        this.diggerRooms = (this.diggerRooms || []).concat(rooms);
+        console.log(`Dungeon region generated: ${built} rooms in ${mask.size} claimed tiles`);
     }
 
     /**
@@ -2730,7 +2996,7 @@ class Architect {
     }
 
     /**
-     * Region-scoped variant of _brogueFinalizeMap.
+     * Region-scoped variant of _finalizeMap.
      *
      * Differs in three ways that matter, all of them consequences of there being a
      * map outside the villa:
@@ -2738,7 +3004,7 @@ class Architect {
      *     the surrounding floor;
      *   - there is no perimeter/metal_wall rule. That rule exists to seal the edge of
      *     the world; inside a floor it would wall the villa off from its surroundings;
-     *   - rooms and regions are APPENDED. _brogueFinalizeMap assigns this.diggerRooms,
+     *   - rooms and regions are APPENDED. _finalizeMap assigns this.diggerRooms,
      *     which would discard the rooms of every other generator on the floor.
      */
     _palladianFinalizeRegion(dungeonGrid, rooms, mask, cfg) {
@@ -3496,17 +3762,17 @@ class Architect {
     // BROGUE GENERATOR HELPERS
     // ========================================================================
 
-    _brogueMakeRoom(type, cfg) {
+    _dungeonMakeRoom(type, cfg) {
         switch (type) {
-            case 'cross': return this._brogueMakeCross(cfg);
-            case 'circular': return this._brogueMakeCircular(cfg);
-            case 'cavern': return this._brogueMakeCavern(cfg);
+            case 'cross': return this._dungeonMakeCross(cfg);
+            case 'circular': return this._dungeonMakeCircular(cfg);
+            case 'cavern': return this._makeCavernShape(cfg);
             case 'rectangle':
-            default: return this._brogueMakeRectangle(cfg);
+            default: return this._dungeonMakeRectangle(cfg);
         }
     }
 
-    _broguePickRoomType(weights) {
+    _dungeonPickRoomType(weights) {
         const entries = Object.entries(weights);
         const total = entries.reduce((s, [, w]) => s + w, 0);
         let roll = ROT.RNG.getUniform() * total;
@@ -3517,14 +3783,14 @@ class Architect {
         return entries[0][0];
     }
 
-    _brogueMakeRectangle(cfg) {
+    _dungeonMakeRectangle(cfg) {
         const w = ROT.RNG.getUniformInt(cfg.rectWidth[0], cfg.rectWidth[1]);
         const h = ROT.RNG.getUniformInt(cfg.rectHeight[0], cfg.rectHeight[1]);
         const grid = Array.from({ length: h }, () => new Uint8Array(w).fill(1));
         return { grid, width: w, height: h };
     }
 
-    _brogueMakeCross(cfg) {
+    _dungeonMakeCross(cfg) {
         const totalW = ROT.RNG.getUniformInt(cfg.crossWidth[0], cfg.crossWidth[1]);
         const totalH = ROT.RNG.getUniformInt(cfg.crossHeight[0], cfg.crossHeight[1]);
         const grid = Array.from({ length: totalH }, () => new Uint8Array(totalW));
@@ -3544,7 +3810,7 @@ class Architect {
         return { grid, width: totalW, height: totalH };
     }
 
-    _brogueMakeCircular(cfg) {
+    _dungeonMakeCircular(cfg) {
         const radius = ROT.RNG.getUniformInt(cfg.circularRadius[0], cfg.circularRadius[1]);
         const size = radius * 2 + 1;
         const grid = Array.from({ length: size }, () => new Uint8Array(size));
@@ -3576,7 +3842,7 @@ class Architect {
         return { grid, width: size, height: size };
     }
 
-    _brogueMakeCavern(cfg) {
+    _makeCavernShape(cfg) {
         const w = ROT.RNG.getUniformInt(cfg.cavernWidth[0], cfg.cavernWidth[1]);
         const h = ROT.RNG.getUniformInt(cfg.cavernHeight[0], cfg.cavernHeight[1]);
         let grid = Array.from({ length: h }, () => {
@@ -3634,12 +3900,12 @@ class Architect {
         for (const cell of bestBlob) result[cell.y][cell.x] = 1;
 
         // If blob is too small, fall back to rectangle
-        if (bestBlob.length < 6) return this._brogueMakeRectangle(cfg);
+        if (bestBlob.length < 6) return this._dungeonMakeRectangle(cfg);
 
         return { grid: result, width: w, height: h };
     }
 
-    _brogueFindDoorSites(grid, w, h) {
+    _dungeonFindDoorSites(grid, w, h) {
         const dirs = [
             { name: 'north', dx: 0, dy: -1 },
             { name: 'south', dx: 0, dy: 1 },
@@ -3683,7 +3949,7 @@ class Architect {
         return result;
     }
 
-    _brogueMaybeAddCorridor(grid, w, h, doorSites, cfg) {
+    _dungeonMaybeAddCorridor(grid, w, h, doorSites, cfg) {
         if (ROT.RNG.getPercentage() > cfg.corridorChance || doorSites.length === 0) {
             return { grid, width: w, height: h, doorSites, hasCorridor: false, corridorCells: [] };
         }
@@ -3775,7 +4041,7 @@ class Architect {
         return { grid: newGrid, width: newW, height: newH, doorSites: newDoorSites, hasCorridor: true, corridorCells };
     }
 
-    _broguePlaceRoom(dungeonGrid, roomGrid, roomW, roomH, doorSites, mapW, mapH, corridorCells = []) {
+    _dungeonPlaceRoom(dungeonGrid, roomGrid, roomW, roomH, doorSites, mapW, mapH, corridorCells = []) {
         const dirVecs = { north: { dx: 0, dy: -1 }, south: { dx: 0, dy: 1 }, east: { dx: 1, dy: 0 }, west: { dx: -1, dy: 0 } };
         // Corridor cells get a relaxed adjacency rule: unlike room bodies (which
         // must keep a clear 3x3 gap so they don't fuse), a 1-wide corridor is
@@ -3880,7 +4146,7 @@ class Architect {
         return null;
     }
 
-    _brogueMakeRoomRecord(roomGrid, w, h, offsetX, offsetY, doors) {
+    _makeRoomRecord(roomGrid, w, h, offsetX, offsetY, doors) {
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         for (let y = 0; y < h; y++) {
             for (let x = 0; x < w; x++) {
@@ -3918,7 +4184,7 @@ class Architect {
         return record;
     }
 
-    _brogueMakeLoops(dungeonGrid, rooms, mapW, mapH, cfg) {
+    _dungeonMakeLoops(dungeonGrid, rooms, mapW, mapH, cfg) {
         const candidates = [];
         for (let y = 1; y < mapH - 1; y++) {
             for (let x = 1; x < mapW - 1; x++) {
@@ -3943,7 +4209,7 @@ class Architect {
         let loopsCreated = 0;
         for (const cand of candidates) {
             if (loopsCreated >= cfg.maxLoops) break;
-            const dist = this._brogueBFS(dungeonGrid, cand.side1.x, cand.side1.y, cand.side2.x, cand.side2.y, mapW, mapH, cfg.loopMinDistance * 2);
+            const dist = this._dungeonBFS(dungeonGrid, cand.side1.x, cand.side1.y, cand.side2.x, cand.side2.y, mapW, mapH, cfg.loopMinDistance * 2);
             if (dist >= 0 && dist < cfg.loopMinDistance) continue;
             // dist === -1 means unreachable or exceeded cap — that's a good loop candidate too
             dungeonGrid[cand.y][cand.x] = 2;
@@ -3963,7 +4229,7 @@ class Architect {
         if (loopsCreated > 0) console.log(`Brogue loops: ${loopsCreated} secondary connections`);
     }
 
-    _brogueBFS(dungeonGrid, x1, y1, x2, y2, mapW, mapH, maxDist) {
+    _dungeonBFS(dungeonGrid, x1, y1, x2, y2, mapW, mapH, maxDist) {
         if (x1 === x2 && y1 === y2) return 0;
         const visited = new Set();
         visited.add(`${x1},${y1}`);
@@ -3995,32 +4261,20 @@ class Architect {
     /**
      * Carves winding corridors through the rock left over after room accretion.
      *
-     * The generator's other corridors (_brogueMaybeAddCorridor) are straight stubs
-     * glued onto a room's local grid *before* placement, so room and corridor have
-     * to fit as one rigid piece — which is why long ones mostly fail to place, and
-     * why none of them can ever turn. This pass works the other way round: the
-     * rooms are already down, so it treats the leftover rock as material and cuts
-     * into it. That is what makes a hallway able to wind.
-     *
-     * Corridors are meant to end in rock. A dead-end passage is the point, not a
-     * defect: _brogueFixDeadEnds runs straight after this and looks 2-3 tiles past
-     * each dead end for floor, turning it into a secret-door candidate. That is the
-     * Brogue shape where a corridor peters out and the wall at the end is a door.
-     *
-     * Must run AFTER _brogueMakeLoops (which would otherwise punch through the
+     * Must run AFTER _dungeonMakeLoops (which would otherwise punch through the
      * fresh 1-tile walls this creates and dissolve the dead ends) and BEFORE
-     * _brogueFixDeadEnds (which is what harvests them).
+     * _dungeonFixDeadEnds (which is what harvests them).
      *
-     * Writes only to dungeonGrid. _brogueFinalizeMap derives floorMap, walls and
+     * Writes only to dungeonGrid. _finalizeMap derives floorMap, walls and
      * walkableTiles from the finished grid, so a carved cell gets its wall ring
      * for free.
      */
-    _brogueCarveWindingCorridors(dungeonGrid, rooms, mapW, mapH, cfg) {
+    _dungeonCarveWindingCorridors(dungeonGrid, rooms, mapW, mapH, cfg) {
         const budget = cfg.maxWindingCorridors ?? 0;
         if (budget <= 0 || rooms.length === 0) return { carved: 0, attempted: 0 };
 
         const [minLen, maxLen] = cfg.windingLength || [6, 22];
-        // Keep clear of the map edge: _brogueFinalizeMap skips row 0 when building
+        // Keep clear of the map edge: _finalizeMap skips row 0 when building
         // its wall ring (its `y > 0` guard), so floor carved too near the top would
         // never get capped. _carveWanderingPath clamps to the same inset.
         const inBounds = (x, y) => x >= 2 && y >= 2 && x <= mapW - 3 && y <= mapH - 3;
@@ -4056,7 +4310,7 @@ class Architect {
 
         // The 1-tile-wall rule. Eight neighbours, not four: a corridor that slips
         // diagonally past a room corner would leave no wall cell between them, and
-        // _brogueFinalizeMap's anyNeighbor8 wall pass would then quietly fuse the
+        // _finalizeMap's anyNeighbor8 wall pass would then quietly fuse the
         // corridor into the room.
         const clearOfOtherFloor = (x, y, allowed) => {
             for (const [dx, dy] of TP_DIRS8) {
@@ -4089,7 +4343,7 @@ class Architect {
             }
         }
 
-        // Fisher-Yates, matching _brogueMakeLoops. Not a sort: under a seeded RNG a
+        // Fisher-Yates, matching _dungeonMakeLoops. Not a sort: under a seeded RNG a
         // stable order would carve every map from the same corner outward.
         for (let i = seeds.length - 1; i > 0; i--) {
             const j = Math.floor(ROT.RNG.getUniform() * (i + 1));
@@ -4110,7 +4364,7 @@ class Architect {
             let seed = null;
             const wantBranch = carved > 0 &&
                 ROT.RNG.getPercentage() <= (cfg.windingBranchChance ?? 0);
-            if (wantBranch) seed = this._brogueFindCorridorTip(dungeonGrid, mapW, mapH, isRock);
+            if (wantBranch) seed = this._dungeonFindCorridorTip(dungeonGrid, mapW, mapH, isRock);
             while (!seed && cursor < seeds.length) {
                 const cand = seeds[cursor++];
                 if (dungeonGrid[cand.y][cand.x] === 0) seed = cand;
@@ -4119,12 +4373,12 @@ class Architect {
 
             // Aim at another room, not at empty rock. A corridor that stops in
             // open rock is a bare dead end: there is nothing on the far side of
-            // its last wall, so _brogueFixDeadEnds finds no floor within 2-3 tiles
+            // its last wall, so _dungeonFixDeadEnds finds no floor within 2-3 tiles
             // and never turns it into a secret door. Brogue almost never leaves a
             // hallway hanging — a dead end is where a room is hiding. Targeting a
             // room means the corridor peters out one wall short of something, and
             // that wall is exactly what becomes the secret door.
-            const target = this._brogueFindCorridorTarget(rooms, seed, minLen, maxLen);
+            const target = this._dungeonFindCorridorTarget(rooms, seed, minLen, maxLen);
             if (!target) continue;
             const goal = target.goal;
 
@@ -4161,7 +4415,7 @@ class Architect {
                 // follows is a disconnected fragment, not more corridor.
                 if (Math.abs(cell.x - prev.x) + Math.abs(cell.y - prev.y) !== 1) break;
                 // Stopping *against* a room is the goal, not a failure: the wall
-                // between this cell and the room is what _brogueFixDeadEnds turns
+                // between this cell and the room is what _dungeonFixDeadEnds turns
                 // into a secret door. So take the cell, then stop — the corridor
                 // ends here, one wall short of somewhere worth getting to.
                 // (Carving THROUGH the ring is still forbidden; that would fuse the
@@ -4215,7 +4469,7 @@ class Architect {
      * it reaches the goal, and the separation rule stops it one cell before it
      * touches the room's wall ring — so aiming at the room's edge leaves the
      * corridor ending against the room with a single wall between them. That wall
-     * is what `_brogueFixDeadEnds` sees floor behind, and what becomes the secret
+     * is what `_dungeonFixDeadEnds` sees floor behind, and what becomes the secret
      * door. Aiming at bare rock instead is what produced hallways that simply
      * stopped.
      *
@@ -4223,7 +4477,7 @@ class Architect {
      * further than maxLen * 2 are skipped (the walk would cap out before
      * arriving, stranding the corridor in rock again).
      */
-    _brogueFindCorridorTarget(rooms, seed, minLen, maxLen) {
+    _dungeonFindCorridorTarget(rooms, seed, minLen, maxLen) {
         const candidates = [];
         for (const room of rooms) {
             const cx = Math.round((room._x1 + room._x2) / 2);
@@ -4244,10 +4498,10 @@ class Architect {
     /**
      * A carved corridor's far tip: floor with exactly one floor neighbour, with
      * rock ahead to keep going into. Same shape as the dead-end test in
-     * _brogueFixDeadEnds, but looking for somewhere to branch rather than
+     * _dungeonFixDeadEnds, but looking for somewhere to branch rather than
      * somewhere to hide a door.
      */
-    _brogueFindCorridorTip(dungeonGrid, mapW, mapH, isRock) {
+    _dungeonFindCorridorTip(dungeonGrid, mapW, mapH, isRock) {
         const tips = [];
         for (let y = 2; y <= mapH - 3; y++) {
             for (let x = 2; x <= mapW - 3; x++) {
@@ -4269,7 +4523,7 @@ class Architect {
         return tips[Math.floor(ROT.RNG.getUniform() * tips.length)];
     }
 
-    _brogueFixDeadEnds(dungeonGrid, mapW, mapH) {
+    _dungeonFixDeadEnds(dungeonGrid, mapW, mapH) {
         const cardinals = [[0, -1], [0, 1], [-1, 0], [1, 0]];
         const secretWalls = [];
 
@@ -4371,7 +4625,7 @@ class Architect {
             h: sum(heights) + nRows + 1
         });
         // MARGIN of 2, not 1. The villa's own exterior wall must not sit at x=1 or
-        // y=1: _brogueFinalizeMap's perimeter gap-fill (its pass 3) writes a
+        // y=1: _finalizeMap's perimeter gap-fill (its pass 3) writes a
         // metal_wall in any perimeter cell adjacent to floor, which would land at
         // x=0/y=0 — outside the reserve, and on row 0 where `y > 0` guards apply.
         const MARGIN = 2;
@@ -4499,7 +4753,7 @@ class Architect {
     }
 
     // Stage 2 is implicit: dungeonGrid starts all-zero, we carve only interiors,
-    // and the surrounding ring of zeros IS the exterior wall — _brogueFinalizeMap
+    // and the surrounding ring of zeros IS the exterior wall — _finalizeMap
     // turns it into wall actors for free.
     _palladianCarveBays(dungeonGrid, plan) {
         for (let r = 0; r < plan.nRows; r++) {
@@ -4747,7 +5001,7 @@ class Architect {
     // Stage 5: the principal entrance.
     //
     // On the SOUTH elevation: the player conventionally arrives from below, and it
-    // keeps the portico well clear of the row-0 hazard in _brogueFinalizeMap. The
+    // keeps the portico well clear of the row-0 hazard in _finalizeMap. The
     // span is the central bay's interior, so it is symmetric about the axis by
     // construction.
     _palladianAddPortico(dungeonGrid, plan, cfg) {
@@ -4798,7 +5052,7 @@ class Architect {
 
     // Stage 6: the colonnade.
     //
-    // Pushed to pendingWallSpawns AFTER _brogueFinalizeMap, so finalize's torch
+    // Pushed to pendingWallSpawns AFTER _finalizeMap, so finalize's torch
     // pass can't convert a column into a wall torch and its perimeter rule can't
     // rewrite one as metal_wall. The column tiles stay in walkableTiles, which is
     // correct: spawnPendingWalls creates solid actors there before any random
@@ -5335,7 +5589,7 @@ class Architect {
     }
 
     // Build the ROT.js-Room-duck-typed records that diggerRooms consumers expect.
-    // The getLeft/getDoors/addDoor shape from _brogueMakeRoomRecord is consumed by
+    // The getLeft/getDoors/addDoor shape from _makeRoomRecord is consumed by
     // spawnTreasureRoom, _placeSwitchPuzzle_gatedRoom and finalize's torch pass.
     _palladianMakeRecords(dungeonGrid, plan, rooms, portico, openings) {
         // A room that swallowed the whole grid has no interior adjacency, so the
@@ -5362,7 +5616,7 @@ class Architect {
                     for (let x = b.x1; x <= b.x2; x++) local[y - room.y1][x - room.x1] = 1;
                 }
             }
-            const rec = this._brogueMakeRoomRecord(local, w, h, room.x1, room.y1, room.doors);
+            const rec = this._makeRoomRecord(local, w, h, room.x1, room.y1, room.doors);
             rec.shape = room.shape;
             rec.isSanctum = !!room.isSanctum;
             records.push(rec);
@@ -5373,7 +5627,7 @@ class Architect {
             const y2 = portico.style === 'prostyle' ? plan.bottom + portico.depth : plan.bottom;
             const w = portico.spanX2 - portico.spanX1 + 1, h = y2 - y1 + 1;
             const local = Array.from({ length: h }, () => new Uint8Array(w).fill(1));
-            const rec = this._brogueMakeRoomRecord(local, w, h, portico.spanX1, y1,
+            const rec = this._makeRoomRecord(local, w, h, portico.spanX1, y1,
                 [{ x: plan.axisX, y: plan.bottom }]);
             rec.shape = 'rect';
             rec.isPortico = true;
@@ -5420,7 +5674,7 @@ class Architect {
         }
     }
 
-    _brogueFinalizeMap(dungeonGrid, rooms, mapW, mapH, cfg, secretWalls = []) {
+    _finalizeMap(dungeonGrid, rooms, mapW, mapH, cfg, secretWalls = []) {
         const secretWallSet = new Set(secretWalls.map(p => `${p.x},${p.y}`));
         const floorSet = new Set();
 

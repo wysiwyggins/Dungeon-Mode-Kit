@@ -107,12 +107,12 @@ belongs instead of the engine deciding:
 }
 ```
 
-A lever paired to a machine is assigned a colour (`initializeSwitchTints`), which
+A lever paired to a machine is assigned a color (`initializeSwitchTints`), which
 lands in `templateVars.color` and reads as "the fire brick lever". Write
 `"lever, [color]"` and it reads that way instead — the word order is the data's.
 
-Entities that carry a colour but *don't* mention it in their name (doors, gates)
-fall back to a colour prefix, so they read as they always have.
+Entities that carry a color but *don't* mention it in their name (doors, gates)
+fall back to a color prefix, so they read as they always have.
 
 `templateVars` holds these per-instance values. It's seeded from an optional
 `template_vars` object in the data, then filled by whatever assigns randomness:

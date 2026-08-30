@@ -91,7 +91,7 @@ Bridges are configured in a prototype's `map_generator.options` block, alongside
 
 ```json
 "map_generator": {
-  "type": "brogue",
+  "type": "dungeon",
   "options": {
     "abyss": { "count": [0, 4], "types": ["abyss"], "minSize": 10, "maxSize": 60 },
     "bridges": { "max": 4 }
