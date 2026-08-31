@@ -7,9 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.19b]
 
+### Next
+
+- info windows for items
+
 ### Added
 
+- **`Actor.hasInfoPanel()`** Actors with `description` `sentient` can spawn new info windows. See [docs/ACTORS.md](docs/ACTORS.md#what-earns-a-panel-actorhasinfopanel).
+- **`InterfaceManager.growBoxOpen()` — a reusable box-open animation.** A few quick frames of an empty border expanding from an origin tile to the box's final rect.
+- `placeBoxAwayFromPlayer` takes an `avoid` point.
+
 ### Changed
+
+- **Mouse: hover reads, click acts.** Hovering a visible actor opens its info panel. `Tab` + `Enter` is the keyboard route to info windows for selected actors.
+- **The hover panel waits, then grows in.** The pointer must rest on an actor for `HOVER_INFO_DELAY` (260ms) before its panel opens, so sweeping across a crowded room opens nothing and moving on cancels the pending open.
+- `showActorInfo` gains a `sticky` option separating the two routes: the keyboard panel takes the active box and holds, while hover must not steal it or claim it can be closed with a key. So the hover panel omits the "Esc to close" footer.
+- `actorAtClick` is now `actorAtPointer`, since hover is its main caller.
+- Clicking a two-tile actor's head tile attacks it instead of trying to path through it.
 
 ## [1.18b]
 

@@ -51,7 +51,7 @@
   "floor_plan": [
     {
       "biome": "caves",
-      "floors": "1-8"
+      "floors": "2-8"
     },
     {
       "biome": "depths",
@@ -87,9 +87,9 @@
       },
       "random_items": {
         "flower": {
-          "chance": 60,
+          "chance": 22,
           "min": 1,
-          "max": 6
+          "max": 3
         },
         "food": {
           "chance": 50

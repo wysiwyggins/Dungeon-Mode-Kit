@@ -319,13 +319,14 @@
     "facingEnabled": true,
     "personality": "goblin",
     "collision_effect": {
-      "health": -8
+      "health": -5
     },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] strikes back at [attacked_actor_name]!",
     "attributes": {
       "accuracy": 35,
-      "defense": 8
+      "defense": 8,
+      "strength": 5
     },
     "stats": {
       "health": 25
@@ -344,14 +345,15 @@
     "facingEnabled": true,
     "personality": "goblin_ambusher",
     "collision_effect": {
-      "health": -8
+      "health": -5
     },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] strikes back at [attacked_actor_name]!",
     "attributes": {
       "inventory": 2,
       "accuracy": 35,
-      "defense": 5
+      "defense": 5,
+      "strength": 5
     },
     "stats": {
       "health": 25
@@ -430,10 +432,11 @@
       "flies": true,
       "hostile": true,
       "dark_vision": true,
-      "defense": 20
+      "defense": 35,
+      "accuracy": 25
     },
     "stats": {
-      "health": 5
+      "health": 7
     }
   },
   "rat": {
@@ -632,6 +635,7 @@
   "monkey": {
     "type": "beast",
     "name": "monkey",
+    "description": "A small furry humanoid that will snatch anything it can touch.",
     "tileIndexBase": "LEG",
     "tileIndexTop": "ANIMAL_HEAD",
     "tileIndexSide": "BOX_BOTTOM_RIGHT",
@@ -644,10 +648,7 @@
     "tint": "#C89664",
     "personality": "pickpocket",
     "death_sound": "hit",
-    "collision_effect": {
-      "health": -3
-    },
-    "collision_sound": "hit",
+    "collision_sound": "bow",
     "collision_description": "The [actor_name] scratches the [attacked_actor_name]!",
     "attributes": {
       "hostile": true,
@@ -659,7 +660,7 @@
       "remains": "skull"
     },
     "stats": {
-      "health": 12
+      "health": 13
     }
   },
   "guard": {
@@ -780,7 +781,7 @@
     "flipBaseV": true,
     "personality": "scavenger",
     "collision_effect": {
-      "health": -1
+      "health": -4
     },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] pecks the [attacked_actor_name]!",
@@ -791,7 +792,7 @@
       "inventory": 1
     },
     "stats": {
-      "health": 5
+      "health": 7
     }
   },
   "phantom_hound": {
@@ -931,7 +932,9 @@
       "opaque": true,
       "flammable": true,
       "breakable": true,
-      "crushable": true
+      "crushable": true,
+      "entry_sound": "step_mud",
+      "solid": false
     }
   },
   "fungus": {

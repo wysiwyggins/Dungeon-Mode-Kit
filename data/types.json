@@ -129,6 +129,18 @@
     }
   },
 
+  "illuminator": {
+    "name": "light source",
+    "domain": "item",
+    "description": "Things that light the way. Carried lit; never a mystery, so identified on sight.",
+    "attributes": {
+      "light_source": true,
+      "pickupable": true,
+      "stackable": false,
+      "visible": true
+    }
+  },
+
   "weapon": {
     "name": "weapon",
     "domain": "item",

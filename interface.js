@@ -90,7 +90,56 @@ class InterfaceManager {
         // Actor info panel: which actor is being looked at, if any
         this.actorInfoMode = false;
         this.actorInfoActor = null;
+        // Pending hover-open timer, and the actor it will open for. Held so a pointer
+        // that moves on before the delay elapses cancels the open entirely rather than
+        // opening a panel for an actor it has already left.
+        this.actorInfoHoverTimer = null;
+        this.actorInfoHoverPending = null;
+
+        // In-flight growBoxOpen intros, keyed by box id, so two boxes can animate at
+        // once and each can be cancelled on its own.
+        this.boxGrowTimers = new Map();
     }
+
+    /**
+     * How long the pointer must rest on an actor before its panel opens (ms). Sweeping
+     * across a crowded room shouldn't flash a panel per monster.
+     */
+    static get HOVER_INFO_DELAY() { return 260; }
+
+    /** Default number of intro frames drawn before the box itself appears. */
+    static get BOX_GROW_FRAMES() { return 2; }
+
+    /** Default per-frame delay of the box-open intro (ms). */
+    static get BOX_GROW_FRAME_DELAY() { return 40; }
+
+    /**
+     * The `steps` for an N-frame box-open intro: fractions of the way from the origin
+     * tile to the box's final rect, one per frame.
+     *
+     * Spaced across (0, 1) but stopping short of 1.0, because the real box is
+     * effectively the last frame — a step at 1.0 would draw an empty border exactly
+     * where the box is about to appear, which reads as a stutter rather than growth.
+     * So N frames divide the distance into N+1 parts, then everything is nudged
+     * slightly later by BOX_GROW_BIAS: a frame that has already covered most of the
+     * distance reads as the box arriving, where evenly-spaced frames read as it
+     * dawdling. At the default N=2 this reproduces the hand-tuned [0.35, 0.7] exactly,
+     * so changing `frames` is the only thing that changes the feel.
+     *
+     * @param {number} frames - How many intro frames
+     * @returns {number[]}
+     */
+    static boxGrowSteps(frames) {
+        const n = Math.max(0, Math.floor(frames));
+        const bias = InterfaceManager.BOX_GROW_BIAS;
+        return Array.from({ length: n }, (_, i) => ((i + 1) / (n + 1)) * bias);
+    }
+
+    /**
+     * Multiplier on the evenly-spaced grow steps, biasing them later. 1.05 is what
+     * turns 2 frames of [0.333, 0.667] into the [0.35, 0.7] that was tuned by eye.
+     */
+    static get BOX_GROW_BIAS() { return 1.05; }
 
     get container() {
         return this.engine.renderer?.uiContainer;
@@ -114,9 +163,22 @@ class InterfaceManager {
         };
     }
 
+    /**
+     * A box position inside the viewport that doesn't sit on top of the player.
+     *
+     * @param {number} boxWidth
+     * @param {number} boxHeight
+     * @param {Object} [options]
+     * @param {number[]} [options.preferX] - Columns to try before the defaults
+     * @param {number[]} [options.preferY] - Rows to try before the defaults
+     * @param {{x:number,y:number}} [options.avoid] - A second tile to keep clear, on
+     *   equal footing with the player. The hover panel passes the actor it describes:
+     *   a box covering the thing you are pointing at is worse than no box.
+     */
     placeBoxAwayFromPlayer(boxWidth, boxHeight, options = {}) {
         const vis = this.getVisibleArea();
         const player = this.engine.entityManager?.player;
+        const avoid = options?.avoid || null;
 
         const minX = vis.originX;
         const minY = vis.originY;
@@ -128,10 +190,11 @@ class InterfaceManager {
         const centerX = Math.max(minX, vis.originX + Math.floor((vis.width - boxWidth) / 2));
         const centerY = Math.max(minY, vis.originY + Math.floor((vis.height - boxHeight) / 2));
 
-        // Centered is the fallback when there's no player to dodge.
-        if (!player) return { x: centerX, y: centerY };
+        // With no player, an `avoid` tile still deserves dodging — otherwise centered.
+        const anchor = player || avoid;
+        if (!anchor) return { x: centerX, y: centerY };
 
-        const inUpperHalf = player.y < vis.originY + vis.height / 2;
+        const inUpperHalf = anchor.y < vis.originY + vis.height / 2;
         const highY = minY + 1;
         const lowY = maxY;
 
@@ -147,8 +210,8 @@ class InterfaceManager {
             ...(options?.preferX || []),
             centerX,                      // keep modals centered when we can
             maxX, minX,
-            player.x + 1,                 // columns that just clear the player
-            player.x - boxWidth,
+            anchor.x + 1,                 // columns that just clear the anchor
+            anchor.x - boxWidth,
         ];
 
         // Drop out-of-range candidates rather than clamping them — clamping folds
@@ -156,9 +219,13 @@ class InterfaceManager {
         const inY = ys.filter(v => v >= minY && v <= maxY);
         const inX = xs.filter(v => v >= minX && v <= maxX);
 
-        const covers = (bx, by) =>
-            player.x >= bx && player.x < bx + boxWidth &&
-            player.y >= by && player.y < by + boxHeight;
+        const coversPoint = (bx, by, p) =>
+            p.x >= bx && p.x < bx + boxWidth &&
+            p.y >= by && p.y < by + boxHeight;
+        // A tall actor's head sits a tile above its base, so clear that row too.
+        const points = [player, avoid].filter(Boolean).flatMap(p =>
+            p.height === 2 ? [p, { x: p.x, y: p.y - 1 }] : [p]);
+        const covers = (bx, by) => points.some(p => coversPoint(bx, by, p));
 
         for (const cy of inY) {
             for (const cx of inX) {
@@ -4975,17 +5042,26 @@ class InterfaceManager {
     // ========================================================================
 
     /**
-     * Esc / a second look-key press closes the actor info panel. Mirrors
-     * handleHelpKey; called from InputManager before normal dispatch so the panel
-     * swallows the key rather than the game acting on it.
-     * @returns {boolean} True if the key was consumed
+     * Any key dismisses the actor info panel.
+     *
+     * Unlike the other handle*Key methods this is NOT modal: the panel is a read, not
+     * a prompt, and it is big enough to cover much of the map — so leaving it up while
+     * play continues is never what the player wants. Esc is consumed (its whole job
+     * was to close), but every other key closes the panel and then falls through to
+     * do its normal work, so reading a monster never costs an extra keystroke.
+     *
+     * Turn-taking actions arriving by other routes (mouse travel, menus) are covered
+     * by InputManager.onPlayerAction, which closes the panel too.
+     *
+     * @returns {boolean} True only if the key was consumed and should not dispatch
      */
     handleActorInfoKey(key) {
-        if (this.actorInfoMode && key === 'Escape') {
-            this.closeActorInfo();
-            return true;
-        }
-        return false;
+        if (!this.actorInfoMode) return false;
+        // Modifier presses on their own aren't actions; closing on them would make the
+        // panel vanish as the player reaches for a shifted key.
+        if (key === 'Shift' || key === 'Control' || key === 'Alt' || key === 'Meta') return false;
+        this.closeActorInfo();
+        return key === 'Escape';
     }
 
     /**
@@ -4997,18 +5073,31 @@ class InterfaceManager {
      * are gated on the viewer's `tactician` attribute so a prototype decides whether
      * its player reads fights numerically or has to judge them by eye.
      *
+     * Opens in one of two modes. The keyboard route (Tab + Enter) is `sticky`: it
+     * takes over as the active box and holds until Esc, because the player asked a
+     * deliberate question. Hover is not — it is a passive read that must not steal
+     * the active box or swallow Esc, and it closes itself the moment the mouse
+     * leaves. Same panel either way, so there is only one place the text is built.
+     *
      * @param {Actor} actor - The actor to describe
      * @param {Actor} [viewer] - Whose perspective the combat math is from
+     * @param {Object} [options]
+     * @param {boolean} [options.sticky=true] - Hold until dismissed (keyboard route)
+     * @param {boolean} [options.grow=false] - Play the box-grow intro from the actor
+     *   first. Hover uses it; the keyboard route opens flat, since Tab already moved
+     *   the player's attention to the target and a second flourish would only delay it.
      */
-    showActorInfo(actor, viewer = null) {
+    showActorInfo(actor, viewer = null, options = {}) {
         if (!actor) return;
+        const sticky = options.sticky ?? true;
+        if (!actor.hasInfoPanel?.()) return;
         viewer = viewer || this.engine.entityManager?.player || null;
 
-        this.hidePlayerInfo();
+        if (sticky) this.hidePlayerInfo();
         this.closeActorInfo();
-        this.clearTargetingHighlights();
+        if (sticky) this.clearTargetingHighlights();
 
-        this.actorInfoMode = true;
+        this.actorInfoMode = sticky;
         this.actorInfoActor = actor;
 
         const boxId = 'actor_info';
@@ -5041,7 +5130,18 @@ class InterfaceManager {
             for (const line of this.buildCombatLines(actor, viewer, WRAP)) lines.push(line);
         }
 
-        lines.push('Esc to close');
+        // Each section above closes with a blank spacer line, which the footer used to
+        // sit on. Without a footer that spacer would be a ragged empty row at the
+        // bottom of the box, so drop any trailing blanks before measuring.
+        while (lines.length && lines[lines.length - 1] === '') lines.pop();
+
+        // Only the sticky panel needs dismissing; a hover panel goes away by itself,
+        // so telling the player to press Esc would be a lie. The blank keeps the
+        // footer off the last line of prose, as it has always read.
+        if (sticky) {
+            lines.push('');
+            lines.push('Esc to close');
+        }
 
         const padding = 1;
         const contentWidth = Math.max(...lines.map(l => this.stripMarkup(l).length), 16);
@@ -5049,18 +5149,155 @@ class InterfaceManager {
         const boxWidth = contentWidth + (padding * 2) + 2;
         const boxHeight = contentHeight + (padding * 2) + 2;
 
-        const { x, y } = this.placeBoxAwayFromPlayer(boxWidth, boxHeight);
-        const boxContainer = this.createBox(boxId, x, y, boxWidth, boxHeight);
-        if (!boxContainer) { this.actorInfoMode = false; return; }
+        // Keep the box off the actor as well as the player — you are pointing at it.
+        const { x, y } = this.placeBoxAwayFromPlayer(boxWidth, boxHeight, { avoid: actor });
 
-        const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
-        const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
-        for (let i = 0; i < lines.length; i++) {
-            this.renderTextLine(boxContainer, lines[i],
-                textStartX, textStartY + (i * globalVars.TILE_HEIGHT));
+        // Draw the finished panel, once any intro has played.
+        const drawPanel = () => {
+            const boxContainer = this.createBox(boxId, x, y, boxWidth, boxHeight);
+            if (!boxContainer) { this.actorInfoMode = false; this.actorInfoActor = null; return; }
+
+            const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
+            const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
+            for (let i = 0; i < lines.length; i++) {
+                this.renderTextLine(boxContainer, lines[i],
+                    textStartX, textStartY + (i * globalVars.TILE_HEIGHT));
+            }
+
+            this.updateBoxOverlays();
+        };
+
+        if (options.grow) {
+            this.growBoxOpen({
+                id: boxId, x, y, width: boxWidth, height: boxHeight,
+                from: actor,
+                draw: drawPanel,
+                // Anything that closed the panel mid-intro (a keypress, the pointer
+                // moving on) abandons it rather than letting it finish into a panel.
+                abort: () => this.actorInfoActor !== actor,
+            });
+        } else {
+            drawPanel();
         }
+    }
 
-        this.updateBoxOverlays();
+    // ========================================================================
+    // BOX OPEN ANIMATION
+    // ========================================================================
+
+    /**
+     * Open a box with a brief "grows from a point" intro, then draw its contents.
+     *
+     * A few quick frames of an empty box border expanding from `from` to the box's
+     * final rect, so a window reads as coming FROM the thing that caused it rather
+     * than appearing from nowhere. The frames are drawn with the same `drawBoxBorder`
+     * tiles as the real box, so it looks like the box drawing itself rather than a
+     * separate effect.
+     *
+     * Generic on purpose — the actor info panel is the first caller, but a dialog
+     * window growing from the speaker, or an item panel growing from its tile, is the
+     * same animation with a different origin. Callers supply only the geometry, an
+     * origin, and a `draw` callback; nothing here knows what the box contains.
+     *
+     * Keyed by `id`, so two boxes can animate at once without fighting, and re-opening
+     * the same id cancels its own in-flight intro rather than interleaving frames.
+     *
+     * Deliberately short. At the default 2 frames × 40ms the whole intro is under a
+     * tenth of a second, so it reads as responsiveness rather than lag; anything
+     * slower makes the UI feel like it's negotiating. `frames` and `frameDelay` are
+     * the knobs for trying other speeds — total intro time is about their product.
+     *
+     * @param {Object} spec
+     * @param {string} spec.id - Box id, as passed to createBox. The intro's temporary
+     *   frames use a derived id, so they can never collide with the real box.
+     * @param {number} spec.x - Final box left, in tiles
+     * @param {number} spec.y - Final box top, in tiles
+     * @param {number} spec.width - Final box width, in tiles
+     * @param {number} spec.height - Final box height, in tiles
+     * @param {{x:number,y:number}} spec.from - Tile the box grows out of
+     * @param {Function} spec.draw - Draws the finished box. Called exactly once, after
+     *   the last frame — or immediately if the intro is skipped or cannot run.
+     * @param {Function} [spec.abort] - Polled before each frame; returning true
+     *   abandons the intro WITHOUT drawing. Lets a caller cancel on state that changed
+     *   since the intro began (the actor panel passes "am I still the hovered actor?").
+     * @param {number} [spec.frames] - How many intro frames to draw. More frames is a
+     *   longer, smoother grow; `frames: 0` skips the intro and draws immediately. The
+     *   two knobs to turn when tuning feel are this and `frameDelay` — total intro
+     *   time is roughly `frames * frameDelay`.
+     * @param {number} [spec.frameDelay] - ms per frame
+     * @param {number[]} [spec.steps] - Explicit fractions of the way from `from` to the
+     *   final rect, one per frame, overriding `frames`. For an intro that doesn't
+     *   advance evenly — e.g. `[0.2, 0.4, 0.85]` to lunge at the end.
+     * @param {Object} [spec.boxOptions] - Passed through to createBox, so the intro
+     *   frames match a box with a non-default fill or border tint.
+     */
+    growBoxOpen(spec) {
+        const {
+            id, x, y, width, height, from, draw, abort = null,
+            frames = InterfaceManager.BOX_GROW_FRAMES,
+            frameDelay = InterfaceManager.BOX_GROW_FRAME_DELAY,
+            // An explicit `steps` wins; otherwise the frame count generates them.
+            steps = InterfaceManager.boxGrowSteps(frames),
+            boxOptions = {},
+        } = spec;
+
+        const growId = `${id}__grow`;
+        this.cancelBoxGrow(id);
+
+        // No origin to grow from, or a caller that opted out — just draw.
+        if (!from || !steps?.length) { draw(); return; }
+
+        let step = 0;
+
+        const finish = (drawIt) => {
+            this.removeBox(growId);
+            this.boxGrowTimers.delete(id);
+            if (drawIt) draw();
+        };
+
+        const frame = () => {
+            if (abort && abort()) { finish(false); return; }
+            if (step >= steps.length) { finish(true); return; }
+
+            const t = steps[step++];
+            const lerp = (a, b) => Math.round(a + (b - a) * t);
+
+            // A 1-tile box is degenerate for drawBoxBorder (its corners would overlap),
+            // so never go below 2x2.
+            const fw = Math.max(2, lerp(1, width));
+            const fh = Math.max(2, lerp(1, height));
+            // Keep every frame on screen — one placed off-viewport would just flicker
+            // at the edge instead of reading as growth.
+            const vis = this.getVisibleArea();
+            const fx = Math.max(vis.originX,
+                Math.min(lerp(from.x, x), vis.originX + vis.width - fw));
+            const fy = Math.max(vis.originY,
+                Math.min(lerp(from.y, y), vis.originY + vis.height - fh));
+
+            // createBox replaces a box of the same id, so the previous frame goes away
+            // on its own.
+            const container = this.createBox(growId, fx, fy, fw, fh, boxOptions);
+            // Can't draw frames (no container yet) — skip straight to the real box
+            // rather than dropping the open entirely.
+            if (!container) { finish(true); return; }
+
+            this.boxGrowTimers.set(id, setTimeout(frame, frameDelay));
+        };
+
+        frame();
+    }
+
+    /**
+     * Abandon an in-flight grow intro and clear its frame, without drawing the box.
+     * @param {string} id - The box id passed to growBoxOpen
+     */
+    cancelBoxGrow(id) {
+        const timer = this.boxGrowTimers.get(id);
+        if (timer) {
+            clearTimeout(timer);
+            this.boxGrowTimers.delete(id);
+        }
+        this.removeBox(`${id}__grow`);
     }
 
     /**
@@ -5109,12 +5346,234 @@ class InterfaceManager {
         return out;
     }
 
+    /**
+     * The full text of an item info panel, as wrapped lines.
+     *
+     * Mirrors the order Brogue's itemDetails uses (Items.c:1750): name, what the thing
+     * is, what it does, then the numbers — because that is the order the questions
+     * arrive in. The name is omitted here; callers own the heading, since the inventory
+     * menu already draws one.
+     *
+     * Every fact shown is gated on identification, and the gate lives in
+     * Item.getPanelDescription rather than here — an unidentified item's `description`
+     * quotes its rolled enchantment, so a panel that read `description` directly would
+     * leak the number the player is meant to discover by use.
+     *
+     * Returns lines only; the caller measures and draws. Sections are separated by a
+     * single blank, and no trailing blank is emitted.
+     *
+     * @param {Item} item - The item to describe
+     * @param {Actor|null} viewer - Whose stats the equip forecast compares against
+     * @param {number} wrap - Wrap width in characters
+     * @returns {string[]}
+     */
+    buildItemInfoLines(item, viewer = null, wrap = 30) {
+        const out = [];
+        const push = (text) => {
+            for (const line of this.wrapText(text, wrap)) out.push(line);
+        };
+        const gap = () => { if (out.length && out[out.length - 1] !== '') out.push(''); };
+
+        const identified = item.identified !== false;
+
+        // What it is. Withheld or swapped for a category blurb when unidentified.
+        const description = item.getPanelDescription?.();
+        if (description) push(description);
+
+        // What its effect does, stated in the abstract. Only once identified: on a
+        // potion this names the effect outright, which is the whole secret.
+        if (identified) {
+            const effect = item.getEffectDescription?.();
+            // Several items say nearly the same thing twice — health_potion's
+            // description is "Restores health, but clouds the mind" and its
+            // effect_description "It restores Health but clouds the mind". Printing both
+            // reads as a rendering bug, so drop the second when it adds no words.
+            if (effect && !this.saysSameThing(effect, description)) {
+                gap();
+                // effect_description is authored as a fragment ("It restores Health"),
+                // so it may arrive without terminal punctuation.
+                push(/[.!?]$/.test(effect) ? effect : `${effect}.`);
+            }
+        }
+
+        // What equipping it would do, as a before/after. The forecast reads real
+        // enchantment, so it is identified-only for enchantable gear; a ring's slot
+        // displacement is still worth stating either way.
+        if (viewer) {
+            const preview = item.previewEquipDelta?.(viewer);
+            if (preview) {
+                gap();
+                for (const line of this.buildEquipForecastLines(item, preview, identified, wrap)) {
+                    out.push(line);
+                }
+            }
+        }
+
+        // Charges and condition. Both are visible on the item itself — a torch's fuel
+        // gauge is not a magical property — so these do not wait on identification,
+        // except a staff's charge count, which is part of what identifying tells you.
+        const chargeStat = item.getAttribute('charge_stat');
+        const statLines = [];
+        for (const [key, stat] of Object.entries(item.stats || {})) {
+            if (!stat || typeof stat !== 'object' || stat.max === undefined) continue;
+            if (key === chargeStat && !identified) continue;
+            const label = stat.display_label || this.capitalize(key);
+            statLines.push(`${label}: ${Math.round(stat.current ?? stat.max)}/${stat.max}`);
+        }
+        if (statLines.length) {
+            gap();
+            for (const line of statLines) out.push(line);
+        }
+
+        // Say plainly that it is unidentified, rather than leaving the player to infer
+        // it from an absence. Brogue does this too, and goes further — it names the
+        // exact cost of finding out ("defeat 3 more enemies with it"). We have no
+        // use-count-to-identify mechanic, so it stays a statement of state.
+        //
+        // Only when something was actually withheld, though. The category blurbs
+        // already END on the mystery ("no telling what it does until it is drunk"), so
+        // adding this after one is just saying it twice.
+        if (!identified && !Item.UNIDENTIFIED_BLURBS[item.getCategory?.()]) {
+            gap();
+            push('Its properties are unknown.');
+        }
+
+        while (out.length && out[out.length - 1] === '') out.pop();
+        return out;
+    }
+
+    /**
+     * Do two description strings carry the same information?
+     *
+     * Compares significant words, ignoring case, punctuation and the filler that
+     * differs between an item's `description` and its `effect_description` — several
+     * items say the same thing twice in slightly different words ("Restores health, but
+     * clouds the mind" / "It restores Health but clouds the mind"), and printing both
+     * reads as a bug rather than as two facts.
+     */
+    saysSameThing(a, b) {
+        if (!a || !b) return false;
+        const key = (s) => {
+            const words = String(s).toLowerCase()
+                .replace(/[^a-z0-9\s]/g, ' ')
+                .split(/\s+/)
+                .filter(w => w && !['it', 'its', 'the', 'a', 'an', 'and', 'but', 'you', 'your',
+                    'this', 'that', 'is', 'are', 'will', 'while', 'when', 'of', 'to'].includes(w));
+            return new Set(words);
+        };
+        const ka = key(a);
+        const kb = key(b);
+        if (!ka.size || !kb.size) return false;
+
+        // Subset either way: effect_description is usually the shorter restatement.
+        const smaller = ka.size <= kb.size ? ka : kb;
+        const larger = ka.size <= kb.size ? kb : ka;
+        let shared = 0;
+        for (const w of smaller) if (larger.has(w)) shared++;
+        return shared / smaller.size >= 0.8;
+    }
+
+    /**
+     * The equip forecast: what wearing or wielding this would do, and what comes off.
+     *
+     * Brogue's version reports percentage deltas against your current weapon
+     * (Items.c:1981). Absolute before/after reads better here because our stats are
+     * small integers — "defense 4 to 10" is plainer than "+150% defense", and it cannot
+     * divide by zero the way a percentage against unarmed can.
+     *
+     * @returns {string[]}
+     */
+    buildEquipForecastLines(item, preview, identified, wrap) {
+        const out = [];
+        const push = (text) => {
+            for (const line of this.wrapText(text, wrap)) out.push(line);
+        };
+
+        const verb = preview.slot === 'weapon' ? 'Wielding' : 'Wearing';
+
+        // A stat requirement you don't meet is the most important thing on the panel,
+        // so it leads. canEquipItem reads the BASE stat, not the effective one, so a
+        // strength ring does not help you into heavy armour — this reports the rule the
+        // engine actually enforces.
+        if (!preview.canEquip) {
+            push(`You cannot equip this. ${preview.reason}.`);
+            return out;
+        }
+
+        if (preview.changes.length) {
+            const deltas = preview.changes.map(c => `${c.stat} from ${c.from} to ${c.to}`);
+            const joined = deltas.length === 1
+                ? deltas[0]
+                : `${deltas.slice(0, -1).join(', ')} and ${deltas[deltas.length - 1]}`;
+            push(`${verb} this would change your ${joined}.`);
+        } else if (identified) {
+            push(`${verb} this would change none of your stats.`);
+        }
+
+        // Which item comes off. Rings make this necessary rather than decorative: with
+        // both ring slots full the equip path replaces ring1 specifically, so "it would
+        // replace" has to name the one that actually goes.
+        if (preview.displaced) {
+            const name = preview.displaced.getDisplayName?.() || preview.displaced.name;
+            push(`It would replace your ${name}.`);
+        }
+
+        // The forecast is computed with enchantment zeroed for an unidentified item
+        // (previewEquipDelta), so the numbers above are the category's baseline, not
+        // this instance's. Say so rather than presenting a firm figure — and say it
+        // whenever the item COULD be enchanted, not only when it happens to be, or the
+        // caveat's presence would itself reveal which items carry an enchantment.
+        if (!identified && preview.changes.length && item.hasAttribute('enchantable')) {
+            push('This assumes it bears no enchantment.');
+        }
+
+        return out;
+    }
+
     closeActorInfo() {
-        if (!this.boxes.has('actor_info') && !this.actorInfoMode) return;
+        // A pending open is as much "the panel" as a drawn one: closing has to cancel
+        // both the hover delay and any running open intro, or a panel would pop up
+        // after the thing that closed it.
+        this.cancelPendingHoverInfo();
+        this.cancelBoxGrow('actor_info');
+
+        // actorInfoActor is part of the test: a hover panel leaves actorInfoMode false,
+        // so checking only the box and the mode could strand that reference — and
+        // updateHoverInfo compares against it to decide whether to re-open.
+        if (!this.boxes.has('actor_info') && !this.actorInfoMode && !this.actorInfoActor) return;
         this.removeBox('actor_info');
         this.actorInfoMode = false;
         this.actorInfoActor = null;
         this.updateBoxOverlays();
+    }
+
+    /**
+     * Schedule a hover panel for `actor`, replacing any pending one.
+     *
+     * The delay is the point: the pointer must rest on the actor, so sweeping across a
+     * room of monsters opens nothing. Re-requesting the SAME actor keeps the existing
+     * timer rather than restarting it, so a pointer drifting within one large actor
+     * still opens on schedule instead of never.
+     */
+    scheduleHoverInfo(actor, viewer) {
+        if (this.actorInfoHoverPending === actor) return;
+        this.cancelPendingHoverInfo();
+        this.actorInfoHoverPending = actor;
+        this.actorInfoHoverTimer = setTimeout(() => {
+            this.actorInfoHoverTimer = null;
+            this.actorInfoHoverPending = null;
+            if (actor.isDead) return;
+            this.showActorInfo(actor, viewer, { sticky: false, grow: true });
+        }, InterfaceManager.HOVER_INFO_DELAY);
+    }
+
+    /** Drop a scheduled-but-unopened hover panel. */
+    cancelPendingHoverInfo() {
+        if (this.actorInfoHoverTimer) {
+            clearTimeout(this.actorInfoHoverTimer);
+            this.actorInfoHoverTimer = null;
+        }
+        this.actorInfoHoverPending = null;
     }
 
     isActorInfoVisible() {

@@ -52,15 +52,12 @@
 
   "torch": {
     "name": "torch",
+    "type": "illuminator",
     "tileIndex": "BOX_VERTICAL_WHITE_TOP",
     "tint": "#EC7505",
     "flickerTint": true,
-    "identified": false,
     "attributes": {
-      "pickupable": true,
-      "visible": true,
       "flammable": true,
-      "light_source": true,
       "ignites": true,
       "lightRadius": 6,
       "description": "A burning torch that lights the way.",
@@ -119,7 +116,6 @@
     "tileIndex": "WHITE_APOSTROPHE",
     "flipV": true,
     "tint": "#333333",
-    "identified": false,
     "attributes": {
       "pickupable": true,
       "visible": true,
@@ -129,15 +125,12 @@
 
   "phial": {
     "name": "phial",
+    "type": "illuminator",
     "tileIndex": "WHITE_FEMALE_SYMBOL",
     "tint": "#BBECEC",
     "flickerTint": true,
-    "identified": false,
     "attributes": {
-      "pickupable": true,
-      "visible": true,
       "flammable": false,
-      "light_source": true,
       "lightRadius": 8,
       "description": "A glass drop that radiates a cool, penetrating light."
     }

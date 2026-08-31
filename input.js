@@ -472,6 +472,7 @@ class InputManager {
 
             this.updateDescription(tileX, tileY);
             this.updateTileHighlight(tileX, tileY);
+            this.updateHoverInfo(tileX, tileY);
 
             // Update throw path if in aiming mode
             if (this.engine.interfaceManager?.isThrowAiming()) {
@@ -496,6 +497,15 @@ class InputManager {
         // Clear hover description and redisplay turn history
         this.hoverDescription = null;
         this.displayMessages();
+        // A hover panel belongs to the pointer, so it leaves with it. A sticky one was
+        // asked for deliberately and stays until an action or Esc dismisses it — but a
+        // pending open dies either way, since the pointer that requested it is gone.
+        const iface = this.engine.interfaceManager;
+        if (iface?.actorInfoMode) {
+            iface.cancelPendingHoverInfo();
+        } else {
+            iface?.closeActorInfo();
+        }
         // Hide tile highlight
         this.engine.renderer?.hideTileHighlight();
         // Hide throw path if in aiming mode
@@ -553,14 +563,10 @@ class InputManager {
             }
         }
 
-        // Clicking another actor looks at it rather than walking to it. Travel to a
-        // monster's tile is still reachable — Tab picks it and (x)plore commits — so
-        // nothing is lost, and clicking a monster to read it is the commoner intent.
-        const looked = this.actorAtClick(this.hoveredTile.x, this.hoveredTile.y);
-        if (looked) {
-            this.engine.interfaceManager?.showActorInfo(looked, player);
-            return;
-        }
+        // Clicking an actor travels to it (and so attacks it, if it's in the way):
+        // reading it is what HOVER does, so the click is free to mean "go there".
+        // Any open panel is dismissed on the way, since play is resuming.
+        this.engine.interfaceManager?.closeActorInfo();
 
         // Clicking to travel supersedes any pending (x)plore preview.
         this.cancelExplorePreview();
@@ -570,7 +576,7 @@ class InputManager {
     }
 
     /**
-     * The actor a click at (x, y) is looking at, or null.
+     * The actor the pointer at (x, y) is looking at, or null.
      *
      * Resolves a tall actor's head tile the same way the hover-describe pass does
      * (base at y, top sprite at y-1), and only returns actors the player could
@@ -580,7 +586,7 @@ class InputManager {
      *
      * @returns {Actor|null}
      */
-    actorAtClick(x, y) {
+    actorAtPointer(x, y) {
         const em = this.engine.entityManager;
         if (!em) return null;
 
@@ -594,6 +600,57 @@ class InputManager {
         if (!this.engine.isTileVisible(actor.x, actor.y)) return null;
 
         return actor;
+    }
+
+    /**
+     * Open, swap or close the hover info panel for whatever the pointer is over.
+     *
+     * Called on every tile change, so it must be cheap when nothing changed: the
+     * common case is the pointer moving over floor with no panel up, which exits on
+     * the first branch. Re-requesting the SAME actor is a no-op too, since the text
+     * would be identical and re-creating the box makes it flicker.
+     *
+     * The panel does not open here — it is scheduled, and opens only if the pointer is
+     * still resting on the actor when the delay elapses (see scheduleHoverInfo), so
+     * sweeping across a crowded room opens nothing.
+     *
+     * Actors that aren't worth a panel (a door, a stairway — see Actor.hasInfoPanel)
+     * cancel any pending open and close any open panel rather than showing a bare name
+     * the sidebar hover line already gives.
+     */
+    updateHoverInfo(tileX, tileY) {
+        const iface = this.engine.interfaceManager;
+        if (!iface) return;
+
+        // The sticky panel was asked for by keyboard; hover must not yank it away.
+        if (iface.actorInfoMode) return;
+
+        // While aiming, the pointer is choosing a target, not reading one — a panel
+        // would cover the very tiles being aimed at. Same for any open modal.
+        if (iface.isThrowAiming?.() || iface.isSpellAiming?.()
+            || iface.inventoryMode || iface.confirmDialog || iface.helpWindowMode) {
+            iface.closeActorInfo();
+            return;
+        }
+
+        const player = this.engine.entityManager?.player;
+        const actor = this.actorAtPointer(tileX, tileY);
+        const worth = actor && actor !== player && actor.hasInfoPanel?.();
+
+        if (!worth) {
+            iface.closeActorInfo();
+            return;
+        }
+        // Already showing this actor, or already counting down to it — leave both the
+        // open panel and any running timer alone. Checked before the close below, or
+        // drifting within one large actor would restart its delay on every tile.
+        if (iface.actorInfoActor === actor || iface.actorInfoHoverPending === actor) return;
+
+        // Moving from one actor straight to another closes the first at once rather
+        // than leaving it up through the new one's delay. Also cancels its timer.
+        iface.closeActorInfo();
+
+        iface.scheduleHoverInfo(actor, player);
     }
 
     // ---- Touch input handlers ----
@@ -827,11 +884,21 @@ class InputManager {
         if (targetX < 0 || targetY < 0) return;
         if (targetX === player.x && targetY === player.y) return;
 
-        // Check if target tile has a solid actor → click-to-collide
-        const solidActor = this.engine.entityManager?.getSolidActorAt(targetX, targetY);
+        // Check if target tile has a solid actor → click-to-collide. A two-tile actor
+        // is clicked as often on the head as the body, and hover describes it either
+        // way, so resolve the head to the base rather than trying to walk through it.
+        let solidActor = this.engine.entityManager?.getSolidActorAt(targetX, targetY);
+        let collideX = targetX, collideY = targetY;
+        if (!solidActor) {
+            const below = this.engine.entityManager?.getSolidActorAt(targetX, targetY + 1);
+            if (below && below.height === 2) {
+                solidActor = below;
+                collideY = targetY + 1;
+            }
+        }
         if (solidActor) {
-            const dx = targetX - player.x;
-            const dy = targetY - player.y;
+            const dx = collideX - player.x;
+            const dy = collideY - player.y;
             if (Math.abs(dx) <= 1 && Math.abs(dy) <= 1) {
                 // Adjacent: immediately collide (same as pressing the arrow key)
                 this.clearMessageStack();
@@ -845,9 +912,9 @@ class InputManager {
                 if (result.actionTaken) this.onPlayerAction();
             } else {
                 // Non-adjacent: walk to a tile adjacent to the solid actor, then collide
-                const adjTile = this.findAdjacentWalkableTile(targetX, targetY);
+                const adjTile = this.findAdjacentWalkableTile(collideX, collideY);
                 if (adjTile) {
-                    this.pendingCollisionTarget = { x: targetX, y: targetY };
+                    this.pendingCollisionTarget = { x: collideX, y: collideY };
                     this.executeAutoWalk(adjTile.x, adjTile.y);
                 }
             }
@@ -1987,7 +2054,9 @@ class InputManager {
             return;
         }
 
-        // Check if the actor info panel wants this key (Esc closes it)
+        // Any key dismisses the actor info panel. Only Esc is consumed here; every
+        // other key closes the panel and carries on to its normal action, so this must
+        // sit after the truly modal handlers above and before ordinary dispatch.
         if (this.engine.interfaceManager?.handleActorInfoKey(event.key)) {
             event.preventDefault();
             return;
@@ -2161,14 +2230,16 @@ class InputManager {
             // means "go with that" in all three contexts. With nothing armed it does
             // nothing rather than falling through to a stray action.
             case 'confirm_target':
-                // Mode-aware: on an armed ACTOR it looks rather than travels, the
-                // keyboard route to the same panel a click gives. Items and frontier
-                // picks still travel, so the key keeps one meaning per kind of thing
-                // rather than one meaning overall. Walking to a monster is still
-                // reachable — step toward it, or (x)plore, which always travels.
+                // Mode-aware: on an armed actor worth reading about it looks rather
+                // than travels — the keyboard route to the panel hover gives. Items,
+                // frontier picks, and actors with nothing to say (a door, a stairway)
+                // travel instead, so the key never does nothing visible. Walking to a
+                // monster is still reachable — step toward it, or (x)plore.
                 if (this.exploreArmed) {
                     const armed = this.exploreArmedTarget;
-                    if (armed?.kind === 'actor' && armed.entity && !armed.entity.isDead) {
+                    const readable = armed?.kind === 'actor' && armed.entity
+                        && !armed.entity.isDead && armed.entity.hasInfoPanel?.();
+                    if (readable) {
                         this.cancelExplorePreview();
                         this.engine.interfaceManager?.showActorInfo(armed.entity, player);
                     } else {
@@ -2300,6 +2371,11 @@ class InputManager {
     }
 
     onPlayerAction() {
+        // The info panel is large enough to cover much of the map, so anything that
+        // spends a turn closes it — you cannot usefully play behind it, and having to
+        // reach for Esc first would make reading a monster cost tempo.
+        this.engine.interfaceManager?.closeActorInfo();
+
         // Progress any equipping in progress
         const player = this.engine.entityManager?.player;
         if (player?.isEquipping()) {

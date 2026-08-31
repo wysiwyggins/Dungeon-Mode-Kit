@@ -682,11 +682,53 @@ Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a fu
 
 ## Info Panel
 
-Clicking a visible actor opens an info panel describing it, rather than walking there.
-The keyboard route is the same: `Tab` cycles targets, and on an actor the confirm key
-(`Enter` by default) looks instead of travelling. `Esc` closes it.
+**Hovering** a visible actor opens an info panel describing it; the panel swaps as the
+pointer moves between actors and closes when it leaves. **Clicking** is unaffected by the
+panel — it travels to the tile, which means attacking whatever is standing there.
 
-The panel is built from three sources, each independently optional:
+The pointer has to *rest* on the actor for `InterfaceManager.HOVER_INFO_DELAY` (260ms)
+before the panel opens, so sweeping across a crowded room opens nothing; moving on before
+the delay elapses cancels the open rather than opening a panel for an actor the pointer
+has already left. The panel then grows in via `InterfaceManager.growBoxOpen` — an empty
+box border expanding from the actor's tile to where the panel lands, drawn with the same
+box tiles as the panel itself, so it reads as coming *from* the thing you pointed at. The
+whole intro is under a tenth of a second, and it's abandoned mid-flight if anything closes
+the panel. `growBoxOpen` is generic and knows nothing about actors, so any window can open
+this way — pass the tile to grow from and a callback that draws the contents. The keyboard
+route opens flat: `Tab` already moved the player's attention to the target, so a second
+flourish would only delay it.
+
+The keyboard route is `Tab` to cycle targets, then the confirm key (`Enter` by default),
+which looks instead of travelling when the armed target is worth reading about. On
+anything else — an item, a frontier tile, a door — it travels as it always did.
+
+The panel is large enough to cover much of the map, so **any action dismisses it**, not
+just `Esc`: every key that isn't consumed by a modal closes the panel and then does its
+normal job, and `InputManager.onPlayerAction` catches the turn-taking routes that don't
+come from a keypress (mouse travel, menu commands). Reading a monster therefore never
+costs a keystroke or a turn.
+
+### What earns a panel (`Actor.hasInfoPanel()`)
+
+Not every actor gets one. A door, a stairway, a wall or a lever has nothing to say that
+the sidebar's hover line doesn't already say, and the trait sentence would answer
+questions nobody asked — *"It does not burn and acts on instinct alone."* — because
+`flammable` and `sentient` both speak for their falsy case. So a panel is earned, two
+ways:
+
+- an authored **`description`**, the designer saying "this is worth reading about"; or
+- **`sentient`**, so a creature always offers its traits and combat forecast even before
+  anyone writes its flavour text.
+
+That gives panels to every monster, plus described scenery like `turret`, `fungus` and
+`grave`, while doors, stairways, walls, levers and pedestals stay silent.
+
+Fire, gas and liquid are deliberately excluded and should stay that way: dozens are in
+play at once, so a panel per tile would fight the map for space while repeating itself.
+Their hover name plus the obvious fact that they're dangerous is the whole message.
+Adding a `description` to one would opt it in, which is why none has one.
+
+The panel itself is built from three sources, each independently optional:
 
 1. **`description`** — the actor's own text (see [Core Attributes](#core-attributes)).
 2. **Traits** — phrases derived from the actor's attributes, joined into one sentence.
