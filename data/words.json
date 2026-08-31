@@ -385,6 +385,21 @@
       "vegetal",
       "velvety",
       "of vinegar"
+    ],
+    "potion_looks": [
+      "oily",
+      "viscous",
+      "thin",
+      "opaque",
+      "translucent",
+      "bubbly",
+      "clear",
+      "leggy",
+      "clotted",
+      "cloudy",
+      "murky",
+      "dusty",
+      "opalescent"
     ]
   },
   "scrolls": {

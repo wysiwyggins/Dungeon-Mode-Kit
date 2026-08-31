@@ -330,7 +330,6 @@
       "flammable": true,
       "random_color": true,
       "identified": false,
-      "unidentified_template": "[color] potion",
       "description": "A delicate wildflower."
     }
   },
@@ -339,6 +338,7 @@
     "name": "mattock",
     "tileIndex": "MATTOCK",
     "identified": false,
+    "description": "A rusty pick for digging or striking, it's poorly made.",
     "attributes": {
       "pickupable": true,
       "visible": true,

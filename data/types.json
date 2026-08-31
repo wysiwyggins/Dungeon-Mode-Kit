@@ -97,7 +97,7 @@
     "name": "potion",
     "domain": "item",
     "description": "Glass vials of unknown liquid. Drunk once, then gone.",
-    "unidentified_description": "A glass vial of unknown liquid. There is no telling what it does until it is drunk or thrown.",
+    "unidentified_description": "A glass vial of [adjectives.potion_looks] [color] liquid. There is no telling what it does until it is drunk or thrown.",
     "flipV": true,
     "identified": false,
     "random_color": true,
@@ -221,7 +221,7 @@
     "unidentified_template": "[glyph_name] scroll",
     "attributes": {
       "consumable": true,
-      "description": "A scroll with strange runic markings.",
+      "description": "A dusty roll of parchment filled with strange markings.",
       "pickupable": true,
       "stackable": true,
       "use_ceremony": true,

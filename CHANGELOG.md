@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **`Actor.hasInfoPanel()`** Actors with `description` `sentient` can spawn new info windows. See [docs/ACTORS.md](docs/ACTORS.md#what-earns-a-panel-actorhasinfopanel).
+- **`Item.hasInfoPanel()`**
 - **`InterfaceManager.growBoxOpen()` — a reusable box-open animation.** A few quick frames of an empty border expanding from an origin tile to the box's final rect.
 - `placeBoxAwayFromPlayer` takes an `avoid` point.
 
