@@ -850,6 +850,14 @@ const EffectPrimitives = {
                     }
                     originalActorTextures = null;
                 }
+
+                // Items aren't scrambled visually, so they're not in the map above — but
+                // the hover line and info panel memoize a fake name onto them
+                // (InputManager.hallucinatedNameFor). Clear those too, or a floor item
+                // keeps its false name after the trip ends.
+                for (const item of ctx.engine.entityManager?.items || []) {
+                    delete item._hallucinatedTileNameBase;
+                }
             }
         };
     },

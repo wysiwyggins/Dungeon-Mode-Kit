@@ -1,11 +1,13 @@
 
 ## Bugs
 
-- the secret door pass led to some occasional weird door placement, such as a secret door that connects to the corner of a rectangular room, which does not grant entry due to the rule that prevents diagonal movement next to a solid wall. I also found a secret door next to a regular door on a wall between two rooms. I feel like trying to fix this is going to turn into churn and overly complex architect code (it already has)
+- In the dungeon generator, adding secret doors led to some occasional weird door placement— such as a secret door that connects to the corner of a rectangular room, which does not grant entry due to the rule that prevents diagonal movement next to a solid wall. I also found a secret door next to a regular door on a wall between two rooms. I feel like trying to fix this is going to turn into churn and overly complex architect code (it already has)
 
 ## Tweaks
 
-- ~~play/pause action is only meaningful on zero player prototypes, reclaim the space bar for wait/rest so we can use z for zap wands and staffs. On zero player prototypes space can go back to being play/pause~~ (done: space is bound to `wait` and falls back to play/pause when there is no player; `z` is now the `zap` action, which reuses the existing `use_verb: "Zap"` already declared by the staff and wand types)
+- ~~We shouldn't know what actors are while in a hallucinating state. Suppress info windows or add a totally unknown info window (this might actually be more fun, could make a templated "hallucination" description for things using an expanded words data file).~~ Done, including the templated version — `InterfaceManager.hallucinatedIdentity` swaps the whole panel body for "You cannot tell what this is. It looks like an intoning skull, but so does everything else.", built from `HALLUCINATION_TEMPLATE` so the vocabulary is data: `adjectives.hallucinated_states` in words.json had been authored with no reader. The noun is the same scrambled tile the sidebar shows, so the two can't disagree; the adjective re-rolls per call, since the churn is the point. Gated in `openInfoPanel`, so hover and Tab+Enter both inherit it.
+- ~~Items should have their tiles randomized while hallucinating too, also suppress or randomize the info window for items on the field but not in inventory. Inventory items remain "known".~~ Info window half done — floor items get a false name (memoized per item in `InputManager.hallucinatedNameFor`; it previously re-rolled on every mouse move, so the sidebar renamed an item continuously), and inventory items are exempt by inventory membership rather than `item.owner`, which survives a drop. **Still outstanding: the visual tile scramble.** `texture_scramble` (effects.js) iterates `entityManager.actors` only, so floor items keep their real sprites while their names lie.
+- If an actor's attack induces a state we should probably add that to its info window. No actor's attack applies a state yet — the three `apply_state` actors (web, quicksand, sewer_gas) are environmental, applied on entry rather than by a `collision_effect`. So this needs the attack-borne case to exist first.
 
 ---
 
@@ -15,6 +17,10 @@
 
 - `caverns` and `depths` biomes aren't actually that distinct from one another. Map out what all the actual strata are and create/name approprate biomes for the Dungeon prototype. (On inspection they're less alike than they look: `caves` weights cavern rooms with water/sewage and a high secret-door rate, `depths` shifts to geometric rooms and adds abyss blobs, collapsing floors and lava. The restratification is still worth doing.)
 - need an ossuary biome, which would need some nice new skull wall actors and that suggests:
+
+## Specifying enclosed items in Tiled
+
+- It's not clear to a designer how, in the "test" prototype, the key to the locked door was placed on the pedestal, it isn't specified either in the pedestal object in Tiled or in the prototype. Designers working on an authored map should be able to specify an item in a custom property of an actor object in order to give that object to the actor (such as a pedestal, grave, or in the inventory of a monster)
 
 ## Actor selectors in biome editor
 
@@ -69,8 +75,9 @@
 ### Actor info
 
 - ~~clicking on an actor could show an info window instead of pathing to them with click to walk. This should show the monster name and description, later we can build out more procedural info like brogue.~~ Done — clicking a visible actor opens the panel; travel to its tile is still reachable via Tab + (x)plore. Went further than name+description: traits come from `data/attribute-info.json` and a Brogue-style two-sided combat forecast is gated behind `tactician`.
-- ~~In addition to clicking we should have a keyboard-only way to select actors and items and getting info (tab to cycle through objects of interest works now- we add mode-aware action button (enter) to view info, or select when throwing/zapping)~~ Partly done — Tab + Enter opens the panel for an **actor**; Enter still travels for items and frontier picks, and the aiming modes still intercept it first. Items don't have a look-panel yet (they have the inventory action menu instead), so the item half is outstanding.
-- because the canvas viewport is prototype definable, could this be too much text for the canvas? we might need to implement paging in ui windows for overflow (paging is more desirable than scrolling)
+- ~~In addition to clicking we should have a keyboard-only way to select actors and items and getting info (tab to cycle through objects of interest works now- we add mode-aware action button (enter) to view info, or select when throwing/zapping)~~ Done — Tab + Enter opens the panel for anything with `hasInfoPanel()`, actors and floor items alike; frontier picks still travel, and the aiming modes still intercept Enter first.
+- ~~Item info panels~~ Done — modelled on Brogue's `itemDetails` (Items.c:1750), but most of that function's 850 lines are hardcoded per-kind prose we already hold in JSON. What was worth porting: the comparative equip forecast ("wearing this would change your defense from 4 to 6"), which names the displaced item, and the unidentified-item honesty. `Item.getPanelDescription` is the single identification gate; `previewEquipDelta` zeroes enchantment when unidentified, so the forecast can't be subtracted to reveal it. One shell (`openInfoPanel`) serves actors and items, and the inventory action menu renders the same body plus its verbs.
+- because the canvas viewport is prototype definable, could this be too much text for the canvas? we might need to implement paging in ui windows for overflow (paging is more desirable than scrolling). Measured: the tallest realistic item panel is ~21 rows against a 34-row shortest viewport, so not urgent — but a prototype with a shorter viewport would hit it.
 - if possible, clicking an actor or item name in the sidebar could highlight its tiles in the canvas and bring up the info canvas textbox
 
 ### Looping sound
@@ -81,6 +88,7 @@
 
 - A dialogue/options window
     This would be a new kind of interface window, like an alert, with an optional list of options, that would be used for a new conversation interaction that could be accessed by bumping into some non hostile actors. This would be a large new feature requiring planning. There could be a simple version, a switch statement that looks for a prototype variable to pick a message, or more complex- could use an existing library like ink (actor personalities could include a link to a corresponding ink file that is accessed when the personality state machine decides its a turn in which to talk). We should strive for simplicity.
+    Presentation is already in place: `growBoxOpen` opens a box out of the speaker's tile, and `showTextBox`'s `growFrom` option wires it up — personality taunts and death lines use it now, so a dialogue window growing from the NPC is the same call. Numbered options can follow `showItemActionMenu`'s pattern (`_actionStartLine`/`_actionCount` on the container for click hit-testing).
 - [ ] Dialogue trees — branching conversations with NPC actors, driven by JSON scripts like ink json exports.
 - [ ] Dialogue conditions — branches gated by inventory, variables, or prior choices
 - [ ] Dialogue effects — conversation choices that give/take items, set variables, trigger events

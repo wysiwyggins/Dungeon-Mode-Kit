@@ -108,6 +108,15 @@ class InterfaceManager {
      */
     static get HOVER_INFO_DELAY() { return 260; }
 
+    /**
+     * What the info panel says about anything a hallucinating player looks at. A
+     * template, so the vocabulary is data: both word lists live in words.json.
+     */
+    static get HALLUCINATION_TEMPLATE() {
+        return 'You cannot tell what this is. It looks like [a-an] '
+            + '[adjectives.hallucinated_states] [hallucinated_name], ';
+    }
+
     /** Default number of intro frames drawn before the box itself appears. */
     static get BOX_GROW_FRAMES() { return 2; }
 
@@ -5145,6 +5154,43 @@ class InterfaceManager {
     }
 
     /**
+     * What a hallucinating viewer sees instead of the truth, or null when they see
+     * straight. The name is the SAME scrambled tile the sidebar hover line uses
+     * (`_hallucinatedTileNameBase`, set per tick by the texture_scramble effect), so the
+     * panel and the line above it always name the same thing.
+     *
+     * Inventory items are exempt: you know what you're carrying. Only what's out in the
+     * world is in doubt, which is the split docs/IDEAS.md asks for.
+     *
+     * The prose is a template, so the vocabulary lives in words.json —
+     * `hallucinated_states` was authored for exactly this and had no reader until now.
+     * Re-rolled per call rather than memoized: the name has to hold still so the panel
+     * and the sidebar agree, but the thing it's *doing* churning each time is the point.
+     *
+     * @returns {{name: string, lines: string[]}|null}
+     */
+    hallucinatedIdentity(target, viewer) {
+        if (!viewer?.hasStateProperty?.('hallucinating')) return null;
+        if (target === viewer) return null;
+        // Carried items are known. Tested by inventory membership rather than
+        // `item.owner`, which survives a drop and would exempt the item forever.
+        if (viewer.inventory?.includes(target)) return null;
+
+        const im = this.engine.inputManager;
+        const name = im?.hallucinatedNameFor
+            ? im.hallucinatedNameFor(target)
+            : (target._hallucinatedTileNameBase || 'something').toLowerCase().replace(/_/g, ' ');
+
+        const text = resolveTemplate(
+            InterfaceManager.HALLUCINATION_TEMPLATE,
+            target,
+            { providers: { hallucinated_name: () => name } }
+        );
+
+        return { name, lines: this.wrapText(text, 30) };
+    }
+
+    /**
      * The shell both info panels share: name heading, mode handling, sizing, placement
      * and the optional grow intro. `buildBody` supplies everything between the heading
      * and the footer, so an actor and an item differ only in their text.
@@ -5179,9 +5225,16 @@ class InterfaceManager {
         const boxId = 'actor_info';
         const WRAP = 30;
 
-        const name = target.getDisplayName ? target.getDisplayName() : target.name;
+        // Hallucinating, the player can't identify what they're looking at — the sidebar
+        // hover line already scrambles the name, so a panel naming it outright would
+        // contradict the line directly above it.
+        const deceived = this.hallucinatedIdentity(target, viewer);
+
+        const name = deceived ? deceived.name
+            : (target.getDisplayName ? target.getDisplayName() : target.name);
         const lines = [this.capitalize(name), ''];
-        for (const line of buildBody(target, viewer, WRAP)) lines.push(line);
+        const body = deceived ? deceived.lines : buildBody(target, viewer, WRAP);
+        for (const line of body) lines.push(line);
 
         // Sections close with a blank spacer, which the footer sits on. Without a footer
         // that spacer would be a ragged empty row at the bottom of the box.
@@ -5571,10 +5624,6 @@ class InterfaceManager {
             this.actorInfoHoverTimer = null;
         }
         this.actorInfoHoverPending = null;
-    }
-
-    isActorInfoVisible() {
-        return this.boxes.has('actor_info');
     }
 
     // ========================================================================

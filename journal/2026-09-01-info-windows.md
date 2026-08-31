@@ -1,0 +1,12 @@
+---
+date: 2026-09-01
+author: Wiley Wiggins
+project: "Dungeon Mode Kit"
+---
+
+I got discouraged working on generator stuff last sprint. I had finally included the `search` action and added secret doors to the main generator (now called "dungeon") but secret door placement sucks. I think that most of the people I really look up to in the roguelike space, like Loren Schmidt, Brian Bucklew or Brian Walker, have fantastic minds for procgen and I have all of these design opinions about it but I'm somewhat helpless in implementing them. I think it's pretty obvious that the sophisticated "Palladian" generator type I added received a pretty hefty amount of help from mephistopheles, which has likely tainted me forever. Anyway, I now have a lot of silly secret door placement, but I decided to move on to some important UI additions that I've been looking forward to.
+Also my ideas about using WFC may not really pan out for something as complicated as a dungeon generator. It would have to be some sort of combination of WFC and something more sophisticated. I think all I can do for now is try to keep architect from becoming such an ugly hairball that no one else wants to touch it and find help from a human.
+
+### Info windows
+
+We already had limited info windows for the player and item info windows that are just verbs, now we have really packed info windows for important actors (anything with a description field or sentient true) and items. What's more is we have new interaction conventions for getting info on something out in the environment (keyboard or mouse driven) and a little minimal zoom animation that is reusable to other things like taunts (I was aiming for early GUI window zooms that were barely there).

@@ -1759,7 +1759,7 @@ class InputManager {
         const item = entityManager.getItemAt(tileX, tileY);
         if (item && item.hasAttribute('visible')) {
             if (isHallucinating) {
-                entities.push(this._getHallucinatedName());
+                entities.push(this._getHallucinatedName(item));
             } else {
                 entities.push(this.getEntityDescription(item));
             }
@@ -2018,15 +2018,33 @@ class InputManager {
     }
 
     /**
+     * The fake name a hallucinating player sees for `entity`, without an article.
+     *
+     * Stable per entity: actors get theirs from the texture_scramble effect, which
+     * re-rolls on a tick, and items — which that effect doesn't touch — get one
+     * memoized here. Without the memo the name re-rolled on every mouse move, so the
+     * sidebar renamed a floor item continuously and the info panel disagreed with it.
+     *
+     * @returns {string} e.g. "skull", "open door"
+     */
+    hallucinatedNameFor(entity, hoveredTopHalf = false) {
+        let raw = (hoveredTopHalf ? entity?._hallucinatedTileNameTop : null)
+            || entity?._hallucinatedTileNameBase;
+
+        if (!raw && entity) {
+            raw = entity._hallucinatedTileNameBase =
+                this.engine.spriteLibrary?.getRandomTileName() || 'something';
+        }
+
+        return (raw || 'something').toLowerCase().replace(/_/g, ' ');
+    }
+
+    /**
      * Generate a fake entity description from a random tile name (for hallucination)
      * @returns {string} A fake description like "a skull" or "an open door"
      */
     _getHallucinatedName(actor, hoveredTopHalf) {
-        const rawName = (hoveredTopHalf ? actor?._hallucinatedTileNameTop : null)
-            || actor?._hallucinatedTileNameBase
-            || this.engine.spriteLibrary?.getRandomTileName()
-            || 'something';
-        const displayName = rawName.toLowerCase().replace(/_/g, ' ');
+        const displayName = this.hallucinatedNameFor(actor, hoveredTopHalf);
         return `${this.getIndefiniteArticle(displayName)} ${displayName}`;
     }
 
@@ -2253,11 +2271,9 @@ class InputManager {
             // means "go with that" in all three contexts. With nothing armed it does
             // nothing rather than falling through to a stray action.
             case 'confirm_target':
-                // Mode-aware: on an armed target worth reading about it looks rather
-                // than travels — the keyboard route to the panel hover gives. Frontier
-                // picks and targets with nothing to say (a door, a stairway) travel
-                // instead, so the key never does nothing visible. Walking to a monster
-                // or an item is still reachable — step toward it, or (x)plore.
+                // A target worth reading about is looked at rather than travelled to —
+                // this is the keyboard route to the panel hover gives. Walking to it is
+                // still reachable: step toward it, or (x)plore.
                 if (this.exploreArmed) {
                     const armed = this.exploreArmedTarget;
                     const readable = armed?.entity && !armed.entity.isDead

@@ -6093,9 +6093,9 @@ class Actor extends Entity {
         const line = ROT.RNG.getItem(lines);
         if (!line) return false;
 
-        // Canvas bubble: truncate to keep it small, auto-dismiss on the next move. Grows
-        // out of the speaker, so with several actors on screen it is visually obvious
-        // which one spoke — the bubble is centered in the stack, not over its owner.
+        // Canvas bubble: truncated, dismissed on the next move, and grown out of the
+        // speaker — the box is centered in the stack, so the intro is what identifies
+        // who spoke when several actors are on screen.
         const iface = this.engine.interfaceManager;
         if (iface?.showTextBox) {
             const CANVAS_TAUNT_LIMIT = 32;
