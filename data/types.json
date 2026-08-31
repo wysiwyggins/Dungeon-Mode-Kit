@@ -141,6 +141,18 @@
     }
   },
 
+  "quest": {
+    "name": "relic",
+    "domain": "item",
+    "description": "Objectives, not equipment. Never stack, never burn, and are their own reward.",
+    "attributes": {
+      "flammable": false,
+      "pickupable": true,
+      "stackable": false,
+      "visible": true
+    }
+  },
+
   "weapon": {
     "name": "weapon",
     "domain": "item",

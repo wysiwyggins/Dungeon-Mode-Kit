@@ -1,10 +1,12 @@
 {
   "amulet": {
+    "type": "quest",
     "name": "Amulet of Yendor",
     "tileIndex": "WHITE_FEMALE_SYMBOL",
     "tint": "#ffaa00",
     "effect": "flicker_tint",
     "identified": false,
+    "description": "A shining sigil of starmetal, forged by Marduk.",
     "attributes": {
       "pickupable": true,
       "visible": true,
@@ -15,12 +17,14 @@
   },
 
   "grail": {
+    "type": "quest",
     "name": "The Grail",
     "tileIndex": "WHITE_GLAGOLITIC_CAPITAL_LETTER_IZHE",
     "tint": "#ffee00",
     "effect": "flicker_tint",
     "ignore_darkness": true,
     "identified": false,
+    "description": "A golden cup, everfilled",
     "attributes": {
       "pickupable": true,
       "visible": true,
@@ -60,7 +64,7 @@
       "flammable": true,
       "ignites": true,
       "lightRadius": 6,
-      "description": "A burning torch that lights the way.",
+      "description": "A small warmth pierces the cold dread surrounding.",
       "use_verb": "Extinguish",
       "use_effect": "toggle_torch",
       "toggle_to": "torch_unlit",
@@ -94,7 +98,7 @@
       "use_verb": "Light",
       "use_effect": "toggle_torch",
       "toggle_to": "torch",
-      "description": "An unlit torch. Can be lit when needed."
+      "description": "A cord of wood wrapped with oiled gauze."
     },
     "stats": {
       "burns": {
@@ -119,7 +123,7 @@
     "attributes": {
       "pickupable": true,
       "visible": true,
-      "description": "A burned-out torch. Useless."
+      "description": "A blackened nub. Useless."
     }
   },
 
@@ -141,6 +145,7 @@
     "name": "sword",
     "tileIndex": "CROSS",
     "flipV": true,
+    "description": "A length of razor-sharp steel.",
     "attributes": {
       "flammable": false,
       "collision_effect": {
@@ -160,6 +165,7 @@
     "name": "dagger",
     "tileIndex": "LATIN_SMALL_LETTER_T",
     "flipV": true,
+    "description": "A hand-length, iron belt-knife",
     "attributes": {
       "flammable": false,
       "collision_effect": {
@@ -184,12 +190,12 @@
       "flammable": false,
       "weapon": true,
       "collision_effect": {
-        "health": -5
+        "health": -4
       },
       "attack_sound": "bow",
       "collision_sound": "hit",
       "collision_description": "[actor_name] swipes at [attacked_actor_name] with a butter knife!",
-      "description": "[damage] damage. Better than nothing."
+      "description": "A piece of tableware. [damage] damage. Better than nothing."
     }
   },
 
@@ -205,7 +211,7 @@
         "health": -10
       },
       "collision_sound": "tap2",
-      "description": "A wooden arrow with a sharp point."
+      "description": "A straight wooden arrow with a cruel point."
     }
   },
 
