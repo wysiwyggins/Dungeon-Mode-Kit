@@ -603,20 +603,42 @@ class InputManager {
     }
 
     /**
+     * What the pointer at (x, y) is looking at — an actor if one is there, else an item
+     * on the floor. Actors win: standing on a sword, the monster is what you care about.
+     *
+     * Same visibility rule as actorAtPointer, and the same one the hover-name line uses
+     * for items, so the panel and the sidebar never disagree about what is under the
+     * cursor.
+     *
+     * @returns {Actor|Item|null}
+     */
+    pointerTarget(x, y) {
+        const actor = this.actorAtPointer(x, y);
+        if (actor) return actor;
+
+        const item = this.engine.entityManager?.getItemAt(x, y);
+        if (!item || item.isDead) return null;
+        if (!item.hasAttribute('visible')) return null;
+        if (!this.engine.isTileVisible(item.x, item.y)) return null;
+
+        return item;
+    }
+
+    /**
      * Open, swap or close the hover info panel for whatever the pointer is over.
      *
      * Called on every tile change, so it must be cheap when nothing changed: the
      * common case is the pointer moving over floor with no panel up, which exits on
-     * the first branch. Re-requesting the SAME actor is a no-op too, since the text
+     * the first branch. Re-requesting the SAME target is a no-op too, since the text
      * would be identical and re-creating the box makes it flicker.
      *
      * The panel does not open here — it is scheduled, and opens only if the pointer is
-     * still resting on the actor when the delay elapses (see scheduleHoverInfo), so
+     * still resting on the target when the delay elapses (see scheduleHoverInfo), so
      * sweeping across a crowded room opens nothing.
      *
-     * Actors that aren't worth a panel (a door, a stairway — see Actor.hasInfoPanel)
-     * cancel any pending open and close any open panel rather than showing a bare name
-     * the sidebar hover line already gives.
+     * Targets that aren't worth a panel (a door, a stairway — see hasInfoPanel) cancel
+     * any pending open and close any open panel rather than showing a bare name the
+     * sidebar hover line already gives.
      */
     updateHoverInfo(tileX, tileY) {
         const iface = this.engine.interfaceManager;
@@ -634,23 +656,23 @@ class InputManager {
         }
 
         const player = this.engine.entityManager?.player;
-        const actor = this.actorAtPointer(tileX, tileY);
-        const worth = actor && actor !== player && actor.hasInfoPanel?.();
+        const target = this.pointerTarget(tileX, tileY);
+        const worth = target && target !== player && target.hasInfoPanel?.();
 
         if (!worth) {
             iface.closeActorInfo();
             return;
         }
-        // Already showing this actor, or already counting down to it — leave both the
+        // Already showing this target, or already counting down to it — leave both the
         // open panel and any running timer alone. Checked before the close below, or
         // drifting within one large actor would restart its delay on every tile.
-        if (iface.actorInfoActor === actor || iface.actorInfoHoverPending === actor) return;
+        if (iface.actorInfoActor === target || iface.actorInfoHoverPending === target) return;
 
-        // Moving from one actor straight to another closes the first at once rather
+        // Moving from one target straight to another closes the first at once rather
         // than leaving it up through the new one's delay. Also cancels its timer.
         iface.closeActorInfo();
 
-        iface.scheduleHoverInfo(actor, player);
+        iface.scheduleHoverInfo(target, player);
     }
 
     // ---- Touch input handlers ----
@@ -1301,9 +1323,10 @@ class InputManager {
         // explore would otherwise render as the useless "press [explore] to go".
         const goKey = this.getKeyForAction('explore', 'x');
         const position = `${this.targetCycleIndex + 1}/${targets.length}`;
-        // On an actor the confirm key looks instead of travelling, so say so — the
-        // two keys do different things here and the hint is the only place that shows.
-        if (target.kind === 'actor') {
+        // On anything with a panel the confirm key looks instead of travelling, so say
+        // so — the two keys do different things here and the hint is the only place
+        // that shows it.
+        if (target.entity?.hasInfoPanel?.()) {
             const lookKey = this.getKeyForAction('confirm_target', 'Enter');
             this.showMessage(`Target: ${label} (${position}) — [${lookKey}] to look, [${goKey}] to go.`);
         } else {
@@ -2230,18 +2253,18 @@ class InputManager {
             // means "go with that" in all three contexts. With nothing armed it does
             // nothing rather than falling through to a stray action.
             case 'confirm_target':
-                // Mode-aware: on an armed actor worth reading about it looks rather
-                // than travels — the keyboard route to the panel hover gives. Items,
-                // frontier picks, and actors with nothing to say (a door, a stairway)
-                // travel instead, so the key never does nothing visible. Walking to a
-                // monster is still reachable — step toward it, or (x)plore.
+                // Mode-aware: on an armed target worth reading about it looks rather
+                // than travels — the keyboard route to the panel hover gives. Frontier
+                // picks and targets with nothing to say (a door, a stairway) travel
+                // instead, so the key never does nothing visible. Walking to a monster
+                // or an item is still reachable — step toward it, or (x)plore.
                 if (this.exploreArmed) {
                     const armed = this.exploreArmedTarget;
-                    const readable = armed?.kind === 'actor' && armed.entity
-                        && !armed.entity.isDead && armed.entity.hasInfoPanel?.();
+                    const readable = armed?.entity && !armed.entity.isDead
+                        && armed.entity.hasInfoPanel?.();
                     if (readable) {
                         this.cancelExplorePreview();
-                        this.engine.interfaceManager?.showActorInfo(armed.entity, player);
+                        this.engine.interfaceManager?.showEntityInfo(armed.entity, player);
                     } else {
                         this.commitExplore();
                     }

@@ -4611,42 +4611,6 @@ class Item extends Entity {
         'description', 'use_description', 'effect_description', 'collision_description'
     ];
 
-    /**
-     * What an info panel says about an unidentified item, by category.
-     *
-     * These describe the KIND of object without giving away the instance: what it looks
-     * like and that its properties are unknown. Brogue does the same thing with a
-     * per-category sprintf keyed off the item's flavor (Items.c:1808-1857).
-     *
-     * They live here rather than in types.json because the type-level `description`
-     * there is author-facing editor documentation ("Enchantable, and never stacks") and
-     * getItemData strips it before it can reach an instance. Categories whose type
-     * default IS player-facing prose — staff, wand, scroll — are deliberately absent, so
-     * getPanelDescription falls through and uses theirs.
-     */
-    /**
-     * Does a description interpolate a number the player shouldn't have yet?
-     *
-     * Any `[token]` that _statProviders can answer resolves to a real stat, so a
-     * description containing one cannot be shown before identification — "[damage]
-     * damage" on an unidentified axe gives away its rolled enchantment. Word-only
-     * templates ([a-an], [material]) are fine and stay readable.
-     *
-     * Deliberately a content test rather than a list of item ids: descriptions get added
-     * to more items over time, and each one should be gated by what it says, not by
-     * whether someone remembered to register it here. Add a provider to _statProviders
-     * and it belongs in this pattern too.
-     */
-    static QUOTES_A_STAT = /\[(damage|defense|strength|accuracy|awareness|knockback|critical_chance|lifesteal|mining_power|health_per_turn|nutrition_per_turn)\]/;
-
-    static UNIDENTIFIED_BLURBS = {
-        potion: 'A glass vial of unknown liquid. There is no telling what it does until it is drunk or thrown.',
-        ring: 'A worn band whose power, if it has one, is not apparent.',
-        weapon: 'Its balance and edge are unfamiliar. Use it, and you will learn what it can do.',
-        armor: 'Sturdy enough, though whether it is blessed, cursed or plain is impossible to tell unworn.',
-        food: 'Something to eat.',
-    };
-
     constructor(x, y, type, data, engine) {
         super(x, y, type, engine);
         this.name = data.name || type;
@@ -4727,6 +4691,15 @@ class Item extends Entity {
             if (data[key] !== undefined && data[key] !== null) {
                 this.setAttribute(key, data[key]);
             }
+        }
+
+        // A description at BOTH levels is a deliberate split, not a duplicate: sword's
+        // root text is what it looks like, its attribute text is what it does. The loop
+        // above would discard the root one, so keep it — only the stats text has to be
+        // withheld before identification. See getPanelDescription.
+        if (data.description && data.attributes?.description
+            && data.description !== data.attributes.description) {
+            this.setAttribute('flavor_description', data.description);
         }
 
         if (data.attributes) {
@@ -5065,10 +5038,9 @@ class Item extends Entity {
     /**
      * Whether this item is worth a full info panel.
      *
-     * Deliberately more permissive than Actor.hasInfoPanel: there are never dozens of
-     * items on screen the way there are gas clouds, and an item the player can pick up
-     * always has something to say — if only that it is unidentified. The line is
-     * `pickupable`, which excludes scenery items that happen to be Items.
+     * More permissive than Actor.hasInfoPanel — items are never on screen in gas-cloud
+     * numbers, and anything you can pick up has something to say. `pickupable` excludes
+     * scenery items.
      *
      * @returns {boolean}
      */
@@ -5077,65 +5049,56 @@ class Item extends Entity {
     }
 
     /**
-     * The description the player is allowed to read right now.
-     *
-     * `description` quotes real numbers — axe is "[damage] damage", and [damage] folds
-     * in the rolled enchantment (see _statProviders). Showing it on an unidentified
-     * item would hand over the enchantment the player is meant to learn by using the
-     * thing, so an unidentified item gets a category blurb about the *kind* of object
-     * instead: what it looks like, and that its properties are unknown.
-     *
-     * This mirrors Brogue's itemDetails, which swaps its identified description for a
-     * "who knows what it will do?" line keyed off the item's flavor (Items.c:1794).
-     *
-     * The gate lives here rather than at the call site so every panel inherits it; the
-     * inventory action menu previously carried its own copy of this check.
+     * Does this text quote a number the player hasn't earned yet? Derived from
+     * _statProviders rather than a hardcoded list, so it covers the wear_effect keys
+     * that map dynamically and can't fall behind as providers are added.
+     * @returns {boolean}
+     */
+    quotesAStat(text) {
+        if (!text) return false;
+        return Object.keys(this._statProviders()).some(key => text.includes(`[${key}]`));
+    }
+
+    /**
+     * The description the player is allowed to read right now. Gated here rather than at
+     * the call site so every panel inherits it: `description` quotes real numbers
+     * ("[damage] damage" folds in the rolled enchantment), so an unidentified item gets
+     * category text instead. Mirrors Brogue's itemDetails (Items.c:1794).
      *
      * @returns {string|null}
      */
     getPanelDescription() {
         if (this.identified !== false) return this.getDescription();
 
-        const category = this.getCategory();
+        const resolve = (text) => resolveTemplate(text, this,
+            { memoize: true, providers: this._statProviders() });
+
+        // Authored flavor wins — it was written for this item, unlike a category blurb.
+        const flavor = this.getAttribute('flavor_description');
+        if (flavor && !this.quotesAStat(flavor)) return resolve(flavor);
+
+        // Items declaring no `type` fall back to what they do: mattock and misiricorde
+        // are weapons by attribute only.
+        const types = this.engine?.currentPrototype?.types;
+        const blurbFor = (cat) => types?.[cat]?.unidentified_description;
+        const blurb = blurbFor(this.getCategory())
+            ?? (this.hasAttribute('weapon') ? blurbFor('weapon') : null)
+            ?? (this.getAttribute('wearable') ? blurbFor('armor') : null);
+        if (blurb) return resolve(blurb);
+
+        // No blurb, so the authored text is safe only if it quotes no stats — which is
+        // how the staff/wand/scroll type defaults pass.
         const authored = this.getAttribute('description');
-
-        // A category blurb, where one exists, always wins for an unidentified item:
-        // the authored `description` is the identified text and may quote numbers.
-        const blurb = Item.UNIDENTIFIED_BLURBS[category]
-            // A third of the catalog declares no `type` but is still plainly a weapon
-            // or a piece of armour by attribute (mattock, crown, misiricorde). Fall back
-            // to what the item DOES, or those get no unidentified text at all.
-            ?? (this.hasAttribute('weapon') ? Item.UNIDENTIFIED_BLURBS.weapon : null)
-            ?? (this.getAttribute('wearable') ? Item.UNIDENTIFIED_BLURBS.armor : null);
-        if (blurb) return blurb;
-
-        if (!authored) return null;
-
-        // Staves, wands and scrolls carry a type-level `description` written for exactly
-        // this moment ("A scroll with strange runic markings"), so it is safe by
-        // construction. Anything else is the identified text.
-        const typeDefault = this.engine?.currentPrototype?.types?.[category]
-            ?.attributes?.description;
-
-        // Otherwise the text is safe only if it quotes no numbers: a description that
-        // interpolates a stat would hand over that stat. This is what lets a torch say
-        // "A burning torch that lights the way" while an axe stays silent — and it means
-        // descriptions added later are gated on their content, not on being listed here.
-        if (authored !== typeDefault && Item.QUOTES_A_STAT.test(authored)) return null;
-
-        return resolveTemplate(authored, this, { memoize: true, providers: this._statProviders() });
+        if (!authored || this.quotesAStat(authored)) return null;
+        return resolve(authored);
     }
 
     /**
      * This item's category — 'potion', 'ring', 'weapon' — or null if it declares none.
      *
-     * Note that `type` means two things in this codebase: on an item DEFINITION
-     * (items.json) `type` is the category, which is what types.json keys off and what
-     * getItemsOfType indexes; on an item INSTANCE `this.type` is the item id
-     * ('health_potion'), because Entity's constructor takes the id as its type argument.
-     * getItemData merges the category's defaults into the definition but the category
-     * name itself doesn't survive onto the instance, so read it back from the
-     * definition. That lookup is memoized in _resolvedItems, so this is a map hit.
+     * `type` means two things here: on a DEFINITION it's the category, on an INSTANCE
+     * `this.type` is the item id ('health_potion'). The category doesn't survive onto the
+     * instance, so read it back from the definition — memoized, so this is a map hit.
      *
      * @returns {string|null}
      */
@@ -5144,22 +5107,13 @@ class Item extends Entity {
     }
 
     /**
-     * What equipping this item would do to the wearer's stats, without equipping it.
+     * What equipping this item would do to the wearer's stats, without equipping it —
+     * Brogue reports the rating you'd end up with, not the item's raw number
+     * (Items.c:1953-2008).
      *
-     * Brogue's info panel does not say "this armor is 7 defense", it says wearing it
-     * "will result in an armor rating of 9" — the number that matters is the one you
-     * end up with, compared to what you have now (Items.c:1953-2008). This computes
-     * that comparison.
-     *
-     * Implemented by swapping the item into its slot, re-reading the SAME effective-stat
-     * getters the rest of the engine uses, then restoring. That is deliberate: the
-     * alternative is re-deriving the totals here, which would drift from
-     * getEffectiveDefense the first time its rules changed — and its rules are subtle
-     * (enchantment only counts when wear_effect.defense exists, engine.js:7195). This
-     * is the same discipline predictCombat follows by sharing scaleDamage.
-     *
-     * The swap is synchronous and restored in a finally block, so no observer can see
-     * the intermediate state.
+     * Swaps the item into its slot and re-reads the same getEffective* getters the engine
+     * uses, rather than re-deriving the totals here, which would drift from their subtler
+     * rules. Restored in a finally, so nothing observes the intermediate state.
      *
      * @param {Actor} wearer - The actor considering the item
      * @returns {Object|null} { slot, displaced, changes: [{stat, from, to}], canEquip,
@@ -5176,8 +5130,8 @@ class Item extends Entity {
         } else {
             const wearable = this.getAttribute('wearable');
             if (wearable === 'ring') {
-                // First free ring slot, else ring1 — matching Actor.equipItem:7899, which
-                // is why the displaced ring has to be named rather than left implicit.
+                // First free ring slot, else ring1 — matches Actor.equipItem, and is why
+                // the displaced ring has to be named rather than left implicit.
                 slot = !wearer.equipment.ring1 ? 'ring1'
                     : !wearer.equipment.ring2 ? 'ring2' : 'ring1';
             } else if (['top', 'middle', 'lower'].includes(wearable)) {
@@ -5189,8 +5143,7 @@ class Item extends Entity {
         const displaced = wearer.equipment[slot] || null;
         const { canEquip, reason } = wearer.canEquipItem?.(this) ?? { canEquip: true, reason: null };
 
-        // Read the stats that equipment can actually move. accuracy returns null for
-        // actors with no accuracy attribute, which is not the same as zero.
+        // accuracy is null for actors with no accuracy attribute, which isn't zero.
         const read = () => ({
             accuracy: wearer.getEffectiveAccuracy?.() ?? null,
             defense: wearer.getEffectiveDefense?.() ?? null,
@@ -5199,15 +5152,10 @@ class Item extends Entity {
 
         const before = read();
         let after;
-        const original = wearer.equipment[slot];
 
-        // An unidentified item must forecast from its BASE stats, with enchantment
-        // zeroed. getEffectiveDefense adds enchantment whenever wear_effect.defense
-        // exists (engine.js:7195), so forecasting an unidentified +2 chainmail would
-        // print "defense 0 to 10" against a listed 8 — the player subtracts and reads
-        // off the enchantment we are supposed to be hiding. Zeroing it means the panel
-        // promises only what the item's category guarantees, which is exactly what
-        // "assumes no hidden enchantment" claims.
+        // Zero enchantment when unidentified: getEffectiveDefense folds it in, so a +2
+        // chainmail would forecast 10 against a listed 8 and the player could subtract to
+        // read off the enchantment we are hiding.
         const hideEnchantment = this.identified === false && this.enchantment;
         const trueEnchantment = this.enchantment;
 
@@ -5216,7 +5164,7 @@ class Item extends Entity {
             wearer.equipment[slot] = this;
             after = read();
         } finally {
-            wearer.equipment[slot] = original;
+            wearer.equipment[slot] = displaced;
             if (hideEnchantment) this.enchantment = trueEnchantment;
         }
 
@@ -5228,7 +5176,7 @@ class Item extends Entity {
             changes.push({ stat, from, to });
         }
 
-        return { slot, displaced, changes, canEquip, reason, enchantmentHidden: !!hideEnchantment };
+        return { slot, displaced, changes, canEquip, reason };
     }
 
     /**
@@ -6145,12 +6093,18 @@ class Actor extends Entity {
         const line = ROT.RNG.getItem(lines);
         if (!line) return false;
 
-        // Canvas bubble: truncate to keep it small, auto-dismiss on the next move.
+        // Canvas bubble: truncate to keep it small, auto-dismiss on the next move. Grows
+        // out of the speaker, so with several actors on screen it is visually obvious
+        // which one spoke — the bubble is centered in the stack, not over its owner.
         const iface = this.engine.interfaceManager;
         if (iface?.showTextBox) {
             const CANVAS_TAUNT_LIMIT = 32;
             const short = iface.truncateText ? iface.truncateText(line, CANVAS_TAUNT_LIMIT) : line;
-            iface.showTextBox(`taunt_${this.x}_${this.y}`, short, { dismissOnMove: true });
+            iface.showTextBox(`taunt_${this.x}_${this.y}`, short, {
+                dismissOnMove: true,
+                // A tall actor speaks from its head, not its feet.
+                growFrom: { x: this.x, y: this.height === 2 ? this.y - 1 : this.y },
+            });
         }
 
         // Sidebar: the full line, visibility-gated by showMessage's {x,y}.

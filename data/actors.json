@@ -1337,6 +1337,7 @@
     "name": "pedestal",
     "tileIndexBase": "WHITE_DOOR_TOP",
     "tileIndexTop": "WHITE_DIAMOND_SUITE",
+    "description": "A magic plinth that holds a single item steadfast.",
     "attributes": {
       "paint_tile": "WHITE_DOOR_TOP",
       "solid": true,
@@ -1346,7 +1347,7 @@
     "default_items": [
       "key"
     ],
-    "collision_description": "The item on the pedestal is held fast."
+    "collision_description": "The item cannot be removed."
   },
   "water": {
     "name": "water",

@@ -87,12 +87,13 @@ class InterfaceManager {
         // Help window state
         this.helpWindowMode = false;
 
-        // Actor info panel: which actor is being looked at, if any
+        // Info panel: which entity is being looked at, if any. Holds an Actor or an Item
+        // — both routes share one box, so only one can be open at a time.
         this.actorInfoMode = false;
         this.actorInfoActor = null;
-        // Pending hover-open timer, and the actor it will open for. Held so a pointer
+        // Pending hover-open timer, and the entity it will open for. Held so a pointer
         // that moves on before the delay elapses cancels the open entirely rather than
-        // opening a panel for an actor it has already left.
+        // opening a panel for something it has already left.
         this.actorInfoHoverTimer = null;
         this.actorInfoHoverPending = null;
 
@@ -857,6 +858,17 @@ class InterfaceManager {
     }
 
     /**
+     * Join phrases as English prose: "a", "a and b", "a, b and c". Used wherever the
+     * panels turn a computed list into a sentence.
+     * @param {string[]} parts
+     * @returns {string}
+     */
+    joinProse(parts) {
+        if (parts.length <= 1) return parts[0] || '';
+        return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+    }
+
+    /**
      * Word-wrap text to fit within a maximum width
      * @param {string} text - Text to wrap
      * @param {number} maxWidth - Maximum width in characters
@@ -902,7 +914,12 @@ class InterfaceManager {
      * @param {number} options.fillColor - Background color (default: white)
      * @param {number} options.borderTint - Border color (default: black)
      * @param {boolean} options.dismissOnMove - Remove box when player moves (default: false)
-     * @returns {PIXI.Container} The text box container
+     * @param {{x:number,y:number}} [options.growFrom] - Tile to play the box-grow intro
+     *   from, so a spoken line reads as coming out of the speaker. The box is created
+     *   after the intro, so this returns null — callers needing the container must not
+     *   pass it.
+     * @returns {PIXI.Container|null} The text box container, or null when growFrom defers
+     *   creation past the return
      */
     showTextBox(id, text, options = {}) {
         const vis = this.getVisibleArea();
@@ -949,51 +966,71 @@ class InterfaceManager {
         );
         const y = stackTop + stackOffset;
 
-        // Create the box
-        const boxContainer = this.createBox(id, x, y, boxWidth, boxHeight, {
-            fillColor,
-            borderTint
-        });
+        const drawBox = () => {
+            // Create the box
+            const boxContainer = this.createBox(id, x, y, boxWidth, boxHeight, {
+                fillColor,
+                borderTint
+            });
 
-        if (!boxContainer) return null;
+            if (!boxContainer) return null;
 
-        // Store box height for stacking calculations
-        boxContainer._boxHeight = boxHeight;
+            // Store box height for stacking calculations
+            boxContainer._boxHeight = boxHeight;
 
-        // Add to stack
-        this.textBoxStack.push(id);
+            // Add to stack
+            this.textBoxStack.push(id);
 
-        // Handle dismissOnMove option
-        if (dismissOnMove) {
-            // Check if there's a player-controlled actor
-            const hasPlayer = this.engine.entityManager?.actors.some(
-                a => a.hasAttribute('controlled') && !a.isDead
-            );
+            // Handle dismissOnMove option
+            if (dismissOnMove) {
+                // Check if there's a player-controlled actor
+                const hasPlayer = this.engine.entityManager?.actors.some(
+                    a => a.hasAttribute('controlled') && !a.isDead
+                );
 
-            if (hasPlayer) {
-                // Dismiss on next player move
-                this.dismissOnMoveBoxes.add(id);
-            } else {
-                // No player - auto dispose after timer (3 seconds + 1 second per line)
-                const delay = 3000 + (lines.length * 1000);
-                const timer = setTimeout(() => {
-                    this.removeTextBox(id);
-                }, delay);
-                this.autoDisposeTimers.set(id, timer);
+                if (hasPlayer) {
+                    // Dismiss on next player move
+                    this.dismissOnMoveBoxes.add(id);
+                } else {
+                    // No player - auto dispose after timer (3 seconds + 1 second per line)
+                    const delay = 3000 + (lines.length * 1000);
+                    const timer = setTimeout(() => {
+                        this.removeTextBox(id);
+                    }, delay);
+                    this.autoDisposeTimers.set(id, timer);
+                }
             }
+
+            // Add text sprites
+            const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
+            const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
+
+            for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+                const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+                this.renderTextLine(boxContainer, lines[lineIndex], textStartX, charY, textTint);
+            }
+
+            this.updateBoxOverlays();
+            return boxContainer;
+        };
+
+        // A spoken line grows out of the speaker. The intro is drawn with this box's own
+        // fill and border, so the frames read as this bubble opening rather than a
+        // separate white flash.
+        if (options.growFrom) {
+            this.growBoxOpen({
+                id, x, y, width: boxWidth, height: boxHeight,
+                from: options.growFrom,
+                // A growing box isn't in the stack yet, so its slot was computed without
+                // it — a second line arriving mid-intro would land on the same row.
+                // Restacking on arrival re-derives every position from the real stack.
+                draw: () => { drawBox(); this.repositionTextBoxStack(); },
+                boxOptions: { fillColor, borderTint },
+            });
+            return null;
         }
 
-        // Add text sprites
-        const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
-        const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
-
-        for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-            const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
-            this.renderTextLine(boxContainer, lines[lineIndex], textStartX, charY, textTint);
-        }
-
-        this.updateBoxOverlays();
-        return boxContainer;
+        return drawBox();
     }
 
     /**
@@ -1439,24 +1476,12 @@ class InterfaceManager {
         lines.push(displayName);
         lines.push(''); // blank line
 
-        // Add description — hide specifics for unidentified items
-        let description = item.getDescription ? item.getDescription() : item.getAttribute('description');
-        if (item.identified === false) {
-            description = null;
-        }
-        if (description) {
-            const wrappedDesc = this.wrapText(description, 20);
-            for (const line of wrappedDesc) {
-                lines.push(line);
-            }
-            lines.push('');
-        }
-
-        // Show charges for staves/wands (only when identified)
-        const chargeStat = item.getAttribute('charge_stat');
-        if (chargeStat && item.stats?.[chargeStat] && item.identified !== false) {
-            const s = item.stats[chargeStat];
-            lines.push(`Charges: ${s.current}/${s.max}`);
+        // Description, effect, equip forecast and charges — the same text the standalone
+        // info panel shows, so the two can't disagree. Brogue's carried-item panel is
+        // itemDetails plus buttons for exactly this reason (IO.c:4734).
+        const info = this.buildItemInfoLines(item, this.currentPlayer, 26);
+        if (info.length) {
+            for (const line of info) lines.push(line);
             lines.push('');
         }
 
@@ -5073,24 +5098,75 @@ class InterfaceManager {
      * are gated on the viewer's `tactician` attribute so a prototype decides whether
      * its player reads fights numerically or has to judge them by eye.
      *
-     * Opens in one of two modes. The keyboard route (Tab + Enter) is `sticky`: it
-     * takes over as the active box and holds until Esc, because the player asked a
-     * deliberate question. Hover is not — it is a passive read that must not steal
-     * the active box or swallow Esc, and it closes itself the moment the mouse
-     * leaves. Same panel either way, so there is only one place the text is built.
-     *
      * @param {Actor} actor - The actor to describe
      * @param {Actor} [viewer] - Whose perspective the combat math is from
-     * @param {Object} [options]
-     * @param {boolean} [options.sticky=true] - Hold until dismissed (keyboard route)
-     * @param {boolean} [options.grow=false] - Play the box-grow intro from the actor
-     *   first. Hover uses it; the keyboard route opens flat, since Tab already moved
-     *   the player's attention to the target and a second flourish would only delay it.
+     * @param {Object} [options] - See openInfoPanel
      */
     showActorInfo(actor, viewer = null, options = {}) {
-        if (!actor) return;
+        this.openInfoPanel(actor, viewer, options, (target, v, wrap) => {
+            const lines = [];
+
+            const description = target.getDescription?.();
+            if (description) {
+                for (const line of this.wrapText(description, wrap)) lines.push(line);
+                lines.push('');
+            }
+
+            // Traits, joined as prose: "It flies, sees in the dark and burns easily."
+            const traits = target.getTraitPhrases?.() || [];
+            if (traits.length) {
+                for (const line of this.wrapText(`It ${this.joinProse(traits)}.`, wrap)) {
+                    lines.push(line);
+                }
+                lines.push('');
+            }
+
+            // Combat math — opt-in per prototype via `tactician` on the viewing actor.
+            // Skipped when looking at yourself: the panel would be comparing you to you.
+            if (v && v !== target && v.hasAttribute?.('tactician')) {
+                for (const line of this.buildCombatLines(target, v, wrap)) lines.push(line);
+            }
+
+            return lines;
+        });
+    }
+
+    /**
+     * The item counterpart of showActorInfo — same box, same modes, same intro, so a
+     * hover that crosses from a monster to a dropped sword behaves identically.
+     *
+     * @param {Item} item - The item to describe
+     * @param {Actor} [viewer] - Whose stats the equip forecast compares against
+     * @param {Object} [options] - As showActorInfo
+     */
+    showItemInfo(item, viewer = null, options = {}) {
+        this.openInfoPanel(item, viewer, options,
+            (target, v, wrap) => this.buildItemInfoLines(target, v, wrap));
+    }
+
+    /**
+     * The shell both info panels share: name heading, mode handling, sizing, placement
+     * and the optional grow intro. `buildBody` supplies everything between the heading
+     * and the footer, so an actor and an item differ only in their text.
+     *
+     * Two modes. The keyboard route (Tab + Enter) is `sticky`: it takes over as the
+     * active box and holds until Esc, because the player asked a deliberate question.
+     * Hover is not — a passive read that must not steal the active box or swallow Esc,
+     * and closes itself when the pointer leaves.
+     *
+     * @param {Actor|Item} target - What the panel is about
+     * @param {Actor|null} viewer - Whose perspective the body is written from
+     * @param {Object} options
+     * @param {boolean} [options.sticky=true] - Hold until dismissed (keyboard route)
+     * @param {boolean} [options.grow=false] - Play the box-grow intro from the target.
+     *   Hover uses it; the keyboard route opens flat, since Tab already moved the
+     *   player's attention there and a second flourish would only delay it.
+     * @param {function(target, viewer, wrap): string[]} buildBody - Body lines
+     */
+    openInfoPanel(target, viewer, options, buildBody) {
+        if (!target) return;
         const sticky = options.sticky ?? true;
-        if (!actor.hasInfoPanel?.()) return;
+        if (!target.hasInfoPanel?.()) return;
         viewer = viewer || this.engine.entityManager?.player || null;
 
         if (sticky) this.hidePlayerInfo();
@@ -5098,46 +5174,21 @@ class InterfaceManager {
         if (sticky) this.clearTargetingHighlights();
 
         this.actorInfoMode = sticky;
-        this.actorInfoActor = actor;
+        this.actorInfoActor = target;
 
         const boxId = 'actor_info';
         const WRAP = 30;
-        const lines = [];
 
-        const name = actor.getDisplayName ? actor.getDisplayName() : actor.name;
-        lines.push(this.capitalize(name));
-        lines.push('');
+        const name = target.getDisplayName ? target.getDisplayName() : target.name;
+        const lines = [this.capitalize(name), ''];
+        for (const line of buildBody(target, viewer, WRAP)) lines.push(line);
 
-        const description = actor.getDescription?.();
-        if (description) {
-            for (const line of this.wrapText(description, WRAP)) lines.push(line);
-            lines.push('');
-        }
-
-        // Traits, joined as prose: "It flies, sees in the dark and burns easily."
-        const traits = actor.getTraitPhrases?.() || [];
-        if (traits.length) {
-            const joined = traits.length === 1
-                ? traits[0]
-                : `${traits.slice(0, -1).join(', ')} and ${traits[traits.length - 1]}`;
-            for (const line of this.wrapText(`It ${joined}.`, WRAP)) lines.push(line);
-            lines.push('');
-        }
-
-        // Combat math — opt-in per prototype via `tactician` on the viewing actor.
-        // Skipped when looking at yourself: the panel would be comparing you to you.
-        if (viewer && viewer !== actor && viewer.hasAttribute?.('tactician')) {
-            for (const line of this.buildCombatLines(actor, viewer, WRAP)) lines.push(line);
-        }
-
-        // Each section above closes with a blank spacer line, which the footer used to
-        // sit on. Without a footer that spacer would be a ragged empty row at the
-        // bottom of the box, so drop any trailing blanks before measuring.
+        // Sections close with a blank spacer, which the footer sits on. Without a footer
+        // that spacer would be a ragged empty row at the bottom of the box.
         while (lines.length && lines[lines.length - 1] === '') lines.pop();
 
-        // Only the sticky panel needs dismissing; a hover panel goes away by itself,
-        // so telling the player to press Esc would be a lie. The blank keeps the
-        // footer off the last line of prose, as it has always read.
+        // Only the sticky panel needs dismissing; a hover panel goes away by itself, so
+        // telling the player to press Esc would be a lie.
         if (sticky) {
             lines.push('');
             lines.push('Esc to close');
@@ -5145,14 +5196,12 @@ class InterfaceManager {
 
         const padding = 1;
         const contentWidth = Math.max(...lines.map(l => this.stripMarkup(l).length), 16);
-        const contentHeight = lines.length;
         const boxWidth = contentWidth + (padding * 2) + 2;
-        const boxHeight = contentHeight + (padding * 2) + 2;
+        const boxHeight = lines.length + (padding * 2) + 2;
 
-        // Keep the box off the actor as well as the player — you are pointing at it.
-        const { x, y } = this.placeBoxAwayFromPlayer(boxWidth, boxHeight, { avoid: actor });
+        // Keep the box off the target as well as the player — you are pointing at it.
+        const { x, y } = this.placeBoxAwayFromPlayer(boxWidth, boxHeight, { avoid: target });
 
-        // Draw the finished panel, once any intro has played.
         const drawPanel = () => {
             const boxContainer = this.createBox(boxId, x, y, boxWidth, boxHeight);
             if (!boxContainer) { this.actorInfoMode = false; this.actorInfoActor = null; return; }
@@ -5170,11 +5219,11 @@ class InterfaceManager {
         if (options.grow) {
             this.growBoxOpen({
                 id: boxId, x, y, width: boxWidth, height: boxHeight,
-                from: actor,
+                from: target,
                 draw: drawPanel,
                 // Anything that closed the panel mid-intro (a keypress, the pointer
                 // moving on) abandons it rather than letting it finish into a panel.
-                abort: () => this.actorInfoActor !== actor,
+                abort: () => this.actorInfoActor !== target,
             });
         } else {
             drawPanel();
@@ -5347,20 +5396,11 @@ class InterfaceManager {
     }
 
     /**
-     * The full text of an item info panel, as wrapped lines.
+     * The full text of an item info panel, as wrapped lines — in Brogue's order
+     * (Items.c:1750): what it is, what it does, then the numbers. The heading is the
+     * caller's, since the inventory menu already draws one.
      *
-     * Mirrors the order Brogue's itemDetails uses (Items.c:1750): name, what the thing
-     * is, what it does, then the numbers — because that is the order the questions
-     * arrive in. The name is omitted here; callers own the heading, since the inventory
-     * menu already draws one.
-     *
-     * Every fact shown is gated on identification, and the gate lives in
-     * Item.getPanelDescription rather than here — an unidentified item's `description`
-     * quotes its rolled enchantment, so a panel that read `description` directly would
-     * leak the number the player is meant to discover by use.
-     *
-     * Returns lines only; the caller measures and draws. Sections are separated by a
-     * single blank, and no trailing blank is emitted.
+     * Identification gating lives in Item.getPanelDescription, not here.
      *
      * @param {Item} item - The item to describe
      * @param {Actor|null} viewer - Whose stats the equip forecast compares against
@@ -5376,29 +5416,19 @@ class InterfaceManager {
 
         const identified = item.identified !== false;
 
-        // What it is. Withheld or swapped for a category blurb when unidentified.
         const description = item.getPanelDescription?.();
         if (description) push(description);
 
-        // What its effect does, stated in the abstract. Only once identified: on a
-        // potion this names the effect outright, which is the whole secret.
+        // Identified only: on a potion the effect IS the secret.
         if (identified) {
             const effect = item.getEffectDescription?.();
-            // Several items say nearly the same thing twice — health_potion's
-            // description is "Restores health, but clouds the mind" and its
-            // effect_description "It restores Health but clouds the mind". Printing both
-            // reads as a rendering bug, so drop the second when it adds no words.
-            if (effect && !this.saysSameThing(effect, description)) {
+            if (effect) {
                 gap();
-                // effect_description is authored as a fragment ("It restores Health"),
-                // so it may arrive without terminal punctuation.
+                // Authored as a fragment ("It restores Health"), so may lack a full stop.
                 push(/[.!?]$/.test(effect) ? effect : `${effect}.`);
             }
         }
 
-        // What equipping it would do, as a before/after. The forecast reads real
-        // enchantment, so it is identified-only for enchantable gear; a ring's slot
-        // displacement is still worth stating either way.
         if (viewer) {
             const preview = item.previewEquipDelta?.(viewer);
             if (preview) {
@@ -5409,9 +5439,8 @@ class InterfaceManager {
             }
         }
 
-        // Charges and condition. Both are visible on the item itself — a torch's fuel
-        // gauge is not a magical property — so these do not wait on identification,
-        // except a staff's charge count, which is part of what identifying tells you.
+        // Fuel and condition are visible on the item itself, so they don't wait on
+        // identification — a staff's charge count does, being part of what ID tells you.
         const chargeStat = item.getAttribute('charge_stat');
         const statLines = [];
         for (const [key, stat] of Object.entries(item.stats || {})) {
@@ -5425,15 +5454,9 @@ class InterfaceManager {
             for (const line of statLines) out.push(line);
         }
 
-        // Say plainly that it is unidentified, rather than leaving the player to infer
-        // it from an absence. Brogue does this too, and goes further — it names the
-        // exact cost of finding out ("defeat 3 more enemies with it"). We have no
-        // use-count-to-identify mechanic, so it stays a statement of state.
-        //
-        // Only when something was actually withheld, though. The category blurbs
-        // already END on the mystery ("no telling what it does until it is drunk"), so
-        // adding this after one is just saying it twice.
-        if (!identified && !Item.UNIDENTIFIED_BLURBS[item.getCategory?.()]) {
+        // Only when the category had no stand-in text of its own — those already end on
+        // the mystery ("no telling what it does until it is drunk"), so this would repeat.
+        if (!identified && !this.categoryBlurbFor(item)) {
             gap();
             push('Its properties are unknown.');
         }
@@ -5442,44 +5465,16 @@ class InterfaceManager {
         return out;
     }
 
-    /**
-     * Do two description strings carry the same information?
-     *
-     * Compares significant words, ignoring case, punctuation and the filler that
-     * differs between an item's `description` and its `effect_description` — several
-     * items say the same thing twice in slightly different words ("Restores health, but
-     * clouds the mind" / "It restores Health but clouds the mind"), and printing both
-     * reads as a bug rather than as two facts.
-     */
-    saysSameThing(a, b) {
-        if (!a || !b) return false;
-        const key = (s) => {
-            const words = String(s).toLowerCase()
-                .replace(/[^a-z0-9\s]/g, ' ')
-                .split(/\s+/)
-                .filter(w => w && !['it', 'its', 'the', 'a', 'an', 'and', 'but', 'you', 'your',
-                    'this', 'that', 'is', 'are', 'will', 'while', 'when', 'of', 'to'].includes(w));
-            return new Set(words);
-        };
-        const ka = key(a);
-        const kb = key(b);
-        if (!ka.size || !kb.size) return false;
-
-        // Subset either way: effect_description is usually the shorter restatement.
-        const smaller = ka.size <= kb.size ? ka : kb;
-        const larger = ka.size <= kb.size ? kb : ka;
-        let shared = 0;
-        for (const w of smaller) if (larger.has(w)) shared++;
-        return shared / smaller.size >= 0.8;
+    /** The unidentified stand-in text for an item's category, if types.json defines one. */
+    categoryBlurbFor(item) {
+        const types = this.engine.currentPrototype?.types;
+        return types?.[item.getCategory?.()]?.unidentified_description || null;
     }
 
     /**
      * The equip forecast: what wearing or wielding this would do, and what comes off.
-     *
-     * Brogue's version reports percentage deltas against your current weapon
-     * (Items.c:1981). Absolute before/after reads better here because our stats are
-     * small integers — "defense 4 to 10" is plainer than "+150% defense", and it cannot
-     * divide by zero the way a percentage against unarmed can.
+     * Brogue reports percentage deltas (Items.c:1981); absolute before/after reads better
+     * on small integer stats, and can't divide by zero against an unarmed player.
      *
      * @returns {string[]}
      */
@@ -5491,10 +5486,8 @@ class InterfaceManager {
 
         const verb = preview.slot === 'weapon' ? 'Wielding' : 'Wearing';
 
-        // A stat requirement you don't meet is the most important thing on the panel,
-        // so it leads. canEquipItem reads the BASE stat, not the effective one, so a
-        // strength ring does not help you into heavy armour — this reports the rule the
-        // engine actually enforces.
+        // Leads, being the most important thing on the panel. canEquipItem reads the base
+        // stat, so a strength ring won't get you into heavy armour — the rule as enforced.
         if (!preview.canEquip) {
             push(`You cannot equip this. ${preview.reason}.`);
             return out;
@@ -5502,27 +5495,20 @@ class InterfaceManager {
 
         if (preview.changes.length) {
             const deltas = preview.changes.map(c => `${c.stat} from ${c.from} to ${c.to}`);
-            const joined = deltas.length === 1
-                ? deltas[0]
-                : `${deltas.slice(0, -1).join(', ')} and ${deltas[deltas.length - 1]}`;
-            push(`${verb} this would change your ${joined}.`);
+            push(`${verb} this would change your ${this.joinProse(deltas)}.`);
         } else if (identified) {
             push(`${verb} this would change none of your stats.`);
         }
 
-        // Which item comes off. Rings make this necessary rather than decorative: with
-        // both ring slots full the equip path replaces ring1 specifically, so "it would
-        // replace" has to name the one that actually goes.
+        // Named, not implied: with both ring slots full the equip path takes ring1
+        // specifically, so the player needs to know which ring actually goes.
         if (preview.displaced) {
             const name = preview.displaced.getDisplayName?.() || preview.displaced.name;
             push(`It would replace your ${name}.`);
         }
 
-        // The forecast is computed with enchantment zeroed for an unidentified item
-        // (previewEquipDelta), so the numbers above are the category's baseline, not
-        // this instance's. Say so rather than presenting a firm figure — and say it
-        // whenever the item COULD be enchanted, not only when it happens to be, or the
-        // caveat's presence would itself reveal which items carry an enchantment.
+        // Shown for anything enchantABLE, not only what is enchanted — otherwise the
+        // caveat's presence would itself reveal which items carry one.
         if (!identified && preview.changes.length && item.hasAttribute('enchantable')) {
             push('This assumes it bears no enchantment.');
         }
@@ -5548,23 +5534,34 @@ class InterfaceManager {
     }
 
     /**
-     * Schedule a hover panel for `actor`, replacing any pending one.
+     * Schedule a hover panel for `target`, replacing any pending one.
      *
-     * The delay is the point: the pointer must rest on the actor, so sweeping across a
-     * room of monsters opens nothing. Re-requesting the SAME actor keeps the existing
+     * The delay is the point: the pointer must rest on the target, so sweeping across a
+     * room of monsters opens nothing. Re-requesting the SAME target keeps the existing
      * timer rather than restarting it, so a pointer drifting within one large actor
      * still opens on schedule instead of never.
      */
-    scheduleHoverInfo(actor, viewer) {
-        if (this.actorInfoHoverPending === actor) return;
+    scheduleHoverInfo(target, viewer) {
+        if (this.actorInfoHoverPending === target) return;
         this.cancelPendingHoverInfo();
-        this.actorInfoHoverPending = actor;
+        this.actorInfoHoverPending = target;
         this.actorInfoHoverTimer = setTimeout(() => {
             this.actorInfoHoverTimer = null;
             this.actorInfoHoverPending = null;
-            if (actor.isDead) return;
-            this.showActorInfo(actor, viewer, { sticky: false, grow: true });
+            if (target.isDead) return;
+            this.showEntityInfo(target, viewer, { sticky: false, grow: true });
         }, InterfaceManager.HOVER_INFO_DELAY);
+    }
+
+    /**
+     * Open the info panel for an Actor or an Item, whichever this is. Both share one box
+     * and one hover timer, so the two routes cannot open competing panels.
+     */
+    showEntityInfo(target, viewer = null, options = {}) {
+        // Duck-typed rather than instanceof: getPanelDescription is the item-only method
+        // the panel is actually built on.
+        if (target?.getPanelDescription) return this.showItemInfo(target, viewer, options);
+        return this.showActorInfo(target, viewer, options);
     }
 
     /** Drop a scheduled-but-unopened hover panel. */

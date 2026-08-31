@@ -97,6 +97,7 @@
     "name": "potion",
     "domain": "item",
     "description": "Glass vials of unknown liquid. Drunk once, then gone.",
+    "unidentified_description": "A glass vial of unknown liquid. There is no telling what it does until it is drunk or thrown.",
     "flipV": true,
     "identified": false,
     "random_color": true,
@@ -118,6 +119,7 @@
     "name": "food",
     "domain": "item",
     "description": "Things to eat. Stack, and restore nutrition.",
+    "unidentified_description": "Something to eat.",
     "attributes": {
       "consumable": true,
       "flammable": true,
@@ -132,7 +134,7 @@
   "illuminator": {
     "name": "light source",
     "domain": "item",
-    "description": "Things that light the way. Carried lit; never a mystery, so identified on sight.",
+    "description": "Things that light the way. Carried lit.",
     "attributes": {
       "light_source": true,
       "pickupable": true,
@@ -157,6 +159,7 @@
     "name": "weapon",
     "domain": "item",
     "description": "Things you swing. Enchantable, and never stack.",
+    "unidentified_description": "Its balance and edge are unfamiliar. Use it, and you will learn what it can do.",
     "identified": false,
     "attributes": {
       "attack_sound": "bow",
@@ -173,6 +176,7 @@
     "name": "armor",
     "domain": "item",
     "description": "Worn protection. Enchantable, and never stacks.",
+    "unidentified_description": "Sturdy enough, though whether it is blessed, cursed or plain is impossible to tell unworn.",
     "identified": false,
     "attributes": {
       "enchant_range": [
@@ -230,6 +234,7 @@
     "name": "ring",
     "domain": "item",
     "description": "Worn trinkets with a passive effect. Material-coded until identified.",
+    "unidentified_description": "A worn band whose power, if it has one, is not apparent.",
     "identified": false,
     "random_material": true,
     "tileIndex": "WHITE_RING",

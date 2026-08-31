@@ -258,8 +258,7 @@
         "health": 20,
         "apply_state": "confused"
       },
-      "use_sound": "heal",
-      "description": "Restores health, but clouds the mind."
+      "use_sound": "heal"
     }
   },
 
