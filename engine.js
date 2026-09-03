@@ -23,7 +23,8 @@ class SpriteLibrary {
                 'fire': 'fire',
                 'smoke': 'smoke',
                 'mist': 'mist',
-                'fluid': 'fluid'
+                'fluid': 'fluid',
+                'pac': 'pac'
             };
             
             console.log('Sprite library loaded with', Object.keys(this.tiles).length, 'tiles');
@@ -1290,6 +1291,7 @@ class DungeonEngine {
                         .add('smoke', `${globalVars.BASE_PATH}/assets/sprites/smoke-animation.png`)
                         .add('mist', `${globalVars.BASE_PATH}/assets/sprites/light-smoke-animation.png`)
                         .add('fluid', `${globalVars.BASE_PATH}/assets/sprites/fluid-animation.png`)
+                        .add('pac', `${globalVars.BASE_PATH}/assets/sprites/pac-animation.png`)
                         .load(() => {
                             this.setupAnimationFrames();
                             resolve();
@@ -1321,7 +1323,7 @@ class DungeonEngine {
     
     setupAnimationFrames() {
         this.animationFrames = {};
-        const animations = ['fire', 'smoke', 'mist', 'fluid'];
+        const animations = ['fire', 'smoke', 'mist', 'fluid', 'pac'];
         for (const name of animations) {
             this.animationFrames[name] = [];
             const baseTexture = PIXI.Loader.shared.resources[name].texture.baseTexture;
