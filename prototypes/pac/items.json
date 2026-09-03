@@ -1,0 +1,21 @@
+{
+    "pellet": {
+    "name": "pellet",
+    "tileIndex": "WHITE_BULLET",
+    "tint": "#FFD700",
+    "ignore_darkness": true,
+    "identified": false,
+    "random_value": [
+        1,
+        10
+    ],
+    "attributes": {
+        "pickupable": true,
+        "visible": true,
+        "description": "A golden lump of edible manna.",
+        "pickup_effect": {
+            "score": "{value}"
+            }
+        }
+    }
+}

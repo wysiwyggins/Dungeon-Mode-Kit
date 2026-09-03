@@ -1,0 +1,14 @@
+{
+  "name": "Default Test Prototype",
+  "loaded_sound": "tone3",
+"description": "Welcome to the Dungeon of Doom. \nPress '?' for help. Use arrow keys or mouse to move.",
+  "turn_speed": 50,
+  "next_level": "test",
+  "mechanics": {
+    "fog_of_war": false,
+    "darkness": false
+  },
+  "random_items": {
+    "pellet": { "chance": 100, "min": 50, "max": 50 }
+  }
+}

@@ -14,8 +14,8 @@ A guide to building levels in [Tiled](https://www.mapeditor.org/) for Dungeon Mo
 
 The fastest way to start. Good starter templates:
 
-- `prototypes/arena/` — simplest hand-built map
-- `prototypes/sewer/` — wildcard-based procedural map
+- `prototypes/default/` — simplest hand-built map
+- `prototypes/dungeon/` — multi-level roguelike with procedural levels
 
 Steps:
 
@@ -38,7 +38,7 @@ Steps:
 Create these layers in Tiled from bottom to top:
 
 | Layer | Type | Purpose |
-|-------|------|---------|
+| ------- | ------ | --------- |
 | `background` | Tile | Void/decoration behind everything |
 | `floor` | Tile | Walkable terrain — any non-zero tile here is walkable |
 | `wildcards` | Tile | Procedural generation markers (see next section) |
@@ -65,7 +65,7 @@ Prefer the **opaque** variant on levels that use `ambient_light`: a transparent 
 **landmarks** — Place point objects for walk-over decorations:
 
 | Tiled Field | Purpose |
-|-------------|---------|
+| ------------- | --------- |
 | `type` / `class` | Tile name from `data/static-tiles.json` (e.g. `SKULL`) |
 | `name` | Optional display name |
 | `walk_description` (custom property) | Message shown when the player steps on it |
@@ -78,7 +78,7 @@ Prefer the **opaque** variant on levels that use `ambient_light`: a transparent 
 By default an actor object inherits everything from its type definition in `data/actors.json` (or a prototype's `actors.json` override). You can also set **custom properties** on an individual actor object to override or augment that one placement, without defining a new actor type. Recognized properties:
 
 | Custom Property | Type | Purpose |
-|-----------------|------|---------|
+| ----------------- | ------ | --------- |
 | `machine_id` | string | Link this actor to switches/targets sharing the same id (see [PROTOTYPE.md](PROTOTYPE.md) switches). |
 | `switch_effects` | string (JSON) | Override the attributes a switch sets on activation, e.g. `{"locked": false, "open": true}`. |
 | `switch_radius` | number | Override the proximity radius a switch activates within (when not using `machine_id`). |
@@ -102,7 +102,7 @@ Paint a region on the `wildcards` layer and the engine fills it with procedural 
 ### Generator Reference
 
 | Generator | Tile | Tile ID | What It Creates |
-|-----------|------|---------|-----------------|
+| ----------- | ------ | --------- | ----------------- |
 | Digger region | ![PRISON_WINDOW](../assets/images/PRISON_WINDOW.png) | 16 | Walled rooms + corridors + doors |
 | Cave | ![INVERSE_BULLET](../assets/images/INVERSE_BULLET.png) | 10 | Organic cave shapes |
 | Infernal | ![OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE_AND_OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE](../assets/images/OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE_AND_OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE.png) | 230 | Cave + lava pools |
@@ -153,10 +153,10 @@ See **[TILED_KEY.md](TILED_KEY.md)** ([printable PDF](TILED_KEY.pdf)) for the co
 
 ## Painting Actors on the Wildcards Layer
 
-Some actors have a `paint_tile` attribute — paint their tile on the `wildcards` layer to spawn them in bulk. This is how you draw walls, water, and lava by hand. The common ones are below; see **[TILED_KEY.md](TILED_KEY.md)** ([printable PDF](TILED_KEY.pdf)) for the complete, authoritative list (trees, fungus, quicksand, and more).
+Some actors have a `paint_tile` attribute — paint their tile on the `wildcards` layer to spawn them in bulk. This is how you draw walls, water, and lava by hand without having to place a bunch of individual actor objects in the actor layer. The common ones are below; see **[TILED_KEY.md](TILED_KEY.md)** ([printable PDF](TILED_KEY.pdf)) for the complete, authoritative list (trees, fungus, quicksand, and more).
 
 | Actor | Tile | Tile ID | Tile Name | Use For |
-|-------|------|---------|-----------|---------|
+| ------- | ------ | --------- | ----------- | --------- |
 | `wall` | ![WALL_TOP](../assets/images/WALL_TOP.png) | 132 | `WALL_TOP` | Standard walls |
 | `rock_wall` | ![DARK_SHADE](../assets/images/DARK_SHADE.png) | 178 | `DARK_SHADE` | Natural rock walls |
 | `wall-bottom-left-corner` | ![LIGHT_SHADE_UPPER_RIGHT_TRIANGLE](../assets/images/LIGHT_SHADE_UPPER_RIGHT_TRIANGLE.png) | 156 | `LIGHT_SHADE_UPPER_RIGHT_TRIANGLE` | Wall corners |
@@ -196,7 +196,7 @@ Example:
 ### Transition Actors
 
 | Actor | Purpose |
-|-------|---------|
+| ------- | --------- |
 | `down_stairway` | Descent point — goes to next floor or next prototype |
 | `up_stairway` | Ascent point — goes to previous floor or previous prototype |
 | `locked_down_stairway` | Sealed until `win_conditions` are met |

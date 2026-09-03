@@ -1,0 +1,40 @@
+{
+  "player": {
+    "name": "Pac",
+    "description": "An orb with only a maw, and you, to guide its way",
+    "tileIndexBase": "BLANK",
+    "tileIndexTop": "BLANK",
+    "tint": "#ffe4a8",
+    "animated": true,
+    "animation_frames": "pac",
+    "facingEnabled": true,
+    "defaultFacing": "right",
+    "collision_effect": {
+        "health": -1
+    },
+    "collision_sound": "hit",
+    "death_sound": "ouch",
+    "attributes": {
+        "sentient": true,
+        "controlled": true
+        }
+    },
+
+
+    "ghost": {
+        "type": "undead",
+        "name": "ghost",
+        "description": "A phantasm casts a baleful, cold light on its surroundings.",
+        "tileIndexBase": "OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE",
+        "tileIndexTop": "HAUNTED_FACE",
+        "tint": "#bbccff",
+        "effect": "flicker_tint",
+        "random_color": true,
+        "personality": "aggressive_melee",
+        "collision_effect": {
+            "health": -5
+        },
+        "collision_sound": "hit",
+        "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!"
+    }
+}

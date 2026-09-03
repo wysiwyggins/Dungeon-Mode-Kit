@@ -28,7 +28,7 @@ missing from the index is invisible in the editors.
 ## Top-Level Fields
 
 | Field | Type | Description |
-|-------|------|-------------|
+| ------- | ------ | ------------- |
 | `name` | string | Display name shown in the UI |
 | `description` | string | Text shown on level load. Supports `\n` for line breaks. |
 | `turn_speed` | number | Milliseconds per AI turn (lower = faster). Default `50`. |
@@ -59,7 +59,7 @@ The `mechanics` object controls core gameplay systems for the level. All fields 
 ### Visibility & Lighting
 
 | Field | Type | Default | Description |
-|-------|------|---------|-------------|
+| ------- | ------ | --------- | ------------- |
 | `fog_of_war` | boolean | `false` | Remember explored tiles; unexplored areas are hidden |
 | `darkness` | boolean | `false` | Enable dynamic lighting. Without this, the entire map is fully lit. |
 | `ambient_light` | number | `0.0` | Minimum light level (0-1) when `darkness` is enabled. `0` = pitch black outside light sources, `1` = fully lit everywhere. |
@@ -72,7 +72,7 @@ See [LIGHTING.md](LIGHTING.md) for the full lighting system reference.
 ### Viewport & Scrolling
 
 | Field | Type | Default | Description |
-|-------|------|---------|-------------|
+| ------- | ------ | --------- | ------------- |
 | `viewport_width` | number | map width | Visible width in tiles. When smaller than the map, the camera scrolls to follow the player. |
 | `viewport_height` | number | map height | Visible height in tiles. When smaller than the map, the camera scrolls to follow the player. |
 | `ai_margin` | number | `5` | How many tiles beyond the viewport edge AI actors continue to take turns. Actors outside this margin skip their turn. Only applies when viewport scrolling is active; ignored (treated as infinite) when the full map is visible. |
@@ -83,7 +83,7 @@ Tunables for the `(s)earch` action and hidden actors (any actor with `hidden: tr
 secret doors, concealed levers, undiscovered traps). See `docs/ACTORS.md`.
 
 | Field | Type | Default | Description |
-|-------|------|---------|-------------|
+| ------- | ------ | --------- | ------------- |
 | `search_radius` | number | `5` | How far a completed five-turn search reaches, in tiles. Everything hidden within this radius and in line of sight is found; nothing outside it is. Capped independently of strength so a finished search reliably means "this area is clear" — raise it for sprawling maps, lower it to make searching a room a multi-position job. |
 | `thorough_search_strength` | number | `200` | Odds of the five-turn search. Chance at a tile is `strength - 10 × distance`, two-thirds that for solid things like a door set in a wall. At the default it is certain everywhere inside `search_radius`; drop it below ~`10 × search_radius × 1.5` and finds start becoming a dice roll the player may want to repeat. |
 | `passive_search_strength` | number | `30` | The glance you get for free the first time you stand on a tile. Uses a strength-derived radius rather than `search_radius`, so it naturally reaches ~2 tiles and the Ring of Awareness (`awareness`) widens it. Set to `0` to disable passive searching and make the search action the only way to find secrets. |
@@ -91,7 +91,7 @@ secret doors, concealed levers, undiscovered traps). See `docs/ACTORS.md`.
 ### Special Modes
 
 | Field | Type | Default | Description |
-|-------|------|---------|-------------|
+| ------- | ------ | --------- | ------------- |
 | `observer_mode` | boolean | `false` | Disable stairway and portal placement. Use for spectator-only prototypes (e.g. cellular automata demos). |
 | `treasure_room` | number | `0` | Percent chance (0-100) to spawn a treasure room on the level |
 | `up_stairway_region` | string | generator's choice | Place the up (entry) stairway inside a named region the generator published. Some generators suggest one — `palladian` puts the entry stair in its `portico` courtyard, since arriving in the middle of an interior room reads as a mistake. Set explicitly to override, or to `null` for random placement. |
@@ -126,7 +126,7 @@ generators carve open space and nothing else; a biome using one gets no walls, d
 torches or room regions no matter what else it configures.
 
 | Type | Walls? | Rooms? | Description |
-|------|:------:|:------:|-------------|
+| ------ | :------: | :------: | ------------- |
 | `dungeon` | yes | yes | Rooms (rectangle, cross, circular, cavern) attached via corridors, plus loops, dead-end secret doors and lakes. The main generator |
 | `palladian` | yes | yes | Symmetrical villa: a mirrored grid of rooms around a central axial sanctum, with a columned portico. Built for boss floors and vaults |
 | `infernal` | yes | — | Cave with lava pools |
@@ -146,7 +146,7 @@ but new work should say `dungeon`.
 ### Common Options
 
 | Option | Type | Description |
-|--------|------|-------------|
+| -------- | ------ | ------------- |
 | `map_width` | number | Map width in tiles |
 | `map_height` | number | Map height in tiles |
 | `roomWidth` | `[min, max]` | Room width range (digger, uniform, rogue) |
@@ -168,7 +168,7 @@ as on a 50×50 one. Tune per prototype rather than reusing one number. See
 #### Brogue-Specific Options
 
 | Option | Type | Default | Description |
-|--------|------|---------|-------------|
+| -------- | ------ | --------- | ------------- |
 | `maxRooms` | number | auto | Maximum rooms to generate. Optional — when omitted, auto-computed from map size (`≈ map_width × map_height / 200`, clamped 8–120) so larger maps fill out. An explicit value overrides the auto default. Not exposed in the prototype editor. |
 | `maxAttempts` | number | auto | Room-placement attempts (the practical cap on density, since many attempts fail to place). Optional — when omitted, auto-scaled to `≈ maxRooms × 4` (clamped 50–600) so it can reach the size-scaled room target. An explicit value overrides. Larger = denser. |
 | `corridorChance` | number | `55` | Percent chance to add a corridor between rooms |
@@ -187,7 +187,7 @@ The `palladian` generator implements the parametric shape grammar from Stiny & M
 Interior doors are aligned with each other and with the exterior windows, producing the *enfilade* Palladio is known for: an unbroken sight-line through the whole villa, including one straight down the axis from the rear door, through the sanctum, and out through the portico.
 
 | Option | Type | Default | Description |
-|--------|------|---------|-------------|
+| -------- | ------ | --------- | ------------- |
 | `bayColumns` | `[min, max]` | `[3, 7]` | Number of east–west bays. **Always forced odd** — the centre bay is bisected by the symmetry axis. `5` is the canonical villa. |
 | `bayRows` | `[min, max]` | `[2, 4]` | Number of north–south bay rows. `3` is canonical. |
 | `bayWidth` | `[min, max]` | `[4, 11]` | Interior width of one bay, in tiles. |
@@ -230,7 +230,7 @@ The generator reuses existing actors — `column` for the colonnade, `fortificat
 A generator can publish named areas that spawn entries target with `"region"`. Available regions by generator:
 
 | Region | Published by | Description |
-|--------|--------------|-------------|
+| -------- | -------------- | ------------- |
 | `largest_room` | `dungeon`, `digger`, `palladian` | The biggest single room by floor area — a natural arena for a guaranteed boss or a hoard. |
 | `treasure_room` | any generator, when the `treasure_room` mechanic fires | The locked vault's interior. Target it to put a guardian inside with the loot. |
 | `sanctum` | `palladian` | The axial cross-hall, when the plan has one. |
@@ -263,7 +263,7 @@ If both a `map.tmj` and `map_generator` exist for a floor, the `.tmj` takes prio
 ```
 
 | Field | Type | Description |
-|-------|------|-------------|
+| ------- | ------ | ------------- |
 | `chance` | number | Percent probability (0-100) that this entity type spawns at all |
 | `min` | number | Minimum count if spawned (default `1`) |
 | `max` | number | Maximum count if spawned (default `1`) |
@@ -308,7 +308,7 @@ Can be set at the prototype level or per-floor (overrides prototype default).
 ```
 
 | Field | Type | Description |
-|-------|------|-------------|
+| ------- | ------ | ------------- |
 | `min` | number | Minimum puzzles to spawn |
 | `max` | number | Maximum puzzles to spawn |
 | `patterns` | array | Available puzzle patterns to choose from |
@@ -316,7 +316,7 @@ Can be set at the prototype level or per-floor (overrides prototype default).
 Each pattern defines:
 
 | Field | Type | Description |
-|-------|------|-------------|
+| ------- | ------ | ------------- |
 | `type` | string | Pattern type (e.g. `"gated_room"`) |
 | `weight` | number | Relative spawn probability when multiple patterns exist |
 | `switch_actor` | string | Actor type ID for the switch |
@@ -377,7 +377,7 @@ The `item_catalog` defines which item categories are active for the prototype, h
 ```
 
 | Field | Type | Description |
-|-------|------|-------------|
+| ------- | ------ | ------------- |
 | `count` | number | (Optional) Randomly select this many types from the pool at the start of a run. Omit to use all types. |
 | `weight` | number | Relative probability when drawing from the budget system. Higher = more common. |
 | `pool` | array | (Optional) Explicit list of item IDs. If omitted, the pool is every item declaring this type (or the category's `random_type` array, if it has one). |
@@ -403,7 +403,7 @@ The `item_budget` supplements `random_items` by spawning additional items drawn 
 ```
 
 | Field | Type | Default | Description |
-|-------|------|---------|-------------|
+| ------- | ------ | --------- | ------------- |
 | `base` | number | `3` | Guaranteed number of items spawned per floor |
 | `extra_chance` | number | `50` | Percent chance for each bonus item |
 | `max_extra` | number | `3` | Maximum bonus items to roll for |
@@ -427,7 +427,7 @@ Each floor spawns `base` items guaranteed, then rolls up to `max_extra` addition
 ### String Formats
 
 | Format | When met |
-|--------|----------|
+| -------- | ---------- |
 | `"killed:actor_type"` | All living actors of that type are dead |
 | `"wearing:item_id"` | Player has that item equipped |
 | `"holding:item_id"` | Player has that item in inventory |
@@ -446,7 +446,7 @@ For stat or attribute comparisons:
 ```
 
 | Field | Description |
-|-------|-------------|
+| ------- | ------------- |
 | `actor` | `"player"` or an actor type string |
 | `stat` | Stat or attribute name to check |
 | `op` | Comparison: `">"`, `">="`, `"<"`, `"<="`, `"=="`, `"!="` |
@@ -484,7 +484,7 @@ Add a `levels` array to create multiple floors within one prototype. Each entry 
 Each floor object can override these fields from the prototype root:
 
 | Field | Description |
-|-------|-------------|
+| ------- | ------------- |
 | `win_conditions` | Win conditions for this floor |
 | `mechanics` | Mechanics overrides (merged with prototype-level mechanics) |
 | `map_generator` | Map generator config for this floor |
@@ -517,7 +517,7 @@ Fields not specified in a floor object fall back to the prototype-level defaults
 ### Floor Map Files
 
 | Floor | File |
-|-------|------|
+| ------- | ------ |
 | 1 | `map.tmj` |
 | 2 | `2.tmj` |
 | 3 | `3.tmj` |
@@ -562,7 +562,7 @@ prototype's own defaults.
 A biome is one entry in `data/biomes.json` (or a prototype's `biomes.json`), keyed by name:
 
 | Field | Type | Description |
-|-------|------|-------------|
+| ------- | ------ | ------------- |
 | `actors` | array | Depth-ranged monster catalog. Each row: `{ id, min, max, freq, count? }` — `min`/`max` are the floor window, `freq` the raffle weight, `count` an optional `[lo, hi]` per-pick spawn count. |
 | `actor_budget` | object | `{ base, extra_chance, max_extra }` — how many weighted picks to make per floor from the eligible `actors`. |
 | `items` | array | Depth-ranged item catalog. Rows use `type` (a category from `item_catalog`) plus `min`/`max`/`freq`. |
@@ -574,9 +574,10 @@ Depth = the absolute 1-based floor index. `actors`/`items` rows are picked by fi
 
 ---
 
-## Level Linking
+## Prototype Linking
 
-Prototypes are linked together using `next_level` and `previous_level`.
+Prototypes can be linked together using `next_level` and `previous_level`.
+This is an artifact of the earliest version of DMK when each prototype was only one level, but it's still usable.
 
 ```json
 {
@@ -599,7 +600,7 @@ See [MAP.md](MAP.md) for stairway placement and transition details.
 Place these files alongside `prototype.json` to add or override entity definitions for a specific level:
 
 | File | Merges with | Purpose |
-|------|-------------|---------|
+| ------ | ------------- | --------- |
 | `actors.json` | `data/actors.json` | Add level-specific actors or override global ones |
 | `items.json` | `data/items.json` | Add level-specific items or override global ones |
 | `personalities.json` | `data/personalities.json` | Add level-specific AI behaviors |

@@ -28,20 +28,16 @@ This downloads JavaScript libraries into `lib/` (gitignored).
 ## Project Layout
 
 ```
-prototypes/           ← one folder per level
-  my_level/
-    prototype.json    ← level rules (required)
-    actors.json       ← actor overrides/additions for this level
-    items.json        ← item overrides/additions for this level
-    map.tmj           ← authored Tiled map (optional)
-data/                 ← global definitions shared across all levels
-  actors.json         ← actor templates
-  items.json          ← item templates
-  personalities.json  ← AI behavior definitions
-  static-tiles.json   ← full tile name reference
-tiled/
-  dungeonkit.tiled-project
-  static-tiles.tsj    ← tileset file for Tiled
+data/             <- default data files shared across prototypes   
+
+prototypes/           
+  my_level/           <- your data files add to or override the ones in data/
+    prototype.json    <- level rules (required)
+    actors.json       <- actor overrides/additions for this level
+    items.json        <- item overrides/additions for this level
+    map.tmj           <- authored Tiled map for level 1 (optional)
+    2.tmj             <- an authored Tiled map for level 2 (or whatever numbered level optional) 
+
 ```
 
 Prototype JSON files are merged with global `data/` files at load — you only need to define what's new or different for a given level.

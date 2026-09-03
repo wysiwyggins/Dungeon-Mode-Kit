@@ -105,15 +105,19 @@
                 </div>
                 <div class="field-row">
                     <label>Animation Base</label>
-                    <select id="f-animationBase"><option value="">none</option><option value="fire">fire</option><option value="smoke">smoke</option><option value="mist">mist</option><option value="fluid">fluid</option></select>
+                    <select id="f-animationBase"><option value="">none</option><option value="fire">fire</option><option value="smoke">smoke</option><option value="mist">mist</option><option value="fluid">fluid</option><option value="pac">pac</option>
+                    </select>
                 </div>
                 <div class="field-row">
                     <label>Animation Top</label>
-                    <select id="f-animationTop"><option value="">none</option><option value="fire">fire</option><option value="smoke">smoke</option><option value="mist">mist</option><option value="fluid">fluid</option></select>
+                    <select id="f-animationTop"><option value="">none</option><option value="fire">fire</option><option value="smoke">smoke</option><option value="mist">mist</option><option value="fluid">fluid</option>
+                    <option value="pac">pac</option></select>
+
                 </div>
                 <div class="field-row">
                     <label>Animation Side</label>
-                    <select id="f-animationSide"><option value="">none</option><option value="fire">fire</option><option value="smoke">smoke</option><option value="mist">mist</option><option value="fluid">fluid</option></select>
+                    <select id="f-animationSide"><option value="">none</option><option value="fire">fire</option><option value="smoke">smoke</option><option value="mist">mist</option><option value="fluid">fluid</option>
+                    <option value="pac">pac</option></select>
                 </div>
                 <div class="field-row">
                     <label>Light Radius</label>
@@ -448,7 +452,8 @@ const ANIM_SHEETS = {
     fire:  '../assets/sprites/fire-animation.png',
     smoke: '../assets/sprites/smoke-animation.png',
     mist:  '../assets/sprites/light-smoke-animation.png',
-    fluid: '../assets/sprites/fluid-animation.png'
+    fluid: '../assets/sprites/fluid-animation.png',
+    pac: '../assets/sprites/pac-animation.png'
 };
 
 let state = {
@@ -902,7 +907,7 @@ function randomizeAppearance() {
     document.getElementById('f-tint_effect').value = effectOpts[Math.floor(Math.random() * effectOpts.length)];
     document.getElementById('f-random_color').checked = Math.random() < 0.05;
 
-    const animOpts = ['', '', '', '', 'fire', 'smoke', 'mist', 'fluid'];
+    const animOpts = ['', '', '', '', 'fire', 'smoke', 'mist', 'fluid', 'pac'];
     const pickAnim = () => animOpts[Math.floor(Math.random() * animOpts.length)];
     document.getElementById('f-animationBase').value = pickAnim();
     document.getElementById('f-animationTop').value = Math.random() < 0.15 ? pickAnim() : '';

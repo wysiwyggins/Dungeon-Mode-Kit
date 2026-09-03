@@ -2,6 +2,7 @@
 ## Bugs
 
 - In the dungeon generator, adding secret doors led to some occasional weird door placement— such as a secret door that connects to the corner of a rectangular room, which does not grant entry due to the rule that prevents diagonal movement next to a solid wall. I also found a secret door next to a regular door on a wall between two rooms.
+- when we pick a prototype in an editor it should narrow the options in the next dropdown down to the ones in that prototype since there are so many in default /data/
 
 ## Tweaks
 
@@ -9,6 +10,7 @@
 - ~~We shouldn't know what actors are while in a hallucinating state. Suppress info windows or add a totally unknown info window (this might actually be more fun, could make a templated "hallucination" description for things using an expanded words data file).~~ Done, including the templated version — `InterfaceManager.hallucinatedIdentity` swaps the whole panel body for "You cannot tell what this is. It looks like an intoning skull, but so does everything else.", built from `HALLUCINATION_TEMPLATE` so the vocabulary is data: `adjectives.hallucinated_states` in words.json had been authored with no reader. The noun is the same scrambled tile the sidebar shows, so the two can't disagree; the adjective re-rolls per call, since the churn is the point. Gated in `openInfoPanel`, so hover and Tab+Enter both inherit it.
 - ~~Items should have their tiles randomized while hallucinating too, also suppress or randomize the info window for items on the field but not in inventory. Inventory items remain "known".~~ Info window half done — floor items get a false name (memoized per item in `InputManager.hallucinatedNameFor`; it previously re-rolled on every mouse move, so the sidebar renamed an item continuously), and inventory items are exempt by inventory membership rather than `item.owner`, which survives a drop. **Still outstanding: the visual tile scramble.** `texture_scramble` (effects.js) iterates `entityManager.actors` only, so floor items keep their real sprites while their names lie.
 - If an actor's attack induces a state we should probably add that to its info window. No actor's attack applies a state yet — the three `apply_state` actors (web, quicksand, sewer_gas) are environmental, applied on entry rather than by a `collision_effect`. So this needs the attack-borne case to exist first.
+- Adding an animated sprite to an actor shouldn't replace the base or top tile of the actor, it should be rendered on top ot it, that way we can have burning skull tiles etc.
 
 ---
 
@@ -21,7 +23,7 @@
 
 ## Specifying enclosed items in Tiled
 
-- It's not clear to a designer how, in the "test" prototype, the key to the locked door was placed on the pedestal, it isn't specified either in the pedestal object in Tiled or in the prototype. Designers working on an authored map should be able to specify an item in a custom property of an actor object in order to give that object to the actor (such as a pedestal, grave, or in the inventory of a monster)
+- It's not clear to a designer how, in the "test" prototype, the key to the locked door was placed on the pedestal, it isn't specified either in the pedestal object in Tiled or in the prototype. Designers working on an authored map should be able to specify an item in the default_items property of an actor object in order to give that object to the actor (such as a pedestal, grave). This currently works for actors like monsters with inventory, we just need to use inventory in the object holding of container actors.
 
 ## Actor selectors in biome editor
 
