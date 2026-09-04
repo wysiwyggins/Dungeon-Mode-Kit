@@ -17,5 +17,27 @@
             "score": "{value}"
             }
         }
+    },
+
+    "power_pill": {
+    "name": "pill",
+    "tileIndex": "FULL_MOON",
+    "tint": "#FFD700",
+    "ignore_darkness": true,
+    "identified": false,
+    "random_value": [
+        1,
+        10
+    ],
+    "attributes": {
+        "pickupable": true,
+        "visible": true,
+        "description": "A golden lump of edible manna.",
+        "pickup_effect": {
+                "apply_state": "impervious"
+            }
+        }
     }
+
+
 }

@@ -4,36 +4,13 @@
     "description": "It's you!",
     "tileIndexBase": "LEG",
     "tileIndexTop": "OPAQUE_DARK_SMILING_FACE",
-    "vision_range": 20,
-    "collision_effect": {
-      "health": -2
-    },
-    "collision_sound": "hit",
-    "defaultFacing": "left",
-    "facingEnabled": true,
-    "collision_description": "You punch the [attacked_actor_name]!",
     "death_sound": "ouch",
     "attributes": {
       "solid": true,
       "flammable": true,
       "controlled": true,
-      "sentient": true,
-      "inventory": 5,
-      "remains": "skull",
-      "accuracy": 50,
-      "opaque": true,
-      "strength": 5,
-      "tactician": true
-    },
-    "stats": {
-      "health": {
-        "max": 40,
-        "per_turn": 1
-      }
-    },
-    "default_items": [
-      "butter_knife"
-    ]
+      "sentient": true
+    }
   },
   "skeleton": {
     "type": "undead",

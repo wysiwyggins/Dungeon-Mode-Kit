@@ -17,10 +17,6 @@
     "attributes": {
         "sentient": true,
         "controlled": true
-        },
-    "stats": {
-        "health": 1,
-        "inventory": 1
         }
     },
 
@@ -31,7 +27,6 @@
         "description": "A phantasm casts a baleful, cold light on its surroundings.",
         "tileIndexBase": "OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE",
         "tileIndexTop": "HAUNTED_FACE",
-        "tint": "#bbccff",
         "effect": "flicker_tint",
         "random_color": true,
         "personality": "aggressive_melee",
@@ -39,6 +34,6 @@
             "health": -5
         },
         "collision_sound": "hit",
-        "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!"
+        "collision_description": "The [actor_name] eats the [attacked_actor_name]!"
     }
 }

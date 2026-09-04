@@ -1,0 +1,8 @@
+{
+    "impervious": {
+    "name": "Impervious",
+    "duration": 20,
+    "effect_description": "You hunger",
+    "immunity": ""
+  }
+}
