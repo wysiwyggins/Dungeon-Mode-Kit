@@ -9,12 +9,25 @@
   },
   "random_items": {
     "pellet": {
-      "chance": 100,
+      "chance": 99,
       "min": 50,
       "max": 50
+    },
+    "power_pill": {
+      "chance": 99,
+      "min": 4,
+      "max": 4
     }
   },
-  "win_conditions": [
-    "killed:ghost"
-  ]
+  "win_state": {
+    "conditions": [
+      "collected:pellet"
+    ],
+    "message": "Every last pellet eaten. The maze is clean."
+  },
+  "win_conditions": [],
+  "default_floor": {
+    "tile": "OPAQUE_LIGHT_SHADE_QUADRANT_LOWER_LEFT_AND_UPPER_RIGHT",
+    "tint": "#9929bd"
+  }
 }

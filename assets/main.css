@@ -510,6 +510,22 @@ body.editor .tile-slot .clear-btn {
   border: 1px solid var(--accent2);
   background: none;
 }
+body.editor .tile-preview {
+  image-rendering: pixelated;
+  background: #d0cfc8;
+  border: 1px solid var(--border);
+  display: block;
+  flex: 0 0 auto;
+}
+body.editor .tile-field-name {
+  font-size: 12px;
+  color: var(--text-dim);
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 body.editor .tile-picker-overlay {
   display: none;
   position: fixed;

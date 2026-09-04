@@ -419,7 +419,7 @@ function condRow(cond, i, redraw, obj, key) {
     const isObj = cond && typeof cond === 'object';
     const row = el('div', { class: 'list-item' });
     const typeSel = el('select', { style: 'flex:0 0 110px;' });
-    [['wearing','wearing:'],['holding','holding:'],['killed','killed:'],['stat','stat compare']]
+    [['wearing','wearing:'],['holding','holding:'],['killed','killed:'],['collected','collected:'],['stat','stat compare']]
         .forEach(([v, l]) => typeSel.appendChild(el('option', { value: v }, l)));
     let curType = 'killed';
     if (isObj) curType = 'stat';
@@ -445,7 +445,7 @@ function condRow(cond, i, redraw, obj, key) {
         v.value = cond.value != null ? cond.value : 0; v.addEventListener('input', () => { cond.value = Number(v.value); commit(); });
         row.append(a, s, op, v);
     } else {
-        // operand: actor id (killed) or item id (wearing/holding)
+        // operand: actor id (killed) or item id (wearing/holding/collected)
         const operand = (typeof cond === 'string' ? cond.split(':')[1] : '') || '';
         const ids = curType === 'killed' ? state.mergedActorIds : state.mergedItemIds;
         const sel = el('select', {});

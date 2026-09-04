@@ -36,6 +36,7 @@ missing from the index is invisible in the editors.
 | `next_level` | string | Prototype folder name to advance to (via down stairway or portal) |
 | `previous_level` | string | Prototype folder name to return to (via up stairway from floor 1) |
 | `win_state` | object | Escape-style overall victory for the whole prototype: `{ via: "escape", exit_floor, conditions, message }`. Reaching `exit_floor`'s exit with `conditions` met wins the run (distinct from per-floor `win_conditions`, which just unlock a floor's stairway). |
+| `default_floor` | object | Floor tile and tint for generated maps — see [Default Floor](#default-floor). |
 | `floors`, `biomes`, `floor_plan` | — | Multi-floor / biome configuration — see [Multi-Floor Prototypes](#multi-floor-prototypes) and [Biomes](#biomes). |
 
 ---
@@ -247,6 +248,38 @@ If both a `map.tmj` and `map_generator` exist for a floor, the `.tmj` takes prio
 
 ---
 
+## Default Floor
+
+`default_floor` sets the tile every generator paints as open floor, and an optional
+color multiplied over it. Both fields are optional; omit the block entirely to keep
+the engine's built-in floor tile.
+
+```json
+"default_floor": {
+  "tile": "LIGHT_SHADE_QUADRANT_LOWER_LEFT_AND_UPPER_RIGHT",
+  "tint": "#8899aa"
+}
+```
+
+| Field | Type | Description |
+| ------- | ------ | ------------- |
+| `tile` | string | A tile name from `data/static-tiles.json`. An unknown name logs a warning and falls back to the default. |
+| `tint` | string | Hex color (`#RRGGBB`) multiplied over floor tiles. Omit for untinted. |
+
+Like `map_generator` and `mechanics`, a floor entry may override it — set
+`default_floor` on that floor and it wins over the prototype-level value.
+
+**Generated maps only.** A hand-authored `.tmj` names a tile for every cell, so
+there is no default left to fill in and neither field applies to it.
+
+The tint rides on the floor layer, which lighting leaves alone (floors are dimmed
+by a separate overlay), so it coexists with `darkness` and fog of war.
+
+Both fields are editable in the prototype editor's **Default floor** section, which
+includes the same visual tile picker the actor and item editors use.
+
+---
+
 ## Random Spawning
 
 `random_actors` and `random_items` control what entities are scattered on the map at load time.
@@ -429,6 +462,7 @@ Each floor spawns `base` items guaranteed, then rolls up to `max_extra` addition
 | Format | When met |
 | -------- | ---------- |
 | `"killed:actor_type"` | All living actors of that type are dead |
+| `"collected:item_id"` | No item of that type is left on the floor. Unmet if the type never spawned, so a floor without it doesn't win by default |
 | `"wearing:item_id"` | Player has that item equipped |
 | `"holding:item_id"` | Player has that item in inventory |
 

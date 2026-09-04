@@ -6,34 +6,36 @@
     "tileIndexTop": "BLANK",
     "animated": true,
     "animation_frames": "pac",
-    "tint": "#ffe4a8",
+    "tint": "#ffff00",
     "facingEnabled": true,
     "defaultFacing": "right",
     "collision_effect": {
-        "health": -1
+      "health": -1
     },
     "collision_sound": "hit",
     "death_sound": "ouch",
     "attributes": {
-        "sentient": true,
-        "controlled": true
-        }
-    },
-
-
-    "ghost": {
-        "type": "undead",
-        "name": "ghost",
-        "description": "A phantasm casts a baleful, cold light on its surroundings.",
-        "tileIndexBase": "OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE",
-        "tileIndexTop": "HAUNTED_FACE",
-        "effect": "flicker_tint",
-        "random_color": true,
-        "personality": "aggressive_melee",
-        "collision_effect": {
-            "health": -5
-        },
-        "collision_sound": "hit",
-        "collision_description": "The [actor_name] eats the [attacked_actor_name]!"
+      "sentient": true,
+      "controlled": true,
+      "flammable": null
     }
+  },
+  "ghost": {
+    "type": "undead",
+    "name": "ghost",
+    "description": "A phantasm casts a baleful, cold light on its surroundings.",
+    "tileIndexBase": "OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE",
+    "tileIndexTop": "HAUNTED_FACE",
+    "effect": "flicker_tint",
+    "random_color": true,
+    "personality": "aggressive_melee",
+    "stats": {
+      "health": 1
+    },
+    "collision_effect": {
+      "health": -5
+    },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] eats the [attacked_actor_name]!"
+  }
 }

@@ -156,6 +156,7 @@ function renderForm() {
         // it only appears for multi-level prototypes. Biomes themselves are authored in
         // the biome editor, not here.
         root.appendChild(sectionMapGenerator(state.proto, { placedFeatures: trapsSwitchesBody }).det);
+        root.appendChild(sectionDefaultFloor(state.proto).det);
         root.appendChild(sectionItemCatalog().det);
         root.appendChild(sectionSpawns(state.proto, { open: true }).det);
         if (isMultiLevel()) {
@@ -167,6 +168,7 @@ function renderForm() {
         root.appendChild(sectionFloorWinConditions(floor).det);
         root.appendChild(sectionMechanics(floor, 'mechanics', { inheritKey: 'mechanics', open: true }).det);
         root.appendChild(sectionMapGenerator(floor, { inheritKey: 'map_generator', placedFeatures: trapsSwitchesBody }).det);
+        root.appendChild(sectionDefaultFloor(floor, { inheritKey: 'default_floor' }).det);
         root.appendChild(sectionItemBudget(floor, { inheritKey: 'item_budget' }).det);
         root.appendChild(sectionSpawns(floor, { open: true }).det);
     }
@@ -219,10 +221,91 @@ function sectionWinState() {
             (ws.via === 'escape' ? fieldRow('exit_floor', ws, 'exit_floor', { type: 'number', min: 1, tip: 'Floor number whose exit triggers the escape victory. Floors are 1-based.' }) : null),
         ));
         body.appendChild(fieldRow('message', ws, 'message', { tip: 'Victory text shown to the player when the win_state is satisfied.' }));
-        body.appendChild(subTitle('conditions', 'All of these must be true to win. e.g. holding:amulet, killed:minotaur, or a stat comparison.'));
+        body.appendChild(subTitle('conditions', 'All of these must be true to win. e.g. holding:amulet, killed:minotaur, collected:pellet, or a stat comparison.'));
         body.appendChild(winConditionsEditor(ws, 'conditions'));
     }
     return { det };
+}
+
+/**
+ * default_floor — the tile (and optional tint) every generator paints as floor.
+ *
+ * Generated maps only: a hand-authored .tmj names a tile for every cell, so there
+ * is no default left to fill in. Both fields are optional; omitting the block
+ * keeps the engine's built-in floor tile.
+ */
+function sectionDefaultFloor(obj, opts = {}) {
+    const { det, body, active } = section('Default floor', {
+        ...opts,
+        defaultValue: {},
+        optional: opts.inheritKey ? undefined : {
+            isOn: obj.default_floor != null,
+            enable: () => { obj.default_floor = {}; },
+            disable: () => { delete obj.default_floor; },
+            hint: 'Using the engine default floor tile. Enable to choose a tile or tint for generated maps.',
+        },
+    });
+
+    // At floor level the "override on this floor" toggle already gates the body,
+    // the same split sectionMapGenerator uses.
+    const show = opts.inheritKey
+        ? (isFloor() && Object.prototype.hasOwnProperty.call(obj, 'default_floor'))
+        : active;
+    if (!show) return { det };
+
+    if (!obj.default_floor) obj.default_floor = {};
+    const df = obj.default_floor;
+
+    body.appendChild(el('div', { class: 'hint-inline' },
+        'Applies to procedurally generated maps. A hand-authored .tmj supplies its own floor tiles.'));
+    body.appendChild(tileRow('tile', df, 'tile',
+        'Tile painted as open floor. Leave unset for the engine default.'));
+    body.appendChild(colorRow('tint', df, 'tint',
+        'Color multiplied over floor tiles. Leave clear for untinted.'));
+    return { det };
+}
+
+/**
+ * A tile field: name, live preview, and the shared visual picker.
+ * Stores the tile NAME, which is what the engine resolves (getTileIdByName).
+ */
+function tileRow(label, obj, key, tip) {
+    const preview = el('canvas', { class: 'tile-preview', width: 40, height: 30 });
+    const name = el('span', { class: 'tile-field-name' }, TilePicker.nameOf(obj[key]));
+
+    const paint = () => {
+        const ctx = preview.getContext('2d');
+        ctx.clearRect(0, 0, preview.width, preview.height);
+        const coords = TilePicker.resolve(obj[key]);
+        if (coords && TilePicker.sheet) {
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(TilePicker.sheet,
+                coords.x * TilePicker.tileW, coords.y * TilePicker.tileH,
+                TilePicker.tileW, TilePicker.tileH,
+                0, 0, preview.width, preview.height);
+        }
+        name.textContent = TilePicker.nameOf(obj[key]);
+    };
+    paint();
+
+    const choose = el('button', {}, 'choose…');
+    choose.addEventListener('click', () => {
+        TilePicker.open({
+            current: obj[key],
+            label: 'default floor tile',
+            onPick: (value) => {
+                if (value === null) delete obj[key];
+                else obj[key] = value;
+                paint();
+                commit();
+            },
+        });
+    });
+
+    const clear = el('button', { class: 'remove-btn' }, 'clear');
+    clear.addEventListener('click', () => { delete obj[key]; paint(); commit(); });
+
+    return el('div', { class: 'field-row' }, labelEl(label, tip), preview, name, choose, clear);
 }
 
 function sectionFloorWinConditions(floor) {

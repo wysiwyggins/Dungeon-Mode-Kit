@@ -7,12 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.19b]
 
-### Next
-
-- info windows for items
-
 ### Added
 
+- **`default_floor` prototype setting** — the floor tile generators use, plus an optional tint, overridable per floor. Generated maps only.
+- **Tile sprites honour a per-tile `tint`.** Lives in the serialized `floorMap`, so it survives floor transitions. Floor is the one layer where this is stable — lighting rewrites background and overlay tints each frame.
+- **`collected:item_type` and `killed:actor_type` win conditions** — collect all items of type or kill all actors of type
+- **Prototype-level `states.json`.** A prototype can now ship its own states, merged over `data/states.json` at load.
+- **`melee_immune` attribute.**
+- **`random_color` now works on any actor**, not just `color_locked` doors.
 - **`Actor.hasInfoPanel()`** Actors with `description` `sentient` can spawn new info windows. See [docs/ACTORS.md](docs/ACTORS.md#what-earns-a-panel-actorhasinfopanel).
 - **`Item.hasInfoPanel()`**
 - **`InterfaceManager.growBoxOpen()` — a reusable box-open animation.** A few quick frames of an empty border expanding from an origin tile to the box's final rect.
@@ -20,11 +22,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The visual tile picker is now shared.** Two near-identical inline copies in the actor and item editors became `editors/scripts/tile-picker.js`, reused by all three editors.
 - **Mouse: hover reads, click acts.** Hovering a visible actor opens its info panel. `Tab` + `Enter` is the keyboard route to info windows for selected actors.
 - **The hover panel waits, then grows in.** The pointer must rest on an actor for `HOVER_INFO_DELAY` (260ms) before its panel opens, so sweeping across a crowded room opens nothing and moving on cancels the pending open.
 - `showActorInfo` gains a `sticky` option separating the two routes: the keyboard panel takes the active box and holds, while hover must not steal it or claim it can be closed with a key. So the hover panel omits the "Esc to close" footer.
 - `actorAtClick` is now `actorAtPointer`, since hover is its main caller.
 - Clicking a two-tile actor's head tile attacks it instead of trying to path through it.
+
+### Fixed
+
+- **`pickup_effect` handles `apply_state`.** It previously treated every key as a number to add, so `"apply_state": "foo"` computed `0 + "foo"` and set a garbage attribute instead of applying the state. Now routed through `applyAuthoredState`, matching `use_effect`.
+- **`random_items` no longer stacks a batch onto one tile.** The count loop re-queried available tiles each iteration and `getAvailableTiles` only excludes actor-occupied tiles, so a 50-item spawn could pile several items invisibly on the same spot.
 
 ## [1.18b]
 

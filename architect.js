@@ -84,8 +84,18 @@ class Architect {
 
         this.config = {
             defaultFloorTileId: 158,
+            defaultFloorTint: null,
             ...options.config
         };
+    }
+
+    /**
+     * The default generator floor tile 
+     */
+    _floorTile() {
+        const tile = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+        if (this.config.defaultFloorTint) tile.tint = this.config.defaultFloorTint;
+        return tile;
     }
 
     // ========================================================================
@@ -150,7 +160,7 @@ class Architect {
                 if (pendingWallSet.has(`${x},${y}`)) continue;
                 if (!anyNeighbor8(hasFloor, x, y)) continue;
 
-                this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                this.floorMap[y][x] = this._floorTile();
                 this.pendingWallSpawns.push({ x, y, type: 'metal_wall' });
             }
         }
@@ -668,7 +678,7 @@ class Architect {
                 const floorTiles = new Set();
                 generator.create((x, y, value) => {
                     if (value === 0) {
-                        this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                        this.floorMap[y][x] = this._floorTile();
                         this.walkableTiles.push({ x, y });
                         floorTiles.add(`${x},${y}`);
                     }
@@ -676,7 +686,7 @@ class Architect {
                 if (options.connected !== false) {
                     generator.connect((x, y, value) => {
                         if (value === 0 && !this.floorMap[y][x]) {
-                            this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                            this.floorMap[y][x] = this._floorTile();
                             this.walkableTiles.push({ x, y });
                             floorTiles.add(`${x},${y}`);
                         }
@@ -702,7 +712,7 @@ class Architect {
                 });
                 generator.create((x, y, value) => {
                     if (value === 0) {
-                        this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                        this.floorMap[y][x] = this._floorTile();
                         this.walkableTiles.push({ x, y });
                     }
                 });
@@ -717,7 +727,7 @@ class Architect {
                 });
                 generator.create((x, y, value) => {
                     if (value === 0) {
-                        this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                        this.floorMap[y][x] = this._floorTile();
                         this.walkableTiles.push({ x, y });
                     }
                 });
@@ -727,7 +737,7 @@ class Architect {
                 generator = new ROT.Map.DividedMaze(this.width, this.height);
                 generator.create((x, y, value) => {
                     if (value === 0) {
-                        this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                        this.floorMap[y][x] = this._floorTile();
                         this.walkableTiles.push({ x, y });
                     }
                 });
@@ -737,7 +747,7 @@ class Architect {
                 generator = new ROT.Map.IceyMaze(this.width, this.height, options.regularity || 0);
                 generator.create((x, y, value) => {
                     if (value === 0) {
-                        this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                        this.floorMap[y][x] = this._floorTile();
                         this.walkableTiles.push({ x, y });
                     }
                 });
@@ -747,7 +757,7 @@ class Architect {
                 generator = new ROT.Map.EllerMaze(this.width, this.height);
                 generator.create((x, y, value) => {
                     if (value === 0) {
-                        this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                        this.floorMap[y][x] = this._floorTile();
                         this.walkableTiles.push({ x, y });
                     }
                 });
@@ -757,7 +767,7 @@ class Architect {
                 generator = new ROT.Map.Arena(this.width, this.height);
                 generator.create((x, y, value) => {
                     if (value === 0) {
-                        this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                        this.floorMap[y][x] = this._floorTile();
                         this.walkableTiles.push({ x, y });
                     }
                 });
@@ -781,7 +791,7 @@ class Architect {
 
                 infernalCave.create((x, y, value) => {
                     if (value === 0) {
-                        this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                        this.floorMap[y][x] = this._floorTile();
                         this.walkableTiles.push({ x, y });
                         infernalFloorTiles.add(`${x},${y}`);
                     }
@@ -790,7 +800,7 @@ class Architect {
                 if (options.connected !== false) {
                     infernalCave.connect((x, y, value) => {
                         if (value === 0 && !this.floorMap[y][x]) {
-                            this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                            this.floorMap[y][x] = this._floorTile();
                             this.walkableTiles.push({ x, y });
                             infernalFloorTiles.add(`${x},${y}`);
                         }
@@ -1071,7 +1081,7 @@ class Architect {
                 });
                 generator.create((x, y, value) => {
                     if (value === 0) {
-                        this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                        this.floorMap[y][x] = this._floorTile();
                         this.walkableTiles.push({ x, y });
                         diggerFloorTiles.add(`${x},${y}`);
                     }
@@ -1089,7 +1099,7 @@ class Architect {
                         const adjacentToFloor = anyNeighbor8(hasDiggerFloor, x, y);
 
                         if (adjacentToFloor && y > 0) {
-                            this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                            this.floorMap[y][x] = this._floorTile();
                             this.pendingWallSpawns.push({ x, y, type: this._pickWeightedWallType(diggerWallTypes) });
                         }
                     }
@@ -1552,7 +1562,7 @@ class Architect {
             // into it means writing one; clearing the background stops the cell
             // keeping whatever art was behind the rock.
             if (!this.floorMap[y][x] || this.floorMap[y][x].tileId !== this.config.defaultFloorTileId) {
-                this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                this.floorMap[y][x] = this._floorTile();
             }
             this.backgroundMap[y][x] = null;
             this.overlayMap[y][x] = null;
@@ -1591,7 +1601,7 @@ class Architect {
                 const background = this.backgroundMap[ny][nx];
                 if (background && globalVars.VOID_TILE_IDS.includes(background.tileId)) continue;
 
-                this.floorMap[ny][nx] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                this.floorMap[ny][nx] = this._floorTile();
                 this.pendingWallSpawns.push({ x: nx, y: ny });
                 existingWallSet.add(nk);
                 boundaryWalls++;
@@ -1688,7 +1698,7 @@ class Architect {
                 }
 
                 for (const cell of path) {
-                    this.floorMap[cell.y][cell.x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                    this.floorMap[cell.y][cell.x] = this._floorTile();
                     // Stop being a chasm in every sense: leaving the void background
                     // would keep addBaseAndShadows shading this as a pit, and would
                     // leave generateBridges and generateCollapsingFloors still
@@ -2370,7 +2380,7 @@ class Architect {
 
                 if (value === 0) {
                     this.backgroundMap[worldY][worldX] = null;
-                    this.floorMap[worldY][worldX] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                    this.floorMap[worldY][worldX] = this._floorTile();
                     this.walkableTiles.push({ x: worldX, y: worldY });
                 }
             }
@@ -2410,7 +2420,7 @@ class Architect {
             const worldY = startY + y;
             if (value !== 0 || !claims(worldX, worldY)) return;
             this.backgroundMap[worldY][worldX] = null;
-            this.floorMap[worldY][worldX] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+            this.floorMap[worldY][worldX] = this._floorTile();
             this.walkableTiles.push({ x: worldX, y: worldY });
             floorCells.add(`${x},${y}`);
         };
@@ -2442,7 +2452,7 @@ class Architect {
                 const worldY = startY + y;
                 if (!claims(worldX, worldY)) continue;
                 this.backgroundMap[worldY][worldX] = null;
-                this.floorMap[worldY][worldX] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                this.floorMap[worldY][worldX] = this._floorTile();
                 wallPositions.push({ x: worldX, y: worldY });
             }
         }
@@ -2526,7 +2536,7 @@ class Architect {
 
                 if (value === 0) {
                     this.backgroundMap[worldY][worldX] = null;
-                    this.floorMap[worldY][worldX] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                    this.floorMap[worldY][worldX] = this._floorTile();
                     this.walkableTiles.push({ x: worldX, y: worldY });
                     floorCells.add(`${x},${y}`);
                 }
@@ -2561,7 +2571,7 @@ class Architect {
                 if (adjacentToFloor && worldY > 0) {
                     wallPositions.push({ x: worldX, y: worldY });
                     this.backgroundMap[worldY][worldX] = null;
-                    this.floorMap[worldY][worldX] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                    this.floorMap[worldY][worldX] = this._floorTile();
                 }
             }
         }
@@ -2657,7 +2667,7 @@ class Architect {
 
         const carveFloor = (worldX, worldY, localX, localY) => {
             this.backgroundMap[worldY][worldX] = null;
-            this.floorMap[worldY][worldX] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+            this.floorMap[worldY][worldX] = this._floorTile();
             this.walkableTiles.push({ x: worldX, y: worldY });
             floorCells.add(`${localX},${localY}`);
         };
@@ -2686,7 +2696,7 @@ class Architect {
                 if (!claims(worldX, worldY)) continue;
 
                 this.backgroundMap[worldY][worldX] = null;
-                this.floorMap[worldY][worldX] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                this.floorMap[worldY][worldX] = this._floorTile();
                 wallPositions.push({ x: worldX, y: worldY });
             }
         }
@@ -2739,9 +2749,9 @@ class Architect {
                         if (worldY > 0) {
                             wallPositions.push({ x: worldX, y: worldY });
                         }
-                        this.floorMap[worldY][worldX] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                        this.floorMap[worldY][worldX] = this._floorTile();
                     } else {
-                        this.floorMap[worldY][worldX] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                        this.floorMap[worldY][worldX] = this._floorTile();
                         this.walkableTiles.push({ x: worldX, y: worldY });
                     }
                 }
@@ -2844,7 +2854,7 @@ class Architect {
             for (const key of mask) {
                 const [x, y] = key.split(',').map(Number);
                 this.backgroundMap[y][x] = null;
-                this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                this.floorMap[y][x] = this._floorTile();
                 const edge = !mask.has(`${x - 1},${y}`) || !mask.has(`${x + 1},${y}`) ||
                              !mask.has(`${x},${y - 1}`) || !mask.has(`${x},${y + 1}`);
                 if (edge && y > 0) {
@@ -2960,7 +2970,7 @@ class Architect {
             for (const key of mask) {
                 const [hx, hy] = key.split(',').map(Number);
                 this.backgroundMap[hy][hx] = null;
-                this.floorMap[hy][hx] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                this.floorMap[hy][hx] = this._floorTile();
                 this.walkableTiles.push({ x: hx, y: hy });
             }
             return;
@@ -3015,7 +3025,7 @@ class Architect {
             const [x, y] = key.split(',').map(Number);
             if (dungeonGrid[y][x] >= 1) {
                 this.backgroundMap[y][x] = null;
-                this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                this.floorMap[y][x] = this._floorTile();
                 this.walkableTiles.push({ x, y });
                 floorSet.add(key);
             }
@@ -3031,7 +3041,7 @@ class Architect {
             const adj = anyNeighbor8(hasFloor, x, y);
             if (!adj || y === 0) continue;
 
-            this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+            this.floorMap[y][x] = this._floorTile();
             this.pendingWallSpawns.push({ x, y, type: pickWallType() });
         }
 
@@ -5681,7 +5691,7 @@ class Architect {
         for (let y = 0; y < mapH; y++) {
             for (let x = 0; x < mapW; x++) {
                 if (dungeonGrid[y][x] >= 1) {
-                    this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                    this.floorMap[y][x] = this._floorTile();
                     this.walkableTiles.push({ x, y });
                     floorSet.add(`${x},${y}`);
                 }
@@ -5698,7 +5708,7 @@ class Architect {
                 const adj = anyNeighbor8(hasFloor, x, y);
 
                 if (adj && y > 0) {
-                    this.floorMap[y][x] = { tileId: this.config.defaultFloorTileId, layer: 'floor' };
+                    this.floorMap[y][x] = this._floorTile();
                     if (secretWallSet.has(`${x},${y}`)) {
                         // Every dead-end shortcut becomes a findable door.
                         //

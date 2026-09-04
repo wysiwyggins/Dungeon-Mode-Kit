@@ -1749,7 +1749,12 @@ class DungeonEngine {
         // Determine map generator config: floor-specific overrides prototype-level
         const mapGenerator = floorConfig.map_generator ?? prototypeConfig.map_generator;
 
-        this.mapManager = new Architect();
+        // Same floor-over-prototype precedence for the floor's look. Only reaches
+        // generated maps: an authored .tmj names a tile for every cell deliberately,
+        // so there is no "default" left to fill in.
+        const defaultFloor = floorConfig.default_floor ?? prototypeConfig.default_floor;
+
+        this.mapManager = new Architect({ config: this.buildFloorConfigOverrides(defaultFloor) });
         const hasAuthoredMap = await this.checkForAuthoredMap(this.currentPrototype.name, floor);
         if (hasAuthoredMap) {
             const mapFile = floor === 1 ? 'map.tmj' : `${floor}.tmj`;
@@ -2296,6 +2301,35 @@ class DungeonEngine {
         this.entityManager.addEntity(player);
     }
     
+    /**
+     * Turn a prototype's `default_floor` block into Architect config overrides.
+     *
+     * `tile` is authored as a NAME, like every other tile reference in the data
+     * files, and getTileIdByName produces exactly the 1-indexed Tiled id the
+     * generators write. An unresolvable name warns and falls through to the
+     * built-in default rather than painting the map with a broken tile.
+     *
+     * @param {Object} [defaultFloor] - { tile?: string, tint?: string }
+     * @returns {Object} Overrides for the Architect config (empty when unset)
+     */
+    buildFloorConfigOverrides(defaultFloor) {
+        if (!defaultFloor) return {};
+        const overrides = {};
+
+        if (defaultFloor.tile) {
+            const tileId = this.spriteLibrary?.getTileIdByName(defaultFloor.tile);
+            if (tileId) {
+                overrides.defaultFloorTileId = tileId;
+            } else {
+                console.warn(`default_floor: unknown tile name "${defaultFloor.tile}" — using the built-in floor tile`);
+            }
+        }
+
+        if (defaultFloor.tint) overrides.defaultFloorTint = defaultFloor.tint;
+
+        return overrides;
+    }
+
     async loadPrototypeConfig(prototypeName) {
         try {
             const response = await fetch(`${globalVars.BASE_PATH}/prototypes/${prototypeName}/prototype.json`);
@@ -2689,6 +2723,18 @@ class DungeonEngine {
                 return !this.entityManager.actors.some(actor =>
                     actor.type === actorType && !actor.isDead
                 );
+            }
+            // Format: "collected:item_type" - no item of that type may remain on the
+            // floor. The item mirror of `killed:`: pickup removes the item from
+            // entityManager.items, so the last one taken satisfies this.
+            //
+            // Guarded against the empty case, which `killed:` doesn't need — a floor
+            // where the type never spawned would otherwise read as "all collected"
+            // and win instantly. Requires at least one to have existed.
+            if (condition.startsWith('collected:')) {
+                const itemType = condition.substring(10);
+                if (!this.entityManager.spawnedItemTypes?.has(itemType)) return false;
+                return !this.entityManager.items.some(item => item.type === itemType);
             }
         }
 
@@ -3968,6 +4014,17 @@ class Prototype {
         const prototypeBiomes = await this.loadJSON('biomes.json', {});
         const prototypeTypes = await this.loadJSON('types.json', {});
         this.types = { ...this.engine.globalTypes, ...prototypeTypes };
+        // States are read straight off engine.globalStates from a dozen call sites
+        // (innate states, applyAuthoredState, apply_state_radius, ...), so a
+        // prototype's states are merged INTO that library rather than kept beside
+        // it — every existing reader then sees them with no change.
+        const prototypeStates = await this.loadJSON('states.json', {});
+        // Merge off the pristine base, not the live library: prototypes can be
+        // swapped at runtime (transitionToPrototype), and layering onto whatever
+        // the previous prototype left behind would leak its states into this one.
+        this.engine.baseStates ??= { ...this.engine.globalStates };
+        this.states = { ...this.engine.baseStates, ...prototypeStates };
+        this.engine.globalStates = this.states;
         // Actors merge per-entry rather than wholesale: a prototype that overrides
         // an existing actor supplements the base entry instead of replacing it, so
         // it only has to state what it changes (and keeps the base's `type`).
@@ -5409,6 +5466,18 @@ class Actor extends Entity {
                 this.templateVars.color = assignedColor.color;
                 this.tint = parseTint(assignedColor.hex);
             }
+        } else if (data.random_color && engine.globalColors?.length) {
+            // Plain variety: an actor that just wants to differ from its siblings
+            // (a pack of ghosts, a patch of fungus) rather than pair with a key.
+            // Deliberately does NOT touch assignLockColor — that pool is the
+            // door/key pairing and a monster drawing from it would break matching.
+            const randomColor = randomElement(engine.globalColors);
+            this.templateVars.color = randomColor.color;
+            this.tint = parseTint(randomColor.hex);
+            // originalTint is what effects blend against (see getEffectiveTint), so
+            // a per-instance color has to move it too or `flicker_tint` and friends
+            // would animate around the authored tint instead.
+            this.originalTint = this.tint;
         }
 
         // Apply innate states (permanent states defined in actor data)
@@ -6362,9 +6431,21 @@ class Actor extends Entity {
     }
 
     pickUpItem(item) {
+        // An item whose whole purpose is its pickup_effect (a pellet's score, a gold
+        // nugget's wealth) is consumed below and never kept, so it needs no room to
+        // land in. Carrying capacity gates what you CARRY — gating these too means a
+        // player with no `inventory` attribute can't bank a coin, and a full pack
+        // silently stops scoring.
+        //
+        // Player only, deliberately. The `inventory` attribute is how the data says
+        // which creatures pick things up at all — most monsters don't have it, and a
+        // scoring pickup is the player's business. Without this restriction a ghost
+        // would eat the pellets it walks over.
+        const isConsumedOnPickup = this.isPlayerControlled() && !!item.getAttribute('pickup_effect');
+
         // Check if actor has inventory capacity (inventory attribute)
         const maxInventory = this.getAttribute('inventory');
-        if (maxInventory === undefined || maxInventory <= 0) {
+        if (!isConsumedOnPickup && (maxInventory === undefined || maxInventory <= 0)) {
             // Actor cannot carry items
             return false;
         }
@@ -6404,7 +6485,7 @@ class Actor extends Entity {
             }
         }
 
-        if (this.inventory.length >= maxInventory) {
+        if (!isConsumedOnPickup && this.inventory.length >= maxInventory) {
             console.log(`${this.name}'s inventory is full`);
             if (this.isPlayerControlled()) {
                 const named = this.engine.inputManager?.getEntityNameWithArticle(item)
@@ -6423,6 +6504,15 @@ class Actor extends Entity {
         const pickupEffect = item.getAttribute('pickup_effect');
         if (pickupEffect && typeof pickupEffect === 'object') {
             for (const [attr, rawValue] of Object.entries(pickupEffect)) {
+                // apply_state names a state, not a number to add — without this the
+                // numeric path below would compute 0 + "impervious". Mirrors the
+                // same key in executeItemEffect so pickup_effect and use_effect
+                // stay consistent.
+                if (attr === 'apply_state') {
+                    this.applyAuthoredState(rawValue);
+                    continue;
+                }
+
                 // Resolve {value} references to item's value property
                 let value = rawValue;
                 if (typeof rawValue === 'string' && rawValue === '{value}') {
@@ -6478,6 +6568,15 @@ class Actor extends Entity {
                     this.engine.inputManager?.showMessage(`You cannot wear the ${item.name}. ${reason}.`);
                 }
             }
+        }
+
+        // Taking the last of something can satisfy a `collected:` win condition, the
+        // pickup counterpart of the check a kill already runs.
+        if (this.isPlayerControlled()) {
+            if (this.engine.checkWinConditions()) {
+                this.engine.unlockWinConditionStairways();
+            }
+            this.engine.maybeTriggerGameWin();
         }
 
         return true;
@@ -9334,8 +9433,14 @@ class Actor extends Entity {
             // If no accuracy attribute or target incapacitated, damageHits remains true (deterministic combat)
         }
 
+        // A target that is immune to melee absorbs the blow entirely. Checked here
+        // rather than in isCombatTarget so the swing still animates and the attack
+        // still reads as an attack — it just does nothing.
+        const meleeImmune = isCombatTarget && damageHits && target.hasAttribute('melee_immune');
+        if (meleeImmune) this._showMeleeImmuneMessage(target);
+
         // Apply damage effects if hit succeeded
-        if (isCombatTarget && damageHits) {
+        if (isCombatTarget && damageHits && !meleeImmune) {
             const result = this._applyEffectSource(damageSource, target, true);
             if (result.applied) effectApplied = true;
             if (result.targetPassable) targetPassable = true;
@@ -9736,6 +9841,26 @@ class Actor extends Entity {
         }
 
         return !target.hasAttribute('solid');
+    }
+
+    /**
+     * Feedback for a blow that lands but cannot hurt the target (melee_immune).
+     * Mirrors _showMissMessage's player/observer split, but says "no effect"
+     * rather than "miss" — the attack connected, it just didn't matter.
+     */
+    _showMeleeImmuneMessage(target) {
+        if (this.isPlayerControlled()) {
+            this.engine.inputManager?.showMessage(
+                `Your blow glances off ${target.getNameWithArticle()} harmlessly!`
+            );
+        } else {
+            const template = "The [actor_name] strikes the [attacked_actor_name] to no effect!";
+            const message = this._processMessageTemplate(template, target);
+            const pos = target.isPlayerControlled?.() ? null : { x: this.x, y: this.y };
+            this.engine.inputManager?.showMessage(message, pos);
+        }
+
+        console.log(`Melee immune: ${this.name} -> ${target.name}`);
     }
 
     /**
@@ -11457,6 +11582,8 @@ class EntityManager {
         this.entities = [];
         this.actors = [];
         this.items = [];
+        // Item ids that have appeared on this floor, for `collected:` win conditions.
+        this.spawnedItemTypes = new Set();
         this.player = null;
         this._liquidPosCache = null;
         this._solidPosCache = null;
@@ -12276,13 +12403,18 @@ class EntityManager {
             // For non-guaranteed spawns, roll for count between min and max
             const count = min + Math.floor(ROT.RNG.getUniform() * (max - min + 1));
 
+            // Resolved once and consumed as we go: getAvailableTiles only excludes
+            // ACTOR-occupied tiles, so re-querying it per spawn would happily stack
+            // every item of a 50-count batch onto the same tile. Same splice
+            // approach spawnUnplacedEntities uses.
+            const availableTiles = itemTiles();
+
             for (let i = 0; i < count; i++) {
                 // Roll chance for each individual spawn
                 if (ROT.RNG.getPercentage() > chance) {
                     continue;
                 }
 
-                const availableTiles = itemTiles();
                 if (availableTiles.length === 0) {
                     console.warn(`random_items: No tiles available for "${itemType}"`);
                     break;
@@ -12299,7 +12431,7 @@ class EntityManager {
                 const spawnType = spawnData.id || itemType;
 
                 const tileIndex = Math.floor(ROT.RNG.getUniform() * availableTiles.length);
-                const tile = availableTiles[tileIndex];
+                const tile = availableTiles.splice(tileIndex, 1)[0];
 
                 const item = new Item(tile.x, tile.y, spawnType, spawnData, this.engine);
                 this.addEntity(item);
@@ -12604,6 +12736,10 @@ class EntityManager {
             }
         } else if (entity instanceof Item) {
             this.items.push(entity);
+            // Remember that this type ever existed on the floor. `collected:` win
+            // conditions need it to tell "all taken" from "never spawned", since
+            // both leave zero on the ground.
+            this.spawnedItemTypes.add(entity.type);
             // Create sprite for dynamically added items
             if (this.engine.renderer) {
                 this.engine.renderer.createItemSprite(entity);
@@ -13586,6 +13722,7 @@ class EntityManager {
         this.entities = [];
         this.actors = [];
         this.items = [];
+        this.spawnedItemTypes = new Set();
         this.player = null;
         this._actorPosCache = null;
         this._liquidPosCache = null;
@@ -14525,6 +14662,14 @@ class RenderSystem {
 
         sprite.x = x * globalVars.TILE_WIDTH;
         sprite.y = y * globalVars.TILE_HEIGHT;
+
+        // A tile may carry its own tint (a prototype's default_floor.tint). Only the
+        // floor layer uses this: lighting recomputes background and overlay tints
+        // every frame, so a static value there would be overwritten — floors are
+        // dimmed by a separate overlay layer instead, leaving their tint free.
+        if (typeof tile === 'object' && tile.tint) {
+            sprite.tint = parseTint(tile.tint);
+        }
 
         // Apply Tiled flip/rotation flags
         if (typeof tile === 'object') {

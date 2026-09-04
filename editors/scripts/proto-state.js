@@ -50,7 +50,7 @@ async function fetchJSON(url) {
 }
 
 async function loadBaseData() {
-    const [actors, items, sounds, biomes, protoIndex, types, entities] = await Promise.all([
+    const [actors, items, sounds, biomes, protoIndex, types, entities, tiles] = await Promise.all([
         fetchJSON('../data/actors.json'),
         fetchJSON('../data/items.json'),
         fetchJSON('../data/sounds.json'),
@@ -58,6 +58,7 @@ async function loadBaseData() {
         fetchJSON('../data/prototypes.json'),
         fetchJSON('../data/types.json'),
         fetchJSON('../data/entities.json'),
+        fetchJSON('../data/static-tiles.json'),
     ]);
     state.baseActors = actors;
     state.baseItems = items;
@@ -67,6 +68,10 @@ async function loadBaseData() {
     state.prototypeNames = Array.isArray(protoIndex.prototypes) ? protoIndex.prototypes : [];
     state.soundIds = Object.keys(sounds.sprite || {}).sort();
     state.poolItemIds = collectPoolItemIds(items, types);
+    // Tile names for the default_floor picker. The picker itself loads the
+    // spritesheet separately (TilePicker.load); this is for name lookups.
+    state.tileMap = tiles.tiles || {};
+    state.tileNames = Object.keys(state.tileMap).sort();
 }
 
 async function loadPrototype(name) {

@@ -3,16 +3,10 @@
 // ============================================================================
 // Handles UI elements like boxes, menus, and overlays using the uiContainer
 
-// Bare modifier keydowns, as reported by KeyboardEvent.key. Dialogs that treat an
-// unrecognized key as a dismissal must skip these: pressing Shift to type an
-// uppercase answer fires its own keydown first.
 const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'AltGraph', 'Dead']);
-
-// Default aim-target categories, used when an item declares no `target_filter`.
-// Throwing includes traps so a thrown object can spring one from a safe distance;
-// zapping is enemies-only, since most staffs and wands are offensive.
 const THROW_DEFAULT_TARGETS = ['hostile', 'trap'];
 const SPELL_DEFAULT_TARGETS = ['hostile'];
+const PLAYER_COUNTER_ATTRIBUTES = ['score', 'wealth'];
 
 class InterfaceManager {
     constructor(engine) {
@@ -1191,6 +1185,17 @@ class InterfaceManager {
                 }
                 // When hasHtmlActorsElement is true, thermometer stats are skipped entirely
                 // (they're shown in the HTML sidebar instead)
+            }
+        }
+
+        // Integer attributes read as counters (score, wealth) rather than traits, so
+        // they belong beside the stats.
+        if (player.attributes instanceof Map) {
+            for (const key of PLAYER_COUNTER_ATTRIBUTES) {
+                const value = player.attributes.get(key);
+                if (typeof value === 'number' && Number.isInteger(value)) {
+                    regularStats.push(`${this.capitalize(key)}: ${this.formatStatValue(value)}`);
+                }
             }
         }
 
@@ -4758,16 +4763,15 @@ class InterfaceManager {
             return;
         }
 
-        // Filter to visible actors with stats (or all if darkness is off)
+        // Filter to visible actors with something to show
         const visibleActors = actors.filter(a =>
             this.engine.isTileVisible(a.x, a.y) &&
-            a.stats && Object.keys(a.stats).length > 0 &&
+            (a.hasAttribute('controlled') || (a.stats && Object.keys(a.stats).length > 0)) &&
             (!a.isUnseen?.() || a.hasAttribute('controlled'))
         );
 
         // Sort: controlled actors first, then non-controlled by distance to the
-        // player (nearest first) so a crowded level surfaces the closest threats;
-        // fall back to name for ties / when there's no player to measure from.
+        // player (nearest first)  so a crowded level surfaces the closest threats;
         const player = entityManager.player;
         const distTo = (a) => player
             ? Math.max(Math.abs(a.x - player.x), Math.abs(a.y - player.y))

@@ -434,18 +434,8 @@
 </div>
 
 <!-- Tile picker modal -->
-<div id="tile-picker-overlay" class="tile-picker-overlay">
-    <div id="tile-picker" class="tile-picker">
-        <div id="tile-picker-header" class="tile-picker-header">
-            <span id="tile-picker-target" class="tile-picker-target">Selecting: —</span>
-            <input type="text" id="tile-picker-search" placeholder="Search tile name...">
-            <button id="tile-picker-none">None / Blank</button>
-            <button id="tile-picker-close">Close</button>
-        </div>
-        <canvas id="tile-picker-canvas" class="tile-picker-canvas"></canvas>
-    </div>
-</div>
-<div id="tile-picker-tooltip" class="tile-picker-tooltip"></div>
+<!-- The tile-picker overlay is injected by scripts/tile-picker.js on first use. -->
+<script src="scripts/tile-picker.js"></script>
 
 <script>
 let TILE_W = 40, TILE_H = 30, SS_COLS = 23, SS_ROWS = 17;
@@ -493,7 +483,6 @@ const TILE_FIELDS = ['tileIndex', 'projectile_tile'];
 
 let state = {
     tileMap: {},
-    reverseTileMap: {},
     tileNames: [],
     spritesheetImg: null,
     items: {},
@@ -502,9 +491,7 @@ let state = {
     mergedItems: {},
     protoItemKeys: new Set(),
     prototypeCache: {},
-    currentTiles: {},
-    activeTileTarget: null,
-    highlightedTiles: null
+    currentTiles: {}
 };
 
 // ---- Data loading ----
@@ -549,12 +536,6 @@ async function loadBaseData() {
     );
 
     state.tileNames = Object.keys(state.tileMap).sort();
-    state.reverseTileMap = {};
-    for (const [name, coords] of Object.entries(state.tileMap)) {
-        const key = coords[0] + ',' + coords[1];
-        if (!state.reverseTileMap[key]) state.reverseTileMap[key] = [];
-        state.reverseTileMap[key].push(name);
-    }
 }
 
 async function loadPrototype(name) {
@@ -875,137 +856,21 @@ function initTileSlots() {
 
 // ---- Tile Picker ----
 
+// The picker itself lives in scripts/tile-picker.js, shared with the actor and
+// prototype editors. This adapter is all that remains of the local copy: it hands
+// over the current value and writes the choice back into this page's state.
 function openTilePicker(target) {
-    state.activeTileTarget = target;
-    const overlay = document.getElementById('tile-picker-overlay');
-    overlay.classList.add('active');
-    document.getElementById('tile-picker-target').textContent = 'Selecting: ' + target;
-    document.getElementById('tile-picker-search').value = '';
-    state.highlightedTiles = null;
-    drawTilePickerGrid();
-    document.getElementById('tile-picker-search').focus();
-}
-
-function closeTilePicker() {
-    document.getElementById('tile-picker-overlay').classList.remove('active');
-    document.getElementById('tile-picker-tooltip').style.display = 'none';
-    state.activeTileTarget = null;
-}
-
-function drawTilePickerGrid() {
-    const canvas = document.getElementById('tile-picker-canvas');
-    const w = SS_COLS * TILE_W, h = SS_ROWS * TILE_H;
-    canvas.width = w; canvas.height = h;
-    const ctx = canvas.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
-
-    if (state.spritesheetImg) {
-        ctx.drawImage(state.spritesheetImg, 0, 0);
-    }
-
-    if (state.highlightedTiles) {
-        ctx.fillStyle = 'rgba(0,0,0,0.7)';
-        for (let r = 0; r < SS_ROWS; r++) {
-            for (let c = 0; c < SS_COLS; c++) {
-                if (!state.highlightedTiles.has(c + ',' + r)) {
-                    ctx.fillRect(c * TILE_W, r * TILE_H, TILE_W, TILE_H);
-                }
-            }
-        }
-    }
-
-    ctx.strokeStyle = 'rgba(132,220,207,0.2)';
-    ctx.lineWidth = 0.5;
-    for (let c = 0; c <= SS_COLS; c++) {
-        ctx.beginPath(); ctx.moveTo(c * TILE_W, 0); ctx.lineTo(c * TILE_W, h); ctx.stroke();
-    }
-    for (let r = 0; r <= SS_ROWS; r++) {
-        ctx.beginPath(); ctx.moveTo(0, r * TILE_H); ctx.lineTo(w, r * TILE_H); ctx.stroke();
-    }
-
-    const current = state.currentTiles[state.activeTileTarget];
-    const coords = resolveTile(current);
-    if (coords) {
-        ctx.strokeStyle = '#e94560';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(coords.x * TILE_W + 1, coords.y * TILE_H + 1, TILE_W - 2, TILE_H - 2);
-    }
-}
-
-function initTilePicker() {
-    const canvas = document.getElementById('tile-picker-canvas');
-    const tooltip = document.getElementById('tile-picker-tooltip');
-
-    canvas.addEventListener('mousemove', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        const col = Math.floor((e.clientX - rect.left) * scaleX / TILE_W);
-        const row = Math.floor((e.clientY - rect.top) * scaleY / TILE_H);
-        const names = state.reverseTileMap[col + ',' + row];
-        if (names && names.length) {
-            tooltip.textContent = names.join(', ');
-            tooltip.style.display = 'block';
-            tooltip.style.left = (e.clientX + 12) + 'px';
-            tooltip.style.top = (e.clientY - 8) + 'px';
-        } else {
-            tooltip.style.display = 'none';
-        }
-    });
-
-    canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
-
-    canvas.addEventListener('click', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        const col = Math.floor((e.clientX - rect.left) * scaleX / TILE_W);
-        const row = Math.floor((e.clientY - rect.top) * scaleY / TILE_H);
-        const names = state.reverseTileMap[col + ',' + row];
-        if (names && names.length) {
-            state.currentTiles[state.activeTileTarget] = names[0];
-        } else {
-            state.currentTiles[state.activeTileTarget] = { x: col, y: row };
-        }
-        updateTileSlot(state.activeTileTarget);
-        closeTilePicker();
-        updatePreview();
-    });
-
-    document.getElementById('tile-picker-search').addEventListener('input', (e) => {
-        const q = e.target.value.trim().toUpperCase();
-        if (!q) {
-            state.highlightedTiles = null;
-            drawTilePickerGrid();
-            return;
-        }
-        state.highlightedTiles = new Set();
-        for (const [name, coords] of Object.entries(state.tileMap)) {
-            if (name.toUpperCase().includes(q)) {
-                state.highlightedTiles.add(coords[0] + ',' + coords[1]);
-            }
-        }
-        drawTilePickerGrid();
-    });
-
-    document.getElementById('tile-picker-none').addEventListener('click', () => {
-        state.currentTiles[state.activeTileTarget] = 'BLANK';
-        updateTileSlot(state.activeTileTarget);
-        closeTilePicker();
-        updatePreview();
-    });
-
-    document.getElementById('tile-picker-close').addEventListener('click', closeTilePicker);
-    document.getElementById('tile-picker-overlay').addEventListener('click', (e) => {
-        if (e.target === e.currentTarget) closeTilePicker();
-    });
-
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && document.getElementById('tile-picker-overlay').classList.contains('active')) {
-            closeTilePicker();
-        }
+    TilePicker.open({
+        current: state.currentTiles[target],
+        label: target,
+        onPick: (value) => {
+            state.currentTiles[target] = value === null ? 'BLANK' : value;
+            updateTileSlot(target);
+            updatePreview();
+        },
     });
 }
+
 
 // ---- Boolean attributes ----
 
@@ -2229,10 +2094,11 @@ async function init() {
     initBoolAttrs();
     initTypedAttrs();
     initTileSlots();
-    initTilePicker();
     initTintSync();
 
-    await Promise.all([loadBaseData(), loadSpritesheet()]);
+    // TilePicker.load() feeds the shared picker overlay; loadSpritesheet still runs
+    // because this page draws its own tile previews from state.spritesheetImg.
+    await Promise.all([loadBaseData(), loadSpritesheet(), TilePicker.load()]);
     populateTypeDropdown();   // before loadPrototype, which populates the form
     await loadPrototype('');
 

@@ -79,7 +79,8 @@ async function init() {
         textareaRow: 'tpl-textarea-row',
         selectRow: 'tpl-select-row',
     });
-    await loadBaseData();
+    // TilePicker.load() pulls the spritesheet for the default_floor tile picker.
+    await Promise.all([loadBaseData(), TilePicker.load()]);
     populatePrototypeSelect();
     document.getElementById('prototype-select').addEventListener('change', async (e) => {
         const name = e.target.value;

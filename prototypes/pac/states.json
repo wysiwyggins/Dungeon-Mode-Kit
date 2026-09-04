@@ -1,8 +1,13 @@
 {
-    "impervious": {
+  "impervious": {
     "name": "Impervious",
     "duration": 20,
-    "effect_description": "You hunger",
-    "immunity": ""
+    "tint": "#66ccff",
+    "grants_attribute": "melee_immune",
+    "effect_description": "The ghosts fear you",
+    "on_apply_message": "[actor_name] surges with power — the ghosts are edible!",
+    "on_remove_message": "The power fades.",
+    "on_apply_sound": "tone3",
+    "on_remove_sound": "plunk3"
   }
 }

@@ -1,43 +1,33 @@
 {
-    "pellet": {
+  "pellet": {
     "name": "pellet",
     "tileIndex": "WHITE_BULLET",
     "tint": "#FFD700",
     "ignore_darkness": true,
     "identified": false,
-    "random_value": [
-        1,
-        10
-    ],
     "attributes": {
-        "pickupable": true,
-        "visible": true,
-        "description": "A golden lump of edible manna.",
-        "pickup_effect": {
-            "score": "{value}"
-            }
-        }
-    },
-
-    "power_pill": {
-    "name": "pill",
+      "pickupable": true,
+      "visible": true,
+      "description": "A golden lump of edible manna.",
+      "pickup_effect": {
+        "score": 1
+      }
+    }
+  },
+  "power_pill": {
+    "name": "power pill",
     "tileIndex": "FULL_MOON",
     "tint": "#FFD700",
     "ignore_darkness": true,
     "identified": false,
-    "random_value": [
-        1,
-        10
-    ],
+    "flickerTint": true,
     "attributes": {
-        "pickupable": true,
-        "visible": true,
-        "description": "A golden lump of edible manna.",
-        "pickup_effect": {
-                "apply_state": "impervious"
-            }
-        }
+      "pickupable": true,
+      "visible": true,
+      "description": "A swollen pearl of pure appetite. Swallow it and the hunters become the hunted.",
+      "pickup_effect": {
+        "apply_state": "impervious"
+      }
     }
-
-
+  }
 }
