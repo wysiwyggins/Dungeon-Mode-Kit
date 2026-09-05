@@ -3893,7 +3893,7 @@ class InterfaceManager {
                 const statesData = this.engine.globalStates;
                 if (statesData?.[spellEffect.apply_state]) {
                     target.applyState(spellEffect.apply_state, statesData[spellEffect.apply_state]);
-                    this.engine.inputManager?.showMessage(`${target.name} is affected!`);
+                    this.engine.inputManager?.showMessage(`${target.getNameWithArticle(true)} is affected!`);
                 }
             }
         }
@@ -3907,7 +3907,7 @@ class InterfaceManager {
                     target.removeState(sn, true);
                 }
                 if (stateNames.length > 0) {
-                    this.engine.inputManager?.showMessage(`${target.name}'s enchantments are stripped away!`);
+                    this.engine.inputManager?.showMessage(`${target.getNameWithArticle(true)}'s enchantments are stripped away!`);
                 }
             }
         }
@@ -3925,7 +3925,7 @@ class InterfaceManager {
                         target.y = dest.y;
                         target.updateSpritePosition();
                         this.engine.lightingManager?.computeLighting();
-                        this.engine.inputManager?.showMessage(`${target.name} vanishes!`);
+                        this.engine.inputManager?.showMessage(`${target.getNameWithArticle(true)} vanishes!`);
                     }
                 }
             }
@@ -3951,7 +3951,7 @@ class InterfaceManager {
                 if (moved) {
                     target.updateSpritePosition();
                     this.engine.playSound?.('push1');
-                    this.engine.inputManager?.showMessage(`${target.name} is pulled toward you!`);
+                    this.engine.inputManager?.showMessage(`${target.getNameWithArticle(true)} is pulled toward you!`);
                 }
             }
         }
@@ -5161,7 +5161,8 @@ class InterfaceManager {
      * What a hallucinating viewer sees instead of the truth, or null when they see
      * straight. The name is the SAME scrambled tile the sidebar hover line uses
      * (`_hallucinatedTileNameBase`, set per tick by the texture_scramble effect), so the
-     * panel and the line above it always name the same thing.
+     * panel and the line above it always name the same thing — and, since that effect
+     * now paints floor items too, the same thing the sprite on the map is showing.
      *
      * Inventory items are exempt: you know what you're carrying. Only what's out in the
      * world is in doubt, which is the split docs/IDEAS.md asks for.

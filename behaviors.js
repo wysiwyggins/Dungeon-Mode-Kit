@@ -863,7 +863,7 @@ const BehaviorLibrary = {
             // Show incineration message for visible actors
             if (other.hasAttribute('visible')) {
                 const otherName = other.getNameWithArticle();
-                actor.engine.inputManager?.showMessage(`The ${actor.name} incinerates ${otherName}!`, { x: actor.x, y: actor.y });
+                actor.engine.inputManager?.showMessage(`${actor.getNameWithArticle(true)} incinerates ${otherName}!`, { x: actor.x, y: actor.y });
             }
 
             other.die();
@@ -895,7 +895,7 @@ const BehaviorLibrary = {
             if (item.hasAttribute('visible')) {
                 const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
                 const article = actor.engine.inputManager?.getIndefiniteArticle(displayName) || 'a';
-                actor.engine.inputManager?.showMessage(`The ${actor.name} incinerates ${article} ${displayName}!`, { x: actor.x, y: actor.y });
+                actor.engine.inputManager?.showMessage(`${actor.getNameWithArticle(true)} incinerates ${article} ${displayName}!`, { x: actor.x, y: actor.y });
             }
 
             // Spawn fire where the item was destroyed
@@ -1846,7 +1846,7 @@ const BehaviorLibrary = {
             if (!victim.hasState(burnState) && damagePerTurn > 0 && victim.stats?.health) {
                 const burned = victim.takeFireDamageOncePerTurn(damagePerTurn);
                 if (burned && victim.hasAttribute('visible')) {
-                    actor.engine.inputManager?.showMessage(`The fire burns ${victim.name} for ${damagePerTurn} damage!`, { x: actor.x, y: actor.y });
+                    actor.engine.inputManager?.showMessage(`The fire burns ${victim.getNameWithArticle()} for ${damagePerTurn} damage!`, { x: actor.x, y: actor.y });
                 }
             }
         }
@@ -2549,7 +2549,7 @@ const BehaviorLibrary = {
             actor._hasLoot = true;
 
             const displayName = stolen.getDisplayName ? stolen.getDisplayName() : stolen.name;
-            actor.engine.inputManager?.showMessage(`The ${actor.name} snatches your ${displayName}!`);
+            actor.engine.inputManager?.showMessage(`${actor.getNameWithArticle(true)} snatches your ${displayName}!`);
             actor.engine.playSound?.('grab');
 
             return true;

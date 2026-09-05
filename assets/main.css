@@ -461,7 +461,6 @@ body.editor .preview-canvas {
   border: 1px solid var(--border);
   display: block;
   margin-bottom: 12px;
-  image-rendering: pixelated;
 }
 body.editor .preview-label {
   font-size: 12px;
@@ -473,7 +472,6 @@ body.editor .preview-tile {
   display: inline-block;
   border: 1px solid var(--border);
   margin-right: 4px;
-  image-rendering: pixelated;
   background: #d0cfc8;
 }
 body.editor .tile-slot {
@@ -511,7 +509,6 @@ body.editor .tile-slot .clear-btn {
   background: none;
 }
 body.editor .tile-preview {
-  image-rendering: pixelated;
   background: #d0cfc8;
   border: 1px solid var(--border);
   display: block;
@@ -581,7 +578,6 @@ body.editor .tile-picker-target {
 }
 body.editor .tile-picker-canvas {
   cursor: crosshair;
-  image-rendering: pixelated;
   display: block;
 }
 body.editor .tile-picker-tooltip {

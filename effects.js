@@ -4,9 +4,6 @@
  * Effects are defined in data/effects.json and can be overridden per-prototype.
  */
 
-// ============================================================================
-// CONSTANTS (moved from engine.js - only used by effect primitives)
-// ============================================================================
 
 const HALLUCINATION_TINTS = [0xFFFF4F, 0xEE4266, 0x540D6E, 0x3BCEFF, 0x0EAD69];
 
@@ -344,12 +341,8 @@ const EffectPrimitives = {
     /**
      * Continuous rainbow hue rotation. Unlike tint_cycle (which oscillates brightness/
      * channel offset around a base and so barely moves a white sprite), this rotates a
-     * sprite's tint smoothly through the full hue wheel via HSV — a vivid, always-moving
-     * color cycle that shows clearly on a white sprite. Runtime params: baseTint (only
-     * its brightness is used as the HSV value, so 0xFFFFFF = full brightness) and
-     * spatial_phase (radians, offsets this sprite in the cycle so a field of sprites
-     * flows rather than all showing one flat color). Shares a renderer-level ticker and
-     * sprite list, mirroring tint_cycle.
+     * sprite's tint smoothly through the full hue wheel via HSV
+     *  Shares a renderer-level ticker and sprite list, mirroring tint_cycle.
      */
     hue_cycle(ctx, params) {
         const {
@@ -738,17 +731,52 @@ const EffectPrimitives = {
     },
 
     /**
-     * Replace actor textures with random tiles + random tints.
+     * Replace actor and floor-item textures with random tiles + random tints.
+     *
+     * @param {boolean} [params.skip_player=true] - Leave the controlled actor alone
+     * @param {boolean} [params.include_items=true] - Scramble floor items too
      */
     texture_scramble(ctx, params) {
-        const { skip_player = true } = params;
+        const { skip_player = true, include_items = true } = params;
         let originalActorTextures = null;
+        // Items keep their own map: they carry a single `sprite`, not the base/top pair,
+        // and they come and go from the floor mid-trip as they're picked up and dropped.
+        let originalItemTextures = null;
         const bgRects = [];
+
+        // One scrambled cell: swap in a random tile, tint it, and lay an opaque rect
+        // behind it so tile art with transparency doesn't read as floor showing through.
+        const scrambleSprite = (sprite, tint, tw, th) => {
+            if (!sprite) return null;
+            const tile = ctx.spriteLibrary.getRandomTile();
+            // An AnimatedSprite cycles its own frames; assigning one texture would
+            // fight the animation, so those keep their art and take only the tint.
+            if (!(sprite instanceof PIXI.AnimatedSprite)) {
+                ctx.renderer.updateSpriteTexture(sprite, tile);
+            }
+            sprite.tint = tint;
+
+            const bg = new PIXI.Graphics();
+            bg.beginFill((tint >> 1) & 0x7F7F7F);   // a darkened copy of the tint
+            bg.drawRect(0, 0, tw, th);
+            bg.endFill();
+            // A flipped sprite is anchored at its centre and offset half a tile to
+            // compensate (see createItemSprite); the rect is anchored top-left, so back
+            // that offset out or it sits a half-tile down and right of what it backs.
+            bg.x = sprite.x - sprite.anchor.x * tw;
+            bg.y = sprite.y - sprite.anchor.y * th;
+            bg.zIndex = sprite.zIndex - 1;
+            ctx.containers.entity.addChild(bg);
+            bgRects.push(bg);
+
+            return tile.name;
+        };
 
         return {
             apply() {
                 const spriteLib = ctx.spriteLibrary;
-                const actors = ctx.engine.entityManager?.actors;
+                const entityManager = ctx.engine.entityManager;
+                const actors = entityManager?.actors;
                 if (!actors || !spriteLib) return;
 
                 const tw = globalVars.TILE_WIDTH;
@@ -756,6 +784,9 @@ const EffectPrimitives = {
 
                 if (!originalActorTextures) {
                     originalActorTextures = new Map();
+                }
+                if (!originalItemTextures) {
+                    originalItemTextures = new Map();
                 }
 
                 // Remove previous tick's background rects
@@ -778,50 +809,41 @@ const EffectPrimitives = {
                         });
                     }
 
-                    if (actor.spriteBase) {
-                        const tile = spriteLib.getRandomTile();
-                        if (!(actor.spriteBase instanceof PIXI.AnimatedSprite)) {
-                            ctx.renderer.updateSpriteTexture(actor.spriteBase, tile);
-                        }
-                        actor._hallucinatedTileNameBase = tile.name;
-                    }
-                    if (actor.spriteTop) {
-                        const tile = spriteLib.getRandomTile();
-                        if (!(actor.spriteTop instanceof PIXI.AnimatedSprite)) {
-                            ctx.renderer.updateSpriteTexture(actor.spriteTop, tile);
-                        }
-                        actor._hallucinatedTileNameTop = tile.name;
-                    }
-
+                    // One tint for the whole actor, so a two-tile creature still reads
+                    // as one thing rather than two unrelated cells.
                     const tint = randomElement(HALLUCINATION_TINTS);
-                    if (actor.spriteBase) actor.spriteBase.tint = tint;
-                    if (actor.spriteTop) actor.spriteTop.tint = tint;
+                    const baseName = scrambleSprite(actor.spriteBase, tint, tw, th);
+                    const topName = scrambleSprite(actor.spriteTop, tint, tw, th);
+                    if (baseName) actor._hallucinatedTileNameBase = baseName;
+                    if (topName) actor._hallucinatedTileNameTop = topName;
+                }
 
-                    // Add solid background fills behind scrambled sprites
-                    // so transparent tile art doesn't blend with the floor
-                    const darkTint = ((tint >> 1) & 0x7F7F7F); // darken the tint
-                    if (actor.spriteBase) {
-                        const bg = new PIXI.Graphics();
-                        bg.beginFill(darkTint);
-                        bg.drawRect(0, 0, tw, th);
-                        bg.endFill();
-                        bg.x = actor.spriteBase.x;
-                        bg.y = actor.spriteBase.y;
-                        bg.zIndex = actor.spriteBase.zIndex - 1;
-                        ctx.containers.entity.addChild(bg);
-                        bgRects.push(bg);
+                if (!include_items) return;
+
+                for (const item of entityManager.items || []) {
+                    if (!item.sprite) continue;   // invisible, or not yet rendered
+
+                    // Keyed by item but remembering the sprite too. An item that is
+                    // picked up and dropped again comes back with a brand-new, honest
+                    // sprite, and restoring the old capture onto it would paint the
+                    // scramble back on — or reach for a texture destroyed with the
+                    // sprite it came from.
+                    if (originalItemTextures.get(item)?.sprite !== item.sprite) {
+                        originalItemTextures.set(item, {
+                            sprite: item.sprite,
+                            texture: item.sprite.texture,
+                            tint: item.sprite.tint
+                        });
                     }
-                    if (actor.spriteTop) {
-                        const bg = new PIXI.Graphics();
-                        bg.beginFill(darkTint);
-                        bg.drawRect(0, 0, tw, th);
-                        bg.endFill();
-                        bg.x = actor.spriteTop.x;
-                        bg.y = actor.spriteTop.y;
-                        bg.zIndex = actor.spriteTop.zIndex - 1;
-                        ctx.containers.entity.addChild(bg);
-                        bgRects.push(bg);
-                    }
+
+                    // The scrambled tile name doubles as the item's false name, so the
+                    // sprite and the sidebar can't disagree. Written to the same field
+                    // hallucinatedNameFor memoizes into — this is now the writer, and
+                    // that function's fallback only fires for an item with no sprite.
+                    const name = scrambleSprite(
+                        item.sprite, randomElement(HALLUCINATION_TINTS), tw, th
+                    );
+                    if (name) item._hallucinatedTileNameBase = name;
                 }
             },
             tick() {
@@ -851,10 +873,23 @@ const EffectPrimitives = {
                     originalActorTextures = null;
                 }
 
-                // Items aren't scrambled visually, so they're not in the map above — but
-                // the hover line and info panel memoize a fake name onto them
-                // (InputManager.hallucinatedNameFor). Clear those too, or a floor item
-                // keeps its false name after the trip ends.
+                if (originalItemTextures) {
+                    for (const [item, originals] of originalItemTextures) {
+                        // Only restore onto the very sprite the capture came from. It's
+                        // null if the item was picked up mid-trip, and a different
+                        // object — already honest — if it was dropped again since.
+                        if (item.sprite && item.sprite === originals.sprite && originals.texture) {
+                            item.sprite.texture = originals.texture;
+                            item.sprite.tint = originals.tint;
+                        }
+                    }
+                    originalItemTextures = null;
+                }
+
+                // Not every item that carries a false name was scrambled — an item with
+                // no sprite still gets one from InputManager.hallucinatedNameFor's
+                // fallback. Sweep the whole floor, or one keeps its false name after
+                // the trip ends.
                 for (const item of ctx.engine.entityManager?.items || []) {
                     delete item._hallucinatedTileNameBase;
                 }

@@ -4558,15 +4558,28 @@ class Entity {
     }
 
     /**
+     * Whether this entity goes unnamed in messages. False on the base class: an item
+     * lying on the floor is named.
+     *
+     * @returns {boolean}
+     */
+    isAnonymous() {
+        return false;
+    }
+
+    /**
      * Get the entity's name with appropriate article ("the", or none for proper nouns/mass nouns)
      *
      * Generic names are authored lowercase in the data files so they read as prose
      * mid-sentence ("the fire brick door"); proper names keep their capitals.
+     * anonymity gate lives here for masking names
      *
      * @param {boolean} capitalize - Whether to capitalize "The" (default false)
      * @returns {string} Name with article if appropriate
      */
     getNameWithArticle(capitalize = false) {
+        if (this.isAnonymous()) return capitalize ? 'Something' : 'something';
+
         const name = this.getDisplayName();
         if (this.hasAttribute('proper_named') || this.hasAttribute('mass_noun')) {
             return name;
@@ -4961,6 +4974,20 @@ class Item extends Entity {
         } else if (roll.collision_effect) {
             this.setAttribute('use_effect', roll.collision_effect);
         }
+    }
+
+    /**
+     * Whether a message should decline to name this item.
+     *
+     * Note this gates prose only — `getDisplayName()` stays true, so the pack and
+     * the sidebar still read correctly.
+     *
+     * @returns {boolean}
+     */
+    isAnonymous() {
+        const viewer = this.engine?.entityManager?.getPrimaryViewpoint?.();
+        if (!viewer?.hasStateProperty?.('hallucinating')) return false;
+        return !viewer.inventory?.includes(this);
     }
 
     /**
@@ -5667,7 +5694,7 @@ class Actor extends Entity {
 
         this.playSound('plunk3');
         console.log(`${this.name} opened`);
-        this.engine.inputManager?.showMessage(`The ${this.name} opens.`, { x: this.x, y: this.y });
+        this.engine.inputManager?.showMessage(`${this.getNameWithArticle(true)} opens.`, { x: this.x, y: this.y });
     }
 
     close(silent = false) {
@@ -5681,7 +5708,7 @@ class Actor extends Entity {
 
         console.log(`${this.name} closed`);
         if (!silent) {
-            this.engine.inputManager?.showMessage(`The ${this.name} closes.`, { x: this.x, y: this.y });
+            this.engine.inputManager?.showMessage(`${this.getNameWithArticle(true)} closes.`, { x: this.x, y: this.y });
         }
     }
 
@@ -6273,7 +6300,7 @@ class Actor extends Entity {
         // Show death message for visible actors (skip for mass nouns like clouds)
         if (this.hasAttribute('visible') && !this.hasAttribute('mass_noun')) {
             if (this.hasAttribute('spiked') && this.hasAttribute('openable')) {
-                this.engine.inputManager?.showMessage(`The ${this.name} splinters open!`, { x: this.x, y: this.y });
+                this.engine.inputManager?.showMessage(`${this.getNameWithArticle(true)} splinters open!`, { x: this.x, y: this.y });
             } else if (this.isPlayerControlled()) {
                 const restartKey = Object.entries(this.engine.inputManager?.globalKeyMap || {})
                     .find(([, action]) => action === 'reload')?.[0] || 'R';
@@ -6282,9 +6309,9 @@ class Actor extends Entity {
                 this.engine.inputManager?.showMessage(this.getAttribute('death_description'), { x: this.x, y: this.y });
             } else if (!this.stats || this.stats.health === undefined) {
                 // Actors without health (breakable objects like walls)
-                this.engine.inputManager?.showMessage(`The ${this.name} crumbles.`, { x: this.x, y: this.y });
+                this.engine.inputManager?.showMessage(`${this.getNameWithArticle(true)} crumbles.`, { x: this.x, y: this.y });
             } else {
-                this.engine.inputManager?.showMessage(`The ${this.name} dies.`, { x: this.x, y: this.y });
+                this.engine.inputManager?.showMessage(`${this.getNameWithArticle(true)} dies.`, { x: this.x, y: this.y });
             }
         }
 
@@ -6423,7 +6450,7 @@ class Actor extends Entity {
 
         // Message, matching die()'s visibility/position convention (skip mass nouns).
         if (this.hasAttribute('visible') && !this.hasAttribute('mass_noun')) {
-            this.engine.inputManager?.showMessage(`The ${this.name} splits!`, { x: this.x, y: this.y });
+            this.engine.inputManager?.showMessage(`${this.getNameWithArticle(true)} splits!`, { x: this.x, y: this.y });
         }
 
         this.engine.interfaceManager?.updateSidebar?.();
@@ -8078,7 +8105,7 @@ class Actor extends Entity {
             target._knockedBack = true; // Skip next turn due to knockback stagger
             this.engine.playSound('push1');
             if (this.isPlayerControlled()) {
-                this.engine.inputManager?.showMessage(`${target.name} is knocked back!`);
+                this.engine.inputManager?.showMessage(`${target.getNameWithArticle(true)} is knocked back!`);
             }
         }
     }
@@ -9089,7 +9116,13 @@ class Actor extends Entity {
     _nameProviders(target) {
         return {
             actor_name: () => this.isAnonymous() ? 'something' : this.getDisplayName(),
-            attacked_actor_name: () => target?.getDisplayName?.() ?? target?.name,
+            // The victim gets the same gate as the attacker. Without it a hallucinating
+            // player watching two monsters fight reads "Something eats the goblin!" —
+            // the one true name in the sentence. isAnonymous() exempts the player, so
+            // being the one bitten still reads correctly.
+            attacked_actor_name: () => target?.isAnonymous?.()
+                ? 'something'
+                : (target?.getDisplayName?.() ?? target?.name),
             // undefined keeps the placeholder, matching the old "no weapon" behavior.
             weapon_name: () => this.getEquippedWeapon()?.name
         };
@@ -9134,7 +9167,7 @@ class Actor extends Entity {
             if (statKey === 'health' && value < 0 && this.hasAttribute('visible')) {
                 const pos = this.isPlayerControlled() ? null : { x: this.x, y: this.y };
                 this.engine.inputManager?.showMessage(
-                    `${this.name} takes ${Math.abs(value)} damage from ${sourceName}!`, pos
+                    `${this.getNameWithArticle(true)} takes ${Math.abs(value)} damage from ${sourceName}!`, pos
                 );
                 this.flash?.();
             }
@@ -9164,11 +9197,33 @@ class Actor extends Entity {
      * ghasts, portals, gas traps). Checking only the state let a ghast announce
      * itself by name as it attacked.
      *
+     * Hallucination counts too, and it's the one condition here that belongs to the
+     * *viewer* rather than to this actor — everything else on the map is scrambled and
+     * misnamed, so a combat line naming the attacker outright would be the one honest
+     * reading in a poisoned frame. Same word the invisible and hidden cases get, which
+     * also means `_hideAnonymousArticle` fixes the grammar for free.
+     *
      * @returns {boolean}
      */
     isAnonymous() {
         if (this.isPlayerControlled()) return false;
+        if (this.isViewerHallucinating()) return true;
         return this.isUnseen() || !this.hasAttribute('visible') || this.hasAttribute('hidden');
+    }
+
+    /**
+     * Is whoever is reading these messages currently hallucinating?
+     *
+     * Asked of the viewpoint actor, not of this one — the trip is the reader's, and
+     * the attacker has no idea it's being misperceived. Mirrors how
+     * `isConcealedBySubmersion` reaches for the viewpoint.
+     *
+     * @returns {boolean}
+     */
+    isViewerHallucinating() {
+        const viewer = this.engine?.entityManager?.getPrimaryViewpoint?.();
+        if (!viewer || viewer === this) return false;
+        return viewer.hasStateProperty?.('hallucinating') === true;
     }
 
     /**
@@ -9202,13 +9257,20 @@ class Actor extends Entity {
     }
 
     /**
-     * Drop the article in front of an unnamed attacker: "The something" -> "Something".
+     * Drop the article in front of an unnamed combatant: "The something" -> "Something".
      * A grammar fix on the finished sentence, so it runs after substitution.
+     *
+     * Keyed off the text, not off `this`. Either end of a line can be the unnamed one —
+     * a visible attacker can strike an invisible target — and gating on the attacker
+     * left "The goblin bites the something!" unfixed in that direction. Matching the
+     * literal word is safe because it only ever appears here by substitution; an
+     * authored name is not going to be "something".
+     *
      * @param {string} text
      * @returns {string}
      */
     _hideAnonymousArticle(text) {
-        if (!this.isAnonymous()) return text;
+        if (typeof text !== 'string') return text;
         return text.replace(/^The something\b/, 'Something').replace(/\bthe something\b/g, 'something');
     }
 
@@ -10014,7 +10076,7 @@ class Actor extends Entity {
             this.engine.pendingFallenActors.get(targetFloor).push(serialized);
 
             if (this.hasAttribute('visible')) {
-                this.engine.inputManager?.showMessage(`The ${this.name} falls through!`, { x: this.x, y: this.y });
+                this.engine.inputManager?.showMessage(`${this.getNameWithArticle(true)} falls through!`, { x: this.x, y: this.y });
             }
             this.die(false);
             return;
@@ -10023,7 +10085,7 @@ class Actor extends Entity {
         if (this.isPlayerControlled()) {
             this.engine.inputManager?.showMessage(`You plunge into the depths!`);
         } else if (this.hasAttribute('visible')) {
-            this.engine.inputManager?.showMessage(`The ${this.name} falls into the void.`, { x: this.x, y: this.y });
+            this.engine.inputManager?.showMessage(`${this.getNameWithArticle(true)} falls into the void.`, { x: this.x, y: this.y });
         }
 
         this.dropItems(true);
@@ -10333,7 +10395,7 @@ class Actor extends Entity {
                 actorAtTarget._paused = !actorAtTarget._paused;
                 const state = actorAtTarget._paused ? 'stops' : 'resumes';
                 this.engine.playSound?.('tap2');
-                this.engine.inputManager?.showMessage(`The ${actorAtTarget.name} ${state} ticking.`, { x: actorAtTarget.x, y: actorAtTarget.y });
+                this.engine.inputManager?.showMessage(`${actorAtTarget.getNameWithArticle(true)} ${state} ticking.`, { x: actorAtTarget.x, y: actorAtTarget.y });
                 return { moved: false, actionTaken: true };
             }
 
@@ -12791,6 +12853,12 @@ class EntityManager {
             entity.sprite.destroy();
             entity.sprite = null;
         }
+        // The hallucinated name belongs to the scrambled sprite that just died with it.
+        // An item picked up mid-trip leaves entityManager.items, so texture_scramble's
+        // remove() sweep can no longer reach it — without this it would surface a stale
+        // false name if it were ever dropped again.
+        delete entity._hallucinatedTileNameBase;
+        delete entity._hallucinatedTileNameTop;
         // Clean up tileSprite for entities with both fill color and tile
         if (entity.tileSprite) {
             entity.tileSprite.destroy();
@@ -13493,7 +13561,7 @@ class EntityManager {
 
                     // Show damage message (only when the hit actually landed this turn)
                     if (burned && other.hasAttribute('visible')) {
-                        this.engine.inputManager?.showMessage(`The fire burns ${other.name} for ${damagePerTurn} damage!`, { x: other.x, y: other.y });
+                        this.engine.inputManager?.showMessage(`The fire burns ${other.getNameWithArticle()} for ${damagePerTurn} damage!`, { x: other.x, y: other.y });
                     }
                 }
             }
@@ -13511,7 +13579,7 @@ class EntityManager {
                                 // Show effect message
                                 if (other.hasAttribute('visible') && value < 0) {
                                     const statCapitalized = key.charAt(0).toUpperCase() + key.slice(1);
-                                    this.engine.inputManager?.showMessage(`${other.name} takes ${Math.abs(value)} ${statCapitalized} damage from the ${hazard.name}!`, { x: other.x, y: other.y });
+                                    this.engine.inputManager?.showMessage(`${other.getNameWithArticle(true)} takes ${Math.abs(value)} ${statCapitalized} damage from ${hazard.getNameWithArticle()}!`, { x: other.x, y: other.y });
                                 }
 
                                 // Check for death from health damage

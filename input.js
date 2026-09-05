@@ -2019,11 +2019,8 @@ class InputManager {
 
     /**
      * The fake name a hallucinating player sees for `entity`, without an article.
-     *
-     * Stable per entity: actors get theirs from the texture_scramble effect, which
-     * re-rolls on a tick, and items — which that effect doesn't touch — get one
-     * memoized here. Without the memo the name re-rolled on every mouse move, so the
-     * sidebar renamed a floor item continuously and the info panel disagreed with it.
+     * texture_scramble writes the name of the tile it actually painted, for floor items as well as
+     * actors, so the sprite and the name always agree. re-rolls each turn
      *
      * @returns {string} e.g. "skull", "open door"
      */
