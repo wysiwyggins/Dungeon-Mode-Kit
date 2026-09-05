@@ -1,0 +1,18 @@
+{
+  "fire": {
+    "file": "fire-animation.png",
+    "description": "Flickering flame. Used for burning actors, torches and braziers."
+  },
+  "smoke": {
+    "file": "smoke-animation.png",
+    "description": "Thick rolling smoke."
+  },
+  "mist": {
+    "file": "light-smoke-animation.png",
+    "description": "Thin drifting haze. Lighter than smoke."
+  },
+  "fluid": {
+    "file": "fluid-animation.png",
+    "description": "Slow lapping surface. Used by water, sewage and other liquids."
+  }
+}

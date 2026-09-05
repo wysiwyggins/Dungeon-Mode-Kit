@@ -10,6 +10,8 @@ prototypes/
     items.json              ← item overrides/additions (optional)
     personalities.json      ← AI behavior overrides (optional)
     biomes.json             ← biome library for this prototype (optional)
+    animations.json         ← animated sprites this prototype ships (optional)
+    *.png                   ← sprite sheets named by animations.json (optional)
     map.tmj                 ← authored Tiled map, floor 1 (optional)
     2.tmj, 3.tmj, ...      ← authored maps for floors 2+ (optional)
 ```
@@ -37,6 +39,7 @@ missing from the index is invisible in the editors.
 | `previous_level` | string | Prototype folder name to return to (via up stairway from floor 1) |
 | `win_state` | object | Escape-style overall victory for the whole prototype: `{ via: "escape", exit_floor, conditions, message }`. Reaching `exit_floor`'s exit with `conditions` met wins the run (distinct from per-floor `win_conditions`, which just unlock a floor's stairway). |
 | `default_floor` | object | Floor tile and tint for generated maps — see [Default Floor](#default-floor). |
+| `rank_order` | array | Actor ids weakest to strongest, forming a capture hierarchy. Higher rank takes lower and the first entry takes the last. See [Rank hierarchies](ACTORS.md#rank-hierarchies). |
 | `floors`, `biomes`, `floor_plan` | — | Multi-floor / biome configuration — see [Multi-Floor Prototypes](#multi-floor-prototypes) and [Biomes](#biomes). |
 
 ---
@@ -639,6 +642,7 @@ Place these files alongside `prototype.json` to add or override entity definitio
 | `items.json` | `data/items.json` | Add level-specific items or override global ones |
 | `personalities.json` | `data/personalities.json` | Add level-specific AI behaviors |
 | `biomes.json` | `data/biomes.json` | Biomes this prototype's `floor_plan` can name |
+| `animations.json` | `data/animations.json` | Animated sprites, with `file` relative to this folder. See [ACTORS.md](ACTORS.md#animated-sprites) |
 
 Prototype-specific entries with the same key as a global entry replace the global version for that level. See [ACTORS.md](ACTORS.md) and [ITEMS.md](ITEMS.md) for the data formats.
 

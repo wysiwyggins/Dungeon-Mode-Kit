@@ -83,6 +83,13 @@ cp "$SCRIPT_DIR/prototypes/automatons/"*.tmj "$DEST/prototypes/automatons/" 2>/d
 cp "$SCRIPT_DIR/prototypes/dungeon/"*.json "$DEST/prototypes/dungeon/" 2>/dev/null
 cp "$SCRIPT_DIR/prototypes/dungeon/"*.tmj "$DEST/prototypes/dungeon/" 2>/dev/null
 
+# A prototype may ship its own animation sheet (see data/animations.json and
+# Prototype.loadAnimationSheets), so its PNGs travel with its data.
+for d in "$DEST"/prototypes/*/; do
+    name=$(basename "$d")
+    cp "$SCRIPT_DIR/prototypes/$name/"*.png "$d" 2>/dev/null
+done
+
 # Copy index.html as a reference (optional - you may want to customize this)
 echo "Copying index.html template..."
 cp "$SCRIPT_DIR/index.html" "$DEST/"

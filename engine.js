@@ -10,7 +10,6 @@
 class SpriteLibrary {
     constructor() {
         this.tiles = null;
-        this.animations = null;
     }
     
     async load() {
@@ -19,14 +18,7 @@ class SpriteLibrary {
             const data = await response.json();
             this.tiles = data.tiles;
             this.tileNames = Object.keys(this.tiles);
-            this.animations = {
-                'fire': 'fire',
-                'smoke': 'smoke',
-                'mist': 'mist',
-                'fluid': 'fluid',
-                'pac': 'pac'
-            };
-            
+
             console.log('Sprite library loaded with', Object.keys(this.tiles).length, 'tiles');
         } catch (error) {
             console.error('Failed to load sprite library:', error);
@@ -66,14 +58,6 @@ class SpriteLibrary {
         return coords.y * cols + coords.x + 1;
     }
     
-    /**
-     * Check if a name refers to an animated sprite
-     * @param {string} name - Animation name (e.g. "fire", "smoke")
-     * @returns {boolean} True if this is an animated sprite
-     */
-    isAnimation(name) {
-        return this.animations && this.animations.hasOwnProperty(name.toLowerCase());
-    }
     
     /**
      * Resolve a tile reference - handles both direct coordinates and named tiles
@@ -205,6 +189,11 @@ function rgbToHue(color) {
     return h * 60;
 }
 
+// How far toward a state's tint an affected actor's sprite is pulled (see
+// getEffectiveTint). Short of 1.0 so the actor still reads as itself — a burning goblin
+// should look like a goblin on fire, not like a generic orange smear.
+const STATE_TINT_MIX = 0.7;
+
 // How far apart a floor's up and down stairways should be, in tiles (Chebyshev).
 // A preference, not a guarantee — see pickStairwayTile. Small enough that cramped
 // floors can still satisfy it, large enough that the pair isn't one step apart.
@@ -228,6 +217,11 @@ const CARDINAL_DIRS = [
 // item should never cover a creature standing on it. Items in liquid override this to
 // float at 11.
 const ITEM_Z = 7;
+
+// PIXI AnimatedSprite frame advance per tick. An animation can override this with a
+// `speed` in data/animations.json; this is what the engine used for every sheet before
+// that was possible, so leaving it out keeps the existing look.
+const DEFAULT_ANIMATION_SPEED = 0.1;
 
 const ALL_DIRS = [
     {dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1},
@@ -1107,8 +1101,11 @@ class DungeonEngine {
     
     async initialize() {
         await this.spriteLibrary.load();
-        await this.loadGlobalAssets();
+        // Data before assets: loadGlobalAssets registers one PIXI texture per entry in
+        // the animation manifest, so the manifest has to be in hand first. It used to
+        // run second, which was fine only because the animation list was hardcoded.
         await this.loadGlobalData();
+        await this.loadGlobalAssets();
         this.setupEventListeners();
         
         console.log('Engine initialized (renderer will be created when map loads)');
@@ -1117,7 +1114,7 @@ class DungeonEngine {
     async loadGlobalData() {
         try {
             // Load global entity definitions
-            const [actorsRes, itemsRes, personalitiesRes, entitiesRes, colorsRes, reagentsRes, substancesRes, statesRes, wordsRes, effectsRes, keybindingsRes, fungiTypesRes, biomesRes, typesRes, attributeInfoRes] = await Promise.all([
+            const [actorsRes, itemsRes, personalitiesRes, entitiesRes, colorsRes, reagentsRes, substancesRes, statesRes, wordsRes, effectsRes, keybindingsRes, fungiTypesRes, biomesRes, typesRes, attributeInfoRes, animationsRes] = await Promise.all([
                 fetch(`${globalVars.BASE_PATH}/data/actors.json`),
                 fetch(`${globalVars.BASE_PATH}/data/items.json`),
                 fetch(`${globalVars.BASE_PATH}/data/personalities.json`),
@@ -1132,7 +1129,8 @@ class DungeonEngine {
                 fetch(`${globalVars.BASE_PATH}/data/fungi_types.json`),
                 fetch(`${globalVars.BASE_PATH}/data/biomes.json`),
                 fetch(`${globalVars.BASE_PATH}/data/types.json`),
-                fetch(`${globalVars.BASE_PATH}/data/attribute-info.json`)
+                fetch(`${globalVars.BASE_PATH}/data/attribute-info.json`),
+                fetch(`${globalVars.BASE_PATH}/data/animations.json`)
             ]);
 
             this.globalActors = await actorsRes.json();
@@ -1192,6 +1190,12 @@ class DungeonEngine {
             // invisible and a new attribute leaks nothing until someone words it.
             this.globalAttributeInfo = await attributeInfoRes.json();
 
+            // The animated-sprite manifest: name -> { file, speed?, description? }.
+            // Adding an animation is a line here plus the PNG; nothing in the engine
+            // or the editors enumerates them any more. A prototype can add its own
+            // with prototypes/<name>/animations.json (see Prototype.loadAssets).
+            this.globalAnimations = await animationsRes.json();
+
             console.log('Global data loaded:', {
                 actors: Object.keys(this.globalActors).length,
                 types: Object.keys(this.globalTypes).length,
@@ -1224,6 +1228,7 @@ class DungeonEngine {
             this.globalEffects = {};
             this.globalFungiTypes = [];
             this.globalAttributeInfo = {};
+            this.globalAnimations = {};
         }
     }
 
@@ -1285,13 +1290,9 @@ class DungeonEngine {
                         reject(error);
                     });
                     
+                    PIXI.Loader.shared.add('tiles', globalVars.SPRITESHEET_PATH);
+                    this.queueAnimationSheets(this.globalAnimations);
                     PIXI.Loader.shared
-                        .add('tiles', globalVars.SPRITESHEET_PATH)
-                        .add('fire', `${globalVars.BASE_PATH}/assets/sprites/fire-animation.png`)
-                        .add('smoke', `${globalVars.BASE_PATH}/assets/sprites/smoke-animation.png`)
-                        .add('mist', `${globalVars.BASE_PATH}/assets/sprites/light-smoke-animation.png`)
-                        .add('fluid', `${globalVars.BASE_PATH}/assets/sprites/fluid-animation.png`)
-                        .add('pac', `${globalVars.BASE_PATH}/assets/sprites/pac-animation.png`)
                         .load(() => {
                             this.setupAnimationFrames();
                             resolve();
@@ -1321,19 +1322,85 @@ class DungeonEngine {
         console.log('Global assets loaded');
     }
     
-    setupAnimationFrames() {
-        this.animationFrames = {};
-        const animations = ['fire', 'smoke', 'mist', 'fluid', 'pac'];
-        for (const name of animations) {
-            this.animationFrames[name] = [];
-            const baseTexture = PIXI.Loader.shared.resources[name].texture.baseTexture;
-            const frameCount = Math.floor(baseTexture.width / globalVars.TILE_WIDTH);
-
-            for (let i = 0; i < frameCount; i++) {
-                let rect = new PIXI.Rectangle(i * globalVars.TILE_WIDTH, 0, globalVars.TILE_WIDTH, globalVars.TILE_HEIGHT);
-                this.animationFrames[name].push(new PIXI.Texture(baseTexture, rect));
+    /**
+     * Queue one PIXI texture per entry in an animation manifest.
+     *
+     * `file` is resolved against `basePath` so a prototype can keep its own sprite
+     * sheet beside its data instead of dropping it in the shared assets folder, and
+     * so the one filename that breaks the `<name>-animation.png` convention (mist ->
+     * light-smoke-animation.png) is stated in data rather than encoded in code.
+     *
+     * Skips anything already queued: the loader throws on a duplicate resource name,
+     * and a prototype re-declaring a base animation to change its speed is a normal
+     * thing to want. The corollary is that a prototype cannot *replace* a base
+     * animation's artwork — same name means the base sheet wins. Use a new name for
+     * new art; `speed` is the one property an override can change.
+     *
+     * @param {Object} manifest - name -> { file, speed?, description? }
+     * @param {string} [basePath] - Directory the `file` values are relative to
+     */
+    queueAnimationSheets(manifest, basePath = `${globalVars.BASE_PATH}/assets/sprites/`) {
+        for (const [name, def] of Object.entries(manifest || {})) {
+            const file = typeof def === 'string' ? def : def?.file;
+            if (!file) {
+                console.warn(`Animation '${name}' has no 'file'; skipping.`);
+                continue;
             }
+            if (PIXI.Loader.shared.resources[name]) continue;
+            PIXI.Loader.shared.add(name, `${basePath}${file}`);
         }
+    }
+
+    /**
+     * Slice every loaded animation sheet into per-frame textures.
+     *
+     * Frame count is derived from the sheet's width, so a sheet is however many
+     * frames wide it is and nothing declares that. Additive rather than a rebuild —
+     * a prototype loading its own sheets later must not drop the base set.
+     */
+    setupAnimationFrames() {
+        this.animationFrames ??= {};
+        this.animationSpeeds ??= {};
+
+        for (const [name, def] of Object.entries(this.animations || {})) {
+            // Speed is re-read every pass, outside the already-sliced guard below: a
+            // prototype may re-declare a base animation purely to change its rate, and
+            // its textures are the ones already in hand.
+            if (typeof def === 'object' && typeof def.speed === 'number') {
+                this.animationSpeeds[name] = def.speed;
+            } else {
+                delete this.animationSpeeds[name];   // back to the default
+            }
+
+            if (this.animationFrames[name]) continue;   // already sliced
+
+            const resource = PIXI.Loader.shared.resources[name];
+            if (!resource?.texture) {
+                console.warn(`Animation '${name}' declared but its sheet failed to load.`);
+                continue;
+            }
+
+            const baseTexture = resource.texture.baseTexture;
+            const frameCount = Math.floor(baseTexture.width / globalVars.TILE_WIDTH);
+            const frames = [];
+            for (let i = 0; i < frameCount; i++) {
+                const rect = new PIXI.Rectangle(
+                    i * globalVars.TILE_WIDTH, 0,
+                    globalVars.TILE_WIDTH, globalVars.TILE_HEIGHT
+                );
+                frames.push(new PIXI.Texture(baseTexture, rect));
+            }
+            this.animationFrames[name] = frames;
+        }
+    }
+
+    /**
+     * The live animation manifest: the base set, plus anything the current prototype
+     * adds or overrides. One accessor so the loader, the slicer and the sprite factory
+     * can't disagree about which animations exist.
+     */
+    get animations() {
+        return this.currentPrototype?.animations || this.globalAnimations || {};
     }
     
     setupEventListeners() {
@@ -1441,6 +1508,10 @@ class DungeonEngine {
 
     updateLighting() {
         if (!this.lightingManager) {
+            // A bright level has no lighting pass, and the lighting pass is where actor
+            // tints get repainted — so a state tint (impervious, burning, hasted) never
+            // reached the sprite here. Paint them directly instead.
+            this.renderer.updateEntityStateTints();
             this.renderer.updateProximityTransparency();
             return;
         }
@@ -4012,6 +4083,7 @@ class Prototype {
         const prototypeEffects = await this.loadJSON('effects.json', {});
         const prototypeKeybindings = await this.loadJSON('keybindings.json', {});
         const prototypeBiomes = await this.loadJSON('biomes.json', {});
+        const prototypeAnimations = await this.loadJSON('animations.json', {});
         const prototypeTypes = await this.loadJSON('types.json', {});
         this.types = { ...this.engine.globalTypes, ...prototypeTypes };
         // States are read straight off engine.globalStates from a dozen call sites
@@ -4039,6 +4111,11 @@ class Prototype {
         // and means a prototype.json never needs an inline `biomes` block.
         this.biomes = { ...this.engine.globalBiomes, ...prototypeBiomes };
         this.config.biomes = this.biomes;
+        // Animation sheets a prototype ships itself, merged over the base manifest.
+        // Their `file` paths are relative to the prototype folder, so pac's chomp can
+        // live with pac rather than in the shared sprite folder. Loading is deferred to
+        // loadAnimationSheets below, since it needs PIXI and a network round trip.
+        this.animations = { ...this.engine.globalAnimations, ...prototypeAnimations };
         this.keybindings = {
             movement: { ...this.engine.globalKeybindings?.movement, ...prototypeKeybindings.movement },
             actions: { ...this.engine.globalKeybindings?.actions, ...prototypeKeybindings.actions },
@@ -4065,8 +4142,44 @@ class Prototype {
             console.log(`  Biomes: ${Object.keys(this.biomes).length} (${Object.keys(prototypeBiomes).length} prototype-specific)`);
         }
 
+        await this.loadAnimationSheets(prototypeAnimations);
+
         this.warnUnknownFloorPlanBiomes();
         this.initItemCatalog();
+    }
+
+    /**
+     * Fetch and slice the sheets for animations this prototype declares itself.
+     *
+     * The base manifest is already loaded and sliced by the time any prototype exists,
+     * so this only handles the additions — and only when there are some, which is the
+     * common case, so most prototypes pay nothing.
+     *
+     * Awaited from loadAssets, which the engine awaits before the first render, so an
+     * actor can reference a prototype animation on the very first frame.
+     *
+     * @param {Object} prototypeAnimations - Just this prototype's entries
+     */
+    async loadAnimationSheets(prototypeAnimations) {
+        const pending = Object.entries(prototypeAnimations || {})
+            .filter(([name]) => !this.engine.animationFrames?.[name]);
+        if (pending.length === 0) return;
+
+        this.engine.queueAnimationSheets(Object.fromEntries(pending), this.basePath);
+
+        await new Promise((resolve) => {
+            // PIXI's shared loader rejects a load() while one is in flight. Nothing else
+            // loads at this point (global assets finished during initialize), but resolve
+            // rather than hang if that ever stops being true.
+            if (PIXI.Loader.shared.loading) {
+                console.warn('Shared loader busy; prototype animations deferred.');
+                return resolve();
+            }
+            PIXI.Loader.shared.load(() => resolve());
+        });
+
+        this.engine.setupAnimationFrames();
+        console.log(`  Animations: ${pending.length} prototype-specific`);
     }
 
     /**
@@ -5537,6 +5650,12 @@ class Actor extends Entity {
     }
 
     hasAttribute(key) {
+        // Suppression wins over both the base attribute and any grant: a state that
+        // takes an attribute away should do so no matter where the attribute came from.
+        for (const state of Object.values(this.states)) {
+            const off = state.data?.suppresses_attribute;
+            if (off === key || (Array.isArray(off) && off.includes(key))) return false;
+        }
         if (super.hasAttribute(key)) return true;
         for (const state of Object.values(this.states)) {
             const granted = state.data?.grants_immunity;
@@ -7074,7 +7193,29 @@ class Actor extends Entity {
             this._updateInvisibilitySprites();
         }
 
+        if (stateData.tint) this._repaintStateTint();
+
         return true;
+    }
+
+    /**
+     * Repaint this actor's sprites now that its set of tinting states has changed.
+     *
+     * On a dark level the lighting pass would do this anyway, on its own schedule; this
+     * just makes it immediate. On a bright level there IS no lighting pass, so without
+     * this a state tint never reached the sprite at all — the sidebar showed the state
+     * in its color while the actor on the map sat unchanged.
+     *
+     * Per-actor rather than a full-scene refresh: only this actor's states changed.
+     */
+    _repaintStateTint() {
+        const renderer = this.engine?.renderer;
+        if (!renderer) return;
+
+        const tint = renderer.getEffectiveTint(this) ?? 0xFFFFFF;
+        if (this.spriteBase) this.spriteBase.tint = tint;
+        if (this.spriteTop) this.spriteTop.tint = tint;
+        if (this.spriteSide) this.spriteSide.tint = tint;
     }
 
     /**
@@ -7175,6 +7316,11 @@ class Actor extends Entity {
         }
 
         delete this.states[stateName];
+
+        // Also after the delete, and for the same reason: getStateTint() has to no
+        // longer see this state, or the sprite keeps the color of the state that just
+        // ended. Any other tinting state still running is folded back in.
+        if (state.data.tint) this._repaintStateTint();
 
         // Telepathy ending: refresh the view so enemies revealed through walls/
         // darkness (and ghosted invisible ones) are re-hidden now that the sense is
@@ -7588,6 +7734,14 @@ class Actor extends Entity {
 
         if (currentHP === null || currentHP === undefined) {
             result.immune = true;
+            return result;
+        }
+        // The melee gate in applyCollisionEffects nullifies the blow before damage is
+        // read, so a forecast that ignored it would quote a number the attack can
+        // never deal. Mirrored here for the same reason the damage maths is.
+        if (defender.hasAttribute('melee_immune') || this.hasAttribute('melee_harmless')
+            || !this.outranksForCapture(defender)) {
+            result.noDamage = true;
             return result;
         }
         if (base <= 0) {
@@ -9354,6 +9508,67 @@ class Actor extends Entity {
     }
 
     /**
+     * This actor's position in the prototype's capture hierarchy, or null if it
+     * has none.
+     *
+     * Rank is authored as membership in `rank_order` — an array of actor ids from
+     * weakest to strongest — rather than as a number on each actor. Ordering is
+     * the kind of thing a list states better than scattered integers: inserting a
+     * piece mid-hierarchy is an edit to one line instead of a renumbering, and the
+     * ends of the span are derived rather than hardcoded, which is what lets the
+     * wrap-around rule below be general.
+     *
+     * An explicit numeric `rank` attribute wins if present, for an actor that needs
+     * to sit at a rank without being listed (a disguise, a promoted piece).
+     *
+     * @returns {number|null} 0-based rank, or null if this actor is unranked
+     */
+    getRank() {
+        const explicit = this.getAttribute('rank');
+        if (typeof explicit === 'number') return explicit;
+
+        const order = this.engine?.currentPrototype?.config?.rank_order;
+        if (!Array.isArray(order)) return null;
+
+        const index = order.indexOf(this.type);
+        return index === -1 ? null : index;
+    }
+
+    /**
+     * Whether this actor may capture `target` under the rank hierarchy.
+     *
+     * Higher rank takes lower and equal rank trades, with one exception: the
+     * weakest rank takes the strongest, and not the reverse. That wrap-around is
+     * the whole point of the mechanic — without it the top piece is an
+     * unanswerable win condition. It is expressed against the ends of the declared
+     * span rather than as a named special case, so a prototype gets it wherever it
+     * puts the boundaries.
+     *
+     * Unranked actors are unaffected: if either side has no rank the hierarchy has
+     * nothing to say and capture is allowed, so every existing prototype — none of
+     * which declare `rank_order` — behaves exactly as before.
+     *
+     * @param {Actor} target - The actor being attacked
+     * @returns {boolean}
+     */
+    outranksForCapture(target) {
+        const mine = this.getRank();
+        const theirs = target?.getRank?.();
+        if (mine === null || mine === undefined) return true;
+        if (theirs === null || theirs === undefined) return true;
+
+        const order = this.engine?.currentPrototype?.config?.rank_order;
+        if (Array.isArray(order) && order.length > 1) {
+            const min = 0;
+            const max = order.length - 1;
+            if (mine === min && theirs === max) return true;   // the rat takes the elephant
+            if (mine === max && theirs === min) return false;  // ...and never the reverse
+        }
+
+        return mine >= theirs;
+    }
+
+    /**
      * Apply collision effects from actor or held items to a target actor
      * Damage comes from equipped weapon OR actor's collision_effect (not both)
      * Utility effects (like keys unlocking doors) always apply
@@ -9495,14 +9710,18 @@ class Actor extends Entity {
             // If no accuracy attribute or target incapacitated, damageHits remains true (deterministic combat)
         }
 
-        // A target that is immune to melee absorbs the blow entirely. Checked here
-        // rather than in isCombatTarget so the swing still animates and the attack
-        // still reads as an attack — it just does nothing.
-        const meleeImmune = isCombatTarget && damageHits && target.hasAttribute('melee_immune');
-        if (meleeImmune) this._showMeleeImmuneMessage(target);
+        // A blow can fail to matter for three reasons: the target absorbs it
+        // (melee_immune), the attacker cannot land a telling one (melee_harmless),
+        // or the attacker is outranked (see outranksForCapture). All are checked
+        // here rather than in isCombatTarget so the swing still animates and the
+        // attack still reads as an attack — it just does nothing.
+        const outranked = isCombatTarget && !this.outranksForCapture(target);
+        const meleeNullified = isCombatTarget && damageHits &&
+            (target.hasAttribute('melee_immune') || this.hasAttribute('melee_harmless') || outranked);
+        if (meleeNullified) this._showMeleeImmuneMessage(target, { outranked });
 
         // Apply damage effects if hit succeeded
-        if (isCombatTarget && damageHits && !meleeImmune) {
+        if (isCombatTarget && damageHits && !meleeNullified) {
             const result = this._applyEffectSource(damageSource, target, true);
             if (result.applied) effectApplied = true;
             if (result.targetPassable) targetPassable = true;
@@ -9906,15 +10125,27 @@ class Actor extends Entity {
     }
 
     /**
-     * Feedback for a blow that lands but cannot hurt the target (melee_immune).
-     * Mirrors _showMissMessage's player/observer split, but says "no effect"
-     * rather than "miss" — the attack connected, it just didn't matter.
+     * Feedback for a blow that lands but cannot hurt the target — either the target
+     * is melee_immune or the attacker is melee_harmless. Mirrors _showMissMessage's
+     * player/observer split, but says "no effect" rather than "miss": the attack
+     * connected, it just didn't matter.
+     *
+     * The player-facing wording splits on which side nullified the blow, because
+     * "glances off" reads as the target being tough, which is the wrong story when
+     * the weakness is the attacker's or when the target simply outranks it.
+     *
+     * @param {Actor} target - The actor that shrugged the blow off
+     * @param {Object} [opts]
+     * @param {boolean} [opts.outranked] - The blow failed on rank, not immunity
      */
-    _showMeleeImmuneMessage(target) {
+    _showMeleeImmuneMessage(target, { outranked = false } = {}) {
         if (this.isPlayerControlled()) {
-            this.engine.inputManager?.showMessage(
-                `Your blow glances off ${target.getNameWithArticle()} harmlessly!`
-            );
+            const harmless = this.hasAttribute('melee_harmless') && !target.hasAttribute('melee_immune');
+            let message;
+            if (outranked) message = `${target.getNameWithArticle(true)} is too strong to take!`;
+            else if (harmless) message = `You cannot harm ${target.getNameWithArticle()}!`;
+            else message = `Your blow glances off ${target.getNameWithArticle()} harmlessly!`;
+            this.engine.inputManager?.showMessage(message);
         } else {
             const template = "The [actor_name] strikes the [attacked_actor_name] to no effect!";
             const message = this._processMessageTemplate(template, target);
@@ -14974,7 +15205,11 @@ class RenderSystem {
                 const animSprite = new PIXI.AnimatedSprite(animFrames);
                 animSprite.x = x;
                 animSprite.y = y;
-                animSprite.animationSpeed = 0.1;
+                // Per-animation `speed` from the manifest, else the long-standing
+                // default. A two-frame sheet like pac's chomp wants a different rate
+                // from an eight-frame flame, and only the data knows which is which.
+                animSprite.animationSpeed =
+                    this.engine.animationSpeeds?.[animationName] ?? DEFAULT_ANIMATION_SPEED;
                 // Start on a random frame so multiple instances aren't in sync
                 const startFrame = Math.floor(Math.random() * animFrames.length);
                 animSprite.gotoAndPlay(startFrame);
@@ -15997,10 +16232,51 @@ class RenderSystem {
         return (r << 16) | (g << 8) | b;
     }
 
+    /**
+     * The actor's own tint with any state tint mixed in.
+     *
+     * Mixed by interpolation, not by blendTints. Multiply is right for *light* — a lamp
+     * can only ever subtract from a surface — but a state tint is a signal, and multiply
+     * silences it exactly where the actor is most saturated. Pac is yellow (#ffff00) and
+     * the impervious state is icy blue (#66ccff); multiplied, the blue channel lands on
+     * pac's zero blue and the "you are powered up" read comes out #66cc00, a slightly
+     * dingier yellow. Interpolating gets a visible shift on any base color.
+     *
+     * STATE_TINT_MIX short of 1.0 so the actor still looks like itself: a burning
+     * goblin should read as a goblin on fire, not as a generic orange blob.
+     */
     getEffectiveTint(actor) {
         const stateTint = actor.getStateTint();
-        if (!stateTint) return actor.tint;
-        return this.blendTints(actor.tint, stateTint);
+        if (stateTint === null || stateTint === undefined) return actor.tint;
+
+        // A null/undefined own-tint means "untinted", which is white, not black.
+        const base = (actor.tint === null || actor.tint === undefined) ? 0xFFFFFF : actor.tint;
+        return lerpColor(base, stateTint, STATE_TINT_MIX);
+    }
+
+    /**
+     * Repaint actor sprites from their own tint plus any state tint.
+     *
+     * The bright-level counterpart to the tinting inside updateEntityLighting. That
+     * runs only when a lightingManager exists, so on a `darkness: false` prototype
+     * nothing ever wrote a state tint to a sprite — the sidebar showed the state in its
+     * color while the actor on the map stayed unchanged.
+     *
+     * Deliberately narrow: tint only. Visibility, fog and alpha are either the lighting
+     * pass's business or updateProximityTransparency's, and a bright level has no fog to
+     * apply. Skips light sources for the same reason updateEntityLighting does — they
+     * carry their own color.
+     */
+    updateEntityStateTints() {
+        for (const actor of this.engine.entityManager.actors) {
+            if (actor.isDead) continue;
+            if (actor.hasAttribute('light_source')) continue;
+
+            const tint = this.getEffectiveTint(actor) ?? 0xFFFFFF;
+            if (actor.spriteBase) actor.spriteBase.tint = tint;
+            if (actor.spriteTop) actor.spriteTop.tint = tint;
+            if (actor.spriteSide) actor.spriteSide.tint = tint;
+        }
     }
 
     setAnimationPlaying(sprite, shouldPlay) {

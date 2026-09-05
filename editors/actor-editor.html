@@ -105,19 +105,15 @@
                 </div>
                 <div class="field-row">
                     <label>Animation Base</label>
-                    <select id="f-animationBase"><option value="">none</option><option value="fire">fire</option><option value="smoke">smoke</option><option value="mist">mist</option><option value="fluid">fluid</option><option value="pac">pac</option>
-                    </select>
+                    <select id="f-animationBase" data-anim-select></select>
                 </div>
                 <div class="field-row">
                     <label>Animation Top</label>
-                    <select id="f-animationTop"><option value="">none</option><option value="fire">fire</option><option value="smoke">smoke</option><option value="mist">mist</option><option value="fluid">fluid</option>
-                    <option value="pac">pac</option></select>
-
+                    <select id="f-animationTop" data-anim-select></select>
                 </div>
                 <div class="field-row">
                     <label>Animation Side</label>
-                    <select id="f-animationSide"><option value="">none</option><option value="fire">fire</option><option value="smoke">smoke</option><option value="mist">mist</option><option value="fluid">fluid</option>
-                    <option value="pac">pac</option></select>
+                    <select id="f-animationSide" data-anim-select></select>
                 </div>
                 <div class="field-row">
                     <label>Light Radius</label>
@@ -438,20 +434,15 @@ const TYPED_ATTRS = [
 
 const TILE_FIELDS = ['tileIndexBase','tileIndexTop','tileIndexSide','tileIndexBase_open','tileIndexTop_open','tileIndexBase_toggled','tileIndexTop_toggled'];
 
-const ANIM_SHEETS = {
-    fire:  '../assets/sprites/fire-animation.png',
-    smoke: '../assets/sprites/smoke-animation.png',
-    mist:  '../assets/sprites/light-smoke-animation.png',
-    fluid: '../assets/sprites/fluid-animation.png',
-    pac: '../assets/sprites/pac-animation.png'
-};
-
 let state = {
     tileMap: {},
     tileNames: [],
     spritesheetImg: null,
     animImages: {},
     animFrameCounts: {},
+    // name -> manifest entry, merged base + prototype. Drives the dropdowns.
+    animations: {},
+    baseAnimations: {},
     baseActors: {},
     protoActors: {},
     mergedActors: {},
@@ -477,18 +468,54 @@ async function fetchJSON(url) {
     } catch { return {}; }
 }
 
-function loadAnimSheets() {
-    const promises = Object.entries(ANIM_SHEETS).map(([name, path]) => new Promise(resolve => {
+/**
+ * Load the animation sheets named by a manifest.
+ *
+ * The manifest is data/animations.json (plus a prototype's own), so this editor no
+ * longer keeps its own copy of the list or of the filename convention — adding an
+ * animation is a line of JSON and the dropdowns pick it up.
+ *
+ * @param {Object} manifest - name -> { file, speed?, description? }
+ * @param {string} base - Directory the `file` values are relative to
+ */
+function loadAnimSheets(manifest, base) {
+    const promises = Object.entries(manifest || {}).map(([name, def]) => new Promise(resolve => {
+        const file = typeof def === 'string' ? def : def?.file;
+        if (!file) return resolve();
         const img = new Image();
         img.onload = () => {
             state.animImages[name] = img;
+            // Derived, as in the engine: a sheet is however many frames wide it is.
             state.animFrameCounts[name] = Math.floor(img.width / TILE_W);
             resolve();
         };
-        img.onerror = () => resolve();
-        img.src = path;
+        img.onerror = () => resolve();   // dropdown still lists it; preview stays blank
+        img.src = `${base}${file}`;
     }));
     return Promise.all(promises);
+}
+
+/** Fetch the base manifest and its sheets. Runs once, at startup. */
+async function loadBaseAnimations() {
+    state.baseAnimations = await fetchJSON('../data/animations.json');
+    state.animations = { ...state.baseAnimations };
+    await loadAnimSheets(state.animations, '../assets/sprites/');
+}
+
+/** Fill every `data-anim-select` dropdown from the currently known animations. */
+function populateAnimDropdowns() {
+    const names = Object.keys(state.animations || {}).sort();
+    for (const sel of document.querySelectorAll('[data-anim-select]')) {
+        const prev = sel.value;
+        sel.innerHTML = '<option value="">none</option>'
+            + names.map(n => `<option value="${n}">${n}</option>`).join('');
+        // An actor may name an animation the current prototype doesn't ship. Keep the
+        // value visible rather than silently resetting the field to "none".
+        if (prev && !names.includes(prev)) {
+            sel.insertAdjacentHTML('beforeend', `<option value="${prev}">${prev} (missing)</option>`);
+        }
+        sel.value = prev;
+    }
 }
 
 function loadSpritesheet() {
@@ -528,6 +555,7 @@ async function loadBaseData() {
 }
 
 async function loadPrototype(name) {
+    let protoAnimations = {};
     if (!name) {
         state.protoActors = {};
         state.protoPersonalities = {};
@@ -535,20 +563,31 @@ async function loadPrototype(name) {
         if (state.prototypeCache[name]) {
             state.protoActors = state.prototypeCache[name].actors;
             state.protoPersonalities = state.prototypeCache[name].personalities;
+            protoAnimations = state.prototypeCache[name].animations;
         } else {
-            const [a, p] = await Promise.all([
+            const [a, p, anim] = await Promise.all([
                 fetchJSON(`../prototypes/${name}/actors.json`),
                 fetchJSON(`../prototypes/${name}/personalities.json`),
+                fetchJSON(`../prototypes/${name}/animations.json`),
             ]);
             state.protoActors = a;
             state.protoPersonalities = p;
-            state.prototypeCache[name] = { actors: a, personalities: p };
+            protoAnimations = anim;
+            state.prototypeCache[name] = { actors: a, personalities: p, animations: anim };
         }
     }
     state.mergedActors = { ...state.baseActors, ...state.protoActors };
     state.mergedPersonalities = { ...state.basePersonalities, ...state.protoPersonalities };
+
+    // A prototype's own animations join the dropdowns, and their sheets load from the
+    // prototype folder. Sheets already fetched stay cached in state.animImages, so
+    // flipping between prototypes doesn't refetch.
+    state.animations = { ...state.baseAnimations, ...protoAnimations };
+    if (name) await loadAnimSheets(protoAnimations, `../prototypes/${name}/`);
+
     populateActorDropdown();
     populatePersonalityDropdown();
+    populateAnimDropdowns();
 }
 
 // ---- Dropdowns ----
@@ -888,7 +927,9 @@ function randomizeAppearance() {
     document.getElementById('f-tint_effect').value = effectOpts[Math.floor(Math.random() * effectOpts.length)];
     document.getElementById('f-random_color').checked = Math.random() < 0.05;
 
-    const animOpts = ['', '', '', '', 'fire', 'smoke', 'mist', 'fluid', 'pac'];
+    // Four blanks weight the roll toward "no animation"; the rest is whatever the
+    // manifest currently offers, so a new animation joins the randomizer for free.
+    const animOpts = ['', '', '', '', ...Object.keys(state.animations || {})];
     const pickAnim = () => animOpts[Math.floor(Math.random() * animOpts.length)];
     document.getElementById('f-animationBase').value = pickAnim();
     document.getElementById('f-animationTop').value = Math.random() < 0.15 ? pickAnim() : '';
@@ -1838,7 +1879,7 @@ async function init() {
     // because this page draws its own tile previews and actor composite from
     // state.spritesheetImg.
     await Promise.all([
-        loadBaseData(), loadSpritesheet(), loadAnimSheets(), TilePicker.load(),
+        loadBaseData(), loadSpritesheet(), loadBaseAnimations(), TilePicker.load(),
     ]);
     populateTypeDropdown();
     await populatePrototypeSelect();

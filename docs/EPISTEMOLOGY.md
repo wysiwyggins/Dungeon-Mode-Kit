@@ -209,4 +209,4 @@ Keys are a special case: their color comes from `getKeyColor()` and is written t
   `"identified": false`.
 - Identification is knowledge, not sight: an unidentified item is drawn normally.
 - Cursed items force `identified = true` on equip, so the curse announces itself.
-- Hallucinating state hides names of actors and items, and currently scrambles actor tiles (need to extend it to items)
+- Hallucinating state hides names of actors and items, and currently scrambles actor tiles (need to extend it to items). In dialog messages, hallucination masked actors are described as "something" as in other anonymizing situations. Hovering over actors and items to inspect them has flavor discriptions that include scrambled tile names.

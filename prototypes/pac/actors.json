@@ -17,7 +17,8 @@
     "attributes": {
       "sentient": true,
       "controlled": true,
-      "flammable": null
+      "flammable": null,
+      "melee_harmless": true
     }
   },
   "ghost": {

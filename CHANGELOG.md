@@ -9,10 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`data/animations.json` — animated sprites are data now.** Adding one was seven hardcoded lists across `engine.js` and the actor editor; it's now a PNG and a line of JSON, and the editor dropdowns build themselves from the file. `file` is stated per entry, so the mist sheet's off-convention filename is data rather than code, and an optional `speed` replaces the one hardcoded rate every sheet shared.
+- **Prototype-level `animations.json`.** A prototype ships its own sheets with `file` relative to its folder, merged over the base manifest — pac's chomp moved out of the shared sprite folder into `prototypes/pac/`.
 - **`default_floor` prototype setting** — the floor tile generators use, plus an optional tint, overridable per floor. Generated areas only.
 - **Tile sprites honour a per-tile `tint`.** Lives in the serialized `floorMap`, so it survives floor transitions. Floor is the one layer where this is stable — lighting rewrites background and overlay tints each frame.
 - **`collected:item_type` and `killed:actor_type` win conditions** — collect all items of type or kill all actors of type
 - **Prototype-level `states.json`.** A prototype can now ship its own states, merged over `data/states.json` at load.
+- **`melee_harmless` attribute** — the mirror of `melee_immune`, checked on the attacker: this actor cannot hurt anything in melee. Like `melee_immune` it is applied after the hit roll, so the blow still swings, sounds and costs a turn.
+- **`rank_order` — capture hierarchies.** A prototype lists actor ids weakest to strongest and captures follow the order: higher takes lower, equal ranks trade, and the first entry takes the last, which is the Animals' Chess rule that stops the top piece being unanswerable. Rank is list membership rather than a number per actor, so inserting a piece is a one-line edit and the wrap-around derives from the span's ends. Inert unless declared.
+- **`suppresses_attribute` state property** — takes an attribute away for the duration, whether innate or granted by another state, and wins over any grant.
 - **`melee_immune` attribute.**
 - **`random_color` now works on any actor**, not just `color_locked` doors.
 - **`Actor.hasInfoPanel()`** Actors with `description` `sentient` can spawn new info windows. See [docs/ACTORS.md](docs/ACTORS.md#what-earns-a-panel-actorhasinfopanel).
@@ -33,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Pac only eats ghosts while powered up.**
+- **Combat forecasts account for the melee gate.** `predictCombat` read damage without checking whether the blow could land at all, so the info panel quoted hits-to-kill for a target the attacker could never hurt. It now reports `noDamage` for `melee_immune`, `melee_harmless` and rank mismatches.
+- **State tints now show on bright levels.** `getStateTint()` was only ever read by the darkness lighting pass, so on a `darkness: false` prototype a state's `tint` coloured its sidebar entry while the actor on the map stayed unchanged.
+- **State tints mix by interpolation instead of multiplying.** Multiply was right for light but not a state colour on a tinted actor.
 - **`pickup_effect` handles `apply_state`.** It previously treated every key as a number to add, so `"apply_state": "foo"` computed `0 + "foo"` and set a garbage attribute instead of applying the state. Now routed through `applyAuthoredState`, matching `use_effect`.
 - **`random_items` no longer stacks a batch onto one tile.** The count loop re-queried available tiles each iteration and `getAvailableTiles` only excludes actor-occupied tiles, so a 50-item spawn could pile several items invisibly on the same spot.
 

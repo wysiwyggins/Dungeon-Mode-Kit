@@ -1,0 +1,7 @@
+{
+  "pac": {
+    "file": "pac-animation.png",
+    "speed": 0.05,
+    "description": "A two-frame chomp. Ships with this prototype rather than the shared sprite folder."
+  }
+}

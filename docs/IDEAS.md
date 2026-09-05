@@ -1,7 +1,6 @@
 
 ## Bugs
 
-- not a bug, but it is nuts how many places I have to change code to add another animated sprite, this should just be another piece of json data.
 - In the dungeon generator, adding secret doors led to some occasional weird door placement— such as a secret door that connects to the corner of a rectangular room, which does not grant entry due to the rule that prevents diagonal movement next to a solid wall. I also found a secret door next to a regular door on a wall between two rooms.
 - when we pick a prototype in an editor it should narrow the options in the next dropdown down to the ones in that prototype since there are so many in default /data/
 

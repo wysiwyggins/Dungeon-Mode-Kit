@@ -59,7 +59,7 @@ Actors are two tiles tall: `tileIndexTop` renders at head height (y-1), `tileInd
 | `tileIndexTop_open` | string or `{x, y}` | Top tile when actor is in open state (doors) |
 | `tileIndexBase_toggled` | string or `{x, y}` | Base tile when actor is in toggled state (switches, levers) |
 | `tileIndexTop_toggled` | string or `{x, y}` | Top tile when actor is in toggled state (switches, levers) |
-| `animationBase` | string | Animation name for base sprite |
+| `animationBase` | string | Animation name for base sprite (see [Animated sprites](#animated-sprites)) |
 | `animationTop` | string | Animation name for top sprite |
 | `animationSide` | string | Animation name for side sprite |
 | `flipBaseH` / `flipBaseV` | boolean | Flip base sprite horizontally or vertically |
@@ -85,6 +85,43 @@ reaching around a corner into darkness is hidden on its own.
 With `facingEnabled`, all of an actor's sprites (base, top, side, equipment) mirror when it
 moves or attacks left vs. right, and the side offset flips with them. `defaultFacing`
 declares which way the art was drawn. Vertical-only movement preserves current facing.
+
+### Animated Sprites
+
+`animationBase` / `animationTop` / `animationSide` name an animation instead of a static
+tile. When set, the animation replaces that slot's tile entirely.
+
+The available animations are data, not code. They live in **`data/animations.json`**:
+
+```json
+{
+  "fire":  { "file": "fire-animation.png" },
+  "mist":  { "file": "light-smoke-animation.png" },
+  "torch": { "file": "torch-animation.png", "speed": 0.2 }
+}
+```
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `file` | string | PNG filename, relative to `assets/sprites/` (or the prototype folder) |
+| `speed` | number | Optional PIXI frame advance per tick. Defaults to `0.1` |
+| `description` | string | Optional note for whoever reads the file next |
+
+**Adding one is a PNG plus a line of JSON.** The sheet is a horizontal strip of
+`TILE_WIDTH`-wide frames; the frame count is read from the image's width, so nothing
+declares it. The actor editor's animation dropdowns are built from this file, so a new
+entry appears there with no edit.
+
+A prototype can ship its own animations in **`prototypes/<name>/animations.json`**, merged
+over the base set, with `file` resolved against the prototype folder — so a sprite only one
+prototype needs doesn't have to sit in the shared assets folder:
+
+```json
+{ "pac": { "file": "pac-animation.png", "speed": 0.05 } }
+```
+
+A prototype entry reusing a base name can only change `speed`; the base artwork wins,
+since the texture is already registered. Give genuinely new art a new name.
 
 ## Core Attributes
 
@@ -117,6 +154,54 @@ These attributes factor into the combat formula. Hit probability is `accuracy * 
 | `accuracy` | number | Base chance to hit (0–100). |
 | `defense` | number | Reduces attacker's effective hit chance. |
 | `strength` | number | Damage multiplier. `10` = 1×, `15` = 1.5× (default: `10`) |
+| `melee_immune` | boolean | Cannot be hurt by melee. Blows still swing and connect, they just do nothing. |
+| `melee_harmless` | boolean | Cannot hurt anything with melee — the mirror of `melee_immune`, checked on the attacker. |
+
+`melee_immune` and `melee_harmless` are absolutes, applied after the hit roll rather
+than as part of it: the attack animates, sounds and consumes the turn, and only the
+damage is dropped. Neither makes the target passable, so the attacker still bumps and
+stops.
+
+Both are worth granting from a state rather than baking in permanently. Pac's power
+pill is the round trip: the player is `melee_harmless` by default so ghosts always win
+the exchange, and the `impervious` state suppresses that while granting `melee_immune`,
+reversing who eats whom. Without it the outcome depends on who moved first, which is
+right for a chess-like game and wrong for this one.
+
+### Rank hierarchies
+
+A third way a blow can come to nothing: the attacker is outranked. Declare an ordered
+hierarchy in `prototype.json` and captures follow it — the Animals' Chess (Dou Shou Qi)
+rule, where higher takes lower but the weakest piece takes the strongest.
+
+```json
+"rank_order": ["rat", "cat", "dog", "wolf", "leopard", "tiger", "lion", "elephant"]
+```
+
+The array is actor ids, weakest first. Rank is membership in that list rather than a
+number on each actor, so inserting a piece mid-hierarchy is a one-line edit instead of
+a renumbering, and the ends of the span are derived — which is what makes the
+wrap-around general rather than a rat-vs-elephant special case.
+
+| Matchup | Result |
+| --------- | -------- |
+| Higher rank attacks lower | Captures |
+| Equal rank | Captures — pieces trade |
+| Lower rank attacks higher | Blow does nothing |
+| First entry attacks last | Captures (the wrap-around) |
+| Last entry attacks first | Blow does nothing |
+
+An actor may instead carry a numeric `rank` attribute, which wins over the list — for a
+piece that needs a rank without being listed, such as a disguise or a promotion.
+
+The hierarchy is inert unless `rank_order` is declared, and unranked actors are exempt:
+if either side has no rank, capture is allowed. A ranked prototype can therefore still
+contain ordinary monsters.
+
+Note this gates *damage only*. AI target selection goes through `isEnemyOf`, which is
+flat faction membership and knows nothing about rank, so a ranked AI will keep
+attacking a piece it cannot take unless its behavior is written to check
+`outranksForCapture`.
 
 ## Stats
 
@@ -241,6 +326,7 @@ While active, the holder behaves as if it had the attribute.
 | ---------- | ------ | ------------- |
 | `grants_immunity` | string | Grants an immunity attribute (`"fireproof"`). |
 | `grants_attribute` | string or array | Grants any attribute — `"ignites"` makes the holder set fire to its neighbors. |
+| `suppresses_attribute` | string or array | Takes an attribute away for the duration, whether it is innate or granted by another state. Wins over any grant. |
 | `on_apply_effect` | object | One-off stat/property change applied on start and reversed on removal (`{ "visionRange": -3 }`). |
 | `flying` | boolean | Hovers above the ground: no falling into voids, no submersion, immune to ground hazards (lava, fire), doesn't trigger traps or collapse platforms, and liquids don't douse it. |
 | `invisible`, `telepathic`, `stuck`, `hallucinating` | boolean | Flags the engine reads directly for that behavior. |

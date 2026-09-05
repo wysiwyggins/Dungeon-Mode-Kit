@@ -2,8 +2,10 @@
   "impervious": {
     "name": "Impervious",
     "duration": 20,
-    "tint": "#66ccff",
+    "tint": "#EF3054",
+    "flickerTint": true,
     "grants_attribute": "melee_immune",
+    "suppresses_attribute": "melee_harmless",
     "effect_description": "The ghosts fear you",
     "on_apply_message": "[actor_name] surges with power — the ghosts are edible!",
     "on_remove_message": "The power fades.",
