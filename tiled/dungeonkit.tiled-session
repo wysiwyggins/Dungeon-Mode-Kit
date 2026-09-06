@@ -113,22 +113,25 @@
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/morass/map.tmj": {
             "expandedObjectLayers": [
-                3,
-                8
+                8,
+                3
             ],
-            "scale": 1.6551,
+            "scale": 0.6078,
             "selectedLayer": 3,
             "viewCenter": {
-                "x": 896.0183674702434,
-                "y": 743.1575131411998
+                "x": 839.0918065153011,
+                "y": 722.2770648239552
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/pac/map.tmj": {
-            "scale": 0.8048,
-            "selectedLayer": 4,
+            "expandedObjectLayers": [
+                3
+            ],
+            "scale": 0.9895,
+            "selectedLayer": 1,
             "viewCenter": {
-                "x": 830.0198807157058,
-                "y": 324.30417495029826
+                "x": 992.4204143506822,
+                "y": 345.6291056088934
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/sewer/map.tmj": {
@@ -140,8 +143,8 @@
             "scale": 0.5154,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": 1600.6984866123403,
-                "y": 1199.0686845168802
+                "x": 2060.535506402794,
+                "y": 444.315095071789
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/2.tmj": {

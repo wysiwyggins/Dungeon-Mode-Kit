@@ -59,7 +59,7 @@
     "type": "illuminator",
     "tileIndex": "BOX_VERTICAL_WHITE_TOP",
     "tint": "#EC7505",
-    "flickerTint": true,
+    "effect": "flicker_tint",
     "attributes": {
       "flammable": true,
       "ignites": true,
@@ -132,7 +132,7 @@
     "type": "illuminator",
     "tileIndex": "WHITE_FEMALE_SYMBOL",
     "tint": "#BBECEC",
-    "flickerTint": true,
+    "effect": "flicker_tint",
     "attributes": {
       "flammable": false,
       "lightRadius": 8,
@@ -454,7 +454,7 @@
     "name": "uranium nugget",
     "tileIndex": "WHITE_ASTERISK",
     "tint": "#cce8b5",
-    "flickerTint": true,
+    "effect": "flicker_tint",
     "ignore_darkness": true,
     "identified": false,
     "random_value": [5, 10],

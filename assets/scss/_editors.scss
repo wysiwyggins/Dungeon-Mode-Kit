@@ -345,7 +345,7 @@ body.editor {
     }
 
     .tile-picker-target { font-size: 11px; color: var(--accent); }
-    .tile-picker-canvas { cursor: crosshair; image-rendering: pixelated; display: block; }
+    .tile-picker-canvas { cursor: crosshair; display: block; }
     .tile-picker-tooltip {
         position: fixed;
         background: var(--bg);

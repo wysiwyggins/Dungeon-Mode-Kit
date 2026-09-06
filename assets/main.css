@@ -488,7 +488,6 @@ body.editor .tile-slot:hover {
   border-color: var(--accent);
 }
 body.editor .tile-slot canvas {
-  image-rendering: pixelated;
   background: #d0cfc8;
   display: block;
 }

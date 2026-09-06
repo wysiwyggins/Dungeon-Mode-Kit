@@ -1165,46 +1165,8 @@ const EffectPrimitives = {
         };
     },
 
-    /**
-     * Applies BlurFilter to stage or a container, with optional sine-wave oscillation.
-     */
-    blur_pulse(ctx, params) {
-        const { container = null, strength = 4, speed = 0.002, min_strength = 0, max_strength = 6, quality = 2 } = params;
-        let filter = null;
-        let tickerFn = null;
-        let target = null;
-
-        return {
-            apply() {
-                target = container ? ctx.containers[container] : ctx.stage;
-                if (!target) return;
-
-                filter = new PIXI.filters.BlurFilter(strength, quality);
-                target.filters = target.filters ? [...target.filters, filter] : [filter];
-
-                if (speed > 0) {
-                    tickerFn = () => {
-                        const t = Date.now();
-                        filter.blur = min_strength + (max_strength - min_strength) * (0.5 + 0.5 * Math.sin(t * speed));
-                    };
-                    ctx.ticker.add(tickerFn);
-                }
-            },
-            remove() {
-                if (tickerFn) {
-                    ctx.ticker.remove(tickerFn);
-                    tickerFn = null;
-                }
-                if (filter && target && target.filters) {
-                    target.filters = target.filters.filter(f => f !== filter);
-                    if (target.filters.length === 0) target.filters = null;
-                }
-                filter = null;
-                target = null;
-            }
-        };
-    },
-
+    // deleted blur_pulse, it didn't match the artwork
+    
     /**
      * Sine-wave alpha oscillation on a container.
      */

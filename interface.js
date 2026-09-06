@@ -4743,6 +4743,37 @@ class InterfaceManager {
     // ========================================================================
 
     /**
+     * Is the actor whose eyes we render through hallucinating?
+     *
+     * The sidebar is drawn once for the whole party, not per entity, so it asks the
+     * viewpoint directly rather than going through `Entity.isViewerHallucinating`,
+     * which needs a subject to ask on behalf of.
+     *
+     * @returns {boolean}
+     */
+    isViewerHallucinating() {
+        const viewer = this.engine?.entityManager?.getPrimaryViewpoint?.();
+        return viewer?.hasStateProperty?.('hallucinating') === true;
+    }
+
+    /**
+     * A made-up condition word — "gibbering", "shimmering" — for a hallucinated actor.
+     *
+     * Deliberately *not* memoized, unlike the name: the churn is the point, so the
+     * ailment shifts every time the panel redraws while the creature it belongs to
+     * stays the same imagined thing. Drawn from `adjectives.hallucinated_states`, the
+     * list the info panel's template already uses, so the two read as one vocabulary
+     * without having to agree on any single word.
+     *
+     * @returns {string} A single adjective, or '' if the word list is missing
+     */
+    hallucinatedCondition() {
+        const words = this.engine?.globalWordRegistry?.['adjectives.hallucinated_states'];
+        if (!Array.isArray(words) || !words.length) return '';
+        return randomElement(words);
+    }
+
+    /**
      * Update the actors div with visible actors and their stats
      * Controllable actors (like Player) are listed first
      */
@@ -4787,17 +4818,43 @@ class InterfaceManager {
 
         // Render one actor's entry block.
         const renderActor = (actor) => {
+            // Hallucinating, the row reads "something" — the same word
+            // `getNameWithArticle` already gives the message log — plus a made-up
+            // condition, with the real states and stat bars withheld. Reading a
+            // creature's health means having identified it first. The scrambled tile
+            // name belongs to the hover and info-panel path, where you're looking at
+            // one specific thing; a list of them wants the plain anonymous word.
+            //
+            // `isAnonymous()` is true for invisible and `visible: false` actors too, so
+            // the hallucination check is what keeps those on the normal path — the
+            // list already filters out `isUnseen()` actors but not `visible: false`
+            // ones. The player is exempt: isAnonymous() returns false for the
+            // controlled actor, so you always know yourself.
+            const deceived = actor.isAnonymous?.() && this.isViewerHallucinating();
+
             let html = `<div class="actor-entry">`;
-            html += `<strong class="actor-name">${actor.name}`;
+            html += `<strong class="actor-name">${deceived ? 'something' : actor.name}`;
 
             // Show equipping status with dots for progress
-            if (actor.isEquipping && actor.isEquipping()) {
+            if (!deceived && actor.isEquipping && actor.isEquipping()) {
                 const turnsCompleted = actor._equippingTurnsTotal - actor._equippingTurnsLeft;
                 const dots = '.'.repeat(turnsCompleted);
                 html += ` <span class="equipping-status">(equipping${dots})</span>`;
             }
 
             html += `</strong>`;
+
+            if (deceived) {
+                // No duration: a made-up condition has no honest number to show, and
+                // printing one would be the single readable fact in a false entry.
+                const fake = this.hallucinatedCondition();
+                if (fake) {
+                    html += `<div class="actor-conditions">`
+                        + `<span class="actor-condition">${fake}</span></div>`;
+                }
+                html += '</div>';
+                return html;
+            }
 
             // Show active conditions (confused, blinded, burning, etc.)
             if (actor.states && Object.keys(actor.states).length > 0) {
@@ -4919,10 +4976,20 @@ class InterfaceManager {
             return;
         }
 
-        // Group items by display name and count duplicates
+        // Group items by display name and count duplicates.
+        //
+        // Hallucinating, a floor item reads as "something" — the same word
+        // `getNameWithArticle` gives the message log, so the list and the prose agree.
+        // `Item.isAnonymous()` draws the line by inventory membership, and this list
+        // holds only floor items, so everything here is on the deceived side while the
+        // pack stays honest. They collapse into one "something xN" row, which is the
+        // truthful reading: unable to identify any of them, you can't tell them apart
+        // either.
         const itemCounts = new Map();
         for (const item of visibleItems) {
-            const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
+            const displayName = item.isAnonymous?.()
+                ? 'something'
+                : (item.getDisplayName ? item.getDisplayName() : item.name);
             itemCounts.set(displayName, (itemCounts.get(displayName) || 0) + 1);
         }
 

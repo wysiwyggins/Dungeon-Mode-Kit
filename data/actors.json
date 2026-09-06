@@ -97,7 +97,7 @@
     "tileIndexBase": "OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE",
     "tileIndexTop": "HAUNTED_FACE",
     "tint": "#bbccff",
-    "flickerTint": true,
+    "effect": "flicker_tint",
     "personality": "stationed_melee",
     "collision_effect": {
       "health": -5
@@ -533,7 +533,7 @@
     "tileIndexBase": "OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE",
     "tileIndexTop": "SKULL",
     "tint": "#d4e3fe",
-    "flickerTint": true,
+    "effect": "flicker_tint",
     "personality": "aggressive_melee",
     "collision_effect": {
       "health": -8
@@ -835,7 +835,7 @@
     "tileIndexTop": "OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE",
     "flipTopH": true,
     "tint": "#CC77FF",
-    "flickerTint": true,
+    "effect": "flicker_tint",
     "lightRadius": 1,
     "personality": "illusionist",
     "collision_effect": {
@@ -1353,7 +1353,7 @@
     "animated": true,
     "animation_frames": "fluid",
     "tint": "#00464b",
-    "rippleTint": true,
+    "effect": "ripple_tint",
     "personality": "deep_water",
     "attributes": {
       "solid": false,
@@ -1390,7 +1390,7 @@
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
     "tint": "#7d9332",
-    "rippleTint": true,
+    "effect": "ripple_tint",
     "animated": true,
     "animation_frames": "fluid",
     "personality": "deep_water",
@@ -1475,7 +1475,7 @@
     "animated": true,
     "animation_frames": "fire",
     "tint": "#EC7505",
-    "flickerTint": true,
+    "effect": "flicker_tint",
     "personality": "fire",
     "attributes": {
       "solid": false,
@@ -1495,7 +1495,7 @@
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
     "tint": "#fecb3e",
-    "flickerTint": true,
+    "effect": "flicker_tint",
     "animated": true,
     "animation_frames": "fire",
     "personality": "fire",
@@ -1515,7 +1515,7 @@
     "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
     "animationTop": "fire",
     "tint": "#EC7505",
-    "flickerTint": true,
+    "effect": "flicker_tint",
     "lightRadius": 10,
     "attributes": {
       "opaque": false,

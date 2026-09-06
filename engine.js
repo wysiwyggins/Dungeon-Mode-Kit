@@ -223,6 +223,37 @@ const ITEM_Z = 7;
 // that was possible, so leaving it out keeps the existing look.
 const DEFAULT_ANIMATION_SPEED = 0.1;
 
+// `flickerTint: true` / `rippleTint: true` predate the named `effect` field and mean
+// exactly `effect: "flicker_tint"` / `"ripple_tint"`. Shipped data has been migrated,
+// but prototypes outside this repo may still use them, so they keep working.
+const LEGACY_TINT_EFFECTS = { flickerTint: 'flicker_tint', rippleTint: 'ripple_tint' };
+const _warnedLegacyTintKeys = new Set();
+
+/**
+ * Resolve an entity's visual effect id, honouring the deprecated boolean aliases.
+ * Shared by Item and Actor so the two cannot drift — they did, and an item with
+ * `rippleTint` silently rendered flat because only Actor handled that key.
+ * @param {Object} data - Raw actor/item data
+ * @returns {string|null} Effect name, or null for none
+ */
+function resolveEntityEffect(data) {
+    if (data.effect) return data.effect;
+
+    for (const [legacyKey, effectName] of Object.entries(LEGACY_TINT_EFFECTS)) {
+        if (!data[legacyKey]) continue;
+        // Warn per key, not per entity — a level with forty torches shouldn't
+        // print forty identical lines.
+        if (!_warnedLegacyTintKeys.has(legacyKey)) {
+            _warnedLegacyTintKeys.add(legacyKey);
+            console.warn(
+                `'${legacyKey}: true' is deprecated; use "effect": "${effectName}" instead.`
+            );
+        }
+        return effectName;
+    }
+    return null;
+}
+
 const ALL_DIRS = [
     {dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1},
     {dx: -1, dy: 0},                   {dx: 1, dy: 0},
@@ -4935,8 +4966,7 @@ class Item extends Entity {
             this.setAttribute('cursed', true);
         }
 
-        this.effect = data.effect || null;
-        if (!this.effect && data.flickerTint) this.effect = 'flicker_tint';
+        this.effect = resolveEntityEffect(data);
         this.combatUseCount = 0;
     }
 
@@ -5446,11 +5476,7 @@ class Actor extends Entity {
         this.height = 2;
         this.tint = parseTint(data.tint);
         this.originalTint = this.tint;
-        this.effect = data.effect || null;
-        if (!this.effect) {
-            if (data.flickerTint) this.effect = 'flicker_tint';
-            else if (data.rippleTint) this.effect = 'ripple_tint';
-        }
+        this.effect = resolveEntityEffect(data);
         this.visionRange = data.vision_range ?? 8;
 
         this.tileIndexBase = engine.spriteLibrary.resolveTile(data.tileIndexBase) || null;
@@ -10692,10 +10718,22 @@ class Actor extends Entity {
             if (this.isPlayerControlled() &&
                 actorAtTarget.hasAttribute('collision_description') &&
                 !actorAtTarget.hasAttribute('collision_effect')) {
+                // Resolved against the actor being bumped, so [actor_name] is the
+                // thing you walked into and [attacked_actor_name] is you. Uses the
+                // same providers as the combat path: a collision_description is
+                // authored once and may be reached either way, so a monkey that
+                // hits you and a monkey you bump into must read the same. Supplying
+                // only [name] here is what let "The [actor_name] scratches the
+                // [attacked_actor_name]!" print raw.
+                const bumpText = resolveTemplate(
+                    actorAtTarget.getAttribute('collision_description'), actorAtTarget, {
+                        providers: {
+                            ...actorAtTarget._nameProviders(this),
+                            name: () => actorAtTarget.getNameWithArticle()
+                        }
+                    });
                 this.engine.inputManager?.showMessage(
-                    resolveTemplate(actorAtTarget.getAttribute('collision_description'), actorAtTarget, {
-                        providers: { name: () => actorAtTarget.getNameWithArticle() }
-                    })
+                    actorAtTarget._hideAnonymousArticle(bumpText)
                 );
                 return { moved: false, actionTaken: true };
             }

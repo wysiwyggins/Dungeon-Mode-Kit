@@ -81,7 +81,6 @@
   "dazed": {
     "target": "stage",
     "layers": [
-      { "primitive": "blur_pulse", "params": { "speed": 0.003, "min_strength": 0, "max_strength": 4 } },
       { "primitive": "brightness_oscillate", "params": { "speed": 0.002, "amplitude": 0.04 } }
     ]
   },

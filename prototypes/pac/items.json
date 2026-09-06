@@ -20,7 +20,7 @@
     "tint": "#FFD700",
     "ignore_darkness": true,
     "identified": false,
-    "flickerTint": true,
+    "effect": "flicker_tint",
     "attributes": {
       "pickupable": true,
       "visible": true,

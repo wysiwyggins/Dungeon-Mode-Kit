@@ -68,11 +68,12 @@ Actors are two tiles tall: `tileIndexTop` renders at head height (y-1), `tileInd
 | `flipBaseV_toggled` / `flipTopV_toggled` | boolean | Flip applied only while the actor is in its toggled state (levers) |
 | `facingEnabled` | boolean | Enable dynamic horizontal flipping based on movement direction |
 | `defaultFacing` | string | Canonical orientation of the tile art: `"left"` (default) or `"right"` |
-| `flickerTint` | boolean | Sprite color flickers (fire, torches) |
-| `rippleTint` | boolean | Sprite color ripples (water, liquids) |
+| `effect` | string | Named visual effect from [`data/effects.json`](../data/effects.json), e.g. `"flicker_tint"` (fire, torches) or `"ripple_tint"` (water, liquids) |
 | `vision_range` | number | How far this actor can see (default: `8`). Valid as a top-level field or inside `attributes`. |
 
-> **Tint effects:** `flickerTint: true` and `rippleTint: true` are convenience flags that the engine canonicalizes to its internal `effect` field (`"flicker_tint"` / `"ripple_tint"`). You can also set `"effect"` directly to one of those strings; the boolean forms above are the usual way.
+> **Visual effects:** `effect` names an entry in `data/effects.json`, which a prototype can extend or override with its own `effects.json`. Any effect declared with `"target": "sprite"` is valid here; the editors offer exactly those. An actor has at most one effect — the field is a single string, not a list.
+>
+> **Deprecated:** `flickerTint: true` and `rippleTint: true` are the old spellings of `effect: "flicker_tint"` and `effect: "ripple_tint"`. They still work, but warn once per key on load. Use `effect`.
 
 ### Side Tiles
 
@@ -920,7 +921,7 @@ An actor with no `health` stat reports that it cannot be harmed; one whose
   "tileIndexTop": "BLANK",
   "animationBase": "fire",
   "tint": "#EC7505",
-  "flickerTint": true,
+  "effect": "flicker_tint",
   "personality": "fire_behavior",
   "lifetime": 5,
   "damage_per_turn": 10,

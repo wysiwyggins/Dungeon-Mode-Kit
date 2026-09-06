@@ -3,7 +3,6 @@
     "name": "Impervious",
     "duration": 20,
     "tint": "#EF3054",
-    "flickerTint": true,
     "grants_attribute": "melee_immune",
     "suppresses_attribute": "melee_harmless",
     "effect_description": "The ghosts fear you",

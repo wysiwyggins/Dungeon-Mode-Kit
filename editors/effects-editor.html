@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Effects Editor — Dungeon Mode Kit</title>
 <link rel="stylesheet" href="../assets/main.css">
+<!-- The preview runs the ENGINE's effects, not a copy of them: pixi + globals +
+     effects.js are the same files the game loads, so what you see here is what
+     the game does. Previously this page reimplemented the tint math in Canvas 2D
+     and the two drifted. -->
+<script src="../lib/pixi.min.js"></script>
+<script src="../globals.js"></script>
+<script src="../effects.js"></script>
+<script src="scripts/tile-picker.js"></script>
+<script src="scripts/effect-params.js"></script>
 </head>
 <body class="editor effects-editor">
 
@@ -21,7 +30,11 @@
 <div id="workspace" class="workspace">
     <aside id="preview-panel" class="preview-panel">
         <h3>Preview</h3>
-        <canvas id="preview-canvas" class="preview-canvas" width="200" height="200"></canvas>
+        <div id="preview-mount" class="preview-canvas"></div>
+        <div class="field-row" style="margin-top:6px">
+            <button id="btn-replay">Replay</button>
+            <button id="btn-tick">Tick</button>
+        </div>
         <div class="preview-label">Top</div>
         <div class="tile-slot" data-target="tileTop">
             <canvas width="80" height="60"></canvas>
@@ -90,19 +103,7 @@
     <textarea id="json-output" class="json-output" readonly rows="8"></textarea>
 </div>
 
-<!-- Tile picker modal -->
-<div id="tile-picker-overlay" class="tile-picker-overlay">
-    <div id="tile-picker" class="tile-picker">
-        <div id="tile-picker-header" class="tile-picker-header">
-            <span id="tile-picker-target" class="tile-picker-target">Selecting: —</span>
-            <input type="text" id="tile-picker-search" placeholder="Search tile name...">
-            <button id="tile-picker-none">None / Blank</button>
-            <button id="tile-picker-close">Close</button>
-        </div>
-        <canvas id="tile-picker-canvas" class="tile-picker-canvas"></canvas>
-    </div>
-</div>
-<div id="tile-picker-tooltip" class="tile-picker-tooltip"></div>
+<!-- The tile picker injects its own markup on first open (scripts/tile-picker.js). -->
 
 <script>
 // ============================================================================
@@ -125,101 +126,17 @@ let state = {
     highlightedTiles: null
 };
 
-let animRAF = null;
 
 // ============================================================================
 // Primitive Parameter Registry
 // ============================================================================
 
-const PRIMITIVE_PARAMS = {
-    tint_flicker: [
-        { key: 'color_variation', type: 'hex', default: '0x181808', label: 'Color Variation', expandRGB: true },
-        { key: 'lighter_min', type: 'range', min: 20, max: 500, step: 10, default: 100, label: 'Lighter Min (ms)' },
-        { key: 'lighter_max', type: 'range', min: 50, max: 1000, step: 10, default: 280, label: 'Lighter Max (ms)' },
-        { key: 'base_min', type: 'range', min: 50, max: 1000, step: 10, default: 200, label: 'Base Min (ms)' },
-        { key: 'base_max', type: 'range', min: 100, max: 2000, step: 10, default: 500, label: 'Base Max (ms)' },
-        { key: 'darker_min', type: 'range', min: 20, max: 500, step: 10, default: 80, label: 'Darker Min (ms)' },
-        { key: 'darker_max', type: 'range', min: 50, max: 1000, step: 10, default: 200, label: 'Darker Max (ms)' },
-        { key: 'transition_ms', type: 'range', min: 10, max: 300, step: 5, default: 80, label: 'Transition (ms)' },
-    ],
-    tint_cycle: [
-        { key: 'color_variation', type: 'hex', default: '0x000000', label: 'Color Variation', expandRGB: true },
-        { key: 'amplitude', type: 'range', min: 0, max: 50, step: 1, default: 0, label: 'Amplitude' },
-        { key: 'speed', type: 'range', min: 0.0001, max: 0.02, step: 0.0001, default: 0.002, label: 'Speed' },
-        { key: 'mod_speed', type: 'range', min: 0, max: 0.005, step: 0.00001, default: 0, label: 'Mod Speed' },
-        { key: 'phase_factor', type: 'range', min: 0, max: 2, step: 0.001, default: 0.618, label: 'Phase Factor' },
-        { key: 'waveform', type: 'select', options: ['sine', 'step'], default: 'sine', label: 'Waveform' },
-        { key: 'step_up', type: 'range', min: 0, max: 1, step: 0.01, default: 0.33, label: 'Step Up', showWhen: { waveform: 'step' } },
-        { key: 'step_down', type: 'range', min: -1, max: 0, step: 0.01, default: -0.33, label: 'Step Down', showWhen: { waveform: 'step' } },
-        { key: 'blend', type: 'range', min: 0, max: 1, step: 0.01, default: 0, label: 'Blend', showWhen: { waveform: 'step' } },
-    ],
-    screen_shake: [
-        { key: 'intensity', type: 'range', min: 1, max: 20, step: 1, default: 6, label: 'Intensity' },
-        { key: 'duration_ms', type: 'range', min: 50, max: 1000, step: 10, default: 200, label: 'Duration (ms)' },
-        { key: 'decay', type: 'checkbox', default: true, label: 'Decay' },
-    ],
-    canvas_flash: [
-        { key: 'color', type: 'hex', default: '0xFFFFFF', label: 'Color' },
-        { key: 'duration_ms', type: 'range', min: 50, max: 5000, step: 10, default: 150, label: 'Duration (ms)' },
-        { key: 'opacity', type: 'range', min: 0, max: 1, step: 0.01, default: 0.5, label: 'Opacity' },
-        { key: 'blend_mode', type: 'select', options: ['normal', 'add', 'multiply'], default: 'normal', label: 'Blend Mode' },
-    ],
-    hue_oscillate: [
-        { key: 'speed', type: 'range', min: 0.0001, max: 0.01, step: 0.0001, default: 0.002, label: 'Speed' },
-        { key: 'amplitude', type: 'range', min: 0, max: 180, step: 1, default: 40, label: 'Amplitude' },
-        { key: 'secondary_speed', type: 'range', min: 0, max: 0.005, step: 0.0001, default: 0.0007, label: 'Secondary Speed' },
-        { key: 'secondary_amplitude', type: 'range', min: 0, max: 90, step: 1, default: 20, label: 'Secondary Amplitude' },
-    ],
-    brightness_oscillate: [
-        { key: 'speed', type: 'range', min: 0.0001, max: 0.01, step: 0.0001, default: 0.003, label: 'Speed' },
-        { key: 'amplitude', type: 'range', min: 0, max: 0.5, step: 0.01, default: 0.05, label: 'Amplitude' },
-    ],
-    blur_pulse: [
-        { key: 'speed', type: 'range', min: 0, max: 0.01, step: 0.0001, default: 0.002, label: 'Speed' },
-        { key: 'min_strength', type: 'range', min: 0, max: 10, step: 0.5, default: 0, label: 'Min Strength' },
-        { key: 'max_strength', type: 'range', min: 0, max: 20, step: 0.5, default: 6, label: 'Max Strength' },
-    ],
-    alpha_pulse: [
-        { key: 'speed', type: 'range', min: 0.0001, max: 0.01, step: 0.0001, default: 0.003, label: 'Speed' },
-        { key: 'min_alpha', type: 'range', min: 0, max: 1, step: 0.01, default: 0.3, label: 'Min Alpha' },
-        { key: 'max_alpha', type: 'range', min: 0, max: 1, step: 0.01, default: 1.0, label: 'Max Alpha' },
-    ],
-    radial_tile_fill: [
-        { key: 'color', type: 'hex', default: '0xCC8844', label: 'Color' },
-        { key: 'duration_ms', type: 'range', min: 100, max: 2000, step: 10, default: 600, label: 'Duration (ms)' },
-        { key: 'radius', type: 'range', min: 1, max: 10, step: 1, default: 3, label: 'Radius' },
-        { key: 'opacity', type: 'range', min: 0, max: 1, step: 0.01, default: 0.7, label: 'Opacity' },
-        { key: 'ring_delay_ms', type: 'range', min: 10, max: 200, step: 5, default: 60, label: 'Ring Delay (ms)' },
-        { key: 'fade_ms', type: 'range', min: 50, max: 1000, step: 10, default: 300, label: 'Fade (ms)' },
-        { key: 'blend_mode', type: 'select', options: ['normal', 'add', 'multiply'], default: 'multiply', label: 'Blend Mode' },
-    ],
-    line_tile_fill: [
-        { key: 'color', type: 'hex', default: '0xAADDFF', label: 'Color' },
-        { key: 'duration_ms', type: 'range', min: 100, max: 2000, step: 10, default: 400, label: 'Duration (ms)' },
-        { key: 'opacity', type: 'range', min: 0, max: 1, step: 0.01, default: 0.9, label: 'Opacity' },
-        { key: 'tile_delay_ms', type: 'range', min: 5, max: 100, step: 5, default: 25, label: 'Tile Delay (ms)' },
-        { key: 'fade_ms', type: 'range', min: 50, max: 500, step: 10, default: 200, label: 'Fade (ms)' },
-        { key: 'blend_mode', type: 'select', options: ['normal', 'add', 'multiply'], default: 'add', label: 'Blend Mode' },
-    ],
-    color_overlay: [
-        { key: 'container', type: 'select', options: ['darkness'], default: 'darkness', label: 'Container' },
-        { key: 'blend_mode', type: 'select', options: ['normal', 'multiply', 'add'], default: 'multiply', label: 'Blend Mode' },
-    ],
-    color_invert: [],
-    tile_color_drift: [
-        { key: 'amplitude', type: 'range', min: 0, max: 120, step: 1, default: 60, label: 'Amplitude' },
-        { key: 'throttle_frames', type: 'range', min: 1, max: 10, step: 1, default: 4, label: 'Throttle Frames' },
-    ],
-    texture_scramble: [
-        { key: 'skip_player', type: 'checkbox', default: true, label: 'Skip Player' },
-    ],
-    floor_swap: [
-        { key: 'count_min', type: 'range', min: 1, max: 10, step: 1, default: 1, label: 'Count Min' },
-        { key: 'count_max', type: 'range', min: 1, max: 10, step: 1, default: 2, label: 'Count Max' },
-    ],
-};
-
-const PRIMITIVE_NAMES = Object.keys(PRIMITIVE_PARAMS).sort();
+// PRIMITIVE_PARAMS (the slider schema) now lives in scripts/effect-params.js so
+// the actor and item editors can read it too. The list of primitives itself comes
+// from effects.js at runtime, so a new primitive is never silently missing here —
+// which is what used to drop gradient_wave, hue_cycle and radial_gradient, and
+// corrupt victory_wave / victory_radial on save.
+const PRIMITIVE_NAMES = effectPrimitiveNames();
 
 // ============================================================================
 // Data Loading
@@ -346,131 +263,239 @@ function computeTintCycleWave(params, time) {
     return wave;
 }
 
-const _editorFlickerState = { currentState: 0, prevState: 0, targetState: 0, holdEnd: 0, transitionStart: 0, transitionEnd: 0 };
-
-function _editorFlickerPickNext(p) {
-    const roll = Math.random();
-    _editorFlickerState.prevState = _editorFlickerState.currentState;
-    const tMs = p.transition_ms || 80;
-    if (roll < 0.35) {
-        _editorFlickerState.targetState = 1;
-        _editorFlickerState.holdEnd = Date.now() + tMs + (p.lighter_min || 100) + Math.random() * ((p.lighter_max || 280) - (p.lighter_min || 100));
-    } else if (roll < 0.65) {
-        _editorFlickerState.targetState = -1;
-        _editorFlickerState.holdEnd = Date.now() + tMs + (p.darker_min || 80) + Math.random() * ((p.darker_max || 200) - (p.darker_min || 80));
-    } else {
-        _editorFlickerState.targetState = 0;
-        _editorFlickerState.holdEnd = Date.now() + tMs + (p.base_min || 200) + Math.random() * ((p.base_max || 500) - (p.base_min || 200));
-    }
-    _editorFlickerState.transitionStart = Date.now();
-    _editorFlickerState.transitionEnd = Date.now() + tMs;
-}
-
-function getFlickerTint(baseTint, params) {
-    if (!baseTint) return baseTint;
-    const cv = typeof params.color_variation === 'string' ? parseInt(params.color_variation, 16) : (params.color_variation || 0);
-    const cvR = (cv >> 16) & 0xFF;
-    const cvG = (cv >> 8) & 0xFF;
-    const cvB = cv & 0xFF;
-    const r = parseInt(baseTint.slice(1, 3), 16);
-    const g = parseInt(baseTint.slice(3, 5), 16);
-    const b = parseInt(baseTint.slice(5, 7), 16);
-
-    const now = Date.now();
-    if (now >= _editorFlickerState.holdEnd) {
-        _editorFlickerState.currentState = _editorFlickerState.targetState;
-        _editorFlickerPickNext(params);
-    }
-    let s;
-    const tMs = params.transition_ms || 80;
-    if (now < _editorFlickerState.transitionEnd) {
-        const t = (now - _editorFlickerState.transitionStart) / tMs;
-        s = _editorFlickerState.prevState + (_editorFlickerState.targetState - _editorFlickerState.prevState) * t;
-    } else {
-        s = _editorFlickerState.targetState;
-    }
-    const clamp = v => Math.max(0, Math.min(255, Math.round(v)));
-    return '#' + [clamp(r + s * cvR), clamp(g + s * cvG), clamp(b + s * cvB)].map(v => v.toString(16).padStart(2, '0')).join('');
-}
-
-function getCycleTint(baseTint, params, time) {
-    if (!baseTint) return baseTint;
-    const cv = typeof params.color_variation === 'string' ? parseInt(params.color_variation, 16) : (params.color_variation || 0);
-    const cvR = (cv >> 16) & 0xFF;
-    const cvG = (cv >> 8) & 0xFF;
-    const cvB = cv & 0xFF;
-    const amplitude = params.amplitude || 0;
-    const r = parseInt(baseTint.slice(1, 3), 16);
-    const g = parseInt(baseTint.slice(3, 5), 16);
-    const b = parseInt(baseTint.slice(5, 7), 16);
-    const wave = computeTintCycleWave(params, time);
-    const clamp = v => Math.max(0, Math.min(255, Math.round(v)));
-    return '#' + [
-        clamp(r + wave * cvR + wave * amplitude),
-        clamp(g + wave * cvG + wave * amplitude),
-        clamp(b + wave * cvB + wave * amplitude)
-    ].map(v => v.toString(16).padStart(2, '0')).join('');
-}
-
 // ============================================================================
-// Rendering
+// PIXI Preview Harness
 // ============================================================================
 
-function drawTintedTile(tileRef, tint) {
+// The preview builds a miniature of what RenderSystem gives EffectRunner: the same
+// container names, the same ctx keys (effects.js:1307), and real PIXI sprites. That
+// lets us call the ENGINE's primitives instead of reimplementing them — the three
+// hand-written copies of the tint math that used to live here disagreed with the
+// engine and with each other.
+//
+// The scene is a PREVIEW_COLS x PREVIEW_ROWS floor grid with two actor sprites on
+// top, which is enough for the map-flavoured primitives (floor_swap, tile_color_drift,
+// radial_tile_fill) to have something to chew on.
+
+const PREVIEW_COLS = 9, PREVIEW_ROWS = 7;
+
+// texture_scramble calls randomElement, which lives in engine.js (and uses ROT.RNG)
+// rather than in effects.js. Loading the whole engine here for one helper isn't worth
+// it, so define it if it isn't already present — the preview doesn't need a seeded RNG.
+if (typeof randomElement === 'undefined') {
+    window.randomElement = arr => arr[Math.floor(Math.random() * arr.length)];
+}
+
+let pixiApp = null;
+let previewRunner = null;
+let previewHandle = 0;
+let previewSprites = [];   // the actor sprites an effect with target:"sprite" attaches to
+let previewFloorSprites = [];
+let baseTexture = null;
+
+/** Texture for one tile of the spritesheet, cut from the shared base texture. */
+function tileTexture(tileRef) {
     const coords = resolveTile(tileRef);
-    if (!coords || !state.spritesheetImg) return null;
-
-    const offscreen = document.createElement('canvas');
-    offscreen.width = TILE_W;
-    offscreen.height = TILE_H;
-    const octx = offscreen.getContext('2d');
-    octx.drawImage(state.spritesheetImg, coords.x * TILE_W, coords.y * TILE_H, TILE_W, TILE_H, 0, 0, TILE_W, TILE_H);
-
-    if (tint && tint !== '#ffffff') {
-        octx.globalCompositeOperation = 'multiply';
-        octx.fillStyle = tint;
-        octx.fillRect(0, 0, TILE_W, TILE_H);
-        octx.globalCompositeOperation = 'destination-in';
-        octx.drawImage(state.spritesheetImg, coords.x * TILE_W, coords.y * TILE_H, TILE_W, TILE_H, 0, 0, TILE_W, TILE_H);
-    }
-    return offscreen;
+    if (!coords || !baseTexture) return PIXI.Texture.EMPTY;
+    return new PIXI.Texture(
+        baseTexture,
+        new PIXI.Rectangle(coords.x * TILE_W, coords.y * TILE_H, TILE_W, TILE_H)
+    );
 }
 
-function renderPreview() {
-    const baseTile = state.currentTiles.tileBase;
-    const topTile = state.currentTiles.tileTop;
-    const baseTint = document.getElementById('f-preview-tint').value;
+/**
+ * Stand-in for RenderSystem. EffectRunner only reads a handful of fields off the
+ * renderer, and the sprite-tint primitives additionally use it as a scratch pad for
+ * their shared ticker state (`_tintFlickerSprites` and friends), which they create
+ * themselves — so an empty object with the right shape is enough.
+ */
+function buildPreviewRenderer() {
+    const app = pixiApp;
+    const containers = {
+        background: new PIXI.Container(),
+        floor: new PIXI.Container(),
+        entity: new PIXI.Container(),
+        darkness: new PIXI.Container(),
+        ui: new PIXI.Container()
+    };
+    for (const c of Object.values(containers)) app.stage.addChild(c);
 
-    const tintInfo = getFirstTintParams();
-    let tint = baseTint;
-    if (tintInfo) {
-        if (tintInfo.primitive === 'tint_flicker') {
-            tint = getFlickerTint(baseTint, tintInfo.params);
-        } else {
-            tint = getCycleTint(baseTint, tintInfo.params, performance.now());
+    // A synthetic engine: the viewport/background fields the stage-wide primitives
+    // read (canvas_flash, color_overlay, tile_color_drift), plus the entityManager
+    // texture_scramble walks. That one bails at `if (!actors) return` rather than
+    // throwing, so without this the effect previewed as nothing at all.
+    const fakeEngine = {
+        viewportEnabled: false,
+        viewportWidth: PREVIEW_COLS,
+        viewportHeight: PREVIEW_ROWS,
+        sectionOriginX: 0,
+        sectionOriginY: 0,
+        config: { backgroundColor: '#222222' },
+        // The preview sprites, dressed as the actors/items texture_scramble expects.
+        // Rebuilt whenever the sprites are (see rebuildPreviewSprites).
+        entityManager: { actors: [], items: [] },
+        spriteLibrary: {
+            // floor_swap wants coordinates; texture_scramble wants the name too, so
+            // it can write the false tile name the sidebar would read.
+            getRandomTileIndex() {
+                const t = this.getRandomTile();
+                return { x: t.x, y: t.y };
+            },
+            getRandomTile() {
+                const names = state.tileNames;
+                if (!names.length) return { name: 'something', x: 0, y: 0 };
+                const name = names[Math.floor(Math.random() * names.length)];
+                const c = state.tileMap[name];
+                return { name, x: c[0], y: c[1] };
+            }
         }
+    };
+
+    return {
+        app,
+        backgroundContainer: containers.background,
+        floorContainer: containers.floor,
+        entityContainer: containers.entity,
+        darknessContainer: containers.darkness,
+        uiContainer: containers.ui,
+        engine: fakeEngine,
+        floorSprites: previewFloorSprites,
+        mapWidth: PREVIEW_COLS,
+        mapHeight: PREVIEW_ROWS,
+
+        // Shared per-primitive ticker state. Most primitives create these lazily,
+        // but tint_cycle assumes RenderSystem already made them (engine.js:14159)
+        // and throws otherwise, so mirror what the constructor sets up.
+        _tintCycleSprites: [],
+        _tintCycleTickerFn: null,
+        _tintFlickerSprites: [],
+        _tintFlickerTickerFn: null,
+        submersionOverlay: null,
+        // floor_swap calls this to repaint a floor tile.
+        updateSpriteTexture(sprite, tileIndex) {
+            sprite.texture = tileTexture(tileIndex);
+        }
+    };
+}
+
+/** Build the PIXI app, the floor grid and the two actor sprites. Runs once. */
+function initPreview() {
+    const mount = document.getElementById('preview-mount');
+    const w = PREVIEW_COLS * TILE_W, h = PREVIEW_ROWS * TILE_H;
+
+    pixiApp = new PIXI.Application({
+        width: w, height: h,
+        backgroundColor: 0x222222,
+        antialias: false
+    });
+    // PIXI v7 exposes `.view`; v8 renames it to `.canvas`.
+    const view = pixiApp.canvas || pixiApp.view;
+    view.style.width = (w / 2) + 'px';
+    view.style.height = (h / 2) + 'px';
+    mount.appendChild(view);
+
+    baseTexture = PIXI.BaseTexture ? PIXI.BaseTexture.from(SPRITESHEET_PATH)
+                                   : PIXI.Texture.from(SPRITESHEET_PATH);
+    if (baseTexture.scaleMode !== undefined) baseTexture.scaleMode = PIXI.SCALE_MODES?.NEAREST ?? 0;
+
+    const renderer = buildPreviewRenderer();
+
+    // Floor grid — a dim tile so effects that touch the floor are visible.
+    previewFloorSprites.length = 0;
+    for (let y = 0; y < PREVIEW_ROWS; y++) {
+        const row = [];
+        for (let x = 0; x < PREVIEW_COLS; x++) {
+            const s = new PIXI.Sprite(tileTexture('LIGHT_SHADE_QUADRANT_LOWER_LEFT_AND_UPPER_RIGHT'));
+            s.x = x * TILE_W;
+            s.y = y * TILE_H;
+            s.tint = 0x555555;
+            renderer.floorContainer.addChild(s);
+            row.push(s);
+        }
+        previewFloorSprites.push(row);
     }
 
-    const canvas = document.getElementById('preview-canvas');
-    const scale = 4;
-    const tileScaledW = TILE_W * scale, tileScaledH = TILE_H * scale;
-    const pad = 10;
-    canvas.width = tileScaledW + pad * 2;
-    canvas.height = tileScaledH * 2 + pad * 2;
-    canvas.style.width = (canvas.width / 2) + 'px';
-    canvas.style.height = (canvas.height / 2) + 'px';
+    previewRunner = new EffectRunner(renderer);
+    rebuildPreviewSprites();
+}
 
-    const ctx = canvas.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
-    ctx.fillStyle = '#222';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+/** (Re)create the two actor sprites from the current tile slots and preview tint. */
+function rebuildPreviewSprites() {
+    if (!previewRunner) return;
+    const entity = previewRunner.ctx.containers.entity;
+    for (const s of previewSprites) entity.removeChild(s);
+    previewSprites = [];
 
-    const baseOff = drawTintedTile(baseTile, tint);
-    const topOff = drawTintedTile(topTile, tint);
+    const tint = parseInt(document.getElementById('f-preview-tint').value.slice(1), 16);
+    const cx = Math.floor(PREVIEW_COLS / 2) * TILE_W;
+    const cy = Math.floor(PREVIEW_ROWS / 2) * TILE_H;
 
-    const bx = pad, by = pad + tileScaledH;
-    if (baseOff) ctx.drawImage(baseOff, 0, 0, TILE_W, TILE_H, bx, by, tileScaledW, tileScaledH);
-    if (topOff) ctx.drawImage(topOff, 0, 0, TILE_W, TILE_H, bx, pad, tileScaledW, tileScaledH);
+    // Two sprites, not one: the engine gives each a random phase, so a correct
+    // preview shows them drifting apart. The old single shared state couldn't.
+    const slots = [
+        { ref: state.currentTiles.tileTop, x: cx, y: cy - TILE_H },
+        { ref: state.currentTiles.tileBase, x: cx, y: cy }
+    ];
+    for (const slot of slots) {
+        if (!resolveTile(slot.ref)) continue;
+        const s = new PIXI.Sprite(tileTexture(slot.ref));
+        s.x = slot.x;
+        s.y = slot.y;
+        s.tint = tint;
+        entity.addChild(s);
+        previewSprites.push(s);
+    }
+
+    // Present the same sprites as the entity lists texture_scramble walks: one actor
+    // wearing both tiles (base + top, the way a two-tile creature does) and one item.
+    // `skip_player` is the primitive's default, so isPlayerControlled must say no or
+    // the actor is skipped and the effect looks broken.
+    const em = previewRunner.ctx.engine.entityManager;
+    em.actors = previewSprites.length ? [{
+        isDead: false,
+        isPlayerControlled: () => false,
+        spriteBase: previewSprites[previewSprites.length - 1],
+        spriteTop: previewSprites.length > 1 ? previewSprites[0] : null
+    }] : [];
+    em.items = [];
+}
+
+/**
+ * Tear down the running effect and apply the one currently in the form.
+ * This is the whole preview: no local math, just EffectRunner on real sprites.
+ */
+function renderPreview() {
+    if (!previewRunner) return;
+
+    if (previewHandle) {
+        previewRunner.remove(previewHandle);
+        previewHandle = 0;
+    }
+    // Reset anything a previous effect left on the stage or the sprites.
+    pixiApp.stage.filters = null;
+    pixiApp.stage.x = 0;
+    pixiApp.stage.y = 0;
+    rebuildPreviewSprites();
+
+    const key = document.getElementById('effect-key').value || '_preview';
+    const definition = readForm();
+    if (!definition.layers && !definition.on_tick) return;
+
+    previewRunner.loadEffects({ [key]: definition });
+
+    const tint = parseInt(document.getElementById('f-preview-tint').value.slice(1), 16);
+    // line_tile_fill needs a path, which only combat produces at runtime.
+    const path = [];
+    for (let x = 0; x < PREVIEW_COLS; x++) path.push({ x, y: Math.floor(PREVIEW_ROWS / 2) });
+
+    const target = definition.target === 'sprite' ? previewSprites[0] : null;
+    previewHandle = previewRunner.apply(key, target, { baseTint: tint, path, tint });
+
+    // A target:"sprite" effect attaches to one sprite per apply(); give the second
+    // its own so the phase offset is visible.
+    if (definition.target === 'sprite' && previewSprites[1]) {
+        previewRunner.apply(key, previewSprites[1], { baseTint: tint, path, tint });
+    }
 }
 
 function renderWaveform() {
@@ -906,6 +931,20 @@ function populateEffectDropdown() {
     }
 }
 
+// Definition-level keys the form models. Anything else on the effect (on_tick,
+// duration_ms) is held here across a load/save so the editor can't quietly delete
+// the parts of an effect it doesn't have widgets for — it used to drop `on_tick`
+// from `hallucination` and `duration_ms` from `flash`.
+const MODELLED_EFFECT_KEYS = new Set(['target', 'layers']);
+let unmodelledEffectKeys = {};
+// Per-layer params with no schema entry, kept by layer index for the same reason.
+let unmodelledLayerParams = [];
+// Per-layer set of param keys the loaded file stated explicitly. readForm otherwise
+// drops any value equal to the schema default, which silently deleted params that
+// were written down deliberately — `"speed": 0.002` on ripple_tint, every `color`
+// that matched, and so on.
+let statedLayerParams = [];
+
 function loadEffect(key) {
     const data = state.effects[key];
     if (!data) return;
@@ -913,13 +952,29 @@ function loadEffect(key) {
     document.getElementById('effect-key').value = key;
     document.getElementById('f-target').value = data.target || 'sprite';
 
+    unmodelledEffectKeys = {};
+    for (const [k, v] of Object.entries(data)) {
+        if (!MODELLED_EFFECT_KEYS.has(k)) unmodelledEffectKeys[k] = v;
+    }
+
     const container = document.getElementById('layers-container');
     container.innerHTML = '';
     layerCount = 0;
+    unmodelledLayerParams = [];
+    statedLayerParams = [];
 
     if (data.layers) {
         for (const layer of data.layers) {
-            addLayer(layer.primitive, layer.params || {});
+            const params = layer.params || {};
+            const known = new Set((PRIMITIVE_PARAMS[layer.primitive] || []).map(d => d.key));
+            const extra = {};
+            for (const [k, v] of Object.entries(params)) {
+                if (!known.has(k)) extra[k] = v;
+            }
+            unmodelledLayerParams.push(extra);
+            // Which keys the file actually spelled out — see readForm.
+            statedLayerParams.push(new Set(Object.keys(params)));
+            addLayer(layer.primitive, params);
         }
     }
 
@@ -939,14 +994,21 @@ function readForm() {
         const primitiveName = sel.value;
         const params = readLayerParams(item);
 
-        // Only include params that differ from defaults
+        // Include a param if it differs from the default OR if the file we loaded
+        // stated it. Dropping "same as default" keeps hand-written JSON terse, but
+        // doing it to a value the author wrote down is data loss, not tidying.
         const paramDefs = PRIMITIVE_PARAMS[primitiveName] || [];
+        const stated = statedLayerParams[layers.length];
         const cleanParams = {};
         for (const def of paramDefs) {
-            if (params[def.key] !== undefined && params[def.key] !== def.default) {
+            if (params[def.key] === undefined) continue;
+            if (params[def.key] !== def.default || stated?.has(def.key)) {
                 cleanParams[def.key] = params[def.key];
             }
         }
+
+        // Re-attach params this editor has no widget for, so they survive the trip.
+        Object.assign(cleanParams, unmodelledLayerParams[layers.length] || {});
 
         const layer = { primitive: primitiveName };
         if (Object.keys(cleanParams).length > 0) layer.params = cleanParams;
@@ -954,6 +1016,8 @@ function readForm() {
     }
 
     if (layers.length) obj.layers = layers;
+    // Definition-level keys the form doesn't model (on_tick, duration_ms).
+    Object.assign(obj, unmodelledEffectKeys);
     return obj;
 }
 
@@ -968,30 +1032,11 @@ function updateJSONOutput() {
 // Animation Loop
 // ============================================================================
 
-function animLoop() {
-    renderPreview();
-    animRAF = requestAnimationFrame(animLoop);
-}
-
-function startAnimLoop() {
-    if (!animRAF) animRAF = requestAnimationFrame(animLoop);
-}
-
-function stopAnimLoop() {
-    if (animRAF) {
-        cancelAnimationFrame(animRAF);
-        animRAF = null;
-    }
-}
-
-function hasTintLayer() {
-    const container = document.getElementById('layers-container');
-    for (const item of container.children) {
-        const sel = item.querySelector('.layer-primitive-select');
-        if (sel && (sel.value === 'tint_cycle' || sel.value === 'tint_flicker')) return true;
-    }
-    return false;
-}
+// PIXI's own ticker drives the effect now, so there is no per-frame work for the
+// page to do — renderPreview() re-applies the effect only when the form changes.
+// These remain as no-ops because loadEffect and the buttons still call them.
+function startAnimLoop() {}
+function stopAnimLoop() {}
 
 function updateAll() {
     renderPreview();
@@ -999,11 +1044,9 @@ function updateAll() {
     updateTimingReadout();
     updateJSONOutput();
 
-    const hasTint = hasTintLayer();
+    // The waveform graph only means anything for tint_cycle's wave.
     const hasCycle = getFirstTintCycleParams() !== null;
     document.getElementById('waveform-section').style.display = hasCycle ? '' : 'none';
-    if (hasTint) startAnimLoop();
-    else stopAnimLoop();
 }
 
 // ============================================================================
@@ -1029,122 +1072,16 @@ function updateTileSlot(target) {
 // Tile Picker
 // ============================================================================
 
+// The searchable spritesheet grid lives in scripts/tile-picker.js; this page used
+// to carry its own copy of it.
 function openTilePicker(target) {
-    state.activeTileTarget = target;
-    const overlay = document.getElementById('tile-picker-overlay');
-    overlay.classList.add('active');
-    document.getElementById('tile-picker-target').textContent = 'Selecting: ' + target;
-    document.getElementById('tile-picker-search').value = '';
-    state.highlightedTiles = null;
-    drawTilePickerGrid();
-    document.getElementById('tile-picker-search').focus();
-}
-
-function closeTilePicker() {
-    document.getElementById('tile-picker-overlay').classList.remove('active');
-    document.getElementById('tile-picker-tooltip').style.display = 'none';
-    state.activeTileTarget = null;
-}
-
-function drawTilePickerGrid() {
-    const canvas = document.getElementById('tile-picker-canvas');
-    const w = SS_COLS * TILE_W, h = SS_ROWS * TILE_H;
-    canvas.width = w; canvas.height = h;
-    const ctx = canvas.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
-
-    if (state.spritesheetImg) ctx.drawImage(state.spritesheetImg, 0, 0);
-
-    if (state.highlightedTiles) {
-        ctx.fillStyle = 'rgba(0,0,0,0.7)';
-        for (let r = 0; r < SS_ROWS; r++) {
-            for (let c = 0; c < SS_COLS; c++) {
-                if (!state.highlightedTiles.has(c + ',' + r)) {
-                    ctx.fillRect(c * TILE_W, r * TILE_H, TILE_W, TILE_H);
-                }
-            }
-        }
-    }
-
-    ctx.strokeStyle = 'rgba(132,220,207,0.2)';
-    ctx.lineWidth = 0.5;
-    for (let c = 0; c <= SS_COLS; c++) { ctx.beginPath(); ctx.moveTo(c * TILE_W, 0); ctx.lineTo(c * TILE_W, h); ctx.stroke(); }
-    for (let r = 0; r <= SS_ROWS; r++) { ctx.beginPath(); ctx.moveTo(0, r * TILE_H); ctx.lineTo(w, r * TILE_H); ctx.stroke(); }
-
-    const current = state.currentTiles[state.activeTileTarget];
-    const coords = resolveTile(current);
-    if (coords) {
-        ctx.strokeStyle = '#e94560';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(coords.x * TILE_W + 1, coords.y * TILE_H + 1, TILE_W - 2, TILE_H - 2);
-    }
-}
-
-function initTilePicker() {
-    const canvas = document.getElementById('tile-picker-canvas');
-    const tooltip = document.getElementById('tile-picker-tooltip');
-
-    canvas.addEventListener('mousemove', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        const col = Math.floor((e.clientX - rect.left) * scaleX / TILE_W);
-        const row = Math.floor((e.clientY - rect.top) * scaleY / TILE_H);
-        const names = state.reverseTileMap[col + ',' + row];
-        if (names && names.length) {
-            tooltip.textContent = names.join(', ');
-            tooltip.style.display = 'block';
-            tooltip.style.left = (e.clientX + 12) + 'px';
-            tooltip.style.top = (e.clientY - 8) + 'px';
-        } else {
-            tooltip.style.display = 'none';
-        }
-    });
-
-    canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
-
-    canvas.addEventListener('click', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        const col = Math.floor((e.clientX - rect.left) * scaleX / TILE_W);
-        const row = Math.floor((e.clientY - rect.top) * scaleY / TILE_H);
-        const names = state.reverseTileMap[col + ',' + row];
-        if (names && names.length) {
-            state.currentTiles[state.activeTileTarget] = names[0];
-        } else {
-            state.currentTiles[state.activeTileTarget] = { x: col, y: row };
-        }
-        updateTileSlot(state.activeTileTarget);
-        closeTilePicker();
-        updateAll();
-    });
-
-    document.getElementById('tile-picker-search').addEventListener('input', (e) => {
-        const q = e.target.value.trim().toUpperCase();
-        if (!q) { state.highlightedTiles = null; drawTilePickerGrid(); return; }
-        state.highlightedTiles = new Set();
-        for (const [name, coords] of Object.entries(state.tileMap)) {
-            if (name.toUpperCase().includes(q)) state.highlightedTiles.add(coords[0] + ',' + coords[1]);
-        }
-        drawTilePickerGrid();
-    });
-
-    document.getElementById('tile-picker-none').addEventListener('click', () => {
-        state.currentTiles[state.activeTileTarget] = 'BLANK';
-        updateTileSlot(state.activeTileTarget);
-        closeTilePicker();
-        updateAll();
-    });
-
-    document.getElementById('tile-picker-close').addEventListener('click', closeTilePicker);
-    document.getElementById('tile-picker-overlay').addEventListener('click', (e) => {
-        if (e.target === e.currentTarget) closeTilePicker();
-    });
-
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && document.getElementById('tile-picker-overlay').classList.contains('active')) {
-            closeTilePicker();
+    TilePicker.open({
+        current: state.currentTiles[target],
+        label: target === 'tileTop' ? 'Top tile' : 'Base tile',
+        onPick(value) {
+            state.currentTiles[target] = value;
+            updateTileSlot(target);
+            renderPreview();
         }
     });
 }
@@ -1154,10 +1091,14 @@ function initTilePicker() {
 // ============================================================================
 
 async function init() {
-    await Promise.all([loadBaseData(), loadSpritesheet()]);
+    await Promise.all([loadBaseData(), loadSpritesheet(), TilePicker.load()]);
 
+    // Report any primitive effects.js ships that has no slider schema, so the two
+    // lists can't drift apart silently again.
+    warnMissingEffectParams();
+
+    initPreview();
     populateEffectDropdown();
-    initTilePicker();
     updateTileSlot('tileBase');
     updateTileSlot('tileTop');
 
@@ -1183,6 +1124,14 @@ async function init() {
         addLayer('tint_cycle', {});
         updateAll();
         startAnimLoop();
+    });
+
+    // One-shot effects (canvas_flash, screen_shake, shatter) finish before you can
+    // look at them, so give them a re-trigger. Tick drives `on_tick` primitives,
+    // which the engine advances once per game turn.
+    document.getElementById('btn-replay').addEventListener('click', renderPreview);
+    document.getElementById('btn-tick').addEventListener('click', () => {
+        if (previewHandle) previewRunner.tick(previewHandle);
     });
 
     document.getElementById('btn-add-layer').addEventListener('click', () => {

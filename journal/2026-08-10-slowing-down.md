@@ -1,7 +1,12 @@
 ---
 date: 2026-08-10
 author: Wiley Wiggins
-project: "Dungeon Mode Kit"
+layout: post
+categories: []
+tags:
+- dungeon
+- dungeonkit
+- studio
 ---
 
 # Slowing down
@@ -35,7 +40,7 @@ this suggests:
 
 ## Here's where this gets hard
 
-The word 'type' was very overloaded in the codebase. I'm getting into one of the big design problems that always happens in codebases that start to scale up: an overabundance of generic sounding names. 'Type', 'group', 'collection', 'category', 'container' etc, etc. Both visual design and information design are problems of juggling quantities and finding distinct and appropriate containers for them. I come from a css background and this is one of the first problems you learn to tackle. What are containers called, how do they communicate things like hierarchy and containership visually (if they are visible.) What do they mean and how do they keep their contents manageable
+The word 'type' was very overloaded in the codebase. I'm getting into one of the big design problems that always happens in projects that start to scale up: an overabundance of generic sounding names for globally scoped things. 'Type', 'group', 'collection', 'category', 'container' etc, etc. Both visual design and information design are problems of juggling quantities and finding distinct and appropriate containers for them. I come from a CSS background and this is one of the first problems you learn to tackle. What are containers called, how do they communicate things like hierarchy and containership visually (if they are visible.) What do they mean and how do they keep their contents manageable
 
 In DMK we have Entities, which are a root class that both Actors and Items inherit from, and Entities already had a type — except it didn't mean "what kind of thing is this," it meant "which entry in the data file is this." `actor.type` was `'goblin'`. `item.type` was `'health_potion'`. Prototypes (another generic sounding classification) have an `item_catalog` which calls `potion` and `scroll` *categories* (another generic container word, it can't be avoided), `adjectives.json` and `attacks.json` (word lists that themselves have questionable names) sort their words into *categories* too, and `Object.keys(prototypeActors)` gets called `prototypeActorTypes` — the ids again. So three different jobs, two words, no agreement about which was which.
 
@@ -45,7 +50,7 @@ My solution was to reorder some of the naming conventions rather than keep addin
 
 The naming mess had already made one decision for me. I'd wondered whether types should just live in `actors.json` as specially marked entries, which would mean one less file. They can't, because `prototypeActorTypes` collects every key in that file and the spawner drops one to three of each into the level. Type definitions would have wandered around the dungeon as monsters. So a badly named variable turned out to be load bearing in a way I didn't expect, and types got their own file.
 
-Once it worked I could see what the tedium had been costing me. Skeletons were flammable and could be poisoned, which is silly for a bag of dry bones. `states.json` has had a `poison_immune` flag the whole time and not one actor ever declared it, because setting it by hand on every skeleton and ghast and wraith was more bother than the effect was worth. Now `undead` says it once. That's the whole argument for types in a single example, and it's the kind of thing I only notice after the tedious version stops being the only option.
+Once it worked I could see what the tedium had been costing me. Skeletons could be poisoned, which is silly for a bag of dry bones. `states.json` has had a `poison_immune` flag the whole time and not one actor ever declared it, because setting it by hand on every skeleton and ghast and wraith was more bother than the effect was worth. Now `undead` says it once. That's the whole argument for types in a single example, and it's the kind of thing I only notice after the tedious version stops being the only option.
 
 ---
 

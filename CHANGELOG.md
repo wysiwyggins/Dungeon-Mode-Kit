@@ -9,15 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **`data/animations.json` — animated sprites are data now.** Adding one was seven hardcoded lists across `engine.js` and the actor editor; it's now a PNG and a line of JSON, and the editor dropdowns build themselves from the file. `file` is stated per entry, so the mist sheet's off-convention filename is data rather than code, and an optional `speed` replaces the one hardcoded rate every sheet shared.
-- **Prototype-level `animations.json`.** A prototype ships its own sheets with `file` relative to its folder, merged over the base manifest — pac's chomp moved out of the shared sprite folder into `prototypes/pac/`.
+- **`data/animations.json` — animated sprites are data now.** Adding one was seven hardcoded lists across `engine.js` and the actor editor; it's now a PNG and a line of JSON, and the editor dropdowns build themselves from the file. That means prototypes could have their own specific animations too.
 - **`default_floor` prototype setting** — the floor tile generators use, plus an optional tint, overridable per floor. Generated areas only.
 - **Tile sprites honour a per-tile `tint`.** Lives in the serialized `floorMap`, so it survives floor transitions. Floor is the one layer where this is stable — lighting rewrites background and overlay tints each frame.
 - **`collected:item_type` and `killed:actor_type` win conditions** — collect all items of type or kill all actors of type
 - **Prototype-level `states.json`.** A prototype can now ship its own states, merged over `data/states.json` at load.
-- **`melee_harmless` attribute** — the mirror of `melee_immune`, checked on the attacker: this actor cannot hurt anything in melee. Like `melee_immune` it is applied after the hit roll, so the blow still swings, sounds and costs a turn.
-- **`rank_order` — capture hierarchies.** A prototype lists actor ids weakest to strongest and captures follow the order: higher takes lower, equal ranks trade, and the first entry takes the last, which is the Animals' Chess rule that stops the top piece being unanswerable. Rank is list membership rather than a number per actor, so inserting a piece is a one-line edit and the wrap-around derives from the span's ends. Inert unless declared.
-- **`suppresses_attribute` state property** — takes an attribute away for the duration, whether innate or granted by another state, and wins over any grant.
+- **`melee_harmless` attribute** — the mirror of `melee_immune`, checked on the attacker: this actor cannot hurt anything in melee. Like `melee_immune` it is applied after the hit roll.
+- **`rank_order` — capture hierarchies.** A prototype can now list actor ids from weakest to strongest for chess (or animal's chess) style piece hierarchy.
+- **`suppresses_attribute` state property** — takes an attribute away for the duration, whether innate or granted by another state.
 - **`melee_immune` attribute.**
 - **`random_color` now works on any actor**, not just `color_locked` doors.
 - **`Actor.hasInfoPanel()`** Actors with `description` `sentient` can spawn new info windows. See [docs/ACTORS.md](docs/ACTORS.md#what-earns-a-panel-actorhasinfopanel).
@@ -27,9 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Messages go unnamed while hallucinating.** Actors and floor items read as "something" in the message log, matching the sprite and sidebar rather than contradicting them; carried items keep their names. The gate moved to `Entity.getNameWithArticle()`, the prose accessor every message already used, so the ~20 lines that built `The ${this.name}` by hand now inherit it — which also applies the mass-noun rule those hand-built lines skipped, so a burning web now "crumbles" rather than "The web crumbles."
-- **Hallucination scrambles floor items, not just actors.** `texture_scramble` now paints a random tile and tint over every item lying on the ground, and the tile it picks is the same false name the sidebar and info panel already showed, so the sprite and the text agree. Carried items are untouched — you know what you're holding.
-- **The visual tile picker is now shared.** Two near-identical inline copies in the actor and item editors became `editors/scripts/tile-picker.js`, reused by all three editors.
+- **Message anonymizing while hallucinating.** Actors and floor items read as "something" in the message log during hallucinations.
+- **Hallucination scrambles floor items, not just actors.**
+- **The effects editor is more accutate**
+- **`effect` is the one way to name a visual effect.** standardized adding an effect to actors and items
 - **Mouse: hover reads, click acts.** Hovering a visible actor opens its info panel. `Tab` + `Enter` is the keyboard route to info windows for selected actors.
 - **The hover panel waits, then grows in.** The pointer must rest on an actor for `HOVER_INFO_DELAY` (260ms) before its panel opens, so sweeping across a crowded room opens nothing and moving on cancels the pending open.
 - `showActorInfo` gains a `sticky` option separating the two routes: the keyboard panel takes the active box and holds, while hover must not steal it or claim it can be closed with a key. So the hover panel omits the "Esc to close" footer.
@@ -38,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Bumping a hostile actor printed its attack template raw.** Walking into a monkey showed "The [actor_name] scratches the [attacked_actor_name]!" because the non-combat collision path supplied only a `[name]` provider, having been written for levers and sealed stairs. It now uses the same `_nameProviders` and article fix as combat, so a `collision_description` reads identically whether the creature hits you or you walk into it.
+- **The effects editor no longer corrupts effects it opens.** Its primitive list was hand-maintained and missing `gradient_wave`, `hue_cycle` and `radial_gradient`, so opening `victory_wave` or `victory_radial` and saving dropped their params; it also discarded definition-level `duration_ms` and whole `on_tick` blocks, losing part of `flash` and `hallucination`. It now preserves anything it has no widget for, and keeps params that were written down even when they equal the default. All 20 shipped effects round-trip byte-identical.
+- **An item with `rippleTint` rendered flat.** `Actor` honoured both legacy tint booleans but `Item` only handled `flickerTint`, while the item editor happily displayed "Ripple" for the value the engine ignored. Both now share one `resolveEntityEffect`.
+- **Removed a dead `flickerTint` from pac's `impervious` state.** States read `tint` but never an effect, so it had never done anything. Making states able to declare an effect is noted in [docs/IDEAS.md](docs/IDEAS.md).
 - **Pac only eats ghosts while powered up.**
 - **Combat forecasts account for the melee gate.** `predictCombat` read damage without checking whether the blow could land at all, so the info panel quoted hits-to-kill for a target the attacker could never hurt. It now reports `noDamage` for `melee_immune`, `melee_harmless` and rank mismatches.
 - **State tints now show on bright levels.** `getStateTint()` was only ever read by the darkness lighting pass, so on a `darkness: false` prototype a state's `tint` coloured its sidebar entry while the actor on the map stayed unchanged.

@@ -39,7 +39,7 @@ Item JSON has two layers, and knowing which layer a property belongs to matters.
 | `flipH` | boolean | Flip sprite horizontally |
 | `flipV` | boolean | Flip sprite vertically |
 | `ignore_darkness` | boolean | Render even in unlit tiles |
-| `flickerTint` | boolean | Tint flickers (visual effect) |
+| `effect` | string | Named visual effect from [`data/effects.json`](../data/effects.json), e.g. `"flicker_tint"` (torches, phials) or `"ripple_tint"`. Deprecated aliases: `flickerTint: true`, `rippleTint: true` |
 | `identified` | boolean | `false` = starts unidentified |
 | `unidentified_template` | string | Display name before identification |
 | `identified_template` | string | Display name after identification |
