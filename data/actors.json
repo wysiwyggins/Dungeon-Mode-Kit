@@ -9,8 +9,10 @@
       "solid": true,
       "flammable": true,
       "controlled": true,
-      "sentient": true
+      "sentient": true,
+      "inventory": 1
     }
+
   },
   "skeleton": {
     "type": "undead",
