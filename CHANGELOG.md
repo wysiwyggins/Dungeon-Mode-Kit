@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **An actor's info panel warns about states its attack inflicts.** Six actors carry an `apply_state` in their `collision_effect` and none of them said so; the panel now reads "Its attack can leave you bleeding," wording it from the state's name in `states.json`. The warning sits outside the `tactician` gate, and it's suppressed when the state couldn't land anyway — a `bloodless` player hears nothing about a bat's bite.
 - **States can declare a visual effect.** A state now takes an `effect` naming anything in `data/effects.json`, the same one-field change actors and items already had; pac's `impervious` uses it, so the power pill pulses instead of only tinting. A state's effect outranks the actor's own and the actor's resumes when it lapses, so a flickering torch that catches fire reads as burning and goes back to flickering. It flickers around the state's `tint` rather than the actor's, since a state that sets both means the state colour to be the thing that pulses.
 - **`data/animations.json` — animated sprites are data now.** Adding one was seven hardcoded lists across `engine.js` and the actor editor; it's now a PNG and a line of JSON, and the editor dropdowns build themselves from the file. That means prototypes could have their own specific animations too.
 - **`default_floor` prototype setting** — the floor tile generators use, plus an optional tint, overridable per floor. Generated areas only.
@@ -39,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The actor editor and the engine disagreed about a missing `sideOffset`.** The editor read it as `{dx: 0, dy: 0}` and the engine as `{dx: 1, dy: 0}`, so a side tile previewed over the base tile but rendered a square to its right. The editor now shares the engine's default and writes the offset for any actor with a side slot, rather than dropping a deliberate zero and letting the default shift it.
 - **cleanup related to the old portal actor** that let one prototype load another
 - **Bumping a hostile actor printed its attack template raw.**
 - **The effects editor no longer corrupts effects it opens.**

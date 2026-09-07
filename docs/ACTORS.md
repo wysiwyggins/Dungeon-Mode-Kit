@@ -81,6 +81,24 @@ The side tile sits at the base's vertical level, offset by `sideOffset`. It is p
 cosmetic — no collision footprint — and is lit at its own grid position, so a tail
 reaching around a corner into darkness is hidden on its own.
 
+**A zero offset layers instead of extending.** `sideOffset: {"dx": 0, "dy": 0}` puts the
+side tile — or a side *animation* — directly over the base tile rather than beside it, so
+an actor can keep its own artwork and still burn, smoke or ripple. Because the offset is
+zero, the overlay resolves to the actor's own coordinates and is culled and lit exactly
+like the base sprite. The tradeoff is that the slot is spent, so an actor doing this can't
+also use its side tile for a two-tile body. `hell_hound` is the shipped example.
+
+```json
+// A skull that burns, keeping its own tile
+"tileIndexBase": "SKULL",
+"animationSide": "fire",
+"sideOffset": { "dx": 0, "dy": 0 }
+```
+
+**Write the offset explicitly when you mean zero.** Omitting `sideOffset` is not the same
+as `{dx: 0, dy: 0}` — an absent key means the default `{dx: 1, dy: 0}`, one tile to the
+right.
+
 ### Facing
 
 With `facingEnabled`, all of an actor's sprites (base, top, side, equipment) mirror when it
@@ -90,7 +108,8 @@ declares which way the art was drawn. Vertical-only movement preserves current f
 ### Animated Sprites
 
 `animationBase` / `animationTop` / `animationSide` name an animation instead of a static
-tile. When set, the animation replaces that slot's tile entirely.
+tile. When set, the animation replaces that slot's tile entirely — to animate *over* an
+actor's own artwork, use a side animation with a zero `sideOffset` (see [Side Tiles](#side-tiles)).
 
 The available animations are data, not code. They live in **`data/animations.json`**:
 
@@ -842,6 +861,30 @@ subject and the punctuation, rendering *"It flies and burns easily."* Order in t
 is the order they read, so related traits can be grouped.
 
 Adding a trait needs no engine change.
+
+### Attack states
+
+An actor whose `collision_effect` carries an `apply_state` warns about it in the panel,
+one line under the traits:
+
+> Its attack can leave you bleeding.
+
+The wording comes from the state's `name` in `states.json`, lowercased — so a new state
+describes itself and needs no engine change.
+
+This line is **not** behind `tactician`. "Its bite makes you bleed" is a qualitative
+warning like the traits above it rather than a number, and a player without the combat
+forecast is the one who most needs to be told.
+
+It is also honest about whether the state would actually land. `Actor.predictAppliedState`
+mirrors the three refusals in `applyState` — perception states that only apply to the
+controlled actor, mind states that need something taking turns, and a declared
+`immunity` attribute — so a `bloodless` player reading a bat gets no bleeding warning,
+because a bat cannot make them bleed. A state-only attack (no `health` in the effect)
+still warns, since that is exactly the case worth knowing about.
+
+The same line runs in reverse inside the `tactician` forecast for a weapon that inflicts
+a state (*"Your attack can leave it paralyzed."*); no shipped weapon does yet.
 
 ### Combat forecast (`tactician`)
 

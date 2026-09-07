@@ -810,6 +810,7 @@
     "tint": "#e32400",
     "effect": "flicker_tint",
     "animationSide": "fire",
+    "sideOffset": { "dx": 0, "dy": 0 },
     "personality": "hell_hound",
     "collision_effect": {
       "health": -8

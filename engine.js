@@ -7763,6 +7763,39 @@ class Actor extends Entity {
     }
 
     /**
+     * Would a state named by an authored `apply_state` actually land on `target`?
+     *
+     * Mirrors the three refusals in applyState — player-only/perception states,
+     * mind states needing something that takes turns, and a declared `immunity`
+     * attribute — so the info panel never promises a bite that "makes you bleed"
+     * when the victim is `bloodless` and the state would be dropped on contact.
+     * A separate predictor rather than a dry-run of applyState, which mutates.
+     *
+     * @param {string|Object} value - Authored apply_state: a name or { state, duration }
+     * @param {Actor} target - Who the state would be applied to
+     * @returns {{name: string, label: string}|null} The state, or null if it can't land
+     */
+    predictAppliedState(value, target) {
+        const { name } = Actor.parseApplyState(value);
+        if (!name || !target) return null;
+
+        const stateData = this.engine?.globalStates?.[name];
+        if (!stateData) return null;
+
+        // The same order applyState uses, and for the same reasons.
+        if (stateData.hallucinating || stateData.player_only) {
+            if (!target.hasAttribute('controlled')) return null;
+        } else if (Actor.isMindState(stateData)) {
+            if (!target.hasAttribute('sentient') && !target.hasAttribute('controlled')) return null;
+        }
+        if (stateData.immunity && target.hasAttribute(stateData.immunity)) return null;
+
+        // states.json authors a display `name` ("Bleeding"); lowercased here because
+        // the panel drops it mid-sentence. Falls back to the key, which reads fine.
+        return { name, label: String(stateData.name || name).toLowerCase() };
+    }
+
+    /**
      * What would happen if this actor attacked `defender`, computed without rolling
      * anything or touching game state — the data behind the info panel's combat lines.
      *
@@ -7790,7 +7823,8 @@ class Actor extends Entity {
             noDamage: false,    // this attacker cannot hurt that defender
             immune: false,      // defender has no health stat to reduce
             backstab: false,    // a hit right now would be a backstab
-            canCrit: false
+            canCrit: false,
+            appliedState: null  // {name, label} if a landed hit would also inflict a state
         };
 
         // Where the damage number comes from: the wielded weapon if it has one,
@@ -7798,6 +7832,12 @@ class Actor extends Entity {
         const effect = weapon?.getAttribute('collision_effect')
             ?? this.getAttribute('collision_effect');
         const rawHealth = effect && typeof effect === 'object' ? effect.health : undefined;
+
+        // Read before the early returns below: an attack that deals no damage can
+        // still inflict a state, and that is exactly the case worth warning about.
+        if (effect && typeof effect === 'object' && effect.apply_state) {
+            result.appliedState = this.predictAppliedState(effect.apply_state, defender);
+        }
 
         // Damage may be authored as "-{strength}" rather than a number; the live path
         // resolves it the same way, so reuse that resolver instead of re-parsing.

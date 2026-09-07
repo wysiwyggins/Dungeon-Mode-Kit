@@ -5201,6 +5201,22 @@ class InterfaceManager {
                 lines.push('');
             }
 
+            // What its attack does to you beyond damage. Deliberately outside the
+            // `tactician` gate below: "its bite makes you bleed" is a qualitative
+            // warning like the traits above it, not the numeric forecast that gate
+            // is about — and a player who can't read the numbers needs it most.
+            // predictAppliedState has already ruled out states this viewer is immune
+            // to or can't take, so what's printed is what would actually land.
+            if (v && v !== target) {
+                const inflicts = target.predictCombat?.(v)?.appliedState;
+                if (inflicts) {
+                    for (const line of this.wrapText(`Its attack can leave you ${inflicts.label}.`, wrap)) {
+                        lines.push(line);
+                    }
+                    lines.push('');
+                }
+            }
+
             // Combat math — opt-in per prototype via `tactician` on the viewing actor.
             // Skipped when looking at yourself: the panel would be comparing you to you.
             if (v && v !== target && v.hasAttribute?.('tactician')) {
@@ -5502,6 +5518,7 @@ class InterfaceManager {
                     s += ` — ${yours.bestHitsToKill} with a lucky strike`;
                 }
                 push(s + '.');
+                if (yours.appliedState) push(`Your attack can leave it ${yours.appliedState.label}.`);
                 if (yours.backstab) push('It has not noticed you.');
             }
             out.push('');
