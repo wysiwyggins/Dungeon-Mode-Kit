@@ -52,7 +52,7 @@
   },
 
   "descriptions": {
-    "wait":           "Wait one turn",
+    "wait":           " Rest one turn",
     "player_info":    "Inventory / info",
     "throw_item":     "Throw an item",
     "equipment_menu": "Equipment menu",
@@ -63,7 +63,7 @@
     "search":         "Search for hidden things",
     "dig":            "Dig with a mining tool",
     "explore":        "Auto-explore",
-    "cycle_target":   "Cycle travel targets",
+    "cycle_target":   "Cycle targets",
     "confirm_target": "Confirm target (throw / zap)",
     "discovery":      "Discovery progress",
     "toggle_pause":   "Toggle pause",

@@ -30,9 +30,9 @@ See [ENTITIES.md](ENTITIES.md) for the base fields (`tint`, `zIndex`, `attribute
 
 ## Types
 
-The optional `type` key names an entry in `data/types.json` whose defaults this actor
+The optional `type` key names an entry in `data/types.json` whose defaults an actor
 inherits — a bundle of the attributes, stats and personality shared by a whole family, so
-each member only declares what makes it distinct. The actor's own keys always win.
+each member only declares what makes it distinct.
 
 ```json
 "rat": {
@@ -42,7 +42,7 @@ each member only declares what makes it distinct. The actor's own keys always wi
 }
 ```
 
-`beast`, `undead`, `humanoid` and `terrain` ship by default. See [TYPES.md](TYPES.md) for the
+`beast`, `undead`, `humanoid` and `terrain` exist now. See [TYPES.md](TYPES.md) for the
 merge rules, how to remove an inherited value, and how to add your own.
 
 ## Visual Fields
@@ -53,7 +53,7 @@ Actors are two tiles tall: `tileIndexTop` renders at head height (y-1), `tileInd
 | ------- | ------ | ------------- |
 | `tileIndexBase` | string or `{x, y}` | Tile for the actor's base (lower body) |
 | `tileIndexTop` | string or `{x, y}` | Tile for the actor's top (head/upper body) |
-| `tileIndexSide` | string or `{x, y}` | Tile for a side-attached body part (e.g., tail) |
+| `tileIndexSide` | string or `{x, y}` | Tile for a side-attached decorative tile (e.g., tail) |
 | `sideOffset` | `{dx, dy}` | Grid offset from base for the side tile (default: `{dx: 1, dy: 0}`) |
 | `tileIndexBase_open` | string or `{x, y}` | Base tile when actor is in open state (doors) |
 | `tileIndexTop_open` | string or `{x, y}` | Top tile when actor is in open state (doors) |
@@ -103,7 +103,7 @@ The available animations are data, not code. They live in **`data/animations.jso
 ```
 
 | Key | Type | Description |
-|-----|------|-------------|
+| ----- | ------ | ------------- |
 | `file` | string | PNG filename, relative to `assets/sprites/` (or the prototype folder) |
 | `speed` | number | Optional PIXI frame advance per tick. Defaults to `0.1` |
 | `description` | string | Optional note for whoever reads the file next |
