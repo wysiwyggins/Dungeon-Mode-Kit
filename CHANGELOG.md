@@ -38,8 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Bumping a hostile actor printed its attack template raw.** Walking into a monkey showed "The [actor_name] scratches the [attacked_actor_name]!" because the non-combat collision path supplied only a `[name]` provider, having been written for levers and sealed stairs. It now uses the same `_nameProviders` and article fix as combat, so a `collision_description` reads identically whether the creature hits you or you walk into it.
-- **The effects editor no longer corrupts effects it opens.** Its primitive list was hand-maintained and missing `gradient_wave`, `hue_cycle` and `radial_gradient`, so opening `victory_wave` or `victory_radial` and saving dropped their params; it also discarded definition-level `duration_ms` and whole `on_tick` blocks, losing part of `flash` and `hallucination`. It now preserves anything it has no widget for, and keeps params that were written down even when they equal the default. All 20 shipped effects round-trip byte-identical.
+- **cleanup related to the old portal actor** that let one prototype load another
+- **Bumping a hostile actor printed its attack template raw.**
+- **The effects editor no longer corrupts effects it opens.**
 - **An item with `rippleTint` rendered flat.** `Actor` honoured both legacy tint booleans but `Item` only handled `flickerTint`, while the item editor happily displayed "Ripple" for the value the engine ignored. Both now share one `resolveEntityEffect`.
 - **Removed a dead `flickerTint` from pac's `impervious` state.** States read `tint` but never an effect, so it had never done anything. Making states able to declare an effect is noted in [docs/IDEAS.md](docs/IDEAS.md).
 - **Pac only eats ghosts while powered up.**

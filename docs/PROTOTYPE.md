@@ -35,7 +35,7 @@ missing from the index is invisible in the editors.
 | `description` | string | Text shown on level load. Supports `\n` for line breaks. |
 | `turn_speed` | number | Milliseconds per AI turn (lower = faster). Default `50`. |
 | `loaded_sound` | string | Sound played when the prototype loads |
-| `next_level` | string | Prototype folder name to advance to (via down stairway or portal) |
+| `next_level` | string | Prototype folder name to advance to (via down stairway) |
 | `previous_level` | string | Prototype folder name to return to (via up stairway from floor 1) |
 | `win_state` | object | Escape-style overall victory for the whole prototype: `{ via: "escape", exit_floor, conditions, message }`. Reaching `exit_floor`'s exit with `conditions` met wins the run (distinct from per-floor `win_conditions`, which just unlock a floor's stairway). |
 | `default_floor` | object | Floor tile and tint for generated maps — see [Default Floor](#default-floor). |
@@ -96,7 +96,7 @@ secret doors, concealed levers, undiscovered traps). See `docs/ACTORS.md`.
 
 | Field | Type | Default | Description |
 | ------- | ------ | --------- | ------------- |
-| `observer_mode` | boolean | `false` | Disable stairway and portal placement. Use for spectator-only prototypes (e.g. cellular automata demos). |
+| `observer_mode` | boolean | `false` | Disable stairway placement. Use for spectator-only prototypes (e.g. cellular automata demos). |
 | `treasure_room` | number | `0` | Percent chance (0-100) to spawn a treasure room on the level |
 | `up_stairway_region` | string | generator's choice | Place the up (entry) stairway inside a named region the generator published. Some generators suggest one — `palladian` puts the entry stair in its `portico` courtyard, since arriving in the middle of an interior room reads as a mistake. Set explicitly to override, or to `null` for random placement. |
 | `down_stairway_region` | string | generator's choice | Same for the down stairway. No generator currently suggests one; set it to e.g. `"sanctum"` on a palladian floor to put the descent behind the boss. |
@@ -454,7 +454,7 @@ Each floor spawns `base` items guaranteed, then rolls up to `max_extra` addition
 
 ## Win Conditions
 
-`win_conditions` is an array of conditions that must all be met to unlock the floor's stairway or portal.
+`win_conditions` is an array of conditions that must all be met to unlock the floor's stairway.
 
 ```json
 "win_conditions": ["killed:ghast", "wearing:crown"]
@@ -547,7 +547,6 @@ Fields not specified in a floor object fall back to the prototype-level defaults
 
 - **Stairways** move between floors (not prototypes). The engine auto-places `down_stairway` on every floor except the last.
 - **Win conditions** are per-floor. Each floor's stairway is locked until its conditions are met.
-- **portal** is auto-placed on the last floor when `next_level` is set. It starts hidden and appears when the last floor's win conditions are met.
 - **Going up from floor 1** transitions to `previous_level` (if set).
 - **Floor state** is saved when leaving and restored when returning. Entities, map, and RNG state persist.
 
@@ -626,7 +625,6 @@ This is an artifact of the earliest version of DMK when each prototype was only 
 
 - **Down stairway** on the last floor (or single-floor prototype) transitions to `next_level`
 - **Up stairway** on floor 1 transitions to `previous_level`
-- **portal** on the last floor of a multi-floor prototype transitions to `next_level` when win conditions are met
 
 See [MAP.md](MAP.md) for stairway placement and transition details.
 

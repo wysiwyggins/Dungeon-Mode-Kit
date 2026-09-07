@@ -470,10 +470,9 @@ Two things to know when authoring one:
 | Attribute | Type | Description |
 | ----------- | ------ | ------------- |
 | `stairway` | string | `"up"` or `"down"` — triggers level transition |
+| `hidden` | boolean | Actor exists in the world but is not rendered. |
 
 Taking a stairway is not a free escape. In a multi-floor prototype, any hostile actor standing adjacent to the player and aware of them at the moment of transition follows to the destination floor, arriving beside the player and still hunting. This needs no attribute — being adjacent and alert *is* what makes an actor a pursuer. At most two follow, nearest first. Break line of sight or gain a few tiles of lead and nothing comes with you. Segmented creatures are excluded, and the legacy cross-prototype stairway path never carries followers.
-| `portal` | boolean | Inter-prototype transition point. Hidden by default; revealed when last floor's win conditions are met. |
-| `hidden` | boolean | Actor exists in the world but is not rendered. Used for portals that appear later. |
 
 ### Switches & Machines
 

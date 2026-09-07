@@ -171,7 +171,6 @@ function isTravelTarget(actor) {
     // Structural landmarks and interactables worth crossing a level for.
     if (actor.hasAttribute('openable')) return true;        // doors, gates
     if (actor.hasAttribute('stairway')) return true;
-    if (actor.hasAttribute('gateway')) return true;
     if (actor.hasAttribute('portal')) return true;
     if (actor.hasAttribute('switchable')) return true;      // levers, pressure plates
     if (actor.hasAttribute('pedestal')) return true;        // displays an item
@@ -1239,7 +1238,7 @@ class InputManager {
      * Gather the reachable points of interest the player can travel to, nearest
      * first. Candidates are:
      *   - ground items the player can currently perceive, and
-     *   - travel-worthy actors (creatures, doors/openables, stairways, gateways),
+     *   - travel-worthy actors (creatures, doors/openables, stairways, portals),
      *     excluding the player and controlled allies.
      * @returns {Array<{x:number, y:number, kind:string, entity:object, path:Array, dist:number}>}
      */

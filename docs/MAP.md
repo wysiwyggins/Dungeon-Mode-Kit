@@ -201,7 +201,6 @@ Example:
 | `up_stairway` | Ascent point — goes to previous floor or previous prototype |
 | `locked_down_stairway` | Sealed until `win_conditions` are met |
 | `locked_up_stairway` | Sealed until `win_conditions` are met |
-| `portal` | Hidden inter-prototype transition — revealed when last floor's win conditions are met |
 
 Place stairway actors on the `actors` object layer. If you don't place one, the engine auto-places it on a random walkable tile.
 
@@ -235,8 +234,7 @@ Add a `levels` array to `prototype.json` to create multiple floors within one pr
 Behavior:
 
 - **Stairways** move between floors (not prototypes). The engine auto-places `down_stairway` on every floor except the last.
-- **Win conditions** are per-floor — each floor's `win_conditions` must be met to unlock that floor's stairway/portal.
-- **portal** is auto-placed on the **last floor** when `next_level` is set. It starts hidden and appears when the last floor's win conditions are met. Stepping on the portal transitions to `next_level`.
+- **Win conditions** are per-floor — each floor's `win_conditions` must be met to unlock that floor's stairway.
 - **Going up from floor 1** transitions to `previous_level` (if set).
 - **Map files**: floor 1 uses `map.tmj`, floor 2 uses `2.tmj`, etc. Missing maps are procedurally generated using the floor's `map_generator` (or the prototype-level default).
 - **Floor state** is saved when leaving a floor and restored when returning — entities, map, and RNG state persist.

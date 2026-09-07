@@ -23,7 +23,7 @@
 
 | Attribute | Meaning | Default |
 | --- | --- | --- |
-| `visible` | Permanently unseen when false — ghast, portal, oculus | `true` |
+| `visible` | Permanently unseen when false — ghast, oculus | `true` |
 | `hidden` | Concealed but **discoverable** — secret doors, levers, plates, traps | `false` |
 | `awareness` | Bonus to search strength; on an actor, or via a ring's `wear_effect` | `0` |
 | `conceals_when_submerged` | Deep liquid hides this actor from anyone above the surface | `false` |

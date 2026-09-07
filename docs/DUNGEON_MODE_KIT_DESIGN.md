@@ -89,7 +89,7 @@ See [MAP.md](MAP.md), [PROTOTYPE.md](PROTOTYPE.md), [Tile Index](/docs/tiles.pdf
 
 A **prototype** is a self-contained level or game variant. The `prototype.json` config controls mechanics (lighting, fog of war, viewport), map generation, entity spawning, win conditions, and progression to other prototypes.
 
-Prototypes can have multiple floors, both generated and authored overrides for specific floors. Floors are linked by stairways; (prototypes can also be linked by portals and `next_level`/`previous_level` fields, but this is an artifact of an older design)
+Prototypes can have multiple floors, both generated and authored overrides for specific floors. Floors are linked by stairways; (prototypes can also be linked by `next_level`/`previous_level` fields, but this is an artifact of an older design)
 
 See [PROTOTYPE.md](PROTOTYPE.md).
 

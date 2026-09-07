@@ -135,7 +135,7 @@ engine.pendingStairFollowers  // hostiles that chased the player through a stair
 
 All three drain after the player is placed and before `initializeTurnEngine()`, which rebuilds the scheduler from the live actor list — so arrivals are scheduled automatically. Because AI memory is not serialized, `spawnPendingStairFollowers()` reapplies the hunt state (`_alerted`, `_alertTarget`, `_lastKnownTargetX/Y`) on arrival.
 
-All three are cleared on a full prototype change, gateway transition, or engine cleanup — pending entities never survive into a different prototype.
+All three are cleared on a full prototype change, prototype transition, or engine cleanup — pending entities never survive into a different prototype.
 
 ### Map Serialization
 

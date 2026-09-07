@@ -27,4 +27,4 @@ This is the sequence inside `Actor.tryMove(newX, newY)` (`engine.js:~9055`), the
 6. **Floor/void check** — no floor/platform under target and not flying → step in and `fall()` to the next level → return `{moved:true}`.
 7. **Lunge attack style** (for reach weapons into empty tiles) → may handle and return.
 8. **Commit the move** — record last position, liquid-track tint, set facing, **`this.x=newX; this.y=newY`**, update sprite.
-9. **Post-move hooks** — viewport snap, passive item effects, auto-close doors behind, item pickup, walk descriptions, stairway/gateway transitions, lighting update, **submersion** (`updateSubmersionState` — relevant for `deep` actors), cloud/mist effects, pressure-plate/switch triggers.
+9. **Post-move hooks** — viewport snap, passive item effects, auto-close doors behind, item pickup, walk descriptions, stairway transitions, lighting update, **submersion** (`updateSubmersionState` — relevant for `deep` actors), cloud/mist effects, pressure-plate/switch triggers.

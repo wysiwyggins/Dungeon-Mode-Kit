@@ -1014,7 +1014,7 @@ function isImportantActor(actor) {
     return actor.personality ||
            actor.hasAttribute('openable') ||
            actor.hasAttribute('stairway') ||
-           actor.hasAttribute('gateway') ||
+           actor.hasAttribute('portal') ||
            actor.hasAttribute('controlled');
 }
 
@@ -1931,7 +1931,7 @@ class DungeonEngine {
         // authored key spawned before its door (order-dependent eager coloring) still matches.
         this.entityManager.reconcileKeyDoorColors();
 
-        // Stairway/gateway placement — after pending doors so getActorAt sees them
+        // Stairway/portal placement — after pending doors so getActorAt sees them
         if (!prototypeConfig.mechanics?.observer_mode) {
             const totalFloors = this.getTotalFloors();
             const multiFloor = totalFloors > 1;
@@ -1942,8 +1942,10 @@ class DungeonEngine {
                 this.ensureDownStairway();
             }
 
+            // The last floor has no down-stairway; a prototype that continues
+            // elsewhere gets a portal there instead.
             if (multiFloor && floor === totalFloors && prototypeConfig.next_level) {
-                this.ensureGateway();
+                this.ensurePortal();
             }
 
             // Spawn or restore player
@@ -2730,7 +2732,7 @@ class DungeonEngine {
 
     /**
      * Check prototype-level (game-win) conditions, distinct from the per-floor
-     * win_conditions that govern stairway/gateway unlock. Reuses checkWinCondition().
+     * win_conditions that govern stairway unlock. Reuses checkWinCondition().
      * Returns false when no win_state is declared, so prototypes without it never win
      * the game.
      */
@@ -2745,7 +2747,7 @@ class DungeonEngine {
     /**
      * Fire the game-win once, if the prototype's win conditions hold and there's
      * nowhere left to go. A prototype with next_level flows onward (handled by the
-     * gateway/stairway path), so it never triggers a terminal win here.
+     * stairway path), so it never triggers a terminal win here.
      */
     maybeTriggerGameWin() {
         if (this.gameWon) return;
@@ -2957,22 +2959,7 @@ class DungeonEngine {
         // the next time N+1 is entered — see reconcileUpStairwayLock().
         this.sealedDownFloors.delete(this.currentFloor);
 
-        // Reveal gateways when win conditions are met
-        const gateways = this.entityManager?.actors.filter(a => a.hasAttribute('gateway'));
-        if (gateways?.length > 0) {
-            for (const gw of gateways) {
-                gw.setAttribute('visible', true);
-                gw.setAttribute('hidden', false);
-                if (gw.spriteBase) gw.spriteBase.visible = true;
-                if (gw.spriteTop) gw.spriteTop.visible = true;
-            }
-            this.playSound?.('magic');
-            this.inputManager?.showMessage('A gateway has appeared!', { style: 'discovery' });
-            // Apply visual effect
-            if (this.renderer?.applyEffect) {
-                this.renderer.applyEffect('gateway_reveal');
-            }
-        }
+        this.setPortalsRevealed(true);
     }
 
     /**
@@ -3004,36 +2991,51 @@ class DungeonEngine {
         // floor N+1 re-locks the next time N+1 is entered (see reconcileUpStairwayLock()).
         this.sealedDownFloors.add(this.currentFloor);
 
-        // Re-hide gateways when win conditions break
-        const gateways = this.entityManager?.actors.filter(a => a.hasAttribute('gateway'));
-        if (gateways?.length > 0) {
-            for (const gw of gateways) {
-                gw.setAttribute('visible', false);
-                gw.setAttribute('hidden', true);
-                if (gw.spriteBase) gw.spriteBase.visible = false;
-                if (gw.spriteTop) gw.spriteTop.visible = false;
-            }
-        }
+        this.setPortalsRevealed(false);
 
         this.inputManager?.showMessage('The way forward is sealed once more.', { style: 'warning' });
     }
 
     /**
-     * Use a gateway to transition to the next prototype
-     * Called when player steps on a visible gateway on the last floor
+     * Show or hide this floor's portals. A portal is placed hidden and only
+     * appears once the last floor's win conditions hold; breaking a condition
+     * hides it again, the same way a stairway re-seals.
+     * @param {boolean} revealed
      */
-    async useGateway() {
-        const config = this.currentPrototype.config;
-        if (config.next_level) {
-            console.log(`Using gateway to transition to ${config.next_level}`);
-            this.floorStates.clear();
-            this.pendingFallenActors.clear();
-            this.pendingFallenItems.clear();
-            this.pendingStairFollowers.clear();
-            this.mappedFloors.clear();
-            this.currentFloor = 1;
-            await this.transitionToPrototype(config.next_level, true, 'from_above');
+    setPortalsRevealed(revealed) {
+        const portals = this.entityManager?.actors.filter(a => a.hasAttribute('portal'));
+        if (!portals?.length) return;
+
+        for (const portal of portals) {
+            portal.setAttribute('visible', revealed);
+            portal.setAttribute('hidden', !revealed);
+            if (portal.spriteBase) portal.spriteBase.visible = revealed;
+            if (portal.spriteTop) portal.spriteTop.visible = revealed;
         }
+
+        if (!revealed) return;
+
+        this.playSound?.('magic');
+        this.inputManager?.showMessage('A portal has appeared!', { style: 'discovery' });
+        this.renderer?.effectRunner?.apply('portal_reveal');
+    }
+
+    /**
+     * Step through a portal to the next prototype.
+     * Called when a player actor walks onto a revealed portal.
+     */
+    async usePortal() {
+        const config = this.currentPrototype.config;
+        if (!config.next_level) return;
+
+        console.log(`Using portal to transition to ${config.next_level}`);
+        this.floorStates.clear();
+        this.pendingFallenActors.clear();
+        this.pendingFallenItems.clear();
+        this.pendingStairFollowers.clear();
+        this.mappedFloors.clear();
+        this.currentFloor = 1;
+        await this.transitionToPrototype(config.next_level, true, 'from_above');
     }
 
     /**
@@ -3656,44 +3658,32 @@ class DungeonEngine {
     }
 
     /**
-     * Ensure a gateway exists on the current floor (last floor of multi-level prototype)
-     * Gateway is hidden by default, revealed when win conditions are met
-     * Gateways were for when prototypes were all a single level and loaded one another, might be superfluous now.
+     * Ensure a portal exists on the last floor of a prototype that continues
+     * into another one. Placed hidden; setPortalsRevealed() shows it once the
+     * floor's win conditions are met.
      */
-    ensureGateway() {
-        // Check if a gateway already exists
-        const existingGateway = this.entityManager.actors.find(a => a.hasAttribute('gateway'));
-        if (existingGateway) {
-            console.log('Gateway already exists at', existingGateway.x, existingGateway.y);
-            return;
-        }
+    ensurePortal() {
+        if (this.entityManager.actors.some(a => a.hasAttribute('portal'))) return;
 
         const walkableTiles = this.mapManager.walkableTiles;
-        if (!walkableTiles || walkableTiles.length === 0) {
-            console.warn('No walkable tiles available to place gateway');
+        const availableTiles = walkableTiles?.filter(
+            tile => !this.entityManager.getActorAt(tile.x, tile.y)
+        );
+        if (!availableTiles?.length) {
+            console.warn('No available tiles to place portal');
             return;
         }
 
-        const availableTiles = walkableTiles.filter(tile => {
-            return !this.entityManager.getActorAt(tile.x, tile.y);
-        });
-
-        if (availableTiles.length === 0) {
-            console.warn('No available tiles to place gateway');
+        const portalData = this.currentPrototype.getActorData('portal');
+        if (!portalData) {
+            console.warn('No portal actor data found');
             return;
         }
 
         const tile = randomElement(availableTiles);
-
-        const gatewayData = this.currentPrototype.getActorData('gateway');
-        if (!gatewayData) {
-            console.warn('No gateway actor data found');
-            return;
-        }
-
-        const gateway = new Actor(tile.x, tile.y, 'gateway', gatewayData, this);
-        this.entityManager.addEntity(gateway);
-        console.log(`Spawned hidden gateway at (${tile.x}, ${tile.y})`);
+        const portal = new Actor(tile.x, tile.y, 'portal', portalData, this);
+        this.entityManager.addEntity(portal);
+        console.log(`Spawned hidden portal at (${tile.x}, ${tile.y})`);
     }
 
     saveGameState() {
@@ -10901,7 +10891,7 @@ class Actor extends Entity {
             }
         }
 
-        // Check for stairway and gateway actors (only for player-controlled actors)
+        // Check for stairway and portal actors (only for player-controlled actors)
         if (this.isPlayerControlled()) {
             const actorsAtNewPos = this.engine.entityManager.getActorsAt(newX, newY);
             const stairway = actorsAtNewPos.find(a => a.hasAttribute('stairway'));
@@ -10916,13 +10906,12 @@ class Actor extends Entity {
                 return { moved: true, actionTaken: true }; // Exit early, transition handles everything
             }
 
-            // Check for gateway actors (visible gateways trigger prototype transition)
-            const gateway = actorsAtNewPos.find(a => a.hasAttribute('gateway') && a.getAttribute('visible'));
-            if (gateway) {
-                if (this.engine.turnEngine) {
-                    this.engine.turnEngine.lock();
-                }
-                this.engine.useGateway();
+            // A portal is only steppable once revealed, so reaching one is proof
+            // the last floor's win conditions held.
+            const portal = actorsAtNewPos.find(a => a.hasAttribute('portal') && a.getAttribute('visible'));
+            if (portal) {
+                this.engine.turnEngine?.lock();
+                this.engine.usePortal();
                 return { moved: true, actionTaken: true };
             }
         }
