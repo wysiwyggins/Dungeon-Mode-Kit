@@ -50,8 +50,12 @@
   },
   "floor_plan": [
     {
-      "biome": "caves",
-      "floors": "2-8"
+      "biome": "subfloors",
+      "floors": "2-4"
+    },
+    {
+      "biome": "catacombs",
+      "floors": "5-8"
     },
     {
       "biome": "depths",
@@ -61,6 +65,7 @@
       "biome": "infernal",
       "floors": "20-26"
     }
+    
   ],
   "levels": {
     "1": {

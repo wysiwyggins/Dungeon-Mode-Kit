@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Secret doors could open onto solid rock, or stand next to an ordinary door.** Neither of the generator's two secret-door passes checked that the far side of the wall was open — one scanned 2-3 tiles past it and cut the door at distance 1, the other tested a floor map that is painted under walls and off-map cells alike. Across 560 generated maps this produced 151 unusable doors and 290 sited beside a visible one; both are now zero.
+
 - **The actor editor and the engine disagreed about a missing `sideOffset`.** The editor read it as `{dx: 0, dy: 0}` and the engine as `{dx: 1, dy: 0}`, so a side tile previewed over the base tile but rendered a square to its right. The editor now shares the engine's default and writes the offset for any actor with a side slot, rather than dropping a deliberate zero and letting the default shift it.
 - **cleanup related to the old portal actor** that let one prototype load another
 - **Bumping a hostile actor printed its attack template raw.**

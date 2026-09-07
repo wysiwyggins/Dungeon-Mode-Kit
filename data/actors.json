@@ -973,6 +973,21 @@
       "paint_tile": "BRICK_WALL"
     }
   },
+  "bone_wall": {
+    "type": "terrain",
+    "name": "bone_wall",
+    "tileIndexBase": "BONE_WALL",
+    "tileIndexTop": "BONE_WALL",
+    "tileIndexSide": "WHITE_LIGHT_SHADE",
+    "sideOffset": {
+      "dx": 0,
+      "dy": -1
+    },
+    "attributes": {
+      "breakable": true,
+      "paint_tile": "WALL_TOP"
+    }
+  },
   "fortification": {
     "name": "fortification",
     "tileIndexBase": "PRISON_WINDOW",

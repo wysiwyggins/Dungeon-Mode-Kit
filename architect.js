@@ -1205,33 +1205,50 @@ class Architect {
             // How far apart the two sides must already be for a hidden door between
             // them to be worth finding. 0 (the default) disables the test.
             //
-            // Off by default because of what the candidate pool actually contains:
-            // the betweenFloors test below requires both opposing neighbours to be
-            // non-wall floor, which a wall *inside a wall run* never satisfies — its
-            // neighbours along the run are walls. So every candidate is an isolated
-            // stub tip poking into open floor, and measuring 3322 of them across
-            // caves and depths gave a detour of exactly 4 for 100% of them. Turning
-            // this gate on therefore rejects the entire pool and reinstates the
-            // secret-door drought rather than improving placement.
-            //
-            // Fixing that means widening betweenFloors to admit walls within a run,
-            // which also changes which walls become pushable — a bigger change than
-            // this gate. Until then the gate is here, correct, and dormant; set
-            // secretWallMinDetour to enable it once the pool is worth filtering.
+            // Off by default, but no longer inert. It used to reject the entire pool:
+            // betweenFloors tested the floor map, which is painted under walls too, so
+            // the candidates were dominated by cells inside wall runs, and measuring
+            // 3322 of them gave a detour of exactly 4 for 100%. Now that openness is
+            // tested against walkableTiles, the pool is genuinely walls between two
+            // open spaces and the gate thins it gradually instead — measured over 120
+            // dungeon maps: 340 doors at 0, 273 at 4, 188 at 8. Left at 0 so existing
+            // maps are unchanged; raise it if secret doors feel too easily found.
             const minDetour = options.secretWallMinDetour ?? 0;
             // Pushable walls get the gate the secret-door path can't use. Their
             // candidates come from the same pool, but unlike secret doors they are
             // not load-bearing for anything, so thinning them costs nothing: half
             // the raw pool measured as 4-tile walk-around stubs. 0 disables.
             const pushMinDetour = options.pushableWallMinDetour ?? 8;
+            // Doors already on the map, so a hidden one is never set beside a visible
+            // one. Both lists matter: pendingDoorSpawns is the ordinary doors, and
+            // pendingSecretDoorSpawns already holds the dead-end pass's output, which
+            // would otherwise pair up with an interior-wall pick.
+            const doorSet = new Set([
+                ...this.pendingDoorSpawns.map(p => `${p.x},${p.y}`),
+                ...this.pendingSecretDoorSpawns.map(p => `${p.x},${p.y}`)
+            ]);
+            const doorNear = (x, y) => {
+                for (let ny = y - 1; ny <= y + 1; ny++) {
+                    for (let nx = x - 1; nx <= x + 1; nx++) {
+                        if (nx === x && ny === y) continue;
+                        if (doorSet.has(`${nx},${ny}`)) return true;
+                    }
+                }
+                return false;
+            };
+            // Open means floor an actor can stand on, which is exactly walkableTiles.
+            // hasFloor is not that test twice over: _finalizeMap paints a floor tile
+            // under every wall (so a wall answers true, and a door gets cut into the
+            // middle of a wall run with rock on both sides), and it paints one under
+            // the ungenerated cells ringing the map (so a door opens onto void).
+            const walkableSet = new Set(this.walkableTiles.map(t => `${t.x},${t.y}`));
+            const isOpen = (x, y) => walkableSet.has(`${x},${y}`) && !wallSet.has(`${x},${y}`);
             for (let i = this.pendingWallSpawns.length - 1; i >= 0; i--) {
                 const wall = this.pendingWallSpawns[i];
                 if (wall.type && wall.type !== 'wall') continue;
                 const betweenFloors =
-                    (hasFloor(wall.x - 1, wall.y) && hasFloor(wall.x + 1, wall.y) &&
-                     !wallSet.has(`${wall.x - 1},${wall.y}`) && !wallSet.has(`${wall.x + 1},${wall.y}`)) ||
-                    (hasFloor(wall.x, wall.y - 1) && hasFloor(wall.x, wall.y + 1) &&
-                     !wallSet.has(`${wall.x},${wall.y - 1}`) && !wallSet.has(`${wall.x},${wall.y + 1}`));
+                    (isOpen(wall.x - 1, wall.y) && isOpen(wall.x + 1, wall.y)) ||
+                    (isOpen(wall.x, wall.y - 1) && isOpen(wall.x, wall.y + 1));
                 if (!betweenFloors) continue;
 
                 // A wall with floor on both sides is a passage waiting to happen.
@@ -1255,7 +1272,16 @@ class Architect {
                         secretRejected++;
                         continue;
                     }
+                    // Two doors side by side read as a generation slip, and the
+                    // hidden one is redundant when the visible one already goes
+                    // through. Only the secret path is gated: a pushable wall next
+                    // to a door is unremarkable.
+                    if (doorNear(wall.x, wall.y)) {
+                        secretRejected++;
+                        continue;
+                    }
                     this.pendingSecretDoorSpawns.push({ x: wall.x, y: wall.y });
+                    doorSet.add(`${wall.x},${wall.y}`);
                     secretConverted++;
                 } else {
                     // Same test, and for the same reason: a pushable wall you can
@@ -4533,34 +4559,68 @@ class Architect {
         return tips[Math.floor(ROT.RNG.getUniform() * tips.length)];
     }
 
-    _dungeonFixDeadEnds(dungeonGrid, mapW, mapH) {
+    /**
+     * Turn blind corridor ends into findable shortcuts: the wall at the tip of a
+     * dead end, with open space directly behind it, becomes a secret door.
+     *
+     * The door has to be ONE tile thick. Searching out a hidden door and finding
+     * bare rock behind it is the worst outcome this pass can produce, so the test
+     * is that the cell straddles two open spaces along its own axis — dead end on
+     * one side, floor on the other, nothing in between. An earlier version scanned
+     * 2-3 tiles past the wall for floor and punched the door at distance 1, which
+     * placed a door with rock behind it whenever the run of wall was thicker than
+     * one tile: 12.8% of the doors it produced opened onto nothing.
+     *
+     * A door already standing next to the candidate disqualifies it too. Two doors
+     * side by side in the same wall read as a mistake rather than a secret, and the
+     * hidden one is pointless anyway — the visible door beside it already goes
+     * through.
+     */
+    _dungeonFixDeadEnds(dungeonGrid, mapW, mapH, existingDoors = null) {
         const cardinals = [[0, -1], [0, 1], [-1, 0], [1, 0]];
         const secretWalls = [];
+        const taken = new Set();
+
+        const inBounds = (px, py) => px >= 0 && py >= 0 && px < mapW && py < mapH;
+        const isOpen = (px, py) => inBounds(px, py) && dungeonGrid[py][px] >= 1;
+        // A door cell (grid value 2) beside the candidate, or one already chosen by
+        // an earlier dead end in this same pass.
+        const doorNear = (px, py) => {
+            for (let ny = py - 1; ny <= py + 1; ny++) {
+                for (let nx = px - 1; nx <= px + 1; nx++) {
+                    if (nx === px && ny === py) continue;
+                    if (!inBounds(nx, ny)) continue;
+                    if (dungeonGrid[ny][nx] === 2) return true;
+                    if (taken.has(`${nx},${ny}`)) return true;
+                    if (existingDoors && existingDoors.has(`${nx},${ny}`)) return true;
+                }
+            }
+            return false;
+        };
 
         for (let y = 1; y < mapH - 1; y++) {
             for (let x = 1; x < mapW - 1; x++) {
                 if (dungeonGrid[y][x] < 1) continue;
                 let floorNeighbors = 0;
                 for (const [dx, dy] of cardinals) {
-                    if (dungeonGrid[y + dy][x + dx] >= 1) floorNeighbors++;
+                    if (isOpen(x + dx, y + dy)) floorNeighbors++;
                 }
                 if (floorNeighbors !== 1) continue;
 
-                // Dead end found — look for a room/corridor through a wall
+                // Dead end found — look for open space one wall away.
                 for (const [dx, dy] of cardinals) {
-                    if (dungeonGrid[y + dy][x + dx] >= 1) continue; // skip the open side
+                    if (isOpen(x + dx, y + dy)) continue;     // skip the open side
                     const wallX = x + dx, wallY = y + dy;
                     if (wallX < 1 || wallX >= mapW - 1 || wallY < 1 || wallY >= mapH - 1) continue;
-                    // Check 1-3 tiles beyond the wall for floor
-                    for (let dist = 2; dist <= 3; dist++) {
-                        const beyondX = x + dx * dist, beyondY = y + dy * dist;
-                        if (beyondX < 0 || beyondX >= mapW || beyondY < 0 || beyondY >= mapH) break;
-                        if (dungeonGrid[beyondY][beyondX] >= 1) {
-                            secretWalls.push({ x: wallX, y: wallY });
-                            break;
-                        }
-                    }
-                    if (secretWalls.length > 0 && secretWalls[secretWalls.length - 1].x === wallX && secretWalls[secretWalls.length - 1].y === wallY) break;
+                    if (taken.has(`${wallX},${wallY}`)) continue;
+                    // One tile thick, and open on the far side. Both halves matter:
+                    // without the second the door leads into rock.
+                    if (!isOpen(x + dx * 2, y + dy * 2)) continue;
+                    if (doorNear(wallX, wallY)) continue;
+
+                    secretWalls.push({ x: wallX, y: wallY });
+                    taken.add(`${wallX},${wallY}`);
+                    break;
                 }
             }
         }
