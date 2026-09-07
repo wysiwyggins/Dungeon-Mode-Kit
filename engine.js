@@ -7210,6 +7210,7 @@ class Actor extends Entity {
         }
 
         if (stateData.tint) this._repaintStateTint();
+        if (stateData.effect) this._refreshStateEffect();
 
         return true;
     }
@@ -7232,6 +7233,62 @@ class Actor extends Entity {
         if (this.spriteBase) this.spriteBase.tint = tint;
         if (this.spriteTop) this.spriteTop.tint = tint;
         if (this.spriteSide) this.spriteSide.tint = tint;
+    }
+
+    /**
+     * The visual effect this actor's sprites should be running right now.
+     *
+     * A state's `effect` outranks the actor's own, so a burning torch reads as
+     * burning rather than flickering, and the actor's effect returns when the
+     * state lapses. Latest applied state wins if several declare one — same
+     * "most recent thing that happened to you" rule the messages follow.
+     * @returns {string|null}
+     */
+    getActiveEffect() {
+        const states = Object.values(this.states);
+        for (let i = states.length - 1; i >= 0; i--) {
+            if (states[i].data?.effect) return states[i].data.effect;
+        }
+        return this.effect ?? null;
+    }
+
+    /**
+     * Drive this actor's sprites to whatever getActiveEffect() now names.
+     *
+     * Handles are tracked per sprite so a re-applied state doesn't stack a
+     * second copy of the same primitive on the same sprite — the leak that
+     * makes a flicker visibly speed up. Cheap to call: a no-op when the
+     * effect hasn't actually changed.
+     */
+    _refreshStateEffect() {
+        const runner = this.engine?.renderer?.effectRunner;
+        if (!runner) return;
+
+        const wanted = this.getActiveEffect();
+        if (wanted === this._activeEffectName) return;
+
+        // Handles applied at sprite-creation time aren't in this list, so a state
+        // effect that started there is torn down by destroying the sprite, not
+        // here. Only what this method started is this method's to remove.
+        for (const handle of this._effectHandles ?? []) runner.remove(handle);
+        this._effectHandles = [];
+        this._activeEffectName = wanted;
+
+        if (!wanted) {
+            // Nothing running now, so the sprites keep the last tint the
+            // departing effect wrote. Put the actor's own colour back.
+            this._repaintStateTint();
+            return;
+        }
+
+        // Flicker around the tint the actor is actually wearing, not its own:
+        // a state that sets both `tint` and `effect` means the state colour to
+        // be the thing that pulses. tint_flicker rewrites the tint every frame,
+        // so passing this.tint here would silently discard the state's.
+        const baseTint = this.engine.renderer.getEffectiveTint?.(this) ?? this.tint;
+        for (const sprite of [this.spriteBase, this.spriteTop, this.spriteSide]) {
+            if (sprite) this._effectHandles.push(runner.apply(wanted, sprite, { baseTint }));
+        }
     }
 
     /**
@@ -7337,6 +7394,10 @@ class Actor extends Entity {
         // longer see this state, or the sprite keeps the color of the state that just
         // ended. Any other tinting state still running is folded back in.
         if (state.data.tint) this._repaintStateTint();
+
+        // Also after the delete: getActiveEffect() must no longer see this state,
+        // or the actor keeps running the effect that just ended.
+        if (state.data.effect) this._refreshStateEffect();
 
         // Telepathy ending: refresh the view so enemies revealed through walls/
         // darkness (and ghosted invisible ones) are re-hidden now that the sense is
@@ -15243,8 +15304,10 @@ class RenderSystem {
                 animSprite.zIndex = zIndex;
                 animSprite.tint = actor.getDisplayTint?.() ?? actor.tint;
 
-                if (actor.effect) {
-                    this.effectRunner.apply(actor.effect, animSprite, { baseTint: actor.tint });
+                const animEffect = actor.getActiveEffect?.() ?? actor.effect;
+                if (animEffect) {
+                    this.effectRunner.apply(animEffect, animSprite,
+                        { baseTint: this.getEffectiveTint(actor) ?? actor.tint });
                 }
 
                 this.entityContainer.addChild(animSprite);
@@ -15280,8 +15343,13 @@ class RenderSystem {
                 sprite.y = y;
             }
 
-            if (actor.effect) {
-                this.effectRunner.apply(actor.effect, sprite, { baseTint: actor.tint });
+            // Asks the actor rather than reading actor.effect directly: a sprite
+            // rebuilt while a state with an `effect` is running (floor transition,
+            // disguise swap) must come back still running it.
+            const spriteEffect = actor.getActiveEffect?.() ?? actor.effect;
+            if (spriteEffect) {
+                this.effectRunner.apply(spriteEffect, sprite,
+                    { baseTint: this.getEffectiveTint(actor) ?? actor.tint });
             }
 
             this.entityContainer.addChild(sprite);

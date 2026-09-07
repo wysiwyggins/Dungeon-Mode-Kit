@@ -338,6 +338,7 @@ While active, the holder behaves as if it had the attribute.
 | ---------- | ------ | ------------- |
 | `name` | string | Display name, used in the sidebar and damage messages. |
 | `tint` | string | Hex color washed over the holder's sprite while active. |
+| `effect` | string | Visual effect from `data/effects.json` run on the holder's sprites while active (`"flicker_tint"`). Outranks the actor's own `effect`, which resumes when the state ends. If several active states name one, the most recent wins. |
 | `effect_description` | string | Second-person flavor line ("Your stomach churns"). |
 | `attached_actor` | string | Actor spawned and kept on the holder's tile for the duration (`burning` → `fire`). Follows the holder and is removed with the state. |
 | `on_apply_message` / `on_remove_message` | string | Shown on start/end. `[actor_name]` resolves to the holder. |

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **States can declare a visual effect.** A state now takes an `effect` naming anything in `data/effects.json`, the same one-field change actors and items already had; pac's `impervious` uses it, so the power pill pulses instead of only tinting. A state's effect outranks the actor's own and the actor's resumes when it lapses, so a flickering torch that catches fire reads as burning and goes back to flickering. It flickers around the state's `tint` rather than the actor's, since a state that sets both means the state colour to be the thing that pulses.
 - **`data/animations.json` — animated sprites are data now.** Adding one was seven hardcoded lists across `engine.js` and the actor editor; it's now a PNG and a line of JSON, and the editor dropdowns build themselves from the file. That means prototypes could have their own specific animations too.
 - **`default_floor` prototype setting** — the floor tile generators use, plus an optional tint, overridable per floor. Generated areas only.
 - **Tile sprites honour a per-tile `tint`.** Lives in the serialized `floorMap`, so it survives floor transitions. Floor is the one layer where this is stable — lighting rewrites background and overlay tints each frame.
