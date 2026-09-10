@@ -1,25 +1,4 @@
 {
-  "_comment": [
-    "Player-facing phrasing for actor attributes, used by the actor info panel.",
-    "",
-    "An attribute appears in the panel's trait sentence ONLY if it is listed here, so",
-    "engine plumbing (paint_tile, render_layer, deferred, ...) stays invisible by",
-    "default and nothing leaks just because it was added to an actor. Adding a new",
-    "attribute needs no engine change: give it an entry and it starts describing",
-    "itself; leave it out and it stays silent.",
-    "",
-    "Each entry is one of:",
-    "  \"phrase\"                     — shown when the attribute is truthy",
-    "  { \"true\": ..., \"false\": ... } — shown for either state (omit a side to stay",
-    "                                  silent for it; `false` also covers absent)",
-    "",
-    "Phrases are verb phrases with no subject and no trailing period. The panel",
-    "supplies the subject and joins them: \"The skeleton flies and sees in the dark.\"",
-    "Keep them short — several may share one sentence.",
-    "",
-    "Order here is the order they read in the panel, so group related traits."
-  ],
-
   "flies": "flies",
   "aquatic": "cannot leave the water",
   "spreads": "spreads to nearby tiles",

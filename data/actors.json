@@ -977,8 +977,7 @@
     "type": "terrain",
     "name": "bone_wall",
     "tileIndexBase": "BONE_WALL",
-    "tileIndexTop": "BONE_WALL",
-    "tileIndexSide": "WHITE_LIGHT_SHADE",
+    "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
     "sideOffset": {
       "dx": 0,
       "dy": -1
