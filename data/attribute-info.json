@@ -31,7 +31,7 @@
   "hostile": { "true": "means you harm" },
   "sentient": { "false": "acts on instinct alone" },
 
-  "flammable": { "true": "burns easily", "false": "does not burn" },
+  "flammable": { "false": "does not burn" },
   "hazard_immune": "is unharmed by hazards",
   "gas_immune": "is unaffected by gasses",
   "conductive": "conducts electricity",

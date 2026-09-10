@@ -261,7 +261,7 @@
   "kobold": {
     "type": "humanoid",
     "name": "kobold",
-    "description": "A small humanoid with a stooped back, face hidden beneath a ragged hood.",
+    "description": "A small humanoid with a stooped back and a hairy, scaly face like an armadillo.",
     "tileIndexBase": "LEG",
     "tileIndexTop": "WHITE_HUNTING_ANIMAL_FACE",
     "tint": "#FFBB55",
@@ -985,7 +985,7 @@
     },
     "attributes": {
       "breakable": true,
-      "paint_tile": "WALL_TOP"
+      "paint_tile": "BONE_WALL"
     }
   },
   "fortification": {
