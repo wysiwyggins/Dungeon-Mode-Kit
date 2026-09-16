@@ -99,7 +99,7 @@
             "scale": 0.6801,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": 799.8823702396706,
+                "x": 799.8823702396705,
                 "y": 599.911777679753
             }
         },
@@ -116,11 +116,11 @@
                 3,
                 8
             ],
-            "scale": 0.6078,
+            "scale": 1.8556,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": 839.0918065153011,
-                "y": 722.2770648239552
+                "x": 858.4824315585255,
+                "y": 751.2394912696702
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/pac/map.tmj": {
@@ -140,11 +140,11 @@
                 3,
                 8
             ],
-            "scale": 0.5154,
+            "scale": 0.2538,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": 1600.6984866123403,
-                "y": 1199.0686845168802
+                "x": 1997.6359338061463,
+                "y": 969.2671394799053
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/2.tmj": {
@@ -189,9 +189,9 @@
         },
         "tower.tmj": {
             "scale": 0.5311,
-            "selectedLayer": 2,
+            "selectedLayer": 4,
             "viewCenter": {
-                "x": 419.8832611560911,
+                "x": 419.88326115609107,
                 "y": 498.9644134814536
             }
         },
@@ -204,11 +204,11 @@
             }
         }
     },
-    "map.height": 30,
+    "map.height": 4,
     "map.lastUsedFormat": "json",
     "map.tileHeight": 30,
     "map.tileWidth": 40,
-    "map.width": 20,
+    "map.width": 4,
     "openFiles": [
         "tower.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/map.tmj",

@@ -32,6 +32,23 @@
       ]
   },
 
+  "aquatic": {
+    "name": "aquatic",
+    "domain": "actor",
+    "description": "Lurker in the depths, helpless on land.",
+    "attributes": {
+      "solid": true,
+      "sentient": true,
+      "flammable": true,
+      "hostile": true,
+      "opaque": false,
+      "inventory": 0,
+      "aquatic": true,
+      "conceals_when_submerged": true,
+      "gas_immune": true
+    }
+  },
+
   "undead": {
     "name": "undead",
     "domain": "actor",

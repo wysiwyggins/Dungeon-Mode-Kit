@@ -18,10 +18,9 @@
 
 ## Feature ideas
 
-## Renaming/semantic remapping of generator and biomes
+## Incense item
 
-- `caverns` and `depths` biomes aren't actually that distinct from one another. Map out what all the actual strata are and create/name approprate biomes for the Dungeon prototype. (On inspection they're less alike than they look: `caves` weights cavern rooms with water/sewage and a high secret-door rate, `depths` shifts to geometric rooms and adds abyss blobs, collapsing floors and lava. The restratification is still worth doing.)
-- need an ossuary biome, which would need some nice new skull wall actors and that suggests:
+- incense, lights like a torch, generates mist that repels/harms undead actors. can be lit and dropped in an area to keep a room clear of undead for a while. Should be a reusable pattern where we can specify an actor type that is harmed or repelled. For the actor use a capitol I base tile and a cloud animated top tile
 
 ## Specifying enclosed items in Tiled
 

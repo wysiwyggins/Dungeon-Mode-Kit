@@ -444,6 +444,7 @@
   },
   "eel": {
     "name": "eel",
+    "type": "aquatic",
     "tileIndexBase": "LEO",
     "tileIndexTop": "BLANK",
     "personality": "aquatic_predator",
@@ -453,12 +454,6 @@
       "health": -4
     },
     "attributes": {
-      "flammable": true,
-      "hostile": true,
-      "sentient": true,
-      "aquatic": true,
-      "conceals_when_submerged": true,
-      "gas_immune": true,
       "accuracy": 55,
       "defense": 4
     },
@@ -1668,7 +1663,7 @@
     "tileIndexTop": "BLANK",
     "animated": true,
     "animation_frames": "smoke",
-    "tint": "#AACC66",
+    "tint": "#AACC33",
     "personality": "cloud",
     "attributes": {
       "flies": true,

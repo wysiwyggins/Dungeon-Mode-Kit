@@ -1590,12 +1590,10 @@ class DungeonEngine {
     }
 
     /**
-     * Would a lighting change at (x, y) plausibly affect what's rendered right now?
-     * Only meaningful on viewport (multi-screen) levels, where most of the map is
-     * off-screen: a change well outside the current section — beyond a light-bleed
+     * A change well outside the current section — beyond a light-bleed
      * margin (max sane light radius) — can't influence any visible tile, so its
      * recompute is skipped. On single-screen levels the whole map is on-screen, so
-     * this always returns true (the coalescer alone bounds the cost there).
+     * this always returns true.
      */
     _lightingEventRelevant(x, y) {
         if (!this.viewportEnabled) return true;
@@ -1611,7 +1609,7 @@ class DungeonEngine {
      * Used by the "blinded" state to create visual darkness on bright levels.
      */
     enableRuntimeDarkness() {
-        if (this.lightingManager) return; // Already has darkness (dark level or already enabled)
+        if (this.lightingManager) return;
 
         this._runtimeDarknessActive = true;
 
