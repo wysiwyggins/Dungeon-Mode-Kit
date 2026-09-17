@@ -433,9 +433,21 @@ Actors can carry and equip items. The four equipment slots are:
 
 Items listed in `default_items` are added to the actor's inventory on spawn. Weapons auto-equip if the slot is empty. Wearable items auto-equip if stat requirements are met.
 
+An entry may be an item id (`"torch"`) **or an item type** (`"potion"`), in which case a
+random member of that type is rolled per spawn — which is how the `arcane` type starts its
+casters with something to read and something to drink.
+
+`default_items` **ignores the `inventory` capacity attribute**: that attribute governs what an
+actor can pick up or be looted for at runtime, not what it can start holding. This is why a
+`pedestal` or a `chest` holds an item without declaring an `inventory` at all.
+
+A single placement's loadout can be overridden from Tiled with a `default_items` custom
+property on the actor object — see
+[MAP.md](MAP.md#per-object-property-overrides-actors-layer).
+
 ## Interaction Attributes
 
-### Doors
+### Doors & Containers
 
 | Attribute | Type | Description |
 | ----------- | ------ | ------------- |
@@ -445,6 +457,28 @@ Items listed in `default_items` are added to the actor's inventory on spawn. Wea
 | `color_locked` | boolean | Requires a key matching `lock_color` |
 | `lock_color` | string | Color name of the lock (`"red"`, `"blue"`, etc.) |
 | `random_color` | boolean | Assign a random lock color on spawn |
+| `container` | boolean | This openable is furniture, not a doorway — see below |
+| `trap_chance` | number | Percent chance a container is trapped instead of holding loot |
+| `smash_loss` | number | Percent chance *per item* that contents are destroyed when it's broken open |
+
+**Containers.** A chest is an ordinary `openable` plus `container: true`. Opening one is the
+whole mechanism: `open()` sets `solid: false`, and stepping onto a non-solid actor already
+transfers its inventory to you, so bumping a chest lifts the lid and the next step in takes
+what's inside. Your pack capacity applies, so a full pack leaves the rest in the chest.
+
+`container` exists because `openable` alone reads as *door* in two places that reason about
+doorways: auto-routing treats an unlocked door as passable (it bumps it open and walks
+through), and room-mouth detection counts a door tile as an entryway. A chest is neither, so
+containers are excluded from both. It also marks a thing as worth a Tab-stop and an info
+panel, and makes it a valid machine target — which is why the `pedestal` uses it too.
+
+Contents come from `default_items`, or from a weighted `drops` table rolled once at spawn.
+**Authored contents win outright** — they suppress both the roll and the trap, so a chest a
+designer filled always yields what they put in it. A trapped container holds nothing and
+spends its trap payload (the same `trap_*` keys floor traps use) on whoever opens it.
+
+Don't give a container `swings_shut` — the lid would close as you stepped away, before you
+could take anything.
 
 ### Physics
 
@@ -955,6 +989,35 @@ An actor with no `health` stat reports that it cannot be harmed; one whose
   "tileIndexTop_open": "DOOR_OPEN_TOP",
   "random_color": true,
   "attributes": { "openable": true, "color_locked": true, "open": false, "locked": true }
+}
+
+// Chest — bump to open, step in to take. Conceals its contents, unlike a pedestal.
+"chest": {
+  "name": "chest",
+  "description": "A stout wooden chest. No telling what is inside until the lid is up.",
+  "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
+  "tileIndexTop": "UNDERSCORE",
+  "tileIndexBase_open": "OPAQUE_DOOR_BOTTOM",
+  "tileIndexTop_open": "PRISON_WINDOW",
+  "tint": "#8A6233",
+  "stats": { "health": 10 },
+  "attributes": {
+    "solid": true,
+    "openable": true,
+    "container": true,
+    "open": false,
+    "breakable": true,
+    "drops": [
+      { "item": "potion", "weight": 28 },
+      { "item": "scroll", "weight": 22 },
+      { "item": "staff", "weight": 7 }
+    ],
+    "trap_chance": 12,
+    "smash_loss": 50
+  },
+  "trap_spawn": "cloud",
+  "trap_apply_state": "paralyzed",
+  "trap_message": "A needle springs from the lock!"
 }
 
 // Fire — non-solid, doesn't re-ignite itself, lights its surroundings

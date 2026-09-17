@@ -93,6 +93,16 @@ By default an actor object inherits everything from its type definition in `data
 
 The pedestal's `display_inventory` attribute renders whatever it holds on top of it, so a pedestal with `default_items` = `["crown"]` displays and guards a crown instead of a key. This override applies before the item is created, so key/door color pairing still resolves correctly.
 
+The same property fills any container. A `chest` placed as an object and given
+`default_items` = `crown` holds a crown instead of rolling its own `drops` table — authored
+contents win, and they also suppress the chest's trap chance, so a chest you filled
+deliberately always yields what you put in it. Unlike the pedestal a chest conceals what it
+holds, so nothing shows on the map until it's opened.
+
+Note this only works for an actor placed as an **object**. An actor painted on the
+`wildcards` layer has no per-tile property surface, so it can't carry an override — give it a
+`drops` table in `actors.json` instead.
+
 ---
 
 ## Wildcard Tiles (Generative Fills)

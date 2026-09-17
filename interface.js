@@ -4121,7 +4121,7 @@ class InterfaceManager {
         }
 
         if (adjacentDoors.length === 0) {
-            this.engine.inputManager?.showMessage('There are no doors here to spike.');
+            this.engine.inputManager?.showMessage('There is nothing here to spike.');
             return;
         }
 

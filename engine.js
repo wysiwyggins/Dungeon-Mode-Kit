@@ -808,6 +808,7 @@ function getNextPathStep(fromX, fromY, toX, toY, isPassable, options = {}) {
 function isOpenableDoorTile(solid) {
     return !!solid &&
            solid.hasAttribute?.('openable') &&
+           !solid.hasAttribute('container') &&
            !solid.hasAttribute('hidden') &&
            !solid.hasAttribute('open') &&
            !solid.hasAttribute('locked') &&
@@ -5757,7 +5758,13 @@ class Actor extends Entity {
      * Called after actor is spawned and prototype is available
      */
     loadDefaultItems() {
-        if (!this.defaultItems.length) return;
+        if (!this.defaultItems.length) {
+            // A container with no authored loadout still rolls its `drops` table —
+            // folded in here because every spawn path already calls this, so a new
+            // one can't forget to fill a chest.
+            this.rollContainerContents();
+            return;
+        }
 
         for (const itemType of this.defaultItems) {
             const itemData = this.engine.currentPrototype?.getItemData(itemType);
@@ -5811,7 +5818,11 @@ class Actor extends Entity {
         }
     }
 
-    open() {
+    /**
+     * @param {Actor|null} opener - who opened it. Only used by a trapped container, so
+     *   the trap's `trap_apply_state` lands on whoever lifted the lid.
+     */
+    open(opener = null) {
         if (!this.hasAttribute('openable')) return;
         if (this.hasAttribute('locked')) {
             console.log(`${this.name} is locked`);
@@ -5828,6 +5839,14 @@ class Actor extends Entity {
         this.playSound('plunk3');
         console.log(`${this.name} opened`);
         this.engine.inputManager?.showMessage(`${this.getNameWithArticle(true)} opens.`, { x: this.x, y: this.y });
+
+        // A trapped container spends its trap on the opener instead of yielding loot.
+        // `_trapArmed` is set at spawn (see rollContainerContents), so an untrapped
+        // chest — or any door — never reaches this path.
+        if (this._trapArmed) {
+            this._trapArmed = false;
+            springTrapPayload(this, opener);
+        }
     }
 
     close(silent = false) {
@@ -6017,7 +6036,7 @@ class Actor extends Entity {
             const radius = this.data?.switch_radius || 10;
             targets = this.engine.entityManager.actors.filter(a => {
                 if (a === this || a.isDead) return false;
-                if (!a.hasAttribute('gate') && !a.hasAttribute('pedestal') && !a.hasAttribute('switchable')) return false;
+                if (!a.hasAttribute('gate') && !a.hasAttribute('container') && !a.hasAttribute('switchable')) return false;
                 const dist = Math.abs(a.x - this.x) + Math.abs(a.y - this.y);
                 return dist <= radius;
             });
@@ -6354,6 +6373,64 @@ class Actor extends Entity {
      * Independent of `lode`, which stays the single-item percentage drop it was.
      * @returns {boolean} True if something was spawned
      */
+    /**
+     * Pick one row from this actor's `drops` table by weight, or null for the
+     * "nothing" outcome (a row with no `item`) / no usable table.
+     *
+     * Split out of `_rollDrops` so a container can roll the same authored table at
+     * spawn and keep the result in its inventory, rather than spawning it on the floor.
+     */
+    _pickDropsRow() {
+        const table = this.getAttribute('drops');
+        if (!Array.isArray(table) || table.length === 0) return null;
+
+        const weightOf = (row) => (typeof row?.weight === 'number' ? row.weight : 1);
+        const total = table.reduce((sum, row) => sum + Math.max(0, weightOf(row)), 0);
+        if (total <= 0) return null;
+
+        let roll = ROT.RNG.getUniform() * total;
+        for (const row of table) {
+            roll -= Math.max(0, weightOf(row));
+            if (roll < 0) return row?.item ? row : null;
+        }
+        return null;
+    }
+
+    /**
+     * Fill a `container` at spawn. Called once, after `loadDefaultItems`, so an
+     * authored `default_items` (including a Tiled per-placement override) always wins
+     * and `drops` is only the fallback — a designer's chest holds exactly what they
+     * said, a generated one rolls.
+     *
+     * Authored contents win outright — they suppress both the `drops` roll and the
+     * trap, so a chest someone deliberately filled always yields what they put in it.
+     * That matters for the generated vault, whose prize is placed this way: a trap
+     * there would make the room's guaranteed reward unreachable.
+     *
+     * Otherwise `trap_chance` rolls first and short-circuits the loot: a trapped chest
+     * holds nothing and spends its payload on whoever opens it (see `open`).
+     */
+    rollContainerContents() {
+        if (!this.hasAttribute('container')) return;
+        if (this.inventory.length > 0) return;  // authored contents win
+
+        const trapChance = this.getAttribute('trap_chance') || 0;
+        if (trapChance > 0 && ROT.RNG.getPercentage() <= trapChance) {
+            this._trapArmed = true;
+            return;
+        }
+
+        const row = this._pickDropsRow();
+        if (!row) return;
+
+        const itemData = this.engine.currentPrototype?.getItemData(row.item);
+        if (!itemData) return;  // an entity id (e.g. "skull") isn't holdable — skip
+
+        const item = new Item(-1, -1, itemData.id || row.item, itemData, this.engine);
+        item.owner = this;
+        this.inventory.push(item);
+    }
+
     _rollDrops() {
         const table = this.getAttribute('drops');
         if (!Array.isArray(table) || table.length === 0) return false;
@@ -6452,6 +6529,29 @@ class Actor extends Entity {
         const deathSound = this.getAttribute('death_sound');
         if (deathSound) {
             this.engine.playSound?.(deathSound);
+        }
+
+        // Smashing a container costs it some of what it held: each item rolls
+        // `smash_loss` independently, so a big haul usually loses part of itself and a
+        // small one sometimes survives whole. Breaking in is a real alternative to the
+        // key, not a free one — and a locked chest with a lost key is never a dead end.
+        if (this.hasAttribute('container') && this.inventory.length > 0) {
+            const lossChance = this.getAttribute('smash_loss') || 0;
+            if (lossChance > 0) {
+                const held = this.inventory.length;
+                this.inventory = this.inventory.filter(
+                    () => ROT.RNG.getPercentage() > lossChance
+                );
+                if (this.inventory.length === 0) {
+                    this.engine.inputManager?.showMessage(
+                        'Whatever was within was destroyed!', { x: this.x, y: this.y }
+                    );
+                } else if (this.inventory.length < held) {
+                    this.engine.inputManager?.showMessage(
+                        'Some of the contents are ruined.', { x: this.x, y: this.y }
+                    );
+                }
+            }
         }
 
         // Drop items (if not already dropped by fall())
@@ -10224,7 +10324,7 @@ class Actor extends Entity {
     _unlockTarget(target, key, value, source) {
         target.setAttribute(key, value);
         this.engine.playSound?.('lock');
-        target.open();
+        target.open(this);
         this.engine.updateLighting();
 
         if (this.isPlayerControlled()) {
@@ -10794,7 +10894,7 @@ class Actor extends Entity {
                     // player's feedback; suppress the input layer's "bump into a wall".
                     return { moved: false, actionTaken: false, feedbackShown: true };
                 }
-                actorAtTarget.open();
+                actorAtTarget.open(this);
                 this.engine.updateLighting();
                 // `opened` lets auto-walk/explore know this "didn't move" was just a
                 // door swinging open, so they retry the same step (and pass through)
@@ -12126,7 +12226,7 @@ class EntityManager {
                 const radius = actor.data?.switch_radius || 10;
                 targets = this.actors.filter(a => {
                     if (a === actor || a.isDead) return false;
-                    if (!a.hasAttribute('gate') && !a.hasAttribute('pedestal') && !a.hasAttribute('switchable')) return false;
+                    if (!a.hasAttribute('gate') && !a.hasAttribute('container') && !a.hasAttribute('switchable')) return false;
                     const dist = Math.abs(a.x - actor.x) + Math.abs(a.y - actor.y);
                     return dist <= radius;
                 });
@@ -12965,9 +13065,26 @@ class EntityManager {
         if (lootCandidates.length > 0 && roomTiles.length > 0) {
             const [lootType, lootData] = lootCandidates[Math.floor(ROT.RNG.getUniform() * lootCandidates.length)];
             const lootPos = roomTiles[Math.floor(ROT.RNG.getUniform() * roomTiles.length)];
-            const loot = new Item(lootPos.x, lootPos.y, lootType, lootData, this.engine);
-            this.addEntity(loot);
-            console.log(`Treasure room: ${lootType} at (${lootPos.x}, ${lootPos.y})`);
+
+            // Put the prize in a chest rather than loose on the floor. The vault's own
+            // locked door already gates the room, so the chest stays unlocked — it's a
+            // second beat, not a second lock. If the prototype has no chest actor, fall
+            // back to the bare item so a prototype without one still gets its loot.
+            const chestData = prototype.getActorData('chest');
+            if (chestData) {
+                const chest = new Actor(lootPos.x, lootPos.y, 'chest', chestData, this.engine);
+                this.addEntity(chest);
+                // Hand it the rolled prize directly: `defaultItems` is read by
+                // loadDefaultItems, which then skips the `drops` roll, so the vault
+                // decides the contents instead of the chest's own table.
+                chest.defaultItems = [lootType];
+                chest.loadDefaultItems();
+                console.log(`Treasure room: chest holding ${lootType} at (${lootPos.x}, ${lootPos.y})`);
+            } else {
+                const loot = new Item(lootPos.x, lootPos.y, lootType, lootData, this.engine);
+                this.addEntity(loot);
+                console.log(`Treasure room: ${lootType} at (${lootPos.x}, ${lootPos.y})`);
+            }
         } else {
             console.warn('Treasure room: no weapon/staff candidates found for loot');
         }
@@ -13433,7 +13550,7 @@ class EntityManager {
      */
     isEntrywayTile(x, y) {
         if (!(this.engine.mapManager.floorMap[y]?.[x]?.tileId > 0)) return false;
-        if (this.getActorsAt(x, y).some(a => a.hasAttribute?.('openable'))) return true;
+        if (this.getActorsAt(x, y).some(a => a.hasAttribute?.('openable') && !a.hasAttribute?.('container'))) return true;
         return this._walkableCardinalCount(x, y) <= 2;
     }
 

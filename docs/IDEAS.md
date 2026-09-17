@@ -22,9 +22,9 @@
 
 - incense, lights like a torch, generates mist that repels/harms undead actors. can be lit and dropped in an area to keep a room clear of undead for a while. Should be a reusable pattern where we can specify an actor type that is harmed or repelled. For the actor use a capitol I base tile and a cloud animated top tile
 
-## Specifying enclosed items in Tiled
+## ~~Specifying enclosed items in Tiled~~
 
-- It's not clear to a designer how, in the "test" prototype, the key to the locked door was placed on the pedestal, it isn't specified either in the pedestal object in Tiled or in the prototype. Designers working on an authored map should be able to specify an item in the default_items property of an actor object in order to give that object to the actor (such as a pedestal, grave). This currently works for actors like monsters with inventory, we just need to use inventory in the object holding of container actors.
+- ~~Designers working on an authored map should be able to specify an item in the default_items property of an actor object in order to give that object to the actor (such as a pedestal, grave).~~ Already worked. A `default_items` custom property on any actor object overrides that placement's loadout, taking an item key, a comma-separated list or a JSON array, and keys resolve against the merged default + prototype item data — so a prototype-only item matches too. Documented at [MAP.md](MAP.md#per-object-property-overrides-actors-layer). What made it look absent is that the test prototype's pedestal takes its key from `data/actors.json` instead, and the lever only *releases* that key rather than adding it. Two real limits found while confirming this: an actor painted on the `wildcards` layer can't carry object properties at all, so a per-placement item needs object placement; and `display_inventory` renders only the first held item.
 
 ## Actor selectors in biome editor
 

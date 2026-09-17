@@ -173,7 +173,7 @@ function isTravelTarget(actor) {
     if (actor.hasAttribute('stairway')) return true;
     if (actor.hasAttribute('portal')) return true;
     if (actor.hasAttribute('switchable')) return true;      // levers, pressure plates
-    if (actor.hasAttribute('pedestal')) return true;        // displays an item
+    if (actor.hasAttribute('container')) return true;       // chests, pedestals
 
     // Creatures. `sentient` covers most (usually via a type), but not all: a turret
     // is hostile without a mind, and the sentries declare no attributes at all, so

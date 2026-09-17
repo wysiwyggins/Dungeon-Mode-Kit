@@ -14,7 +14,7 @@ This is the sequence inside `Actor.tryMove(newX, newY)` (`engine.js:~9055`), the
    d. **`applyCollisionEffects(target)`** — the bump-attack: rolls hit/miss, applies damage/effects. If it makes the target passable (e.g. killed, or a key unlocked a door) and not just-killed → **recurse** `tryMove` to move onto the freed tile.
    e. **Pausable** (clockwork) → toggle paused → return.
    f. **Switchable** → toggle → return.
-   g. **Openable & closed** → spiked? jammed; locked? rejected (`plunk3`); else open it → return.
+   g. **Openable & closed** → spiked? jammed; locked? rejected (`plunk3`); else open it → return. A `container` (chest) opens the same way, but because opening sets `solid: false` the *next* step onto its tile is what takes the contents — and if it was trapped, the payload fires on the opener here instead.
    h. **`collision_description`** (and no `collision_effect`) → show flavor text → return.
    i. Otherwise → "blocks your way" → return `{moved:false, actionTaken: attackAttempted}`.
    **The solid branch never falls through to movement** — bumping a solid actor is an action in itself.

@@ -1083,7 +1083,9 @@
       "light_source": true,
       "remains": "rubble",
       "ornament": true,
-      "paint_tile": "TORCH_ON_WALL"
+      "paint_tile": "TORCH_ON_WALL",
+      "lode_chance": 50,
+      "lode": "thaler"
     }
   },
   "pushable_wall": {
@@ -1125,6 +1127,77 @@
       "open": false,
       "locked": true
     }
+  },
+  "chest": {
+    "name": "chest",
+    "description": "A stout wooden chest. No telling what is inside until the lid is up.",
+    "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
+    "tileIndexTop": "UNDERSCORE",
+    "tileIndexBase_open": "OPAQUE_DOOR_BOTTOM",
+    "tileIndexTop_open": "PRISON_WINDOW",
+    "tint": "#8A6233",
+    "attributes": {
+      "solid": true,
+      "openable": true,
+      "container": true,
+      "open": false,
+      "flammable": true,
+      "breakable": true,
+      "drops": [
+        { "item": "potion", "weight": 28 },
+        { "item": "scroll", "weight": 22 },
+        { "item": "gold_nugget", "weight": 15 },
+        { "item": "weapon", "weight": 12 },
+        { "item": "armor", "weight": 10 },
+        { "item": "staff", "weight": 7 },
+        { "item": "ring", "weight": 6 }
+      ],
+      "trap_chance": 12,
+      "smash_loss": 50,
+      "death_sound": "plunk3"
+    },
+    "stats": {
+      "health": 10
+    },
+    "collision_description": "The lid is shut.",
+    "trap_spawn": "cloud",
+    "trap_spawn_tint": "#AADDFF",
+    "trap_apply_state": "paralyzed",
+    "trap_message": "A needle springs from the lock!"
+  },
+  "locked_chest": {
+    "name": "chest",
+    "description": "A stout wooden chest, its lock set with a coloured stone.",
+    "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
+    "tileIndexTop": "UNDERSCORE",
+    "tileIndexBase_open": "OPAQUE_DOOR_BOTTOM",
+    "tileIndexTop_open": "PRISON_WINDOW",
+    "random_color": true,
+    "attributes": {
+      "solid": true,
+      "openable": true,
+      "container": true,
+      "open": false,
+      "locked": true,
+      "lockable": true,
+      "color_locked": true,
+      "flammable": true,
+      "breakable": true,
+      "drops": [
+        { "item": "staff", "weight": 28 },
+        { "item": "ring", "weight": 22 },
+        { "item": "weapon", "weight": 20 },
+        { "item": "armor", "weight": 15 },
+        { "item": "wand", "weight": 10 },
+        { "item": "gold_nugget", "weight": 5 }
+      ],
+      "smash_loss": 65,
+      "death_sound": "plunk3"
+    },
+    "stats": {
+      "health": 14
+    },
+    "collision_description": "[a-an] [color] lock holds the lid fast."
   },
   "door": {
     "name": "door",
@@ -1331,7 +1404,7 @@
     "attributes": {
       "paint_tile": "WHITE_DOOR_TOP",
       "solid": true,
-      "pedestal": true,
+      "container": true,
       "display_inventory": true
     },
     "default_items": [

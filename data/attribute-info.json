@@ -17,6 +17,7 @@
   "ignites": "sets fire to what it touches",
 
   "breakable": "can be broken apart",
+  "container": "holds something inside",
   "pushable": "can be pushed",
   "crushable": "can be crushed",
 

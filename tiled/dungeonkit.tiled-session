@@ -137,14 +137,14 @@
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/sewer/map.tmj": {
             "expandedObjectLayers": [
                 6,
-                3,
-                8
+                8,
+                3
             ],
             "scale": 0.2538,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": 1997.6359338061463,
-                "y": 969.2671394799053
+                "x": 1599.6847911741527,
+                "y": 1201.7336485421592
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/2.tmj": {

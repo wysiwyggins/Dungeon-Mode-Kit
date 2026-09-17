@@ -2,6 +2,103 @@
 // PERSONALITY SYSTEM
 // ============================================================================
 
+/**
+ * Spring a trap's payload: message, sound, and the spawned effect.
+ *
+ * Extracted from `trap_check_trigger` so the payload is reusable by anything that
+ * springs a trap, not just an actor standing on one. A trapped container calls this
+ * when its lid comes up, which is why `victim` is optional and `entityManager` is
+ * derived rather than passed — the caller may be `Actor.open()`, which has neither
+ * a personality data bag nor a tile-standing victim.
+ *
+ * Reads the same authored keys it always did (`trap_message`, `trap_effect`,
+ * `trap_spawn`, `trap_spawn_tint`, `trap_collision_effect`, `trap_apply_state`),
+ * so existing trap actors are untouched.
+ *
+ * @param {Actor} actor - the trap, or the container that was trapped
+ * @param {Actor|null} victim - who sprang it; receives `trap_apply_state` if present
+ * @param {Object} opts - overrides for `trap_sound` / `trap_cloud_lifetime`
+ */
+function springTrapPayload(actor, victim = null, opts = {}) {
+    const entityManager = actor.engine.entityManager;
+
+    // Show trap message
+    const trapMessage = actor.data?.trap_message || `A trap is sprung!`;
+    actor.engine.inputManager?.showMessage(trapMessage, { x: actor.x, y: actor.y });
+
+    // Play trap sound
+    actor.engine.playSound?.(opts.trap_sound ?? actor.data?.trap_sound ?? 'tap2');
+
+    // Spawn the trap effect - supports two formats:
+    // 1. trap_effect: { center, radius, outer } - spell-like area effect (like fireball)
+    // 2. trap_spawn: "actor_type" - simple single actor spawn
+    const trapEffect = actor.data?.trap_effect;
+    if (trapEffect) {
+        // Spell-like area effect
+        const { center, radius = 0, outer } = trapEffect;
+        const x = actor.x;
+        const y = actor.y;
+
+        // Spawn center actor
+        if (center) {
+            entityManager.spawnActor(center, x, y);
+        }
+
+        // Spawn actors in radius
+        if (radius > 0) {
+            const outerType = outer || center;
+            for (let dx = -radius; dx <= radius; dx++) {
+                for (let dy = -radius; dy <= radius; dy++) {
+                    if (dx === 0 && dy === 0) continue; // Skip center
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist <= radius) {
+                        entityManager.spawnActor(outerType, x + dx, y + dy);
+                    }
+                }
+            }
+        }
+    } else {
+        // Simple single actor spawn
+        const spawnType = actor.data?.trap_spawn;
+        if (spawnType) {
+            const spawnedActor = entityManager.spawnActor(spawnType, actor.x, actor.y);
+            if (spawnedActor) {
+                // Apply custom tint if specified
+                const trapTint = actor.data?.trap_spawn_tint;
+                if (trapTint) {
+                    spawnedActor.tint = trapTint;
+                    if (spawnedActor.spriteBase) spawnedActor.spriteBase.tint = PIXI.utils.string2hex(trapTint);
+                    if (spawnedActor.spriteTop) spawnedActor.spriteTop.tint = PIXI.utils.string2hex(trapTint);
+                }
+
+                // Apply custom collision effect if specified (for clouds)
+                const trapCollisionEffect = actor.data?.trap_collision_effect;
+                if (trapCollisionEffect) {
+                    spawnedActor.setAttribute('collision_effect', trapCollisionEffect);
+                }
+
+                // Apply state to apply if specified (for paralysis/confusion gas)
+                const trapApplyState = actor.data?.trap_apply_state;
+                if (trapApplyState) {
+                    spawnedActor.setAttribute('apply_state', trapApplyState);
+
+                    // Apply state immediately to the victim standing on the trap
+                    const statesData = actor.engine.globalStates;
+                    if (statesData?.[trapApplyState] && victim?.applyState) {
+                        victim.applyState(trapApplyState, statesData[trapApplyState]);
+                    }
+                }
+
+                // Mark as origin cloud so it spreads
+                spawnedActor.isCloudOrigin = true;
+                spawnedActor.cloudOriginX = actor.x;
+                spawnedActor.cloudOriginY = actor.y;
+                spawnedActor.cloudLifetime = opts.trap_cloud_lifetime ?? actor.data?.trap_cloud_lifetime ?? 8;
+            }
+        }
+    }
+}
+
 class Personality {
     constructor(data, actor) {
         this.name = data.name || 'default';
@@ -1923,81 +2020,7 @@ const BehaviorLibrary = {
             actor.engine.renderer?.createActorSprites(actor);
         }
 
-        // Show trap message
-        const trapMessage = actor.data?.trap_message || `A trap is sprung!`;
-        actor.engine.inputManager?.showMessage(trapMessage, { x: actor.x, y: actor.y });
-
-        // Play trap sound
-        actor.engine.playSound?.(data.trap_sound ?? 'tap2');
-
-        // Spawn the trap effect - supports two formats:
-        // 1. trap_effect: { center, radius, outer } - spell-like area effect (like fireball)
-        // 2. trap_spawn: "actor_type" - simple single actor spawn
-        const trapEffect = actor.data?.trap_effect;
-        if (trapEffect) {
-            // Spell-like area effect
-            const { center, radius = 0, outer } = trapEffect;
-            const x = actor.x;
-            const y = actor.y;
-
-            // Spawn center actor
-            if (center) {
-                entityManager.spawnActor(center, x, y);
-            }
-
-            // Spawn actors in radius
-            if (radius > 0) {
-                const outerType = outer || center;
-                for (let dx = -radius; dx <= radius; dx++) {
-                    for (let dy = -radius; dy <= radius; dy++) {
-                        if (dx === 0 && dy === 0) continue; // Skip center
-                        const dist = Math.sqrt(dx * dx + dy * dy);
-                        if (dist <= radius) {
-                            entityManager.spawnActor(outerType, x + dx, y + dy);
-                        }
-                    }
-                }
-            }
-        } else {
-            // Simple single actor spawn
-            const spawnType = actor.data?.trap_spawn;
-            if (spawnType) {
-                const spawnedActor = entityManager.spawnActor(spawnType, actor.x, actor.y);
-                if (spawnedActor) {
-                    // Apply custom tint if specified
-                    const trapTint = actor.data?.trap_spawn_tint;
-                    if (trapTint) {
-                        spawnedActor.tint = trapTint;
-                        if (spawnedActor.spriteBase) spawnedActor.spriteBase.tint = PIXI.utils.string2hex(trapTint);
-                        if (spawnedActor.spriteTop) spawnedActor.spriteTop.tint = PIXI.utils.string2hex(trapTint);
-                    }
-
-                    // Apply custom collision effect if specified (for clouds)
-                    const trapCollisionEffect = actor.data?.trap_collision_effect;
-                    if (trapCollisionEffect) {
-                        spawnedActor.setAttribute('collision_effect', trapCollisionEffect);
-                    }
-
-                    // Apply state to apply if specified (for paralysis/confusion gas)
-                    const trapApplyState = actor.data?.trap_apply_state;
-                    if (trapApplyState) {
-                        spawnedActor.setAttribute('apply_state', trapApplyState);
-
-                        // Apply state immediately to the victim standing on the trap
-                        const statesData = actor.engine.globalStates;
-                        if (statesData?.[trapApplyState] && actorVictim.applyState) {
-                            actorVictim.applyState(trapApplyState, statesData[trapApplyState]);
-                        }
-                    }
-
-                    // Mark as origin cloud so it spreads
-                    spawnedActor.isCloudOrigin = true;
-                    spawnedActor.cloudOriginX = actor.x;
-                    spawnedActor.cloudOriginY = actor.y;
-                    spawnedActor.cloudLifetime = data.trap_cloud_lifetime ?? 8;
-                }
-            }
-        }
+        springTrapPayload(actor, actorVictim, data || {});
 
         // Trap remains on tile (Brogue-style) - no die() call
 
