@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sound Player — Dungeon Mode Kit</title>
+<link rel="stylesheet" href="../assets/main.css">
+<!-- Plays the real sprite through the real Howler build, so what you hear here
+     is exactly what the game plays. sound.js is skipped on purpose: AudioManager
+     reads globalVars.BASE_PATH, which is "." — correct for pages at the repo
+     root, wrong from /editors/. This page builds its own Howl with ../ paths. -->
+<script src="../lib/howler.js"></script>
+<script src="scripts/sound-player.js"></script>
+</head>
+<body class="editor sound-player">
+
+<header>
+    <h1>Sound Player</h1>
+    <input id="sound-filter" type="text" placeholder="filter sounds…" style="width:150px;">
+    <label>Volume
+        <input id="master-volume" type="range" min="0" max="1" step="0.05" value="1">
+    </label>
+    <label>Rate
+        <input id="master-rate" type="range" min="0.5" max="2" step="0.05" value="1">
+    </label>
+    <button id="btn-reset-rate" title="Return the pitch/rate slider to 1.0">Reset rate</button>
+    <button id="btn-stop">Stop all</button>
+    <span id="load-status" class="status-text"></span>
+</header>
+
+<div id="workspace" class="workspace">
+  <div class="sound-body">
+    <p class="sound-intro">
+      Every sound in <code>data/sounds.json</code>. Click a sound to play it, or use the
+      keyboard: <kbd>↑</kbd>/<kbd>↓</kbd> to move, <kbd>Enter</kbd> or <kbd>Space</kbd> to play.
+      Rate doubles as a pitch control — the same knob <code>playSoundVaried</code> jitters.
+    </p>
+    <div id="sound-grid" class="sound-grid"></div>
+    <div class="empty-hint hidden" id="empty-hint">No sounds match that filter.</div>
+  </div>
+</div>
+
+</body>
+</html>

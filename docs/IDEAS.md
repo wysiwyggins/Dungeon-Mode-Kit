@@ -6,8 +6,6 @@
 ## Tweaks
 
 - when we pick a prototype in an editor it should narrow the options in the next dropdown down to the ones in that prototype since there are so many in default /data/
-- we have both 'opened' tile variants for doors and gates and 'toggled' for levers. They could both just be 'toggled' unless there is something that can be both open and toggled (there isn't)
-`per_turn_effect` state deltas. Worth disambiguating one day; renaming touches a lot, though.
 - **`flicker_tint` (the effect) vs `tint_flicker` (the primitive)** — the words are reversed between the two layers, which is genuinely confusing when reading `effects.json`. Renaming either breaks data or code, so left alone for now.
 - Tiled.app tile layers have a tint color property, it would be cool if we could use it for picking floor tile tints in Tiled too. Currently we do this in the prototype editor.
 
@@ -34,7 +32,7 @@
 
 ## Sound player page
 
-- page in /editors/ that let's me listen to everything in the howler soundfont as individual named sounds
+- ~~page in /editors/ that let's me listen to everything in the howler soundfont as individual named sounds~~ — done, `editors/sound-player.html`
 - maybe one day it will let me load a sound and automate rebuilding the audio sprite
 
 ## Bolt bounce logic for actors like metal walls

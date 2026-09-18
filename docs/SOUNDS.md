@@ -23,6 +23,10 @@ engine.playSoundVaried('feets', 0.4, 0.1, 1.0, 0.06);       // Randomized volume
 
 `playSoundVaried(soundName, volumeBase, volumeVariance, rateBase, rateVariance)` adds slight random variation to volume and pitch each time a sound plays, so repetitive actions like footsteps don't sound identical.
 
+### Sound Player
+
+`editors/sound-player.html` lists every sound in the sprite as a clickable chip, with a filter box and volume/rate sliders. It reads `data/sounds.json` directly, so anything added to the sprite appears there without a code change — handy for picking a sound before wiring it into a data file.
+
 ### Debug Console
 
 Open the browser console to test sounds at runtime:

@@ -1495,6 +1495,77 @@ body.editor.prototype-editor .status-text, body.editor.biome-editor .status-text
   font-size: 11px;
   color: var(--text-dim);
 }
+body.editor.sound-player .sound-body {
+  padding: 14px 16px;
+  max-width: 1100px;
+}
+body.editor.sound-player .sound-intro {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+  max-width: 640px;
+  line-height: 1.5;
+}
+body.editor.sound-player .sound-intro code {
+  font-size: 11px;
+  color: var(--accent);
+}
+body.editor.sound-player .sound-intro kbd {
+  font-family: inherit;
+  font-size: 10px;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 0 3px;
+}
+body.editor.sound-player .sound-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px;
+}
+body.editor.sound-player .sound-chip {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  padding: 7px 9px;
+  cursor: pointer;
+}
+body.editor.sound-player .sound-chip:hover {
+  background: var(--bg3);
+}
+body.editor.sound-player .sound-chip.selected {
+  outline: 1px solid var(--accent);
+}
+body.editor.sound-player .sound-chip.playing {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+body.editor.sound-player .sound-chip.playing .sound-name, body.editor.sound-player .sound-chip.playing .sound-duration {
+  color: var(--bg);
+}
+body.editor.sound-player .sound-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body.editor.sound-player .sound-duration {
+  font-size: 10px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+body.editor.sound-player .status-text {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+body.editor.sound-player .status-error {
+  color: var(--accent2);
+}
 
 body.arena .controls-panel {
   font-size: x-small;
