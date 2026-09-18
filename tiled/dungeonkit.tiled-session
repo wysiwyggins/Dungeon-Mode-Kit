@@ -113,14 +113,14 @@
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/morass/map.tmj": {
             "expandedObjectLayers": [
-                3,
-                8
+                8,
+                3
             ],
-            "scale": 1.8556,
-            "selectedLayer": 2,
+            "scale": 0.4817,
+            "selectedLayer": 3,
             "viewCenter": {
-                "x": 858.4824315585255,
-                "y": 751.2394912696702
+                "x": 884.3678638156529,
+                "y": 890.5958065185799
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/pac/map.tmj": {

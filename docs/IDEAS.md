@@ -1,35 +1,36 @@
 
 ## Bugs
 
-- Why would there be a performance hit when wearing the crown in the test prototype? wearing a normal helmet doesn't do this so it must have to do with the conditional check for keeping the down stairway open.
-- ~~In the dungeon generator, adding secret doors led to some occasional weird door placement— such as a secret door that connects to the corner of a rectangular room, which does not grant entry due to the rule that prevents diagonal movement next to a solid wall. I also found a secret door next to a regular door on a wall between two rooms.~~ Fixed. Both symptoms came from the same omission in two separate passes: neither checked that the door had open floor on the *far* side. The dead-end pass scanned 2-3 tiles past the wall and punched the door at distance 1, so any wall run thicker than one tile got a door with rock behind it; the interior-wall pass tested the floor map, which `_finalizeMap` paints under walls and under the ungenerated cells at the map edge alike, so it cut doors into wall runs and into the void. Measured across 560 maps: 151 unusable and 290 door-adjacent, now 0 and 0. Costs about a third of the raw supply, and connectivity is untouched — `EnsureConnected` runs first, so a secret door is always a bonus route, never sole access.
-- when we pick a prototype in an editor it should narrow the options in the next dropdown down to the ones in that prototype since there are so many in default /data/
+[clear]
 
 ## Tweaks
 
+- when we pick a prototype in an editor it should narrow the options in the next dropdown down to the ones in that prototype since there are so many in default /data/
 - we have both 'opened' tile variants for doors and gates and 'toggled' for levers. They could both just be 'toggled' unless there is something that can be both open and toggled (there isn't)
-- **Effects defined but never used:** `white_flash`, `heavy_hit`, and `victory_wave` (parked deliberately). The primitives `hue_cycle` and `alpha_pulse` are referenced by nothing at all. Either wire them up or drop them.
-- **`effect` means three different things** — the visual effect id on actors/items, the stat-change object in `collision_effect`/`use_effect`, and the `on_apply_effect`/`per_turn_effect` state deltas. Worth disambiguating one day; renaming touches a lot, though.
+`per_turn_effect` state deltas. Worth disambiguating one day; renaming touches a lot, though.
 - **`flicker_tint` (the effect) vs `tint_flicker` (the primitive)** — the words are reversed between the two layers, which is genuinely confusing when reading `effects.json`. Renaming either breaks data or code, so left alone for now.
 - Tiled.app tile layers have a tint color property, it would be cool if we could use it for picking floor tile tints in Tiled too. Currently we do this in the prototype editor.
-- ~~If an actor's attack induces a state we should probably add that to its info window. (The bat's attack induces the bleeding state for a test case)~~ Done — six actors carry an `apply_state` in their `collision_effect`, not just the bat, and the panel now names it (*"Its attack can leave you bleeding."*). Ungated by `tactician`, since it's a qualitative warning like the traits beside it. `Actor.predictAppliedState` mirrors the three refusals in `applyState`, so a `bloodless` player is told nothing about a bat's bite — it genuinely can't make them bleed.
 
 ---
 
 ## Feature ideas
 
-## Incense item
-
-- incense, lights like a torch, generates mist that repels/harms undead actors. can be lit and dropped in an area to keep a room clear of undead for a while. Should be a reusable pattern where we can specify an actor type that is harmed or repelled. For the actor use a capitol I base tile and a cloud animated top tile
-
-## ~~Specifying enclosed items in Tiled~~
-
-- ~~Designers working on an authored map should be able to specify an item in the default_items property of an actor object in order to give that object to the actor (such as a pedestal, grave).~~ Already worked. A `default_items` custom property on any actor object overrides that placement's loadout, taking an item key, a comma-separated list or a JSON array, and keys resolve against the merged default + prototype item data — so a prototype-only item matches too. Documented at [MAP.md](MAP.md#per-object-property-overrides-actors-layer). What made it look absent is that the test prototype's pedestal takes its key from `data/actors.json` instead, and the lever only *releases* that key rather than adding it. Two real limits found while confirming this: an actor painted on the `wildcards` layer can't carry object properties at all, so a per-placement item needs object placement; and `display_inventory` renders only the first held item.
-
 ## Actor selectors in biome editor
 
 - Add the ability to pick which actor is used as main walls
 - add the ability to define blob areas of actors other than just lava, sewage, or water
+
+## item-editor use types
+
+- Item-editor still has new item from 'template' rather than type selection
+
+## `effect` means three different things
+
+— the visual effect id on actors/items, the stat-change object in `collision_effect`/`use_effect`, and the `on_apply_effect`/. There's also both an effects.js where effect methods live and effects.json data files that define named effects using those methods. It would be a non-trivial refactor but it might be desirable to disambiguate a little.
+
+## Incense item
+
+- incense, lights like a torch, generates mist that repels/harms undead actors. can be lit and dropped in an area to keep a room clear of undead for a while. Should be a reusable pattern where we can specify an actor type that is harmed or repelled. For the actor use a capitol I base tile and a cloud animated top tile
 
 ## Sound player page
 
@@ -39,19 +40,6 @@
 ## Bolt bounce logic for actors like metal walls
 
 - would probably add a new attribute like "reflective"
-
-## ~~other actors need to be able to use stairs~~
-
-- ~~a monster should be able to chase a player actor from one level to another.~~ Done — a hostile actor adjacent to a player actor and aware of it when the player takes a stairway is carried to the destination floor and arrives beside them, still hunting. No opt-in attribute: the adjacency *is* the evidence of pursuit. Capped at 2 followers, so arriving beside a whole pack with no room to retreat can't happen. Multi-floor prototypes only (`floors`/`levels`); the legacy cross-prototype stairway path is deferred, since the target prototype may not even define the follower's actor type. Segmented creatures (the scutigera) are excluded — their parts are joined by live object references that can't cross a floor.
-
-## remaning 'types' refactor work
-
-- ~~Earlier I added '[types](TYPES.md)' to actors, this pattern should be extended to items.~~ Done — 8 item types, `domain` now enforced.
-- ~~Items already have a 'backwards' version of this: 8 hollow meta-entries hold `random_type` lists pointing *down* at their members.~~ Done — the metas are gone and pools derive from membership. `random_type` survives as a curated-pool override.
-- `Entity.type` still holds the entity *id* (`actor.type === 'goblin'`). Renaming the id field to `Entity.id` would free the word — ~66 call sites (engine.js, behaviors.js, interface.js, arena.html; architect.js is exempt, its `.type` hits are wall/region records). No save-compat burden: saves are in-memory only. Deferred — `Item` never stores `this.data`, so the collision is notional, and `serialize`/`deserialize` have to move atomically or floor transitions drop entities.
-- Types don't inherit from types (single hop, like `$alias`). Probably fine; revisit if a `dire_beast` wants to extend `beast`.
-- ~~Three sites read `.id` on actors, which is always `undefined`~~ Done — `_trailData` now holds `owner`, a direct actor reference, instead of an `ownerId` that was always `undefined`. `Entity` has no id field, so the backtrack guard compared `undefined === undefined` (any actor could rewind any trail) and `follow_thread`'s owner lookup matched the first living actor in spawn order. A reference is safe here because `_trailData` is never serialized. The wider `Entity.type`-holds-the-id rename above is still deferred.
-- item-editor still has new item from template rather than type selection
 
 ### Patrol behavior
 
@@ -65,10 +53,6 @@
 
 - there's a stub for an effects editor but it isn't good. This is something I should probably find help for. Currently it doesn't show an effect as it would actually appear in the game and there are lots of other issues. This is a pixijs related task. Maybe it should load an actual prototype, like a 3x3 tile map/viewport and a single actor for the preview.
 
-### More digging
-
-- ~~if the mattock could also be used to dig the floor instead of just the walls, we could dig up graves etc.~~ **Done** as the `grave` actor: a walkable `breakable` dug with the mattock's `Dig` inventory verb (a 1-tile picker), leaving the existing `hole` entity behind and rolling a weighted `drops` table for a skull or treasure. The verb is generic over any non-solid `breakable`, so a cairn or a compost heap needs data only.
-
 ### corner blocking as an actor attribute
 
 - the brogue-style corner movement blocking rule is pretty complex and opinionated for it to be hard coded into the engine, and it would be complex to have it be a prototype-level mechanics toggle. What makes the most sense is to move diagonal movement blocking to an actor attribute that some wall actors have, then it can be used on a per actor basis, or even added as a monster attribute.
@@ -77,15 +61,7 @@
 
 ### Actor info
 
-- ~~clicking on an actor could show an info window instead of pathing to them with click to walk. This should show the monster name and description, later we can build out more procedural info like brogue.~~ Done — clicking a visible actor opens the panel; travel to its tile is still reachable via Tab + (x)plore. Went further than name+description: traits come from `data/attribute-info.json` and a Brogue-style two-sided combat forecast is gated behind `tactician`.
-- ~~In addition to clicking we should have a keyboard-only way to select actors and items and getting info (tab to cycle through objects of interest works now- we add mode-aware action button (enter) to view info, or select when throwing/zapping)~~ Done — Tab + Enter opens the panel for anything with `hasInfoPanel()`, actors and floor items alike; frontier picks still travel, and the aiming modes still intercept Enter first.
-- ~~Item info panels~~ Done — modelled on Brogue's `itemDetails` (Items.c:1750), but most of that function's 850 lines are hardcoded per-kind prose we already hold in JSON. What was worth porting: the comparative equip forecast ("wearing this would change your defense from 4 to 6"), which names the displaced item, and the unidentified-item honesty. `Item.getPanelDescription` is the single identification gate; `previewEquipDelta` zeroes enchantment when unidentified, so the forecast can't be subtracted to reveal it. One shell (`openInfoPanel`) serves actors and items, and the inventory action menu renders the same body plus its verbs.
-- because the canvas viewport is prototype definable, could this be too much text for the canvas? we might need to implement paging in ui windows for overflow (paging is more desirable than scrolling). Measured: the tallest realistic item panel is ~21 rows against a 34-row shortest viewport, so not urgent — but a prototype with a shorter viewport would hit it.
 - if possible, clicking an actor or item name in the sidebar could highlight its tiles in the canvas and bring up the info canvas textbox
-
-### Looping sound
-
-- spooky looping wind when you're standing next to an abyss and a message (would add both looping sound and adjacent proximity messages)
 
 ### Dialogue
 
@@ -127,12 +103,7 @@
 
 ### Actors & Creatures
 
-- [x] Auto-explore — pathfind through safe explored areas, stop on encounter [B]
-
-- [x] Aquatic creatures — actors restricted to water tiles, can't be pushed onto land
 - [ ] Burrowing creatures — can move through wall tiles, leave tunnels behind
-- [x] Splitting creatures — on death, spawn smaller versions (slimes, oozes) [B]
-- [x] Invisible creatures — only visible via telepathy or adjacency (visible: false exists, but needs telepathy build-out) [B]
 - [ ] Creature mutations — random bonus traits applied at spawn (agile, poisonous, fire-immune) [B]
 
 ### Ally System
@@ -142,14 +113,9 @@
 
 ### Combat
 
-- [x] Backstab — attacking unaware/sleeping enemies for bonus damage [B] (3x vs. sleeping/stunned/paralyzed or unalerted AI; engine.js `BACKSTAB_MULTIPLIER`)
-- [ ] Weapon runic enchantments — special procs beyond the existing weapon_proc system (vampiric, slowing, quietus, paralysis) [B]
+- [ ] Weapon runic enchantments- these should actually be handled by item type and stat/state effects, doable now.
 - [ ] Armor runic enchantments — defensive procs (reflection, reprisal, immunity, absorption) [B]
 - [ ] Grappling — creature seizes target, preventing movement until broken free (started working on this for quicksand and an early version of jelllies, test quicksand) [B]
-
-### Rethinking and refactoring items and behaviors
-
-- a research task to think about behaviors and item verbs. Right now behaviors are pretty specific js methods that can be combined into personality data for acrots. Each behavior function is a "thing that an actor can do." This could use an audit to find patterns that could be turned into reusable utility functions. Also some of these behaviors are specific to individual items in a way that feels muddy. I need to think this through. We always want scripts to be multi purpose, modular and reusable in a way that we can make specific cases in data, using them in different ways, allowing for flexability in new designs.
 
 ### Items
 
@@ -167,35 +133,27 @@
 ### Map & World Structure
 
 - [ ] Persistent floor state — items dropped on a floor remain when you return (partially exists)
-- [ ] Hub areas — safe zones between dungeon levels for shops, NPCs, storage (runes of protection could use the existing evil eye tile)
+- [ ] Hub areas — safe zones between dungeon levels for shops, NPCs, storage (runes of protection could use the existing evil eye tile) (could be accomplished with something like the incense item idea, an item or actor that has a range that some actors avoid)
 
 ### Progression
 
-- [ ] Achievements — tracked accomplishments across runs
-- [ ] Compendium of discoveries — a list of all the things discovered in a prototype across play sessions
-- [ ] Score system — point tracking based on depth, kills, items, gold [B]
-
-- [ ] Recording/replay — deterministic action log for replaying completed runs [B]
+- [ ] Achievements — tracked accomplishments across runs, would need to be prototype-definable, not hard-coded
+- [ ] Compendium of discoveries — a list of all the things discovered in a prototype across mutliple play sessions, defer till hosted version & storage
+- [ ] Score system — point tracking based on depth, kills, items, gold [B] also maybe defer till hosted version and storage
+- [ ] Recording/replay — deterministic action log for replaying completed runs [B] defer till hosted version
 
 ### Sound & Music
 
-- Add more tones to sound sprite with specified notes for use in simple music tracker for levels. Bitsy is so good at this
+- Add more tones to sound sprite with specified notes for use in simple music tracker for levels. Bitsy is so good at this. Build the sound editor page for the first step of this.
 - [ ] Background music — looping tracks per prototype or per floor
-- [ ] Music notation — simple tracker for composing level music from tone data
-- [ ] Adaptive music — track changes based on combat/peaceful state
-- [ ] Ambient sound — environmental audio loops (dripping, hauntings, crackling torches)
+- [ ] Music notation — simple tracker for composing level music by pitch shifting sounds in the sound sprite
+- [ ] loops- example, a spooky looping wind when you're standing next to an abyss (would add both looping sound and adjacent proximity messages). Could be an actor attribute(s) with the sound and its range in tiles.
 
-### Editor Tools
+### More editor development
 
-- A web front end level creator would create a prototype that supplements and sometimes overrides the base data. It could even have an upload or pixel art tool for adding tiles to an overriding prototype version. You'd be able to experiment with combining tiles to make actors. A web map editor would replicate some tiled features but would also let you paint entities with color tints, currently tiled can only draw shapes with objects and attributes for entities which you can't see the tile or tint of.
 - future- the kit is hosted online in a way that users could create prototypes with web forms and test them, like bitsy.
-- Look to Bitsy and ZZT for feature inspiration as well as roguelikes, we want to be surprised by what designers make rather than be proscriptive
-- [ ] Dialogue editor or ink — visual tool for authoring branching dialogue trees
-- [ ] Prototype editor — configure prototype.json visually (mechanics, win conditions, floors)
-- [ ] Variable editor — define and manage prototype variables
-- [ ] Event wiring editor — visually connect actors, events, and responses
-- [ ] State editor — create/edit states.json entries with duration, effects, immunities
 
-### mysteries
+### deferred mysteries
 
 - when the player walks onto a water tile, which has render top, the water correctly renders over the player, but a non controllable actor like a skeleton is still rendering over the water when it walks onto it. (render top is how we make it appear like water covers the base tile of another actor). Investigated and couldn't figure it out. deferring.
+- Why would there be a performance hit when wearing the crown in the test prototype? wearing a normal helmet doesn't do this so it must have to do with the conditional check for keeping the down stairway open. *Explored this for a while and couldn't figure it out, so deferred for now*
