@@ -888,13 +888,13 @@
   },
   "hedge": {
     "name": "hedge",
-    "description": "A wall of thick vegetation",
+    "description": "A waist-high wall of thick vegetation",
     "type": "terrain",
     "tileIndexBase": "OPAQUE_DOTTED_LIGHT_SHADE",
     "tileIndexTop": "OPAQUE_LIGHT_SHADE",
     "tint": "#77bb41",
     "attributes": {
-      "opaque": true,
+      "opaque": false,
       "flammable": true,
       "conductive": true,
       "remains": null

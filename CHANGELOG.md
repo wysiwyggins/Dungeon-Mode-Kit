@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The item editor builds new items from types, not hardcoded templates.** "New from template" pasted a full copy of a type's attributes into every item; it now declares `type` and inherits, so a new ring is four lines instead of fifteen. The copies had already drifted — the ring and staff starters still said `random_color` and `[color] ring` after `types.json` moved to `random_material` and `[material] ring`. The dropdown is filled from `types.json`, so `illuminator` and `quest` are offered for the first time.
 - **Scenery actors declare `"type": "terrain"`.** `tree`, `hedge`, `statue`, `pitchblende_wall`, `fortification`, and `pushable_wall` were terrain in everything but name, which left no reliable way to ask "can this be a wall?" — `wall` itself never declared `solid`, relying on the constructor default. Two deliberate consequences: a statue now stops a bolt, and a smashed pushable wall leaves rubble.
 - **Message anonymizing while hallucinating.** Actors and floor items read as "something" in the message log during hallucinations.
 - **Hallucination scrambles floor items, not just actors.**
@@ -47,6 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`opaque: true` did nothing on a walkable actor.** Sight was keyed off `solid`, so tall mushrooms — deliberately `solid: false` so you can walk into and crush them — never blocked line of sight or light despite declaring they should. Opacity and solidity are now independent via `getSightBlockerAt`, and AI vision honors the same cover.
 - **The cellular generator left no floor under its walls.** Every other generator paints a floor tile beneath a wall actor — the engine assumes it — but cellular queued the wall and skipped the floor, so its wall cells read as void. Invisible behind an opaque `wall`, obvious behind a `tree`, whose base tile lets the ground show through.
 - **Collapsible sub-sections closed when you edited something inside them.** The open-state listener also fired as `render()` tore the old node down, writing "closed" over the state the rebuilt node had just read. It now ignores toggles from detached nodes.
 - **Lake types read as blank rows in the editor.** The new weighted picker understood only the `[{type, weight}]` form, so an authored pool like `["water","sewage","sewage","water"]` rendered as four empty rows at 100% each. It now collapses a repeated-id pool the same way the engine does — sewer reads as water 50% / sewage 50%.

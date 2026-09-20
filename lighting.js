@@ -100,10 +100,10 @@ class LightingManager {
             return false;
         }
 
-        const actorAtTile = this._solidActorCache?.get(x * 10000 + y);
+        // The cache already excludes see-through actors, so opacity isn't re-tested here.
+        const actorAtTile = this._sightBlockerCache?.get(x * 10000 + y);
         if (actorAtTile
                 && !actorAtTile.hasAttribute('controlled')
-                && actorAtTile.getAttribute('opaque') !== false
                 && !actorAtTile.hasStateProperty?.('invisible')) {
             return false;
         }
@@ -121,14 +121,12 @@ class LightingManager {
             return true;
         }
 
-        // Mirrors visionPasses' actor test: a solid actor blocks light unless it's
-        // see-through (`opaque: false`, e.g. columns, statues, fortifications) or
+        // Mirrors visionPasses' actor test: a cached blocker stops light unless it's
         // invisible — an unseen creature casting a visible shadow gives away its
-        // position, which defeats the point of invisibility.
-        const actorAtTile = this._solidActorCache?.get(x * 10000 + y);
-        if (actorAtTile
-                && actorAtTile.getAttribute('opaque') !== false
-                && !actorAtTile.hasStateProperty?.('invisible')) {
+        // position, which defeats the point of invisibility. See-through actors
+        // (`opaque: false`, e.g. columns, statues, fortifications) never enter the cache.
+        const actorAtTile = this._sightBlockerCache?.get(x * 10000 + y);
+        if (actorAtTile && !actorAtTile.hasStateProperty?.('invisible')) {
             return false;
         }
 
@@ -196,13 +194,17 @@ class LightingManager {
     }
 
     computeLighting() {
-        // Build solid actor position cache for O(1) lookups in visionPasses/lightPasses callbacks.
-        // Keyed by x*10000+y; only includes live solid actors.
-        this._solidActorCache = new Map();
+        // Build sight-blocker position cache for O(1) lookups in visionPasses/lightPasses.
+        // Keyed by x*10000+y. Solid actors qualify unless they're see-through, and so
+        // do non-solid actors that declare `opaque: true` — tall mushrooms are walkable
+        // (you crush them) but still block sight. Mirrors entityManager.getSightBlockerAt;
+        // kept as a local cache because these callbacks run per-tile per-shadowcast.
+        this._sightBlockerCache = new Map();
         for (const actor of this.engine.entityManager.actors) {
-            if (!actor.isDead && actor.hasAttribute('solid')) {
-                this._solidActorCache.set(actor.x * 10000 + actor.y, actor);
-            }
+            if (actor.isDead) continue;
+            if (actor.getAttribute('opaque') === false) continue;
+            if (!actor.hasAttribute('solid') && actor.getAttribute('opaque') !== true) continue;
+            this._sightBlockerCache.set(actor.x * 10000 + actor.y, actor);
         }
 
         // Reset light and visibility maps. Overwrite the existing tile objects in

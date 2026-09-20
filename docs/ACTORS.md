@@ -158,7 +158,7 @@ since the texture is already registered. Give genuinely new art a new name.
 | `hunts` | string | Names a quarry the `hunt` behavior pursues: an actor **type** to kill (e.g. `"rat"`) or an item **type** to collect (e.g. `"meat"`). Independent of faction/hostility, so a hunter can chase quarry it isn't otherwise hostile to while still attacking its normal enemies. Requires the `hunt` behavior in the actor's personality. |
 | `tactician` | boolean | This actor reads fights numerically: info panels it opens include hit chances and hits-to-kill. See [Info Panel](#info-panel). Default `false`. |
 | `dark_vision` | boolean | Actor can see and act normally without light (bypasses darkness AI penalties) |
-| `opaque` | boolean | Actor blocks line of sight for vision checks. Default `false` for most actors. |
+| `opaque` | boolean | Whether this actor blocks line of sight. Independent of `solid`: unset, a solid actor blocks sight and a non-solid one doesn't, so set `opaque: false` for see-through solids (columns, statues, creatures — most types supply it) and `opaque: true` for walkable cover that still hides what's behind it (tall mushrooms). |
 | `inventory` | number | Max items this actor can carry |
 | `remains` | string | Entity (from `entities.json`) spawned at this actor's position on death |
 | `mass_noun` | boolean | Suppress "the" article — use for clouds, water, etc. |

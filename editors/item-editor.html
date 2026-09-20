@@ -23,17 +23,11 @@
         <div id="item-filter-results" class="item-filter-results"></div>
     </div>
     <button id="btn-duplicate">Duplicate</button>
-    <label>Template:
-        <select id="template-select">
-            <option value="">— new from template —</option>
-            <option value="weapon">Weapon</option>
-            <option value="potion">Potion</option>
-            <option value="scroll">Scroll</option>
-            <option value="ring">Ring</option>
-            <option value="staff">Staff</option>
-            <option value="wand">Wand</option>
-            <option value="armor">Armor</option>
-            <option value="food">Food</option>
+    <!-- Options are filled from the item types in data/types.json, so a new type
+         shows up here without editing this list. -->
+    <label>New from type:
+        <select id="template-select" title="Create an item that declares this type and inherits its defaults.">
+            <option value="">— new from type —</option>
         </select>
     </label>
     <button id="btn-new">New Blank</button>
@@ -1695,24 +1689,28 @@ function initTintSync() {
     });
 }
 
-// ---- Item templates ----
+// ---- Item starters ----
 
-const ITEM_TEMPLATES = {
+/**
+ * Per-type starter values for "new from type".
+ *
+ * Only what a *specific* item declares for itself: a look, and an example of the
+ * one field that type exists to vary. Everything structural — `pickupable`,
+ * `stackable`, `use_verb`, the unidentified-name template, the randomizer flag —
+ * comes from the type in data/types.json and is deliberately NOT repeated here.
+ *
+ * This file used to carry full copies of those attributes, and they drifted:
+ * the ring and staff starters still said `random_color` and `[color] ring` long
+ * after types.json moved to `random_material` and `[material] ring`. Inheriting
+ * is what keeps that from happening again.
+ */
+const ITEM_STARTERS = {
     weapon: {
         name: 'New Weapon',
         tileIndex: 'CROSS',
         flipV: true,
-        identified: false,
         attributes: {
-            pickupable: true,
-            visible: true,
-            stackable: false,
-            flammable: false,
-            weapon: true,
-            enchantable: true,
             collision_effect: { health: -8 },
-            attack_sound: 'bow',
-            collision_sound: 'hit',
             collision_description: '[actor_name] [attacks.melee_verbs] the [attacked_actor_name] with [a-an] [weapon_name]!',
             wear_effect: { accuracy: '{strength}' },
             enchant_range: [-1, 3],
@@ -1721,135 +1719,62 @@ const ITEM_TEMPLATES = {
     },
     potion: {
         name: 'Potion',
-        tileIndex: 'FEMALE_SYMBOL',
-        flipV: true,
-        random_color: true,
-        identified: false,
-        unidentified_template: '[color] potion',
         identified_template: 'Potion of ...',
-        effect_description: '',
         use_description: 'The [item_name] tastes [adjectives.yucky].',
         attributes: {
-            pickupable: true,
-            visible: true,
-            stackable: true,
-            flammable: false,
-            consumable: true,
-            breakable: true,
-            break_sound: 'glass',
-            use_verb: 'Drink',
             use_sound: 'swallow',
-            use_effect: { apply_state: 'poisoned' },
-            description: 'A mysterious potion.'
+            use_effect: { apply_state: 'poisoned' }
         }
     },
     scroll: {
         name: 'Scroll',
-        tileIndex: 'BEAMED_EIGHTH_NOTES',
-        random_glyph_name: true,
-        identified: false,
-        unidentified_template: '[glyph_name] scroll',
         identified_template: 'Scroll of ...',
         effect_description: 'The scroll dissolves as you read it.',
         attributes: {
-            pickupable: true,
-            visible: true,
-            stackable: true,
-            consumable: true,
-            use_verb: 'Read',
             use_effect: 'teleport',
-            use_sound: 'magic',
-            use_ceremony: true,
-            description: 'A scroll with strange runic markings.'
+            use_sound: 'magic'
         }
     },
     ring: {
         name: 'Ring',
-        tileIndex: 'WHITE_RING',
-        random_color: true,
-        identified: false,
-        unidentified_template: '[color] ring',
         identified_template: 'Ring of ...',
-        effect_description: '',
         attributes: {
-            pickupable: true,
-            visible: true,
-            stackable: false,
-            wearable: 'ring',
             wear_effect: { defense: 2 },
             description: 'A mysterious ring.'
         }
     },
     staff: {
         name: 'Staff of ...',
-        tileIndex: 'SOLIDUS',
-        identified: false,
-        unidentified_template: '[substances.substances] staff',
         identified_template: 'Staff of ...',
+        stats: {
+            pow: { max: 800, start: 800, per_turn: 1, ready_message: 'Your [item_name] is fully charged!' }
+        },
         attributes: {
-            pickupable: true,
-            visible: true,
-            stackable: false,
-            treasure_loot: true,
-            use_verb: 'Zap',
-            use_effect: 'targeted_spell',
-            deferred: true,
-            charge_stat: 'pow',
             uses: 1,
             spell_effect: { center: 'fire', radius: 1 },
             projectile_tile: 'OPAQUE_WHITE_DIAMOND_SUITE',
             projectile_tint: '#FF6600',
             spell_name: 'Fireball',
-            cast_sound: 'magic',
-            description: 'A strange staff.'
-        },
-        stats: {
-            pow: { max: 800, start: 800, per_turn: 1, ready_message: 'Your [item_name] is fully charged!' }
+            cast_sound: 'fireball'
         }
     },
     wand: {
         name: 'Wand of ...',
-        tileIndex: 'EXCLAMATION_MARK',
-        random_color: true,
-        identified: false,
-        unidentified_template: '[color] wand',
         identified_template: 'Wand of ...',
-        effect_description: '',
         attributes: {
-            pickupable: true,
-            visible: true,
-            stackable: false,
-            enchantable: true,
-            use_verb: 'Zap',
-            use_effect: 'targeted_spell',
-            deferred: true,
-            charge_stat: 'pow',
-            uses: 3,
             spell_range: 8,
             spell_effect: { apply_state: 'slowed' },
-            projectile_tile: 'OPAQUE_WHITE_DIAMOND_SUITE',
             projectile_tint: '#8888FF',
-            spell_name: 'Slowness',
-            cast_sound: 'magic',
-            description: 'A slender wand.'
-        },
-        stats: {
-            pow: { max: 300, start: 300, per_turn: 0 }
+            spell_name: 'Slowness'
         }
     },
     armor: {
         name: 'New Armor',
         tileIndex: 'WHITE_GREAVES',
         tint: '#888888',
-        identified: false,
         attributes: {
-            pickupable: true,
-            visible: true,
-            stackable: false,
             wearable: 'lower',
-            enchantable: true,
             wear_effect: { defense: 5 },
-            enchant_range: [-1, 2],
             description: '[defense] defense.'
         }
     },
@@ -1858,33 +1783,71 @@ const ITEM_TEMPLATES = {
         tileIndex: 'INVERSE_BULLET',
         tint: '#d4a574',
         attributes: {
-            pickupable: true,
-            visible: true,
-            stackable: true,
-            flammable: true,
-            consumable: true,
-            use_verb: 'Eat',
             use_effect: { nutrition: 200 },
             use_sound: 'pickup',
             description: 'Something to eat.'
         }
+    },
+    illuminator: {
+        name: 'New Light Source',
+        tileIndex: 'SOLIDUS',
+        tint: '#ffcc66',
+        attributes: {
+            lightRadius: 5,
+            description: 'It casts a steady light.'
+        }
+    },
+    quest: {
+        name: 'New Relic',
+        tileIndex: 'WHITE_DIAMOND_SUITE',
+        tint: '#ffdd44',
+        attributes: {
+            description: 'Something worth going down for.'
+        }
     }
 };
 
+/**
+ * Build a new item entry for `type`, declaring the type rather than copying it.
+ * Types with no starter still work — you get a bare entry that inherits
+ * everything, which is exactly what a minimal item looks like.
+ */
+function newItemFromType(type) {
+    const starter = ITEM_STARTERS[type];
+    const base = starter ? JSON.parse(JSON.stringify(starter)) : {};
+    return { type, ...base };
+}
+
 // ---- Item types ----
 
-/** Fill the Type dropdown from the item-domain entries of data/types.json. */
+/**
+ * Fill both type dropdowns from the item-domain entries of data/types.json:
+ * the form's Type field, and the header's "new from type" starter picker.
+ */
 function populateTypeDropdown() {
+    const keys = Object.keys(state.types || {}).sort();
+
     const sel = document.getElementById('f-type');
     const prev = sel.value;
     sel.innerHTML = '<option value="">— none —</option>';
-    for (const k of Object.keys(state.types || {}).sort()) {
+    for (const k of keys) {
         const opt = document.createElement('option');
         opt.value = k;
         opt.textContent = `${k} (${state.types[k].name || k})`;
         sel.appendChild(opt);
     }
     if (prev) sel.value = prev;
+
+    const starter = document.getElementById('template-select');
+    if (starter) {
+        starter.innerHTML = '<option value="">— new from type —</option>';
+        for (const k of keys) {
+            const opt = document.createElement('option');
+            opt.value = k;
+            opt.textContent = state.types[k].name || k;
+            starter.appendChild(opt);
+        }
+    }
 }
 
 /**
@@ -2029,10 +1992,8 @@ function initEventListeners() {
     document.getElementById('btn-duplicate').addEventListener('click', duplicateCurrentItem);
 
     document.getElementById('template-select').addEventListener('change', (e) => {
-        const tmpl = e.target.value;
-        if (tmpl && ITEM_TEMPLATES[tmpl]) {
-            populateForm('new_' + tmpl, JSON.parse(JSON.stringify(ITEM_TEMPLATES[tmpl])));
-        }
+        const type = e.target.value;
+        if (type) populateForm('new_' + type, newItemFromType(type));
         e.target.value = '';
     });
 

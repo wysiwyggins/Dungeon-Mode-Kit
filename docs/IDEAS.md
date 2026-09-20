@@ -21,7 +21,7 @@
 
 ## item-editor use types
 
-- Item-editor still has new item from 'template' rather than type selection
+- ~~Item-editor still has new item from 'template' rather than type selection~~ — done, "new from type" builds from `data/types.json`
 
 ## `effect` means three different things
 

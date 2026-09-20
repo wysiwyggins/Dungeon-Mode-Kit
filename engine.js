@@ -3224,13 +3224,10 @@ class DungeonEngine {
             : Math.min(Math.floor(strength / 10), maxRadius);
         let foundSomething = false;
 
-        // Sight is blocked by solid actors that aren't see-through, matching
-        // LightingManager.visionPasses. The searcher and the thing being searched
-        // for are exempt below via hasLineOfSight's endpoint skipping.
-        const isBlocked = (x, y) => {
-            const solid = this.entityManager.getSolidActorAt(x, y);
-            return !!solid && !solid.isDead && solid.getAttribute('opaque') !== false;
-        };
+        // Sight is blocked by opaque actors, matching LightingManager.visionPasses.
+        // The searcher and the thing being searched for are exempt below via
+        // hasLineOfSight's endpoint skipping.
+        const isBlocked = (x, y) => !!this.entityManager.getSightBlockerAt(x, y);
 
         // Copy: reveal() can spawn sprites and fire messages, and we don't want a
         // live list mutating underneath the loop.
@@ -11930,6 +11927,16 @@ class Actor extends Entity {
             if (actorAt && actorAt !== this && actorAt !== target) {
                 return true;
             }
+            // Non-solid cover: tall mushrooms are walkable but head-high, so they
+            // conceal from AI the same way they block the player's own vision.
+            // Deliberately additive rather than switching this test to opacity
+            // outright — most creatures are `opaque: false` so they don't cast
+            // shadows, and honoring that here would let archers fire through a
+            // whole crowd of their own kind.
+            const opaqueAt = this.engine.entityManager.getSightBlockerAt(x, y);
+            if (opaqueAt && opaqueAt !== this && opaqueAt !== target) {
+                return true;
+            }
             return false;
         };
 
@@ -13530,6 +13537,23 @@ class EntityManager {
     getSolidActorAt(x, y) {
         const list = this.getActorsAt(x, y);
         return list.find(a => a.hasAttribute('solid'));
+    }
+
+    /**
+     * The actor at (x, y) that blocks line of sight, if any.
+     *
+     * Deliberately NOT the same test as getSolidActorAt. Solidity and opacity are
+     * independent: a column or statue is solid but see-through (`opaque: false`),
+     * and tall mushrooms are `solid: false` — you walk into them and crush them —
+     * but still a head-high thicket you cannot see past. Keying sight off `solid`
+     * made `opaque: true` dead data on anything walkable.
+     *
+     * @returns {Actor|null} The blocker, or null if sight passes.
+     */
+    getSightBlockerAt(x, y) {
+        const list = this.getActorsAt(x, y);
+        return list.find(a => !a.isDead && a.getAttribute('opaque') !== false
+            && (a.hasAttribute('solid') || a.getAttribute('opaque') === true)) || null;
     }
 
     // --- Geometric tile classification (used by the 'ambush' behavior) ---
