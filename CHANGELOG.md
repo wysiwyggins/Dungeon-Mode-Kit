@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Wall-actor picker in the editors** — `wall_types` was engine-supported by every wall-building generator but unreachable except by hand-editing JSON. The Map generator section now lists actors of the `terrain` type with weight bars, warning when no plain `wall` entry is present (the pass that makes secret and pushable walls only rewrites walls of type `wall`).
+- **Cellular generator options** — `probability`, `iterations`, and `connected` are now editable; the generator previously rendered no options at all. `probability` is sharply nonlinear, so the tooltip gives measured densities rather than leaving it to trial and error.
+- **Biome-level `default_floor`** — a biome could already choose its wall actors but not the floor they stand on. It now sits between a floor override and the prototype value, with its own block on each biome card.
+- **Blob areas can be any actor.** `lakes.types` took water, sewage or lava; it now takes any non-solid actor that paints a tile, so `quicksand` — a complete actor nothing could reach — works, and `types` accepts real weights (`[{type, weight}]`) alongside the old repeated-string pool. The three per-liquid spawn queues collapsed into one that carries its actor id, the way `wall_types` already did.
 - **Sound player page (`editors/sound-player.html`)** — auditions every sound in the audio sprite as an individually named, clickable chip, with filter, volume, and rate/pitch sliders. The list is read from `data/sounds.json` rather than hand-maintained, so recompiling the sprite surfaces new sounds automatically.
 - **Treasure chest** has a random "drops" attribute for loot, with a chance of a trap effect, extra logic for breaking vs a key (locks like a door). Locked and unlocked versions. Actor data is so long, can it be shortened with a container type?
 - **An actor's info panel warns about states its attack inflicts.** Six actors carry an `apply_state` in their `collision_effect` and none of them said so; the panel now reads "Its attack can leave you bleeding," wording it from the state's name in `states.json`. The warning sits outside the `tactician` gate, and it's suppressed when the state couldn't land anyway — a `bloodless` player hears nothing about a bat's bite.
@@ -30,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Scenery actors declare `"type": "terrain"`.** `tree`, `hedge`, `statue`, `pitchblende_wall`, `fortification`, and `pushable_wall` were terrain in everything but name, which left no reliable way to ask "can this be a wall?" — `wall` itself never declared `solid`, relying on the constructor default. Two deliberate consequences: a statue now stops a bolt, and a smashed pushable wall leaves rubble.
 - **Message anonymizing while hallucinating.** Actors and floor items read as "something" in the message log during hallucinations.
 - **Hallucination scrambles floor items, not just actors.**
 - **The effects editor is more accutate**
@@ -42,6 +47,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The cellular generator left no floor under its walls.** Every other generator paints a floor tile beneath a wall actor — the engine assumes it — but cellular queued the wall and skipped the floor, so its wall cells read as void. Invisible behind an opaque `wall`, obvious behind a `tree`, whose base tile lets the ground show through.
+- **Collapsible sub-sections closed when you edited something inside them.** The open-state listener also fired as `render()` tore the old node down, writing "closed" over the state the rebuilt node had just read. It now ignores toggles from detached nodes.
+- **Lake types read as blank rows in the editor.** The new weighted picker understood only the `[{type, weight}]` form, so an authored pool like `["water","sewage","sewage","water"]` rendered as four empty rows at 100% each. It now collapses a repeated-id pool the same way the engine does — sewer reads as water 50% / sewage 50%.
+- **Adding a type swamped the existing weights.** New rows were added at a fixed weight of 100, which is only sensible when the table already uses that scale. On a converted pool — sewer's water/sewage normalizes to 2 and 2 — a new entry landed at 96% and pushed the others to 2%. New rows now join at the average of the existing weights, so they arrive as equal peers whatever scale the table is on.
+- **Weight spinners stopped responding after a click or two.** Every keystroke in a weight field rebuilt the whole table, destroying the `<input>` being typed into — so a held increment arrow fired once and then had nothing to fire on until you clicked away and back. Typing a weight now moves the bars in place; only adding, removing or retyping a row rebuilds. Affected `roomWeights` and `sanctumShapes` as well as the new pickers.
+- **`docs/SOUNDS.md` had drifted from the sprite.** It claimed 35 sounds against an actual 37, omitted `torch` and `extinguish` entirely, and listed `lock` as never played when it is the unlock/reveal success sound in three places. The table now matches `data/sounds.json` exactly.
+- **`default_floor` was listed as an unrecognized prototype key.** It was missing from the prototype editor's known-keys set, so the Advanced section reported it as unhandled even though the editor has edited it all along.
 - **Secret doors could open onto solid rock, or stand next to an ordinary door.** Neither of the generator's two secret-door passes checked that the far side of the wall was open — one scanned 2-3 tiles past it and cut the door at distance 1, the other tested a floor map that is painted under walls and off-map cells alike. Across 560 generated maps this produced 151 unusable doors and 290 sited beside a visible one; both are now zero.
 
 - **The actor editor and the engine disagreed about a missing `sideOffset`.** The editor read it as `{dx: 0, dy: 0}` and the engine as `{dx: 1, dy: 0}`, so a side tile previewed over the base tile but rendered a square to its right. The editor now shares the engine's default and writes the offset for any actor with a side slot, rather than dropping a deliberate zero and letting the default shift it.

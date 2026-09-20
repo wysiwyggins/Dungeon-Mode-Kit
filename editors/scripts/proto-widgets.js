@@ -237,20 +237,40 @@ function weightEditor(obj, key, opts = {}) {
         commit();
     }
 
+    // Repaint the bars without rebuilding the table — see the note in
+    // typeWeightEditor: innerHTML = '' on every keystroke destroys the <input>
+    // being typed into, which kills a held number-spinner until refocus.
+    let repaintBars = () => {};
+
     function redraw() {
         wrap.innerHTML = '';
         const w = readWeights();
-        const total = Object.values(w).reduce((a, b) => a + (Number(b) || 0), 0) || 1;
+        const bars = [];
+        repaintBars = () => {
+            const cur = readWeights();
+            const sum = Object.values(cur).reduce((a, b) => a + (Number(b) || 0), 0) || 1;
+            for (const b of bars) {
+                const pct = Math.round(((Number(cur[b.name]) || 0) / sum) * 100);
+                b.fill.style.width = pct + '%';
+                b.label.textContent = pct + '%';
+            }
+        };
+
         for (const name of Object.keys(w)) {
-            const pct = Math.round((w[name] / total) * 100);
-            const bar = el('div', { class: 'wbar-fill', style: `width:${pct}%` });
-            const barWrap = el('div', { class: 'wbar-wrap' }, bar, el('span', { class: 'wbar-pct' }, pct + '%'));
+            const bar = el('div', { class: 'wbar-fill' });
+            const pctLabel = el('span', { class: 'wbar-pct' });
+            const barWrap = el('div', { class: 'wbar-wrap' }, bar, pctLabel);
+            bars.push({ name, fill: bar, label: pctLabel });
             const num = el('input', { type: 'number', min: 0, step: opts.step || 1, value: w[name] });
             num.addEventListener('input', () => {
                 const nv = Number(num.value);
                 const cur = readWeights();
-                if (num.value === '' || nv <= 0) delete cur[name]; else cur[name] = nv;
-                writeWeights(cur); redraw();
+                // Dropping to zero removes the row, which IS structural — that
+                // one needs the full rebuild. Any other value just moves a bar.
+                const removes = (num.value === '' || nv <= 0);
+                if (removes) delete cur[name]; else cur[name] = nv;
+                writeWeights(cur);
+                if (removes) redraw(); else repaintBars();
             });
             const rm = el('button', { class: 'remove-btn', title: 'remove' }, '×');
             rm.addEventListener('click', () => { const c = readWeights(); delete c[name]; writeWeights(c); redraw(); });
@@ -269,6 +289,7 @@ function weightEditor(obj, key, opts = {}) {
             }
             wrap.appendChild(el('div', { class: 'weight-row' }, labelNode, barWrap, num, rm));
         }
+        repaintBars();
         // add control
         const existing = new Set(Object.keys(w));
         if (!opts.choices) {
@@ -298,6 +319,219 @@ function weightEditor(obj, key, opts = {}) {
     }
     redraw();
     return wrap;
+}
+
+/**
+ * A tile field: name, live preview, and the shared visual picker.
+ * Stores the tile NAME, which is what the engine resolves (getTileIdByName).
+ *
+ * Lives here rather than in proto-sections.js so the biome editor can use it too
+ * — that editor loads proto-widgets.js but not the prototype-only sections file.
+ * Both editors must therefore load tile-picker.js and call TilePicker.load().
+ */
+function tileRow(label, obj, key, tip, pickerLabel) {
+    const preview = el('canvas', { class: 'tile-preview', width: 40, height: 30 });
+    const name = el('span', { class: 'tile-field-name' }, TilePicker.nameOf(obj[key]));
+
+    const paint = () => {
+        const ctx = preview.getContext('2d');
+        ctx.clearRect(0, 0, preview.width, preview.height);
+        const coords = TilePicker.resolve(obj[key]);
+        if (coords && TilePicker.sheet) {
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(TilePicker.sheet,
+                coords.x * TilePicker.tileW, coords.y * TilePicker.tileH,
+                TilePicker.tileW, TilePicker.tileH,
+                0, 0, preview.width, preview.height);
+        }
+        name.textContent = TilePicker.nameOf(obj[key]);
+    };
+    paint();
+
+    const choose = el('button', {}, 'choose…');
+    choose.addEventListener('click', () => {
+        TilePicker.open({
+            current: obj[key],
+            // The row label is terse ("tile") because the section already gives
+            // it context; the modal has none, so callers can pass a fuller one.
+            label: pickerLabel || label,
+            onPick: (value) => {
+                if (value === null) delete obj[key];
+                else obj[key] = value;
+                // Repaint in place: render() would rebuild every section and
+                // drop the user out of the one they're working in.
+                paint();
+                commit();
+            },
+        });
+    });
+
+    const clear = el('button', { class: 'remove-btn' }, 'clear');
+    clear.addEventListener('click', () => { delete obj[key]; paint(); commit(); });
+
+    return el('div', { class: 'field-row' }, labelEl(label, tip), preview, name, choose, clear);
+}
+
+/* Weighted actor-table editor — an ARRAY of {type, weight} objects.
+   A third shape weightEditor doesn't cover (it does {name: weight} maps and
+   repeated-string pools), kept separate so its two existing callers stay put.
+
+   Two generator options share this shape, so they share the widget:
+     wall_types      — what a generator fills solid cells with
+     lakes.types     — what it pours into a liquid blob
+
+   opts:
+     ids()        list of offerable actor ids
+     defaultType  what the engine uses when the key is absent, for the empty hint
+     noun         phrase for the add-row and empty hint
+     warn(list)   optional; returns a caveat string to show under the table */
+function typeWeightEditor(obj, key, opts) {
+    const wrap = el('div', { class: 'weight-table' });
+
+    // Read both authored shapes. The engine accepts a plain pool of ids weighted
+    // by repetition (["water","sewage","sewage"]) alongside the explicit
+    // [{type, weight}] form, and every lakes block in the repo is written the
+    // first way — so a raw read would show one blank row per array element.
+    // Collapsing duplicates here mirrors Architect._normalizeBlobTypes, which is
+    // what the engine does with the same data.
+    const rows = () => {
+        const raw = Array.isArray(obj[key]) ? obj[key] : [];
+        if (!raw.some(e => typeof e === 'string')) return raw;
+        const table = [];
+        for (const entry of raw) {
+            const type = typeof entry === 'string' ? entry : entry?.type;
+            if (!type) continue;
+            const weight = typeof entry === 'string' ? 1 : (Number(entry.weight) || 0);
+            const existing = table.find(t => t.type === type);
+            if (existing) existing.weight += weight;
+            else table.push({ type, weight });
+        }
+        return table;
+    };
+    const write = (arr) => {
+        // An empty list is not the same as "unset": the engine falls back to its
+        // own default, which differs per generator. Drop the key instead.
+        if (arr.length) obj[key] = arr; else delete obj[key];
+        commit();
+    };
+
+    // Repaint just the percentage bars. Typing a weight must NOT rebuild the
+    // table: innerHTML = '' destroys the very <input> the user is interacting
+    // with, so a held spinner arrow stops firing until they click away and back.
+    // Only structural changes (add/remove/retype) go through redraw().
+    let repaintBars = () => {};
+
+    function redraw() {
+        wrap.innerHTML = '';
+        const list = rows();
+        const ids = opts.ids();
+        const bars = [];
+        repaintBars = () => {
+            const sum = list.reduce((t, wt) => t + (Number(wt.weight) || 0), 0) || 1;
+            for (const b of bars) {
+                const pct = Math.round(((Number(b.entry.weight) || 0) / sum) * 100);
+                b.fill.style.width = pct + '%';
+                b.label.textContent = pct + '%';
+            }
+        };
+
+        for (const entry of list) {
+            const bar = el('div', { class: 'wbar-fill' });
+            const pctLabel = el('span', { class: 'wbar-pct' });
+            const barWrap = el('div', { class: 'wbar-wrap' }, bar, pctLabel);
+            bars.push({ entry, fill: bar, label: pctLabel });
+
+            const sel = el('select', { class: 'wlabel-sel' });
+            for (const id of ids) sel.appendChild(el('option', { value: id }, id));
+            // A hand-authored list may name an actor the filter doesn't offer.
+            // Keep it selectable rather than silently rewriting the designer's
+            // choice on the next commit (same rule selectRow follows).
+            if (entry.type && !ids.includes(entry.type)) {
+                sel.appendChild(el('option', { value: entry.type }, entry.type + ' (not in list)'));
+            }
+            sel.value = entry.type || '';
+            sel.addEventListener('change', () => { entry.type = sel.value; write(list); redraw(); });
+
+            const num = el('input', { type: 'number', min: 0, step: 1, value: entry.weight ?? 100 });
+            num.addEventListener('input', () => {
+                entry.weight = Number(num.value);
+                write(list);
+                repaintBars();
+            });
+
+            const rm = el('button', { class: 'remove-btn', title: 'remove' }, '×');
+            rm.addEventListener('click', () => { write(list.filter(e => e !== entry)); redraw(); });
+
+            wrap.appendChild(el('div', { class: 'weight-row' }, sel, barWrap, num, rm));
+        }
+
+        repaintBars();
+
+        if (!list.length) {
+            wrap.appendChild(el('div', { class: 'hint-inline' },
+                `Using the generator default (${opts.defaultType}). Add ${opts.noun} to override it.`));
+        }
+
+        const remaining = ids.filter(id => !list.some(e => e.type === id));
+        if (remaining.length) {
+            const addSel = el('select', { class: 'wlabel-sel' });
+            addSel.appendChild(el('option', { value: '' }, `+ add ${opts.noun}…`));
+            for (const id of remaining) addSel.appendChild(el('option', { value: id }, id));
+            addSel.addEventListener('change', () => {
+                if (!addSel.value) return;
+                // Join as an equal peer of the existing rows rather than at a fixed
+                // 100. Weights are relative, and a converted pool sits on a small
+                // scale (["water","sewage","sewage"] normalizes to 1s and 2s), so a
+                // hardcoded 100 would silently crowd everything else out.
+                const peer = list.length
+                    ? Math.round(list.reduce((t, e) => t + (Number(e.weight) || 0), 0) / list.length)
+                    : 100;
+                write([...list, { type: addSel.value, weight: Math.max(1, peer) }]);
+                redraw();
+            });
+            wrap.appendChild(el('div', { class: 'weight-row' }, addSel));
+        }
+
+        const caveat = opts.warn && opts.warn(list);
+        if (caveat) wrap.appendChild(el('div', { class: 'hint-inline' }, caveat));
+    }
+
+    redraw();
+    return wrap;
+}
+
+/* map_generator.options.wall_types — see typeWeightEditor.
+   `defaultType` is the wall the generator falls back to when the list is absent
+   (brick_wall for palladian, wall for the rest). */
+function wallTypesEditor(obj, key, defaultType) {
+    return typeWeightEditor(obj, key, {
+        ids: wallActorIds,
+        defaultType,
+        noun: 'a wall actor',
+        // The secret/pushable pass converts walls of type 'wall' only
+        // (architect.js), so any other choice silently switches both off.
+        warn: (list) => (list.length && !list.some(e => e.type === 'wall'))
+            ? 'No "wall" entry: secret doors and pushable walls are off for this map. ' +
+              'That conversion pass only rewrites walls of type "wall".'
+            : null,
+    });
+}
+
+/* map_generator.options.lakes.types — see typeWeightEditor. */
+function blobTypesEditor(obj, key) {
+    return typeWeightEditor(obj, key, {
+        ids: blobActorIds,
+        defaultType: 'water',
+        noun: 'a liquid actor',
+        warn: (list) => {
+            // Legal, and occasionally what you want — a burning lake, a field of
+            // trapdoors — but nobody reaches for these by accident.
+            const odd = list.map(e => e.type).filter(t => t === 'fire' || t === 'collapsing_floor');
+            return odd.length
+                ? `${odd.join(' and ')} as a lake fill is unusual — the blob behaves like that actor everywhere it lands.`
+                : null;
+        },
+    });
 }
 
 /* =========================================================================
@@ -565,7 +799,15 @@ function collapsibleSubSection(title, stateKey, countLabel, tip, opts = {}) {
     if (countLabel) summary.appendChild(el('span', { class: 'sub-count' }, countLabel));
     if (tip) summary.setAttribute('title', tip);
     det.appendChild(summary);
-    det.addEventListener('toggle', () => { _subSectionOpen[stateKey] = det.open; });
+    // Only record a toggle the USER caused. render() tears the old tree down with
+    // innerHTML = '', and a <details> being discarded can fire `toggle` as it goes —
+    // which would write `false` over the state the freshly-built node just read,
+    // collapsing a sub-section the moment you change anything inside it that
+    // re-renders. A detached node is never the user clicking.
+    det.addEventListener('toggle', () => {
+        if (!det.isConnected) return;
+        _subSectionOpen[stateKey] = det.open;
+    });
     const body = el('div', {});
     det.appendChild(body);
     return { det, body };

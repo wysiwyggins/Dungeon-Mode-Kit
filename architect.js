@@ -49,9 +49,9 @@ class Architect {
         this.pendingDoorSpawns = [];
         this.pendingTorchSpawns = [];
         this.pendingBrazierSpawns = [];
-        this.pendingLavaSpawns = [];
-        this.pendingLakeSpawns = [];
-        this.pendingSewageSpawns = [];
+        // Liquid blob cells, each carrying the actor id to spawn there ({x, y, type}).
+        // One queue rather than one per liquid: the type is data, not a routing key.
+        this.pendingLiquidSpawns = [];
         this.pendingPushableWallSpawns = [];
         // Secret doors, includig barred secret doors with paired levers. Kept apart from
         // pendingDoorSpawns so the blob/connectivity filters can drop them without
@@ -166,16 +166,67 @@ class Architect {
         }
     }
 
-    /** Pick a wall type from a [{ type, weight }] table, weighted by `weight`. */
-    _pickWeightedWallType(wallTypes) {
-        if (!wallTypes || wallTypes.length === 0) return 'wall';
-        const totalWeight = wallTypes.reduce((sum, wt) => sum + wt.weight, 0);
+    /**
+     * Pick from a [{ type, weight }] table, weighted by `weight`. Returns null on an
+     * empty table so callers can supply their own fallback. The trailing return
+     * covers floating-point remainder, where the roll never quite reaches zero.
+     */
+    _pickWeighted(table) {
+        if (!table || table.length === 0) return null;
+        const totalWeight = table.reduce((sum, wt) => sum + wt.weight, 0);
         let roll = ROT.RNG.getUniform() * totalWeight;
-        for (const wt of wallTypes) {
+        for (const wt of table) {
             roll -= wt.weight;
             if (roll <= 0) return wt.type;
         }
-        return wallTypes[0].type;
+        return table[0].type;
+    }
+
+    /** Pick a wall type from a [{ type, weight }] table, weighted by `weight`. */
+    _pickWeightedWallType(wallTypes) {
+        return this._pickWeighted(wallTypes) ?? 'wall';
+    }
+
+    /**
+     * Is this blob type one nothing should spawn on? Drives hazardCells, which
+     * _blobRebuildWalkableTiles subtracts from walkableTiles — so an item never
+     * lands in lava and a monster never starts sunk in quicksand.
+     *
+     * Reads the list in globals rather than the actor's own `damage_type`/`deep`,
+     * because blobs are placed during generation, before any actor exists to ask.
+     */
+    _isHazardousBlobType(type) {
+        return globalVars.HAZARD_BLOB_ACTORS.includes(type);
+    }
+
+    /**
+     * Normalize a blob `types` config to a [{ type, weight }] table.
+     *
+     * Two authored shapes. The repeated-string pool — ["water","sewage","sewage"] —
+     * is how every lakes/abyss block in the repo is written today, and weights by
+     * duplication; it keeps working. The object form carries real weights, which is
+     * what the editor writes and what scales past a handful of entries.
+     *
+     * Whether each id names a real actor can't be checked here — generation runs
+     * before the spawn context exists. spawnPendingLiquids does it, warning per
+     * unknown type instead of silently painting water the way the old routing
+     * ternary did (a typo produced a water lake and said nothing).
+     */
+    _normalizeBlobTypes(types) {
+        if (!Array.isArray(types) || types.length === 0) return [{ type: 'water', weight: 1 }];
+
+        const table = [];
+        for (const entry of types) {
+            const type = typeof entry === 'string' ? entry : entry?.type;
+            if (!type) continue;
+            const weight = typeof entry === 'string' ? 1 : (Number(entry.weight) || 0);
+            if (weight <= 0) continue;
+
+            const existing = table.find(t => t.type === type);
+            if (existing) existing.weight += weight;
+            else table.push({ type, weight });
+        }
+        return table.length ? table : [{ type: 'water', weight: 1 }];
     }
 
     _carveRect(dungeonGrid, x1, y1, x2, y2, value = 1) {
@@ -697,6 +748,12 @@ class Architect {
                 for (let y = 0; y < this.height; y++) {
                     for (let x = 0; x < this.width; x++) {
                         if (!floorTiles.has(`${x},${y}`)) {
+                            // Floor goes under the wall actor too. A wall sits ON a floor
+                            // tile everywhere else in the engine, and leaving it null here
+                            // reads as void downstream. It also shows: actors whose base
+                            // tile isn't a solid block — a tree — let the floor show
+                            // through, and with no floor that gap renders as nothing.
+                            this.floorMap[y][x] = this._floorTile();
                             this.pendingWallSpawns.push({ x, y, type: this._pickWeightedWallType(wallTypes) });
                         }
                     }
@@ -1407,7 +1464,7 @@ class Architect {
             : config.count;
         if (count <= 0) return;
 
-        const types = config.types || ['water'];
+        const types = this._normalizeBlobTypes(config.types);
         const minSize = config.minSize || 10;
         const maxSize = config.maxSize || 60;
 
@@ -1434,7 +1491,7 @@ class Architect {
         let totalPlaced = 0;
 
         for (let i = 0; i < count; i++) {
-            const type = types[Math.floor(ROT.RNG.getUniform() * types.length)];
+            const type = this._pickWeighted(types) ?? 'water';
             const shape = this._makeCavernShape(this._blobPickCanvas(minSize, maxSize));
 
             let placed = null;
@@ -1474,11 +1531,15 @@ class Architect {
 
             this._blobStampAt(placed, type);
             totalPlaced += placed.length;
+            // Nothing spawns on a blob that would hurt or swallow what lands there.
+            // Read off the actor rather than matching 'lava' by name, so quicksand
+            // and deep water get the same treatment without another special case.
+            const isHazard = this._isHazardousBlobType(type);
             for (const cell of placed) {
                 claimedCells.add(cell.key);
                 if (type === 'abyss') allVoidCells.add(cell.key);
                 else allLiquidCells.add(cell.key);
-                if (type === 'lava') hazardCells.add(cell.key);
+                if (isHazard) hazardCells.add(cell.key);
             }
 
             console.log(`  ${type} blob: ${placed.length} tiles`);
@@ -1506,9 +1567,7 @@ class Architect {
         // cell this pass has since turned into chasm — otherwise the actor spawns
         // hanging in the middle of the void.
         const hasFloor = (p) => !!this.floorMap[p.y][p.x];
-        this.pendingLavaSpawns = this.pendingLavaSpawns.filter(hasFloor);
-        this.pendingLakeSpawns = this.pendingLakeSpawns.filter(hasFloor);
-        this.pendingSewageSpawns = this.pendingSewageSpawns.filter(hasFloor);
+        this.pendingLiquidSpawns = this.pendingLiquidSpawns.filter(hasFloor);
 
         this._blobRingBoundaryWalls(allBlobCells, perimeterProtected);
         this._blobRebuildWalkableTiles(allLiquidCells, hazardCells);
@@ -1570,9 +1629,6 @@ class Architect {
      */
     _blobStampAt(cells, type) {
         const isAbyss = (type === 'abyss');
-        const liquidTarget = type === 'lava' ? this.pendingLavaSpawns
-            : type === 'sewage' ? this.pendingSewageSpawns
-            : this.pendingLakeSpawns;
 
         for (const { x, y } of cells) {
             if (isAbyss) {
@@ -1592,7 +1648,8 @@ class Architect {
             }
             this.backgroundMap[y][x] = null;
             this.overlayMap[y][x] = null;
-            liquidTarget.push({ x, y });
+            // The type rides along: one queue, one drain, any actor.
+            this.pendingLiquidSpawns.push({ x, y, type });
         }
     }
 
@@ -2148,11 +2205,7 @@ class Architect {
         const bridgeSet = new Set(this.pendingBridgeSpawns.map(p => `${p.x},${p.y}`));
         // Collapsing a floor out from under a lake would leave the water actor
         // hanging over the void.
-        const liquidSet = new Set([
-            ...this.pendingLakeSpawns,
-            ...this.pendingSewageSpawns,
-            ...this.pendingLavaSpawns
-        ].map(p => `${p.x},${p.y}`));
+        const liquidSet = new Set(this.pendingLiquidSpawns.map(p => `${p.x},${p.y}`));
 
         // Collect the floor tiles sitting on the lip of an abyss. Nothing is
         // painted; the rule only marks cells.
@@ -3207,67 +3260,43 @@ class Architect {
         this.pendingBrazierSpawns = [];
     }
 
-    spawnPendingLava(context) {
-        if (!this.pendingLavaSpawns || this.pendingLavaSpawns.length === 0) return;
+    /**
+     * Drain the liquid blob queue. One function for every liquid because each
+     * entry names its own actor — the same shape spawnPendingWalls uses for
+     * wall_types, so a blob can be any actor, not just water/sewage/lava.
+     */
+    spawnPendingLiquids(context) {
+        if (!this.pendingLiquidSpawns || this.pendingLiquidSpawns.length === 0) return;
         if (!context || !context.getActorData || !context.createActor) {
-            console.warn('Cannot spawn lava without context');
+            console.warn('Cannot spawn liquids without context');
             return;
         }
 
-        const actorData = context.getActorData('lava');
-        if (!actorData) {
-            console.warn('No lava actor data found');
-            return;
+        const actorDataCache = {};
+        const typeCounts = {};
+
+        for (const pos of this.pendingLiquidSpawns) {
+            const type = pos.type;
+            if (!(type in actorDataCache)) {
+                actorDataCache[type] = context.getActorData(type) || null;
+                if (!actorDataCache[type]) {
+                    console.warn(`No actor data found for liquid type: ${type}`);
+                }
+                typeCounts[type] = 0;
+            }
+            const actorData = actorDataCache[type];
+            if (!actorData) continue;
+
+            context.createActor(pos.x, pos.y, type, actorData);
+            typeCounts[type]++;
         }
 
-        for (const pos of this.pendingLavaSpawns) {
-            context.createActor(pos.x, pos.y, 'lava', actorData);
-        }
-
-        console.log(`Spawned ${this.pendingLavaSpawns.length} lava actors`);
-        this.pendingLavaSpawns = [];
-    }
-
-    spawnPendingLakes(context) {
-        if (!this.pendingLakeSpawns || this.pendingLakeSpawns.length === 0) return;
-        if (!context || !context.getActorData || !context.createActor) {
-            console.warn('Cannot spawn lakes without context');
-            return;
-        }
-
-        const actorData = context.getActorData('water');
-        if (!actorData) {
-            console.warn('No water actor data found');
-            return;
-        }
-
-        for (const pos of this.pendingLakeSpawns) {
-            context.createActor(pos.x, pos.y, 'water', actorData);
-        }
-
-        console.log(`Spawned ${this.pendingLakeSpawns.length} water actors`);
-        this.pendingLakeSpawns = [];
-    }
-
-    spawnPendingSewage(context) {
-        if (!this.pendingSewageSpawns || this.pendingSewageSpawns.length === 0) return;
-        if (!context || !context.getActorData || !context.createActor) {
-            console.warn('Cannot spawn sewage without context');
-            return;
-        }
-
-        const actorData = context.getActorData('sewage');
-        if (!actorData) {
-            console.warn('No sewage actor data found');
-            return;
-        }
-
-        for (const pos of this.pendingSewageSpawns) {
-            context.createActor(pos.x, pos.y, 'sewage', actorData);
-        }
-
-        console.log(`Spawned ${this.pendingSewageSpawns.length} sewage actors`);
-        this.pendingSewageSpawns = [];
+        const summary = Object.entries(typeCounts)
+            .filter(([, n]) => n > 0)
+            .map(([t, n]) => `${n} ${t}`)
+            .join(', ');
+        if (summary) console.log(`Spawned liquid actors: ${summary}`);
+        this.pendingLiquidSpawns = [];
     }
 
     spawnPendingPushableWalls(context) {
@@ -6129,9 +6158,9 @@ class Architect {
         // Wall-mounted torch actors; centre braziers are freestanding, tracked apart.
         this.pendingTorchSpawns = [];
         this.pendingBrazierSpawns = [];
-        this.pendingLavaSpawns = [];
-        this.pendingLakeSpawns = [];
-        this.pendingSewageSpawns = [];
+        // Liquid blob cells, each carrying the actor id to spawn there ({x, y, type}).
+        // One queue rather than one per liquid: the type is data, not a routing key.
+        this.pendingLiquidSpawns = [];
         this.pendingPushableWallSpawns = [];
         this.pendingSecretDoorSpawns = [];
         this.pendingHiddenLeverSpawns = [];

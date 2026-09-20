@@ -173,6 +173,26 @@ function switchActorIds() {
 function targetActorIds() {
     return state.mergedActorIds.filter(id => actorHasAttr(id, 'openable') || actorHasAttr(id, 'switchable'));
 }
+// Actor ids a generator can use as its wall fill (map_generator.options.wall_types).
+// Keyed off the `terrain` type rather than an attribute: solidity can't be tested
+// here because the Actor constructor defaults `solid` true, so `wall` itself never
+// declares it. terrain is the engine's own word for this set — "built and grown
+// scenery — walls, columns, statues" (data/types.json).
+function wallActorIds() {
+    return state.mergedActorIds.filter(id => state.mergedActors[id]?.type === 'terrain');
+}
+
+// Actor ids a generator can pour into a blob (map_generator.options.lakes.types).
+// There is no blob type in types.json the way `terrain` covers walls, so this is an
+// attribute filter: non-solid actors that paint a tile. That admits a few odd but
+// legal choices (fire, collapsing_floor) and misses deep_water/deep_sewage, which
+// carry no paint_tile — blobTypesEditor keeps any hand-authored id selectable.
+function blobActorIds() {
+    return state.mergedActorIds.filter(id => {
+        const attrs = state.mergedActors[id]?.attributes || {};
+        return attrs.solid === false && !!attrs.paint_tile;
+    });
+}
 // How a switch actor behaves, derived from its own attributes (one_shot vs
 // repeatable). This is defined on the actor, not the puzzle pattern.
 function switchModeLabel(id) {

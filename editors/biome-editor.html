@@ -119,8 +119,10 @@
      biome-state -> proto-widgets -> biome-sections -> biome-render.
      biome-render.js calls init() last. proto-widgets.js and biome-sections.js
      are shared verbatim with the prototype editor — biome-state.js supplies the
-     globals they expect (state, isFloor, totalFloors, CATEGORY_KEYS, GEN_TYPES)
-     and biome-render.js supplies commit()/render(). -->
+     globals they expect (state, isFloor, totalFloors, CATEGORY_KEYS, GEN_TYPES,
+     wallActorIds, blobActorIds) and biome-render.js supplies commit()/render().
+     tile-picker.js is a dependency of proto-widgets.js's tileRow(). -->
+<script src="scripts/tile-picker.js"></script>
 <script src="scripts/editor-constants.js"></script>
 <script src="scripts/biome-state.js"></script>
 <script src="scripts/proto-widgets.js"></script>

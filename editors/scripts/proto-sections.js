@@ -259,53 +259,11 @@ function sectionDefaultFloor(obj, opts = {}) {
     body.appendChild(el('div', { class: 'hint-inline' },
         'Applies to procedurally generated maps. A hand-authored .tmj supplies its own floor tiles.'));
     body.appendChild(tileRow('tile', df, 'tile',
-        'Tile painted as open floor. Leave unset for the engine default.'));
+        'Tile painted as open floor. Leave unset for the engine default.',
+        'default floor tile'));
     body.appendChild(colorRow('tint', df, 'tint',
         'Color multiplied over floor tiles. Leave clear for untinted.'));
     return { det };
-}
-
-/**
- * A tile field: name, live preview, and the shared visual picker.
- * Stores the tile NAME, which is what the engine resolves (getTileIdByName).
- */
-function tileRow(label, obj, key, tip) {
-    const preview = el('canvas', { class: 'tile-preview', width: 40, height: 30 });
-    const name = el('span', { class: 'tile-field-name' }, TilePicker.nameOf(obj[key]));
-
-    const paint = () => {
-        const ctx = preview.getContext('2d');
-        ctx.clearRect(0, 0, preview.width, preview.height);
-        const coords = TilePicker.resolve(obj[key]);
-        if (coords && TilePicker.sheet) {
-            ctx.imageSmoothingEnabled = false;
-            ctx.drawImage(TilePicker.sheet,
-                coords.x * TilePicker.tileW, coords.y * TilePicker.tileH,
-                TilePicker.tileW, TilePicker.tileH,
-                0, 0, preview.width, preview.height);
-        }
-        name.textContent = TilePicker.nameOf(obj[key]);
-    };
-    paint();
-
-    const choose = el('button', {}, 'choose…');
-    choose.addEventListener('click', () => {
-        TilePicker.open({
-            current: obj[key],
-            label: 'default floor tile',
-            onPick: (value) => {
-                if (value === null) delete obj[key];
-                else obj[key] = value;
-                paint();
-                commit();
-            },
-        });
-    });
-
-    const clear = el('button', { class: 'remove-btn' }, 'clear');
-    clear.addEventListener('click', () => { delete obj[key]; paint(); commit(); });
-
-    return el('div', { class: 'field-row' }, labelEl(label, tip), preview, name, choose, clear);
 }
 
 function sectionFloorWinConditions(floor) {
@@ -602,7 +560,7 @@ function effectsEditor(pat) {
 // manage must be listed, or the editor reports its own fields as unrecognized.
 const KNOWN_TOP_KEYS = new Set([
     'name','description','loaded_sound','turn_speed','next_level','previous_level','intro_cutscene',
-    'mechanics','win_state','win_conditions','map_generator','item_catalog','item_budget',
+    'mechanics','win_state','win_conditions','map_generator','default_floor','item_catalog','item_budget',
     'random_actors','random_items','traps','switch_puzzles','levels','cutscene',
     // Multi-level / biome keys, edited by the Biome plan section.
     'floors','floor_plan','biomes',

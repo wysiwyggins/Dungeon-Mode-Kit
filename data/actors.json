@@ -875,14 +875,13 @@
   },
   "tree": {
     "name": "tree",
+    "type": "terrain",
     "tileIndexBase": "CANDLE_STICK",
     "tileIndexTop": "WHITE_UPWARD_POINTING_TRIANGLE",
     "tint": "#004405",
     "attributes": {
       "flammable": true,
-      "pushable": false,
       "breakable": true,
-      "conductive": false,
       "paint_tile": "UPWARD_POINTING_TRIANGLE",
       "remains": "log"
     }
@@ -890,12 +889,15 @@
   "hedge": {
     "name": "hedge",
     "description": "A wall of thick vegetation",
+    "type": "terrain",
     "tileIndexBase": "OPAQUE_DOTTED_LIGHT_SHADE",
     "tileIndexTop": "OPAQUE_LIGHT_SHADE",
     "tint": "#77bb41",
     "attributes": {
       "opaque": true,
-      "flammable": true
+      "flammable": true,
+      "conductive": true,
+      "remains": null
     }
   },
   "tall_fungus": {
@@ -984,17 +986,14 @@
   },
   "fortification": {
     "name": "fortification",
+    "type": "terrain",
     "tileIndexBase": "PRISON_WINDOW",
     "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
     "attributes": {
-      "flammable": false,
-      "pushable": false,
       "breakable": true,
-      "conductive": false,
       "opaque": false,
       "ornament": true,
-      "paint_tile": "BALLOT_BOX",
-      "remains": "rubble"
+      "paint_tile": "BALLOT_BOX"
     }
   },
   "metal_wall": {
@@ -1050,23 +1049,23 @@
   },
   "statue": {
     "name": "statue",
+    "type": "terrain",
     "tileIndexBase": "CANDLE_STICK",
     "tileIndexTop": "FULL_MOON",
     "attributes": {
       "breakable": true,
-      "opaque": false,
-      "remains": "rubble"
+      "opaque": false
     }
   },
   "pitchblende_wall": {
     "name": "pitchblende",
+    "type": "terrain",
     "tileIndexBase": "OPAQUE_DOTTED_LIGHT_SHADE",
     "tileIndexTop": "OPAQUE_DOTTED_LIGHT_SHADE",
     "tint": "#7a7a7a",
     "attributes": {
       "breakable": true,
       "lode_chance": 20,
-      "remains": "rubble",
       "lode": "uranium_nugget"
     }
   },
@@ -1090,10 +1089,10 @@
   },
   "pushable_wall": {
     "name": "wall",
+    "type": "terrain",
     "tileIndexBase": "OPAQUE_MEDIUM_SHADE",
     "tileIndexTop": "OPAQUE_LIGHT_SHADE",
     "attributes": {
-      "flammable": false,
       "pushable": true,
       "breakable": true
     }

@@ -5,6 +5,7 @@
 
 ## Tweaks
 
+- additional CA rule for fire- if there are enough adjacent fire actors we should spawn a smoke actor that induces a state that has a skip turn for coughing ("choked")?
 - when we pick a prototype in an editor it should narrow the options in the next dropdown down to the ones in that prototype since there are so many in default /data/
 - **`flicker_tint` (the effect) vs `tint_flicker` (the primitive)** — the words are reversed between the two layers, which is genuinely confusing when reading `effects.json`. Renaming either breaks data or code, so left alone for now.
 - Tiled.app tile layers have a tint color property, it would be cool if we could use it for picking floor tile tints in Tiled too. Currently we do this in the prototype editor.
@@ -15,8 +16,8 @@
 
 ## Actor selectors in biome editor
 
-- Add the ability to pick which actor is used as main walls
-- add the ability to define blob areas of actors other than just lava, sewage, or water
+- ~~Add the ability to pick which actor is used as main walls~~ — done, `wall_types` picker in the Map generator section (both editors)
+- ~~add the ability to define blob areas of actors other than just lava, sewage, or water~~ — done, `lakes.types` takes any non-solid actor that paints a tile
 
 ## item-editor use types
 

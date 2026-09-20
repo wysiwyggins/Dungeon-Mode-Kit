@@ -1910,9 +1910,7 @@ class DungeonEngine {
         this.mapManager.spawnPendingDoors(architectContext);
         this.mapManager.spawnPendingTorches(architectContext);
         this.mapManager.spawnPendingBraziers(architectContext);
-        this.mapManager.spawnPendingLava(architectContext);
-        this.mapManager.spawnPendingLakes(architectContext);
-        this.mapManager.spawnPendingSewage(architectContext);
+        this.mapManager.spawnPendingLiquids(architectContext);
         this.mapManager.spawnPendingPushableWalls(architectContext);
         // After the plain walls, so a late wall can never land on top of a secret.
         // Both generators keep the tiles clear of pendingWallSpawns already; the
@@ -2487,6 +2485,7 @@ class DungeonEngine {
             // restates the whole list.
             decorations: floorOverride.decorations ?? biome.decorations ?? config.decorations ?? null,
             map_generator: floorOverride.map_generator ?? biome.map_generator ?? config.map_generator,
+            default_floor: floorOverride.default_floor ?? biome.default_floor ?? config.default_floor ?? null,
             mechanics: { ...(config.mechanics || {}), ...(biome.mechanics || {}), ...(floorOverride.mechanics || {}) },
             switch_puzzles: floorOverride.switch_puzzles ?? config.switch_puzzles ?? null,
             item_budget: floorOverride.item_budget ?? biome.item_budget ?? config.item_budget ?? null,
@@ -2548,6 +2547,9 @@ class DungeonEngine {
             out.decorations = biome.decorations;
         }
         if (biome.map_generator) out.map_generator = biome.map_generator;
+        // A biome could already pick its wall actors (wall_types rides along inside
+        // map_generator); this lets it pick the floor they stand on to match.
+        if (biome.default_floor) out.default_floor = biome.default_floor;
         if (biome.mechanics) out.mechanics = biome.mechanics;
         return out;
     }

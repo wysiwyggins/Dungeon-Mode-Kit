@@ -43,6 +43,13 @@ const globalVars = {
   // FLOOR layer means void rather than walkable floor; the shade/diagonal values
   // are background art and never appear on the floor layer.
   VOID_FLOOR_FILLS: [217, 231], // FULL_BLOCK, OPAQUE_FULL_BLOCK
+
+  // Blob actors nothing may spawn on top of: they damage what stands there, or
+  // they swallow it. Generation has to know this before any actor exists — it
+  // runs before the spawn context — so it can't be read off the actor the way
+  // most attribute checks are. Mirrors `damage_type` or `deep` in actors.json;
+  // add an id here when adding a liquid with either.
+  HAZARD_BLOB_ACTORS: ['lava', 'fire', 'quicksand', 'deep_water', 'deep_sewage'],
 };
 
 // Attach to window

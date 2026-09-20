@@ -28,6 +28,12 @@ const CATEGORY_KEYS = ['potion','scroll','food','staff','weapon','armor','ring',
 const GEN_TYPES = ['dungeon','palladian','infernal','digger','cellular',
                    'uniform','rogue','arena','divided_maze','icey_maze','eller_maze'];
 
+// The leading slice of GEN_TYPES above — the generators that queue wall actors and
+// so honour `wall_types`. Named rather than sliced so the dependency is explicit:
+// reordering GEN_TYPES shouldn't silently change which generators get the control.
+// ('brogue' normalizes to 'dungeon' before this is consulted.)
+const WALL_BUILDING_GEN_TYPES = ['dungeon','palladian','infernal','digger','cellular'];
+
 // Placement patterns for a biome `decorations` row.
 // Mirrors DECORATION_PATTERN_NAMES in engine.js.
 const DECORATION_PATTERNS = ['scatter','clusters','wall_hugging','near_liquid','room_floor'];

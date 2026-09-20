@@ -157,10 +157,12 @@ but new work should say `dungeon`.
 | `roomHeight` | `[min, max]` | Room height range (digger, uniform, rogue) |
 | `corridorLength` | `[min, max]` | Corridor length range (digger) |
 | `dugPercentage` | number | Target percentage of map to carve (digger) |
-| `lake_chance` | number | Percent chance to spawn water (cellular) |
-| `sewage_chance` | number | Percent chance to spawn sewage (cellular, digger) |
-| `lava_chance` | number | Percent chance for lava pools (infernal) |
-| `wall_types` | array | Weighted wall types: `[{ "type": "rock_wall", "weight": 95 }]` |
+| `probability` | number | Fraction of cells seeded as wall before the automaton runs (cellular, default `0.5`). Sharply nonlinear — on 40×50, `0.35` leaves ~2% filled, `0.45` ~23%, `0.55` ~55%. Around `0.45` gives distinct clumps with walkable clearings. |
+| `iterations` | number | Smoothing passes; more passes mean fewer, larger blobs (cellular, default `4`) |
+| `connected` | boolean | Carve links between isolated pockets so everything is reachable (cellular, default `true`). Set `false` for sealed areas the player must dig or burn into. |
+| `wall_types` | array | Weighted wall types: `[{ "type": "rock_wall", "weight": 95 }]`. Any actor of the `terrain` type works — including `tree` and `hedge`, for woods rather than masonry. Honored by the wall-building generators only (`dungeon`, `palladian`, `infernal`, `digger`, `cellular`); the rest carve floor and queue no walls. |
+| `lakes` | object | Organic blobs of a liquid actor — see [Carved Regions](#carved-regions). |
+| `abyss` | object | Organic blobs of bottomless void, spannable by bridges — see [Carved Regions](#carved-regions). |
 | `pushableWallChance` | number | Percent chance an interior wall with floor on both sides becomes a pushable wall (default `2`). Only applies to walls of type `wall`. |
 | `secretWallChance` | number | Percent chance the same wall becomes a **hidden door** instead — found by searching, not shoving (default `0`, off). Rolled independently of `pushableWallChance`, so it is not competing for a share of that 2%. |
 
@@ -168,6 +170,49 @@ Both of the last two convert walls the generator was going to place anyway, so t
 scale with map area: the same percentage yields ~5× as many secrets on a 100×100 map
 as on a 50×50 one. Tune per prototype rather than reusing one number. See
 [EPISTEMOLOGY.md](EPISTEMOLOGY.md) for how hidden things are found.
+
+#### Carved Regions
+
+`lakes` and `abyss` stamp organic blobs onto the generated map. Both take the same
+shape and run through the same code; they differ only in what fills them.
+
+```json
+"lakes": {
+  "count": [1, 3],
+  "types": [
+    { "type": "water",     "weight": 75 },
+    { "type": "quicksand", "weight": 25 }
+  ],
+  "minSize": 15,
+  "maxSize": 80
+}
+```
+
+| Field | Type | Description |
+| ------- | ------ | ------------- |
+| `count` | `[min, max]` or number | How many separate blobs to attempt per floor. |
+| `types` | array | Weighted pool of what fills them (see below). |
+| `minSize`, `maxSize` | number | Size range of a single blob, in tiles. |
+
+**`lakes.types` takes any non-solid actor that paints a tile**, not just water,
+sewage and lava — `quicksand` works, and so does anything you add with the same
+shape. Two forms are accepted:
+
+- `[{ "type": "water", "weight": 75 }, …]` — explicit weights. What the editor writes.
+- `["water", "sewage", "sewage"]` — a plain pool, weighted by repetition. Every
+  prototype in the repo is authored this way and keeps working.
+
+An id that names no actor is skipped with a console warning rather than silently
+becoming water.
+
+Blob actors that hurt or swallow what stands on them — lava, quicksand, deep water —
+are excluded from the walkable set, so items and monsters never spawn on one. That
+list is `HAZARD_BLOB_ACTORS` in `globals.js`; add an id there when adding a liquid
+with `damage_type` or `deep`.
+
+`abyss` is not an actor. It is floorless void with a special tile signature, which
+bridges, causeways and collapsing floors all key off, so its `types` is always
+`["abyss"]` and cannot be changed.
 
 #### Brogue-Specific Options
 
@@ -270,7 +315,8 @@ the engine's built-in floor tile.
 | `tint` | string | Hex color (`#RRGGBB`) multiplied over floor tiles. Omit for untinted. |
 
 Like `map_generator` and `mechanics`, a floor entry may override it — set
-`default_floor` on that floor and it wins over the prototype-level value.
+`default_floor` on that floor and it wins over the prototype-level value. A biome may
+also set it, sitting between the two: floor override → biome → prototype.
 
 **Generated maps only.** A hand-authored `.tmj` names a tile for every cell, so
 there is no default left to fill in and neither field applies to it.
@@ -279,7 +325,8 @@ The tint rides on the floor layer, which lighting leaves alone (floors are dimme
 by a separate overlay), so it coexists with `darkness` and fog of war.
 
 Both fields are editable in the prototype editor's **Default floor** section, which
-includes the same visual tile picker the actor and item editors use.
+includes the same visual tile picker the actor and item editors use. A biome card
+carries its own **default floor** block, in both the prototype and biome editors.
 
 ---
 
@@ -605,6 +652,7 @@ A biome is one entry in `data/biomes.json` (or a prototype's `biomes.json`), key
 | `item_budget` | object | Standard `{ base, extra_chance, max_extra }` budget (see [Item Budget](#item-budget)). |
 | `traps`, `fungus` | object | Hazard **count ramp**: `{ min_depth, intercept, slope, max }`. Count at floor `d` = `clamp(intercept + d*slope, 0, max)`, active only at `d ≥ min_depth`. `fungus` also takes `tall_chance`. |
 | `map_generator`, `mechanics` | object | Applied to every floor in the biome (a biome is one theme). A floor can still override. |
+| `default_floor` | object | Floor tile and tint for this biome's floors — same pattern as the prototype-level [Default Floor](#default-floor). Sits between a floor override and the prototype value. |
 
 Depth = the absolute 1-based floor index. `actors`/`items` rows are picked by filtering to `min ≤ floor ≤ max` and doing a frequency-weighted raffle, `budget` times per floor. Hand-authored `levels` entries still override the biome per key.
 

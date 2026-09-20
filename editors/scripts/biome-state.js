@@ -143,3 +143,23 @@ function inheritedValue() { return undefined; }
 // Upper bound for the depth sliders (depthCatalogRow) — the "design for N floors"
 // input, not anything stored on the biome.
 function totalFloors() { return state.designFloors; }
+
+// Actor ids a generator can use as its wall fill (map_generator.options.wall_types).
+// Same definition as the prototype editor's (proto-state.js): the `terrain` type,
+// not a solidity test — the Actor constructor defaults `solid` true, so `wall`
+// itself never declares it. Base actors only, matching rebuildMergedIds above.
+function wallActorIds() {
+    return state.mergedActorIds.filter(id => state.mergedActors[id]?.type === 'terrain');
+}
+
+// Actor ids a generator can pour into a blob (map_generator.options.lakes.types).
+// There is no blob type in types.json the way `terrain` covers walls, so this is an
+// attribute filter: non-solid actors that paint a tile. That admits a few odd but
+// legal choices (fire, collapsing_floor) and misses deep_water/deep_sewage, which
+// carry no paint_tile — blobTypesEditor keeps any hand-authored id selectable.
+function blobActorIds() {
+    return state.mergedActorIds.filter(id => {
+        const attrs = state.mergedActors[id]?.attributes || {};
+        return attrs.solid === false && !!attrs.paint_tile;
+    });
+}

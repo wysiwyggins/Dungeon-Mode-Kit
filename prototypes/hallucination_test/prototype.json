@@ -1,0 +1,133 @@
+{
+  "description": "Hallucination test",
+  "turn_speed": 50,
+  "mechanics": {
+    "fog_of_war": true,
+    "darkness": true
+  },
+  "name": "The woods",
+  "loaded_sound": "magic",
+  "map_generator": {
+    "type": "cellular",
+    "options": {
+      "map_width": 40,
+      "map_height": 40,
+      "probability": 0.45,
+      "iterations": 4,
+      "wall_types": [
+        {
+          "type": "tree",
+          "weight": 100
+        },
+        {
+          "type": "hedge",
+          "weight": 30
+        }
+      ]
+    }
+  },
+  "fungus": {
+    "min": 1,
+    "max": 8,
+    "tall_chance": 0.25
+  },
+  "random_actors": {
+    "crow": {
+      "chance": 82,
+      "min": 1,
+      "max": 3
+    },
+    "bat": {
+      "chance": 63,
+      "min": 1,
+      "max": 2
+    },
+    "deer": {
+      "chance": 72,
+      "min": 1,
+      "max": 4
+    },
+    "eel": {
+      "chance": 49,
+      "min": 1,
+      "max": 3
+    },
+    "giant_fly": {
+      "chance": 100
+    },
+    "grave": {
+      "chance": 58,
+      "min": 1,
+      "max": 10
+    },
+    "hedge": {
+      "chance": 100,
+      "min": 1,
+      "max": 5
+    },
+    "poison_frog": {
+      "chance": 11
+    },
+    "ghast": {
+      "chance": 3
+    },
+    "chicken": {
+      "chance": 47,
+      "min": 1,
+      "max": 2
+    },
+    "pink_jelly": {
+      "chance": 6
+    },
+    "rat": {
+      "chance": 45,
+      "min": 1,
+      "max": 3
+    },
+    "spider": {
+      "chance": 5,
+      "min": 0,
+      "max": 1
+    },
+    "witch": {
+      "chance": 24
+    },
+    "vampire": {
+      "chance": 7
+    },
+    "tree": {
+      "chance": 100,
+      "min": 10,
+      "max": 10
+    }
+  },
+  "random_items": {
+    "hallucination_potion": {
+      "chance": 100
+    },
+    "phial": {
+      "chance": 21
+    },
+    "apple": {
+      "chance": 37,
+      "min": 1,
+      "max": 3
+    },
+    "mattock": {
+      "chance": 60
+    },
+    "torch_unlit": {
+      "chance": 67
+    },
+    "powder_keg": {
+      "chance": 3
+    },
+    "axe": {
+      "chance": 27
+    }
+  },
+  "default_floor": {
+    "tile": "OPAQUE_DOTTED_LIGHT_SHADE",
+    "tint": "#6f7608"
+  }
+}

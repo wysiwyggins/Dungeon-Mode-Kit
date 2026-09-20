@@ -26,6 +26,9 @@
      CATEGORY_KEYS, GEN_TYPES, DECORATION_PATTERNS
                                — from proto-state.js and biome-state.js. Both must
                                  define all three; this file is loaded by both editors.
+     wallActorIds(), blobActorIds()
+                               — actor id filters for the generator's wall fill and
+                                 lake fill. Also defined in both state files.
      EditorTemplate            — lib/editor-template.js (+ Handlebars)
    Plus the widgets in proto-widgets.js (el, section, dualRange, weightEditor, ...).
 
@@ -207,8 +210,30 @@ function mapGeneratorBody(obj, body) {
         body.appendChild(carvedRegionsEditor(o));
         body.appendChild(bridgesEditor(o));
         body.appendChild(collapsingEditor(o));
+    } else if (t === 'cellular') {
+        // probability is sharply nonlinear — measured on 40x50, 0.35 leaves ~2%
+        // filled, 0.45 ~23%, 0.55 ~55%. The usable "clumps with clearings" band
+        // is narrow, hence the fine step.
+        body.appendChild(sliderRow('probability', o, 'probability', { min: 0, max: 1, step: 0.05, decimals: 2, def: 0.5,
+            tip: 'Fraction of cells seeded as wall before the automaton runs. Low = sparse clumps in open space; high = a closed cave. ~0.45 gives distinct groves with walkable clearings. Default 0.5.' }));
+        body.appendChild(fieldRow('iterations', o, 'iterations', { type: 'number', min: 1,
+            tip: 'Smoothing passes. More passes round off noise into fewer, larger blobs. Default 4.' }));
+        body.appendChild(toggleLine('connected', o.connected !== false, (on) => {
+            // Absent means true, so only an explicit false is worth storing.
+            if (on) delete o.connected; else o.connected = false;
+            commit();
+        }, 'Carve links between isolated pockets so every open area is reachable. Turn off for sealed caves the player must dig or burn into.'));
     }
-    // arena: only map_width/height (already shown)
+    // arena and the ROT.js wrappers: only map_width/height (already shown)
+
+    // wall_types — the actor the generator fills solid cells with. Only the
+    // wall-building generators queue walls at all; the rest carve floor and
+    // leave nothing to type (see GEN_TYPES in editor-constants.js).
+    if (WALL_BUILDING_GEN_TYPES.includes(t)) {
+        body.appendChild(el('div', { class: 'sub-section' },
+            subTitle('wall_types', 'Which actor the generator fills solid cells with, weighted. Lists actors of the `terrain` type — walls, columns, trees, hedges.'),
+            wallTypesEditor(o, 'wall_types', t === 'palladian' ? 'brick_wall' : 'wall')));
+    }
 }
 
 // The portico is the villa's principal entrance, on the symmetry axis. Absent
@@ -341,8 +366,6 @@ function roomSizeEditor(o) {
     return wrap;
 }
 
-const LIQUID_TYPES = ['water', 'sewage', 'lava'];
-
 function carvedRegionsEditor(o) {
     const tip = 'Regions carved into the map: liquid lakes (water/sewage/lava) and/or bottomless abyss pits. Bridges can span either so the player can cross.';
     const wrap = el('div', { class: 'sub-section' });
@@ -414,8 +437,8 @@ function regionGroup(o, key, title, opts) {
     g.appendChild(dualRangeArrayRow('count', grp, 'count', { min: 0, max: 6, def: [1, 2], tip: opts.countTip }));
     if (opts.liquid) {
         if (!Array.isArray(grp.types) || !grp.types.length) grp.types = ['water'];
-        g.appendChild(subTitle('types (weighted pool)', 'Which liquid types these lakes use. Each type’s weight is its share of the random pick.'));
-        g.appendChild(weightEditor(grp, 'types', { mode: 'pool', choices: LIQUID_TYPES }));
+        g.appendChild(subTitle('types (weighted)', 'Which actors these lakes are filled with. Each weight is that actor’s share of the random pick. Any non-solid actor that paints a tile can be a lake — quicksand as readily as water.'));
+        g.appendChild(blobTypesEditor(grp, 'types'));
     } else {
         grp.types = ['abyss'];
     }
@@ -468,6 +491,47 @@ function bridgesEditor(o) {
     return wrap;
 }
 
+/* default_floor on a BIOME — the floor tile every generator paints for the floors
+   this biome covers. Sits between a floor override and the prototype-level value
+   (Engine.resolveBiome / getFloorConfig).
+
+   A sub-section, not a section(): render() preserves open <details> by matching
+   .sec-title text across ALL details.section nodes, so a second "Default floor"
+   section() nested in a biome card would open in lockstep with the prototype-level
+   one. collapsibleSubSection keys its open state per biome instead.
+
+   Also deliberately not the prototype editor's sectionDefaultFloor: that one carries
+   proto-vs-floor inheritance toggles a biome has no notion of. Same widgets. */
+function biomeDefaultFloorEditor(biome, name) {
+    const sub = collapsibleSubSection('default floor',
+        `biome:${name}:default_floor`, biome.default_floor != null ? 'set' : 'inherited',
+        'Floor tile painted on this biome’s floors. Overrides the prototype default; a floor override still wins over it.');
+
+    // Redraws only this block rather than calling render(): a full rebuild would
+    // yank focus out of the section the user is working in.
+    const fields = el('div', {});
+    function redraw() {
+        fields.innerHTML = '';
+        if (biome.default_floor == null) return;
+        const df = biome.default_floor;
+        fields.appendChild(el('div', { class: 'hint-inline' },
+            'Generated maps only — a hand-authored .tmj supplies its own floor tiles.'));
+        fields.appendChild(tileRow('tile', df, 'tile',
+            'Tile painted as open floor. Leave unset to inherit the prototype’s.',
+            'biome floor tile'));
+        fields.appendChild(colorRow('tint', df, 'tint',
+            'Color multiplied over floor tiles. Leave clear for untinted.'));
+    }
+
+    sub.body.appendChild(toggleLine('override the prototype floor tile', biome.default_floor != null, (checked) => {
+        if (checked) biome.default_floor = {}; else delete biome.default_floor;
+        commit(); redraw();
+    }, 'Off = inherit the prototype’s default_floor.'));
+    sub.body.appendChild(fields);
+    redraw();
+    return sub.det;
+}
+
 /* One biome, as a nested collapsible: rename/remove + its config body.
    `biomes` is the map that owns this entry — a prototype's `p.biomes` in the
    prototype editor, or the library object in the standalone biome editor — so the
@@ -504,6 +568,7 @@ function biomeCard(biomes, name, opts = {}) {
     // No placedFeatures callback: a biome ramps traps/fungus with depth (below)
     // rather than declaring fixed per-floor counts.
     body.appendChild(sectionMapGenerator(biome).det);
+    body.appendChild(biomeDefaultFloorEditor(biome, name));
     body.appendChild(sectionMechanics(biome, 'mechanics', {}).det);
 
     // depth-ranged actor catalog. Collapsible: one row per monster, each with two

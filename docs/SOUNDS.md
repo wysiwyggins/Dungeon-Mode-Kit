@@ -166,13 +166,14 @@ Sounds are primarily wired through JSON data files. The engine reads these attri
 
 ## Current Sound Library
 
-All 35 sounds currently in the audio sprite:
+All 37 sounds currently in the audio sprite:
 
 | Sound ID | Status | Where Used |
 |----------|--------|------------|
 | `arrow_hit` | **Active** | Default projectile impact sound |
 | `arrow_miss` | **Active** | Projectile misses target |
 | `bow` | **Active** | Bowstring/weapon swipe sound (items.json) |
+| `extinguish` | **Active** | Torch doused by hand, or burning out on its own |
 | `feets` | **Active** | Default footstep, varied pitch/volume |
 | `fireball` | **Active** | Spell cast, burning state applied, fire spread |
 | `gas` | **Active** | Explosive potion cloud detonation (`explode_sound` in items.json) |
@@ -180,7 +181,7 @@ All 35 sounds currently in the audio sprite:
 | `heal` | **Active** | Health potion use sound |
 | `hit` | **Active** | Melee collision sound for most actors |
 | `levelout` | **Active** | `loaded_sound` in prototypes, default ceremony build sound |
-| `lock` | **Unused** | Defined in sprite but never played |
+| `lock` | **Active** | Unlock/reveal *success* — stairway unlocked, hidden thing revealed (default `reveal_sound`), `_unlockTarget`. Not the rejection sound: a locked door you can't open plays `plunk3`. |
 | `magic` | **Active** | Scroll use sound |
 | `ouch` | **Active** | Player/actor death sound |
 | `pickup` | **Active** | Item pickup |
@@ -205,6 +206,7 @@ All 35 sounds currently in the audio sprite:
 | `tone7` | **Unused** | — |
 | `tone8` | **Unused** | — |
 | `tone9` | **Unused** | — |
+| `torch` | **Active** | Lighting a torch (its counterpart is `extinguish`) |
 
 ---
 

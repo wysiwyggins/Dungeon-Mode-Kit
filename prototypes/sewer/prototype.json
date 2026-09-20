@@ -56,6 +56,11 @@
       "chance": 50,
       "min": 0,
       "max": 2
+    },
+    "rat": {
+      "chance": 100,
+      "min": 1,
+      "max": 10
     }
   },
   "map_generator": {
@@ -77,10 +82,18 @@
           3
         ],
         "types": [
-          "water",
-          "sewage",
-          "sewage",
-          "water"
+          {
+            "type": "water",
+            "weight": 1
+          },
+          {
+            "type": "sewage",
+            "weight": 2
+          },
+          {
+            "type": "quicksand",
+            "weight": 2
+          }
         ],
         "minSize": 15,
         "maxSize": 80

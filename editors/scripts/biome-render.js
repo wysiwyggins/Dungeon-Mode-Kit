@@ -135,7 +135,8 @@ async function init() {
         selectRow: 'tpl-select-row',
     });
 
-    await loadBaseData();
+    // TilePicker.load() pulls the spritesheet tileRow() draws its preview from.
+    await Promise.all([loadBaseData(), TilePicker.load()]);
 
     const n = Object.keys(state.library).length;
     setStatus(n ? `loaded ${n} biome(s) from data/biomes.json` : 'no data/biomes.json yet');
