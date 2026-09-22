@@ -127,7 +127,7 @@
       "flammable": false,
       "pickupable": true,
       "stackable": true,
-      "use_verb": "Drink",
+      "use_verb": "Quaff",
       "visible": true
     }
   },

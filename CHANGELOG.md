@@ -48,6 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Innate states no longer tint actors.** The `flies` attribute grants a permanent `flying` state, and once state tints moved to a blend that actually shows through, every flying actor got pulled 70% toward that state's cyan. Tinting is now skipped for states granted as part of what an actor is, while conditions that merely lack a timer, like `stuck` and `starving`, still tint.
 - **`opaque: true` did nothing on a walkable actor.** Sight was keyed off `solid`, so tall mushrooms — deliberately `solid: false` so you can walk into and crush them — never blocked line of sight or light despite declaring they should. Opacity and solidity are now independent via `getSightBlockerAt`, and AI vision honors the same cover.
 - **The cellular generator left no floor under its walls.** Every other generator paints a floor tile beneath a wall actor — the engine assumes it — but cellular queued the wall and skipped the floor, so its wall cells read as void. Invisible behind an opaque `wall`, obvious behind a `tree`, whose base tile lets the ground show through.
 - **Collapsible sub-sections closed when you edited something inside them.** The open-state listener also fired as `render()` tore the old node down, writing "closed" over the state the rebuilt node had just read. It now ignores toggles from detached nodes.

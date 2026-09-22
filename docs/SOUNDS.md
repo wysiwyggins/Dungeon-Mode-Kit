@@ -7,7 +7,7 @@ Dungeon Mode Kit uses [Howler.js](https://howlerjs.com/) to play sound effects f
 ## Architecture
 
 | File | Role |
-|------|------|
+| ------ | ------ |
 | `sound.js` | `AudioManager` class — wraps Howler.js |
 | `data/sounds.json` | Sprite map — maps sound IDs to `[startMs, durationMs]` |
 | `assets/audio/sounds.mp3` | Audio sprite (MP3 format) |
@@ -97,7 +97,7 @@ Sounds are primarily wired through JSON data files. The engine reads these attri
 ### Items (`data/items.json`)
 
 | Attribute | When It Plays | Default | Example |
-|-----------|--------------|---------|---------|
+| ----------- | -------------- | --------- | --------- |
 | `collision_sound` | Item hits a target (melee weapon strike or thrown projectile impact) | `"arrow_hit"` for projectiles | `"bow"`, `"tap2"`, `"plunk3"` |
 | `break_sound` | Breakable item shatters on throw impact | none | `"glass"` |
 | `explode_sound` | Explosive+breakable item detonates into a cloud on throw (non-fire) | none | `"gas"` |
@@ -110,7 +110,7 @@ Sounds are primarily wired through JSON data files. The engine reads these attri
   "name": "Health Potion",
   "attributes": {
     "use_sound": "heal",
-    "use_verb": "Drink",
+    "use_verb": "Quaff",
     "consumable": true
   }
 }
@@ -119,7 +119,7 @@ Sounds are primarily wired through JSON data files. The engine reads these attri
 ### Actors (`data/actors.json`)
 
 | Attribute | When It Plays | Default | Example |
-|-----------|--------------|---------|---------|
+| ----------- | -------------- | --------- | --------- |
 | `collision_sound` | Actor is hit by an attack or collides with player | none | `"hit"` |
 | `death_sound` | Actor dies | none | `"ouch"` |
 | `entry_sound` | Player steps onto this actor's tile (terrain, liquid) | none | `"step_mud"` |
@@ -136,7 +136,7 @@ Sounds are primarily wired through JSON data files. The engine reads these attri
 ### States (`data/states.json`)
 
 | Attribute | When It Plays | Default | Example |
-|-----------|--------------|---------|---------|
+| ----------- | -------------- | --------- | --------- |
 | `on_apply_sound` | Status effect is applied to an actor | none | `"fireball"` (burning) |
 | `on_remove_sound` | Status effect wears off | none | — |
 
@@ -169,7 +169,7 @@ Sounds are primarily wired through JSON data files. The engine reads these attri
 All 37 sounds currently in the audio sprite:
 
 | Sound ID | Status | Where Used |
-|----------|--------|------------|
+| ---------- | -------- | ------------ |
 | `arrow_hit` | **Active** | Default projectile impact sound |
 | `arrow_miss` | **Active** | Projectile misses target |
 | `bow` | **Active** | Bowstring/weapon swipe sound (items.json) |
@@ -225,7 +225,7 @@ Game actions that currently produce no sound. Organized by category with suggest
 ### Equipment & Inventory
 
 | Sound Needed | Description | How to Wire In |
-|-------------|-------------|---------------|
+| ------------- | ------------- | --------------- |
 | **Equip weapon** | Metallic slide or click — blade drawn from sheath | Add `playSound` call in `executeWearItem()` in `interface.js` when the item has `weapon` attribute |
 | **Wear armor** | Heavy cloth settling or plate clinking | Add `playSound` call in `executeWearItem()` in `interface.js` when the item has `wearable` attribute |
 | **Unequip item** | Lighter version of equip — buckle unfasten, cloth shift | Add `playSound` call in `executeRemoveItem()` in `interface.js` |
@@ -236,7 +236,7 @@ Game actions that currently produce no sound. Organized by category with suggest
 These all go in `data/states.json` as the `on_apply_sound` attribute. The engine already reads and plays this field — just needs values.
 
 | State | Suggested Sound | `on_apply_sound` Value |
-|-------|----------------|----------------------|
+| ------- | ---------------- | ---------------------- |
 | **Poisoned** | Wet bubbling or hissing | `"poison_apply"` (new) |
 | **Stunned** | Sharp electric zap or bell ring | `"stun_apply"` (new) |
 | **Sleeping** | Gentle lullaby note or soft chime | `"sleep_apply"` (new) |
@@ -251,7 +251,7 @@ Optional: Add `on_remove_sound` values as well (reversal of the apply sound).
 ### Environment & Doors
 
 | Sound Needed | Description | How to Wire In |
-|-------------|-------------|---------------|
+| ------------- | ------------- | --------------- |
 | **Door locked** | Rattle/jiggle of a locked handle | Use the existing `lock` sound (already in sprite, never called). Add `playSound('lock')` when a locked door rejects the player in `engine.js` collision handling. |
 | **Stairway use** | Stone scraping or portal whoosh when transitioning levels | Add `playSound` call in the stairway interaction code in `engine.js` |
 | **Fire spread** | Quick crackle when fire spreads to an adjacent tile | Add `playSound` call in the `_spreadFire` behavior in `engine.js` (use `playSoundVaried` to avoid machine-gun repetition) |
@@ -260,21 +260,21 @@ Optional: Add `on_remove_sound` values as well (reversal of the apply sound).
 ### Combat
 
 | Sound Needed | Description | How to Wire In |
-|-------------|-------------|---------------|
+| ------------- | ------------- | --------------- |
 | **Critical hit** | Heavier impact — crunch or metallic slam on top of normal hit sound | Add a `playSound` call in the critical hit branch of damage calculation in `engine.js` |
 | **Knockback impact** | Body-hitting-wall thud when knockback weapon shoves a target | Add `playSound` call in the knockback handling code in `engine.js` |
 
 ### UI
 
 | Sound Needed | Description | How to Wire In |
-|-------------|-------------|---------------|
+| ------------- | ------------- | --------------- |
 | **Inventory open** | Paper rustle or bag opening | Add `playSound` call in `showPlayerInfo()` in `interface.js` |
 | **Menu close** | Soft click or paper fold | Add `playSound` call in `hidePlayerInfo()` in `interface.js` |
 
 ### Victory & Events
 
 | Sound Needed | Description | How to Wire In |
-|-------------|-------------|---------------|
+| ------------- | ------------- | --------------- |
 | **Win condition met** | Short fanfare or triumphant chime | Add `playSound` call in `checkWinConditions()` in `engine.js` when win triggers |
 | **Exit unlocked** | Heavy stone door grinding open | Add `playSound` call in `unlockWinConditionStairways()` in `engine.js` |
 | **Map revealed** | Magical shimmer / page unfurl | Add `playSound` call in the `reveal_map` use effect handler in `engine.js` |

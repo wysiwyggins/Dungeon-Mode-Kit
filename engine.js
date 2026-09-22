@@ -5639,14 +5639,14 @@ class Actor extends Entity {
             for (const stateName of data.innate_states) {
                 const stateData = engine.globalStates[stateName];
                 if (stateData) {
-                    this.applyState(stateName, stateData, { duration: Infinity, silent: true });
+                    this.applyState(stateName, stateData, { duration: Infinity, silent: true, innate: true });
                 }
             }
         }
 
         // The 'flies' attribute grants the permanent flying state
         if (this.hasAttribute('flies') && engine.globalStates?.flying && !this.hasState('flying')) {
-            this.applyState('flying', engine.globalStates.flying, { duration: Infinity, silent: true });
+            this.applyState('flying', engine.globalStates.flying, { duration: Infinity, silent: true, innate: true });
         }
 
         this.isDead = false;
@@ -7225,6 +7225,9 @@ class Actor extends Entity {
             duration: duration,
             data: stateData,
             source: options.source || null,
+            // Granted as part of what this actor IS, rather than something that
+            // happened to it. Read by getStateTint — see the note there.
+            innate: options.innate || false,
             attachedActor: null
         };
 
@@ -7551,9 +7554,24 @@ class Actor extends Entity {
         return this.states[stateName]?.duration ?? null;
     }
 
+    /**
+     * The average tint of the states currently worth showing on this actor's sprite,
+     * or null if there are none.
+     *
+     * Innate states are skipped. A tint is a signal that something is *happening* to
+     * an actor, and an innate state is the opposite of news — it is what the thing
+     * permanently is. `flies` grants a permanent `flying` state, so every gas cloud,
+     * bat and vampire was being washed 70% toward flying's cyan (#33eeff) and losing
+     * its own color: sewer gas authored #AACC33 rendered #57E4C2.
+     *
+     * Note the exclusion is innate-ness, not an infinite duration. `stuck` and
+     * `starving` have no timer either — they end on an escape roll or on eating —
+     * but they are conditions, and they still tint.
+     */
     getStateTint() {
         const tints = [];
         for (const state of Object.values(this.states)) {
+            if (state.innate) continue;
             if (state.data?.tint) {
                 tints.push(parseTint(state.data.tint));
             }

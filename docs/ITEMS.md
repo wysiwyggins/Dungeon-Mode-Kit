@@ -32,7 +32,7 @@ Item JSON has two layers, and knowing which layer a property belongs to matters.
 ### All root-level properties
 
 | Property | Type | Purpose |
-|----------|------|---------|
+| ---------- | ------ | --------- |
 | `name` | string | Display name |
 | `tileIndex` | string | Sprite tile name from the tileset |
 | `tint` | string | Hex color tint (`"#FF0000"`) |
@@ -62,7 +62,7 @@ All four resolve templates against the item, and all four are read from attribut
 (root-level authoring is bridged in, see the note below).
 
 | Field | Answers | Read by | Behaviour |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `description` | What is it? | `getDescription()` | Memoized — the panel is re-read while browsing, so words must not change between renders. Callers hide it for unidentified items. |
 | `use_description` | What happened when I used it? | `getUseDescription()` | Re-rolls random words on every call — read once per use, so variety is the point. Supports `[item_name]` and `[effect_description]`. |
 | `effect_description` | What does the effect do? | `getEffectDescription()` | Memoized. Independent of using the item, so a UI can name an effect without implying the player just triggered it. An item with `random_effect` gets this from `templateVars` instead. |
@@ -81,7 +81,7 @@ that gating belongs to the caller.
 ## Core Attributes
 
 | Attribute | Type | Description |
-|-----------|------|-------------|
+| ----------- | ------ | ------------- |
 | `pickupable` | boolean | Item can be picked up by actors |
 | `visible` | boolean | Item is rendered on the map |
 | `stackable` | boolean | Multiple instances combine in inventory |
@@ -100,7 +100,7 @@ that gating belongs to the caller.
 ### Wearable Slots
 
 | Slot | Position | Use Case |
-|------|----------|----------|
+| ------ | ---------- | ---------- |
 | `"top"` | Above actor's head | Crowns, horns |
 | `"middle"` | Actor's top tile | Helmets, masks |
 | `"lower"` | Actor's base tile | Armor, pants |
@@ -117,7 +117,7 @@ that gating belongs to the caller.
 ```
 
 | Value type | On equip | On unequip |
-|------------|----------|------------|
+| ------------ | ---------- | ------------ |
 | Number | Add to attribute | Subtract from attribute |
 | Boolean | Set attribute (stores original) | Restore original |
 | `"toggle"` | Toggle attribute | Toggle back |
@@ -137,7 +137,7 @@ Effects only apply if the actor already has the target attribute.
 ```
 
 | Value type | Effect |
-|------------|--------|
+| ------------ | -------- |
 | Number | Add to target's stat/attribute (negative = damage) |
 | Boolean | Set target's attribute |
 | `"toggle"` | Toggle target's attribute |
@@ -147,7 +147,7 @@ If `health` drops to 0 or below, the target dies. See [COMBAT.md](COMBAT.md). Ef
 ### Weapon Attributes
 
 | Attribute | Effect |
-|-----------|--------|
+| ----------- | -------- |
 | `weapon: true` | Marks item as a weapon (affects combat calculations) |
 | `attack_style` | Targeting pattern: `"lunge"`, `"sweep"`, or `"penetrate"`. See [COMBAT.md](COMBAT.md) |
 | `lunge_range` | Distance to lunge target in tiles (default `2`). Only with `attack_style: "lunge"` |
@@ -164,7 +164,7 @@ If `health` drops to 0 or below, the target dies. See [COMBAT.md](COMBAT.md). Ef
 ### Mining Tools
 
 | Attribute | Effect |
-|-----------|--------|
+| ----------- | -------- |
 | `mining: true` | Lets the item damage `breakable` actors. Without it, walking into a mineable wall just bumps. |
 | `mining_power` | Progress added per successful swing (default `25`). The target breaks once accumulated progress reaches its `break_threshold`, default `100`. |
 | `dig_chance` | Chance a swing bites, `0`–`1` (default `1` = always). A glancing swing costs the turn but causes no progress and no wear. A target may override this — soft ground yields to a crude tool that would skitter off rock. |
@@ -191,8 +191,8 @@ the key is specific to mining: it filters the pack by verb, so any item declarin
 Items with `use_verb` appear with an action button in the inventory UI.
 
 | Attribute | Type | Description |
-|-----------|------|-------------|
-| `use_verb` | string | Inventory button label (`"Drink"`, `"Read"`, `"Zap"`) |
+| ----------- | ------ | ------------- |
+| `use_verb` | string | Inventory button label (`"Quaff"`, `"Read"`, `"Zap"`) |
 | `use_effect` | string or object | What happens on use |
 | `use_sound` | string | Sound played on use |
 | `use_description` | string | Message shown after use (supports `[item_name]`, `[effect_description]`, `[adjectives.yucky]` etc.) |
@@ -212,7 +212,7 @@ Pass an object to modify stats, attributes, or apply states directly:
 ### String format — named effects
 
 | Effect string | Description |
-|---------------|-------------|
+| --------------- | ------------- |
 | `"targeted_spell"` | Enters aiming mode; fires `spell_effect` at target tile (staffs) |
 | `"identify_item"` | Opens item picker; player selects one unidentified item to reveal |
 | `"teleport"` | Moves player to a random walkable tile |
@@ -277,7 +277,7 @@ Use an object `use_effect` with `apply_state_radius` or `remove_states_radius` f
 ```
 
 | Property | Type | Description |
-|----------|------|-------------|
+| ---------- | ------ | ------------- |
 | `state` | string | State to apply (for `apply_state_radius`) |
 | `radius` | number | Effect radius in tiles |
 | `filter` | string | `"hostile"`, `"friendly"`, or omit for all actors |
@@ -291,7 +291,7 @@ Use an object `use_effect` with `apply_state_radius` or `remove_states_radius` f
 An item with `light_source: true` emits light when carried in an actor's inventory, or when lying on the ground.
 
 | Attribute | Type | Description |
-|-----------|------|-------------|
+| ----------- | ------ | ------------- |
 | `light_source` | boolean | Emits light; uses item `tint` as light color |
 | `lightRadius` | number | Light radius in tiles (default `5`) |
 | `lightIntensity` | number | Light strength 0–1 (default `1.0`) |
@@ -379,7 +379,7 @@ Extended form:
 ```
 
 | Stat field | Description |
-|------------|-------------|
+| ------------ | ------------- |
 | `max` | Maximum value |
 | `per_turn` | Change each turn (negative depletes, positive recharges) |
 | `display_label` | Shows `"Label: current/max"` with a progress bar in the inventory UI |
@@ -400,7 +400,7 @@ aiming; carry two and it asks which first. Picking one hands off to its `use_eff
 `targeted_spell` for both, which enters aiming mode.
 
 | Attribute | Description |
-|-----------|-------------|
+| ----------- | ------------- |
 | `charge_stat` | Name of the stat that tracks charge |
 | `uses` | Number of casts per full charge (determines `ready_at` if not set explicitly) |
 | `spell_effect` | Object describing the AoE: `{ "center": "actor_type", "radius": N, "outer": "actor_type" }` |
@@ -446,7 +446,7 @@ the item gets a sensible default — thrown items offer `["hostile", "trap"]`, z
 offer `["hostile"]` — so most items need no entry at all.
 
 | Token | Cycles to |
-|---|---|
+| --- | --- |
 | `hostile` | Enemies (hostile personality, `hostile` attribute, or `collision_effect`) |
 | `ally` | Non-hostile creatures with a health stat — for beneficial effects |
 | `trap` | Traps, so a thrown object can spring one from a safe distance |
@@ -471,7 +471,7 @@ against each other leaks nothing either. Once identified, the item's real filter
 Items with `"identified": false` have two display names — an unidentified placeholder and a revealed true name. All instances of the same item type share the same placeholder within a run.
 
 | Field | Description |
-|-------|-------------|
+| ------- | ------------- |
 | `identified` | `false` = item starts unidentified |
 | `unidentified_template` | Display name before identification |
 | `identified_template` | Display name after identification |
@@ -481,7 +481,7 @@ Items with `"identified": false` have two display names — an unidentified plac
 Templates support substitution tokens in `[brackets]`:
 
 | Token | Resolves to |
-|-------|-------------|
+| ------- | ------------- |
 | `[color]` | Random color name assigned to this item type (requires `random_color: true`) |
 | `[glyph_name]` | Random runic name assigned to this item type (requires `random_glyph_name: true`) |
 | `[reagents.reagents]` | Random entry from `data/reagents.json` |
@@ -504,7 +504,7 @@ Templates support substitution tokens in `[brackets]`:
     "pickupable": true,
     "stackable": true,
     "consumable": true,
-    "use_verb": "Drink",
+    "use_verb": "Quaff",
     "use_effect": { "health": 20 }
   }
 }
@@ -623,7 +623,7 @@ Rings provide bonuses while carried in inventory — they don't need to be equip
 ### Passive Effect Types
 
 | Passive key | Effect |
-|-------------|--------|
+| ------------- | -------- |
 | `defense` | Adds to effective defense |
 | `strength` | Adds to effective strength |
 | `visionRange` | Extends AI detection/vision range |
@@ -668,7 +668,7 @@ Wands are single-target charged items that apply effects at range. Like staves, 
 ### Spell Effect Properties (Single-Target)
 
 | Property | Type | Effect |
-|----------|------|--------|
+| ---------- | ------ | -------- |
 | `apply_state` | string | Apply named state to target actor |
 | `remove_states` | boolean | Strip all states from target actor |
 | `teleport_target` | boolean | Teleport target to a random walkable tile |
@@ -683,7 +683,7 @@ These can be combined with the area-effect properties (`center`, `radius`, `oute
 ## Explosive Items
 
 | Attribute | Type | Description |
-|-----------|------|-------------|
+| ----------- | ------ | ------------- |
 | `explosive` | boolean | Item can explode |
 | `breakable` | boolean | Item shatters on impact when thrown |
 | `fire_explosion` | boolean | Explosion spawns fire instead of a gas cloud |

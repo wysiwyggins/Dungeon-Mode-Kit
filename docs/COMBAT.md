@@ -2,7 +2,7 @@
 
 Combat occurs when actors collide (move into the same tile). Actors and items have collision effects, which have a chance to change a stat in the target. Hit rolls are exponential. We've picked three stats- strength, defence, and accuracy to modify chance to hit and effect, and generally affect a stat called health in the target, but our system should remain flexible to allow per-prototype experimentation in the actors and item json files.
 
-As with a lot of these systems, "Can I make something like Brogue" was the first target (a boiled-down, simplified roguelike) keeping as much of those design decisions as possible located in data files. Modular reusable chunks in the scripts, handy defaults in data, design variations in prototype data.
+As with a lot of these systems, "Can I make something like Brogue" was the first target (a boiled-down, simplified roguelike) keeping as much of those design decisions as possible located in data files. Modular reusable chunks in the scripts, handy defaults in data, design variations in prototype data. Recently I added `type` templates for items and actors and I can see a future where /data is mostly types and specifics are in /prototypes
 
 ## Hit Calculation
 
@@ -26,7 +26,7 @@ This is clamped to 5-95% (always some chance to hit or miss).
 **Example hit chances:**
 
 | Accuracy | Defense | Hit Chance |
-|----------|---------|------------|
+| ---------- | --------- | ------------ |
 | 50 | 0 | 50% |
 | 50 | 10 | 44% |
 | 50 | 20 | 38% |
@@ -98,14 +98,14 @@ The system determines damage from sources in priority order:
 The `weapon_proc` attribute (or legacy `weapon` string) specifies a post-hit effect:
 
 | Type | Effect |
-|------|--------|
+| ------ | -------- |
 | `"normal"` (default) | No special effect |
 | `"knockback"` | Pushes target away on hit, target loses next turn (stagger) |
 | `"lifesteal"` | Heals attacker for a percentage of damage dealt |
 | `"critical"` | Chance for double damage |
 
 | Proc attribute | Default | Description |
-|----------------|---------|-------------|
+| ---------------- | --------- | ------------- |
 | `knockback_distance` | `1` | Tiles to push target |
 | `lifesteal_percent` | `25` | Percent of damage healed |
 | `critical_chance` | `15` | Percent chance for double damage |
@@ -117,7 +117,7 @@ The `weapon_proc` attribute (or legacy `weapon` string) specifies a post-hit eff
 The `attack_style` attribute modifies how a weapon targets enemies. Unlike `weapon_proc` (which fires after a hit), attack styles change who or where gets attacked. A weapon can have both an `attack_style` and a `weapon_proc`.
 
 | Style | Effect |
-|-------|--------|
+| ------- | -------- |
 | `"lunge"` | Attack an enemy 2 tiles away by moving through the gap |
 | `"sweep"` | Hit all adjacent enemies simultaneously |
 | `"penetrate"` | Pierce through the primary target to hit the enemy behind |
@@ -192,7 +192,7 @@ The rapier lunges through gaps to strike distant enemies, and each hit has a 20%
 Remember, all actor attributes are optional, so combat still works without these
 
 | Attribute | Description | Default |
-|-----------|-------------|---------|
+| ----------- | ------------- | --------- |
 | `accuracy` | Base hit chance percentage | None (always hit) |
 | `defense` | Reduces attacker's hit chance (exponential) | 0 |
 | `strength` | Multiplies weapon damage (÷10) | 10 |
@@ -203,7 +203,7 @@ Remember, all actor attributes are optional, so combat still works without these
 ### Item Attributes (Weapons)
 
 | Attribute | Description |
-|-----------|-------------|
+| ----------- | ------------- |
 | `weapon` | `true` — marks item as a weapon |
 | `attack_style` | Targeting style: `"lunge"`, `"sweep"`, or `"penetrate"` |
 | `weapon_proc` | Proc type: `"knockback"`, `"lifesteal"`, or `"critical"` |
@@ -220,7 +220,7 @@ Remember, all actor attributes are optional, so combat still works without these
 ### Item Attributes (Armor)
 
 | Attribute | Description |
-|-----------|-------------|
+| ----------- | ------------- |
 | `wearable` | Equipment slot: `"top"`, `"middle"`, or `"lower"` |
 | `requires_stat` | Stat requirements to equip; strength value also determines equip time in turns (e.g., `{ "strength": 8 }` = 8 turns to equip) |
 | `wear_effect` | Stat bonuses when equipped (e.g., `{ "defense": 8 }`) |
@@ -230,7 +230,7 @@ Remember, all actor attributes are optional, so combat still works without these
 Actors have four equipment slots:
 
 | Slot | Items |
-|------|-------|
+| ------ | ------- |
 | `weapon` | Items with `"weapon": true` or weapon type string |
 | `top` | tile above head, like crown or horns (`"wearable": "top"`) |
 | `middle` | face tile (`"wearable": "middle"`) |
@@ -243,7 +243,7 @@ Equipped items provide `wear_effect` bonuses to combat stats.
 Actions that consume a turn (allow enemies to act):
 
 | Action | Turn Cost |
-|--------|-----------|
+| -------- | ----------- |
 | Move | 1 turn |
 | Attack | 1 turn |
 | Equip weapon | 1 turn |

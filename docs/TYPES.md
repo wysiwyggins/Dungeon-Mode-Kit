@@ -163,7 +163,7 @@ so leaving it out drops the defaults rather than keeping them:
 | `prey` | as `beast` but `hostile: false`, plus `default_items: [meat]` | Non-hostile animals |
 | `undead` | `sentient`, `flammable`, `hostile`, `dark_vision`, `poison_immune`, `gas_immune`, `remains: skull` | Nothing left to poison and no breath to hold, but fire still finds them |
 | `humanoid` | `sentient`, `flammable`, `opaque: false`, `inventory: 1`, `remains: skull` | Upright folk who carry things. No `hostile` — a guard may be friendly |
-| `arcane` | as `humanoid` but `remains: blood`, plus `default_items: [potion, scroll]` | Spellcasters, who start with something to read and something to drink |
+| `arcane` | as `humanoid` but `remains: blood`, plus `default_items: [potion, scroll]` | Spellcasters, who start with something to read and something to quaff |
 | `terrain` | `solid`, `flammable: false`, `pushable: false`, `conductive: false`, `remains: rubble` | Mindless, so it can burn or be stuck but never confused |
 
 ## Built-in item types
@@ -173,7 +173,7 @@ Naming one of these instead of an item id spawns a random member — see
 
 | Type | Grants | Notes |
 | ---- | ------ | ----- |
-| `potion` | `name: potion`, `random_color`, `consumable`, `stackable`, `breakable`, `use_verb: Drink` | color-coded until identified |
+| `potion` | `name: potion`, `random_color`, `consumable`, `stackable`, `breakable`, `use_verb: Quaff` | color-coded until identified |
 | `food` | `consumable`, `stackable`, `mass_noun`, `flammable`, `use_verb: Eat` | Members name themselves (meat, apple) |
 | `weapon` | `weapon`, `enchantable`, `attack_sound`, `collision_sound`, `stackable: false` | Damage and reach are per-weapon |
 | `armor` | `enchantable`, `enchant_range: [-1, 2]`, `stackable: false` | The slot (`wearable`) is per-piece |
