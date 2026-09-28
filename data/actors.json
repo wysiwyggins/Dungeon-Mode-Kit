@@ -1688,7 +1688,7 @@
     "attributes": {
       "flies": true,
       "hazard_immune": true,
-      "flammable": true,
+      "flammable": false,
       "mass_noun": true
     },
     "lifetime": 10
@@ -1704,7 +1704,7 @@
       "flies": true,
       "solid": false,
       "mass_noun": true,
-      "flammable": true,
+      "flammable": false,
       "hazard_immune": true
     },
     "collision_effect": {},
@@ -1728,6 +1728,25 @@
       "health": -3
     },
     "lifetime": 6
+  },
+  "smoke": {
+    "name": "smoke",
+    "tileIndexBase": "BLANK",
+    "tileIndexTop": "BLANK",
+    "animated": true,
+    "animation_frames": "smoke",
+    "tint": "#555555",
+    "personality": "cloud",
+    "attributes": {
+      "flies": true,
+      "solid": false,
+      "flammable": false,
+      "mass_noun": true,
+      "apply_state": "choked",
+      "hazard_immune": true
+    },
+    "collision_effect": {},
+    "lifetime": 8
   },
   "sewer_gas": {
     "name": "sewer gas",
@@ -1759,7 +1778,7 @@
     "attributes": {
       "flies": true,
       "solid": false,
-      "flammable": true,
+      "flammable": false,
       "mass_noun": true,
       "hazard_immune": true
     },

@@ -795,6 +795,7 @@ Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a fu
 | ---------- | ------------- | ------------ |
 | `fire_spread` | Spread fire to adjacent flammable actors/items. | `spread_chance` |
 | `fire_burn_out` | Countdown fire lifetime, damage actors standing in fire. | `damage_per_turn` |
+| `fire_smoke` | Emit a smoke cloud when surrounded by enough fire (cellular automata). | `smoke_type`, `smoke_threshold`, `smoke_chance`, `smoke_cap`, `smoke_lifetime`, `check_cardinal` |
 | `cloud_spread` | Expand cloud to adjacent tiles. | `spread_radius`, `spread_turns` |
 | `cloud_disperse` | Edge clouds disperse into mist. | `disperse_to`, `disperse_threshold`, `disperse_chance` |
 | `cloud_affect_actors` | Apply cloud's collision_effect/apply_state to actors in tile. | — |

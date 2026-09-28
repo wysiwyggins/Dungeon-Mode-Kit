@@ -89,6 +89,8 @@ function springTrapPayload(actor, victim = null, opts = {}) {
                     }
                 }
 
+                if (actor.data?.trap_spawn_flammable) spawnedActor.setAttribute('flammable', true);
+
                 // Mark as origin cloud so it spreads
                 spawnedActor.isCloudOrigin = true;
                 spawnedActor.cloudOriginX = actor.x;
@@ -1083,14 +1085,25 @@ const BehaviorLibrary = {
             actor.cloudLifetime = actor.lifetime || data.cloud_lifetime || 10;
         }
 
+        // Directions (indices into ALL_DIRS) whose ray has hit a wall. Gas spreads
+        // along 8 straight rays, so without this a puff at distance 2 would appear
+        // on the far side of a wall at distance 1.
+        if (!actor.blockedSpreadDirs) actor.blockedSpreadDirs = new Set();
+
         // Spread to tiles at the current distance from origin
-        for (const dir of ALL_DIRS) {
+        for (let i = 0; i < ALL_DIRS.length; i++) {
+            if (actor.blockedSpreadDirs.has(i)) continue;
+            const dir = ALL_DIRS[i];
             const targetX = actor.cloudOriginX + dir.dx * actor.currentSpreadDistance;
             const targetY = actor.cloudOriginY + dir.dy * actor.currentSpreadDistance;
 
             // Check if tile is valid (has floor, not a wall)
             const floorTile = actor.engine.mapManager?.floorMap[targetY]?.[targetX];
             if (!floorTile || floorTile.tileId <= 0) continue;
+            if (entityManager.blocksGasAt(targetX, targetY)) {
+                actor.blockedSpreadDirs.add(i);
+                continue;
+            }
 
             // Don't spread onto a tile that already holds any gas (cloud OR mist) —
             // it would only be collapsed by the merge rule anyway. Skipping avoids
@@ -1111,6 +1124,7 @@ const BehaviorLibrary = {
                 if (applyState) {
                     newCloud.setAttribute('apply_state', applyState);
                 }
+                newCloud.setAttribute('flammable', !!actor.hasAttribute('flammable'));
                 // Give spawned clouds the same remaining lifetime as the origin
                 newCloud.cloudLifetime = actor.cloudLifetime;
                 // Update sprites with new tint
@@ -1364,6 +1378,7 @@ const BehaviorLibrary = {
                 mist.tint = tint;
                 mist.setAttribute('collision_effect', collisionEffect);
                 if (applyState) mist.setAttribute('apply_state', applyState);
+                mist.setAttribute('flammable', !!actor.hasAttribute('flammable'));
                 // Mist has shorter remaining lifetime
                 mist.cloudLifetime = Math.max(2, Math.floor(remainingLifetime * 0.6));
                 // Update sprites
@@ -1385,6 +1400,7 @@ const BehaviorLibrary = {
                 mist.setAttribute('collision_effect', actor.getAttribute('collision_effect'));
                 const neighborApplyState = actor.getAttribute('apply_state');
                 if (neighborApplyState) mist.setAttribute('apply_state', neighborApplyState);
+                mist.setAttribute('flammable', !!actor.hasAttribute('flammable'));
                 // New mist has short lifetime
                 mist.cloudLifetime = Math.max(2, Math.floor((actor.cloudLifetime || 3) * 0.5));
                 if (mist.spriteBase) mist.spriteBase.tint = actor.tint;
@@ -1416,7 +1432,7 @@ const BehaviorLibrary = {
             const checkY = actor.y + dir.dy;
 
             for (const a of entityManager.getActorsAt(checkX, checkY)) {
-                if (a.type === 'mist' || a.type === 'cloud' || a.type === 'sewer_gas') {
+                if (a.type === 'mist' || a.type === 'cloud' || a.type === 'sewer_gas' || a.type === 'smoke') {
                     gasNeighbors++;
                     break;
                 }
@@ -1450,6 +1466,11 @@ const BehaviorLibrary = {
 
         // Don't transform if already the target type
         if (actor.type === transformTo) return false;
+
+        // A failed check keeps failing until something new appears next door, so
+        // settle and skip until spawnActor re-wakes this tile (losing a neighbor
+        // only lowers the count, so deaths never need to wake it).
+        if (actor._caSettled) return false;
 
         const directions = checkCardinal ? CARDINAL_DIRS : ALL_DIRS;
 
@@ -1485,6 +1506,7 @@ const BehaviorLibrary = {
             return true;
         }
 
+        actor._caSettled = true;
         return false;
     },
 
@@ -1509,6 +1531,11 @@ const BehaviorLibrary = {
         // until a cardinal neighbor's tint changes and re-wakes them. Large static
         // lakes converge in a few turns and then cost nothing.
         if (actor._mixSettled) return false;
+
+        // Blending nobody can see is wasted work. Unseen tiles aren't marked settled,
+        // so they pick up where they left off once the player sees them. (Always
+        // true on lit levels, where isTileVisible has no darkness to test.)
+        if (!actor.engine.isTileVisible(actor.x, actor.y)) return false;
 
         const mixChance = data.mix_chance ?? 0.3;
         if (ROT.RNG.getUniform() >= mixChance) return false;
@@ -1959,6 +1986,60 @@ const BehaviorLibrary = {
         if (actor.fireLifetime <= 0) {
             actor.die();
             return true;
+        }
+
+        return false;
+    },
+
+    /**
+     * Fire smoke behavior - cellular automata rule: a fire tile surrounded by
+     * enough other fire gives off smoke (a cloud origin that spreads and disperses)
+     *
+     * Data parameters:
+     * - smoke_type: The cloud actor type to spawn (default: "smoke")
+     * - smoke_threshold: Minimum neighboring fire tiles required (default: 3)
+     * - smoke_chance: Probability of emitting each turn when conditions met (default: 0.25)
+     * - smoke_cap: Maximum smoke origins alive at once (default: 20)
+     * - smoke_lifetime: Lifetime of the spawned smoke cloud (default: 8)
+     * - check_cardinal: If true, only check 4 cardinal directions; if false, check all 8 (default: false)
+     */
+    fire_smoke: (actor, data) => {
+        // Fire attached to a burning creature doesn't count as a blaze
+        if (actor._isAttachedFire) return false;
+
+        const smokeType = data.smoke_type || 'smoke';
+        const threshold = data.smoke_threshold ?? 3;
+        const smokeChance = data.smoke_chance ?? 0.25;
+        const smokeCap = data.smoke_cap ?? 20;
+        const directions = data.check_cardinal ? CARDINAL_DIRS : ALL_DIRS;
+
+        const entityManager = actor.engine.entityManager;
+        const counterKey = '_' + smokeType + 'Count';
+        if (!entityManager[counterKey]) entityManager[counterKey] = 0;
+        if (entityManager[counterKey] >= smokeCap) return false;
+
+        let fireNeighbors = 0;
+        for (const dir of directions) {
+            const hasFire = entityManager.getActorsAt(actor.x + dir.dx, actor.y + dir.dy)
+                .some(a => a.personality?.name === 'Fire' && !a.isDead);
+            if (hasFire) fireNeighbors++;
+        }
+
+        if (fireNeighbors < threshold) return false;
+        if (ROT.RNG.getUniform() >= smokeChance) return false;
+
+        for (const a of entityManager.getActorsAt(actor.x, actor.y)) {
+            if (a.personality?.name === 'Cloud') return false;
+        }
+
+        const smoke = entityManager.spawnActor(smokeType, actor.x, actor.y);
+        if (smoke) {
+            smoke.isCloudOrigin = true;
+            smoke.cloudOriginX = actor.x;
+            smoke.cloudOriginY = actor.y;
+            smoke.cloudLifetime = data.smoke_lifetime ?? smoke.lifetime ?? 8;
+            smoke._emitCounterKey = counterKey;
+            entityManager[counterKey]++;
         }
 
         return false;

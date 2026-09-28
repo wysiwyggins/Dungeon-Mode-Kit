@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Big fires give off smoke.** A new `fire_smoke` cellular automata rule spawns a `smoke` cloud from any fire tile with at least three burning neighbors, and the smoke leaves anyone breathing it `choked`, sometimes losing a turn to coughing.
 - **Wall-actor picker in the editors** — `wall_types` was engine-supported by every wall-building generator but unreachable except by hand-editing JSON. The Map generator section now lists actors of the `terrain` type with weight bars, warning when no plain `wall` entry is present (the pass that makes secret and pushable walls only rewrites walls of type `wall`).
 - **Cellular generator options** — `probability`, `iterations`, and `connected` are now editable; the generator previously rendered no options at all. `probability` is sharply nonlinear, so the tooltip gives measured densities rather than leaving it to trial and error.
 - **Biome-level `default_floor`** — a biome could already choose its wall actors but not the floor they stand on. It now sits between a floor override and the prototype value, with its own block on each biome card.
@@ -48,6 +49,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Dark levels draw fewer sprites.** Darkness and light-color overlays at alpha 0 are now hidden instead of left transparent, as are floor, background and light-color sprites under a solid darkness block, so Pixi stops transforming thousands of sprites that draw nothing every frame.
+- **`cellular_transform` settles.** A tile that fails its neighbor check skips the check until a new actor spawns next to it, so shallow liquid stops recounting its neighbors every turn after the level-load pass.
+- **The actor position map no longer rebuilds every turn.** `getActorsAt` threw its whole map away at the start of every actor's turn, so on the sewer level each liquid tile and gas puff rescanned every actor. Positions are now accessors that keep the map current on every move, add, remove and death.
+- **Liquid color mixing is cheaper on dark levels.** Any spawn or death (every sewer gas puff) used to throw away the liquid position cache and force a full actor rescan; now only liquids do. Mixing also skips tiles the player can't see and resumes when they come into view.
+- **Gas no longer burns by default.** `cloud`, `mist` and `spore` are now non-flammable, so smoke and potion clouds can't carry fire across bare ground; `sewer_gas` stays fuel. A potion can opt in with `cloud_flammable: true` and a gas trap with `trap_spawn_flammable: true`, and the mist a cloud thins into inherits its flammability.
+- **Gas no longer fills wall tiles.** Walls are actors on a floor tile, so clouds and mist spawned inside them; `spawnActor` now refuses gas on solid terrain, and a spreading cloud stops each ray at the first wall instead of leaping past it.
 - **Innate states no longer tint actors.** The `flies` attribute grants a permanent `flying` state, and once state tints moved to a blend that actually shows through, every flying actor got pulled 70% toward that state's cyan. Tinting is now skipped for states granted as part of what an actor is, while conditions that merely lack a timer, like `stuck` and `starving`, still tint.
 - **`opaque: true` did nothing on a walkable actor.** Sight was keyed off `solid`, so tall mushrooms — deliberately `solid: false` so you can walk into and crush them — never blocked line of sight or light despite declaring they should. Opacity and solidity are now independent via `getSightBlockerAt`, and AI vision honors the same cover.
 - **The cellular generator left no floor under its walls.** Every other generator paints a floor tile beneath a wall actor — the engine assumes it — but cellular queued the wall and skipped the floor, so its wall cells read as void. Invisible behind an opaque `wall`, obvious behind a `tree`, whose base tile lets the ground show through.

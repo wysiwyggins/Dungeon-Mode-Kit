@@ -81,7 +81,8 @@
     "name": "Skull",
     "tileIndex": "SKULL",
     "attributes": {
-      "visible": true
+      "visible": true,
+      "walk_description": "You step past a skull."
     }
   },
   "thread_trail": {

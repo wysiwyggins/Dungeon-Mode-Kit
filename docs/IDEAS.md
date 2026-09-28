@@ -1,11 +1,12 @@
 
 ## Bugs
 
-[clear]
+- Biggest performance hit is still when two liquids combine their tints on a dark level. This isn't an important feature and perhaps should just run once rather than every turn. Look for ways to reduce the number of times it runs or when it runs (I think it already only happens when the tiles are visible, double check) sewer prototype is the test level
+- ~~clouds/mist are not solid but they shouldn't spawn in top of a solid actor like a wall~~ done
 
 ## Tweaks
 
-- additional CA rule for fire- if there are enough adjacent fire actors we should spawn a smoke actor that induces a state that has a skip turn for coughing ("choked")?
+- ~~additional CA rule for fire- if there are enough adjacent fire actors we should spawn a smoke actor that induces a state that has a skip turn for coughing ("choked")?~~ done
 - when we pick a prototype in an editor it should narrow the options in the next dropdown down to the ones in that prototype since there are so many in default /data/
 - **`flicker_tint` (the effect) vs `tint_flicker` (the primitive)** — the words are reversed between the two layers, which is genuinely confusing when reading `effects.json`. Renaming either breaks data or code, so left alone for now.
 - Tiled.app tile layers have a tint color property, it would be cool if we could use it for picking floor tile tints in Tiled too. Currently we do this in the prototype editor.
@@ -31,10 +32,14 @@
 
 - incense, lights like a torch, generates mist that repels/harms undead actors. can be lit and dropped in an area to keep a room clear of undead for a while. Should be a reusable pattern where we can specify an actor type that is harmed or repelled. For the actor use a capitol I base tile and a cloud animated top tile
 
+## Teleporter actor
+
+- step onto it and be teleported to another teleporter paired by machine id
+
 ## Sound player page
 
 - ~~page in /editors/ that let's me listen to everything in the howler soundfont as individual named sounds~~ — done, `editors/sound-player.html`
-- maybe one day it will let me load a sound and automate rebuilding the audio sprite
+- add editing functions- let me load a new sound and automate rebuilding the audio sprite (see [Sounds](SOUNDS.md)), as well as edit sound names without breaking all the places sound names might be hardcoded
 
 ## Bolt bounce logic for actors like metal walls
 
@@ -150,7 +155,7 @@
 
 ### More editor development
 
-- future- the kit is hosted online in a way that users could create prototypes with web forms and test them, like bitsy.
+- future- the kit is hosted online in a way that users could create prototypes with web forms and test them, like bitsy. see [Hosting Roadmap](HOSTING_ROADMAP.md)
 
 ### deferred mysteries
 

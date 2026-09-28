@@ -3184,6 +3184,8 @@ class InterfaceManager {
                         spawnedActor.setAttribute('apply_state', trapApplyState);
                     }
 
+                    if (trap.data?.trap_spawn_flammable) spawnedActor.setAttribute('flammable', true);
+
                     // Mark as origin cloud so it spreads
                     spawnedActor.isCloudOrigin = true;
                     spawnedActor.cloudOriginX = trap.x;
@@ -3271,6 +3273,9 @@ class InterfaceManager {
                 cloud.setAttribute('collision_effect', collisionEffect);
             }
         }
+
+        // Clouds don't burn unless the item says its gas is fuel
+        if (item.getAttribute('cloud_flammable')) cloud.setAttribute('flammable', true);
 
         // Mark as origin cloud so it spreads
         cloud.isCloudOrigin = true;

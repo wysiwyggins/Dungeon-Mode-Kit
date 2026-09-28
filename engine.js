@@ -4614,7 +4614,25 @@ class Entity {
         this.zIndex = 1;
         this.setAttribute('flammable', false);
     }
-    
+
+    // Position is an accessor pair so every move — tryMove, knockback, blink,
+    // teleport, or any direct `actor.x = ...` — keeps EntityManager's position
+    // map current without a full rebuild. _posKey is set only while the actor is
+    // indexed in that map, so items and removed actors skip the bookkeeping.
+    get x() { return this._x; }
+    set x(value) {
+        if (value === this._x) return;
+        this._x = value;
+        if (this._posKey !== undefined) this.engine.entityManager?._repositionActor(this);
+    }
+
+    get y() { return this._y; }
+    set y(value) {
+        if (value === this._y) return;
+        this._y = value;
+        if (this._posKey !== undefined) this.engine.entityManager?._repositionActor(this);
+    }
+
     setAttribute(key, value) {
         this.attributes.set(key, value);
     }
@@ -6158,8 +6176,6 @@ class Actor extends Entity {
      * @returns {Promise} Resolves when action is complete
      */
     act() {
-        this.engine.entityManager.invalidateActorPosCache();
-
         // Monotonic "my turn number", used to cap fire damage at once per turn
         // regardless of how many overlapping fires hit this actor.
         this._turnCount = (this._turnCount || 0) + 1;
@@ -6486,6 +6502,9 @@ class Actor extends Entity {
 
         this.isDead = true;
         this.setAttribute('solid', false);
+        // Dead actors linger in entityManager.actors; drop this one from the
+        // position map now so getActorsAt stops returning it.
+        this.engine.entityManager?._posCacheRemove(this);
 
         // Release this cloud's slot in its emitter's spawn counter. Counted clouds
         // (e.g. sewage's sewer_gas) have multiple death paths — cloud_lifetime,
@@ -10559,7 +10578,6 @@ class Actor extends Entity {
         if (this.spriteBase) this.spriteBase.visible = false;
         if (this.spriteTop) this.spriteTop.visible = false;
         this.die(false);
-        this.engine.entityManager.invalidateActorPosCache();
     }
 
     /**
@@ -11050,7 +11068,6 @@ class Actor extends Entity {
         // being inferred here: a plain door declares it, a door that had to be unlocked
         // (or a gate driven by a lever) simply doesn't, and stays open once opened.
         if (this._lastPosition) {
-            this.engine.entityManager.invalidateActorPosCache();
             const actorsAtOldPos = this.engine.entityManager.getActorsAt(
                 this._lastPosition.x, this._lastPosition.y
             );
@@ -13285,13 +13302,19 @@ class EntityManager {
     }
 
     addEntity(entity) {
-        this._liquidPosCache = null;
+        // Liquids never move, so only a liquid arriving changes the liquid cache.
+        // Resetting it for every gas puff/fire/item forced a full actor rescan on
+        // the next liquid lookup, many times per turn on the sewer level.
+        if (entity.hasAttribute?.('liquid')) this._liquidPosCache = null;
         this._solidPosCache = null;
-        this._actorPosCache = null;
         this.entities.push(entity);
 
         if (entity instanceof Actor) {
+            // _posSeq mirrors this.actors order so tile buckets keep the same
+            // ordering a full rebuild would give (getActorAt returns the first).
+            entity._posSeq = this._nextPosSeq = (this._nextPosSeq ?? 0) + 1;
             this.actors.push(entity);
+            this._posCacheInsert(entity);
             // Track player if this actor has the controlled attribute
             if (entity.hasAttribute('controlled')) {
                 this.player = entity;
@@ -13314,9 +13337,9 @@ class EntityManager {
     }
     
     removeEntity(entity) {
-        this._liquidPosCache = null;
+        if (entity.hasAttribute?.('liquid')) this._liquidPosCache = null;
         this._solidPosCache = null;
-        this._actorPosCache = null;
+        this._posCacheRemove(entity);
         // Remove from arrays (order-preserving). Only rebuild the typed arrays the
         // entity actually belongs to — an Actor isn't in items and vice versa, so
         // the old unconditional triple-filter rebuilt arrays that never held it.
@@ -13523,8 +13546,9 @@ class EntityManager {
         if (!this._actorPosCache) {
             this._actorPosCache = new Map();
             for (const a of this.actors) {
-                if (a.isDead) continue;
+                if (a.isDead) { a._posKey = undefined; continue; }
                 const key = a.x * 10000 + a.y;
+                a._posKey = key;
                 const list = this._actorPosCache.get(key);
                 if (list) list.push(a);
                 else this._actorPosCache.set(key, [a]);
@@ -13532,8 +13556,57 @@ class EntityManager {
         }
     }
 
+    /**
+     * Full rebuild on next lookup. Adds, removes, deaths and moves all update the
+     * map in place, so this is only needed after bulk changes that bypass them.
+     */
     invalidateActorPosCache() {
         this._actorPosCache = null;
+    }
+
+    // Tile buckets are copy-on-write: getActorsAt hands out the bucket itself, and
+    // callers loop over it while killing/spawning actors on that tile, so a bucket
+    // already handed out must never change underneath them.
+
+    // Insert into its tile bucket, ordered by _posSeq to match this.actors.
+    _posCacheInsert(actor) {
+        if (!this._actorPosCache || actor.isDead) return;
+        const key = actor.x * 10000 + actor.y;
+        actor._posKey = key;
+        const list = this._actorPosCache.get(key);
+        if (!list) {
+            this._actorPosCache.set(key, [actor]);
+            return;
+        }
+        let i = list.length;
+        while (i > 0 && list[i - 1]._posSeq > actor._posSeq) i--;
+        const next = list.slice();
+        next.splice(i, 0, actor);
+        this._actorPosCache.set(key, next);
+    }
+
+    _posCacheRemove(actor) {
+        const key = actor._posKey;
+        actor._posKey = undefined;
+        if (!this._actorPosCache || key === undefined) return;
+        const list = this._actorPosCache.get(key);
+        if (!list) return;
+        const i = list.indexOf(actor);
+        if (i === -1) return;
+        if (list.length === 1) {
+            this._actorPosCache.delete(key);
+            return;
+        }
+        const next = list.slice();
+        next.splice(i, 1);
+        this._actorPosCache.set(key, next);
+    }
+
+    // Called by the Entity x/y setters.
+    _repositionActor(actor) {
+        if (!this._actorPosCache) return;
+        this._posCacheRemove(actor);
+        this._posCacheInsert(actor);
     }
 
     getActorsAt(x, y) {
@@ -13555,6 +13628,19 @@ class EntityManager {
     getSolidActorAt(x, y) {
         const list = this.getActorsAt(x, y);
         return list.find(a => a.hasAttribute('solid'));
+    }
+
+    /**
+     * The solid terrain at (x, y) that gas can't occupy — walls, statues, closed
+     * doors, chests. Creatures and the player are solid too, but gas engulfs them,
+     * so anything sentient or controlled doesn't count.
+     * @returns {Actor|undefined}
+     */
+    blocksGasAt(x, y) {
+        return this.getActorsAt(x, y).find(a =>
+            !a.isDead && a.hasAttribute('solid') &&
+            !a.hasAttribute('sentient') && !a.hasAttribute('controlled')
+        );
     }
 
     /**
@@ -13770,6 +13856,12 @@ class EntityManager {
         }
 
         const actor = new Actor(x, y, actorType, actorData, this.engine);
+
+        // Gas is non-solid but still can't fill a wall tile. Refused here rather
+        // than at each spawn site, so every cloud/mist path gets it; callers
+        // already treat a null spawn as "nothing happened".
+        if (this._gasDensity(actor) > 0 && this.blocksGasAt(x, y)) return null;
+
         this.addEntity(actor);
         actor.loadDefaultItems();
 
@@ -13780,6 +13872,14 @@ class EntityManager {
             for (const dir of CARDINAL_DIRS) {
                 const neighbor = this._getLiquidActorAt(x + dir.dx, y + dir.dy);
                 if (neighbor && neighbor._mixSettled) neighbor._mixSettled = false;
+            }
+        }
+
+        // Any new actor might be what a settled cellular_transform neighbor was
+        // short of. All 8 directions, since that behavior can count diagonals.
+        for (const dir of ALL_DIRS) {
+            for (const neighbor of this.getActorsAt(x + dir.dx, y + dir.dy)) {
+                if (neighbor._caSettled) neighbor._caSettled = false;
             }
         }
 
@@ -13819,7 +13919,6 @@ class EntityManager {
                     actor.fireLifetime ?? actor.lifetime ?? 0
                 );
                 actor.die();
-                this.invalidateActorPosCache();
                 return existing;
             }
         }
@@ -13890,7 +13989,6 @@ class EntityManager {
             for (const a of gas) {
                 if (a !== survivor) a.die();
             }
-            this.invalidateActorPosCache();
             return survivor;
         }
 
@@ -13910,13 +14008,15 @@ class EntityManager {
         const doUpgrade = !mergeBornAdjacent && ROT.RNG.getUniform() < upgradeChance;
 
         // Inherit visible/effect identity from one of the mists before removing them.
+        // Flammability carries too, since generic mist/cloud default to non-flammable
+        // and only fuel gases (sewer gas, a flammable potion's cloud) should burn.
         const template = gas[0];
+        const flammable = !!template.hasAttribute('flammable');
         const tint = template.tint;
         const collisionEffect = template.getAttribute('collision_effect');
         const applyState = template.getAttribute('apply_state');
 
         for (const a of gas) a.die();
-        this.invalidateActorPosCache();
 
         if (!doUpgrade) {
             // No upgrade this time: leave a single mist behind (concentration failed),
@@ -13933,6 +14033,7 @@ class EntityManager {
                 if (tint != null) mist.tint = tint;
                 if (collisionEffect) mist.setAttribute('collision_effect', collisionEffect);
                 if (applyState) mist.setAttribute('apply_state', applyState);
+                mist.setAttribute('flammable', flammable);
                 if (mist.spriteBase && tint != null) mist.spriteBase.tint = tint;
                 if (mist.spriteTop && tint != null) mist.spriteTop.tint = tint;
             }
@@ -13956,6 +14057,7 @@ class EntityManager {
             if (tint != null) cloud.tint = tint;
             if (collisionEffect) cloud.setAttribute('collision_effect', collisionEffect);
             if (applyState) cloud.setAttribute('apply_state', applyState);
+            cloud.setAttribute('flammable', flammable);
             if (cloud.spriteBase && tint != null) cloud.spriteBase.tint = tint;
             if (cloud.spriteTop && tint != null) cloud.spriteTop.tint = tint;
         }
@@ -14012,7 +14114,6 @@ class EntityManager {
             if (newFire) newFire.fireLifetime = fireLifetime ?? newFire.lifetime ?? 5;
         }
 
-        this.invalidateActorPosCache();
         return true;
     }
 
@@ -14310,6 +14411,11 @@ class EntityManager {
         this.items = [];
         this.spawnedItemTypes = new Set();
         this.player = null;
+        // Unindex old-floor actors so a later move can't file them into the next
+        // floor's position map (the player is re-added, which re-indexes it).
+        for (const a of this._actorPosCache?.values() ?? []) {
+            for (const actor of a) actor._posKey = undefined;
+        }
         this._actorPosCache = null;
         this._liquidPosCache = null;
         this._solidPosCache = null;
@@ -14562,6 +14668,8 @@ class RenderSystem {
         const minY = Math.max(0, originY - margin);
         const maxX = Math.min(this.mapWidth, originX + vpW + margin);
         const maxY = Math.min(this.mapHeight, originY + vpH + margin);
+        // Remembered so updateDarkness can hide/show tiles without undoing this cull.
+        this._tileCullBox = { minX, minY, maxX, maxY };
 
         for (let y = 0; y < this.mapHeight; y++) {
             for (let x = 0; x < this.mapWidth; x++) {
@@ -16111,24 +16219,40 @@ class RenderSystem {
             ? Math.min(lightingManager.height, engine.sectionOriginY + engine.viewportHeight + margin)
             : lightingManager.height;
 
+        // Sprites that draw nothing still cost Pixi a transform every frame, so they're
+        // hidden rather than left at alpha 0: empty overlays, and anything below a solid
+        // darkness block (floor, background, light color). The decorative overlay layer
+        // draws above darkness and is left alone. The viewport cull from
+        // updateTileVisibility still wins.
+        const cull = engine.viewportEnabled ? this._tileCullBox : null;
+
         for (let y = startY; y < endY; y++) {
             for (let x = startX; x < endX; x++) {
                 const darkSprite = this.darknessSprites[y]?.[x];
                 const lightColorSprite = this.lightColorSprites[y]?.[x];
+                const inView = !cull ||
+                    (x >= cull.minX && x < cull.maxX && y >= cull.minY && y < cull.maxY);
+
+                // Update darkness overlay
+                let covered = false;
+                if (darkSprite) {
+                    const darkness = lightingManager.getDarknessAlpha(x, y, fogOfWar);
+                    darkSprite.texture = darkness.useSolidTexture ? this.solidDarkTexture : this.darkTexture;
+                    darkSprite.alpha = darkness.alpha;
+                    darkSprite.visible = inView && darkness.alpha > 0;
+                    covered = darkness.useSolidTexture && darkness.alpha >= 1;
+                }
 
                 // Apply colored light overlay
                 if (lightColorSprite) {
                     const colorOverlay = lightingManager.getLightColorOverlay(x, y);
                     lightColorSprite.tint = colorOverlay.tint;
                     lightColorSprite.alpha = colorOverlay.alpha;
+                    lightColorSprite.visible = inView && colorOverlay.alpha > 0 && !covered;
                 }
 
-                // Update darkness overlay
-                if (darkSprite) {
-                    const darkness = lightingManager.getDarknessAlpha(x, y, fogOfWar);
-                    darkSprite.texture = darkness.useSolidTexture ? this.solidDarkTexture : this.darkTexture;
-                    darkSprite.alpha = darkness.alpha;
-                }
+                const floorSprite = this.floorSprites[y]?.[x];
+                if (floorSprite) floorSprite.visible = inView && !covered;
 
                 // Decorative overlay tiles render ABOVE the darkness layer, so they carry
                 // their own dimming as a sprite tint. getOverlayTint keys off explored (not
@@ -16147,6 +16271,7 @@ class RenderSystem {
                 const backgroundSprite = this.backgroundSprites[y]?.[x];
                 if (backgroundSprite) {
                     backgroundSprite.tint = lightingManager.getBackgroundTint(x, y, fogOfWar);
+                    backgroundSprite.visible = inView && !covered;
                 }
             }
         }

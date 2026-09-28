@@ -141,6 +141,17 @@
     "on_apply_message": "[actor_name] feels nauseated!",
     "on_remove_message": "[actor_name]'s stomach settles."
   },
+  "choked": {
+    "name": "Choked",
+    "duration": 6,
+    "tint": "#777777",
+    "skip_turn_chance": 0.3,
+    "skip_turn_message": "[You|The [actor_name]] [cough|coughs] and [splutter|splutters]!",
+    "immunity": "gas_immune",
+    "effect_description": "Smoke fills your lungs",
+    "on_apply_message": "[actor_name] is choking on smoke!",
+    "on_remove_message": "[actor_name] can breathe again."
+  },
   "bleeding": {
     "name": "Bleeding",
     "duration": 25,

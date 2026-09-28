@@ -204,7 +204,8 @@
     "hostile": false,
     "behaviors": [
       "fire_spread",
-      "fire_burn_out"
+      "fire_burn_out",
+      "fire_smoke"
     ]
   },
   "fire_behavior": { "$alias": "fire" },
