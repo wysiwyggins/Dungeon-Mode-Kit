@@ -1,0 +1,11 @@
+{
+  "scroll_of_protection": {
+    "type": "scroll",
+    "identified_template": "Scroll of Protection",
+    "effect_description": "A protective sheen spreads from the page.",
+    "attributes": {
+      "use_effect": "protect_item",
+      "deferred": true
+    }
+  }
+}

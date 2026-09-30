@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Acid, and the scroll of protection.** An `acidic` actor takes a point of enchantment off any weapon that hits it and off one piece of armor it hits, unless the item is `protected`. The dungeon gains the splitting acid jelly (depths) and the weaker, non-splitting acid mound (upper floors), plus a scroll of protection that makes a weapon or wearable immune.
 - **`jelly` actor type.** The pink jellies' sprite, slime attack, splitting and `jelly` personality now live on the type, so a prototype jelly needs only a name, tint and health. The `jelly` personality moved to the global library so the type works anywhere.
 - **Treasure type.** A `treasure` item is banked on pickup rather than carried: its value goes onto a running total named by `tally_as` (or its own name), which the sidebar lists in place of Wealth and win conditions can check with `treasure`. Its pool is local to each prototype (`"pool": "prototype"`), so chest and grave drops now name `treasure` and give nothing where a prototype defines none; the mine wins on gold nugget plus thaler totals.
 - **Incense.** Light it like a torch and it trails `incense_smoke`, which the undead won't enter and which burns them if it drifts over them. Drop it to keep a room clear until the resin runs out. The effect comes from a reusable `ward` attribute on gas actors that lists which actor types it repels or harms.

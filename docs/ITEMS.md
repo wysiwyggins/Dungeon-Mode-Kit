@@ -594,6 +594,10 @@ The roll is inclusive: `[-1, 3]` can produce -1, 0, 1, 2, or 3. Items with an ex
 
 The `"enchant_item"` use effect opens a picker showing all `enchantable` items in inventory. Selecting one increases its enchantment by +1 and recalculates combat bonuses if the item is equipped.
 
+### Scroll of Protection
+
+The `"protect_item"` use effect (with `deferred: true`) opens the same picker, listing every weapon and wearable in the inventory that isn't already `protected`. The chosen item gains `protected: true`, which makes it immune to `acidic` corrosion (see Acid in ACTORS.md), and its info panel then reads "It is protected from acid." The scroll is defined only in the dungeon prototype, where acid monsters live, so it stays out of other prototypes' scroll pools.
+
 ### Cursed Items
 
 Items with negative enchantment are automatically marked `cursed: true` on spawn. Cursed equipment cannot be unequipped — the player sees "The [item] is cursed! You can't remove it." when they try.

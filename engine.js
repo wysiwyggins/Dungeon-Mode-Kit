@@ -8411,6 +8411,36 @@ class Actor extends Entity {
     }
 
     /**
+     * Acid damage to gear (Brogue's degrade-weapon / degrade-armor). One point of
+     * enchantment off an `enchantable` item this actor carries, unless it is
+     * `protected`. Never curses: `cursed` is decided at spawn, so a corroded -1
+     * blade can still be unwielded.
+     * @param {Item|null} item - The weapon or armor piece to corrode
+     * @returns {boolean} Whether the item was corroded
+     */
+    corrodeItem(item) {
+        if (!item || item.hasAttribute('protected') || !item.hasAttribute('enchantable')) return false;
+        item.enchantment = (item.enchantment || 0) - 1;
+        if (this.isPlayerControlled()) {
+            this.engine.inputManager?.showMessage(`Your ${item.getDisplayName()} corrodes!`);
+            this.engine.playSound?.('extinguish');
+        }
+        return true;
+    }
+
+    /**
+     * The armor an acidic hit eats into: one random equipped piece that gives defense.
+     * @returns {Item|null}
+     */
+    getCorrodibleArmor() {
+        const pieces = ['top', 'middle', 'lower']
+            .map(slot => this.equipment?.[slot])
+            .filter(item => item?.getAttribute('wear_effect')?.defense !== undefined);
+        if (!pieces.length) return null;
+        return pieces[Math.floor(ROT.RNG.getUniform() * pieces.length)];
+    }
+
+    /**
      * Apply weapon proc effects after a successful hit
      * @param {Actor} target - The target that was hit
      * @param {Item|null} weapon - The weapon used (null for unarmed)
@@ -9140,6 +9170,10 @@ class Actor extends Entity {
 
             case 'enchant_item':
                 this.engine.interfaceManager?.enterEnchantMode(item, this);
+                return true;
+
+            case 'protect_item':
+                this.engine.interfaceManager?.enterEnchantMode(item, this, 'protect');
                 return true;
 
             case 'remove_curse': {
@@ -10177,6 +10211,17 @@ class Actor extends Entity {
                 if (newValue !== null) {
                     console.log(`${source.name}: applied ${finalValue >= 0 ? '+' : ''}${finalValue} to ${target.name}'s ${key}`);
                     sourceApplied = true;
+
+                    // Acid: striking an `acidic` target eats the weapon that landed
+                    // the blow; an `acidic` attacker eats a piece of the target's armor.
+                    if (key === 'health' && finalValue < 0 && source.sourceActor) {
+                        if (target.hasAttribute('acidic') && source.item?.hasAttribute('weapon')) {
+                            source.sourceActor.corrodeItem(source.item);
+                        }
+                        if (source.sourceActor.hasAttribute('acidic') && target.getCorrodibleArmor) {
+                            target.corrodeItem(target.getCorrodibleArmor());
+                        }
+                    }
 
                     // Apply weapon proc effects after successful damage
                     if (key === 'health' && finalValue < 0 && source.sourceActor && source.item) {

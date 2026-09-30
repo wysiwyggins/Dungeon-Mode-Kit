@@ -197,6 +197,16 @@
         ]
       },
       {
+        "id": "acid_mound",
+        "min": 3,
+        "max": 10,
+        "freq": 60,
+        "count": [
+          1,
+          2
+        ]
+      },
+      {
         "id": "monkey",
         "min": 2,
         "max": 3,
@@ -641,6 +651,16 @@
         ]
       },
       {
+        "id": "acid_mound",
+        "min": 3,
+        "max": 10,
+        "freq": 60,
+        "count": [
+          1,
+          2
+        ]
+      },
+      {
         "id": "ogre",
         "min": 7,
         "max": 26,
@@ -866,6 +886,16 @@
         "count": [
           1,
           2
+        ]
+      },
+      {
+        "id": "acid_jelly",
+        "min": 9,
+        "max": 16,
+        "freq": 50,
+        "count": [
+          1,
+          1
         ]
       },
       {

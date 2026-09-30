@@ -15,6 +15,7 @@
   "gas_immune": "is unaffected by gasses",
   "conductive": "conducts electricity",
   "ignites": "sets fire to what it touches",
+  "acidic": "corrodes weapons that strike it and armor it strikes",
 
   "breakable": "can be broken apart",
   "container": "holds something inside",

@@ -591,6 +591,14 @@ applying `stuck`), use `apply_state` with the `apply_state_on_tile` behavior.
 | `split_into` | string | Actor type spawned for each split-off piece. |
 | `split_sound` | string | Sound played on split. |
 
+### Acid
+
+An `acidic` actor corrodes gear, as Brogue's acid mound does. When a weapon lands a blow on it, the weapon loses one point of enchantment. When it lands a blow, one random defense-giving armor piece the victim wears (`top`, `middle` or `lower`) loses one point. Misses and unarmed blows do nothing. Only `enchantable` items corrode, and a `protected` item never does (see Scroll of Protection in ITEMS.md). Corrosion never adds `cursed`. The dungeon's `acid_jelly` (splits) and `acid_mound` (`splits: false`) are both `jelly`-type actors with `acidic: true`.
+
+| Attribute | Type | Description |
+| ----------- | ------ | ------------- |
+| `acidic` | boolean | Weapons that hit this actor, and armor this actor hits, lose 1 enchantment. |
+
 ### Traps
 
 Trap actors are invisible (`visible: false`) until triggered, then fire an effect and reveal

@@ -197,5 +197,37 @@
       "locked": true,
       "open": false
     }
+  },
+
+  "acid_jelly": {
+    "name": "acid jelly",
+    "type": "jelly",
+    "description": "A seething green blob. Steel that strikes it pits and dulls, and its touch eats through armor.",
+    "tint": "#a8e000",
+    "attributes": {
+      "acidic": true
+    },
+    "stats": {
+      "health": 40
+    }
+  },
+
+  "acid_mound": {
+    "name": "acid mound",
+    "type": "jelly",
+    "description": "A low heap of corrosive slime, too thin to split.",
+    "tileIndexBase": "WHITE_LOWER_ONE_HALF",
+    "tileIndexTop": "BLANK",
+    "tint": "#a8e000",
+    "collision_effect": {
+      "health": -1
+    },
+    "attributes": {
+      "acidic": true,
+      "splits": false
+    },
+    "stats": {
+      "health": 15
+    }
   }
 }

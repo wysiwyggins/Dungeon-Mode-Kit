@@ -1654,16 +1654,17 @@ class InterfaceManager {
             if (idx >= 0) {
                 const caster = this.enchantCaster;
                 const scroll = this.enchantScrollItem;
-                const enchantable = (caster?.inventory || []).filter(i =>
-                    i !== scroll && i.getAttribute('enchantable')
-                );
+                const enchantable = this._enchantCandidates(caster, scroll, this.enchantKind);
                 const target = enchantable[idx];
                 if (target) {
                     const chargeStat = target.getAttribute('charge_stat');
                     const cStat = chargeStat ? target.stats?.[chargeStat] : null;
                     const revealed = target.getDisplayName ? target.getDisplayName() : target.name;
 
-                    if (cStat && cStat.per_turn === 0) {
+                    if (this.enchantKind === 'protect') {
+                        target.setAttribute('protected', true);
+                        this.engine.inputManager?.showMessage(`A protective sheen coats your ${revealed}.`);
+                    } else if (cStat && cStat.per_turn === 0) {
                         const uses = target.getAttribute('uses') || 1;
                         const useCost = cStat.ready_at || Math.floor(cStat.max / uses);
                         cStat.max += useCost;
@@ -3532,12 +3533,25 @@ class InterfaceManager {
         this.updateBoxOverlays();
     }
 
-    enterEnchantMode(scrollItem, caster) {
-        const enchantable = (caster.inventory || []).filter(i =>
-            i !== scrollItem && i.getAttribute('enchantable')
-        );
+    /**
+     * Items the enchant picker offers. `kind` is 'enchant' (scroll of enchantment:
+     * anything enchantable) or 'protect' (scroll of protection: weapons and
+     * wearables not yet `protected`).
+     */
+    _enchantCandidates(caster, scrollItem, kind = 'enchant') {
+        return (caster?.inventory || []).filter(i => {
+            if (i === scrollItem) return false;
+            if (kind === 'protect') {
+                return (i.getAttribute('weapon') || i.getAttribute('wearable')) && !i.getAttribute('protected');
+            }
+            return i.getAttribute('enchantable');
+        });
+    }
+
+    enterEnchantMode(scrollItem, caster, kind = 'enchant') {
+        const enchantable = this._enchantCandidates(caster, scrollItem, kind);
         if (enchantable.length === 0) {
-            this.engine.inputManager?.showMessage('You have nothing to enchant.');
+            this.engine.inputManager?.showMessage(`You have nothing to ${kind}.`);
             this.engine.inputManager?.showMessage('The scroll dissolves into ashes.');
             this.engine.playSound?.('tone1');
             if (caster && scrollItem) {
@@ -3547,6 +3561,7 @@ class InterfaceManager {
         }
 
         this.enchantMode = true;
+        this.enchantKind = kind;
         this.enchantScrollItem = scrollItem;
         this.enchantCaster = caster;
         this.closeItemActionMenu();
@@ -3557,7 +3572,7 @@ class InterfaceManager {
     _showEnchantPicker(enchantable) {
         this.removeBox('enchant_picker');
 
-        const lines = ['Enchant which item?', ''];
+        const lines = [this.enchantKind === 'protect' ? 'Protect which item?' : 'Enchant which item?', ''];
         const letters = 'abcdefghijklmnopqrstuvwxyz';
         for (let i = 0; i < enchantable.length && i < letters.length; i++) {
             const item = enchantable[i];
@@ -3595,6 +3610,7 @@ class InterfaceManager {
 
     exitEnchantMode() {
         this.enchantMode = false;
+        this.enchantKind = null;
         this.enchantScrollItem = null;
         this.enchantCaster = null;
         this.removeBox('enchant_picker');
@@ -5573,6 +5589,11 @@ class InterfaceManager {
 
         const description = item.getPanelDescription?.();
         if (description) push(description);
+
+        if (item.getAttribute?.('protected')) {
+            gap();
+            push('It is protected from acid.');
+        }
 
         // Identified only: on a potion the effect IS the secret.
         if (identified) {
