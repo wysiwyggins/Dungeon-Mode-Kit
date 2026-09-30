@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`jelly` actor type.** The pink jellies' sprite, slime attack, splitting and `jelly` personality now live on the type, so a prototype jelly needs only a name, tint and health. The `jelly` personality moved to the global library so the type works anywhere.
+- **Treasure type.** A `treasure` item is banked on pickup rather than carried: its value goes onto a running total named by `tally_as` (or its own name), which the sidebar lists in place of Wealth and win conditions can check with `treasure`. Its pool is local to each prototype (`"pool": "prototype"`), so chest and grave drops now name `treasure` and give nothing where a prototype defines none; the mine wins on gold nugget plus thaler totals.
 - **Incense.** Light it like a torch and it trails `incense_smoke`, which the undead won't enter and which burns them if it drifts over them. Drop it to keep a room clear until the resin runs out. The effect comes from a reusable `ward` attribute on gas actors that lists which actor types it repels or harms.
 - **Big fires give off smoke.** A new `fire_smoke` cellular automata rule spawns a `smoke` cloud from any fire tile with at least three burning neighbors, and the smoke leaves anyone breathing it `choked`, sometimes losing a turn to coughing.
 - **Wall-actor picker in the editors** — `wall_types` was engine-supported by every wall-building generator but unreachable except by hand-editing JSON. The Map generator section now lists actors of the `terrain` type with weight bars, warning when no plain `wall` entry is present (the pass that makes secret and pushable walls only rewrites walls of type `wall`).
@@ -36,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Single-prototype entries moved out of `data/`.** `pink_jelly`, `small_pink_jelly` and the `jelly` personality now live in `hallucination_test`, `pitchblende_wall` and `uranium_nugget` in `mine`, and `shield` in `labyrinth`, the only prototypes that use them. The unused `misiricorde` is gone, and the unused `phantom_hound` now spawns in the `depths` biome.
+- **New actor types: `gas`, `liquid`, `trap`, `doorway`, `container` and `switch`.** Clouds, pools, traps, doors, chests and levers now inherit their shared attributes instead of repeating them, and attributes that only restated their type were dropped. Every entry resolves exactly as before. Random trap placement and the editors' switch and blob pickers now read through types.
 - **The item editor builds new items from types, not hardcoded templates.** "New from template" pasted a full copy of a type's attributes into every item; it now declares `type` and inherits, so a new ring is four lines instead of fifteen. The copies had already drifted — the ring and staff starters still said `random_color` and `[color] ring` after `types.json` moved to `random_material` and `[material] ring`. The dropdown is filled from `types.json`, so `illuminator` and `quest` are offered for the first time.
 - **Scenery actors declare `"type": "terrain"`.** `tree`, `hedge`, `statue`, `pitchblende_wall`, `fortification`, and `pushable_wall` were terrain in everything but name, which left no reliable way to ask "can this be a wall?" — `wall` itself never declared `solid`, relying on the constructor default. Two deliberate consequences: a statue now stops a bolt, and a smashed pushable wall leaves rubble.
 - **Message anonymizing while hallucinating.** Actors and floor items read as "something" in the message log during hallucinations.
@@ -50,6 +54,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The mine spawns its ball of thread.** Its `random_items` asked for `ball_of_thread`, which doesn't exist, instead of `thread`.
+- **Clouds are no longer solid.** `cloud` never declared `solid: false`, so it took the actor default and blocked movement, unlike every other gas; it now inherits `solid: false` from the `gas` type.
+- **Every potion and food is swallowed.** `use_sound: swallow` now comes from the `potion` and `food` types, replacing the heal and pickup sounds a few used and the `tone1` fallback on the arena potions.
 - **Dropped torches burn down.** A lit torch on the floor gave light forever without spending fuel, because only carried items ticked. Burning floor items now tick once per round and burn out where they lie.
 - **Dark levels draw fewer sprites.** Darkness and light-color overlays at alpha 0 are now hidden instead of left transparent, as are floor, background and light-color sprites under a solid darkness block, so Pixi stops transforming thousands of sprites that draw nothing every frame.
 - **`cellular_transform` settles.** A tile that fails its neighbor check skips the check until a new actor spawns next to it, so shallow liquid stops recounting its neighbors every turn after the level-load pass.

@@ -50,5 +50,18 @@
       "health": 20
     },
     "default_items": ["mattock"]
+  },
+
+  "pitchblende_wall": {
+    "name": "pitchblende",
+    "type": "terrain",
+    "tileIndexBase": "OPAQUE_DOTTED_LIGHT_SHADE",
+    "tileIndexTop": "OPAQUE_DOTTED_LIGHT_SHADE",
+    "tint": "#7a7a7a",
+    "attributes": {
+      "breakable": true,
+      "lode_chance": 20,
+      "lode": "uranium_nugget"
+    }
   }
 }

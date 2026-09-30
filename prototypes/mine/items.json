@@ -1,0 +1,14 @@
+{
+  "uranium_nugget": {
+    "name": "uranium nugget",
+    "type": "treasure",
+    "tileIndex": "WHITE_ASTERISK",
+    "tint": "#cce8b5",
+    "effect": "flicker_tint",
+    "identified": false,
+    "random_value": [5, 10],
+    "attributes": {
+      "description": "A heavy chunk of uraninite ore."
+    }
+  }
+}

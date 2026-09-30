@@ -17,7 +17,7 @@
 // (Prototype.getItemsOfType), so adding an item that declares a type is enough
 // to put it in the pool — but the category has to be listed here for a designer
 // to pick it in the biome catalog or the prototype's item_catalog.
-const CATEGORY_KEYS = ['potion','scroll','food','staff','weapon','armor','ring','wand'];
+const CATEGORY_KEYS = ['potion','scroll','food','staff','weapon','armor','ring','wand','treasure'];
 
 // An actor's attributes with its actor type's merged underneath, the way
 // Prototype.getActorData resolves them. Raw defs are thin once shared attributes

@@ -63,5 +63,32 @@
       "spike",
       "spike"
     ]
+  },
+
+  "pink_jelly": {
+    "name": "pink jelly",
+    "type": "jelly",
+    "description": "A quivering, gelatinous blob that engulfs whatever it touches.",
+    "tint": "#ff00af",
+    "split_into": "small_pink_jelly",
+    "attributes": {
+      "inventory": 1,
+      "display_inventory": true
+    },
+    "stats": {
+      "health": 40
+    }
+  },
+
+  "small_pink_jelly": {
+    "name": "small pink jelly",
+    "type": "jelly",
+    "description": "A wad of pink slime that broke off a larger blob.",
+    "tileIndexBase": "DROPLET",
+    "tileIndexTop": "BLANK",
+    "tint": "#ff00af",
+    "stats": {
+      "health": 10
+    }
   }
 }

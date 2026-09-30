@@ -1191,11 +1191,19 @@ class InterfaceManager {
         // Integer attributes read as counters (score, wealth) rather than traits, so
         // they belong beside the stats.
         if (player.attributes instanceof Map) {
+            // Treasure totals are listed by name ("Gold nugget: 34"). Where a
+            // prototype has them, a bare Wealth line would only repeat them.
+            const tally = player.attributes.get('treasure_tally');
+            const tallyEntries = tally && typeof tally === 'object' ? Object.entries(tally) : [];
             for (const key of PLAYER_COUNTER_ATTRIBUTES) {
+                if (key === 'wealth' && tallyEntries.length > 0) continue;
                 const value = player.attributes.get(key);
                 if (typeof value === 'number' && Number.isInteger(value)) {
                     regularStats.push(`${this.capitalize(key)}: ${this.formatStatValue(value)}`);
                 }
+            }
+            for (const [label, amount] of tallyEntries) {
+                regularStats.push(`${this.capitalize(label)}: ${this.formatStatValue(amount)}`);
             }
         }
 

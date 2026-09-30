@@ -22,7 +22,7 @@
     }
   },
   "random_items": {
-    "ball_of_thread": { "chance": 100, "min": 1, "max": 1 },
+    "thread": { "chance": 100, "min": 1, "max": 1 },
     "powder_keg": { "chance": 70, "min": 1, "max": 4 },
     "scroll_of_shattering": { "chance": 70, "min": 1, "max": 2 }
   },
@@ -33,7 +33,7 @@
   "win_conditions": [],
   "win_state": {
     "conditions": [
-      { "stat": "wealth", "op": ">=", "value": 200 }
+      { "treasure": ["gold nugget", "thaler coin"], "op": ">=", "value": 200 }
     ],
     "message": "You strike it rich in the mine!"
   }

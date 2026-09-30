@@ -533,6 +533,7 @@ For stat or attribute comparisons:
 | ------- | ------------- |
 | `actor` | `"player"` or an actor type string |
 | `stat` | Stat or attribute name to check |
+| `treasure` | Instead of `stat`: a treasure total name, or an array of them to sum, e.g. `["gold nugget", "thaler coin"]` |
 | `op` | Comparison: `">"`, `">="`, `"<"`, `"<="`, `"=="`, `"!="` |
 | `value` | Number to compare against |
 

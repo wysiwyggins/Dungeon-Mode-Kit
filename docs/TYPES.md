@@ -164,7 +164,14 @@ so leaving it out drops the defaults rather than keeping them:
 | `undead` | `sentient`, `flammable`, `hostile`, `dark_vision`, `poison_immune`, `gas_immune`, `remains: skull` | Nothing left to poison and no breath to hold, but fire still finds them |
 | `humanoid` | `sentient`, `flammable`, `opaque: false`, `inventory: 1`, `remains: skull` | Upright folk who carry things. No `hostile` — a guard may be friendly |
 | `arcane` | as `humanoid` but `remains: blood`, plus `default_items: [potion, scroll]` | Spellcasters, who start with something to read and something to quaff |
+| `jelly` | `solid`, `sentient`, `flammable`, `hostile`, `accuracy: 50`, `splits`, `split_min_health: 4`, plus the `jelly` personality, a full-block pink sprite, a `health: -2` slime attack and `step_mud` split sound | Splitting slimes. Members override `name` and `tint`; `collision_effect` merges, so a member's own attack keeps the `health: -2` unless it sets `health: null` |
 | `terrain` | `solid`, `flammable: false`, `pushable: false`, `conductive: false`, `remains: rubble` | Mindless, so it can burn or be stuck but never confused |
+| `gas` | `solid: false`, `flies`, `mass_noun`, `flammable: false` | Clouds, mist, smoke |
+| `liquid` | `solid: false`, `liquid`, `mass_noun`, `flammable: false`, `spreads: false`, `entry_sound: step_mud` | Water, sewage, quicksand. `paint_tile` stays per-liquid (the Tiled wildcard reads raw defs) |
+| `trap` | `solid: false`, `visible`, `hidden`, `trap`, `flammable: false`, `render_layer: bottom` | Random trap placement resolves through the type |
+| `doorway` | `openable`, `lockable`, `open: false`, `flammable: false`, `conductive: false` | Doors and the gate; `locked`/`swings_shut` are per-door |
+| `container` | `solid`, `openable`, `container`, `open: false`, `flammable`, `breakable`, `death_sound: plunk3` | Chests; `drops` and `smash_loss` are per-chest |
+| `switch` | `switchable`, `toggled: false` | Levers and pressure plates |
 
 ## Built-in item types
 
@@ -173,14 +180,15 @@ Naming one of these instead of an item id spawns a random member — see
 
 | Type | Grants | Notes |
 | ---- | ------ | ----- |
-| `potion` | `name: potion`, `random_color`, `consumable`, `stackable`, `breakable`, `use_verb: Quaff` | color-coded until identified |
-| `food` | `consumable`, `stackable`, `mass_noun`, `flammable`, `use_verb: Eat` | Members name themselves (meat, apple) |
-| `weapon` | `weapon`, `enchantable`, `attack_sound`, `collision_sound`, `stackable: false` | Damage and reach are per-weapon |
+| `potion` | `name: potion`, `random_color`, `consumable`, `stackable`, `breakable`, `use_verb: Quaff`, `use_sound: swallow` | color-coded until identified |
+| `food` | `consumable`, `stackable`, `mass_noun`, `flammable`, `use_verb: Eat`, `use_sound: swallow` | Members name themselves (meat, apple) |
+| `weapon` | `weapon`, `enchantable`, `enchant_range: [-1, 3]`, `attack_sound`, `collision_sound`, `stackable: false` | Damage and reach are per-weapon |
 | `armor` | `enchantable`, `enchant_range: [-1, 2]`, `stackable: false` | The slot (`wearable`) is per-piece |
 | `staff` | `name`-less, `random_material`, `charge_stat: pow`, `treasure_loot`, `use_verb: Zap` | Recharges over time; `per_turn` is what distinguishes it from a wand |
-| `scroll` | `name: scroll`, `random_glyph_name`, `consumable`, `use_ceremony`, `use_verb: Read` | Titled with nonsense glyphs until read |
+| `scroll` | `name: scroll`, `random_glyph_name`, `consumable`, `use_ceremony`, `use_verb: Read`, `use_sound: magic` | Titled with nonsense glyphs until read |
 | `ring` | `name: ring`, `random_material`, `wearable: ring`, `stackable: false` | Material-coded until identified |
 | `wand` | `name: wand`, `random_color`, `charge_stat: pow`, `uses: 3`, `spell_range: 50` | Fixed charges, no recharge |
+| `treasure` | `treasure`, `pickupable`, `visible`, `ignore_darkness`, `stackable: false`, `flammable: false`; `pool: prototype` | Banked on pickup, never carried. See [Treasure](ITEMS.md#treasure) |
 
 ## Types and states
 
@@ -208,7 +216,9 @@ a random one — no list to maintain. Adding a potion is one line:
 }
 ```
 
-An item with no type is in no pool, which is how the torches, keys and treasure stay out of the
+A type can declare `"pool": "prototype"` to keep its pool local. Its pool then holds only items the current prototype defines in its own `items.json`, so a prototype never inherits the base game's members. `treasure` works this way, so a drop table naming `treasure` gives nothing in a prototype that defines no treasure. To use base items anyway, name them in an explicit `item_catalog` pool (`"treasure": { "pool": ["gold_nugget"], "weight": 0 }`, where weight 0 keeps it off the floor and only in loot tables).
+
+An item with no type is in no pool, which is how the torches and keys stay out of the
 random draws. For a curated pool that isn't simply "everything of this type", an item entry may
 carry an explicit `random_type` array instead; it wins over derived membership.
 
@@ -218,6 +228,7 @@ carry an explicit `random_type` array instead; it wins over derived membership.
 2. Put only what's genuinely shared by the whole family in it. If members disagree about a
    value, leave it out and let each declare its own.
 3. Add `"type": "<key>"` to the entities, and delete what the type now supplies.
+4. Check for code that scans raw definitions instead of resolving them (`getActorData` / `getItemData`). Such code silently loses any attribute that moved into a type. The editors' attribute filters use `resolvedActorAttrs` (editor-constants.js) for this.
 
 A useful check: resolve a member before and after and diff them. If anything changed, the type
 is claiming something its members don't actually agree on.

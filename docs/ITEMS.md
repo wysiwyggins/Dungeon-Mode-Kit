@@ -365,6 +365,26 @@ A burning item with `emits` releases a spreading puff of that gas actor every `e
 
 ---
 
+## Treasure
+
+Items of the `treasure` type are banked, not carried. Picking one up adds its `value` (rolled from `random_value`, or 1 if it has none) to a running total and uses up the item, so it never takes an inventory slot. Only the player banks treasure; a creature that grabs some carries it like anything else.
+
+Each total is named by the item's `tally_as` attribute, or its own name if it has none. The sidebar lists every total the player has, such as "Gold nugget: 34". Where there are totals, the plain Wealth counter isn't shown. Items can share a total: give a thaler `tally_as: "gold"` and it adds to the same line as other gold.
+
+```json
+"ruby": {
+  "name": "ruby",
+  "type": "treasure",
+  "tileIndex": "OPAQUE_WHITE_DIAMOND_SUITE",
+  "tint": "#E0115F",
+  "random_value": [5, 20]
+}
+```
+
+Win conditions can check totals with `{ "treasure": "ruby", "op": ">=", "value": 100 }`. The treasure pool is local to each prototype (see [Types and item pools](TYPES.md#types-and-item-pools)).
+
+---
+
 ## Item Stats
 
 Items support the same stat format as actors. Stats are defined at the top level alongside `attributes`.

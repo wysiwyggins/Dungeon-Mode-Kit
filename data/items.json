@@ -8,8 +8,6 @@
     "identified": false,
     "description": "A shining sigil of starmetal, forged by Marduk.",
     "attributes": {
-      "pickupable": true,
-      "visible": true,
       "light_source": true,
       "lightRadius": 2,
       "pickup_sound": "magic"
@@ -26,8 +24,6 @@
     "identified": false,
     "description": "A golden cup, everfilled",
     "attributes": {
-      "pickupable": true,
-      "visible": true,
       "light_source": true,
       "lightRadius": 2,
       "pickup_sound": "magic"
@@ -235,7 +231,6 @@
       "wear_effect": {
         "accuracy": "{strength}"
       },
-      "enchant_range": [-1, 3],
       "description": "[damage] damage. Quick but weak."
     }
   },
@@ -303,7 +298,6 @@
     "attributes": {
       "explosive": true,
       "explode_sound": "gas",
-      "use_sound": "swallow",
       "description": "A mysterious potion with unknown effects."
     }
   },
@@ -317,8 +311,7 @@
       "use_effect": {
         "health": 20,
         "apply_state": "confused"
-      },
-      "use_sound": "heal"
+      }
     }
   },
 
@@ -327,7 +320,6 @@
     "identified_template": "Potion of Strength",
     "use_description": "The [item_name] tastes [adjectives.yucky].",
     "attributes": {
-      "use_sound": "swallow",
       "use_effect": {
         "strength": 1
       },
@@ -344,7 +336,6 @@
       "flammable": true,
       "explosive": true,
       "fire_explosion": true,
-      "use_sound": "swallow",
       "use_at_self": true,
       "description": "A mysterious potion with unknown effects."
     }
@@ -358,8 +349,7 @@
     "attributes": {
       "use_effect": {
         "apply_state": "nauseated"
-      },
-      "use_sound": "swallow"
+      }
     }
   },
 
@@ -477,54 +467,22 @@
 
   "gold_nugget": {
     "name": "gold nugget",
+    "type": "treasure",
     "tileIndex": "WHITE_ASTERISK",
     "tint": "#FFD700",
-    "ignore_darkness": true,
     "random_value": [1, 10],
     "attributes": {
-      "pickupable": true,
-      "visible": true,
-      "stackable": false,
-      "flammable": false,
-      "pickup_effect": {
-        "wealth": "{value}"
-      },
       "description": "A heavy lump of gold."
     }
   },
   "thaler": {
     "name": "thaler coin",
+    "type": "treasure",
     "tileIndex": "WHITE_THALER_SIGN",
     "tint": "#FFD700",
-    "ignore_darkness": true,
     "random_value": [1, 10],
     "attributes": {
-      "pickupable": true,
-      "visible": true,
-      "stackable": false,
-      "flammable": false,
-      "pickup_effect": {
-        "wealth": "{value}"
-      },
       "description": "A rough stamped gold coin."
-    }
-  },
-
-  "uranium_nugget": {
-    "name": "uranium nugget",
-    "tileIndex": "WHITE_ASTERISK",
-    "tint": "#cce8b5",
-    "effect": "flicker_tint",
-    "ignore_darkness": true,
-    "identified": false,
-    "random_value": [5, 10],
-    "attributes": {
-      "pickupable": true,
-      "visible": true,
-      "description": "A heavy lump of gold.",
-      "pickup_effect": {
-        "wealth": "{value}"
-      }
     }
   },
 
@@ -540,8 +498,7 @@
         "health": -8
       },
       "collision_description": "[actor_name] smashes [attacked_actor_name] with [a-an] [weapon_name]!",
-      "description": "[damage] damage. Knocks enemies back [knockback] tile.",
-      "enchant_range": [-1, 3]
+      "description": "[damage] damage. Knocks enemies back [knockback] tile."
     }
   },
 
@@ -558,32 +515,7 @@
         "health": -10
       },
       "collision_description": "[actor_name] bashes [attacked_actor_name] with [a-an] [weapon_name]!",
-      "enchant_range": [-1, 3],
       "description": "[damage] damage. Knocks enemies back [knockback] tile."
-    }
-  },
-
-  "misiricorde": {
-    "name": "misericorde",
-    "tileIndex": "LATIN_SMALL_LETTER_T",
-    "identified": false,
-    "attributes": {
-      "pickupable": true,
-      "visible": true,
-      "stackable": false,
-      "flammable": false,
-      "weapon": true,
-      "enchantable": true,
-      "weapon_proc": "critical",
-      "critical_chance": 15,
-      "collision_effect": {
-        "health": -4
-      },
-      "attack_sound": "bow",
-      "collision_sound": "hit",
-      "collision_description": "[actor_name] stabs [attacked_actor_name] with [a-an] [weapon_name]!",
-      "description": "[damage] damage. [critical_chance]% chance for critical hits.",
-      "enchant_range": [-1, 3]
     }
   },
 
@@ -680,8 +612,7 @@
       "wear_effect": {
         "accuracy": "{strength}"
       },
-      "description": "[damage] damage. Lunges through gaps. [critical_chance]% critical.",
-      "enchant_range": [-1, 3]
+      "description": "[damage] damage. Lunges through gaps. [critical_chance]% critical."
     }
   },
 
@@ -700,8 +631,7 @@
       "wear_effect": {
         "accuracy": "{strength}"
       },
-      "description": "[damage] damage. Sweeps all adjacent foes.",
-      "enchant_range": [-1, 3]
+      "description": "[damage] damage. Sweeps all adjacent foes."
     }
   },
 
@@ -720,8 +650,7 @@
       "wear_effect": {
         "accuracy": "{strength}"
       },
-      "description": "[damage] damage. Pierces through to the foe behind.",
-      "enchant_range": [-1, 3]
+      "description": "[damage] damage. Pierces through to the foe behind."
     }
   },
 
@@ -740,8 +669,7 @@
       "wear_effect": {
         "accuracy": "{strength}"
       },
-      "description": "[damage] damage. Knocks enemies back [knockback] tile.",
-      "enchant_range": [-1, 3]
+      "description": "[damage] damage. Knocks enemies back [knockback] tile."
     }
   },
 
@@ -858,7 +786,6 @@
       "flammable": true,
       "explosive": true,
       "explode_sound": "gas",
-      "use_sound": "swallow",
       "use_effect": {
         "apply_state": "poisoned"
       },
@@ -875,7 +802,6 @@
       "flammable": true,
       "explosive": true,
       "explode_sound": "gas",
-      "use_sound": "swallow",
       "use_effect": {
         "apply_state": {
           "state": "confused",
@@ -897,7 +823,6 @@
       "use_effect": {
         "apply_state": "hasted"
       },
-      "use_sound": "swallow",
       "description": "Greatly increases movement speed."
     }
   },
@@ -911,7 +836,6 @@
       "flammable": true,
       "explosive": true,
       "explode_sound": "gas",
-      "use_sound": "swallow",
       "use_effect": {
         "apply_state": "paralyzed"
       },
@@ -930,7 +854,6 @@
       "use_effect": {
         "apply_state": "regenerating"
       },
-      "use_sound": "swallow",
       "description": "Slowly restores health over time."
     }
   },
@@ -943,7 +866,6 @@
     "attributes": {
       "flammable": true,
       "explosive": false,
-      "use_sound": "swallow",
       "use_effect": {
         "apply_state": "hallucinating"
       },
@@ -957,7 +879,6 @@
     "effect_description": "All conditions are purged",
     "use_description": "The [item_name] tastes [adjectives.wine_descriptions].",
     "attributes": {
-      "use_sound": "heal",
       "use_effect": "remove_all_states",
       "description": "Cures all ailments.",
       "breakable": null,
@@ -976,7 +897,6 @@
       "use_effect": {
         "apply_state": "flying"
       },
-      "use_sound": "swallow",
       "description": "Allows the drinker to float over hazards."
     }
   },
@@ -990,7 +910,6 @@
       "use_effect": {
         "apply_state": "invisible"
       },
-      "use_sound": "swallow",
       "description": "Renders the drinker unseen."
     }
   },
@@ -1004,7 +923,6 @@
       "use_effect": {
         "apply_state": "fireproof_temp"
       },
-      "use_sound": "swallow",
       "description": "Grants temporary immunity to fire."
     }
   },
@@ -1021,7 +939,6 @@
       "use_effect": {
         "apply_state": "slowed"
       },
-      "use_sound": "swallow",
       "description": "Drastically slows movement."
     }
   },
@@ -1035,7 +952,6 @@
       "use_effect": {
         "apply_state": "telepathic"
       },
-      "use_sound": "swallow",
       "description": "Reveals nearby creatures through walls."
     }
   },
@@ -1046,8 +962,7 @@
     "effect_description": "The scroll dissolves as you read it.",
     "attributes": {
       "use_effect": "identify_item",
-      "deferred": true,
-      "use_sound": "magic"
+      "deferred": true
     }
   },
 
@@ -1056,8 +971,7 @@
     "identified_template": "Scroll of Teleportation",
     "effect_description": "Space bends around you.",
     "attributes": {
-      "use_effect": "teleport",
-      "use_sound": "magic"
+      "use_effect": "teleport"
     }
   },
 
@@ -1066,8 +980,7 @@
     "identified_template": "Scroll of Magic Mapping",
     "effect_description": "The layout of this place becomes clear in your mind, and hidden connections glimmer into view.",
     "attributes": {
-      "use_effect": "reveal_map",
-      "use_sound": "magic"
+      "use_effect": "reveal_map"
     }
   },
 
@@ -1076,8 +989,7 @@
     "identified_template": "Scroll of Aggravate Monsters",
     "effect_description": "Every creature stirs with sudden rage.",
     "attributes": {
-      "use_effect": "aggravate_monsters",
-      "use_sound": "magic"
+      "use_effect": "aggravate_monsters"
     }
   },
 
@@ -1086,8 +998,7 @@
     "identified_template": "Scroll of Summon Monsters",
     "effect_description": "Something answers the call.",
     "attributes": {
-      "use_effect": "summon_monsters",
-      "use_sound": "magic"
+      "use_effect": "summon_monsters"
     }
   },
 
@@ -1096,8 +1007,7 @@
     "identified_template": "Scroll of Recharging",
     "effect_description": "A surge of energy recharges the items in your pack.",
     "attributes": {
-      "use_effect": "recharge_items",
-      "use_sound": "magic"
+      "use_effect": "recharge_items"
     }
   },
 
@@ -1126,7 +1036,6 @@
           "empty_message": "The scroll crumbles, but nothing happens."
         }
       },
-      "use_sound": "magic",
       "effect_radius": 5
     }
   },
@@ -1143,7 +1052,6 @@
           "empty_message": "The scroll crumbles, but nothing happens."
         }
       },
-      "use_sound": "magic",
       "effect_radius": 5
     }
   },
@@ -1154,8 +1062,7 @@
     "effect_description": "The scroll glows with arcane power.",
     "attributes": {
       "use_effect": "enchant_item",
-      "deferred": true,
-      "use_sound": "magic"
+      "deferred": true
     }
   },
 
@@ -1164,8 +1071,7 @@
     "identified_template": "Scroll of Remove Curse",
     "effect_description": "A cleansing light washes over your equipment.",
     "attributes": {
-      "use_effect": "remove_curse",
-      "use_sound": "magic"
+      "use_effect": "remove_curse"
     }
   },
 
@@ -1179,8 +1085,7 @@
       "description": "A crusty loaf of bread.",
       "use_effect": {
         "nutrition": 25
-      },
-      "use_sound": "pickup"
+      }
     }
   },
 
@@ -1198,7 +1103,7 @@
       "use_effect": {
         "nutrition": 200
       },
-      "use_sound": "pickup",
+      "use_sound": "swallow",
       "description": "A crisp red apple."
     }
   },
@@ -1212,7 +1117,6 @@
       "use_effect": {
         "nutrition": 400
       },
-      "use_sound": "swallow",
       "description": "A hunk of bloody meat."
     }
   },
@@ -1227,8 +1131,7 @@
       "description": "A package of preserved travel rations. Very filling.",
       "use_effect": {
         "nutrition": 500
-      },
-      "use_sound": "swallow"
+      }
     }
   },
 
@@ -1377,23 +1280,6 @@
         "backtrack_removes": true
       },
       "description": "A ball of red thread. Leaves a trail as you move."
-    }
-  },
-  "shield": {
-    "name": "Shield",
-    "tileIndex": "RIGHT_PARENTHESIS",
-    "attributes": {
-      "pickupable": true,
-      "visible": true,
-      "stackable": false,
-      "flammable": false,
-      "consumable": false,
-      "explosive": false,
-      "passive_effect": {
-        "type": "stat_bonus",
-        "defense": 10
-      },
-      "description": "A large wooden shield. Provides defense while carried."
     }
   }
 }

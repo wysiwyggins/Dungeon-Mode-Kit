@@ -1,0 +1,19 @@
+{
+  "shield": {
+    "name": "Shield",
+    "tileIndex": "RIGHT_PARENTHESIS",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": false,
+      "flammable": false,
+      "consumable": false,
+      "explosive": false,
+      "passive_effect": {
+        "type": "stat_bonus",
+        "defense": 10
+      },
+      "description": "A large wooden shield. Provides defense while carried."
+    }
+  }
+}

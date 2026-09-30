@@ -859,6 +859,16 @@
         ]
       },
       {
+        "id": "phantom_hound",
+        "min": 11,
+        "max": 19,
+        "freq": 50,
+        "count": [
+          1,
+          2
+        ]
+      },
+      {
         "id": "ogre",
         "min": 13,
         "max": 19,

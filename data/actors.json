@@ -37,61 +37,6 @@
       "health": 20
     }
   },
-  "pink_jelly": {
-    "name": "pink jelly",
-    "description": "A quivering, gelatinous blob that engulfs whatever it touches.",
-    "tileIndexBase": "WHITE_FULL_BLOCK",
-    "tileIndexTop": "WHITE_FULL_BLOCK",
-    "tint": "#ff00af",
-    "personality": "jelly",
-    "collision_effect": {
-      "health": -2
-    },
-    "collision_sound": "hit",
-    "collision_description": "The [actor_name] slimes you!",
-    "split_sound": "step_mud",
-    "split_into": "small_pink_jelly",
-    "attributes": {
-      "flammable": true,
-      "solid": true,
-      "hostile": true,
-      "sentient": true,
-      "accuracy": 50,
-      "splits": true,
-      "split_min_health": 4,
-      "inventory": 1,
-      "display_inventory": true
-    },
-    "stats": {
-      "health": 40
-    }
-  },
-  "small_pink_jelly": {
-    "name": "small pink jelly",
-    "description": "A wad of pink slime that broke off a larger blob.",
-    "tileIndexBase": "DROPLET",
-    "tileIndexTop": "BLANK",
-    "tint": "#ff00af",
-    "personality": "jelly",
-    "collision_effect": {
-      "health": -2
-    },
-    "collision_sound": "hit",
-    "collision_description": "The [actor_name] slimes you!",
-    "split_sound": "step_mud",
-    "attributes": {
-      "flammable": true,
-      "solid": true,
-      "hostile": true,
-      "sentient": true,
-      "accuracy": 50,
-      "splits": true,
-      "split_min_health": 4
-    },
-    "stats": {
-      "health": 10
-    }
-  },
   "ghast": {
     "type": "undead",
     "name": "ghast",
@@ -389,9 +334,7 @@
     },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] touches the [attacked_actor_name]!",
-    "attributes": {
-      "hostile": true
-    },
+    "attributes": {},
     "stats": {
       "health": 10
     }
@@ -410,7 +353,6 @@
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
       "flies": true,
-      "hostile": true,
       "dark_vision": true,
       "defense": 45,
       "accuracy": 25
@@ -434,7 +376,6 @@
     "facingEnabled": true,
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
-      "hostile": true,
       "dark_vision": true,
       "accuracy": 40
     },
@@ -514,7 +455,6 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
-      "hostile": true,
       "dark_vision": true,
       "web_immune": true,
       "accuracy": 50,
@@ -561,14 +501,10 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
     "attributes": {
-      "flammable": true,
       "hostile": true,
-      "sentient": true,
       "accuracy": 55,
       "defense": 8,
-      "strength": 15,
-      "inventory": 1,
-      "remains": "skull"
+      "strength": 15
     },
     "stats": {
       "health": 80
@@ -593,7 +529,6 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
-      "hostile": true,
       "pack": true,
       "accuracy": 80,
       "defense": 5,
@@ -626,7 +561,6 @@
     "collision_sound": "bow",
     "collision_description": "The [actor_name] scratches the [attacked_actor_name]!",
     "attributes": {
-      "hostile": true,
       "vision_range": 10,
       "inventory": 1,
       "accuracy": 70,
@@ -681,15 +615,12 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] strikes [attacked_actor_name] with a crackling fist!",
     "attributes": {
-      "flammable": true,
       "hostile": true,
-      "sentient": true,
       "accuracy": 55,
       "defense": 4,
       "light_source": true,
       "remains": "rubble",
-      "conductive": false,
-      "opaque": false
+      "conductive": false
     },
     "stats": {
       "health": 30
@@ -711,9 +642,6 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
-      "flammable": true,
-      "hostile": true,
-      "sentient": true,
       "accuracy": 50,
       "defense": 3
     },
@@ -814,12 +742,9 @@
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "death_sound": "ouch",
     "attributes": {
-      "hostile": true,
-      "sentient": true,
       "light_source": true,
       "accuracy": 60,
-      "defense": 6,
-      "remains": "skull"
+      "defense": 6
     },
     "stats": {
       "health": 40
@@ -1021,7 +946,7 @@
       "remains": "hole",
       "drops": [
         { "item": "skull", "weight": 50 },
-        { "item": "gold_nugget", "weight": 20 },
+        { "item": "treasure", "weight": 20 },
         { "item": "weapon", "weight": 10 },
         { "item": "ring", "weight": 5 },
         { "weight": 15 }
@@ -1057,18 +982,6 @@
       "opaque": false
     }
   },
-  "pitchblende_wall": {
-    "name": "pitchblende",
-    "type": "terrain",
-    "tileIndexBase": "OPAQUE_DOTTED_LIGHT_SHADE",
-    "tileIndexTop": "OPAQUE_DOTTED_LIGHT_SHADE",
-    "tint": "#7a7a7a",
-    "attributes": {
-      "breakable": true,
-      "lode_chance": 20,
-      "lode": "uranium_nugget"
-    }
-  },
   "wall_torch": {
     "type": "terrain",
     "name": "mounted torch",
@@ -1080,7 +993,6 @@
     "attributes": {
       "breakable": true,
       "light_source": true,
-      "remains": "rubble",
       "ornament": true,
       "paint_tile": "TORCH_ON_WALL",
       "lode_chance": 50,
@@ -1111,24 +1023,21 @@
   },
   "gate": {
     "name": "gate",
+    "type": "doorway",
     "tileIndexBase": "GATE",
     "tileIndexTop": "GATE",
     "tileIndexTop_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
     "tileIndexBase_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
     "flipBaseV": true,
     "attributes": {
-      "flammable": false,
-      "conductive": false,
-      "openable": true,
-      "lockable": true,
       "gate": true,
       "opaque": false,
-      "open": false,
       "locked": true
     }
   },
   "chest": {
     "name": "chest",
+    "type": "container",
     "description": "A stout wooden chest. No telling what is inside until the lid is up.",
     "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
     "tileIndexTop": "UNDERSCORE",
@@ -1136,24 +1045,17 @@
     "tileIndexTop_open": "PRISON_WINDOW",
     "tint": "#8A6233",
     "attributes": {
-      "solid": true,
-      "openable": true,
-      "container": true,
-      "open": false,
-      "flammable": true,
-      "breakable": true,
       "drops": [
         { "item": "potion", "weight": 28 },
         { "item": "scroll", "weight": 22 },
-        { "item": "gold_nugget", "weight": 15 },
+        { "item": "treasure", "weight": 15 },
         { "item": "weapon", "weight": 12 },
         { "item": "armor", "weight": 10 },
         { "item": "staff", "weight": 7 },
         { "item": "ring", "weight": 6 }
       ],
       "trap_chance": 12,
-      "smash_loss": 50,
-      "death_sound": "plunk3"
+      "smash_loss": 50
     },
     "stats": {
       "health": 10
@@ -1166,6 +1068,7 @@
   },
   "locked_chest": {
     "name": "chest",
+    "type": "container",
     "description": "A stout wooden chest, its lock set with a coloured stone.",
     "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
     "tileIndexTop": "UNDERSCORE",
@@ -1173,25 +1076,18 @@
     "tileIndexTop_open": "PRISON_WINDOW",
     "random_color": true,
     "attributes": {
-      "solid": true,
-      "openable": true,
-      "container": true,
-      "open": false,
       "locked": true,
       "lockable": true,
       "color_locked": true,
-      "flammable": true,
-      "breakable": true,
       "drops": [
         { "item": "staff", "weight": 28 },
         { "item": "ring", "weight": 22 },
         { "item": "weapon", "weight": 20 },
         { "item": "armor", "weight": 15 },
         { "item": "wand", "weight": 10 },
-        { "item": "gold_nugget", "weight": 5 }
+        { "item": "treasure", "weight": 5 }
       ],
-      "smash_loss": 65,
-      "death_sound": "plunk3"
+      "smash_loss": 65
     },
     "stats": {
       "health": 14
@@ -1200,54 +1096,43 @@
   },
   "door": {
     "name": "door",
+    "type": "doorway",
     "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
     "tileIndexTop": "OPAQUE_DOOR_TOP",
     "tileIndexTop_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
     "tileIndexBase_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
     "attributes": {
-      "flammable": false,
-      "conductive": false,
-      "openable": true,
-      "lockable": true,
       "swings_shut": true,
-      "open": false,
       "locked": false
     }
   },
   "locked_door": {
     "name": "door",
+    "type": "doorway",
     "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
     "tileIndexTop": "OPAQUE_DOOR_TOP",
     "tileIndexTop_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
     "tileIndexBase_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
     "random_color": true,
     "attributes": {
-      "flammable": false,
-      "conductive": false,
-      "openable": true,
-      "lockable": true,
       "color_locked": true,
-      "open": false,
       "locked": true
     }
   },
   "generic_locked_door": {
     "name": "door",
+    "type": "doorway",
     "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
     "tileIndexTop": "OPAQUE_DOOR_TOP",
     "tileIndexTop_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
     "tileIndexBase_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
     "attributes": {
-      "flammable": false,
-      "conductive": false,
-      "openable": true,
-      "lockable": true,
-      "open": false,
       "locked": true
     }
   },
   "lever": {
     "name": "[color] lever",
+    "type": "switch",
     "tileIndexBase": "LEVER_BASE",
     "tileIndexTop": "LEVER_HANDLE",
     "tileIndexBase_toggled": "LEVER_HANDLE",
@@ -1257,8 +1142,6 @@
     "collision_sound": "push1",
     "attributes": {
       "solid": true,
-      "switchable": true,
-      "toggled": false,
       "opaque": false
     },
     "collision_description": "[a-an] [color] lever",
@@ -1270,13 +1153,12 @@
   },
   "pressure_plate": {
     "name": "pressure plate",
+    "type": "switch",
     "tileIndexBase": "INVERSE_BULLET",
     "tileIndexTop": "BLANK",
     "collision_sound": "push1",
     "attributes": {
       "solid": false,
-      "switchable": true,
-      "toggled": false,
       "one_shot": true,
       "render_layer": "bottom"
     },
@@ -1289,6 +1171,7 @@
   },
   "hidden_door": {
     "name": "door",
+    "type": "doorway",
     "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
     "tileIndexTop": "OPAQUE_DOOR_TOP",
     "tileIndexTop_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
@@ -1297,12 +1180,7 @@
     "tileIndexTop_hidden": "OPAQUE_MEDIUM_LIGHT_SHADE",
     "reveal_message": "You discover a hidden door!",
     "attributes": {
-      "flammable": false,
-      "conductive": false,
-      "openable": true,
-      "lockable": true,
       "swings_shut": true,
-      "open": false,
       "locked": false,
       "solid": true,
       "hidden": true,
@@ -1311,6 +1189,7 @@
   },
   "barred_hidden_door": {
     "name": "door",
+    "type": "doorway",
     "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
     "tileIndexTop": "OPAQUE_DOOR_TOP",
     "tileIndexTop_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
@@ -1320,12 +1199,7 @@
     "reveal_message": "You discover a hidden door, barred fast.",
     "collision_description": "The hidden door is barred. Something must work it.",
     "attributes": {
-      "flammable": false,
-      "conductive": false,
-      "openable": true,
-      "lockable": true,
       "swings_shut": true,
-      "open": false,
       "locked": true,
       "solid": true,
       "hidden": true,
@@ -1334,6 +1208,7 @@
   },
   "hidden_lever": {
     "name": "[color] lever",
+    "type": "switch",
     "tileIndexBase": "LEVER_BASE",
     "tileIndexTop": "LEVER_HANDLE",
     "tileIndexBase_toggled": "LEVER_HANDLE",
@@ -1347,8 +1222,6 @@
     "opaque_revealed": false,
     "attributes": {
       "solid": true,
-      "switchable": true,
-      "toggled": false,
       "hidden": true,
       "breakable": true
     },
@@ -1361,14 +1234,13 @@
   },
   "hidden_pressure_plate": {
     "name": "pressure plate",
+    "type": "switch",
     "tileIndexBase": "INVERSE_BULLET",
     "tileIndexTop": "BLANK",
     "collision_sound": "push1",
     "reveal_message": "You spot a pressure plate in the floor!",
     "attributes": {
       "solid": false,
-      "switchable": true,
-      "toggled": false,
       "one_shot": true,
       "render_layer": "bottom",
       "hidden": true
@@ -1413,6 +1285,7 @@
   },
   "water": {
     "name": "water",
+    "type": "liquid",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
     "animated": true,
@@ -1420,18 +1293,13 @@
     "tint": "#00645f",
     "personality": "liquid_pooling",
     "attributes": {
-      "solid": false,
-      "flammable": false,
-      "spreads": false,
-      "liquid": true,
       "paint_tile": "WATER",
-      "mass_noun": true,
-      "entry_sound": "step_mud",
       "walk_description": "Cold water reaches your knees."
     }
   },
   "deep_water": {
     "name": "water",
+    "type": "liquid",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
     "animated": true,
@@ -1440,18 +1308,13 @@
     "effect": "ripple_tint",
     "personality": "deep_water",
     "attributes": {
-      "solid": false,
-      "flammable": false,
-      "spreads": false,
-      "liquid": true,
       "deep": true,
-      "mass_noun": true,
-      "entry_sound": "step_mud",
       "walk_description": "You plunge into the dark waters."
     }
   },
   "sewage": {
     "name": "sewage",
+    "type": "liquid",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
     "animated": true,
@@ -1459,18 +1322,13 @@
     "tint": "#77bb41",
     "personality": "liquid_pooling",
     "attributes": {
-      "solid": false,
-      "flammable": false,
-      "spreads": false,
-      "liquid": true,
       "paint_tile": "OPAQUE_DOTTED_LIGHT_SHADE",
-      "mass_noun": true,
-      "entry_sound": "step_mud",
       "walk_description": "You trudge through the stinking effluvia."
     }
   },
   "deep_sewage": {
     "name": "sewage",
+    "type": "liquid",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
     "tint": "#7d9332",
@@ -1479,11 +1337,7 @@
     "animation_frames": "fluid",
     "personality": "deep_water",
     "attributes": {
-      "mass_noun": true,
-      "liquid": true,
       "deep": true,
-      "solid": false,
-      "entry_sound": "step_mud",
       "walk_description": "You wade out into the vile morass."
     }
   },
@@ -1534,6 +1388,7 @@
   },
   "quicksand": {
     "name": "quicksand",
+    "type": "liquid",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
     "animated": true,
@@ -1541,13 +1396,7 @@
     "tint": "#9b7340",
     "personality": "quicksand",
     "attributes": {
-      "solid": false,
-      "flammable": false,
-      "spreads": false,
-      "liquid": true,
       "deep": true,
-      "mass_noun": true,
-      "entry_sound": "step_mud",
       "apply_state": "stuck",
       "paint_tile": "MEDIUM_SHADE_LOWER_ONE_HALF_BLOCK"
     }
@@ -1680,31 +1529,26 @@
   },
   "cloud": {
     "name": "clouds",
+    "type": "gas",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
     "animated": true,
     "animation_frames": "smoke",
     "personality": "cloud",
     "attributes": {
-      "flies": true,
-      "hazard_immune": true,
-      "flammable": false,
-      "mass_noun": true
+      "hazard_immune": true
     },
     "lifetime": 10
   },
   "mist": {
     "name": "mist",
+    "type": "gas",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
     "animated": true,
     "animation_frames": "mist",
     "personality": "mist",
     "attributes": {
-      "flies": true,
-      "solid": false,
-      "mass_noun": true,
-      "flammable": false,
       "hazard_immune": true
     },
     "collision_effect": {},
@@ -1712,18 +1556,14 @@
   },
   "steam": {
     "name": "steam",
+    "type": "gas",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
     "animated": true,
     "animation_frames": "smoke",
     "tint": "#DDDDDD",
     "personality": "cloud",
-    "attributes": {
-      "flies": true,
-      "solid": false,
-      "flammable": false,
-      "mass_noun": true
-    },
+    "attributes": {},
     "collision_effect": {
       "health": -3
     },
@@ -1731,6 +1571,7 @@
   },
   "smoke": {
     "name": "smoke",
+    "type": "gas",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
     "animated": true,
@@ -1738,10 +1579,6 @@
     "tint": "#555555",
     "personality": "cloud",
     "attributes": {
-      "flies": true,
-      "solid": false,
-      "flammable": false,
-      "mass_noun": true,
       "apply_state": "choked",
       "hazard_immune": true
     },
@@ -1750,6 +1587,7 @@
   },
   "sewer_gas": {
     "name": "sewer gas",
+    "type": "gas",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
     "animated": true,
@@ -1757,10 +1595,7 @@
     "tint": "#AACC33",
     "personality": "cloud",
     "attributes": {
-      "flies": true,
-      "solid": false,
       "flammable": true,
-      "mass_noun": true,
       "apply_state": "nauseated",
       "hazard_immune": true
     },
@@ -1769,6 +1604,7 @@
   },
   "spore": {
     "name": "spores",
+    "type": "gas",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
     "animated": true,
@@ -1776,10 +1612,6 @@
     "tint": "#88DD66",
     "personality": "spore",
     "attributes": {
-      "flies": true,
-      "solid": false,
-      "flammable": false,
-      "mass_noun": true,
       "hazard_immune": true
     },
     "collision_effect": {},
@@ -1787,6 +1619,7 @@
   },
   "incense_smoke": {
     "name": "incense smoke",
+    "type": "gas",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
     "animated": true,
@@ -1794,10 +1627,6 @@
     "tint": "#E4D4EC",
     "personality": "incense_smoke",
     "attributes": {
-      "flies": true,
-      "solid": false,
-      "flammable": false,
-      "mass_noun": true,
       "hazard_immune": true,
       "ward": {
         "types": ["undead"],
@@ -1810,17 +1639,12 @@
   },
   "poison_gas_trap": {
     "name": "poison gas trap",
+    "type": "trap",
     "tileIndexBase": "INVERSE_BULLET",
     "tint": "#55AA55",
     "personality": "trap",
     "attributes": {
-      "solid": false,
-      "visible": true,
-      "hidden": true,
-      "flammable": false,
-      "trap": true,
-      "trap_type": "poison_gas",
-      "render_layer": "bottom"
+      "trap_type": "poison_gas"
     },
     "trap_spawn": "cloud",
     "trap_spawn_tint": "#55FF55",
@@ -1829,17 +1653,12 @@
   },
   "fire_trap": {
     "name": "fire trap",
+    "type": "trap",
     "tileIndexBase": "INVERSE_BULLET",
     "tint": "#FF6622",
     "personality": "trap",
     "attributes": {
-      "solid": false,
-      "visible": true,
-      "hidden": true,
-      "flammable": false,
-      "trap": true,
-      "trap_type": "fire",
-      "render_layer": "bottom"
+      "trap_type": "fire"
     },
     "trap_effect": {
       "center": "fire",
@@ -1851,17 +1670,12 @@
   },
   "paralysis_gas_trap": {
     "name": "paralysis gas trap",
+    "type": "trap",
     "tileIndexBase": "INVERSE_BULLET",
     "tint": "#AAAAFF",
     "personality": "trap",
     "attributes": {
-      "solid": false,
-      "visible": true,
-      "hidden": true,
-      "flammable": false,
-      "trap": true,
-      "trap_type": "paralysis_gas",
-      "render_layer": "bottom"
+      "trap_type": "paralysis_gas"
     },
     "trap_spawn": "cloud",
     "trap_spawn_tint": "#AADDFF",
@@ -1870,17 +1684,12 @@
   },
   "confusion_gas_trap": {
     "name": "confusion gas trap",
+    "type": "trap",
     "tileIndexBase": "INVERSE_BULLET",
     "tint": "#FF88FF",
     "personality": "trap",
     "attributes": {
-      "solid": false,
-      "visible": true,
-      "hidden": true,
-      "flammable": false,
-      "trap": true,
-      "trap_type": "confusion_gas",
-      "render_layer": "bottom"
+      "trap_type": "confusion_gas"
     },
     "trap_spawn": "cloud",
     "trap_spawn_tint": "#FFAAFF",

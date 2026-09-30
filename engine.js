@@ -2844,8 +2844,8 @@ class DungeonEngine {
         }
 
         if (typeof condition === 'object') {
-            const { actor: actorTarget, stat, op, value } = condition;
-            if (stat && op !== undefined && value !== undefined) {
+            const { actor: actorTarget, stat, treasure, op, value } = condition;
+            if ((stat || treasure) && op !== undefined && value !== undefined) {
                 let target = null;
                 if (actorTarget === 'player') {
                     target = player;
@@ -2857,7 +2857,14 @@ class DungeonEngine {
                     target = player;
                 }
                 if (!target) return false;
-                const current = target.stats?.[stat]?.current ?? target.getAttribute(stat);
+                let current;
+                if (treasure) {
+                    // Sum of the named treasure totals: one name or an array of them.
+                    const tally = target.getAttribute('treasure_tally') || {};
+                    current = [].concat(treasure).reduce((sum, name) => sum + (tally[name] || 0), 0);
+                } else {
+                    current = target.stats?.[stat]?.current ?? target.getAttribute(stat);
+                }
                 if (current === undefined || current === null) return false;
                 switch (op) {
                     case '>':  return current > value;
@@ -4511,7 +4518,14 @@ class Prototype {
                 (this._itemsByType[def.type] ||= []).push(id);
             }
         }
-        return this._itemsByType[typeKey] || [];
+        const members = this._itemsByType[typeKey] || [];
+        // A type declaring `"pool": "prototype"` (treasure) draws only on items this
+        // prototype defines itself, so a prototype never inherits the base game's
+        // treasure. item_catalog can still name base items in an explicit `pool`.
+        if (this.types?.[typeKey]?.pool === 'prototype') {
+            return members.filter(id => this.prototypeItemTypes?.includes(id));
+        }
+        return members;
     }
 
     /**
@@ -4543,7 +4557,10 @@ class Prototype {
                 const rolled = this.getCatalogTypeForCategory(itemType)
                     || (pool.length ? pool[Math.floor(ROT.RNG.getUniform() * pool.length)] : null);
                 if (!rolled) {
-                    console.warn(`Item type '${itemType}' has no members to roll`);
+                    // A prototype-scoped pool is allowed to be empty: no treasure here.
+                    if (typeDef.pool !== 'prototype') {
+                        console.warn(`Item type '${itemType}' has no members to roll`);
+                    }
                     return null;
                 }
                 const resolved = this.getItemData(rolled);
@@ -4580,7 +4597,7 @@ class Prototype {
         // `name` IS inherited here, unlike actors: for an item it's the
         // unidentified display noun ("you see a scroll"), a genuine property of
         // the category rather than bookkeeping about the type.
-        const { description, domain, ...inheritable } = typeDef;
+        const { description, domain, pool, ...inheritable } = typeDef;
         const resolved = mergeEntityDef(inheritable, def);
         this._resolvedItems[itemType] = resolved;
         return resolved;
@@ -5321,8 +5338,8 @@ class Item extends Entity {
         const flavor = this.getAttribute('flavor_description');
         if (flavor && !this.quotesAStat(flavor)) return resolve(flavor);
 
-        // Items declaring no `type` fall back to what they do: mattock and misiricorde
-        // are weapons by attribute only.
+        // Items declaring no `type` fall back to what they do: the mattock and the
+        // butter knife are weapons by attribute only.
         const types = this.engine?.currentPrototype?.types;
         const blurbFor = (cat) => types?.[cat]?.unidentified_description;
         const blurb = blurbFor(this.getCategory())
@@ -6479,7 +6496,11 @@ class Actor extends Entity {
         // entities. getItemData is checked before spawnItem because spawnItem warns
         // on a miss, which would be noise for a legitimate entity name.
         const em = this.engine.entityManager;
-        const isItem = !!this.engine.currentPrototype?.getItemData?.(chosen.item);
+        const prototype = this.engine.currentPrototype;
+        const isItem = !!prototype?.getItemData?.(chosen.item);
+        // An item type with nothing to roll here (treasure in a prototype that
+        // defines none) is the "nothing" outcome, not a bad entry.
+        if (!isItem && prototype?.types?.[chosen.item]?.domain === 'item') return false;
         const spawned = isItem
             ? em.spawnItem(chosen.item, this.x, this.y)
             : em.spawnEntity(chosen.item, this.x, this.y);
@@ -6721,6 +6742,20 @@ class Actor extends Entity {
         return true;
     }
 
+    /**
+     * Bank a treasure item's value on this actor's running total for it. The total
+     * is named by the item's `tally_as`, or its own name, so several treasures can
+     * share one ("gold") or each keep their own. Each item adds its `value`
+     * (from random_value), or 1 if it has none.
+     */
+    addTreasure(item) {
+        const label = item.getAttribute('tally_as') || item.name;
+        const amount = (Number.isFinite(item.value) ? item.value : 1) * (item.count || 1);
+        const tally = { ...(this.getAttribute('treasure_tally') || {}) };
+        tally[label] = (tally[label] || 0) + amount;
+        this.setAttribute('treasure_tally', tally);
+    }
+
     pickUpItem(item) {
         // An item whose whole purpose is its pickup_effect (a pellet's score, a gold
         // nugget's wealth) is consumed below and never kept, so it needs no room to
@@ -6732,7 +6767,10 @@ class Actor extends Entity {
         // which creatures pick things up at all — most monsters don't have it, and a
         // scoring pickup is the player's business. Without this restriction a ghost
         // would eat the pellets it walks over.
-        const isConsumedOnPickup = this.isPlayerControlled() && !!item.getAttribute('pickup_effect');
+        // Treasure is banked the same way: it goes onto a running total, not into the pack.
+        const isTreasure = this.isPlayerControlled() && !!item.getAttribute('treasure');
+        const isConsumedOnPickup = this.isPlayerControlled() &&
+            (!!item.getAttribute('pickup_effect') || isTreasure);
 
         // Check if actor has inventory capacity (inventory attribute)
         const maxInventory = this.getAttribute('inventory');
@@ -6820,13 +6858,18 @@ class Actor extends Entity {
             this.inventory = this.inventory.filter(i => i !== item);
         }
 
+        if (isTreasure) {
+            this.addTreasure(item);
+            this.inventory = this.inventory.filter(i => i !== item);
+        }
+
         // The pickup sound is the player's own feedback, so it stays player-only;
         // the message goes to anyone the player can see (announcePickup decides).
         if (this.isPlayerControlled()) {
             this.engine.playSound(item.getAttribute('pickup_sound') || 'tone3');
         }
 
-        if (pickupEffect && item.value && this.isPlayerControlled()) {
+        if ((pickupEffect || isTreasure) && item.value && this.isPlayerControlled()) {
             // Value only reads as meaningful for the player's own take.
             const named = this.engine.inputManager?.getEntityNameWithArticle(item)
                 || (item.getDisplayName ? item.getDisplayName() : item.name);

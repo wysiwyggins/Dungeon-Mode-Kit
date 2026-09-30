@@ -162,20 +162,6 @@
     "alert_allies": true
   },
 
-  "jelly": {
-    "name": "jelly",
-    "hostile": true,
-    "preferred_distance": 1,
-    "behaviors": [
-      "avoid_crowding",
-      "maintain_distance",
-      "attack_adjacent",
-      "defend_self",
-      "pursue_target",
-      "random_walk"
-    ]
-  },
-  
   "passive_wanderer": {
     "name": "Passive Wanderer",
     "hostile": false,
@@ -542,6 +528,20 @@
     "name": "Illusion Clone",
     "hostile": true,
     "behaviors": [
+      "pursue_target",
+      "random_walk"
+    ]
+  },
+
+  "jelly": {
+    "name": "jelly",
+    "hostile": true,
+    "preferred_distance": 1,
+    "behaviors": [
+      "avoid_crowding",
+      "maintain_distance",
+      "attack_adjacent",
+      "defend_self",
       "pursue_target",
       "random_walk"
     ]

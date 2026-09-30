@@ -464,6 +464,9 @@
         "OPAQUE_WHITE_HOURGLASS_ON_BLACK_FIELD": [8,19],
         "CRYING_CAT_FACE": [9,19],
         "SATURN": [10,19],
-        "APOLLO": [11,19]
+        "APOLLO": [11,19],
+        "SMALL_WING": [12,19],
+        "WHITE_PRISON_WINDOW": [13,19],
+        "BEAR_HEAD": [14,19]
     }
 }
