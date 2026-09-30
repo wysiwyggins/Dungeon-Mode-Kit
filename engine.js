@@ -5020,6 +5020,15 @@ class Item extends Entity {
      * @param {Object} stat - The stat object ({current, max, warnings})
      * @param {number} oldValue - Its value before the change
      */
+    /**
+     * True while this item is consuming fuel (a lit torch or stick of incense).
+     * An unlit one stays per_turn 0 and has no buring state.
+     */
+    isBurning() {
+        const burns = this.stats?.burns;
+        return !!burns && burns.per_turn < 0;
+    }
+
     checkStatWarnings(stat, oldValue) {
         if (!stat?.warnings || !this.owner?.hasAttribute('controlled')) return;
         for (const warning of stat.warnings) {
@@ -6211,6 +6220,9 @@ class Actor extends Entity {
         // so the sweep happens exactly once per round.
         if (this.isPlayerControlled()) {
             this.engine.entityManager.processUnscheduledStates();
+            // Same once-per-round sweep for burning items on the floor (a dropped
+            // lit torch or incense), which have no owner to tick them.
+            this.engine.entityManager.processGroundItems();
         }
 
         // Check if incapacitated by a state (stunned, sleeping, etc.)
@@ -6256,7 +6268,8 @@ class Actor extends Entity {
         }
 
         // AI actors execute their personality behaviors
-        if (this.personality) {
+        // Caught in a ward gas that repels it: getting out is the whole turn.
+        if (this.personality && !this.escapeWard()) {
             this.personality.execute(this);
 
             // Hasted actors get a bonus action (no extra state processing)
@@ -8325,6 +8338,9 @@ class Actor extends Entity {
                 }
 
                 this.engine.updateLighting();
+            } else if (item.isBurning?.()) {
+                // Carried incense trails its smoke around whoever holds it.
+                this.engine.entityManager.emitFromItem(item, this.x, this.y);
             }
         }
 
@@ -9237,7 +9253,10 @@ class Actor extends Entity {
             case 'toggle_torch': {
                 const isLit = item.hasAttribute('light_source');
                 const targetType = item.getAttribute('toggle_to') || (isLit ? 'torch_unlit' : 'torch');
-                if (!this.engine.currentPrototype?.getItemData(targetType)) return false;
+                const targetData = this.engine.currentPrototype?.getItemData(targetType);
+                if (!targetData) return false;
+                // Name messages after the lit form ("torch", "incense"), not "unlit torch".
+                const litName = isLit ? item.name : targetData.name;
 
                 // An item with no fuel stat at all is treated as always-fuelled, so a
                 // designer can make a permanent lamp by simply omitting the stat.
@@ -9246,7 +9265,7 @@ class Actor extends Entity {
 
                 if (!isLit && remainingFuel <= 0) {
                     if (this.isPlayerControlled()) {
-                        this.engine.inputManager?.showMessage('The torch has no fuel left.', { style: 'warning' });
+                        this.engine.inputManager?.showMessage(`The ${litName} has no fuel left.`, { style: 'warning' });
                     }
                     return false;
                 }
@@ -9256,7 +9275,7 @@ class Actor extends Entity {
                     const maxInventory = this.getAttribute('inventory');
                     if (maxInventory && this.inventory.length >= maxInventory) {
                         if (this.isPlayerControlled()) {
-                            this.engine.inputManager?.showMessage('Your inventory is too full to light a torch from the stack.');
+                            this.engine.inputManager?.showMessage('Your inventory is too full to light one from the stack.');
                         }
                         return false;
                     }
@@ -9275,7 +9294,7 @@ class Actor extends Entity {
 
                 this.engine.updateLighting();
                 if (this.isPlayerControlled()) {
-                    const msg = isLit ? 'You extinguish the torch.' : 'You light the torch.';
+                    const msg = isLit ? `You extinguish the ${litName}.` : `You light the ${litName}.`;
                     this.engine.inputManager?.showMessage(msg);
                     this.engine.interfaceManager?.updatePlayerInfo();
                     this.engine.playSound(isLit ? 'extinguish' : 'torch');
@@ -10702,6 +10721,14 @@ class Actor extends Entity {
             return { moved: false, actionTaken: false };
         }
 
+        // Ward gas turns back the actor types it repels: no walking or attacking into it.
+        if (this.isRepelledAt(newX, newY)) {
+            if (this.isPlayerControlled()) {
+                this.engine.inputManager?.showMessage('Something in the air drives you back.');
+            }
+            return { moved: false, actionTaken: false };
+        }
+
         // Stuck (held fast, e.g. engulfed by a jelly): each move attempt rolls to escape.
         // Success breaks free and the move proceeds this turn; failure wastes the turn.
         if (this.hasStateProperty('stuck')) {
@@ -11979,6 +12006,44 @@ class Actor extends Entity {
     }
 
     /**
+     * True if this actor's id or its actor type (e.g. 'skeleton' or 'undead') is
+     * listed in `types`. Ward gases use this to pick out who they affect.
+     * @param {string[]} types
+     */
+    matchesActorType(types) {
+        if (!Array.isArray(types) || types.length === 0) return false;
+        return types.includes(this.type) || types.includes(this.data?.type);
+    }
+
+    /**
+     * True if a gas on (x, y) carries a `ward` that repels this actor — incense
+     * smoke against the undead. Repelled actors won't path, step, or attack into
+     * the tile, and step out of it if the gas drifts over them.
+     */
+    isRepelledAt(x, y) {
+        for (const other of this.engine.entityManager.getActorsAt(x, y)) {
+            if (other === this || other.isDead) continue;
+            const ward = other.getAttribute('ward');
+            if (ward?.repel && this.matchesActorType(ward.types)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Step out of a repelling ward gas this actor is standing in, onto any
+     * adjacent tile that's clear of it. Returns true if it moved (its turn).
+     */
+    escapeWard() {
+        if (!this.isRepelledAt(this.x, this.y)) return false;
+        const exits = ALL_DIRS
+            .map(d => ({ x: this.x + d.dx, y: this.y + d.dy }))
+            .filter(p => this.isPassableAt(p.x, p.y));
+        if (exits.length === 0) return false;
+        const exit = randomElement(exits);
+        return this.tryMove(exit.x, exit.y).moved;
+    }
+
+    /**
      * Check if a tile is passable for pathfinding purposes
      * @param {number} x - X coordinate
      * @param {number} y - Y coordinate
@@ -11990,6 +12055,9 @@ class Actor extends Entity {
             y < 0 || y >= this.engine.mapManager.height) {
             return false;
         }
+
+        // Pathfinding routes around ward gas that repels this actor.
+        if (this.isRepelledAt(x, y)) return false;
 
         // Aquatic actors (eels) may only enter tiles that contain a liquid actor;
         // dry land and lava (no 'liquid' attribute) are impassable to them.
@@ -12759,9 +12827,10 @@ class EntityManager {
         if (!trapsConfig) return;
 
         const prototype = this.engine.currentPrototype;
-        const trapTypes = Object.entries(prototype.actors)
-            .filter(([, data]) => data.attributes?.trap)
-            .map(([type]) => type);
+        // Resolve before filtering: `trap` lives on the trap type, so the raw
+        // definitions no longer carry it.
+        const trapTypes = Object.keys(prototype.actors)
+            .filter(id => prototype.getActorData(id)?.attributes?.trap);
 
         if (trapTypes.length === 0) {
             console.warn('traps: No actor types with trap attribute found');
@@ -14015,6 +14084,7 @@ class EntityManager {
         const tint = template.tint;
         const collisionEffect = template.getAttribute('collision_effect');
         const applyState = template.getAttribute('apply_state');
+        const ward = template.getAttribute('ward');
 
         for (const a of gas) a.die();
 
@@ -14033,6 +14103,7 @@ class EntityManager {
                 if (tint != null) mist.tint = tint;
                 if (collisionEffect) mist.setAttribute('collision_effect', collisionEffect);
                 if (applyState) mist.setAttribute('apply_state', applyState);
+                if (ward) mist.setAttribute('ward', ward);
                 mist.setAttribute('flammable', flammable);
                 if (mist.spriteBase && tint != null) mist.spriteBase.tint = tint;
                 if (mist.spriteTop && tint != null) mist.spriteTop.tint = tint;
@@ -14057,6 +14128,7 @@ class EntityManager {
             if (tint != null) cloud.tint = tint;
             if (collisionEffect) cloud.setAttribute('collision_effect', collisionEffect);
             if (applyState) cloud.setAttribute('apply_state', applyState);
+            if (ward) cloud.setAttribute('ward', ward);
             cloud.setAttribute('flammable', flammable);
             if (cloud.spriteBase && tint != null) cloud.spriteBase.tint = tint;
             if (cloud.spriteTop && tint != null) cloud.spriteTop.tint = tint;
@@ -14132,6 +14204,56 @@ class EntityManager {
             if (!actor.states || Object.keys(actor.states).length === 0) continue;
             actor.processStates();
         }
+    }
+
+    /**
+     * Tick items lying on the floor that are burning (a dropped lit torch or stick
+     * of incense) so they spend fuel, emit, and burn out as they would when carried.
+     * Only burning items tick — a staff left on the floor doesn't recharge.
+     */
+    processGroundItems() {
+        for (const item of [...this.items]) {
+            if (!item.isBurning?.()) continue;
+            item.processPerTurnStats();
+
+            if (item.stats.burns.current > 0) {
+                this.emitFromItem(item, item.x, item.y);
+                continue;
+            }
+
+            const { x, y } = item;
+            if (this.engine.isTileVisible(x, y)) {
+                this.engine.inputManager?.showMessage(`The ${item.getDisplayName()} burns out.`);
+            }
+            const burnsOutItem = item.getAttribute('burns_out_item');
+            this.removeEntity(item);
+            if (burnsOutItem) this.spawnItem(burnsOutItem, x, y);
+            this.engine.updateLighting();
+        }
+    }
+
+    /**
+     * Let a burning item with `emits` release a spreading puff of that gas at
+     * (x, y) every `emit_interval` turns (default 3) — incense smoke. Waits while
+     * the tile still holds dense gas, so the stick tops up its haze rather than
+     * stacking clouds.
+     */
+    emitFromItem(item, x, y) {
+        const emitType = item.getAttribute('emits');
+        if (!emitType) return;
+        if (item._emitCooldown > 0) {
+            item._emitCooldown--;
+            return;
+        }
+        if (this.getActorsAt(x, y).some(a => !a.isDead && this._gasDensity(a) === 2)) return;
+
+        const cloud = this.spawnActor(emitType, x, y);
+        if (cloud) {
+            cloud.isCloudOrigin = true;
+            cloud.cloudOriginX = x;
+            cloud.cloudOriginY = y;
+        }
+        item._emitCooldown = (item.getAttribute('emit_interval') ?? 3) - 1;
     }
 
     /**

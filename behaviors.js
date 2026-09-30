@@ -1124,6 +1124,8 @@ const BehaviorLibrary = {
                 if (applyState) {
                     newCloud.setAttribute('apply_state', applyState);
                 }
+                const ward = actor.getAttribute('ward');
+                if (ward) newCloud.setAttribute('ward', ward);
                 newCloud.setAttribute('flammable', !!actor.hasAttribute('flammable'));
                 // Give spawned clouds the same remaining lifetime as the origin
                 newCloud.cloudLifetime = actor.cloudLifetime;
@@ -1178,10 +1180,15 @@ const BehaviorLibrary = {
     cloud_affect_actors: (actor) => {
         const collisionEffect = actor.getAttribute('collision_effect');
         const applyStateName = actor.getAttribute('apply_state');
+        // A ward (incense smoke) adds its own collision_effect, applied only to the
+        // actor types it lists — the undead, say — regardless of gas_immune.
+        const ward = actor.getAttribute('ward');
+        const wardEffect = ward?.collision_effect;
+        const hasWardEffect = !!wardEffect && Object.keys(wardEffect).length > 0;
 
         // Skip if no effects to apply
         const hasCollisionEffect = collisionEffect && Object.keys(collisionEffect).length > 0;
-        if (!hasCollisionEffect && !applyStateName) return false;
+        if (!hasCollisionEffect && !applyStateName && !hasWardEffect) return false;
 
         const entityManager = actor.engine.entityManager;
 
@@ -1195,9 +1202,16 @@ const BehaviorLibrary = {
             // Track effects applied for messaging
             const effectsApplied = [];
 
+            const statDeltas = hasCollisionEffect ? { ...collisionEffect } : {};
+            if (hasWardEffect && other.matchesActorType?.(ward.types)) {
+                for (const [key, value] of Object.entries(wardEffect)) {
+                    statDeltas[key] = (statDeltas[key] || 0) + value;
+                }
+            }
+
             // Apply collision effect (stat damage)
-            if (hasCollisionEffect) {
-                for (const [key, value] of Object.entries(collisionEffect)) {
+            if (Object.keys(statDeltas).length > 0) {
+                for (const [key, value] of Object.entries(statDeltas)) {
                     if (other.stats && other.stats[key] !== undefined) {
                         const stat = other.stats[key];
                         if (typeof stat === 'object' && stat.current !== undefined) {
@@ -1366,6 +1380,7 @@ const BehaviorLibrary = {
             const tint = actor.tint;
             const collisionEffect = actor.getAttribute('collision_effect');
             const applyState = actor.getAttribute('apply_state');
+            const ward = actor.getAttribute('ward');
             const remainingLifetime = actor.cloudLifetime;
 
             // Remove the cloud
@@ -1378,6 +1393,7 @@ const BehaviorLibrary = {
                 mist.tint = tint;
                 mist.setAttribute('collision_effect', collisionEffect);
                 if (applyState) mist.setAttribute('apply_state', applyState);
+                if (ward) mist.setAttribute('ward', ward);
                 mist.setAttribute('flammable', !!actor.hasAttribute('flammable'));
                 // Mist has shorter remaining lifetime
                 mist.cloudLifetime = Math.max(2, Math.floor(remainingLifetime * 0.6));
@@ -1400,6 +1416,8 @@ const BehaviorLibrary = {
                 mist.setAttribute('collision_effect', actor.getAttribute('collision_effect'));
                 const neighborApplyState = actor.getAttribute('apply_state');
                 if (neighborApplyState) mist.setAttribute('apply_state', neighborApplyState);
+                const neighborWard = actor.getAttribute('ward');
+                if (neighborWard) mist.setAttribute('ward', neighborWard);
                 mist.setAttribute('flammable', !!actor.hasAttribute('flammable'));
                 // New mist has short lifetime
                 mist.cloudLifetime = Math.max(2, Math.floor((actor.cloudLifetime || 3) * 0.5));

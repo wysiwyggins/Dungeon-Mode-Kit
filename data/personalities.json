@@ -262,6 +262,24 @@
   },
   "spore_behavior": { "$alias": "spore" },
 
+  "incense_smoke": {
+    "name": "Cloud",
+    "hostile": false,
+    "behaviors": [
+      "merge_clouds",
+      "cloud_spread",
+      "cloud_disperse",
+      "cloud_affect_actors",
+      "cloud_lifetime"
+    ],
+    "spread_radius": 3,
+    "spread_turns": 5,
+    "disperse_to": "mist",
+    "disperse_threshold": 5,
+    "disperse_chance": 0.3,
+    "spawn_mist_chance": 0.5
+  },
+
   "liquid_pooling": {
     "name": "Liquid Pooling",
     "hostile": false,

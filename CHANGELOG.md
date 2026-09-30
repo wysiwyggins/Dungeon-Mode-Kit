@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Incense.** Light it like a torch and it trails `incense_smoke`, which the undead won't enter and which burns them if it drifts over them. Drop it to keep a room clear until the resin runs out. The effect comes from a reusable `ward` attribute on gas actors that lists which actor types it repels or harms.
 - **Big fires give off smoke.** A new `fire_smoke` cellular automata rule spawns a `smoke` cloud from any fire tile with at least three burning neighbors, and the smoke leaves anyone breathing it `choked`, sometimes losing a turn to coughing.
 - **Wall-actor picker in the editors** — `wall_types` was engine-supported by every wall-building generator but unreachable except by hand-editing JSON. The Map generator section now lists actors of the `terrain` type with weight bars, warning when no plain `wall` entry is present (the pass that makes secret and pushable walls only rewrites walls of type `wall`).
 - **Cellular generator options** — `probability`, `iterations`, and `connected` are now editable; the generator previously rendered no options at all. `probability` is sharply nonlinear, so the tooltip gives measured densities rather than leaving it to trial and error.
@@ -49,6 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Dropped torches burn down.** A lit torch on the floor gave light forever without spending fuel, because only carried items ticked. Burning floor items now tick once per round and burn out where they lie.
 - **Dark levels draw fewer sprites.** Darkness and light-color overlays at alpha 0 are now hidden instead of left transparent, as are floor, background and light-color sprites under a solid darkness block, so Pixi stops transforming thousands of sprites that draw nothing every frame.
 - **`cellular_transform` settles.** A tile that fails its neighbor check skips the check until a new actor spawns next to it, so shallow liquid stops recounting its neighbors every turn after the level-load pass.
 - **The actor position map no longer rebuilds every turn.** `getActorsAt` threw its whole map away at the start of every actor's turn, so on the sewer level each liquid tile and gas puff rescanned every actor. Positions are now accessors that keep the map current on every move, add, remove and death.

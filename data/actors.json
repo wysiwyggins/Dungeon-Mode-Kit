@@ -1785,6 +1785,29 @@
     "collision_effect": {},
     "lifetime": 4
   },
+  "incense_smoke": {
+    "name": "incense smoke",
+    "tileIndexBase": "BLANK",
+    "tileIndexTop": "BLANK",
+    "animated": true,
+    "animation_frames": "mist",
+    "tint": "#E4D4EC",
+    "personality": "incense_smoke",
+    "attributes": {
+      "flies": true,
+      "solid": false,
+      "flammable": false,
+      "mass_noun": true,
+      "hazard_immune": true,
+      "ward": {
+        "types": ["undead"],
+        "repel": true,
+        "collision_effect": { "health": -1 }
+      }
+    },
+    "collision_effect": {},
+    "lifetime": 8
+  },
   "poison_gas_trap": {
     "name": "poison gas trap",
     "tileIndexBase": "INVERSE_BULLET",

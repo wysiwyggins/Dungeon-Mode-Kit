@@ -159,7 +159,7 @@ function wallActorIds() {
 // carry no paint_tile — blobTypesEditor keeps any hand-authored id selectable.
 function blobActorIds() {
     return state.mergedActorIds.filter(id => {
-        const attrs = state.mergedActors[id]?.attributes || {};
+        const attrs = resolvedActorAttrs(state.mergedActors[id], state.baseTypes);
         return attrs.solid === false && !!attrs.paint_tile;
     });
 }

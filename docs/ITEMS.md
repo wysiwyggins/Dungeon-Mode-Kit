@@ -352,6 +352,16 @@ Notes:
 - An item with **no** `burns` stat is treated as never running out — omit the stat for a permanent lamp.
 - Only an item actively consuming fuel (`per_turn` negative) can *burn out*. An unlit torch at 0 fuel is simply empty: it won't trigger `burns_out_item` and can't be relit.
 - `burns_out_item` fires when a burning item's fuel reaches 0, replacing it (e.g. a torch becomes `torch_spent`).
+- A burning item keeps burning when dropped: floor items with a negative `burns.per_turn` tick once per round, spend fuel, and burn out in place.
+
+### Emitting Gas (Incense)
+
+A burning item with `emits` releases a spreading puff of that gas actor every `emit_interval` turns (default `3`), both when carried and when dropped. `incense` emits `incense_smoke`, whose `ward` attribute repels and harms the undead (see [Ward Gas](ACTORS.md#ward-gas)).
+
+| Attribute | Type | Description |
+| ----------- | ------ | ------------- |
+| `emits` | string | Gas actor type released while the item is burning |
+| `emit_interval` | number | Turns between puffs (default `3`); waits while dense gas still covers the tile |
 
 ---
 

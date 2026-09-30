@@ -1,24 +1,16 @@
 
 ## Bugs
 
-- Biggest performance hit is still when two liquids combine their tints on a dark level. This isn't an important feature and perhaps should just run once rather than every turn. Look for ways to reduce the number of times it runs or when it runs (I think it already only happens when the tiles are visible, double check) sewer prototype is the test level
-- ~~clouds/mist are not solid but they shouldn't spawn in top of a solid actor like a wall~~ done
-
 ## Tweaks
 
 - ~~additional CA rule for fire- if there are enough adjacent fire actors we should spawn a smoke actor that induces a state that has a skip turn for coughing ("choked")?~~ done
-- when we pick a prototype in an editor it should narrow the options in the next dropdown down to the ones in that prototype since there are so many in default /data/
+- when we pick a prototype in an editor it should narrow the options in the next dropdown down to the ones in that prototype since there are so many in default /data/ (should it? prototypes also load default data. Maybe the answer is to have less default actors etc and rely more on types as defaults and specifics in prototypes)
 - **`flicker_tint` (the effect) vs `tint_flicker` (the primitive)** — the words are reversed between the two layers, which is genuinely confusing when reading `effects.json`. Renaming either breaks data or code, so left alone for now.
 - Tiled.app tile layers have a tint color property, it would be cool if we could use it for picking floor tile tints in Tiled too. Currently we do this in the prototype editor.
 
 ---
 
 ## Feature ideas
-
-## Actor selectors in biome editor
-
-- ~~Add the ability to pick which actor is used as main walls~~ — done, `wall_types` picker in the Map generator section (both editors)
-- ~~add the ability to define blob areas of actors other than just lava, sewage, or water~~ — done, `lakes.types` takes any non-solid actor that paints a tile
 
 ## item-editor use types
 
@@ -30,7 +22,7 @@
 
 ## Incense item
 
-- incense, lights like a torch, generates mist that repels/harms undead actors. can be lit and dropped in an area to keep a room clear of undead for a while. Should be a reusable pattern where we can specify an actor type that is harmed or repelled. For the actor use a capitol I base tile and a cloud animated top tile
+- ~~incense, lights like a torch, generates mist that repels/harms undead actors. can be lit and dropped in an area to keep a room clear of undead for a while. Should be a reusable pattern where we can specify an actor type that is harmed or repelled.~~ — done, `incense` item + `ward` gas attribute (see [Items](ITEMS.md#emitting-gas-incense), [Actors](ACTORS.md#ward-gas))
 
 ## Teleporter actor
 

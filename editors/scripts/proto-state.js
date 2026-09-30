@@ -158,9 +158,9 @@ function biomeSource(name) {
 }
 
 /* ---- Actor attribute introspection (for the switch-puzzle UI) ---- */
-// Attributes live nested under def.attributes in actors.json.
+// Attributes live under def.attributes in actors.json, plus any inherited from its type.
 function actorAttrs(id) {
-    return (state.mergedActors[id] && state.mergedActors[id].attributes) || {};
+    return resolvedActorAttrs(state.mergedActors[id], state.baseTypes);
 }
 function actorHasAttr(id, attr) {
     return !!actorAttrs(id)[attr];
@@ -189,7 +189,7 @@ function wallActorIds() {
 // carry no paint_tile — blobTypesEditor keeps any hand-authored id selectable.
 function blobActorIds() {
     return state.mergedActorIds.filter(id => {
-        const attrs = state.mergedActors[id]?.attributes || {};
+        const attrs = actorAttrs(id);
         return attrs.solid === false && !!attrs.paint_tile;
     });
 }

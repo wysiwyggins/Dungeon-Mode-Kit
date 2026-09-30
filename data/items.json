@@ -127,6 +127,66 @@
     }
   },
 
+  "incense": {
+    "name": "incense",
+    "type": "illuminator",
+    "tileIndex": "LATIN_CAPITAL_LETTER_I",
+    "tint": "#D8B4E2",
+    "effect": "flicker_tint",
+    "attributes": {
+      "lightRadius": 2,
+      "description": "A smouldering stick of resin. Its pale smoke is sweet to you and unbearable to the dead.",
+      "use_verb": "Snuff",
+      "use_effect": "toggle_torch",
+      "toggle_to": "incense_unlit",
+      "burnout_message": "Your incense burns away to ash.",
+      "emits": "incense_smoke",
+      "emit_interval": 3
+    },
+    "stats": {
+      "burns": {
+        "max": 200,
+        "per_turn": -1,
+        "display_label": "Resin",
+        "warnings": [
+          {
+            "threshold": 0.1,
+            "message": "Your incense is nearly spent."
+          }
+        ]
+      }
+    }
+  },
+
+  "incense_unlit": {
+    "name": "unlit incense",
+    "tileIndex": "LATIN_CAPITAL_LETTER_I",
+    "tint": "#7A6A80",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": true,
+      "flammable": true,
+      "use_verb": "Light",
+      "use_effect": "toggle_torch",
+      "toggle_to": "incense",
+      "description": "A stick of temple resin. Its smoke will keep the dead at bay."
+    },
+    "stats": {
+      "burns": {
+        "max": 200,
+        "per_turn": 0,
+        "display_label": "Resin",
+        "warnings": [
+          {
+            "threshold": 0.1,
+            "message": "Your incense is nearly spent."
+          }
+        ]
+      }
+    }
+  },
+
   "phial": {
     "name": "phial",
     "type": "illuminator",

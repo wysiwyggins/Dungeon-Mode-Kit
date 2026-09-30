@@ -27,6 +27,13 @@ engine.playSoundVaried('feets', 0.4, 0.1, 1.0, 0.06);       // Randomized volume
 
 `editors/sound-player.html` lists every sound in the sprite as a clickable chip, with a filter box and volume/rate sliders. It reads `data/sounds.json` directly, so anything added to the sprite appears there without a code change — handy for picking a sound before wiring it into a data file.
 
+### Future: Sound Manager
+
+Planned, not built yet. It's waiting until the project is hosted with server-side storage or Node features. The goal is to grow the Sound Player into a manager that can add sounds without the manual steps below.
+
+- **Source files:** need to move the per-sound MP3s from `../audiosprite-master/` into the repo (e.g. `assets/audio/source/`) so the pipeline is self-contained.
+- **Nice-to-haves:** a usage cross-reference that scans data files and code for each sound ID and flags unused or missing IDs (replacing the hand-kept table below), trim/normalize on import, and a waveform preview.
+
 ### Debug Console
 
 Open the browser console to test sounds at runtime:

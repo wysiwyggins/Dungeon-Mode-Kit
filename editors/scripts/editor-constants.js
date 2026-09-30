@@ -19,6 +19,21 @@
 // to pick it in the biome catalog or the prototype's item_catalog.
 const CATEGORY_KEYS = ['potion','scroll','food','staff','weapon','armor','ring','wand'];
 
+// An actor's attributes with its actor type's merged underneath, the way
+// Prototype.getActorData resolves them. Raw defs are thin once shared attributes
+// live on a type (a trap declares `trap` only through the `trap` type), so any
+// filter over attributes must read through this. An explicit null unsets.
+function resolvedActorAttrs(def, types) {
+    if (!def) return {};
+    const typeDef = def.type && types?.[def.type];
+    const base = (typeDef && typeDef.domain !== 'item' && typeDef.attributes) || {};
+    const merged = { ...base, ...(def.attributes || {}) };
+    for (const [key, value] of Object.entries(merged)) {
+        if (value === null) delete merged[key];
+    }
+    return merged;
+}
+
 // Map generators, matching the `type` cases in Architect.generateProceduralMap.
 // Ordered by capability, not alphabetically: the first five build walls (and so
 // support wall_types, doors and torches); the rest are thin ROT.js wrappers that

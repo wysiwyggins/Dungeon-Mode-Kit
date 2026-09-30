@@ -630,6 +630,23 @@ area effect** — set one style or the other.
 
 The actor automatically expires after this many turns (no remains spawned). Used for fire, clouds, and temporary effects.
 
+### Ward Gas
+
+A gas actor with a `ward` attribute affects only the actor types it lists. `types` matches either an actor id (`"skeleton"`) or its actor type (`"undead"`). The ward carries over as the gas spreads, disperses into mist, and merges.
+
+```json
+"ward": {
+  "types": ["undead"],
+  "repel": true,
+  "collision_effect": { "health": -1 }
+}
+```
+
+- `repel`: matching actors won't path, step, or attack into a warded tile, and one caught in the gas spends its turn stepping out.
+- `collision_effect`: applied each turn (by `cloud_affect_actors`) to matching actors in the gas only, ignoring `gas_immune`.
+
+`incense_smoke`, released by burning `incense`, is the built-in example.
+
 ## Collision Effects
 
 The `collision_effect` object defines what happens when an actor is walked into or attacked. Set it as a top-level field (not inside `attributes`).
