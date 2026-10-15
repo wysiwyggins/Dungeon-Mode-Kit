@@ -67,8 +67,8 @@
             "scale": 0.7197,
             "selectedLayer": 6,
             "viewCenter": {
-                "x": 806.5860775323051,
-                "y": 756.5652355147978
+                "x": 800.3334722801168,
+                "y": 600.2501042100877
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/hunger_game/map.tmj": {
@@ -99,8 +99,8 @@
             "scale": 0.3975,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": 849.0566037735848,
-                "y": 688.0503144654089
+                "x": 799.9999999999999,
+                "y": 598.74213836478
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/mine/map.tmj": {
@@ -136,15 +136,15 @@
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/sewer/map.tmj": {
             "expandedObjectLayers": [
-                3,
+                6,
                 8,
-                6
+                3
             ],
             "scale": 0.68,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": 1259.5588235294117,
-                "y": 1469.8529411764703
+                "x": 1600,
+                "y": 1200
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/2.tmj": {
@@ -157,14 +157,14 @@
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/map.tmj": {
             "expandedObjectLayers": [
-                3,
-                6
+                6,
+                3
             ],
             "scale": 0.6724,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 762.1951219512196,
-                "y": 681.8857822724569
+                "x": 800.118976799524,
+                "y": 599.3456276026176
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/underworld/map.tmj": {
@@ -191,8 +191,8 @@
             "scale": 0.5311,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 418.94181886650335,
-                "y": 498.02297119186596
+                "x": 403.878742233101,
+                "y": 482.9598945584636
             }
         },
         "vault.tmj": {
@@ -219,11 +219,11 @@
     "project": "dungeonkit.tiled-project",
     "property.type": "string",
     "recentFiles": [
+        "tower.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/sewer/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/labyrinth/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/dungeon/map.tmj",
-        "tower.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/pac/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/morass/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/default/map.tmj",

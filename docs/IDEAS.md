@@ -25,11 +25,6 @@
 
 - step onto it and be teleported to another teleporter paired by machine id
 
-## Sound player page
-
-- ~~page in /editors/ that let's me listen to everything in the howler soundfont as individual named sounds~~ — done, `editors/sound-player.html`
-- add editing functions- let me load a new sound and automate rebuilding the audio sprite (see [Sounds](SOUNDS.md)), as well as edit sound names without breaking all the places sound names might be hardcoded
-
 ## Bolt bounce logic for actors like metal walls
 
 - would probably add a new attribute like "reflective"
@@ -137,6 +132,8 @@
 
 ### Sound & Music
 
+- Need a breaking metal implement sound
+- need an additional death sound
 - Add more tones to sound sprite with specified notes for use in simple music tracker for levels. Bitsy is so good at this. Build the sound editor page for the first step of this.
 - [ ] Background music — looping tracks per prototype or per floor
 - [ ] Music notation — simple tracker for composing level music by pitch shifting sounds in the sound sprite

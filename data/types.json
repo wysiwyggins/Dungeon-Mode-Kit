@@ -379,6 +379,11 @@
     "tileIndex": "WHITE_RING",
     "unidentified_template": "[material] ring",
     "attributes": {
+      "enchant_range": [
+          -1,
+          2
+        ],
+      "enchantable": true,
       "pickupable": true,
       "stackable": false,
       "visible": true,

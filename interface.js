@@ -5595,6 +5595,25 @@ class InterfaceManager {
             push('It is protected from acid.');
         }
 
+        // Gear identifies itself through use: rings by turns worn (Item.RING_ID_TURNS),
+        // weapons and armor by blows (Item.COMBAT_ID_THRESHOLD). Wands and staffs are
+        // enchantable too but identify on use, hence the weapon/wearable gate.
+        const isWeapon = item.hasAttribute?.('weapon');
+        const wearable = item.getAttribute?.('wearable');
+        if (!identified && item.hasAttribute?.('enchantable') && (isWeapon || wearable)) {
+            const plural = (n, word) => `${n} more ${word}${n === 1 ? '' : 's'}`;
+            gap();
+            if (wearable === 'ring') {
+                const turns = Math.max(1, Item.RING_ID_TURNS - (item.wornTurns || 0));
+                push(`You will know it after ${plural(turns, 'turn')} wearing it.`);
+            } else {
+                const blows = Math.max(1, Item.COMBAT_ID_THRESHOLD - (item.combatUseCount || 0));
+                push(isWeapon
+                    ? `You will know it after ${plural(blows, 'blow')} struck with it.`
+                    : `You will know it after ${plural(blows, 'blow')} taken while wearing it.`);
+            }
+        }
+
         // Identified only: on a potion the effect IS the secret.
         if (identified) {
             const effect = item.getEffectDescription?.();

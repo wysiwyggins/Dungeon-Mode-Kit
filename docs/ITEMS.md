@@ -519,6 +519,8 @@ Templates support substitution tokens in `[brackets]`:
 | `[adjectives.yucky]` | Random entry from the `adjectives.yucky` list in `data/words.json` |
 | `[item_name]` | The item's current display name (identified or not) |
 
+Weapons, armor and rings also identify themselves through use: a weapon after `Item.COMBAT_ID_THRESHOLD` (20) blows struck with it, armor after that many blows taken while wearing it, and a ring after `Item.RING_ID_TURNS` (1500) turns worn. The counts are kept per item (`combatUseCount`, `wornTurns`) and the info panel shows how many blows or turns remain.
+
 ### Potions
 
 ```json

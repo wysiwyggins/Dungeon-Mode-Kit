@@ -4850,6 +4850,12 @@ class Item extends Entity {
         'description', 'use_description', 'effect_description', 'collision_description'
     ];
 
+    /** Blows struck (weapons) or taken while worn (armor) before gear auto-identifies. */
+    static COMBAT_ID_THRESHOLD = 20;
+
+    /** Turns a ring must be worn before it auto-identifies (Brogue's RING_DELAY_TO_AUTO_ID). */
+    static RING_ID_TURNS = 1500;
+
     constructor(x, y, type, data, engine) {
         super(x, y, type, engine);
         this.name = data.name || type;
@@ -4991,6 +4997,7 @@ class Item extends Entity {
 
         this.effect = resolveEntityEffect(data);
         this.combatUseCount = 0;
+        this.wornTurns = 0;
     }
 
     /**
@@ -5472,6 +5479,7 @@ class Item extends Entity {
             count: this.count,
             enchantment: this.enchantment,
             combatUseCount: this.combatUseCount || 0,
+            wornTurns: this.wornTurns || 0,
             isItem: true
         };
     }
@@ -5483,6 +5491,7 @@ class Item extends Entity {
         if (data.stats) this.stats = JSON.parse(JSON.stringify(data.stats));
         if (data.count !== undefined) this.count = data.count;
         if (data.combatUseCount !== undefined) this.combatUseCount = data.combatUseCount;
+        if (data.wornTurns !== undefined) this.wornTurns = data.wornTurns;
         if (data.enchantment !== undefined) this.enchantment = data.enchantment;
     }
 }
@@ -6225,6 +6234,7 @@ class Actor extends Entity {
 
         // Process per-turn stats for items in inventory (recharging staffs, etc.)
         this.processInventoryItemStats();
+        this.processRingIdentification();
 
         // Process active states (burning, poisoned, stunned, etc.)
         this.processStates();
@@ -8329,6 +8339,25 @@ class Actor extends Entity {
     }
 
     /**
+     * Unidentified rings identify themselves after Item.RING_ID_TURNS turns worn.
+     * The count lives on the ring (wornTurns), so it survives taking it off.
+     */
+    processRingIdentification() {
+        if (!this.isPlayerControlled()) return;
+        for (const slot of ['ring1', 'ring2']) {
+            const ring = this.equipment?.[slot];
+            if (!ring || ring.identified !== false) continue;
+            ring.wornTurns = (ring.wornTurns || 0) + 1;
+            if (ring.wornTurns >= Item.RING_ID_TURNS) {
+                ring.identify();
+                this.engine.inputManager?.showMessage(
+                    `You are now familiar enough with your ${ring.getDisplayName()} to identify it.`
+                );
+            }
+        }
+    }
+
+    /**
      * Process per-turn stat changes for items in inventory
      * Handles recharging staffs, decaying items, etc.
      */
@@ -10232,7 +10261,7 @@ class Actor extends Entity {
                             source.item.identified === false &&
                             source.item.hasAttribute('enchantable')) {
                             source.item.combatUseCount = (source.item.combatUseCount || 0) + 1;
-                            if (source.item.combatUseCount >= 20) {
+                            if (source.item.combatUseCount >= Item.COMBAT_ID_THRESHOLD) {
                                 source.item.identify();
                                 source.sourceActor.engine.inputManager?.showMessage(
                                     `You are now confident about your ${source.item.getDisplayName()}.`
@@ -10241,13 +10270,13 @@ class Actor extends Entity {
                         }
                     }
 
-                    // Auto-identify armor after enough hits received
+                    // Auto-identify armor after enough hits received (rings go by turns worn instead)
                     if (key === 'health' && finalValue < 0 && target.isPlayerControlled?.()) {
-                        for (const slot of ['top', 'middle', 'lower', 'ring1', 'ring2']) {
+                        for (const slot of ['top', 'middle', 'lower']) {
                             const armor = target.equipment?.[slot];
                             if (armor?.identified === false && armor.hasAttribute('enchantable')) {
                                 armor.combatUseCount = (armor.combatUseCount || 0) + 1;
-                                if (armor.combatUseCount >= 20) {
+                                if (armor.combatUseCount >= Item.COMBAT_ID_THRESHOLD) {
                                     armor.identify();
                                     target.engine.inputManager?.showMessage(
                                         `You are now confident about your ${armor.getDisplayName()}.`
