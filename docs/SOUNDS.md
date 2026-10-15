@@ -11,8 +11,10 @@ Dungeon Mode Kit uses [Howler.js](https://howlerjs.com/) to play sound effects f
 | `sound.js` | `AudioManager` class — wraps Howler.js |
 | `data/sounds.json` | Sprite map — maps sound IDs to `[startMs, durationMs]` |
 | `assets/audio/sounds.mp3` | Audio sprite (MP3 format) |
-| `assets/audio/sounds.ogg` | Audio sprite (OGG format) |
+| `assets/audio/sounds.ac3` | Audio sprite (AC3 format) |
 | `assets/audio/sounds.m4a` | Audio sprite (M4A format) |
+| `assets/audio/source/` | Per-sound source files, one per sprite ID |
+| `tools/build-sound-sprite.js` | Compiles `source/` into the sprite + `data/sounds.json` |
 
 ### Playback API
 
@@ -31,7 +33,7 @@ engine.playSoundVaried('feets', 0.4, 0.1, 1.0, 0.06);       // Randomized volume
 
 Planned, not built yet. It's waiting until the project is hosted with server-side storage or Node features. The goal is to grow the Sound Player into a manager that can add sounds without the manual steps below.
 
-- **Source files:** need to move the per-sound MP3s from `../audiosprite-master/` into the repo (e.g. `assets/audio/source/`) so the pipeline is self-contained.
+- **Pipeline:** done. Source files are in `assets/audio/source/` and `tools/build-sound-sprite.js` exports `buildSoundSprite()`. An upload/rename endpoint only has to write to `source/` and call it.
 - **Nice-to-haves:** a usage cross-reference that scans data files and code for each sound ID and flags unused or missing IDs (replacing the hand-kept table below), trim/normalize on import, and a waveform preview.
 
 ### Debug Console
@@ -51,38 +53,33 @@ audioDebug.test()           // Play a test sequence
 
 ## Adding New Sounds
 
-Source audio files and the audiosprite compiler live in the sibling directory `../audiosprite-master/`.
+Source audio and the sprite compiler both live in this repo. `tools/build-sound-sprite.js` is a Node port of [audiosprite](https://github.com/tonistiigi/audiosprite) (MIT) with no npm dependencies.
 
 ### Step 1: Add source audio
 
-Place your MP3 file in the source directory:
+Put the file in the source directory:
 
 ```
-../audiosprite-master/Sansula sounds/glass_break.mp3
+assets/audio/source/glass_break.mp3
 ```
 
-The filename (without extension) becomes the sound's sprite ID. Use `snake_case` to match existing conventions.
+The filename (without extension) becomes the sound's sprite ID. Use `snake_case` to match existing conventions. MP3, WAV, OGG, M4A, AIFF, and FLAC are accepted. To rename a sound, rename its source file and update any data files that reference the old ID.
 
 ### Step 2: Compile the sprite
 
-Requires [FFmpeg](https://ffmpeg.org/) installed on your system.
+Requires [FFmpeg](https://ffmpeg.org/) on your PATH.
 
 ```bash
-cd ../audiosprite-master
-node ./cli.js --output sounds --format howler2 "Sansula sounds"/*.mp3
+node tools/build-sound-sprite.js            # rebuild everything
+node tools/build-sound-sprite.js --dry-run  # list the sounds that would be packed
 ```
 
-This generates:
+This writes the game files directly:
 
-- `sounds.mp3`, `sounds.ogg`, `sounds.m4a`, `sounds.ac3` — audio files in multiple formats
-- `sounds.json` — Howler.js v2 sprite map with timing data
+- `assets/audio/sounds.mp3`, `sounds.ac3`, `sounds.m4a` — the concatenated sprite
+- `data/sounds.json` — sprite map (`urls` + `sprite: { id: [startMs, durationMs] }`)
 
-### Step 3: Copy output into the game
-
-```bash
-cp sounds.mp3 sounds.ogg sounds.m4a ../Dungeon-Mode-Kit/assets/audio/
-cp sounds.json ../Dungeon-Mode-Kit/data/sounds.json
-```
+Each sound starts on a whole second with at least 1s of silence after it, the same layout the old `audiosprite --format howler2` command produced. Use `--source`, `--out`, and `--json` to build somewhere else (e.g. into `/tmp` to compare). The script also exports `buildSoundSprite(options)` so a future server-side sound manager can call it directly.
 
 ### Step 4: Wire it up
 
