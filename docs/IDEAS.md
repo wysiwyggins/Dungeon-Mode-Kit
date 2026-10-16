@@ -27,11 +27,11 @@
 
 ## Bolt bounce logic for actors like metal walls
 
-- would probably add a new attribute like "reflective"
+- ~~would probably add a new attribute like "reflective"~~ — done, `reflective` attribute on `metal_wall` (see [Actors](ACTORS.md#physics))
 
 ### Patrol behavior
 
-- this would be different from the exporing that the hero personality does, it would visit areas in a loop. Simplest version of this possible.
+- ~~this would be different from the exporing that the hero personality does, it would visit areas in a loop. Simplest version of this possible.~~ — done, `patrol_route` behavior and `sentry` personality (see [Actors](ACTORS.md))
 
 ### Machines.json
 

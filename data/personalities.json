@@ -162,6 +162,20 @@
     "alert_allies": true
   },
 
+  "sentry": {
+    "name": "Sentry",
+    "controlled": false,
+    "hostile": true,
+    "patrol_points": 4,
+    "patrol_radius": 24,
+    "behaviors": [
+      "attack_adjacent",
+      "patrol_route",
+      "pursue_target",
+      "random_walk"
+    ]
+  },
+
   "passive_wanderer": {
     "name": "Passive Wanderer",
     "hostile": false,

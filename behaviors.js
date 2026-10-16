@@ -101,6 +101,86 @@ function springTrapPayload(actor, victim = null, opts = {}) {
     }
 }
 
+/**
+ * Pick the waypoint loop for the `patrol_route` behavior.
+ *
+ * Floods out from the actor through tiles it could walk (counting closed,
+ * unlocked doors and other creatures as open, since both clear), keeps the room
+ * interior tiles — floor on all eight sides, so waypoints never sit in a
+ * corridor, doorway or against a wall — and spreads `patrol_points` of them apart. The start tile is
+ * always the first waypoint, so the loop comes back past where it was placed.
+ *
+ * @returns {Array<{x: number, y: number}>} The loop in walking order
+ */
+function buildPatrolRoute(actor, data) {
+    const em = actor.engine.entityManager;
+    const maxSteps = data.patrol_radius ?? 24;
+    const count = data.patrol_points ?? 4;
+
+    const canCross = (x, y) => {
+        if (actor.isPassableAt(x, y)) return true;
+        if (!actor.hasFloorAt(x, y)) return false;
+        const blocker = em.getSolidActorAt(x, y);
+        if (!blocker) return false;
+        if (blocker.hasAttribute('sentient') || blocker.hasAttribute('controlled')) return true;
+        return blocker.hasAttribute('openable') && !blocker.hasAttribute('container')
+            && !blocker.hasAttribute('locked');
+    };
+
+    // Floor all the way round, diagonals included: a room mouth is open on four
+    // sides too, but its diagonals are the wall the corridor cuts through.
+    const floorMap = actor.engine.mapManager.floorMap;
+    const isRoomInterior = (x, y) => !em.getSolidActorAt(x, y)
+        && ALL_DIRS.every(d => floorMap[y + d.dy]?.[x + d.dx]?.tileId > 0);
+
+    const start = { x: actor.x, y: actor.y };
+    const seen = new Set([`${start.x},${start.y}`]);
+    const candidates = [];
+    let frontier = [start];
+    for (let step = 0; step < maxSteps && frontier.length; step++) {
+        const next = [];
+        for (const tile of frontier) {
+            for (const dir of CARDINAL_DIRS) {
+                const x = tile.x + dir.dx;
+                const y = tile.y + dir.dy;
+                const key = `${x},${y}`;
+                if (seen.has(key) || !canCross(x, y)) continue;
+                seen.add(key);
+                next.push({ x, y });
+                if (isRoomInterior(x, y)) candidates.push({ x, y });
+            }
+        }
+        frontier = next;
+    }
+
+    // Farthest-point sampling: each pick is the candidate farthest from every
+    // waypoint chosen so far, which spreads the loop across separate rooms.
+    const route = [start];
+    while (route.length < count && candidates.length) {
+        let best = -1;
+        let bestDist = -1;
+        candidates.forEach((c, i) => {
+            const d = Math.min(...route.map(w => getChebyshevDistance(c.x, c.y, w.x, w.y)));
+            if (d > bestDist) { bestDist = d; best = i; }
+        });
+        if (bestDist < 3) break; // the rest are too close to bother walking to
+        route.push(candidates.splice(best, 1)[0]);
+    }
+
+    // Order the loop nearest-neighbor from the start so it doesn't zigzag.
+    const ordered = [route.shift()];
+    while (route.length) {
+        const last = ordered[ordered.length - 1];
+        let best = 0;
+        route.forEach((w, i) => {
+            if (getChebyshevDistance(last.x, last.y, w.x, w.y)
+                < getChebyshevDistance(last.x, last.y, route[best].x, route[best].y)) best = i;
+        });
+        ordered.push(route.splice(best, 1)[0]);
+    }
+    return ordered;
+}
+
 class Personality {
     constructor(data, actor) {
         this.name = data.name || 'default';
@@ -212,6 +292,50 @@ const BehaviorLibrary = {
         const dir = dirs[Math.floor(ROT.RNG.getUniform() * dirs.length)];
         const fallback = actor.tryMove(actor.x + dir.dx, actor.y + dir.dy);
         return fallback.moved || fallback.actionTaken;
+    },
+
+    /**
+     * Walk a fixed loop of waypoints, over and over. Unlike `patrol` (random
+     * wandering near home) or `explore` (one pass over unvisited ground), the
+     * route repeats, so the player can watch it and time a dash past.
+     *
+     * The route is picked on the first turn: up to `patrol_points` room tiles
+     * reachable within `patrol_radius` steps, spread apart by farthest-point
+     * sampling and ordered nearest-neighbor from the actor's start. Falls through
+     * (returns false) when the target is in sight or the actor is alerted, so
+     * pursuit behaviors placed after it take over; the next calm turn it heads
+     * back to the waypoint it was walking toward.
+     */
+    patrol_route: (actor, data) => {
+        if (actor._alerted) return false;
+        const target = actor.engine.entityManager.findNearestPlayer(actor);
+        if (target && actor.canSeeTarget(target)) return false;
+
+        if (!actor._patrolRoute) actor._patrolRoute = buildPatrolRoute(actor, data);
+        const route = actor._patrolRoute;
+        if (route.length < 2) return false;
+
+        if (actor._patrolIndex === undefined) actor._patrolIndex = 1;
+        let waypoint = route[actor._patrolIndex];
+        if (actor.x === waypoint.x && actor.y === waypoint.y) {
+            actor._patrolIndex = (actor._patrolIndex + 1) % route.length;
+            actor._patrolStuck = 0;
+            waypoint = route[actor._patrolIndex];
+        }
+
+        if (actor.moveToward(waypoint.x, waypoint.y)) {
+            actor._patrolStuck = 0;
+            return true;
+        }
+
+        // Blocked (a creature parked on the waypoint, a door locked since):
+        // give it a few turns, then skip ahead rather than stand there forever.
+        actor._patrolStuck = (actor._patrolStuck || 0) + 1;
+        if (actor._patrolStuck >= 3) {
+            actor._patrolIndex = (actor._patrolIndex + 1) % route.length;
+            actor._patrolStuck = 0;
+        }
+        return false;
     },
 
     guard_area: (actor, data) => {

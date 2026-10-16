@@ -928,7 +928,8 @@
     "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
     "tint": "#33CCAA",
     "attributes": {
-      "breakable": false
+      "breakable": false,
+      "reflective": true
     }
   },
   "grave": {

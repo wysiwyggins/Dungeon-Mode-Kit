@@ -3794,6 +3794,12 @@ class InterfaceManager {
         if (isBolt) {
             // Bolt spells use tile fill effect instead of projectile animation
             this.engine.renderer?.effectRunner.apply('lightning_bolt', caster, { path });
+            for (const bounce of pathResult.bounces || []) {
+                this.engine.inputManager?.showMessage(
+                    `The bolt bounces off ${bounce.actor.getNameWithArticle()}!`,
+                    { x: bounce.x, y: bounce.y }
+                );
+            }
             // Delay completion slightly so the visual leads the damage
             const fillDuration = path.length * 25 + 100;
             setTimeout(() => {
@@ -4041,12 +4047,17 @@ class InterfaceManager {
 
         const damage = spellEffect.bolt_damage || -10;
 
+        // A bounced bolt can cross the same tile twice; strike each creature once.
+        // The caster is only ever on the path if the bolt came back at them.
+        const struck = new Set();
         for (const point of path) {
             const actor = entityManager.getSolidActorAt(point.x, point.y);
-            if (actor && actor !== caster && !actor.isDead && actor.stats?.health) {
+            if (actor && !struck.has(actor) && !actor.isDead && actor.stats?.health) {
+                struck.add(actor);
                 actor.modifyStat('health', damage, { source: item });
+                const victimName = actor === caster ? 'you' : actor.getNameWithArticle();
                 this.engine.inputManager?.showMessage(
-                    `The lightning bolt strikes ${actor.getNameWithArticle()}!`
+                    `The lightning bolt strikes ${victimName}!`
                 );
                 if (actor.getStat?.('health') <= 0) actor.die();
             }

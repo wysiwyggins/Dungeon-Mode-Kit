@@ -14,6 +14,7 @@
   "hazard_immune": "is unharmed by hazards",
   "gas_immune": "is unaffected by gasses",
   "conductive": "conducts electricity",
+  "reflective": "turns bolts aside",
   "ignites": "sets fire to what it touches",
   "acidic": "corrodes weapons that strike it and armor it strikes",
 

@@ -487,6 +487,7 @@ could take anything.
 | `pushable` | boolean | Can be pushed by walking actors |
 | `push_sound` | string | Sound played when this actor is pushed. Overrides the default `push1`. |
 | `conductive` | boolean | Bolt attacks pass through this actor to hit targets behind. Default `true` for most actors; set `false` on walls/pillars to block bolts. |
+| `reflective` | boolean | Bolts bounce off this actor instead of stopping. The bolt flips off the face it struck (straight back off a corner or lone pillar) and travels on as far as it had already come, or for the rest of its aim if that's farther — so it can come back and hit its caster. Three bounces per bolt, then the next reflector stops it. The `metal_wall` has it. |
 | `breakable` | boolean | Can be destroyed by mining |
 | `break_threshold` | number | Mining damage required to break. Default `100`. |
 | `lode` | string | Item dropped when mined |
@@ -770,6 +771,7 @@ Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a fu
 | `avoid_crowding` | When another same-type actor shares this tile, step to the least-crowded adjacent tile. | — |
 | `maintain_distance` | Keep `preferred_distance` tiles from target. Move away if too close, toward if too far. | `preferred_distance` (default: 3) |
 | `patrol` | Wander within `patrol_range` of home position. | `patrol_range` |
+| `patrol_route` | Walk a fixed loop of waypoints, repeating forever, so the player can learn the route and slip past. The loop is picked on the first turn: the start tile plus up to `patrol_points` room-interior tiles (floor on all eight sides, never a corridor, doorway or wall edge) reachable within `patrol_radius` steps, spread apart and visited nearest-first. Falls through when the target is in sight or the actor is alerted, so put pursuit after it; the actor returns to its route once calm. Skips a waypoint it can't reach after three tries. Used by the `sentry` personality. | `patrol_points` (default: 4, including the start), `patrol_radius` (default: 24) |
 | `horizontal_bounce` | Walk left/right, reversing on walls. | — |
 | `vertical_bounce` | Walk up/down, reversing on walls. | — |
 | `flee_from_danger` | Flee harmful tiles, thrown-item hits, or low health. | `health_threshold` (default: 0.25) |

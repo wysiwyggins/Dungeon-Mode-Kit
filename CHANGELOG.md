@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`patrol_route` behavior and `sentry` personality.** The actor picks a loop of spread-out room tiles near where it starts and walks it forever, breaking off to chase the player and returning to the route afterward. Tune it with `patrol_points` and `patrol_radius`.
+- **Reflective actors bounce bolts.** A bolt that hits a `reflective` actor (the `metal_wall` has it) bounces off the struck face and travels on as far as it had come, up to three bounces, and the aiming line previews the bounce. A bolt that comes back can hit its caster, and a creature it crosses twice only takes the damage once.
 - **Enchantable rings, and an identification countdown.** Rings now roll an enchantment like armor (and can spawn cursed), and identify after 1500 turns worn. An unidentified weapon, armor piece or ring's info panel says how many more blows or turns it needs.
 - **Acid, and the scroll of protection.** An `acidic` actor takes a point of enchantment off any weapon that hits it and off one piece of armor it hits, unless the item is `protected`. The dungeon gains the splitting acid jelly (depths) and the weaker, non-splitting acid mound (upper floors), plus a scroll of protection that makes a weapon or wearable immune.
 - **`jelly` actor type.** The pink jellies' sprite, slime attack, splitting and `jelly` personality now live on the type, so a prototype jelly needs only a name, tint and health. The `jelly` personality moved to the global library so the type works anywhere.

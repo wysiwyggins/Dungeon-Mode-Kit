@@ -660,6 +660,97 @@ function getFirstBlockingPoint(x0, y0, x1, y1, isBlocked, skipStart = true) {
 }
 
 /**
+ * Trace a bolt from (x0, y0) toward (x1, y1), passing through conductive actors,
+ * stopping at non-conductive ones and bouncing off `reflective` ones.
+ *
+ * A bounce flips the axis of the face that was struck (both axes on a corner or a
+ * lone pillar, which sends the bolt straight back). The new leg runs as far as the
+ * leg before it, or for the rest of the aim if that's farther — so a bolt aimed at
+ * a mirror five tiles off comes five tiles back, and can strike its own caster.
+ *
+ * @param {number} x0 - Starting X coordinate
+ * @param {number} y0 - Starting Y coordinate
+ * @param {number} x1 - Aimed X coordinate
+ * @param {number} y1 - Aimed Y coordinate
+ * @param {function(number, number): Actor|null} getSolidActorAt - Solid actor lookup
+ * @param {object} options
+ * @param {number} options.maxBounces - Bounces before a reflector stops the bolt (default: 3)
+ * @param {number|null} options.maxRange - Total tiles before the bolt is out of range
+ * @returns {{path: Array, blockedAt: {x,y}|null, outOfRange: boolean, bounces: Array<{x, y, actor}>}}
+ *     path excludes the start tile; a blocking tile is included as the last point
+ */
+function traceBoltPath(x0, y0, x1, y1, getSolidActorAt, options = {}) {
+    const maxBounces = options.maxBounces ?? 3;
+    const maxRange = options.maxRange ?? null;
+    const path = [];
+    const bounces = [];
+    const result = { path, blockedAt: null, outOfRange: false, bounces };
+
+    const isSurface = (x, y) => {
+        const actor = getSolidActorAt(x, y);
+        return !!actor && (actor.getAttribute('reflective') || actor.getAttribute('conductive') === false);
+    };
+
+    let from = { x: x0, y: y0 };
+    let dir = { x: x1 - x0, y: y1 - y0 };
+    let remaining = Math.max(Math.abs(dir.x), Math.abs(dir.y));
+
+    while (remaining > 0) {
+        // Extend the leg far enough along dir to cover what's left; the first leg
+        // (k = 1) reproduces the aimed line exactly.
+        const k = Math.ceil(remaining / Math.max(Math.abs(dir.x), Math.abs(dir.y)));
+        const leg = getLinePath(from.x, from.y, from.x + dir.x * k, from.y + dir.y * k);
+        let traveled = 0;
+        let bounced = false;
+
+        for (let i = 1; i < leg.length && traveled < remaining; i++) {
+            const point = leg[i];
+
+            if (maxRange !== null && path.length >= maxRange) {
+                result.outOfRange = true;
+                return result;
+            }
+
+            const actor = getSolidActorAt(point.x, point.y);
+            if (actor?.getAttribute('reflective') && bounces.length < maxBounces) {
+                const prev = leg[i - 1];
+                const sx = point.x - prev.x;
+                const sy = point.y - prev.y;
+                let flipX = sx !== 0 && sy === 0;
+                let flipY = sy !== 0 && sx === 0;
+                if (sx !== 0 && sy !== 0) {
+                    // Diagonal step: the open side tells which face was struck.
+                    // Both open (a corner) or both walled (an inside corner) flips both.
+                    const wallBesideX = isSurface(prev.x + sx, prev.y);
+                    const wallBesideY = isSurface(prev.x, prev.y + sy);
+                    flipX = wallBesideX || !wallBesideY;
+                    flipY = wallBesideY || !wallBesideX;
+                }
+                dir = { x: flipX ? -dir.x : dir.x, y: flipY ? -dir.y : dir.y };
+                bounces.push({ x: point.x, y: point.y, actor });
+                remaining = Math.max(remaining - traveled, traveled);
+                from = prev;
+                bounced = true;
+                break;
+            }
+
+            if (actor && (actor.getAttribute('reflective') || actor.getAttribute('conductive') === false)) {
+                result.blockedAt = point;
+                path.push(point);
+                return result;
+            }
+
+            path.push(point);
+            traveled++;
+        }
+
+        if (!bounced) break;
+    }
+
+    return result;
+}
+
+/**
  * Compute a path using A* algorithm via ROT.js
  * @param {number} fromX - Starting X coordinate
  * @param {number} fromY - Starting Y coordinate
@@ -15000,7 +15091,7 @@ class RenderSystem {
      * @param {number} endY - Target tile Y
      * @param {number} color - Optional color for the path (default: 0xFF0000 red)
      * @param {number} maxRange - Optional maximum range (path truncated at this distance)
-     * @returns {{path: Array, blockedAt: {x,y}|null, outOfRange: boolean}} The path, where blocked, and if target is out of range
+     * @returns {{path: Array, blockedAt: {x,y}|null, outOfRange: boolean, bounces: Array}} The path, where blocked, if target is out of range, and where a bolt bounced (passThrough only)
      */
     showLinePath(startX, startY, endX, endY, color = 0xFF0000, maxRange = null, options = {}) {
         // Clear any existing path highlight
@@ -15015,9 +15106,21 @@ class RenderSystem {
         // Track where path is blocked (skip start position)
         let blockedAt = null;
         let outOfRange = false;
-        const displayPath = [];
+        let bounces = [];
+        let displayPath = [];
 
-        for (let i = 1; i < fullPath.length; i++) {
+        if (options.passThrough) {
+            // Bolts pass through conductive actors and bounce off reflective ones
+            const trace = traceBoltPath(
+                startX, startY, endX, endY,
+                (x, y) => this.engine.entityManager?.getSolidActorAt(x, y),
+                { maxRange }
+            );
+            ({ blockedAt, outOfRange, bounces } = trace);
+            displayPath = trace.path;
+        }
+
+        for (let i = 1; i < fullPath.length && !options.passThrough; i++) {
             const point = fullPath[i];
 
             // Check if we've exceeded max range
@@ -15029,11 +15132,6 @@ class RenderSystem {
             // Check for solid actors that would block the path
             const actor = this.engine.entityManager?.getSolidActorAt(point.x, point.y);
             if (actor) {
-                if (options.passThrough && actor.getAttribute('conductive') !== false) {
-                    // Bolt passes through conductive actors
-                    displayPath.push(point);
-                    continue;
-                }
                 blockedAt = point;
                 displayPath.push(point); // Include the blocked tile
                 break;
@@ -15080,7 +15178,8 @@ class RenderSystem {
         return {
             path: displayPath,
             blockedAt: blockedAt,
-            outOfRange: outOfRange
+            outOfRange: outOfRange,
+            bounces: bounces
         };
     }
 
