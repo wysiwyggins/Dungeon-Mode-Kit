@@ -1022,6 +1022,23 @@
       "portal": true
     }
   },
+  "teleporter": {
+    "name": "teleporter",
+    "description": "A ring of humming sigils. Step on it and you'll come out at its twin.",
+    "tileIndexBase": "TWO_WHITE_DIAMONDS",
+    "tileIndexTop": "BLANK",
+    "tint": "#FF38EC",
+    "effect": "flicker_tint",
+    "attributes": {
+      "solid": false,
+      "visible": true,
+      "flammable": false,
+      "teleporter": true,
+      "render_layer": "bottom",
+      "teleport_sound": "squarewave",
+      "paint_tile": "TWO_WHITE_DIAMONDS"
+    }
+  },
   "gate": {
     "name": "gate",
     "type": "doorway",

@@ -947,6 +947,10 @@ function buildExplorePassable(engine, actor) {
             }
             return false;
         }
+        // Route around teleporters: stepping on one mid-route would fling the
+        // explorer across the map. Reaching one on purpose is still possible
+        // (travel and click-to-walk exempt the endpoint).
+        if (em.getActorsAt(x, y).some(a => !a.isDead && a.hasAttribute('teleporter'))) return false;
         // Avoid hazardous actors unless the mover has matching immunity.
         const at = em.getActorAt(x, y);
         const damageType = at?.getAttribute('damage_type');
@@ -1107,6 +1111,7 @@ function isImportantActor(actor) {
            actor.hasAttribute('openable') ||
            actor.hasAttribute('stairway') ||
            actor.hasAttribute('portal') ||
+           actor.hasAttribute('teleporter') ||
            actor.hasAttribute('controlled');
 }
 
@@ -11498,9 +11503,76 @@ class Actor extends Entity {
             other.updateInventoryDisplay();
         }
 
+        // Last, so everything about arriving on the pad's own tile has already run.
+        this.useTeleporterAt(newX, newY);
+
         // `pickedUp` lets auto-explore treat grabbing loot as a natural stopping
         // point (walk to the item, pick it up, then stop so the player re-plans).
         return { moved: true, actionTaken: true, entrySound, pickedUp };
+    }
+
+    /**
+     * Step-on teleport. An actor ending a move on a `teleporter` comes out at its
+     * partner: another teleporter sharing its `machine_id`, or with no machine_id,
+     * any other teleporter that has none. Several partners → one at random.
+     *
+     * Arrival is a direct relocation rather than a move, so it doesn't fire the
+     * partner straight back; step off and on again to return. If something solid
+     * is standing on the partner, the actor lands beside it instead.
+     *
+     * @returns {boolean} true if the actor was sent somewhere
+     */
+    useTeleporterAt(x, y) {
+        const em = this.engine.entityManager;
+        if (this.hasAttribute('mass_noun') || this.hasAttribute('teleporter')) return false;
+        const pad = em.getActorsAt(x, y).find(a => a !== this && !a.isDead && a.hasAttribute('teleporter'));
+        if (!pad) return false;
+
+        const machineId = pad.getAttribute('machine_id') ?? null;
+        const partners = em.actors.filter(a => a !== pad && !a.isDead
+            && a.hasAttribute('teleporter') && (a.getAttribute('machine_id') ?? null) === machineId);
+        if (partners.length === 0) return false;
+        const partner = partners[Math.floor(ROT.RNG.getUniform() * partners.length)];
+
+        const isOpen = (tx, ty) => this.hasFloorAt(tx, ty) && !em.getSolidActorAt(tx, ty);
+        let dest = isOpen(partner.x, partner.y) ? { x: partner.x, y: partner.y } : null;
+        for (const dir of ALL_DIRS) {
+            if (dest) break;
+            if (isOpen(partner.x + dir.dx, partner.y + dir.dy)) {
+                dest = { x: partner.x + dir.dx, y: partner.y + dir.dy };
+            }
+        }
+
+        const isPlayer = this.isPlayerControlled();
+        if (!dest) {
+            if (isPlayer) this.showMessage(`${pad.getNameWithArticle(true)} flickers, but nothing happens.`);
+            return false;
+        }
+
+        const seenLeaving = !isPlayer && this.engine.isTileVisible?.(x, y);
+        this.x = dest.x;
+        this.y = dest.y;
+        this.updateSpritePosition();
+        this.engine.updateLighting();
+        const seenArriving = !isPlayer && this.engine.isTileVisible?.(dest.x, dest.y);
+
+        if (isPlayer || seenLeaving || seenArriving) {
+            this.engine.playSound(pad.getAttribute('teleport_sound') || 'magic');
+        }
+        if (isPlayer) {
+            this.engine.renderer?.centerViewportOnPlayer?.();
+            this.engine.renderer?.effectRunner?.apply('blink');
+            this.showMessage(`${pad.getNameWithArticle(true)} whisks you away.`);
+        } else if (seenArriving) {
+            this.engine.inputManager?.showMessage(
+                `${this.getNameWithArticle(true)} appears out of ${partner.getNameWithArticle()}.`, dest);
+        } else if (seenLeaving) {
+            this.engine.inputManager?.showMessage(
+                `${this.getNameWithArticle(true)} vanishes into ${pad.getNameWithArticle()}.`, { x, y });
+        }
+
+        this.applyWalkThroughEffects(dest.x, dest.y);
+        return true;
     }
 
     moveBy(dx, dy) {
@@ -12530,15 +12602,20 @@ class EntityManager {
         const tinted = new Set();
 
         for (const actor of this.actors) {
-            if ((!actor.hasAttribute('switchable') && !actor.data?.switch_effects) || actor.isDead || tinted.has(actor)) continue;
-
-            const effects = actor.data?.switch_effects;
-            if (!effects) continue;
+            if (actor.isDead || tinted.has(actor)) continue;
 
             const machineId = actor.getAttribute('machine_id');
             let targets;
 
-            if (machineId) {
+            // Teleporters linked by machine_id share a color too, so the player can
+            // tell which pad leads where when a floor has several pairs.
+            if (actor.hasAttribute('teleporter')) {
+                if (!machineId) continue;
+                targets = this.actors.filter(a => a !== actor && !a.isDead
+                    && a.hasAttribute('teleporter') && a.getAttribute('machine_id') === machineId);
+            } else if (!actor.data?.switch_effects) {
+                continue;
+            } else if (machineId) {
                 targets = this.actors.filter(
                     a => a !== actor && !a.isDead && a.getAttribute('machine_id') === machineId
                 );
@@ -12571,6 +12648,9 @@ class EntityManager {
             // same `lock_color` attribute doors and keys carry, so one seam serves all.
             const applyColor = (a) => {
                 a.tint = tint;
+                // As with random_color: effects like a teleporter's flicker_tint
+                // animate around originalTint, so it has to carry the pair color.
+                a.originalTint = tint;
                 a.setAttribute('lock_color', color.color);
                 // Mirrors reconcileKeyDoorColors: the attribute drives lock matching,
                 // the template var drives the name. An actor whose data says
@@ -15448,6 +15528,10 @@ class RenderSystem {
             if (solidActor && !isOpenableDoorTile(solidActor)) {
                 return false;
             }
+            // Don't route through a teleporter (as an endpoint it's exempt above)
+            if (this.engine.entityManager?.getActorsAt(x, y).some(a => !a.isDead && a.hasAttribute('teleporter'))) {
+                return false;
+            }
             // Check for hazardous actors - avoid unless player has matching immunity
             const actor = this.engine.entityManager?.getActorAt(x, y);
             const damageType = actor?.getAttribute('damage_type');
@@ -15917,6 +16001,31 @@ class RenderSystem {
         }
 
         if (actor.facingEnabled) actor.applyFacing();
+
+        this._hideIfSpawnedOutOfSight(actor);
+    }
+
+    /**
+     * New sprites start out visible, and only a full lighting pass hides them —
+     * which a spawn that neither lights nor shades (gas, spores) never triggers.
+     * So sewer gas bubbling up in a remembered room showed through the fog until
+     * the player next moved. Apply the same rule updateEntityLighting would: a
+     * mobile actor on a tile out of sight is hidden. Static actors keep showing in
+     * remembered areas, and the next lighting pass sorts out their dimming.
+     */
+    _hideIfSpawnedOutOfSight(actor) {
+        const lm = this.engine.lightingManager;
+        if (!lm || actor.hasAttribute('controlled')) return;
+        // Bottom-layer actors always show, as part of the floor (see updateEntityLighting)
+        if (actor.getAttribute('render_layer') === 'bottom') return;
+        // Telepathy reveals sentient creatures wherever they are
+        if (actor.hasAttribute('sentient') && this.engine.entityManager?.player?.hasStateProperty?.('telepathic')) return;
+
+        const fogOfWar = this.engine.currentPrototype?.config?.mechanics?.fog_of_war;
+        const isStatic = !actor.personality;
+        if (!lm.getEntityVisibility(actor.x, actor.y, fogOfWar, isStatic).showBase) {
+            this._hideEntitySprites(actor);
+        }
     }
 
     /**

@@ -580,6 +580,23 @@ built with `getNameWithArticle()` picks the color up; uncolored actors read as b
 Keep generic names lowercase so they read as prose mid-sentence; reserve capitals for
 proper nouns and mark those `proper_named` to suppress the article.
 
+### Teleporters
+
+Anything that walks onto a `teleporter` (the player or a monster) comes out at its partner:
+another teleporter with the same `machine_id`. If a pad links to several, one is picked at
+random. Teleporters with no `machine_id` all link to each other. You arrive on the partner
+pad without setting it off, so step off and back on to return. If something solid is
+standing on the partner, you land beside it instead.
+
+Linked pads share a color, like levers and gates, so each pair is easy to spot. Auto-explore
+and click-to-walk paths route around teleporters, but you can still pick one as your
+destination. Place them in Tiled as `teleporter` objects with a `machine_id` property.
+
+| Attribute | Type | Description |
+| ----------- | ------ | ------------- |
+| `teleporter` | boolean | Stepping onto this actor sends the mover to a partner teleporter. |
+| `teleport_sound` | string | Sound played on a teleport the player sees. Default `magic`. |
+
 ### Splitting & Grabbing
 
 Jelly-type actors split when wounded. To *hold* an actor standing on a tile (quicksand

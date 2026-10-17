@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Teleporters.** Step on a `teleporter` and you come out at the other one with the same `machine_id`, and monsters can use them too. Linked pads share a color, and auto-explore routes around them.
 - **`patrol_route` behavior and `sentry` personality.** The actor picks a loop of spread-out room tiles near where it starts and walks it forever, breaking off to chase the player and returning to the route afterward. Tune it with `patrol_points` and `patrol_radius`.
 - **Reflective actors bounce bolts.** A bolt that hits a `reflective` actor (the `metal_wall` has it) bounces off the struck face and travels on as far as it had come, up to three bounces, and the aiming line previews the bounce. A bolt that comes back can hit its caster, and a creature it crosses twice only takes the damage once.
 - **Enchantable rings, and an identification countdown.** Rings now roll an enchantment like armor (and can spawn cursed), and identify after 1500 turns worn. An unidentified weapon, armor piece or ring's info panel says how many more blows or turns it needs.
@@ -58,6 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Gas no longer shows through the fog.** A new actor's sprite stayed visible until the next lighting pass, and spawns that neither light nor shade (sewer gas, spores) never trigger one, so gas bubbling up in a remembered room was drawn there. New sprites now follow the same out-of-sight rule as the lighting pass.
 - **The mine spawns its ball of thread.** Its `random_items` asked for `ball_of_thread`, which doesn't exist, instead of `thread`.
 - **Clouds are no longer solid.** `cloud` never declared `solid: false`, so it took the actor default and blocked movement, unlike every other gas; it now inherits `solid: false` from the `gas` type.
 - **Every potion and food is swallowed.** `use_sound: swallow` now comes from the `potion` and `food` types, replacing the heal and pickup sounds a few used and the `tone1` fallback on the arena potions.

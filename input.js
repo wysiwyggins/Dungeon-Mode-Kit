@@ -172,6 +172,7 @@ function isTravelTarget(actor) {
     if (actor.hasAttribute('openable')) return true;        // doors, gates
     if (actor.hasAttribute('stairway')) return true;
     if (actor.hasAttribute('portal')) return true;
+    if (actor.hasAttribute('teleporter')) return true;
     if (actor.hasAttribute('switchable')) return true;      // levers, pressure plates
     if (actor.hasAttribute('container')) return true;       // chests, pedestals
 

@@ -1,7 +1,7 @@
 
 ## Bugs
 
-- we shouldn't see sewer gas spawning in "remembered" areas outside of FOV
+- ~~we shouldn't see sewer gas spawning in "remembered" areas outside of FOV~~ — fixed, new sprites are hidden when spawned out of sight (`_hideIfSpawnedOutOfSight`)
 
 ## Tweaks
 
@@ -23,7 +23,7 @@
 
 ## Teleporter actor
 
-- step onto it and be teleported to another teleporter paired by machine id
+- ~~step onto it and be teleported to another teleporter paired by machine id~~ — done, `teleporter` actor (see [Actors](ACTORS.md#teleporters))
 
 ## Bolt bounce logic for actors like metal walls
 
