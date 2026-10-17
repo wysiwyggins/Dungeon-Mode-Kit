@@ -752,6 +752,25 @@ function traceBoltPath(x0, y0, x1, y1, getSolidActorAt, options = {}) {
 }
 
 /**
+ * Normalize an item-matching setting (`hunts`, `seeks`, a personality's
+ * `item_type`, a launcher's `launches`) to a list, and expand it to the item ids
+ * it covers: an id stands for itself, a type for every item declaring it. Goes through the prototype so a type with a
+ * prototype-only pool (treasure) resolves the way it does when spawning.
+ *
+ * @param {Engine} engine
+ * @param {string|string[]|undefined} setting
+ * @returns {{names: string[], itemIds: Set<string>}}
+ */
+function resolveQuarry(engine, setting) {
+    const names = (Array.isArray(setting) ? setting : [setting]).filter(Boolean);
+    const itemIds = new Set(names);
+    for (const name of names) {
+        for (const id of engine.currentPrototype?.getItemsOfType?.(name) || []) itemIds.add(id);
+    }
+    return { names, itemIds };
+}
+
+/**
  * Compute a path using A* algorithm via ROT.js
  * @param {number} fromX - Starting X coordinate
  * @param {number} fromY - Starting Y coordinate
@@ -4945,6 +4964,20 @@ class Item extends Entity {
 
     /** Blows struck (weapons) or taken while worn (armor) before gear auto-identifies. */
     static COMBAT_ID_THRESHOLD = 20;
+
+    /**
+     * Count one telling blow toward identifying an unidentified weapon: a melee
+     * hit, or a shot fired from it as a launcher. Identifies it at the threshold.
+     * @param {Actor} user - Who struck the blow; only the player learns from it
+     */
+    noteCombatUse(user) {
+        if (!user?.isPlayerControlled() || this.identified !== false || !this.hasAttribute('enchantable')) return;
+        this.combatUseCount = (this.combatUseCount || 0) + 1;
+        if (this.combatUseCount >= Item.COMBAT_ID_THRESHOLD) {
+            this.identify();
+            user.engine.inputManager?.showMessage(`You are now confident about your ${this.getDisplayName()}.`);
+        }
+    }
 
     /** Turns a ring must be worn before it auto-identifies (Brogue's RING_DELAY_TO_AUTO_ID). */
     static RING_ID_TURNS = 1500;
@@ -10351,17 +10384,7 @@ class Actor extends Entity {
                         source.sourceActor.applyWeaponProc(target, source.item, finalValue);
 
                         // Auto-identify weapon after enough combat use
-                        if (source.sourceActor.isPlayerControlled() &&
-                            source.item.identified === false &&
-                            source.item.hasAttribute('enchantable')) {
-                            source.item.combatUseCount = (source.item.combatUseCount || 0) + 1;
-                            if (source.item.combatUseCount >= Item.COMBAT_ID_THRESHOLD) {
-                                source.item.identify();
-                                source.sourceActor.engine.inputManager?.showMessage(
-                                    `You are now confident about your ${source.item.getDisplayName()}.`
-                                );
-                            }
-                        }
+                        source.item.noteCombatUse(source.sourceActor);
                     }
 
                     // Auto-identify armor after enough hits received (rings go by turns worn instead)
@@ -10747,6 +10770,22 @@ class Actor extends Entity {
             // A creature watching its step won't wander into lava or fire
             return !this.isHazardAt(newX, newY);
         });
+    }
+
+    /**
+     * The launcher that would fire `item`, if any: the wielded weapon, when it
+     * declares `launches` and that names the item by id or type. A bow wielded
+     * with matching ammo turns a throw into a shot (Moria's rule): longer
+     * `launch_range`, `launch_accuracy` added to the hit roll, and damage of
+     * (ammo + bow enchantment) × `launch_multiplier`.
+     * @param {Item} item - The item about to be thrown
+     * @returns {Item|null}
+     */
+    getLauncherFor(item) {
+        const weapon = this.equipment?.weapon;
+        const launches = weapon?.getAttribute('launches');
+        if (!item || !launches || weapon === item) return null;
+        return resolveQuarry(this.engine, launches).itemIds.has(item.type) ? weapon : null;
     }
 
     /**

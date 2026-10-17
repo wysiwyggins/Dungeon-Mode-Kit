@@ -2322,6 +2322,10 @@ class InputManager {
                 }
                 break;
 
+            case 'fire':
+                this.engine.interfaceManager?.fireLauncher(player);
+                break;
+
             case 'equipment_menu':
                 if (this.engine.interfaceManager) {
                     this.engine.interfaceManager.toggleEquipmentMenu(player);

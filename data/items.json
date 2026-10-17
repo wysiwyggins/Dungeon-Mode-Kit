@@ -216,6 +216,27 @@
     }
   },
 
+  "bow": {
+    "type": "weapon",
+    "name": "bow",
+    "tileIndex": "BOW_AND_ARROW",
+    "tint": "#B5834A",
+    "description": "A stave of yew, strung and waiting.",
+    "attributes": {
+      "flammable": true,
+      "launches": ["arrow", "spike"],
+      "launch_multiplier": 2,
+      "launch_range": 20,
+      "launch_accuracy": 15,
+      "launch_sound": "bow",
+      "collision_effect": {
+        "health": -1
+      },
+      "collision_description": "[actor_name] swats the [attacked_actor_name] with [a-an] [weapon_name]!",
+      "description": "Fires arrows and spikes for double damage, out to 20 tiles. Next to useless up close."
+    }
+  },
+
   "dagger": {
     "type": "weapon",
     "name": "dagger",
@@ -286,7 +307,26 @@
         "health": -5
       },
       "collision_sound": "tap2",
+      "break_chance": 20,
       "description": "An iron spike. Jam it into a door to hold it shut."
+    }
+  },
+
+  "arrow": {
+    "name": "arrow",
+    "tileIndex": "RIGHTWARDS_ARROW",
+    "tint": "#D8C9A3",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": true,
+      "flammable": true,
+      "collision_effect": {
+        "health": -6
+      },
+      "collision_sound": "arrow_hit",
+      "break_chance": 35,
+      "description": "A fletched arrow. Fire it from a bow."
     }
   },
 

@@ -161,6 +161,35 @@ If `health` drops to 0 or below, the target dies. See [COMBAT.md](COMBAT.md). Ef
 | `enchantable` | Item can receive enchantment bonuses (from scrolls or on spawn) |
 | `enchant_range` | `[min, max]` — random enchantment rolled on spawn. E.g. `[-1, 3]`. |
 
+### Launchers and Ammo
+
+A launcher is a weapon that fires other items, modeled on Moria's bows. There's no separate
+projectile system: firing is throwing while you wield a launcher that takes the item. You can
+throw the ammo with **t**, or press **f** (Fire) to aim the first ammo in your pack that the
+wielded launcher takes. The item menu and aiming prompt say "Fire" whenever a throw counts as a shot.
+
+A shot differs from a plain throw in three ways:
+
+- **Range:** the launcher's `launch_range` instead of 10 + strength.
+- **Accuracy:** `launch_accuracy` is added to the thrower's accuracy for the hit roll.
+- **Damage:** (the ammo's `collision_effect` health + the launcher's enchantment) × `launch_multiplier`.
+  Enchantment goes in before the multiplier, as in Moria, which is what makes an enchanted bow strong.
+
+Ammo the launcher doesn't name gets a plain throw, even while it's wielded. Shots that hit count
+toward identifying the launcher, like melee blows. The launcher sits in the weapon slot, so wielding
+a bow means giving up your melee weapon. It hits for 1 up close.
+
+| Attribute | On | Effect |
+| ----------- | ---- | -------- |
+| `launches` | launcher | Ammo it fires: an item id or type, or a list (`["arrow", "spike"]`). |
+| `launch_multiplier` | launcher | Damage multiplier for shots (Moria: 2 for a short bow, 3 for a long bow, 4 for a composite bow). |
+| `launch_range` | launcher | Range of a shot, in tiles. Default `20`. |
+| `launch_accuracy` | launcher | Accuracy bonus for shots only; doesn't help melee. |
+| `launch_sound` | launcher | Sound when a shot is loosed. Default `"bow"`. |
+| `break_chance` | ammo | Percent chance the item breaks when it hits, thrown or fired. Otherwise it drops by the target. Misses always land nearby. Items without it keep `breakable_on_throw` (default: they break on a hit). |
+
+The `bow` (×2, range 20, +15 accuracy) fires `arrow` (6 damage, 35% break) and `spike` (5 damage, 20% break).
+
 ### Mining Tools
 
 | Attribute | Effect |

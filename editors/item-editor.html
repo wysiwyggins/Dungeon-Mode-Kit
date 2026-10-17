@@ -198,6 +198,37 @@
                     <label>Critical Chance (%)</label>
                     <input type="number" id="f-critical_chance" min="0" max="100" value="">
                 </div>
+
+                <div class="sub-section-title" style="margin-top:8px">Launcher</div>
+                <div style="font-size:10px; color:var(--text-dim); margin-bottom:6px; line-height:1.4">
+                    A wielded launcher fires the ammo it names (by id or type): thrown or fired with the Fire key, that ammo does (its damage + this weapon's enchantment) × multiplier, at the launch range.
+                </div>
+                <div class="field-row">
+                    <label>Launches</label>
+                    <input type="text" id="f-launches" placeholder="arrow, spike">
+                </div>
+                <div class="field-row">
+                    <label>Damage Multiplier</label>
+                    <input type="number" id="f-launch_multiplier" min="0" step="0.5" value="">
+                </div>
+                <div class="field-row">
+                    <label>Launch Range</label>
+                    <input type="number" id="f-launch_range" min="1" value="" placeholder="20">
+                </div>
+                <div class="field-row">
+                    <label>Launch Accuracy</label>
+                    <input type="number" id="f-launch_accuracy" value="" placeholder="bonus to hit">
+                </div>
+                <div class="field-row">
+                    <label>Launch Sound</label>
+                    <input type="text" id="f-launch_sound" placeholder="bow">
+                </div>
+
+                <div class="sub-section-title" style="margin-top:8px">Ammo</div>
+                <div class="field-row">
+                    <label>Break Chance (%)</label>
+                    <input type="number" id="f-break_chance" min="0" max="100" value="" placeholder="chance to break on a hit">
+                </div>
             </div>
         </details>
 
@@ -1226,6 +1257,9 @@ function clearForm() {
     document.getElementById('f-weapon_proc').value = '';
     document.getElementById('f-knockback_distance').value = '';
     document.getElementById('f-critical_chance').value = '';
+    for (const id of ['launches', 'launch_multiplier', 'launch_range', 'launch_accuracy', 'launch_sound', 'break_chance']) {
+        document.getElementById('f-' + id).value = '';
+    }
 
     document.getElementById('f-wearable').value = '';
     document.getElementById('f-enchantable').checked = false;
@@ -1356,6 +1390,10 @@ function populateForm(key, data) {
     if (attrs.weapon_proc) document.getElementById('f-weapon_proc').value = attrs.weapon_proc;
     if (attrs.knockback_distance) document.getElementById('f-knockback_distance').value = attrs.knockback_distance;
     if (attrs.critical_chance) document.getElementById('f-critical_chance').value = attrs.critical_chance;
+    if (attrs.launches) document.getElementById('f-launches').value = [attrs.launches].flat().join(', ');
+    for (const id of ['launch_multiplier', 'launch_range', 'launch_accuracy', 'launch_sound', 'break_chance']) {
+        if (attrs[id] !== undefined) document.getElementById('f-' + id).value = attrs[id];
+    }
 
     // Equipment
     if (attrs.wearable) document.getElementById('f-wearable').value = attrs.wearable;
@@ -1434,6 +1472,7 @@ function populateForm(key, data) {
         'collision_effect', 'collision_sound', 'collision_description',
         'attack_sound', 'attack_style', 'lunge_range', 'sweep_depth', 'penetrate_depth',
         'weapon_proc', 'knockback_distance', 'critical_chance',
+        'launches', 'launch_multiplier', 'launch_range', 'launch_accuracy', 'launch_sound', 'break_chance',
         'wearable', 'wear_effect', 'requires_stat', 'enchantable', 'enchant_range',
         'use_verb', 'use_effect', 'use_sound', 'use_ceremony',
         'charge_stat', 'uses', 'spell_range', 'spell_name', 'cast_sound',
@@ -1573,6 +1612,16 @@ function readForm() {
     if (!isNaN(kd)) attrs.knockback_distance = kd;
     const cc = parseInt(document.getElementById('f-critical_chance').value);
     if (!isNaN(cc)) attrs.critical_chance = cc;
+
+    // Launcher: one ammo saves as a plain string, several as a list
+    const launches = document.getElementById('f-launches').value.split(',').map(s => s.trim()).filter(Boolean);
+    if (launches.length) attrs.launches = launches.length === 1 ? launches[0] : launches;
+    for (const id of ['launch_multiplier', 'launch_range', 'launch_accuracy', 'break_chance']) {
+        const v = parseFloat(document.getElementById('f-' + id).value);
+        if (!isNaN(v)) attrs[id] = v;
+    }
+    const ls = document.getElementById('f-launch_sound').value.trim();
+    if (ls) attrs.launch_sound = ls;
 
     // Equipment
     const wearable = document.getElementById('f-wearable').value;

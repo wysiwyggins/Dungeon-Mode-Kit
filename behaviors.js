@@ -102,25 +102,6 @@ function springTrapPayload(actor, victim = null, opts = {}) {
 }
 
 /**
- * Normalize a quarry setting (`hunts`, `seeks`, a personality's `item_type`) to
- * a list, and expand it to the item ids it covers: an id stands for itself, a
- * type for every item declaring it. Goes through the prototype so a type with a
- * prototype-only pool (treasure) resolves the way it does when spawning.
- *
- * @param {Engine} engine
- * @param {string|string[]|undefined} setting
- * @returns {{names: string[], itemIds: Set<string>}}
- */
-function resolveQuarry(engine, setting) {
-    const names = (Array.isArray(setting) ? setting : [setting]).filter(Boolean);
-    const itemIds = new Set(names);
-    for (const name of names) {
-        for (const id of engine.currentPrototype?.getItemsOfType?.(name) || []) itemIds.add(id);
-    }
-    return { names, itemIds };
-}
-
-/**
  * Pick the waypoint loop for the `patrol_route` behavior.
  *
  * Floods out from the actor through tiles it could walk (counting closed,

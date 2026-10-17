@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Bows and arrows.** A wielded `bow` turns a throw of the ammo it `launches` into a shot, as in Moria: (ammo damage + bow enchantment) × `launch_multiplier`, out to `launch_range`, with a `launch_accuracy` bonus. The new **f** key fires the first matching ammo in your pack, and launcher and ammo fields are in the item editor.
 - **Per-actor `seeks` and `search_radius`.** An actor can set what `seek_item` picks up and how far it looks, overriding its personality, so actors sharing a personality can want different things. Both are in the actor editor's AI section.
 - **Hunting by type.** `hunts` now takes a type as well as an id, and a list of either, so a beast with `hunts: "prey"` goes after deer and chickens. The actor editor's AI section has a Hunts list that warns when the personality has no `hunt` behavior.
 - **Teleporters.** Step on a `teleporter` and you come out at the other one with the same `machine_id`, and monsters can use them too. Linked pads share a color, and auto-explore routes around them.
@@ -45,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Spikes and arrows can be recovered.** Ammo can declare a `break_chance`, rolled when it hits; otherwise it drops beside the target. Spikes break 20% of the time, where before every spike that hit shattered.
 - **Corner blocking is an actor attribute.** Diagonal moves are now blocked only by solid actors with `blocks_diagonal`, which the `terrain` and `doorway` types supply. Before, every solid actor blocked them, so you can now step diagonally past a creature, chest or lever. Monster melee obeys the same rule, so nothing can bite round a wall corner, while bolts and thrown items still can.
 - **Single-prototype entries moved out of `data/`.** `pink_jelly`, `small_pink_jelly` and the `jelly` personality now live in `hallucination_test`, `pitchblende_wall` and `uranium_nugget` in `mine`, and `shield` in `labyrinth`, the only prototypes that use them. The unused `misiricorde` is gone, and the unused `phantom_hound` now spawns in the `depths` biome.
 - **New actor types: `gas`, `liquid`, `trap`, `doorway`, `container` and `switch`.** Clouds, pools, traps, doors, chests and levers now inherit their shared attributes instead of repeating them, and attributes that only restated their type were dropped. Every entry resolves exactly as before. Random trap placement and the editors' switch and blob pickers now read through types.

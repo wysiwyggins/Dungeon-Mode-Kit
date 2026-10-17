@@ -1544,8 +1544,8 @@ class InterfaceManager {
             actionNum++;
         }
 
-        // Throw is always available
-        lines.push(`  ${actionNum}) Throw`);
+        // Throw is always available — "Fire" when the wielded launcher takes this ammo
+        lines.push(`  ${actionNum}) ${this.currentPlayer?.getLauncherFor(item) ? 'Fire' : 'Throw'}`);
         actionNum++;
 
         // Calculate dimensions
@@ -2480,8 +2480,9 @@ class InterfaceManager {
         const im = this.engine.inputManager;
         const cycleKey = im?.getKeyForAction('cycle_target', 'Tab') || 'Tab';
         const confirmKey = im?.getKeyForAction('confirm_target', 'Enter') || 'Enter';
+        const verb = this.currentPlayer?.getLauncherFor(item) ? 'fire' : 'throw';
         this.showTextBox('throw_instructions',
-            `[${cycleKey}] to target, [${confirmKey}] or click to throw. Esc to cancel.`, {
+            `[${cycleKey}] to target, [${confirmKey}] or click to ${verb}. Esc to cancel.`, {
             dismissOnMove: false
         });
 
@@ -2515,11 +2516,15 @@ class InterfaceManager {
 
     /**
      * Calculate the maximum throw range for an actor
-     * Base range is 10 tiles + actor's strength attribute
+     * Base range is 10 tiles + actor's strength attribute, or the wielded
+     * launcher's `launch_range` when it fires this item
      * @param {Actor} actor - The actor throwing
+     * @param {Item} [item] - The item being thrown
      * @returns {number} Maximum throw range in tiles
      */
-    getThrowRange(actor) {
+    getThrowRange(actor, item = null) {
+        const launcher = actor.getLauncherFor?.(item);
+        if (launcher) return launcher.getAttribute('launch_range') ?? 20;
         const baseRange = 10;
         const strength = actor.getAttribute('strength') || 0;
         return baseRange + strength;
@@ -2530,11 +2535,12 @@ class InterfaceManager {
      * Uses the thrower's accuracy vs target's defense (same formula as melee)
      * @param {Actor} thrower - The actor throwing the item
      * @param {Actor} target - The target being thrown at
+     * @param {number} [bonus=0] - Extra accuracy, e.g. a launcher's launch_accuracy
      * @returns {boolean} True if the throw MISSED, false if it hit
      */
-    rollThrowAccuracy(thrower, target) {
+    rollThrowAccuracy(thrower, target, bonus = 0) {
         // Get thrower's accuracy (default 50 if not set - throwing is harder than melee)
-        const accuracy = thrower.getEffectiveAccuracy?.() ?? thrower.getAttribute('accuracy') ?? 50;
+        const accuracy = (thrower.getEffectiveAccuracy?.() ?? thrower.getAttribute('accuracy') ?? 50) + bonus;
 
         // If thrower has no accuracy concept, always hit
         if (accuracy === null) return false;
@@ -2621,8 +2627,8 @@ class InterfaceManager {
             return;
         }
 
-        // Calculate throw range (10 + strength)
-        const maxRange = this.getThrowRange(this.currentPlayer);
+        // Calculate throw range (10 + strength, or the launcher's range)
+        const maxRange = this.getThrowRange(this.currentPlayer, this.throwItem);
 
         // Show the line path from player to target with range limit
         this.engine.renderer?.showLinePath(
@@ -2651,8 +2657,8 @@ class InterfaceManager {
         if (targetX < 0 || targetY < 0) return;
         if (targetX === this.currentPlayer.x && targetY === this.currentPlayer.y) return;
 
-        // Calculate throw range (10 + strength)
-        const maxRange = this.getThrowRange(this.currentPlayer);
+        // Calculate throw range (10 + strength, or the launcher's range)
+        const maxRange = this.getThrowRange(this.currentPlayer, this.throwItem);
 
         // Get the actual landing position (may be blocked by solid actor or range limit)
         const pathResult = this.engine.renderer?.showLinePath(
@@ -2668,7 +2674,8 @@ class InterfaceManager {
 
         // Don't allow throwing if target is out of range
         if (pathResult.outOfRange) {
-            this.engine.inputManager?.showMessage("That's too far to throw!");
+            const verb = this.currentPlayer.getLauncherFor(this.throwItem) ? 'fire' : 'throw';
+            this.engine.inputManager?.showMessage(`That's too far to ${verb}!`);
             return;
         }
 
@@ -2676,6 +2683,8 @@ class InterfaceManager {
         let item = this.throwItem;
         const player = this.currentPlayer;
         const path = pathResult.path;
+        // Resolved while the ammo is still in the pack; the launcher stays wielded
+        const launcher = player.getLauncherFor(item);
 
         // Unequip item if it's being worn
         if (player.isItemEquipped(item)) {
@@ -2704,9 +2713,11 @@ class InterfaceManager {
         const hitActor = this.engine.entityManager?.getActorAt(landingPoint.x, landingPoint.y);
         const willHit = hitActor && !hitActor.isDead && hitActor.hasAttribute('solid');
 
+        if (launcher) this.engine.playSound(launcher.getAttribute('launch_sound') || 'bow');
+
         // Animate the projectile, then apply effects (sound plays in completeThrow after accuracy roll)
         this.animateProjectile(item, path, () => {
-            this.completeThrow(item, player, path, willHit);
+            this.completeThrow(item, player, path, willHit, launcher);
         });
     }
 
@@ -2872,7 +2883,7 @@ class InterfaceManager {
      * @param {Array} path - The path the item traveled
      * @param {boolean} willHit - Whether the throw hits a solid actor
      */
-    completeThrow(item, player, path, willHit) {
+    completeThrow(item, player, path, willHit, launcher = null) {
         const landingPoint = path[path.length - 1];
         const isExplosive = item.hasAttribute('explosive');
 
@@ -2902,7 +2913,8 @@ class InterfaceManager {
 
             if (hitActor) {
                 // Perform accuracy roll for thrown items
-                const throwMissed = this.rollThrowAccuracy(player, hitActor);
+                const throwMissed = this.rollThrowAccuracy(player, hitActor,
+                    launcher?.getAttribute('launch_accuracy') || 0);
 
                 if (throwMissed) {
                     // Play miss sound
@@ -2949,7 +2961,14 @@ class InterfaceManager {
                     const collisionEffect = item.getAttribute('collision_effect');
                     if (collisionEffect) {
                         for (const [key, rawValue] of Object.entries(collisionEffect)) {
-                            const value = player.resolveAttributeValue(rawValue, player);
+                            let value = player.resolveAttributeValue(rawValue, player);
+
+                            // Fired from a launcher: (ammo + bow enchantment) × multiplier.
+                            // Enchantment goes in before the multiplier, as in Moria. Capped
+                            // at 0 so a badly cursed bow can't turn a hit into healing.
+                            if (launcher && key === 'health' && value < 0) {
+                                value = Math.min(0, (value - (launcher.enchantment || 0)) * (launcher.getAttribute('launch_multiplier') ?? 1));
+                            }
 
                             if (hitActor.stats && hitActor.stats[key] !== undefined) {
                                 const stat = hitActor.stats[key];
@@ -2970,17 +2989,27 @@ class InterfaceManager {
                     const targetName = hitActor.getNameWithArticle ? hitActor.getNameWithArticle() : `the ${hitActor.name}`;
                     this.engine.inputManager?.showMessage(`The ${displayName} hits ${targetName}!`);
 
-                    // Item lands at the tile before the hit (or destroyed if breakable)
-                    // Items are breakable_on_throw by default (like Brogue) unless explicitly set to false
-                    const breakable = item.getAttribute('breakable_on_throw') !== false;
-                    if (breakable) {
+                    // A shot that lands teaches you about the bow, like a melee blow
+                    launcher?.noteCombatUse(player);
+
+                    // Item lands at the tile before the hit (or destroyed if breakable).
+                    // Ammo with a break_chance rolls it, so most of it can be recovered;
+                    // anything else is breakable_on_throw by default (like Brogue)
+                    // unless explicitly set to false.
+                    const breakChance = item.getAttribute('break_chance');
+                    const breaks = breakChance !== undefined
+                        ? ROT.RNG.getPercentage() <= breakChance
+                        : item.getAttribute('breakable_on_throw') !== false;
+                    if (breaks) {
                         // Play break sound (e.g. glass shattering)
                         const breakSound = item.getAttribute('break_sound');
                         if (breakSound) this.engine.playSound(breakSound);
 
                         // Item is destroyed on impact
                         const displayName2 = item.getDisplayName ? item.getDisplayName() : item.name;
-                        this.engine.inputManager?.showMessage(`The ${displayName2} shatters!`);
+                        this.engine.inputManager?.showMessage(breakChance !== undefined
+                            ? `The ${displayName2} breaks.`
+                            : `The ${displayName2} shatters!`);
                     } else if (path.length > 1) {
                         // Land one tile before the blocked tile
                         const landBeforeHit = path[path.length - 2];
@@ -3008,7 +3037,7 @@ class InterfaceManager {
                 if (!fell) {
                     this.engine.playSound('arrow_miss');
                     const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
-                    this.engine.inputManager?.showMessage(`You throw the ${displayName}.`);
+                    this.engine.inputManager?.showMessage(`You ${launcher ? 'fire' : 'throw'} the ${displayName}.`);
                 }
             }
         }
@@ -4400,6 +4429,29 @@ class InterfaceManager {
      * Show a menu to select an item to throw
      * @param {Actor} player - The player actor
      */
+    /**
+     * Fire the wielded launcher: skip the item menu and aim the first ammo in the
+     * pack that it takes. Refusals are free actions — nothing was attempted.
+     * @param {Actor} player
+     */
+    fireLauncher(player) {
+        if (!player) return;
+        const launches = player.equipment?.weapon?.getAttribute('launches');
+        if (!launches) {
+            this.showTextBox('fire_refused', 'You have nothing to fire with.', { dismissOnMove: true });
+            return;
+        }
+        const ammo = player.inventory.find(item => player.getLauncherFor(item));
+        if (!ammo) {
+            const weaponName = player.equipment.weapon.getDisplayName?.() ?? player.equipment.weapon.name;
+            this.showTextBox('fire_refused', `You have no ammunition for your ${weaponName}.`, { dismissOnMove: true });
+            return;
+        }
+        this.clearTargetingHighlights();
+        this.currentPlayer = player;
+        this.enterThrowAimingMode(ammo);
+    }
+
     showThrowItemMenu(player) {
         if (!player || !player.inventory || player.inventory.length === 0) {
             // No items to throw
