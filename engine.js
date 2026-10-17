@@ -951,12 +951,8 @@ function buildExplorePassable(engine, actor) {
         // explorer across the map. Reaching one on purpose is still possible
         // (travel and click-to-walk exempt the endpoint).
         if (em.getActorsAt(x, y).some(a => !a.isDead && a.hasAttribute('teleporter'))) return false;
-        // Avoid hazardous actors unless the mover has matching immunity.
-        const at = em.getActorAt(x, y);
-        const damageType = at?.getAttribute('damage_type');
-        if (damageType && !at.isDead && !actor.hasAttribute(`${damageType}_immune`)) {
-            return false;
-        }
+        // Avoid hazardous actors unless the mover is immune.
+        if (actor.isHazardAt(x, y)) return false;
         const floor = mm.floorMap[y]?.[x];
         return !!(floor && floor.tileId > 0);
     };
@@ -10746,7 +10742,28 @@ class Actor extends Entity {
                 return false;
             }
 
-            return true;
+            // A creature watching its step won't wander into lava or fire
+            return !this.isHazardAt(newX, newY);
+        });
+    }
+
+    /**
+     * Would stepping onto (x, y) hurt this actor? A hazard is any live actor with
+     * a `damage_type` (lava, fire). Flying actors pass over it and `hazard_immune`
+     * ones shrug it off. Fire spares `fireproof` actors, the attribute burning and
+     * lava already check; any other type is resisted by `<type>_immune`.
+     *
+     * Movement doesn't consult this, only route choice, so a pushed, pulled or
+     * confused actor can still end up in the lava.
+     */
+    isHazardAt(x, y) {
+        if (this.hasStateProperty('flying') || this.hasAttribute('hazard_immune')) return false;
+        return this.engine.entityManager.getActorsAt(x, y).some(a => {
+            if (a === this || a.isDead) return false;
+            const type = a.getAttribute('damage_type');
+            if (!type) return false;
+            if (type === 'fire' && this.hasAttribute('fireproof')) return false;
+            return !this.hasAttribute(`${type}_immune`);
         });
     }
 
@@ -12317,7 +12334,7 @@ class Actor extends Entity {
         if (!this.isRepelledAt(this.x, this.y)) return false;
         const exits = ALL_DIRS
             .map(d => ({ x: this.x + d.dx, y: this.y + d.dy }))
-            .filter(p => this.isPassableAt(p.x, p.y));
+            .filter(p => this.isPassableAt(p.x, p.y) && !this.isHazardAt(p.x, p.y));
         if (exits.length === 0) return false;
         const exit = randomElement(exits);
         return this.tryMove(exit.x, exit.y).moved;
@@ -12371,9 +12388,13 @@ class Actor extends Entity {
         // Only solid walls block diagonal corner moves; voids don't.
         const isCornerWall = (x, y) => !!this.engine.entityManager.getSolidActorAt(x, y);
 
+        // Route around lava, fire and other hazards this actor isn't immune to,
+        // on the A* path and the directional fallback alike.
+        const isSafe = (x, y) => hasFloor(x, y) && !this.isHazardAt(x, y);
+
         const isPassable = (x, y) => {
             if (x === targetX && y === targetY) return true;
-            return this.isPassableAt(x, y);
+            return this.isPassableAt(x, y) && !this.isHazardAt(x, y);
         };
 
         const nextStep = getNextPathStep(this.x, this.y, targetX, targetY, isPassable, { hasFloor, isCornerBlocker: isCornerWall });
@@ -12388,29 +12409,29 @@ class Actor extends Entity {
         const dy = Math.sign(targetY - this.y);
 
         if (Math.abs(targetX - this.x) > Math.abs(targetY - this.y)) {
-            if (dx !== 0 && hasFloor(this.x + dx, this.y)) {
+            if (dx !== 0 && isSafe(this.x + dx, this.y)) {
                 const result = this.tryMove(this.x + dx, this.y);
                 if (result.moved || result.actionTaken) return true;
             }
-            if (dy !== 0 && hasFloor(this.x, this.y + dy)) {
+            if (dy !== 0 && isSafe(this.x, this.y + dy)) {
                 const result = this.tryMove(this.x, this.y + dy);
                 if (result.moved || result.actionTaken) return true;
             }
         } else {
-            if (dy !== 0 && hasFloor(this.x, this.y + dy)) {
+            if (dy !== 0 && isSafe(this.x, this.y + dy)) {
                 const result = this.tryMove(this.x, this.y + dy);
                 if (result.moved || result.actionTaken) return true;
             }
-            if (dx !== 0 && hasFloor(this.x + dx, this.y)) {
+            if (dx !== 0 && isSafe(this.x + dx, this.y)) {
                 const result = this.tryMove(this.x + dx, this.y);
                 if (result.moved || result.actionTaken) return true;
             }
         }
 
-        // Diagonal only if the destination has floor and no wall corner is being
+        // Diagonal only if the destination is safe floor and no wall corner is being
         // cut (voids don't block — see isDiagonalBlocked). Reuses isCornerWall
         // defined above.
-        if (dx !== 0 && dy !== 0 && hasFloor(this.x + dx, this.y + dy) &&
+        if (dx !== 0 && dy !== 0 && isSafe(this.x + dx, this.y + dy) &&
             !isDiagonalBlocked(this.x, this.y, this.x + dx, this.y + dy, isCornerWall)) {
             const result = this.tryMove(this.x + dx, this.y + dy);
             if (result.moved || result.actionTaken) return true;
@@ -15532,15 +15553,8 @@ class RenderSystem {
             if (this.engine.entityManager?.getActorsAt(x, y).some(a => !a.isDead && a.hasAttribute('teleporter'))) {
                 return false;
             }
-            // Check for hazardous actors - avoid unless player has matching immunity
-            const actor = this.engine.entityManager?.getActorAt(x, y);
-            const damageType = actor?.getAttribute('damage_type');
-            if (damageType && !actor.isDead) {
-                const player = this.engine.entityManager?.player;
-                if (!player?.hasAttribute(`${damageType}_immune`)) {
-                    return false;
-                }
-            }
+            // Check for hazardous actors - avoid unless the player is immune
+            if (this.engine.entityManager?.player?.isHazardAt(x, y)) return false;
             // Check if tile is walkable (has floor)
             const floorTile = this.engine.mapManager?.floorMap[y]?.[x];
             return floorTile && floorTile.tileId > 0;

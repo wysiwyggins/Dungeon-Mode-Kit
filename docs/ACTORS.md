@@ -777,6 +777,8 @@ Personality data fields (besides `name`, `hostile`, `behaviors`) are passed to e
 
 Behaviors are the atomic building blocks defined in `behaviors.js`. Each is a function `(actor, data) => boolean`.
 
+Movement behaviors route around hazards: any tile holding a live actor with a `damage_type` (lava, fire), unless the mover flies, is `hazard_immune`, or is immune to that type (`fireproof` for fire, `<type>_immune` otherwise). The check is `Actor.isHazardAt`. It only steers route choice, so a confused, pushed or pulled actor can still end up in lava.
+
 **Movement:**
 
 | Behavior | Description | Parameters |

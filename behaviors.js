@@ -569,6 +569,7 @@ const BehaviorLibrary = {
                 return distB - distA;
             });
             for (const dir of dirs) {
+                if (actor.isHazardAt(actor.x + dir.dx, actor.y + dir.dy)) continue;
                 const result = actor.tryMove(actor.x + dir.dx, actor.y + dir.dy);
                 if (result.moved) return true;
             }
@@ -600,6 +601,7 @@ const BehaviorLibrary = {
             const ny = actor.y + dir.dy;
             if (!actor.hasFloorAt(nx, ny) && !actor.hasPlatformAt(nx, ny)) continue;
             if (entityManager.getSolidActorAt(nx, ny)) continue;
+            if (actor.isHazardAt(nx, ny)) continue;
             const sameTypeCount = entityManager.getActorsAt(nx, ny)
                 .filter(a => a.type === actor.type).length;
             if (sameTypeCount < bestScore) {
@@ -751,8 +753,9 @@ const BehaviorLibrary = {
             }
         }
 
-        // If no safe tiles, try any movement to escape
+        // If no safe tiles, try any movement to escape — short of lava or fire
         for (const dir of directions) {
+            if (actor.isHazardAt(actor.x + dir.dx, actor.y + dir.dy)) continue;
             const result = actor.tryMove(actor.x + dir.dx, actor.y + dir.dy);
             if (result.moved || result.actionTaken) return true;
         }
@@ -2580,7 +2583,7 @@ const BehaviorLibrary = {
         // Passability check that also avoids own body segments
         const isPassable = (x, y) => {
             if (bodyPositions.has(`${x},${y}`)) return false;
-            return actor.isPassableAt(x, y);
+            return actor.isPassableAt(x, y) && !actor.isHazardAt(x, y);
         };
 
         // Helper: record position in history only when the head actually moves
@@ -2621,6 +2624,7 @@ const BehaviorLibrary = {
             const nx = actor.x + dir.dx;
             const ny = actor.y + dir.dy;
             if (bodyPositions.has(`${nx},${ny}`)) continue;
+            if (actor.isHazardAt(nx, ny)) continue;
             const result = actor.tryMove(nx, ny);
             if (result.moved) {
                 recordMove();
@@ -2874,6 +2878,7 @@ const BehaviorLibrary = {
             const nx = actor.x + dir.dx;
             const ny = actor.y + dir.dy;
             if (!actor.hasFloorAt(nx, ny) && !actor.hasPlatformAt(nx, ny)) continue;
+            if (actor.isHazardAt(nx, ny)) continue;
             const result = actor.tryMove(nx, ny);
             if (result.moved) return true;
         }

@@ -59,6 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Monsters no longer walk into lava.** Their pathfinding, and the direct step it falls back on when no path exists, only checked for floor and walls, so a chase could run straight through lava or fire. All monster movement now goes around any hazard the mover isn't immune to, and the player's auto-explore and walk paths honor `fireproof`, which they had been checking under the wrong name (`fire_immune`).
 - **Gas no longer shows through the fog.** A new actor's sprite stayed visible until the next lighting pass, and spawns that neither light nor shade (sewer gas, spores) never trigger one, so gas bubbling up in a remembered room was drawn there. New sprites now follow the same out-of-sight rule as the lighting pass.
 - **The mine spawns its ball of thread.** Its `random_items` asked for `ball_of_thread`, which doesn't exist, instead of `thread`.
 - **Clouds are no longer solid.** `cloud` never declared `solid: false`, so it took the actor default and blocked movement, unlike every other gas; it now inherits `solid: false` from the `gas` type.
