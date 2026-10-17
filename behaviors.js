@@ -102,6 +102,25 @@ function springTrapPayload(actor, victim = null, opts = {}) {
 }
 
 /**
+ * Normalize a quarry setting (`hunts`, `seeks`, a personality's `item_type`) to
+ * a list, and expand it to the item ids it covers: an id stands for itself, a
+ * type for every item declaring it. Goes through the prototype so a type with a
+ * prototype-only pool (treasure) resolves the way it does when spawning.
+ *
+ * @param {Engine} engine
+ * @param {string|string[]|undefined} setting
+ * @returns {{names: string[], itemIds: Set<string>}}
+ */
+function resolveQuarry(engine, setting) {
+    const names = (Array.isArray(setting) ? setting : [setting]).filter(Boolean);
+    const itemIds = new Set(names);
+    for (const name of names) {
+        for (const id of engine.currentPrototype?.getItemsOfType?.(name) || []) itemIds.add(id);
+    }
+    return { names, itemIds };
+}
+
+/**
  * Pick the waypoint loop for the `patrol_route` behavior.
  *
  * Floods out from the actor through tiles it could walk (counting closed,
@@ -825,8 +844,11 @@ const BehaviorLibrary = {
     },
 
     seek_item: (actor, data) => {
-        const searchRadius = data.search_radius ?? 10;
-        const itemType = data.item_type;
+        // The actor's own `seeks` / `search_radius` override the personality's
+        // `item_type` / `search_radius`, so actors sharing a personality can want
+        // different things. `seeks` takes ids or types, singly or as a list.
+        const searchRadius = actor.getAttribute('search_radius') ?? data.search_radius ?? 10;
+        const { names, itemIds } = resolveQuarry(actor.engine, actor.getAttribute('seeks') ?? data.item_type);
         const entityManager = actor.engine.entityManager;
         const maxInventory = actor.getAttribute('inventory') || 1;
         if (actor.inventory.length >= maxInventory) return false;
@@ -836,9 +858,10 @@ const BehaviorLibrary = {
 
         for (const item of entityManager.items) {
             if (item.isDead) continue;
-            if (itemType && item.type !== itemType) continue;
+            if (names.length && !itemIds.has(item.type)) continue;
             const dist = getChebyshevDistance(actor.x, actor.y, item.x, item.y);
             if (dist > searchRadius || dist >= nearestDist) continue;
+            if (!actor.canSeeTarget(item)) continue;
             nearest = item;
             nearestDist = dist;
         }
@@ -937,9 +960,9 @@ const BehaviorLibrary = {
     },
 
     /**
-     * Hunt a specific quarry named by the actor's `hunts` attribute — an actor
-     * TYPE to kill (e.g. "rat") or an item TYPE to collect (e.g. "meat"). The
-     * actor pursues the nearest matching, visible quarry and moves onto it;
+     * Hunt the quarry named by the actor's `hunts` attribute — actors to kill
+     * and items to collect, each named by id ("rat", "meat") or by type ("prey",
+     * "food"), singly or as a list. The actor pursues the nearest matching, visible quarry and moves onto it;
      * moving onto a hunted actor triggers the normal attack-on-bump (a kill over
      * repeated turns), and moving onto a hunted item picks it up. This is
      * independent of the faction/`isEnemyOf` system, so a hunter can chase quarry
@@ -952,16 +975,18 @@ const BehaviorLibrary = {
      * @param {Actor} actor - The actor executing the behavior
      */
     hunt: (actor) => {
-        const quarry = actor.getAttribute('hunts');
-        if (!quarry) return false;
+        // `hunts` names one quarry or a list. Each entry is an actor or item id
+        // ("rat", "meat") or a type covering many ("prey", "food").
+        const { names: quarry, itemIds: quarryItemIds } = resolveQuarry(actor.engine, actor.getAttribute('hunts'));
+        if (quarry.length === 0) return false;
 
         const em = actor.engine.entityManager;
 
-        // 1) Hunt an actor type → pursue & attack the nearest visible one.
+        // 1) Hunt an actor → pursue & attack the nearest visible one.
         let bestActor = null, bestActorDist = Infinity;
         for (const other of em.actors) {
             if (other === actor || other.isDead) continue;
-            if (other.type !== quarry) continue;
+            if (!other.matchesActorType(quarry)) continue;
             if (!actor.canSeeTarget(other)) continue;
             const dist = getChebyshevDistance(actor.x, actor.y, other.x, other.y);
             if (dist < bestActorDist) { bestActor = other; bestActorDist = dist; }
@@ -977,13 +1002,14 @@ const BehaviorLibrary = {
         const maxInventory = actor.getAttribute('inventory') || 0;
         if (actor.inventory.length >= maxInventory) return false;
 
-        const visionRange = actor.getAttribute('vision_range') || 10;
+        // Same sight test as actor quarry: vision range, dimmed by darkness,
+        // blocked by walls.
         let bestItem = null, bestItemDist = Infinity;
         for (const item of em.items) {
             if (item.isDead) continue;
-            if (item.type !== quarry) continue;
+            if (!quarryItemIds.has(item.type)) continue;
             const dist = getChebyshevDistance(actor.x, actor.y, item.x, item.y);
-            if (dist > visionRange || dist >= bestItemDist) continue;
+            if (dist >= bestItemDist || !actor.canSeeTarget(item)) continue;
             bestItem = item; bestItemDist = dist;
         }
         if (bestItem) {

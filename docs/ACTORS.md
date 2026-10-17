@@ -155,7 +155,9 @@ since the texture is already registered. Give genuinely new art a new name.
 | `sentient` | boolean | This actor has a mind: mind-states (sleep, confusion, stun) can be applied to it, telepathy reveals it, and it watches its footing while wandering (won't walk off a cliff unless confused). Usually supplied by a [type](TYPES.md). Default `false`. |
 | `controlled` | boolean | This is the player character |
 | `pov` | boolean | Point-of-view actor: acts as the field-of-view and camera-follow origin even though it is **not** player-controlled. Use for an AI "hero" in a zero-player observer prototype so a dark/fog level renders around it (it carries the auto-light and the camera follows it). Turn/input logic still keys on `controlled`, not `pov`. |
-| `hunts` | string | Names a quarry the `hunt` behavior pursues: an actor **type** to kill (e.g. `"rat"`) or an item **type** to collect (e.g. `"meat"`). Independent of faction/hostility, so a hunter can chase quarry it isn't otherwise hostile to while still attacking its normal enemies. Requires the `hunt` behavior in the actor's personality. |
+| `hunts` | string or array | What the `hunt` behavior goes after: actors to kill and items to collect. Each entry is an id (`"rat"`, `"meat"`) or a type that covers every member (`"prey"` for deer and chickens, `"food"`), and a list mixes them freely: `["prey", "meat"]`. Independent of faction/hostility, so a hunter can chase quarry it isn't otherwise hostile to while still attacking its normal enemies. Requires the `hunt` behavior in the actor's personality. Editable in the actor editor's AI section. |
+| `seeks` | string or array | Items the `seek_item` behavior picks up, by id or type like `hunts`. Overrides the personality's `item_type`; absent, the personality's applies (and absent there too, any item). Editable in the actor editor. |
+| `search_radius` | number | How far `seek_item` looks for items. Overrides the personality's `search_radius` (default 10). The item must also be in sight. |
 | `tactician` | boolean | This actor reads fights numerically: info panels it opens include hit chances and hits-to-kill. See [Info Panel](#info-panel). Default `false`. |
 | `dark_vision` | boolean | Actor can see and act normally without light (bypasses darkness AI penalties) |
 | `opaque` | boolean | Whether this actor blocks line of sight. Independent of `solid`: unset, a solid actor blocks sight and a non-solid one doesn't, so set `opaque: false` for see-through solids (columns, statues, creatures — most types supply it) and `opaque: true` for walkable cover that still hides what's behind it (tall mushrooms). |
@@ -786,7 +788,7 @@ Movement behaviors route around hazards: any tile holding a live actor with a `d
 | `random_walk` | Move in a random cardinal direction. Sighted actors avoid pits. | — |
 | `pursue_target` | Pathfind toward nearest visible controlled actor. | — |
 | `explore` | Auto-explore toward the nearest unvisited area (or nearby item), like a player pressing (x)plore. Keeps its own visited-tile memory (`actor._exploreVisited`), so it works with no player/fog-of-war. Returns false when nothing is left, falling through to `random_walk`. Used by the `hero` personality; shares the engine `computeExploreTarget` core with the player action. | `explore_mark_radius` (default: 1) |
-| `hunt` | Pursue the quarry named by the actor's `hunts` attribute — an actor type to kill (moves onto it, biting via attack-on-bump) or an item type to collect. Nearest visible match wins. Independent of faction, so pair it with `attack_adjacent` (kept before it) to also fight normal enemies like the player. Returns false when no quarry is in sight, falling through to `pursue_target`/`random_walk`. | reads `hunts`; item-hunt respects `inventory` capacity |
+| `hunt` | Pursue the quarry named by the actor's `hunts` attribute — actors to kill (moves onto them, biting via attack-on-bump) or items to collect, by id or type. Nearest visible match wins; items, like actors, must be in sight (vision range, shortened in darkness, blocked by walls). Independent of faction, so pair it with `attack_adjacent` (kept before it) to also fight normal enemies like the player. Returns false when no quarry is in sight, falling through to `pursue_target`/`random_walk`. | reads `hunts`; item-hunt respects `inventory` capacity |
 | `avoid_crowding` | When another same-type actor shares this tile, step to the least-crowded adjacent tile. | — |
 | `maintain_distance` | Keep `preferred_distance` tiles from target. Move away if too close, toward if too far. | `preferred_distance` (default: 3) |
 | `patrol` | Wander within `patrol_range` of home position. | `patrol_range` |
@@ -822,7 +824,7 @@ Movement behaviors route around hazards: any tile holding a live actor with a `d
 
 | Behavior | Description | Parameters |
 | ---------- | ------------- | ------------ |
-| `seek_item` | Pathfind toward nearest ground item, pick up when adjacent. | `search_radius` (default: 10), `item_type` (optional filter) |
+| `seek_item` | Pathfind toward the nearest ground item in sight, pick up when adjacent. The actor's own `seeks` and `search_radius` attributes override the personality's. | `search_radius` (default: 10), `item_type` (optional filter, id or type, or a list) |
 | `mine_nearby_wall` | Mine adjacent breakable walls with equipped mining tool. | — |
 | `wander_to_wall` | Walk toward nearest visible wall (for miners). | — |
 | `pickpocket_adjacent` | Steal unequipped item from adjacent player. | — |

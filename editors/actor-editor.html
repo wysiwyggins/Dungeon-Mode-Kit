@@ -234,6 +234,20 @@
                     <label>Vision Range</label>
                     <input type="number" id="f-vision_range" min="0" value="">
                 </div>
+                <div style="margin: 6px 0 4px; font-size:11px; color:var(--accent)">Hunts</div>
+                <div class="hint" style="margin:0 0 4px 0">Actors to kill and items to collect, by id or by type. Needs a personality with the <code>hunt</code> behavior.</div>
+                <div id="hunts-list" class="dynamic-list"></div>
+                <button class="add-btn" id="btn-add-hunt">+ Add Quarry</button>
+                <div class="hint" id="hunts-hint" style="margin:4px 0 8px 0"></div>
+                <div style="margin: 6px 0 4px; font-size:11px; color:var(--accent)">Seeks</div>
+                <div class="hint" style="margin:0 0 4px 0">Items to pick up, by id or by type. Overrides the personality's <code>item_type</code>; leave empty to use it. Needs the <code>seek_item</code> behavior.</div>
+                <div id="seeks-list" class="dynamic-list"></div>
+                <button class="add-btn" id="btn-add-seek">+ Add Item</button>
+                <div class="field-row" style="margin-top:6px">
+                    <label>Search Radius</label>
+                    <input type="number" id="f-search_radius" min="0" value="" placeholder="personality's, or 10">
+                </div>
+                <div class="hint" id="seeks-hint" style="margin:4px 0 8px 0"></div>
                 <div style="margin: 6px 0 4px; font-size:11px; color:var(--accent)">Innate States</div>
                 <div id="innate-states-list" class="dynamic-list"></div>
                 <button class="add-btn" id="btn-add-innate-state">+ Add Innate State</button>
@@ -531,15 +545,17 @@ function loadSpritesheet() {
 }
 
 async function loadBaseData() {
-    const [tilesData, actors, personalities, states, types, effects] = await Promise.all([
+    const [tilesData, actors, personalities, states, types, effects, items] = await Promise.all([
         fetchJSON(TILE_DATA_PATH),
         fetchJSON('../data/actors.json'),
         fetchJSON('../data/personalities.json'),
         fetchJSON('../data/states.json'),
         fetchJSON('../data/types.json'),
         fetchJSON('../data/effects.json'),
+        fetchJSON('../data/items.json'),
     ]);
     state.effects = effects || {};
+    state.baseItems = items || {};
     TILE_W = tilesData.tilePixelWidth || TILE_W;
     TILE_H = tilesData.tilePixelHeight || TILE_H;
     state.tileMap = tilesData.tiles || {};
@@ -560,24 +576,28 @@ async function loadPrototype(name) {
     if (!name) {
         state.protoActors = {};
         state.protoPersonalities = {};
+        state.protoItems = {};
     } else {
         if (state.prototypeCache[name]) {
             state.protoActors = state.prototypeCache[name].actors;
             state.protoPersonalities = state.prototypeCache[name].personalities;
+            state.protoItems = state.prototypeCache[name].items;
             protoAnimations = state.prototypeCache[name].animations;
             protoEffects = state.prototypeCache[name].effects;
         } else {
-            const [a, p, anim, eff] = await Promise.all([
+            const [a, p, anim, eff, it] = await Promise.all([
                 fetchJSON(`../prototypes/${name}/actors.json`),
                 fetchJSON(`../prototypes/${name}/personalities.json`),
                 fetchJSON(`../prototypes/${name}/animations.json`),
                 fetchJSON(`../prototypes/${name}/effects.json`),
+                fetchJSON(`../prototypes/${name}/items.json`),
             ]);
             state.protoActors = a;
             state.protoPersonalities = p;
+            state.protoItems = it;
             protoAnimations = anim;
             protoEffects = eff;
-            state.prototypeCache[name] = { actors: a, personalities: p, animations: anim, effects: eff };
+            state.prototypeCache[name] = { actors: a, personalities: p, animations: anim, effects: eff, items: it };
         }
     }
     // A prototype's own effects.json merges over the base library, the way the
@@ -585,6 +605,7 @@ async function loadPrototype(name) {
     state.mergedEffects = { ...state.effects, ...protoEffects };
     state.mergedActors = { ...state.baseActors, ...state.protoActors };
     state.mergedPersonalities = { ...state.basePersonalities, ...state.protoPersonalities };
+    state.mergedItems = { ...state.baseItems, ...state.protoItems };
 
     // A prototype's own animations join the dropdowns, and their sheets load from the
     // prototype folder. Sheets already fetched stay cached in state.animImages, so
@@ -983,6 +1004,7 @@ function randomizeAppearance() {
 }
 
 function updatePreview() {
+    updateQuarryHints();
     renderPreview();
     updateJSONOutput();
     if (hasActiveAnimation()) startAnimLoop();
@@ -1318,6 +1340,79 @@ function addItemRow(val) {
     container.appendChild(row);
 }
 
+// ---- Hunts ----
+
+/**
+ * One quarry row for `hunts` or `seeks`. The dropdown groups what can match:
+ * types (every member counts) above single actors and items. `seeks` only
+ * takes items, so it passes withActors = false. An unknown saved value is kept
+ * as its own option so loading never drops it.
+ */
+function addQuarryRow(listId, val, withActors) {
+    const container = document.getElementById(listId);
+    const row = document.createElement('div');
+    row.className = 'list-item';
+    const sel = document.createElement('select');
+    const blank = document.createElement('option');
+    blank.value = ''; blank.textContent = '— select quarry —';
+    sel.appendChild(blank);
+
+    const keys = obj => Object.keys(obj || {}).filter(k => !k.startsWith('_')).sort();
+    const typesOf = domain => keys(state.types).filter(k => state.types[k].domain === domain);
+    const groups = [
+        ...(withActors ? [['Actor types', typesOf('actor')], ['Actors', keys(state.mergedActors)]] : []),
+        ['Item types', typesOf('item')],
+        ['Items', keys(state.mergedItems)],
+    ];
+    let found = !val;
+    for (const [label, values] of groups) {
+        const group = document.createElement('optgroup');
+        group.label = label;
+        for (const k of values) {
+            const opt = document.createElement('option');
+            opt.value = k; opt.textContent = k;
+            group.appendChild(opt);
+            if (k === val) found = true;
+        }
+        sel.appendChild(group);
+    }
+    if (!found) {
+        const opt = document.createElement('option');
+        opt.value = val; opt.textContent = `${val} (unknown)`;
+        sel.appendChild(opt);
+    }
+    sel.value = val || '';
+    sel.addEventListener('change', updatePreview);
+    const btn = document.createElement('button');
+    btn.className = 'remove-btn'; btn.textContent = 'x';
+    btn.addEventListener('click', () => { row.remove(); updatePreview(); });
+    row.appendChild(sel); row.appendChild(btn);
+    container.appendChild(row);
+}
+
+function addHuntRow(val) { addQuarryRow('hunts-list', val, true); }
+function addSeekRow(val) { addQuarryRow('seeks-list', val, false); }
+
+function readQuarry(listId) {
+    return [...document.querySelectorAll(`#${listId} select`)].map(s => s.value).filter(Boolean);
+}
+
+/** Warn when hunt/seek settings are set but the personality would never act on them. */
+function updateQuarryHints() {
+    const key = document.getElementById('f-personality').value;
+    const behaviors = state.mergedPersonalities?.[key]?.behaviors || [];
+    const warn = (hintId, isSet, behavior) => {
+        const hint = document.getElementById(hintId);
+        if (!isSet || behaviors.includes(behavior)) hint.textContent = '';
+        else hint.textContent = key
+            ? `⚠ The ${key} personality has no ${behavior} behavior, so this does nothing.`
+            : '⚠ No personality is set, so this does nothing.';
+    };
+    warn('hunts-hint', readQuarry('hunts-list').length > 0, 'hunt');
+    warn('seeks-hint', readQuarry('seeks-list').length > 0
+        || document.getElementById('f-search_radius').value !== '', 'seek_item');
+}
+
 // ---- Switch effects ----
 
 function addSwitchEffectRow(key, val) {
@@ -1393,6 +1488,9 @@ function clearForm() {
     document.getElementById('stats-list').innerHTML = '';
     document.getElementById('innate-states-list').innerHTML = '';
     document.getElementById('default-items-list').innerHTML = '';
+    document.getElementById('hunts-list').innerHTML = '';
+    document.getElementById('seeks-list').innerHTML = '';
+    document.getElementById('f-search_radius').value = '';
     document.getElementById('switch-effects-list').innerHTML = '';
 
     document.getElementById('f-ce-health').value = '';
@@ -1499,7 +1597,10 @@ function populateForm(key, data) {
         secGrid.style.display = hasSecondary ? 'grid' : 'none';
         secToggle.textContent = hasSecondary ? '- Fewer attributes' : '+ More attributes...';
     }
-    const knownKeys = new Set([...BOOL_ATTRS, ...TYPED_ATTRS.map(t => t.key)]);
+    const knownKeys = new Set([...BOOL_ATTRS, ...TYPED_ATTRS.map(t => t.key), 'hunts', 'seeks', 'search_radius']);
+    for (const q of [attrs.hunts].flat().filter(Boolean)) addHuntRow(q);
+    for (const q of [attrs.seeks].flat().filter(Boolean)) addSeekRow(q);
+    document.getElementById('f-search_radius').value = attrs.search_radius ?? '';
     for (const ta of TYPED_ATTRS) {
         const val = attrs[ta.key];
         if (val !== undefined) {
@@ -1724,6 +1825,13 @@ function readForm() {
         const v = inputs[1].value.trim();
         if (k) attrs[k] = parseValue(v);
     }
+    // One quarry saves as a plain string, the form existing data uses
+    const hunts = readQuarry('hunts-list');
+    if (hunts.length) attrs.hunts = hunts.length === 1 ? hunts[0] : hunts;
+    const seeks = readQuarry('seeks-list');
+    if (seeks.length) attrs.seeks = seeks.length === 1 ? seeks[0] : seeks;
+    const searchRadius = parseInt(document.getElementById('f-search_radius').value);
+    if (!isNaN(searchRadius)) attrs.search_radius = searchRadius;
     if (Object.keys(attrs).length) obj.attributes = attrs;
 
     // Stats
@@ -1882,6 +1990,8 @@ function initEventListeners() {
     document.getElementById('btn-add-custom-attr').addEventListener('click', () => addCustomAttrRow('', ''));
     document.getElementById('btn-add-stat').addEventListener('click', () => addStatRow('', 0));
     document.getElementById('btn-add-innate-state').addEventListener('click', () => addInnateStateRow(''));
+    document.getElementById('btn-add-hunt').addEventListener('click', () => { addHuntRow(''); updatePreview(); });
+    document.getElementById('btn-add-seek').addEventListener('click', () => { addSeekRow(''); updatePreview(); });
     document.getElementById('btn-add-item').addEventListener('click', () => addItemRow(''));
     document.getElementById('btn-add-switch-effect').addEventListener('click', () => addSwitchEffectRow('', ''));
 

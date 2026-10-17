@@ -308,6 +308,22 @@
       "health": 10
     }
   },
+  "bear": {
+    "type": "beast",
+    "name": "bear",
+    "description": "An enormous black bear",
+    "tileIndexBase": "FULL_BLOCK_WITH_MISSING_TOP_LEFT_CORNER",
+    "tileIndexTop": "BEAR_HEAD",
+    "personality": "hunter_melee",
+    "attributes": {
+      "strength": 7,
+      "inventory": 1,
+      "hunts": "prey"
+    },
+    "stats": {
+      "health": 10
+    }
+  },
   "chicken": {
     "type": "prey",
     "name": "chicken",

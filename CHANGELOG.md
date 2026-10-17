@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Per-actor `seeks` and `search_radius`.** An actor can set what `seek_item` picks up and how far it looks, overriding its personality, so actors sharing a personality can want different things. Both are in the actor editor's AI section.
+- **Hunting by type.** `hunts` now takes a type as well as an id, and a list of either, so a beast with `hunts: "prey"` goes after deer and chickens. The actor editor's AI section has a Hunts list that warns when the personality has no `hunt` behavior.
 - **Teleporters.** Step on a `teleporter` and you come out at the other one with the same `machine_id`, and monsters can use them too. Linked pads share a color, and auto-explore routes around them.
 - **`patrol_route` behavior and `sentry` personality.** The actor picks a loop of spread-out room tiles near where it starts and walks it forever, breaking off to chase the player and returning to the route afterward. Tune it with `patrol_points` and `patrol_radius`.
 - **Reflective actors bounce bolts.** A bolt that hits a `reflective` actor (the `metal_wall` has it) bounces off the struck face and travels on as far as it had come, up to three bounces, and the aiming line previews the bounce. A bolt that comes back can hit its caster, and a creature it crosses twice only takes the damage once.
@@ -59,6 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Hunters and scavengers have to see items to want them.** Item hunting and `seek_item` found items through walls, and `hunt` ignored the actor's vision range, always using 10. Both now use the same sight test as hunting actors.
 - **Monsters no longer walk into lava.** Their pathfinding, and the direct step it falls back on when no path exists, only checked for floor and walls, so a chase could run straight through lava or fire. All monster movement now goes around any hazard the mover isn't immune to, and the player's auto-explore and walk paths honor `fireproof`, which they had been checking under the wrong name (`fire_immune`).
 - **Gas no longer shows through the fog.** A new actor's sprite stayed visible until the next lighting pass, and spawns that neither light nor shade (sewer gas, spores) never trigger one, so gas bubbling up in a remembered room was drawn there. New sprites now follow the same out-of-sight rule as the lighting pass.
 - **The mine spawns its ball of thread.** Its `random_items` asked for `ball_of_thread`, which doesn't exist, instead of `thread`.
