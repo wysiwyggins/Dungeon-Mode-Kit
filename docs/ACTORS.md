@@ -488,6 +488,7 @@ could take anything.
 | ----------- | ------ | ------------- |
 | `pushable` | boolean | Can be pushed by walking actors |
 | `push_sound` | string | Sound played when this actor is pushed. Overrides the default `push1`. |
+| `blocks_diagonal` | boolean | Corner blocking: no actor can step or melee diagonally past this actor's corner. Only counts while the actor is solid, so an open door stops blocking. Bolts, thrown items and spells still pass. The `terrain` and `doorway` types supply it, so walls, trees, columns, statues and doors block corners while creatures, chests and levers don't. Set `false` on a freestanding piece (a column, say) to let actors slip round it, or `true` on a creature to make it block its corners. |
 | `conductive` | boolean | Bolt attacks pass through this actor to hit targets behind. Default `true` for most actors; set `false` on walls/pillars to block bolts. |
 | `reflective` | boolean | Bolts bounce off this actor instead of stopping. The bolt flips off the face it struck (straight back off a corner or lone pillar) and travels on as far as it had already come, or for the rest of its aim if that's farther — so it can come back and hit its caster. Three bounces per bolt, then the next reflector stops it. The `metal_wall` has it. |
 | `breakable` | boolean | Can be destroyed by mining |

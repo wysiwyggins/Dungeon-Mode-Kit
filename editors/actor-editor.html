@@ -361,7 +361,8 @@ const TILE_DATA_PATH = '../data/static-tiles.json';
 
 const PRIMARY_BOOL_ATTRS = [
     'solid','visible','hostile','sentient','opaque',
-    'flammable','conductive','breakable','pushable','light_source','dark_vision','flies'
+    'flammable','conductive','breakable','pushable','light_source','dark_vision','flies',
+    'blocks_diagonal'
 ];
 const SECONDARY_BOOL_ATTRS = [
     'controlled','hazard_immune','pack','follows_thread','mass_noun','proper_named',
@@ -381,6 +382,7 @@ const BOOL_HINTS = {
     opaque: 'Blocks line of sight for lighting/FOV.',
 
     conductive: 'Conducts lightning.',
+    blocks_diagonal: 'No moving or melee diagonally past this actor\'s corner. Only counts while solid. Supplied by the terrain and doorway types.',
     breakable: 'Can be destroyed by attacks.',
     pushable: 'Can be pushed by collisions.',
     light_source: 'Emits light (radius set in Appearance).',

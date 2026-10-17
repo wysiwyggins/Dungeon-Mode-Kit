@@ -43,6 +43,8 @@
 
 ### corner blocking as an actor attribute
 
+- **Done** — `blocks_diagonal` attribute, supplied by the `terrain` and `doorway` types; melee obeys it, bolts and thrown items don't (see [Actors](ACTORS.md#physics)). Notes below kept for reference.
+
 - the brogue-style corner movement blocking rule is pretty complex and opinionated for it to be hard coded into the engine, and it would be complex to have it be a prototype-level mechanics toggle. What makes the most sense is to move diagonal movement blocking to an actor attribute that some wall actors have, then it can be used on a per actor basis, or even added as a monster attribute.
 - Currently attacks are legal diagonally across corner blocking actors like walls. I'd like to block melee attacks but not staffs or wands around wall corners.
 - Don't hard code design opinions that can be left up to designers with attributes in the data files, as long as the data files don't have so many attributes that they become difficult to read. Having sensible default values for attributes so that more often than not we don't have to specify them helps keep data files readable.

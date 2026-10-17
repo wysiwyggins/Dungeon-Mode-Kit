@@ -256,6 +256,9 @@ const BehaviorLibrary = {
             // and would flail at an adjacent wall every turn, never moving.
             if (target.stats?.health === undefined) continue;
 
+            // No swinging round a wall corner (same rule as moving round one)
+            if (actor.isCornerBlockedTo(targetX, targetY)) continue;
+
             // Use unified collision effects system (handles damage, sounds, flash, etc.)
             // An attack attempt (even a miss) consumes the turn
             actor.applyCollisionEffects(target);
@@ -796,8 +799,8 @@ const BehaviorLibrary = {
         // Check if attacker is adjacent
         const dx = Math.abs(actor.x - attacker.x);
         const dy = Math.abs(actor.y - attacker.y);
-        if (dx > 1 || dy > 1) {
-            // Attacker not adjacent, try to move toward them
+        if (dx > 1 || dy > 1 || actor.isCornerBlockedTo(attacker.x, attacker.y)) {
+            // Attacker not adjacent, or round a wall corner: close in instead
             return actor.moveToward(attacker.x, attacker.y);
         }
 
@@ -942,7 +945,7 @@ const BehaviorLibrary = {
         // aside; otherwise defer to moveToward's normal A*.
         const passable = buildExplorePassable(engine, actor);
         const hasFloor = (x, y) => actor.hasFloorAt(x, y) || actor.hasPlatformAt(x, y);
-        const isCornerWall = (x, y) => !!em.getSolidActorAt(x, y);
+        const isCornerWall = (x, y) => em.blocksDiagonalAt(x, y);
         const step = getNextPathStep(actor.x, actor.y, target.x, target.y, passable,
             { hasFloor, isCornerBlocker: isCornerWall });
 

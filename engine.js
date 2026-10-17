@@ -270,8 +270,9 @@ const DECORATION_PATTERN_NAMES = new Set([
 /**
  * Brogue-style "no cutting corners": a diagonal move is blocked when one of the
  * two orthogonally-adjacent corner cells is a blocker. `isCornerBlocker(x, y)`
- * decides what counts as a blocker — pass a wall-aware predicate so that solid
- * walls block the diagonal but open voids (e.g. maze cells with no floor) do not.
+ * decides what counts as a blocker; movement passes EntityManager.blocksDiagonalAt,
+ * so only solid `blocks_diagonal` actors (walls, doors) block, while creatures
+ * and open voids (e.g. maze cells with no floor) do not.
  */
 function isDiagonalBlocked(fromX, fromY, toX, toY, isCornerBlocker) {
     if (fromX === toX || fromY === toY) return false;
@@ -8643,7 +8644,8 @@ class Actor extends Entity {
                 const tx = this.x + ddx;
                 const ty = this.y + ddy;
                 const actor = this.engine.entityManager.getSolidActorAt(tx, ty);
-                if (actor && actor !== this && !actor.isDead && actor.stats?.health !== undefined) {
+                if (actor && actor !== this && !actor.isDead && actor.stats?.health !== undefined
+                    && !this.isCornerBlockedTo(tx, ty)) {
                     targets.push(actor);
                 }
             }
@@ -10748,6 +10750,16 @@ class Actor extends Entity {
     }
 
     /**
+     * Is a diagonal step or swing from here to (x, y) cut off by a wall corner?
+     * Movement and melee share this, so you can't attack round a corner you
+     * couldn't step round. Orthogonal moves are never blocked.
+     */
+    isCornerBlockedTo(x, y) {
+        const em = this.engine.entityManager;
+        return isDiagonalBlocked(this.x, this.y, x, y, (cx, cy) => em.blocksDiagonalAt(cx, cy));
+    }
+
+    /**
      * Would stepping onto (x, y) hurt this actor? A hazard is any live actor with
      * a `damage_type` (lava, fire). Flying actors pass over it and `hazard_immune`
      * ones shrug it off. Fire spares `fireproof` actors, the attribute burning and
@@ -10985,10 +10997,10 @@ class Actor extends Entity {
             }
         }
 
-        // Block diagonal movement past wall corners (Brogue-style). Only solid
-        // walls block the corner — open voids (e.g. maze cells with no floor) do
-        // not, so actors can move diagonally around the corner of a void.
-        if (isDiagonalBlocked(this.x, this.y, newX, newY, (x, y) => !!this.engine.entityManager.getSolidActorAt(x, y))) {
+        // Block diagonal movement (and bump attacks) past wall corners, Brogue-style.
+        // Only `blocks_diagonal` actors block — not creatures, and not open voids
+        // (e.g. maze cells with no floor), so actors can cut round a void's corner.
+        if (this.isCornerBlockedTo(newX, newY)) {
             return { moved: false, actionTaken: false };
         }
 
@@ -12385,8 +12397,8 @@ class Actor extends Entity {
         if (this.x === targetX && this.y === targetY) return false;
 
         const hasFloor = (x, y) => this.hasFloorAt(x, y) || this.hasPlatformAt(x, y);
-        // Only solid walls block diagonal corner moves; voids don't.
-        const isCornerWall = (x, y) => !!this.engine.entityManager.getSolidActorAt(x, y);
+        // Only blocks_diagonal actors block diagonal corner moves; creatures and voids don't.
+        const isCornerWall = (x, y) => this.engine.entityManager.blocksDiagonalAt(x, y);
 
         // Route around lava, fire and other hazards this actor isn't immune to,
         // on the A* path and the directional fallback alike.
@@ -14009,6 +14021,18 @@ class EntityManager {
     }
 
     /**
+     * Does (x, y) block diagonal movement past its corner? True for a solid actor
+     * with `blocks_diagonal` (the terrain and doorway types supply it), so walls
+     * and closed doors stop corner-cutting while creatures, chests and open doors
+     * don't. Melee obeys the same rule (Actor.isCornerBlockedTo); bolts and
+     * thrown items don't.
+     */
+    blocksDiagonalAt(x, y) {
+        return this.getActorsAt(x, y).some(a =>
+            !a.isDead && a.hasAttribute('solid') && a.hasAttribute('blocks_diagonal'));
+    }
+
+    /**
      * The solid terrain at (x, y) that gas can't occupy — walls, statues, closed
      * doors, chests. Creatures and the player are solid too, but gas engulfs them,
      * so anything sentient or controlled doesn't count.
@@ -15566,7 +15590,7 @@ class RenderSystem {
         };
         // Only solid walls block diagonal corner moves; voids don't (matches
         // Actor.tryMove so the drawn path lines up with where actors can walk).
-        const isCornerWall = (x, y) => !!this.engine.entityManager?.getSolidActorAt(x, y);
+        const isCornerWall = (x, y) => !!this.engine.entityManager?.blocksDiagonalAt(x, y);
 
         // Find path using A*
         const path = findPathAStar(startX, startY, endX, endY, isPassable, { topology: 8, hasFloor, isCornerBlocker: isCornerWall });

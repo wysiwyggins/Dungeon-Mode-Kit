@@ -165,11 +165,11 @@ so leaving it out drops the defaults rather than keeping them:
 | `humanoid` | `sentient`, `flammable`, `opaque: false`, `inventory: 1`, `remains: skull` | Upright folk who carry things. No `hostile` — a guard may be friendly |
 | `arcane` | as `humanoid` but `remains: blood`, plus `default_items: [potion, scroll]` | Spellcasters, who start with something to read and something to quaff |
 | `jelly` | `solid`, `sentient`, `flammable`, `hostile`, `accuracy: 50`, `splits`, `split_min_health: 4`, plus the `jelly` personality, a full-block pink sprite, a `health: -2` slime attack and `step_mud` split sound | Splitting slimes. Members override `name` and `tint`; `collision_effect` merges, so a member's own attack keeps the `health: -2` unless it sets `health: null` |
-| `terrain` | `solid`, `flammable: false`, `pushable: false`, `conductive: false`, `remains: rubble` | Mindless, so it can burn or be stuck but never confused |
+| `terrain` | `solid`, `flammable: false`, `pushable: false`, `conductive: false`, `blocks_diagonal`, `remains: rubble` | Mindless, so it can burn or be stuck but never confused |
 | `gas` | `solid: false`, `flies`, `mass_noun`, `flammable: false` | Clouds, mist, smoke |
 | `liquid` | `solid: false`, `liquid`, `mass_noun`, `flammable: false`, `spreads: false`, `entry_sound: step_mud` | Water, sewage, quicksand. `paint_tile` stays per-liquid (the Tiled wildcard reads raw defs) |
 | `trap` | `solid: false`, `visible`, `hidden`, `trap`, `flammable: false`, `render_layer: bottom` | Random trap placement resolves through the type |
-| `doorway` | `openable`, `lockable`, `open: false`, `flammable: false`, `conductive: false` | Doors and the gate; `locked`/`swings_shut` are per-door |
+| `doorway` | `openable`, `lockable`, `open: false`, `flammable: false`, `conductive: false`, `blocks_diagonal` | Doors and the gate; `locked`/`swings_shut` are per-door |
 | `container` | `solid`, `openable`, `container`, `open: false`, `flammable`, `breakable`, `death_sound: plunk3` | Chests; `drops` and `smash_loss` are per-chest |
 | `switch` | `switchable`, `toggled: false` | Levers and pressure plates |
 

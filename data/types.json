@@ -131,6 +131,7 @@
       "flammable": false,
       "pushable": false,
       "conductive": false,
+      "blocks_diagonal": true,
       "remains": "rubble"
     }
   },
@@ -182,6 +183,7 @@
     "attributes": {
       "flammable": false,
       "conductive": false,
+      "blocks_diagonal": true,
       "openable": true,
       "lockable": true,
       "open": false
