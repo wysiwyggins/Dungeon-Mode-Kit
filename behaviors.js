@@ -181,6 +181,30 @@ function buildPatrolRoute(actor, data) {
     return ordered;
 }
 
+/**
+ * Open a temporary hole under an `opens_floor` gas (descent vapor) and drop
+ * everything on it to the floor below: creatures through
+ * Actor.dropThroughOpenedFloor, items by falling like a thrown one over the void.
+ * The hole stays `hole_turns` player actions (default 3) after the vapor last
+ * touched it. Fliers hover; on the bottom floor nothing happens.
+ * @param {Actor} gas - The vapor actor
+ */
+function openFloorUnder(gas) {
+    const engine = gas.engine;
+    const entityManager = engine.entityManager;
+    if (!engine.hasFloorBelow()) return;
+    if (!entityManager.openTemporaryHole(gas.x, gas.y, gas.getAttribute('hole_turns') ?? 3)) return;
+
+    for (const other of [...entityManager.getActorsAt(gas.x, gas.y)]) {
+        if (other === gas || other.isDead || other.stats?.health === undefined) continue;
+        if (entityManager._gasDensity(other) > 0) continue;
+        other.dropThroughOpenedFloor();
+    }
+    for (const item of entityManager.items.filter(i => i.x === gas.x && i.y === gas.y && !i.isDead)) {
+        if (engine.itemFallsToNextFloor(item)) entityManager.removeEntity(item);
+    }
+}
+
 class Personality {
     constructor(data, actor) {
         this.name = data.name || 'default';
@@ -202,6 +226,10 @@ class Personality {
             BehaviorLibrary.random_walk(actor);
             return;
         }
+
+        // Discord overrides targeting — go after the nearest creature, ally or
+        // not. Falls through to the normal chain when nobody is in sight.
+        if (actor.isDiscordant() && BehaviorLibrary.discord_attack(actor)) return;
 
         // Execute behaviors in order
         for (const behaviorName of this.behaviors) {
@@ -247,6 +275,31 @@ const BehaviorLibrary = {
         }
 
         return false; // No valid target found
+    },
+
+    /**
+     * Discordant AI (Brogue's STATUS_DISCORDANT): attack an adjacent creature,
+     * otherwise close on the nearest visible one. isEnemyOf treats everyone as
+     * an enemy while discordant, so attack_adjacent does the swinging. Run by
+     * Personality.execute ahead of the behavior chain rather than listed in it.
+     * Returns false when there is nobody to fight.
+     */
+    discord_attack: (actor) => {
+        if (BehaviorLibrary.attack_adjacent(actor)) return true;
+
+        let nearest = null;
+        let nearestDist = Infinity;
+        for (const other of actor.engine.entityManager.actors) {
+            if (other === actor || other.isDead || other.stats?.health === undefined) continue;
+            if (!actor.canSeeTarget(other)) continue;
+            const dist = getChebyshevDistance(actor.x, actor.y, other.x, other.y);
+            if (dist < nearestDist) {
+                nearest = other;
+                nearestDist = dist;
+            }
+        }
+        if (!nearest) return false;
+        return actor.moveToward(nearest.x, nearest.y);
     },
 
     patrol: (actor, data) => {
@@ -1276,7 +1329,7 @@ const BehaviorLibrary = {
                     if (statesData && statesData[applyState]) {
                         for (const other of entityManager.getActorsAt(targetX, targetY)) {
                             if (other === newCloud) continue;
-                            if (other.type === 'cloud' || other.type === 'mist' || other.type === 'sewer_gas') continue;
+                            if (entityManager._gasDensity(other) > 0) continue;
                             if (other.applyState) {
                                 other.applyState(applyState, statesData[applyState]);
                             }
@@ -1315,6 +1368,9 @@ const BehaviorLibrary = {
      * Shows a message describing the effect for visible actors
      */
     cloud_affect_actors: (actor) => {
+        // Descent vapor opens the ground: creatures and items here drop a floor
+        if (actor.hasAttribute('opens_floor')) openFloorUnder(actor);
+
         const collisionEffect = actor.getAttribute('collision_effect');
         const applyStateName = actor.getAttribute('apply_state');
         // A ward (incense smoke) adds its own collision_effect, applied only to the
@@ -1334,7 +1390,7 @@ const BehaviorLibrary = {
 
         for (const other of entityManager.getActorsAt(actor.x, actor.y)) {
             if (other === actor) continue;
-            if (other.type === 'cloud' || other.type === 'mist' || other.type === 'sewer_gas') continue;
+            if (entityManager._gasDensity(other) > 0) continue;
 
             // Track effects applied for messaging
             const effectsApplied = [];
@@ -1384,7 +1440,7 @@ const BehaviorLibrary = {
 
             // Show effect message and flash only if effects were applied
             if (effectsApplied.length > 0) {
-                const gasName = actor.type === 'mist' ? 'mist' : 'clouds';
+                const gasName = actor.name;
 
                 // Only show generic engulf message for stat effects, not state application
                 // (state application shows its own message via applyState)
@@ -1440,6 +1496,17 @@ const BehaviorLibrary = {
     /**
      * Countdown cloud lifetime and remove when expired
      */
+    /**
+     * Remove the actor once its `lifetime` (turns, default 10) runs out — for
+     * temporary things that aren't gas or fire, like conjured crystal.
+     */
+    expire: (actor) => {
+        if (actor._turnsLeft === undefined) actor._turnsLeft = actor.lifetime ?? 10;
+        if (--actor._turnsLeft > 0) return false;
+        actor.die();
+        return true;
+    },
+
     cloud_lifetime: (actor) => {
         // Initialize lifetime from actor data if not set
         if (actor.cloudLifetime === undefined) {
@@ -1587,7 +1654,7 @@ const BehaviorLibrary = {
             const checkY = actor.y + dir.dy;
 
             for (const a of entityManager.getActorsAt(checkX, checkY)) {
-                if (a.type === 'mist' || a.type === 'cloud' || a.type === 'sewer_gas' || a.type === 'smoke') {
+                if (entityManager._gasDensity(a) > 0) {
                     gasNeighbors++;
                     break;
                 }

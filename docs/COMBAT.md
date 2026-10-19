@@ -121,6 +121,7 @@ The `attack_style` attribute modifies how a weapon targets enemies. Unlike `weap
 | `"lunge"` | Attack an enemy 2 tiles away by moving through the gap |
 | `"sweep"` | Hit all adjacent enemies simultaneously |
 | `"penetrate"` | Pierce through the primary target to hit the enemy behind |
+| `"lash"` | Attack a hostile creature up to 5 tiles away in a straight line, without moving |
 
 ### Lunge
 
@@ -168,6 +169,23 @@ Before:          On attack:
 |-----------|---------|-------------|
 | `penetrate_depth` | `1` | How many extra enemies to hit behind the primary target |
 
+### Lash
+
+When the attacker moves toward an empty tile and a hostile creature stands further along the
+same straight line, within `lash_range`, the weapon strikes it and the attacker stays put
+(Brogue's whip). The first solid thing in the line decides: a hostile creature is lashed, and
+anything else (a wall, a passive deer) means an ordinary step. A chasm doesn't block the lash.
+The player only lashes creatures they can see.
+
+```
+Before:          On lash:
+@ . . . E        @ . . . E     ← E hit, player doesn't move
+```
+
+| Attribute | Default | Description |
+|-----------|---------|-------------|
+| `lash_range` | `5` | Farthest tile the lash reaches |
+
 ### Example: Rapier (lunge + critical)
 
 ```json
@@ -205,10 +223,11 @@ Remember, all actor attributes are optional, so combat still works without these
 | Attribute | Description |
 | ----------- | ------------- |
 | `weapon` | `true` — marks item as a weapon |
-| `attack_style` | Targeting style: `"lunge"`, `"sweep"`, or `"penetrate"` |
+| `attack_style` | Targeting style: `"lunge"`, `"sweep"`, `"penetrate"`, or `"lash"` |
 | `weapon_proc` | Proc type: `"knockback"`, `"lifesteal"`, or `"critical"` |
 | `lunge_range` | Lunge target distance (default `2`) |
 | `penetrate_depth` | Extra enemies hit behind target (default `1`) |
+| `lash_range` | Lash reach in tiles (default `5`) |
 | `collision_effect` | Damage dealt when weapon hits |
 | `attack_sound` | Sound played on every swing (hit or miss) |
 | `collision_sound` | Sound played on successful hit |
@@ -396,7 +415,8 @@ Miss messages are shown when attacks fail the hit roll.
    └─> tryMove() triggers applyCollisionEffects()
    
    OR: Actor moves into empty tile
-   └─> lunge: if enemy at lunge_range, attack it and move to gap
+   ├─> lunge: if enemy at lunge_range, attack it and move to gap
+   └─> lash: if a hostile creature is in line within lash_range, attack it and stay put
 
 2. Determine damage source
    ├─> Equipped weapon collision_effect (priority)

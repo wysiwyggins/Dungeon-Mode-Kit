@@ -2907,6 +2907,33 @@ class InterfaceManager {
             return;
         }
 
+        // burst_into: the item is used up where it lands and spawns that actor
+        // instead — no accuracy roll, no weapon damage (Brogue's incendiary dart).
+        // Breakable explosives with burst_into (gas potions) took the branch above.
+        // It bursts on a creature or a flammable obstruction (a tree);
+        // other walls stop it a tile short.
+        if (item.getAttribute('burst_into')) {
+            const blocker = this.engine.entityManager?.getSolidActorAt(landingPoint.x, landingPoint.y);
+            const burstsOnBlocker = !blocker || blocker.isDead ||
+                blocker.stats?.health !== undefined || blocker.hasAttribute('flammable');
+            const spot = burstsOnBlocker ? landingPoint
+                : (path.length > 1 ? path[path.length - 2] : { x: player.x, y: player.y });
+
+            if (this.isVoidLanding(spot.x, spot.y)) {
+                this.placeThrownItem(item, spot.x, spot.y);
+            } else {
+                const burstDescription = item.getAttribute('burst_description');
+                const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
+                this.engine.inputManager?.showMessage(burstDescription
+                    ? resolveTemplate(burstDescription, item, { providers: { item_name: () => displayName } })
+                    : `The ${displayName} bursts!`, { x: spot.x, y: spot.y });
+                this.burstItemAt(item, spot.x, spot.y);
+            }
+
+            this.engine.inputManager?.onPlayerAction();
+            return;
+        }
+
         if (willHit) {
             // Get the actor we're hitting
             const hitActor = this.engine.entityManager?.getActorAt(landingPoint.x, landingPoint.y);
@@ -3289,11 +3316,60 @@ class InterfaceManager {
         const entityManager = this.engine.entityManager;
         if (!entityManager) return;
 
-        // Spawn the origin cloud
+        // An item with burst_into releases that actor (caustic_gas, ...), whose
+        // own tint and effects stand. Without it, a generic cloud is built from
+        // the item's tint and use_effect — the path random-effect potions take.
+        if (item.getAttribute('burst_into')) {
+            this.burstItemAt(item, x, y);
+            return;
+        }
+
         const cloud = entityManager.spawnActor('cloud', x, y);
         if (!cloud) return;
+        this._configureGenericCloud(cloud, item);
+        this._startCloud(cloud, item, x, y);
+    }
 
-        // Set cloud properties from the item
+    /**
+     * Spawn an item's burst_into actor at (x, y): a dart's fire, a potion's gas,
+     * or any other actor. Gas is started as a spreading cloud and fire gets its
+     * burn time; anything else just appears. Consuming the item is the caller's job.
+     * @param {Item} item - The item that burst
+     * @param {number} x
+     * @param {number} y
+     * @returns {Actor|null} The spawned actor
+     */
+    burstItemAt(item, x, y) {
+        const entityManager = this.engine.entityManager;
+        const spawned = entityManager?.spawnActor(item.getAttribute('burst_into'), x, y);
+        if (!spawned) return null;
+        if (entityManager._gasDensity(spawned) > 0) this._startCloud(spawned, item, x, y);
+        if (spawned.hasAttribute('ignites')) spawned.fireLifetime = spawned.lifetime || 5;
+        return spawned;
+    }
+
+    /**
+     * Make a freshly spawned gas actor a spreading origin cloud.
+     * @param {Actor} cloud
+     * @param {Item} item - Source item; its cloud_lifetime overrides the gas's own
+     * @param {number} x
+     * @param {number} y
+     */
+    _startCloud(cloud, item, x, y) {
+        cloud.isCloudOrigin = true;
+        cloud.cloudOriginX = x;
+        cloud.cloudOriginY = y;
+        cloud.cloudLifetime = item.getAttribute('cloud_lifetime') || cloud.lifetime || 10;
+    }
+
+    /**
+     * Dress a generic `cloud` as the gas of an item with no burst_into: the
+     * item's tint, its use_effect as the cloud's collision_effect/apply_state,
+     * and cloud_flammable.
+     * @param {Actor} cloud - The freshly spawned cloud
+     * @param {Item} item - The item that released it
+     */
+    _configureGenericCloud(cloud, item) {
         cloud.tint = item.tint;
 
         // Use the item's use_effect as the cloud's collision_effect
@@ -3314,14 +3390,6 @@ class InterfaceManager {
 
         // Clouds don't burn unless the item says its gas is fuel
         if (item.getAttribute('cloud_flammable')) cloud.setAttribute('flammable', true);
-
-        // Mark as origin cloud so it spreads
-        cloud.isCloudOrigin = true;
-        cloud.cloudOriginX = x;
-        cloud.cloudOriginY = y;
-
-        // Get lifetime from item, or fall back to cloud actor's default lifetime
-        cloud.cloudLifetime = item.getAttribute('cloud_lifetime') || cloud.lifetime || 10;
 
         // Update sprite tints
         if (cloud.spriteBase) cloud.spriteBase.tint = item.tint;
@@ -3837,7 +3905,7 @@ class InterfaceManager {
         } else {
             // Animate projectile to target, then spawn effects
             this.animateSpellProjectile(item, path, () => {
-                this.completeSpell(item, caster, landingPoint, spellEffect);
+                this.completeSpell(item, caster, landingPoint, spellEffect, path);
             });
         }
     }
@@ -3923,7 +3991,7 @@ class InterfaceManager {
      * @param {Object} landingPoint - {x, y} where spell lands
      * @param {Object} spellEffect - Effect configuration {center, radius, outer}
      */
-    completeSpell(item, caster, landingPoint, spellEffect) {
+    completeSpell(item, caster, landingPoint, spellEffect, path = [landingPoint]) {
         const entityManager = this.engine.entityManager;
         if (!entityManager) return;
 
@@ -3946,6 +4014,59 @@ class InterfaceManager {
                     if (dist <= radius) {
                         entityManager.spawnActor(outerType, x + dx, y + dy);
                     }
+                }
+            }
+        }
+
+        // Fill the open ground where the bolt stopped with an actor:
+        // { "fill": "crystal", "fill_radius": 2 } (staff of obstruction). It
+        // floods from the last open tile before whatever stopped the bolt, so
+        // walls contain it, and it skips tiles a solid actor already holds.
+        if (spellEffect.fill) {
+            this.fillOpenGround(spellEffect.fill, spellEffect.fill_radius ?? 1, caster, path);
+        }
+
+        // Wand of plenty: { "clone_target": true }
+        if (spellEffect.clone_target) {
+            const target = entityManager.getSolidActorAt(x, y);
+            if (target && target !== caster && !target.isDead) {
+                const name = target.getNameWithArticle(true);
+                this.engine.inputManager?.showMessage(target.cloneSelf()
+                    ? `${name} is beside itself!` : `${name} shudders, but stays single.`, { x, y });
+            }
+        }
+
+        // Wand of polymorph: { "polymorph_target": true }
+        if (spellEffect.polymorph_target) {
+            const target = entityManager.getSolidActorAt(x, y);
+            if (target && target !== caster && !target.isDead) {
+                const name = target.getNameWithArticle(true);
+                const creature = target.polymorph();
+                this.engine.inputManager?.showMessage(creature
+                    ? `${name} turns into ${creature.getNameWithArticle(false)}!` : `${name} resists the change.`, { x, y });
+            }
+        }
+
+        // Staff of tunneling: { "tunnel": 5 } — see tunnelAlong
+        if (spellEffect.tunnel) {
+            this.tunnelAlong(caster, landingPoint, spellEffect.tunnel);
+        }
+
+        // Change the target's stats: { "target_effect": { "health": 20 } }
+        // (staff of healing). Works on friend and foe alike.
+        if (spellEffect.target_effect) {
+            const target = entityManager.getSolidActorAt(x, y);
+            if (target && target !== caster && !target.isDead && target.stats) {
+                const healthBefore = target.stats.health?.current;
+                for (const [key, value] of Object.entries(spellEffect.target_effect)) {
+                    target.modifyStat(key, value);
+                }
+                const healthAfter = target.stats.health?.current;
+                if (healthBefore !== undefined && healthAfter !== healthBefore) {
+                    const name = target.getNameWithArticle(true);
+                    this.engine.inputManager?.showMessage(healthAfter > healthBefore
+                        ? `${name} looks healthier.` : `${name} is hurt.`, { x: target.x, y: target.y });
+                    if (healthAfter <= 0) target.die();
                 }
             }
         }
@@ -4061,6 +4182,86 @@ class InterfaceManager {
 
         // This counts as a player action
         this.engine.inputManager?.onPlayerAction();
+    }
+
+    /**
+     * Staff of tunneling (Brogue): bore `distance` tiles from the caster toward
+     * `toward`, reducing every breakable obstruction on the line to rubble. The
+     * bolt passes creatures (anything with health) harmlessly and stops at the
+     * first solid thing that can't break, like a metal wall. Cleared cells get
+     * floor and new walls round their edges, as the scroll of shattering does.
+     * @param {Actor} caster
+     * @param {{x: number, y: number}} toward - Where the bolt was aimed
+     * @param {number} distance - Reach in tiles
+     */
+    tunnelAlong(caster, toward, distance) {
+        const entityManager = this.engine.entityManager;
+        const dx = toward.x - caster.x;
+        const dy = toward.y - caster.y;
+        const span = Math.max(Math.abs(dx), Math.abs(dy));
+        if (span === 0) return;
+        const scale = distance / span;
+        const line = getLinePath(caster.x, caster.y,
+            Math.round(caster.x + dx * scale), Math.round(caster.y + dy * scale)).slice(1);
+
+        const cleared = [];
+        for (const cell of line) {
+            if (getChebyshevDistance(caster.x, caster.y, cell.x, cell.y) > distance) break;
+            const blocker = entityManager.getSolidActorAt(cell.x, cell.y);
+            if (!blocker || blocker.isDead || blocker.stats?.health !== undefined) continue;
+            if (!blocker.hasAttribute('breakable')) break;
+            blocker.die();
+            cleared.push(cell);
+        }
+
+        if (cleared.length === 0) {
+            this.engine.inputManager?.showMessage('The bolt splashes harmlessly against the stone.');
+            return;
+        }
+        entityManager.revealDugArea(cleared);
+        this.engine.renderer?.effectRunner?.apply('shatter', caster);
+    }
+
+    /**
+     * Spawn `actorId` over the open ground where a bolt stopped: a flood from the
+     * last tile on the path with no solid actor, out to `radius`, through floor
+     * tiles no solid actor holds. Walls and creatures stop the flood rather than
+     * being filled over.
+     * @param {string} actorId - Actor to spawn on each tile
+     * @param {number} radius - Euclidean reach from the center
+     * @param {Actor} caster - Never filled over
+     * @param {Array<{x: number, y: number}>} path - The bolt's path, caster excluded
+     */
+    fillOpenGround(actorId, radius, caster, path) {
+        const entityManager = this.engine.entityManager;
+        const floorMap = this.engine.mapManager?.floorMap;
+        const isOpen = (x, y) => {
+            if (x === caster.x && y === caster.y) return false;
+            const tile = floorMap?.[y]?.[x];
+            return !!tile && tile.tileId > 0 && !entityManager.getSolidActorAt(x, y);
+        };
+
+        let center = null;
+        for (let i = path.length - 1; i >= 0 && !center; i--) {
+            if (isOpen(path[i].x, path[i].y)) center = path[i];
+        }
+        if (!center) return;
+
+        const seen = new Set([`${center.x},${center.y}`]);
+        const queue = [center];
+        while (queue.length > 0) {
+            const { x, y } = queue.shift();
+            entityManager.spawnActor(actorId, x, y);
+            for (const dir of ALL_DIRS) {
+                const nx = x + dir.dx;
+                const ny = y + dir.dy;
+                const key = `${nx},${ny}`;
+                if (seen.has(key)) continue;
+                seen.add(key);
+                if (Math.hypot(nx - center.x, ny - center.y) > radius || !isOpen(nx, ny)) continue;
+                queue.push({ x: nx, y: ny });
+            }
+        }
     }
 
     /**

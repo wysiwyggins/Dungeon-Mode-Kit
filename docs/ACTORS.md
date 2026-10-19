@@ -299,7 +299,7 @@ scramble, so those states have nothing to act on.
 
 | Kind | Requires | Identified by |
 | ---- | -------- | ------------- |
-| **Mind-states** — change how the holder takes turns | `sentient` or `controlled` | `skip_turn`, `skip_turn_chance`, `skip_every_other_turn`, `extra_turn`, `random_movement`, `hallucinating`, `player_only` |
+| **Mind-states** — change how the holder takes turns | `sentient` or `controlled` | `skip_turn`, `skip_turn_chance`, `skip_every_other_turn`, `extra_turn`, `random_movement`, `discordant`, `hallucinating`, `player_only` |
 | **Player-perception states** | `controlled` | `player_only` or `hallucinating` |
 
 Call `applyState()` to affect whatever is there, or `applyCreatureState()` where the caller
@@ -338,6 +338,7 @@ Any of these makes it a mind-state.
 | `skip_every_other_turn` | boolean | Loses alternate turns. |
 | `extra_turn` | boolean | Acts twice per round. |
 | `random_movement` | boolean | Movement direction is randomized. |
+| `discordant` | boolean | Everyone is its enemy and it is everyone's, regardless of faction (Brogue's discord). It attacks whatever is adjacent or closes on the nearest creature it can see, and its allies turn on it. Falls back to its normal behaviors when nobody is in sight. The `discordant` state, from the staff and scroll of discord. |
 | `skip_turn_chance` | number | 0–1 chance per turn of losing the turn. See below. |
 
 #### Granted traits
@@ -608,6 +609,7 @@ applying `stuck`), use `apply_state` with the `apply_state_on_tile` behavior.
 | Attribute / Field | Type | Description |
 | ------------------- | ------ | ------------- |
 | `splits` | boolean | Actor splits into copies when damaged. |
+| `no_polymorph` | boolean | A wand of polymorph can't change this actor, and nothing turns into it. Polymorph draws from `sentient` actors with health and a personality, so set this on any that only work in their own setting: chain segments, water-bound eels, illusions. |
 | `split_min_health` | number | Health floor below which the actor stops splitting (default `2`). |
 | `split_into` | string | Actor type spawned for each split-off piece. |
 | `split_sound` | string | Sound played on split. |
@@ -657,7 +659,27 @@ area effect** — set one style or the other.
 "lifetime": 5
 ```
 
-The actor automatically expires after this many turns (no remains spawned). Used for fire, clouds, and temporary effects.
+The actor expires after this many turns, counted down by a behavior: `fire_burn_out` for fire,
+`cloud_lifetime` for gas, and `expire` for anything else temporary (the `dissolving` personality,
+used by conjured `crystal`). An actor without one of those behaviors never expires.
+
+### Opening the Floor
+
+A gas actor with `opens_floor: true` (`descent_vapor`) opens a temporary hole in the ground
+under itself, each turn and whenever something steps in. The floor tile is hidden and the cell
+is shaded as a pit (the same cliff shading `addBaseAndShadows` gives an abyss), and creatures
+and items on it fall to the floor below. From then on it's ordinary void: walking in drops you,
+thrown items fall through, and pathing avoids it. The hole stays open `hole_turns` player
+actions (default `3`) after the vapor last touched it, then the original tiles come back.
+
+- Only bare ground opens. A tile holding anything but creatures and gas (stairs, liquid,
+  decorations, traps) keeps its floor.
+- Fliers hover over it.
+- On the bottom floor it does nothing, so it can't drop anyone into the void.
+- Holes are filled back in before a floor is saved, so leaving and returning finds the ground
+  whole.
+
+Give the gas `damage_type: "fall"` too, so monsters route around it before the hole opens.
 
 ### Ward Gas
 
@@ -847,8 +869,9 @@ Movement behaviors route around hazards: any tile holding a live actor with a `d
 | `fire_smoke` | Emit a smoke cloud when surrounded by enough fire (cellular automata). | `smoke_type`, `smoke_threshold`, `smoke_chance`, `smoke_cap`, `smoke_lifetime`, `check_cardinal` |
 | `cloud_spread` | Expand cloud to adjacent tiles. | `spread_radius`, `spread_turns` |
 | `cloud_disperse` | Edge clouds disperse into mist. | `disperse_to`, `disperse_threshold`, `disperse_chance` |
-| `cloud_affect_actors` | Apply cloud's collision_effect/apply_state to actors in tile. | — |
+| `cloud_affect_actors` | Apply cloud's collision_effect/apply_state to actors in tile, and drop them a floor if it `opens_floor`. | — |
 | `cloud_lifetime` | Countdown and remove cloud. | — |
+| `expire` | Countdown `lifetime` (default 10) and remove the actor. For temporary actors that aren't gas or fire. | — |
 | `merge_clouds` | Collapse gas sharing this tile into a single actor with two density levels — cloud absorbs everything, two or more mists concentrate into one cloud. Unlike `avoid_crowding` (which moves same-type actors apart), this merges them. Consumes the turn only when this actor is the one absorbed. | — |
 | `mist_fade` | Isolated mist fades away. | `fade_threshold`, `fade_chance` |
 | `incinerate_entities` | Destroy items/actors on lava. | `spawn_on_incinerate` |

@@ -54,6 +54,16 @@
     "on_remove_message": "[actor_name] is no longer confused."
   },
 
+  "discordant": {
+    "name": "Discordant",
+    "duration": 10,
+    "tint": "#cc44aa",
+    "discordant": true,
+    "effect_description": "Everyone looks like an enemy",
+    "on_apply_message": "[actor_name] turns on its companions!",
+    "on_remove_message": "[actor_name] is no longer discordant."
+  },
+
   "hasted": {
     "name": "Hasted",
     "duration": 20,

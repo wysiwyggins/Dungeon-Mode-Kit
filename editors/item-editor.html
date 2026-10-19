@@ -229,6 +229,14 @@
                     <label>Break Chance (%)</label>
                     <input type="number" id="f-break_chance" min="0" max="100" value="" placeholder="chance to break on a hit">
                 </div>
+                <div class="field-row">
+                    <label>Burst Into</label>
+                    <input type="text" id="f-burst_into" placeholder="actor id spawned where it lands (fire)">
+                </div>
+                <div class="field-row">
+                    <label>Burst Message</label>
+                    <input type="text" id="f-burst_description" placeholder="The [item_name] bursts into flame!">
+                </div>
             </div>
         </details>
 
@@ -1257,7 +1265,7 @@ function clearForm() {
     document.getElementById('f-weapon_proc').value = '';
     document.getElementById('f-knockback_distance').value = '';
     document.getElementById('f-critical_chance').value = '';
-    for (const id of ['launches', 'launch_multiplier', 'launch_range', 'launch_accuracy', 'launch_sound', 'break_chance']) {
+    for (const id of ['launches', 'launch_multiplier', 'launch_range', 'launch_accuracy', 'launch_sound', 'break_chance', 'burst_into', 'burst_description']) {
         document.getElementById('f-' + id).value = '';
     }
 
@@ -1391,7 +1399,7 @@ function populateForm(key, data) {
     if (attrs.knockback_distance) document.getElementById('f-knockback_distance').value = attrs.knockback_distance;
     if (attrs.critical_chance) document.getElementById('f-critical_chance').value = attrs.critical_chance;
     if (attrs.launches) document.getElementById('f-launches').value = [attrs.launches].flat().join(', ');
-    for (const id of ['launch_multiplier', 'launch_range', 'launch_accuracy', 'launch_sound', 'break_chance']) {
+    for (const id of ['launch_multiplier', 'launch_range', 'launch_accuracy', 'launch_sound', 'break_chance', 'burst_into', 'burst_description']) {
         if (attrs[id] !== undefined) document.getElementById('f-' + id).value = attrs[id];
     }
 
@@ -1473,6 +1481,7 @@ function populateForm(key, data) {
         'attack_sound', 'attack_style', 'lunge_range', 'sweep_depth', 'penetrate_depth',
         'weapon_proc', 'knockback_distance', 'critical_chance',
         'launches', 'launch_multiplier', 'launch_range', 'launch_accuracy', 'launch_sound', 'break_chance',
+        'burst_into', 'burst_description',
         'wearable', 'wear_effect', 'requires_stat', 'enchantable', 'enchant_range',
         'use_verb', 'use_effect', 'use_sound', 'use_ceremony',
         'charge_stat', 'uses', 'spell_range', 'spell_name', 'cast_sound',
@@ -1620,8 +1629,10 @@ function readForm() {
         const v = parseFloat(document.getElementById('f-' + id).value);
         if (!isNaN(v)) attrs[id] = v;
     }
-    const ls = document.getElementById('f-launch_sound').value.trim();
-    if (ls) attrs.launch_sound = ls;
+    for (const id of ['launch_sound', 'burst_into', 'burst_description']) {
+        const v = document.getElementById('f-' + id).value.trim();
+        if (v) attrs[id] = v;
+    }
 
     // Equipment
     const wearable = document.getElementById('f-wearable').value;

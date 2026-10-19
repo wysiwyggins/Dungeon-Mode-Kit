@@ -6061,7 +6061,7 @@ class Architect {
      * to make it look like there are hard diagonal shadows on cliff faces.
      * 
      **/
-    addBaseAndShadows() {
+    addBaseAndShadows(bounds = null) {
         // The three tile values live in globalVars (globals.js)
         const SHADE = globalVars.VOID_SHADE;
         const DIAGONAL = globalVars.VOID_DIAGONAL;
@@ -6118,7 +6118,7 @@ class Architect {
                     return null;
                 }
             }
-        ]);
+        ], bounds ? { bounds } : {});
     }
 
     // ========================================================================

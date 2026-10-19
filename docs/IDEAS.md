@@ -5,7 +5,8 @@
 
 ## Tweaks
 
-- when we pick a prototype in an editor it should narrow the options in the next dropdown down to the ones in that prototype since there are so many in default /data/ (should it? prototypes also load default data. Maybe the answer is to have less default actors etc and rely more on types as defaults and specifics in prototypes)
+- There should be description messages for equipping and unequipping weapons and wearables
+- There are a lot of items and actors in default data. Always be looking for opportunities to create types in data and move specific data to prototypes so that designers aren't overwhelmed by default actors and items.
 - **`flicker_tint` (the effect) vs `tint_flicker` (the primitive)** — the words are reversed between the two layers, which is genuinely confusing when reading `effects.json`. Renaming either breaks data or code, so left alone for now.
 - Tiled.app tile layers have a tint color property, it would be cool if we could use it for picking floor tile tints in Tiled too. Currently we do this in the prototype editor.
 

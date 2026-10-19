@@ -2431,6 +2431,7 @@ class InputManager {
         }
 
         this.passiveSearch(player);
+        this.engine.entityManager?.tickTemporaryHoles();
 
         // Called after player takes an action - defer AI turns to next animation frame
         // so PIXI renders the player's move (with updated FOV) before enemies respond

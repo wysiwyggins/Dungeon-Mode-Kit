@@ -229,6 +229,12 @@
   },
   "cloud_behavior": { "$alias": "cloud" },
 
+  "dissolving": {
+    "name": "Dissolving",
+    "hostile": false,
+    "behaviors": ["expire"]
+  },
+
   "mist": {
     "name": "Mist",
     "hostile": false,

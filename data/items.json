@@ -216,6 +216,45 @@
     }
   },
 
+  "broadsword": {
+    "type": "weapon",
+    "name": "broadsword",
+    "tileIndex": "CROSS",
+    "tint": "#B0B8C8",
+    "flipV": true,
+    "attributes": {
+      "flammable": false,
+      "requires_stat": {
+        "strength": 6
+      },
+      "collision_effect": {
+        "health": -14
+      },
+      "collision_description": "[actor_name] [attacks.melee_verbs] the [attacked_actor_name] with [a-an] [weapon_name]!",
+      "wear_effect": {
+        "accuracy": "{strength}"
+      },
+      "enchant_range": [-2, 3],
+      "description": "[damage] damage. A towering blade that puts its heft into every cut. Requires strength 6."
+    }
+  },
+
+  "whip": {
+    "type": "weapon",
+    "name": "whip",
+    "tileIndex": "LATIN_SMALL_LETTER_S",
+    "tint": "#A0703C",
+    "attributes": {
+      "attack_style": "lash",
+      "lash_range": 5,
+      "collision_effect": {
+        "health": -4
+      },
+      "collision_description": "[actor_name] lashes [attacked_actor_name] with [a-an] [weapon_name]!",
+      "description": "[damage] damage. Lashes hostile creatures up to 5 tiles away in a straight line."
+    }
+  },
+
   "bow": {
     "type": "weapon",
     "name": "bow",
@@ -275,22 +314,6 @@
     }
   },
 
-  "arrow": {
-    "name": "arrow",
-    "tileIndex": "RIGHTWARDS_ARROW",
-    "attributes": {
-      "pickupable": true,
-      "visible": true,
-      "stackable": true,
-      "flammable": true,
-      "collision_effect": {
-        "health": -10
-      },
-      "collision_sound": "tap2",
-      "description": "A straight wooden arrow with a cruel point."
-    }
-  },
-
   "spike": {
     "name": "spike",
     "tileIndex": "UPWARDS_ARROW",
@@ -327,6 +350,39 @@
       "collision_sound": "arrow_hit",
       "break_chance": 35,
       "description": "A fletched arrow. Fire it from a bow."
+    }
+  },
+
+  "javelin": {
+    "name": "javelin",
+    "tileIndex": "WHITE_LEFTWARDS_HARPOON_BARB_UPWARDS",
+    "tint": "#A89B88",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": true,
+      "flammable": false,
+      "collision_effect": {
+        "health": -9
+      },
+      "collision_sound": "arrow_hit",
+      "break_chance": 10,
+      "description": "A weighted throwing spear. [damage] damage when thrown."
+    }
+  },
+
+  "incendiary_dart": {
+    "name": "incendiary dart",
+    "tileIndex": "WHITE_UPWARDS_ARROW",
+    "tint": "#FF7A1A",
+    "attributes": {
+      "pickupable": true,
+      "visible": true,
+      "stackable": true,
+      "flammable": false,
+      "burst_into": "fire",
+      "burst_description": "The [item_name] bursts into flame!",
+      "description": "A barbed dart strapped with volatile compounds. Bursts into flame wherever it lands."
     }
   },
 
@@ -584,9 +640,43 @@
         "strength": 8
       },
       "wear_effect": {
-        "defense": 10
+        "defense": 12
       },
       "description": "[defense] defense. Requires strength 8 to wear."
+    }
+  },
+
+  "banded_mail": {
+    "type": "armor",
+    "name": "banded mail",
+    "tileIndex": "WHITE_GREAVES",
+    "tint": "#6A6A9A",
+    "attributes": {
+      "wearable": "lower",
+      "requires_stat": {
+        "strength": 6
+      },
+      "wear_effect": {
+        "defense": 9
+      },
+      "description": "[defense] defense. Metal bands over a chain base. Requires strength 6."
+    }
+  },
+
+  "splint_mail": {
+    "type": "armor",
+    "name": "splint mail",
+    "tileIndex": "WHITE_GREAVES",
+    "tint": "#7A7068",
+    "attributes": {
+      "wearable": "lower",
+      "requires_stat": {
+        "strength": 7
+      },
+      "wear_effect": {
+        "defense": 10
+      },
+      "description": "[defense] defense. Thick plates set in a chain base. Requires strength 7."
     }
   },
 
@@ -790,6 +880,140 @@
     }
   },
 
+  "staff_of_haste_other": {
+    "type": "staff",
+    "name": "staff of haste other",
+    "tint": "#FFDD44",
+    "identified_template": "Staff of Haste Other",
+    "stats": {
+      "pow": {
+        "max": 800,
+        "start": 800,
+        "per_turn": 1,
+        "ready_message": "Your [item_name] is fully charged!"
+      }
+    },
+    "attributes": {
+      "uses": 2,
+      "spell_effect": {
+        "apply_state": "hasted"
+      },
+      "projectile_tile": "OPAQUE_WHITE_DIAMOND_SUITE",
+      "projectile_tint": "#FFDD44",
+      "spell_name": "Haste Other",
+      "cast_sound": "magic",
+      "description": "Speeds up whatever it strikes. Best aimed at an ally."
+    }
+  },
+
+  "staff_of_discord": {
+    "type": "staff",
+    "name": "staff of discord",
+    "tint": "#CC44AA",
+    "identified_template": "Staff of Discord",
+    "stats": {
+      "pow": {
+        "max": 800,
+        "start": 800,
+        "per_turn": 1,
+        "ready_message": "Your [item_name] is fully charged!"
+      }
+    },
+    "attributes": {
+      "uses": 2,
+      "spell_effect": {
+        "apply_state": "discordant"
+      },
+      "projectile_tile": "OPAQUE_WHITE_DIAMOND_SUITE",
+      "projectile_tint": "#CC44AA",
+      "spell_name": "Discord",
+      "cast_sound": "magic",
+      "description": "The struck creature lashes out at anything near it, and its allies turn on it."
+    }
+  },
+
+  "staff_of_healing": {
+    "type": "staff",
+    "name": "staff of healing",
+    "tint": "#FF8899",
+    "identified_template": "Staff of Healing",
+    "stats": {
+      "pow": {
+        "max": 800,
+        "start": 800,
+        "per_turn": 1,
+        "ready_message": "Your [item_name] is fully charged!"
+      }
+    },
+    "attributes": {
+      "uses": 2,
+      "spell_effect": {
+        "target_effect": {
+          "health": 15
+        }
+      },
+      "projectile_tile": "OPAQUE_WHITE_DIAMOND_SUITE",
+      "projectile_tint": "#FF8899",
+      "spell_name": "Healing",
+      "cast_sound": "magic",
+      "description": "Heals whatever it strikes, friend or foe."
+    }
+  },
+
+  "staff_of_obstruction": {
+    "type": "staff",
+    "name": "staff of obstruction",
+    "tint": "#44DD66",
+    "identified_template": "Staff of Obstruction",
+    "stats": {
+      "pow": {
+        "max": 800,
+        "start": 800,
+        "per_turn": 1,
+        "ready_message": "Your [item_name] is fully charged!"
+      }
+    },
+    "attributes": {
+      "uses": 2,
+      "spell_effect": {
+        "fill": "crystal",
+        "fill_radius": 1.5
+      },
+      "projectile_tile": "OPAQUE_WHITE_DIAMOND_SUITE",
+      "projectile_tint": "#44DD66",
+      "spell_name": "Obstruction",
+      "cast_sound": "magic",
+      "description": "Conjures a mass of green crystal where the bolt stops. Nothing passes through it until it melts."
+    }
+  },
+
+  "staff_of_tunneling": {
+    "type": "staff",
+    "name": "staff of tunneling",
+    "tint": "#BB9966",
+    "identified_template": "Staff of Tunneling",
+    "stats": {
+      "pow": {
+        "max": 800,
+        "start": 800,
+        "per_turn": 1,
+        "ready_message": "Your [item_name] is fully charged!"
+      }
+    },
+    "attributes": {
+      "uses": 2,
+      "spell_effect": {
+        "tunnel": 5
+      },
+      "target_filter": ["tile"],
+      "projectile_tile": "OPAQUE_WHITE_DIAMOND_SUITE",
+      "projectile_tint": "#BB9966",
+      "spell_name": "Tunneling",
+      "cast_sound": "magic",
+      "description": "Bores through up to 5 tiles of breakable wall, passing harmlessly through creatures."
+    }
+  },
+
   "staff_of_blinking": {
     "type": "staff",
     "name": "staff of blinking",
@@ -826,10 +1050,25 @@
       "flammable": true,
       "explosive": true,
       "explode_sound": "gas",
+      "burst_into": "poison_gas",
       "use_effect": {
         "apply_state": "poisoned"
       },
       "description": "Inflicts a lingering poison."
+    }
+  },
+
+  "caustic_potion": {
+    "type": "potion",
+    "identified_template": "Potion of Caustic Gas",
+    "use_description": "Caustic gas billows out of the flask!",
+    "attributes": {
+      "flammable": true,
+      "explosive": true,
+      "explode_sound": "gas",
+      "use_at_self": true,
+      "burst_into": "caustic_gas",
+      "description": "Releases a cloud of caustic gas that eats at anything standing in it. The gas is flammable."
     }
   },
 
@@ -842,6 +1081,7 @@
       "flammable": true,
       "explosive": true,
       "explode_sound": "gas",
+      "burst_into": "confusion_gas",
       "use_effect": {
         "apply_state": {
           "state": "confused",
@@ -860,6 +1100,7 @@
     "attributes": {
       "explosive": true,
       "explode_sound": "gas",
+      "burst_into": "haste_gas",
       "use_effect": {
         "apply_state": "hasted"
       },
@@ -876,6 +1117,7 @@
       "flammable": true,
       "explosive": true,
       "explode_sound": "gas",
+      "burst_into": "paralysis_gas",
       "use_effect": {
         "apply_state": "paralyzed"
       },
@@ -891,6 +1133,7 @@
     "attributes": {
       "explosive": true,
       "explode_sound": "gas",
+      "burst_into": "regeneration_gas",
       "use_effect": {
         "apply_state": "regenerating"
       },
@@ -934,6 +1177,7 @@
     "attributes": {
       "explosive": true,
       "explode_sound": "gas",
+      "burst_into": "levitation_gas",
       "use_effect": {
         "apply_state": "flying"
       },
@@ -976,6 +1220,7 @@
       "flammable": true,
       "explosive": true,
       "explode_sound": "gas",
+      "burst_into": "slowness_gas",
       "use_effect": {
         "apply_state": "slowed"
       },
@@ -993,6 +1238,34 @@
         "apply_state": "telepathic"
       },
       "description": "Reveals nearby creatures through walls."
+    }
+  },
+
+  "life_potion": {
+    "type": "potion",
+    "identified_template": "Potion of Life",
+    "effect_description": "You feel more alive than ever",
+    "use_description": "A swirling warmth floods through you, mending every wound.",
+    "attributes": {
+      "use_effect": {
+        "health_max": 10,
+        "health": "max",
+        "remove_all_states": true
+      },
+      "description": "Heals you fully, cures every condition, and permanently raises your maximum health."
+    }
+  },
+
+  "descent_potion": {
+    "type": "potion",
+    "identified_template": "Potion of Descent",
+    "use_description": "Vapor pours out of the flask and the floor disappears!",
+    "attributes": {
+      "explosive": true,
+      "explode_sound": "gas",
+      "use_at_self": true,
+      "burst_into": "descent_vapor",
+      "description": "Releases a vapor that makes the ground vanish for a while. Whatever stands in it drops to the floor below."
     }
   },
 
@@ -1069,7 +1342,8 @@
     "attributes": {
       "use_effect": {
         "apply_state_radius": {
-          "state": "confused",
+          "state": "discordant",
+          "duration": 30,
           "radius": 5,
           "filter": "hostile",
           "message": "A wave of discord washes over nearby creatures!",
@@ -1112,6 +1386,16 @@
     "effect_description": "A cleansing light washes over your equipment.",
     "attributes": {
       "use_effect": "remove_curse"
+    }
+  },
+
+  "scroll_of_protection": {
+    "type": "scroll",
+    "identified_template": "Scroll of Protection",
+    "effect_description": "A protective sheen spreads from the page.",
+    "attributes": {
+      "use_effect": "protect_item",
+      "deferred": true
     }
   },
 
@@ -1246,6 +1530,18 @@
     }
   },
 
+  "ring_of_wisdom": {
+    "type": "ring",
+    "identified_template": "Ring of Wisdom",
+    "effect_description": "Your staffs hum with energy",
+    "attributes": {
+      "wear_effect": {
+        "recharge_bonus": 1
+      },
+      "description": "Your staffs recharge faster while it is worn. A cursed one slows them."
+    }
+  },
+
   "wand_of_slowness": {
     "type": "wand",
     "tint": "#8888FF",
@@ -1299,6 +1595,48 @@
       },
       "projectile_tint": "#FFAA00",
       "spell_name": "Beckoning"
+    }
+  },
+
+  "wand_of_invisibility": {
+    "type": "wand",
+    "tint": "#AAAAAA",
+    "identified_template": "Wand of Invisibility",
+    "effect_description": "The target fades from sight.",
+    "attributes": {
+      "spell_effect": {
+        "apply_state": "invisible"
+      },
+      "projectile_tint": "#AAAAAA",
+      "spell_name": "Invisibility"
+    }
+  },
+
+  "wand_of_plenty": {
+    "type": "wand",
+    "tint": "#66DD88",
+    "identified_template": "Wand of Plenty",
+    "effect_description": "The target is beside itself — literally.",
+    "attributes": {
+      "spell_effect": {
+        "clone_target": true
+      },
+      "projectile_tint": "#66DD88",
+      "spell_name": "Plenty"
+    }
+  },
+
+  "wand_of_polymorph": {
+    "type": "wand",
+    "tint": "#DD66DD",
+    "identified_template": "Wand of Polymorph",
+    "effect_description": "The target twists into another creature entirely.",
+    "attributes": {
+      "spell_effect": {
+        "polymorph_target": true
+      },
+      "projectile_tint": "#DD66DD",
+      "spell_name": "Polymorph"
     }
   },
 

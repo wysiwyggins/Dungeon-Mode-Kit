@@ -3847,6 +3847,9 @@ class DungeonEngine {
     async transitionToFloor(targetFloor, entryDirection) {
         console.log(`Transitioning from floor ${this.currentFloor} to floor ${targetFloor}`);
 
+        // Fill descent holes back in first, so the saved floor keeps its ground
+        this.entityManager?.closeAllTemporaryHoles();
+
         // Save current floor state
         this.saveFloorState();
 
@@ -3865,6 +3868,12 @@ class DungeonEngine {
             // Load fresh floor
             await this.loadFloor(targetFloor, entryDirection, playerState);
         }
+    }
+
+    /** Whether there's a floor below this one to fall to. */
+    hasFloorBelow() {
+        const totalFloors = this.getTotalFloors();
+        return totalFloors > 1 && this.currentFloor < totalFloors;
     }
 
     async fallToNextFloor(actor, cause = 'void') {
@@ -5136,8 +5145,15 @@ class Item extends Entity {
         for (const [statName, stat] of Object.entries(this.stats)) {
             if (typeof stat !== 'object' || stat.per_turn === undefined) continue;
 
-            const perTurn = stat.per_turn;
+            let perTurn = stat.per_turn;
             if (perTurn === 0) continue;
+
+            // A carried staff recharges faster or slower with its owner's
+            // recharge_bonus (ring of wisdom). Only recharging counts, not decay.
+            if (perTurn > 0 && statName === this.getAttribute('charge_stat')
+                && this.owner?.inventory?.includes(this)) {
+                perTurn *= this.owner.getRechargeMultiplier?.() ?? 1;
+            }
 
             const oldValue = stat.current;
             stat.current = Math.min(stat.max, Math.max(0, stat.current + perTurn));
@@ -5630,7 +5646,7 @@ class Actor extends Entity {
      */
     static MIND_STATE_PROPERTIES = [
         'skip_turn', 'skip_turn_chance', 'skip_every_other_turn', 'extra_turn',
-        'random_movement', 'hallucinating', 'player_only'
+        'random_movement', 'discordant', 'hallucinating', 'player_only'
     ];
 
     constructor(x, y, type, data, engine) {
@@ -7903,6 +7919,15 @@ class Actor extends Entity {
     }
 
     /**
+     * Whether a state has turned this actor against everyone (staff/scroll of
+     * discord). See isEnemyOf and Personality.execute.
+     * @returns {boolean}
+     */
+    isDiscordant() {
+        return this.hasStateProperty('discordant');
+    }
+
+    /**
      * Chance to break free of every `stuck` state this turn. Only the states doing
      * the holding are consulted, and the hardest of them governs, so escaping a web
      * doesn't also lift you out of the quicksand it was strung over.
@@ -8638,6 +8663,9 @@ class Actor extends Entity {
             case 'penetrate':
                 if (actorAtTarget) return this._stylePenetrate(newX, newY, dx, dy, actorAtTarget, weapon);
                 return { handled: false };
+            case 'lash':
+                if (!actorAtTarget) return this._styleLash(dx, dy, weapon);
+                return { handled: false };
             default:
                 return { handled: false };
         }
@@ -8663,6 +8691,105 @@ class Actor extends Entity {
         // Return unhandled so tryMove proceeds with normal movement to the gap tile
         // (which handles viewport, lighting, item pickup, doors, etc.)
         return { handled: false };
+    }
+
+    /**
+     * Whip (Brogue): moving toward a hostile creature in a straight, clear line
+     * within `lash_range` tiles (default 5) lashes it instead of moving. Anything
+     * solid in between blocks the lash; a chasm doesn't. Only hostile creatures
+     * count, so walking toward a deer still walks.
+     */
+    _styleLash(dx, dy, weapon) {
+        const range = weapon.getAttribute('lash_range') ?? 5;
+        const entityManager = this.engine.entityManager;
+        for (let step = 2; step <= range; step++) {
+            const x = this.x + dx * step;
+            const y = this.y + dy * step;
+            const target = entityManager.getSolidActorAt(x, y);
+            if (!target || target.isDead) {
+                if (entityManager.getSightBlockerAt(x, y)) return { handled: false };
+                continue;
+            }
+            const hostile = target.personality?.hostile || target.hasAttribute('hostile') || target.isDiscordant?.();
+            if (target.stats?.health === undefined || !hostile) return { handled: false };
+            if (this.isPlayerControlled() && !this.engine.isTileVisible(x, y)) return { handled: false };
+
+            if (dx > 0) this.setFacing('right');
+            else if (dx < 0) this.setFacing('left');
+            this.applyCollisionEffects(target);
+            return { handled: true, moved: false, actionTaken: true };
+        }
+        return { handled: false };
+    }
+
+    /**
+     * Wand of plenty (Brogue): a copy of this creature appears beside it, and the
+     * two split its current health. The copy carries nothing, so plenty can't
+     * duplicate loot. Fails on the player, chain creatures, anything without
+     * health, or when no adjacent tile is free.
+     * @returns {Actor|null} The copy
+     */
+    cloneSelf() {
+        const health = this.stats?.health;
+        if (this.isPlayerControlled() || this._chainHead || !health || typeof health.current !== 'number') return null;
+        const pos = findAdjacentWalkable(this, this.engine.entityManager);
+        if (!pos) return null;
+
+        const copy = this.engine.entityManager.spawnActor(this.type, pos.x, pos.y);
+        if (!copy) return null;
+        copy.inventory = [];
+        health.current = Math.ceil(health.current / 2);
+        if (copy.stats?.health) {
+            copy.stats.health.max = health.max;
+            copy.stats.health.current = health.current;
+        }
+        this.flash?.();
+        copy.flash?.();
+        this.engine.interfaceManager?.updateSidebar?.();
+        return copy;
+    }
+
+    /**
+     * Wand of polymorph (Brogue): become a random other creature in place — any
+     * `sentient` actor with health and a personality that isn't the player or
+     * `no_polymorph`. Keeps whichever leaves more health: the same fraction of the
+     * new maximum, or the new maximum less the damage already taken. Carried
+     * items come along.
+     * @returns {Actor|null} The new creature
+     */
+    polymorph() {
+        if (this.isPlayerControlled() || this._chainHead || this.hasAttribute('no_polymorph')) return null;
+        const health = this.stats?.health;
+        if (!health || typeof health.current !== 'number') return null;
+
+        const proto = this.engine.currentPrototype;
+        const candidates = Object.keys(proto.actors).filter(id => {
+            if (id === this.type) return false;
+            const def = proto.getActorData(id);
+            const attrs = def?.attributes || {};
+            return def?.personality && def.stats?.health !== undefined && attrs.sentient
+                && !attrs.controlled && !attrs.no_polymorph;
+        });
+        if (candidates.length === 0) return null;
+
+        const newType = candidates[Math.floor(ROT.RNG.getUniform() * candidates.length)];
+        const fraction = health.current / health.max;
+        const damageTaken = health.max - health.current;
+        const { x, y } = this;
+        const inventory = this.inventory;
+        this.isDead = true;
+        this.engine.entityManager.removeEntity(this);
+
+        const creature = this.engine.entityManager.spawnActor(newType, x, y);
+        if (!creature) return null;
+        const newHealth = creature.stats?.health;
+        if (newHealth) {
+            newHealth.current = Math.max(1, Math.round(fraction * newHealth.max), newHealth.max - damageTaken);
+        }
+        if (inventory?.length) creature.inventory = inventory;
+        creature.flash?.();
+        this.engine.interfaceManager?.updateSidebar?.();
+        return creature;
     }
 
     _styleSweep(newX, newY, weapon) {
@@ -9216,7 +9343,42 @@ class Actor extends Entity {
             console.log('Effect is an object, processing as stat modifiers');
             let anyModified = false;
             let shouldDie = false;
-            for (const [key, amount] of Object.entries(effect)) {
+            // `<stat>_max` keys go first, so { "health_max": 10, "health": "max" }
+            // heals to the raised maximum whatever order the keys are written in.
+            const entries = Object.entries(effect).sort(
+                ([a], [b]) => Number(b.endsWith('_max')) - Number(a.endsWith('_max')));
+            for (let [key, amount] of entries) {
+                // Raise (or lower) a stat's maximum, moving the current value with it:
+                // { "health_max": 10 } (Brogue's potion of life)
+                if (key.endsWith('_max')) {
+                    const stat = this.stats?.[key.slice(0, -4)];
+                    if (stat && typeof stat === 'object' && stat.max !== undefined && typeof amount === 'number') {
+                        stat.max = Math.max(1, stat.max + amount);
+                        stat.current = Math.max(0, Math.min(stat.max, stat.current + amount));
+                        anyModified = true;
+                        if (this.isPlayerControlled()) this.engine.interfaceManager?.updatePlayerInfo();
+                        continue;
+                    }
+                }
+
+                // "max" fills a stat to its maximum: { "health": "max" }
+                if (amount === 'max') {
+                    const stat = this.stats?.[key];
+                    if (!stat || typeof stat !== 'object' || stat.max === undefined) continue;
+                    amount = stat.max - stat.current;
+                }
+
+                // Clear every state on the user: { "remove_all_states": true }
+                if (key === 'remove_all_states') {
+                    if (amount) {
+                        for (const name of Object.keys(this.states)) {
+                            this.removeState(name);
+                            anyModified = true;
+                        }
+                    }
+                    continue;
+                }
+
                 // Handle state application (to self)
                 if (key === 'apply_state') {
                     if (this.applyAuthoredState(amount)) {
@@ -9993,12 +10155,17 @@ class Actor extends Entity {
      *    the only enemy is the player. This collapses to the engine's original
      *    `controlled`-means-enemy rule, so unfactioned actors behave exactly as
      *    before.
+     *  - Discord overrides both: if either side is discordant (Brogue's
+     *    STATUS_DISCORDANT), they are enemies regardless of faction, so the
+     *    victim turns on its allies and they turn on it.
      *
      * @param {Actor} other - The candidate target
      * @returns {boolean}
      */
     isEnemyOf(other) {
         if (!other || other === this || other.isDead) return false;
+
+        if (this.isDiscordant() || other.isDiscordant?.()) return true;
 
         const myFaction = this.getFaction();
         if (myFaction) {
@@ -10816,6 +10983,32 @@ class Actor extends Entity {
             if (type === 'fire' && this.hasAttribute('fireproof')) return false;
             return !this.hasAttribute(`${type}_immune`);
         });
+    }
+
+    /**
+     * Drop through ground an `opens_floor` actor (descent vapor) has opened.
+     * Does nothing for a flier, or where there's no floor below — the vapor
+     * can't open the bottom floor. The player's fall waits a beat behind a lock,
+     * as a collapsing bridge's does, so the turn can't run on mid-transition.
+     * @returns {boolean} Whether a fall began
+     */
+    dropThroughOpenedFloor() {
+        if (this._falling || this.isDead || this.hasStateProperty('flying')) return false;
+        if (!this.engine.hasFloorBelow()) return false;
+
+        if (!this.isPlayerControlled()) {
+            this.fall('descent');
+            return true;
+        }
+        this.engine.turnEngine?.lock();
+        this.engine.inputManager?.disable();
+        this.engine.inputManager?.showMessage('The ground vanishes beneath you!');
+        setTimeout(async () => {
+            await this.fall('descent');
+            this.engine.turnEngine?.unlock();
+            this.engine.inputManager?.enable();
+        }, 300);
+        return true;
     }
 
     /**
@@ -11669,6 +11862,12 @@ class Actor extends Entity {
             // quicksand and other 'stuck' hazards lack it and still grab them.
             if (this.hasAttribute('web_immune') && other.hasAttribute('consume_on_escape')) continue;
 
+            // Descent vapor: the ground here opens under whoever steps in
+            if (other.hasAttribute('opens_floor') && this.stats?.health !== undefined
+                && !this.hasStateProperty('flying') && this.engine.hasFloorBelow()
+                && this.engine.entityManager.openTemporaryHole(x, y, other.getAttribute('hole_turns') ?? 3)
+                && this.dropThroughOpenedFloor()) return;
+
             // Apply collision effect (stat damage)
             const collisionEffect = other.getAttribute('collision_effect');
             if (collisionEffect && Object.keys(collisionEffect).length > 0) {
@@ -12309,6 +12508,25 @@ class Actor extends Entity {
 
         base += this.getPassiveStatBonus('awareness');
         return base;
+    }
+
+    /**
+     * How fast this actor's staffs recharge: 1.3 per point of `recharge_bonus`
+     * from worn items, compounding — Brogue's ring of wisdom (ringWisdomMultiplier).
+     * Enchantment scales the ring as it does awareness, so a cursed ring slows
+     * recharging.
+     * @returns {number} Multiplier on a staff's per-turn recharge
+     */
+    getRechargeMultiplier() {
+        let bonus = 0;
+        for (const slot of ['weapon', 'top', 'middle', 'lower', 'ring1', 'ring2']) {
+            const item = this.equipment?.[slot];
+            const wearEffect = item?.getAttribute('wear_effect');
+            if (wearEffect && typeof wearEffect.recharge_bonus === 'number') {
+                bonus += wearEffect.recharge_bonus * (1 + (item.enchantment || 0));
+            }
+        }
+        return Math.pow(1.3, bonus);
     }
 
     canSeeTarget(target) {
@@ -13825,6 +14043,110 @@ class EntityManager {
 
         // Update sidebar when entities change
         this.engine.interfaceManager?.updateSidebar();
+    }
+
+    /**
+     * Make (x, y) temporarily floorless (descent vapor), or keep an open hole
+     * open: the floor and overlay go, the background becomes void and gets the
+     * cliff shading addBaseAndShadows paints, so it reads as a pit. The ordinary
+     * void rules then apply — walk in and you fall, thrown items drop through,
+     * pathing avoids it. Each player action counts it down (tickTemporaryHoles)
+     * and the original tiles come back when it reaches zero.
+     *
+     * Only bare ground opens: a tile with no floor already, or holding anything
+     * but creatures and gas (stairs, liquid, decorations, traps), is left alone.
+     * @param {number} x
+     * @param {number} y
+     * @param {number} turns - Player actions it stays open; refreshing never shortens it
+     * @returns {boolean} Whether the tile is open now
+     */
+    openTemporaryHole(x, y, turns) {
+        if (!this.temporaryHoles) this.temporaryHoles = new Map();
+        const key = x * 10000 + y;
+        const open = this.temporaryHoles.get(key);
+        if (open) {
+            open.turnsLeft = Math.max(open.turnsLeft, turns);
+            return true;
+        }
+
+        const mapManager = this.engine.mapManager;
+        const floor = mapManager?.floorMap[y]?.[x];
+        if (!floor || floor.tileId <= 0 || globalVars.VOID_FLOOR_FILLS.includes(floor.tileId)) return false;
+        const blocked = this.getActorsAt(x, y).some(a =>
+            !a.isDead && a.stats?.health === undefined && this._gasDensity(a) === 0);
+        if (blocked) return false;
+
+        this.temporaryHoles.set(key, {
+            x, y, turnsLeft: turns,
+            floor, background: mapManager.backgroundMap[y][x], overlay: mapManager.overlayMap[y][x]
+        });
+        mapManager.floorMap[y][x] = null;
+        mapManager.overlayMap[y][x] = null;
+        const renderer = this.engine.renderer;
+        renderer?.clearTileAt('floor', x, y);
+        renderer?.clearTileAt('overlay', x, y);
+        this._reshadeTemporaryHoles([{ x, y }]);
+        return true;
+    }
+
+    /**
+     * Count every open hole down one player action, filling in the expired ones.
+     */
+    tickTemporaryHoles() {
+        if (!this.temporaryHoles?.size) return;
+        const expired = [];
+        for (const hole of this.temporaryHoles.values()) {
+            if (--hole.turnsLeft <= 0) expired.push(hole);
+        }
+        if (expired.length > 0) this._closeTemporaryHoles(expired);
+    }
+
+    /** Fill in every open hole at once — before the floor is saved on leaving it. */
+    closeAllTemporaryHoles() {
+        if (this.temporaryHoles?.size) this._closeTemporaryHoles([...this.temporaryHoles.values()]);
+    }
+
+    _closeTemporaryHoles(holes) {
+        const mapManager = this.engine.mapManager;
+        const renderer = this.engine.renderer;
+        for (const hole of holes) {
+            this.temporaryHoles.delete(hole.x * 10000 + hole.y);
+            mapManager.floorMap[hole.y][hole.x] = hole.floor;
+            mapManager.backgroundMap[hole.y][hole.x] = hole.background;
+            mapManager.overlayMap[hole.y][hole.x] = hole.overlay;
+            for (const layer of ['floor', 'background', 'overlay']) {
+                renderer?.clearTileAt(layer, hole.x, hole.y);
+                renderer?.renderTileAt(layer, hole.x, hole.y, mapManager);
+            }
+        }
+        // Ground coming back can put a cliff lip over a hole that's still open
+        this._reshadeTemporaryHoles(holes);
+    }
+
+    /**
+     * Repaint the cliff shading of the open holes near `changed`: reset them to
+     * flat void and rerun addBaseAndShadows over their bounding box, so shading
+     * follows the edges as holes open and close.
+     * @param {Array<{x: number, y: number}>} changed - Cells that just opened or closed
+     */
+    _reshadeTemporaryHoles(changed) {
+        const mapManager = this.engine.mapManager;
+        const renderer = this.engine.renderer;
+        const holes = [...this.temporaryHoles.values()];
+        const cells = [...holes, ...changed];
+        const bounds = {
+            x1: Math.min(...cells.map(c => c.x)) - 1, y1: Math.min(...cells.map(c => c.y)) - 1,
+            x2: Math.max(...cells.map(c => c.x)) + 1, y2: Math.max(...cells.map(c => c.y)) + 1
+        };
+        for (const hole of holes) {
+            mapManager.backgroundMap[hole.y][hole.x] = { tileId: globalVars.VOID_FILL, layer: 'background' };
+        }
+        if (holes.length > 0) mapManager.addBaseAndShadows(bounds);
+        for (const hole of holes) {
+            renderer?.clearTileAt('background', hole.x, hole.y);
+            renderer?.renderTileAt('background', hole.x, hole.y, mapManager);
+        }
+        this.engine.updateLighting?.();
     }
 
     revealDugArea(clearedPositions) {
@@ -15807,6 +16129,20 @@ class RenderSystem {
                 }
             }
         }
+    }
+
+    /**
+     * Remove the sprite at (x, y) on a map layer, leaving the cell empty. The
+     * counterpart of renderTileAt, which only draws and so can't clear a cell
+     * whose tile was taken away (a descent hole's floor).
+     * @param {string} layerName - 'background', 'floor' or 'overlay'
+     */
+    clearTileAt(layerName, x, y) {
+        const sprites = { background: this.backgroundSprites, floor: this.floorSprites, overlay: this.overlaySprites }[layerName];
+        const sprite = sprites?.[y]?.[x];
+        if (!sprite) return;
+        sprite.destroy();
+        sprites[y][x] = null;
     }
 
     renderTileAt(layerName, x, y, mapManager) {

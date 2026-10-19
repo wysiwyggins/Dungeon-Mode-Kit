@@ -5,11 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2b]
+
+These versions are pretty arbitrary, I know. When (if) other folks get involved, I'll formalize it a little.
+
+### Added
+
+- **Wand of Plenty, Wand of Polymorph, Staff of Tunneling, Whip.** New `spell_effect` keys `clone_target`, `polymorph_target` and `tunnel`, and a `lash` attack style that strikes a hostile creature up to `lash_range` tiles away in a straight line. `no_polymorph` keeps chain segments, eels and illusions out of polymorph.
+- **Potion of Life, Potion of Descent, Staff of Healing, Staff of Obstruction, Ring of Wisdom.** Life raises max health, heals fully and cures every condition. Descent's vapor opens temporary, shaded holes that drop whatever stands in them to the floor below, and the obstruction staff conjures green `crystal` that melts after 20 turns.
+- **New effect keys.** `use_effect` takes `<stat>_max`, `"max"` and `remove_all_states`. `spell_effect` takes `target_effect` (stat changes on the target) and `fill`/`fill_radius` (flood an actor over open ground). Worn items take `recharge_bonus`, gas takes `opens_floor`, and the `expire` behavior removes any temporary actor when its `lifetime` runs out.
+- **More items.** Broadsword, banded and splint mail, javelins, incendiary darts, a potion of caustic gas, a staff of haste other, a wand of invisibility, and the scroll of protection (now in the default data, not just the dungeon).
+- **Discord.** A `discordant` state makes its holder and everyone else enemies regardless of faction, so it attacks the nearest creature and its allies turn on it. The new staff of discord applies it, and the scroll of discord now does too instead of confusing.
+- **`burst_into` items.** An item with `burst_into` is used up where it lands and spawns that actor there, without an accuracy roll or damage: the incendiary dart bursts into fire. On a potion it names the gas the potion releases.
+- **Gas potions release named gas actors.** Each gas potion names its gas with `burst_into` (`caustic_gas`, `poison_gas`, `confusion_gas`, `paralysis_gas` and so on, new in `actors.json`), so a gas has a fixed color and its effects live on the actor rather than borrowed from the potion's `use_effect`. Random-effect potions still build a generic cloud.
+- **Bows and arrows.** A wielded `bow` turns a throw of the ammo it `launches` into a shot, as in Moria: (ammo damage + bow enchantment) × `launch_multiplier`, out to `launch_range`, with a `launch_accuracy` bonus. The new **f** key fires the first matching ammo in your pack, and launcher and ammo fields are in the item editor.
+
 ## [1.19b]
 
 ### Added
 
-- **Bows and arrows.** A wielded `bow` turns a throw of the ammo it `launches` into a shot, as in Moria: (ammo damage + bow enchantment) × `launch_multiplier`, out to `launch_range`, with a `launch_accuracy` bonus. The new **f** key fires the first matching ammo in your pack, and launcher and ammo fields are in the item editor.
 - **Per-actor `seeks` and `search_radius`.** An actor can set what `seek_item` picks up and how far it looks, overriding its personality, so actors sharing a personality can want different things. Both are in the actor editor's AI section.
 - **Hunting by type.** `hunts` now takes a type as well as an id, and a list of either, so a beast with `hunts: "prey"` goes after deer and chickens. The actor editor's AI section has a Hunts list that warns when the personality has no `hunt` behavior.
 - **Teleporters.** Step on a `teleporter` and you come out at the other one with the same `machine_id`, and monsters can use them too. Linked pads share a color, and auto-explore routes around them.
@@ -46,6 +60,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Plate armor gives 12 defense, up from 10,** to make room for banded (9) and splint (10) mail above chainmail's 8.
+- **Turret arrows deal 6 damage, down from 10.** The bow work added a second `arrow` item that silently replaced the turret's; the two are now one entry.
 - **Spikes and arrows can be recovered.** Ammo can declare a `break_chance`, rolled when it hits; otherwise it drops beside the target. Spikes break 20% of the time, where before every spike that hit shattered.
 - **Corner blocking is an actor attribute.** Diagonal moves are now blocked only by solid actors with `blocks_diagonal`, which the `terrain` and `doorway` types supply. Before, every solid actor blocked them, so you can now step diagonally past a creature, chest or lever. Monster melee obeys the same rule, so nothing can bite round a wall corner, while bolts and thrown items still can.
 - **Single-prototype entries moved out of `data/`.** `pink_jelly`, `small_pink_jelly` and the `jelly` personality now live in `hallucination_test`, `pitchblende_wall` and `uranium_nugget` in `mine`, and `shield` in `labyrinth`, the only prototypes that use them. The unused `misiricorde` is gone, and the unused `phantom_hound` now spawns in the `depths` biome.
@@ -433,57 +449,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Scroll of Shattering use sound changed from `magic` to `fireball`
 - Staff of Lightning bolt spells now use `line_tile_fill` instead of projectile sprite animation
-
-## [1.1b] 2026-03-16
-
-### Added
-
-- Multi-level dungeons: prototypes can define a `levels` array with per-level map generators, win conditions, random actors/items, and descriptions — stairways connect levels within a single prototype
-- Level loading utilities: `listLevels()` and `loadLevel()` console helpers for navigating multi-level prototypes
-- Sewer gas environmental hazard: sewage tiles emit green gas clouds (3% chance per turn) that spread and apply nauseated state
-- `nauseated` state: 25% random chance to skip turn ("You retch!"), 8-turn duration, blocked by `gas_immune`
-- `skip_turn_chance` state property and `getStatePropertyValue()` helper for probabilistic turn-skip states
-- State collision effects: actors can apply states on contact (e.g., toad applies confused)
-- Touch input support
-- Screen shake visual effect for dark levels
-- Visual effects refactored into standalone `effects.js` module
-- `setup.sh` install script for dependencies
-- New actors: toad, sewer gas cloud
-- Per-level actor and item overrides in dungeon prototype (rats, goblins, bats, skeletons, kobolds scale by depth)
-
-### Changed
-
-- Identify scrolls now consumed even when nothing is available to identify
-- Hallucination state applies to all playable actors, not just sentient ones
-- Engine refactored: visual effects, behaviors extracted to separate modules
-
-### Fixed
-
-- Game of Life behavior: undefined `directions` variable fixed to `ALL_DIRS`
-- State duration counter fix
-- Breakable non-explosive thrown items no longer detonate
-- Follow thread behavior line-of-sight fix
-- Screen shake rendering in dark levels
-
-## [1.0b] 2026-03-13
-
-### Added
-
-- States (flying, confused, blinded, hallucinating)
-  - `hasStateProperty(prop)` helper on Actor: generic check for any active state having a given data property
-  - **`on_apply_effect` state property**: modifies actor properties while a state is active and restores originals on removal (similar to equipment `wear_effect`)
-  - `enableRuntimeDarkness()` / `disableRuntimeDarkness()` engine methods for spinning up the lighting system on non-dark levels
-  - `remove_all_states` string use_effect in executeItemEffect
-  - **`random_effect` expansion**: generic potions now have a 50% chance to apply a random state (confused, hasted, poisoned, etc.) instead of always modifying a stat. States with `attached_actor` (burning) are excluded from the pool.
-  - `effect_description` field on all states in `states.json`: provides potion-style descriptions for randomly generated state-effect potions
-- Recharge scroll case
-- put an ellipses counter for repeated messages in description
-- `z` or `.` key to rest
-
-### Changed
-
-- big refactor of behaviors and visual effects to their own files. First pass at some data-fied effects components but it's still probably confusing
-
-### Fixed
-
-- `follow_thread` behavior: monsters with `follows_thread` (e.g., Asterion) no longer detect the thread trail through walls. Added line-of-sight check using `hasLineOfSight` with solid actor blocking, so the monster must have an unobstructed view to a trail segment before reacting to it. Adjacent/on-trail detection unchanged.

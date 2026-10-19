@@ -188,7 +188,12 @@ a bow means giving up your melee weapon. It hits for 1 up close.
 | `launch_sound` | launcher | Sound when a shot is loosed. Default `"bow"`. |
 | `break_chance` | ammo | Percent chance the item breaks when it hits, thrown or fired. Otherwise it drops by the target. Misses always land nearby. Items without it keep `breakable_on_throw` (default: they break on a hit). |
 
-The `bow` (×2, range 20, +15 accuracy) fires `arrow` (6 damage, 35% break) and `spike` (5 damage, 20% break).
+#### Bursting on landing
+
+| Attribute | Effect |
+| ----------- | -------- |
+| `burst_into` | Actor id spawned where the thrown item lands; the item is used up. There's no accuracy roll and no weapon damage. It bursts on a creature or a flammable obstruction (a tree), but other walls stop it a tile short. Over a void it falls like any thrown item. Gas is started as a spreading cloud and fire burns as usual; any other actor just appears. On a breakable explosive (a potion) it names what the explosion releases instead — see [Explosive Items](#explosive-items). |
+| `burst_description` | Message shown when it bursts. `[item_name]` is filled in. Default "The [item_name] bursts!" |
 
 ### Mining Tools
 
@@ -279,6 +284,18 @@ prototype switch.
 Authors can also force the overlay on for any floor with the `infrastructureDebugForced`
 renderer flag, independent of whether the floor has been mapped.
 
+### Object format — maximums and cures
+
+| Key | Effect |
+| ----- | -------- |
+| `<stat>_max` | Raises (or lowers) a stat's maximum, moving its current value by the same amount: `"health_max": 10`. Applied before the other keys. |
+| `"max"` as a value | Fills the stat to its maximum: `"health": "max"`. |
+| `remove_all_states` | `true` clears every state on the user, good and bad alike. |
+
+```json
+"use_effect": { "health_max": 10, "health": "max", "remove_all_states": true }
+```
+
 ### Object format — area effects
 
 Use an object `use_effect` with `apply_state_radius` or `remove_states_radius` for data-driven radius-based effects:
@@ -286,7 +303,7 @@ Use an object `use_effect` with `apply_state_radius` or `remove_states_radius` f
 ```json
 "use_effect": {
   "apply_state_radius": {
-    "state": "confused",
+    "state": "discordant",
     "radius": 5,
     "filter": "hostile",
     "message": "A wave of discord washes over nearby creatures!",
@@ -694,6 +711,7 @@ Rings provide bonuses while carried in inventory — they don't need to be equip
 | `visionRange` | Extends AI detection/vision range |
 | `health_per_turn` | Adds to health regeneration rate |
 | `nutrition_per_turn` | Modifies nutrition drain rate (positive = slower drain) |
+| `recharge_bonus` | `wear_effect` only, so the ring must be worn: carried staffs recharge 1.3× faster per point, compounding (Brogue's ring of wisdom). Scaled by enchantment like `awareness`, so a cursed ring slows them. Wands don't recharge, so it doesn't touch them. |
 
 Rings can also use `light_source: true` to emit light while carried (no fuel stat needed — glows permanently).
 
@@ -738,6 +756,12 @@ Wands are single-target charged items that apply effects at range. Like staves, 
 | `remove_states` | boolean | Strip all states from target actor |
 | `teleport_target` | boolean | Teleport target to a random walkable tile |
 | `beckon_target` | boolean | Pull target toward the caster |
+| `target_effect` | object | Stat changes on the target, friend or foe: `{ "health": 15 }` heals |
+| `clone_target` | boolean | A copy of the target appears beside it and they split its current health; the copy carries nothing. Not the player or chain creatures |
+| `polymorph_target` | boolean | The target becomes a random other creature (see `no_polymorph` in [ACTORS.md](ACTORS.md)), keeping its health fraction and what it carries |
+| `tunnel` | number | Bore this many tiles from the caster toward the aim point, turning breakable obstructions to rubble. Passes through creatures, stops at the first unbreakable solid. Pair with `target_filter: ["tile"]` to aim at walls |
+| `fill` | string | Actor spawned over the open ground where the bolt stopped, flooding out from the last open tile before whatever stopped it. Walls contain it, and tiles a solid actor holds are skipped |
+| `fill_radius` | number | Reach of `fill` from its center (default `1`) |
 
 These can be combined with the area-effect properties (`center`, `radius`, `outer`) used by staves. A spell with only single-target properties fires a projectile but spawns no area actors.
 
@@ -752,8 +776,9 @@ These can be combined with the area-effect properties (`center`, `radius`, `oute
 | `explosive` | boolean | Item can explode |
 | `breakable` | boolean | Item shatters on impact when thrown |
 | `fire_explosion` | boolean | Explosion spawns fire instead of a gas cloud |
+| `burst_into` | string | Actor the explosion releases, usually a gas actor like `caustic_gas` (see [Bursting on landing](#bursting-on-landing)) |
 | `explosion_radius` | number | Radius of fire burst (default `2`) |
-| `cloud_lifetime` | number | Lifetime of a gas cloud in turns (default `10`) |
+| `cloud_lifetime` | number | Lifetime of a gas cloud in turns (default: the gas actor's own `lifetime`, else `10`) |
 
 ### Detonation rules
 
@@ -762,4 +787,10 @@ These can be combined with the area-effect properties (`center`, `radius`, `oute
 
 **Fire burst** (`fire_explosion: true`): spawns `intense_fire` at center and adjacent tiles, `fire` at the outer radius. Breakable solid actors in range have a 60% chance to be destroyed.
 
-**Gas cloud** (default): spawns a spreading cloud that applies the item's `use_effect` to actors standing in it.
+**Burst actor** (`burst_into`): spawns that actor. A gas actor (one with the `cloud` or `mist`
+personality) starts as a spreading cloud and keeps its own tint, effects and flammability, so the
+gas is defined once in `actors.json` and any trap, vent or item can release it.
+
+**Gas cloud** (neither): spawns a generic `cloud` tinted like the item that applies the item's
+`use_effect` to actors standing in it, flammable only with `cloud_flammable: true`. Random-effect
+potions use this, since their effect isn't known until rolled.
