@@ -1156,6 +1156,22 @@
     }
   },
 
+  "blindness_potion": {
+    "type": "potion",
+    "identified_template": "Potion of Blindness",
+    "effect_description": "Darkness closes in around you",
+    "use_description": "The [item_name] tastes [adjectives.yucky]. Your sight dims.",
+    "attributes": {
+      "explosive": true,
+      "explode_sound": "gas",
+      "burst_into": "blindness_gas",
+      "use_effect": {
+        "apply_state": "blinded"
+      },
+      "description": "Steals the sight of whoever drinks it or stands in its cloud."
+    }
+  },
+
   "panacea": {
     "type": "potion",
     "identified_template": "Panacea",

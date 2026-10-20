@@ -147,6 +147,8 @@ Keeping them separate is what stops a monster standing unlit 25 tiles away from 
 
 The gradient is anchored to light you actually carry (a burning torch, a phial, a worn glowing ring, or `player_auto_light`). With no personal light at all on a dark level, vision collapses to adjacent tiles as before, so losing your torch stays dangerous.
 
+**Blindness (`vision_cap`):** a state with `vision_cap` (the `blinded` state uses 1) caps effective vision range after every bonus. On a dark level (ambient below 0.5) light also stops being drawn while the player is capped: the capped tiles render as they would with no light source at all, light beacons and colored-light shadows disappear, and telepathically sensed creatures keep their glow. Lights still burn for gameplay, so monsters keep seeing by them. On a lit level only the cap applies, and a bright level with no lighting system gets a runtime one at full ambient for the duration.
+
 **Vision Blocking:**
 - Wall tiles block vision
 - Closed doors block vision
@@ -183,7 +185,7 @@ Animated sprites (fire, water, etc.) only play their animations when within a co
 
 | Property | Default | Description |
 |----------|---------|-------------|
-| `vision_range` | `8` | How far the actor can see, in tiles. Shipped prototypes override this (the dungeon player uses 30). Effective range adds passive state bonuses and ring `wear_effect.visionRange`. |
+| `vision_range` | `8` | How far the actor can see, in tiles. Shipped prototypes override this (the dungeon player uses 30). Effective range adds passive state bonuses and ring `wear_effect.visionRange`, then is capped by any state's `vision_cap`. |
 | `dark_vision` | `false` | Perceives entities within FOV without needing light |
 
 ### Prototype Mechanics

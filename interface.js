@@ -717,8 +717,9 @@ class InterfaceManager {
         sprite.x = x;
         sprite.y = y;
 
-        // Apply item tint if present
-        if (item.tint !== undefined && item.tint !== null) {
+        // Apply item tint if present — unless the viewer is blind, when the tint
+        // would give away the color the name now hides
+        if (item.tint !== undefined && item.tint !== null && !item.getBlindName?.()) {
             sprite.tint = item.tint;
         }
 
@@ -1876,6 +1877,14 @@ class InterfaceManager {
 
         // Close menus and reset inventory mode before executing the effect
         const player = this.currentPlayer;
+
+        // Refused outright (reading while blind): say why, keep the menu, spend no turn
+        const blocker = player.getItemUseBlocker?.(item);
+        if (blocker) {
+            this.engine.inputManager?.showMessage(blocker, { style: 'warning' });
+            return;
+        }
+
         this.hidePlayerInfo();
 
         if (player.useItem) {
@@ -5049,6 +5058,12 @@ class InterfaceManager {
         return viewer?.hasStateProperty?.('hallucinating') === true;
     }
 
+    /** Is the viewpoint actor blind (a `vision_cap` state)? Sidebar twin of Entity.isViewerBlind. */
+    isViewerBlind() {
+        const viewer = this.engine?.entityManager?.getPrimaryViewpoint?.();
+        return !!viewer?.findStateWithProperty?.('vision_cap');
+    }
+
     /**
      * A made-up condition word — "gibbering", "shimmering" — for a hallucinated actor.
      *
@@ -5123,7 +5138,8 @@ class InterfaceManager {
             // list already filters out `isUnseen()` actors but not `visible: false`
             // ones. The player is exempt: isAnonymous() returns false for the
             // controlled actor, so you always know yourself.
-            const deceived = actor.isAnonymous?.() && this.isViewerHallucinating();
+            const hallucinating = this.isViewerHallucinating();
+            const deceived = actor.isAnonymous?.() && (hallucinating || this.isViewerBlind());
 
             let html = `<div class="actor-entry">`;
             html += `<strong class="actor-name">${deceived ? 'something' : actor.name}`;
@@ -5140,7 +5156,8 @@ class InterfaceManager {
             if (deceived) {
                 // No duration: a made-up condition has no honest number to show, and
                 // printing one would be the single readable fact in a false entry.
-                const fake = this.hallucinatedCondition();
+                // Blind, there's nothing to make up: just the bare "something".
+                const fake = hallucinating ? this.hallucinatedCondition() : null;
                 if (fake) {
                     html += `<div class="actor-conditions">`
                         + `<span class="actor-condition">${fake}</span></div>`;
@@ -5572,6 +5589,18 @@ class InterfaceManager {
     }
 
     /**
+     * What a blind viewer gets for a creature: nothing to go on but that it's there.
+     * Items are left alone — only creature names are masked. Null when not blind.
+     *
+     * @returns {{name: string, lines: string[]}|null}
+     */
+    blindIdentity(target, viewer) {
+        if (!viewer?.findStateWithProperty?.('vision_cap')) return null;
+        if (target === viewer || !target?.isAnonymous?.()) return null;
+        return { name: 'something', lines: this.wrapText("You can't see what this is.", 30) };
+    }
+
+    /**
      * The shell both info panels share: name heading, mode handling, sizing, placement
      * and the optional grow intro. `buildBody` supplies everything between the heading
      * and the footer, so an actor and an item differ only in their text.
@@ -5609,7 +5638,8 @@ class InterfaceManager {
         // Hallucinating, the player can't identify what they're looking at — the sidebar
         // hover line already scrambles the name, so a panel naming it outright would
         // contradict the line directly above it.
-        const deceived = this.hallucinatedIdentity(target, viewer);
+        const deceived = this.hallucinatedIdentity(target, viewer)
+            || this.blindIdentity(target, viewer);
 
         const name = deceived ? deceived.name
             : (target.getDisplayName ? target.getDisplayName() : target.name);
@@ -5848,6 +5878,14 @@ class InterfaceManager {
             for (const line of this.wrapText(text, wrap)) out.push(line);
         };
         const gap = () => { if (out.length && out[out.length - 1] !== '') out.push(''); };
+
+        // Blind, the description and effect would give away what touch can't
+        const blindName = item.getBlindName?.();
+        if (blindName) {
+            const article = this.engine.inputManager?.getIndefiniteArticle?.(blindName) || 'a';
+            push(`You can feel that it's ${article} ${blindName}, but you can't see anything more.`);
+            return out;
+        }
 
         const identified = item.identified !== false;
 

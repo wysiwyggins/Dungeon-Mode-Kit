@@ -1728,6 +1728,23 @@
     "collision_effect": {},
     "lifetime": 10
   },
+  "blindness_gas": {
+    "name": "blindness gas",
+    "description": "Sooty gas that stings the eyes shut.",
+    "type": "gas",
+    "tileIndexBase": "BLANK",
+    "tileIndexTop": "BLANK",
+    "animated": true,
+    "animation_frames": "smoke",
+    "tint": "#555566",
+    "personality": "cloud",
+    "attributes": {
+      "apply_state": "blinded",
+      "hazard_immune": true
+    },
+    "collision_effect": {},
+    "lifetime": 10
+  },
   "slowness_gas": {
     "name": "slowing gas",
     "description": "Heavy gas that drags at every movement.",

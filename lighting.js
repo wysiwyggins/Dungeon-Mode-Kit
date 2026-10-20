@@ -213,6 +213,9 @@ class LightingManager {
         const ambientR = this.ambientTint ? this.ambientTint.r * this.ambientLight : 0;
         const ambientG = this.ambientTint ? this.ambientTint.g * this.ambientLight : 0;
         const ambientB = this.ambientTint ? this.ambientTint.b * this.ambientLight : 0;
+        // What every tile looks like with no light source at all — rendered in place of
+        // the real light map while a blinded viewpoint suppresses light (getRenderLight).
+        this._ambientTile = { intensity: this.ambientLight, r: ambientR, g: ambientG, b: ambientB };
         for (let y = 0; y < this.height; y++) {
             const lightRow = this.lightMap[y];
             const visRow = this.visibilityMap[y];
@@ -420,20 +423,32 @@ class LightingManager {
         const viewpointActors = this.engine.entityManager.getViewpointActors();
 
         this._gradientRange = 0;
+        this._sensedTiles = null;
+
+        // A blinded viewpoint on a dark level sees nothing of the light around it: the
+        // lights still burn (monsters still see by them — lightMap is untouched), but
+        // the view renders as if there were none, and the capped range is felt out the
+        // way you'd feel your way with no light at all. A lit level only gets the cap.
+        const darkLevel = this.ambientLight < 0.5;
+        this._lightSuppressed = darkLevel && viewpointActors.some(
+            a => a.findStateWithProperty?.('vision_cap')
+        );
 
         for (const actor of viewpointActors) {
             const range = actor.getEffectiveVisionRange();
+            const blindInDark = darkLevel && !!actor.findStateWithProperty?.('vision_cap');
 
             // The dark-terrain gradient is anchored to the light you actually carry, so
             // it can't be used to map a level you have no light for: with a torch you
             // read terrain out to full vision range and it fades into black; with
             // nothing at all you're back to feeling your way one tile at a time.
-            const gradientRange = this.getPersonalLightRadius(actor) > 0 ? range : 1;
+            const gradientRange = (blindInDark || this.getPersonalLightRadius(actor) > 0) ? range : 1;
             if (gradientRange > this._gradientRange) this._gradientRange = gradientRange;
 
             // dark_vision used to work by dodging the FOV clamp. With the clamp gone
             // that's a no-op, so state it directly: these actors perceive without light.
-            const darkVision = actor.hasAttribute('dark_vision');
+            // Blind in the dark, the whole capped range is perceived without light too.
+            const darkVision = actor.hasAttribute('dark_vision') || blindInDark;
 
             this.visionFov.compute(actor.x, actor.y, range, (x, y, r, visibility) => {
                 if (x < 0 || x >= this.width || y < 0 || y >= this.height) return;
@@ -453,7 +468,7 @@ class LightingManager {
             });
 
             // Reveal distant, unobstructed light sources as lone beacons in the dark.
-            this.revealDistantLightBeacons(actor);
+            if (!blindInDark) this.revealDistantLightBeacons(actor);
         }
 
         // A telepathic player senses every living creature through walls and darkness.
@@ -473,6 +488,9 @@ class LightingManager {
         if (!player?.hasStateProperty?.('telepathic')) return;
 
         const SENSED_GLOW = 0.7; // revealed and clearly readable, still slightly dimmed vs. full FOV
+        // Telepathy isn't sight: remember these tiles so a blinded player still gets
+        // the glow while getRenderLight suppresses every other light.
+        this._sensedTiles = new Set();
         for (const actor of this.engine.entityManager.getSentientActors()) {
             if (actor.hasAttribute('controlled')) continue;
             const { x, y } = actor;
@@ -480,6 +498,7 @@ class LightingManager {
 
             this.visibilityMap[y][x] = true;
             this.exploredMap[y][x] = true;
+            this._sensedTiles.add(x * 10000 + y);
             const tile = this.lightMap[y][x];
             if (tile.intensity < SENSED_GLOW) tile.intensity = SENSED_GLOW;
         }
@@ -573,6 +592,20 @@ class LightingManager {
         return this.lightMap[y][x];
     }
 
+    /**
+     * The light a tile should be DRAWN with. Same as getLightLevel except while a
+     * blinded viewpoint suppresses light on a dark level, when every tile draws at
+     * bare ambient (telepathically sensed creatures keep their glow). Gameplay reads
+     * getLightLevel, so monsters keep seeing by the real light.
+     */
+    getRenderLight(x, y) {
+        if (this._lightSuppressed && this._ambientTile
+                && !this._sensedTiles?.has(x * 10000 + y)) {
+            return this._ambientTile;
+        }
+        return this.getLightLevel(x, y);
+    }
+
     isExplored(x, y) {
         if (x < 0 || x >= this.width || y < 0 || y >= this.height) {
             return false;
@@ -652,7 +685,7 @@ class LightingManager {
 
     getDarknessAlpha(x, y, fogOfWar = false) {
         const hasControlled = this.hasControlledActors();
-        const light = this.getLightLevel(x, y);
+        const light = this.getRenderLight(x, y);
         const visible = this.isVisible(x, y);
         const topVisible = this.isTopVisible(x, y);
         const equipmentTopVisible = this.isEquipmentTopVisible(x, y);
@@ -696,7 +729,7 @@ class LightingManager {
         // Equipment in "top" slot (at y-2) should also match the actor's visibility
         // isStatic: true for walls/doors/terrain that should stay visible in remembered areas
         const hasControlled = this.hasControlledActors();
-        const light = this.getLightLevel(x, y);
+        const light = this.getRenderLight(x, y);
         const visible = this.isVisible(x, y);
         const explored = this.isExplored(x, y);
         const lightTint = this.getLightTint(light);
@@ -753,7 +786,7 @@ class LightingManager {
         }
 
         const hasControlled = this.hasControlledActors();
-        const light = this.getLightLevel(x, y);
+        const light = this.getRenderLight(x, y);
         const visible = this.isVisible(x, y);
         const lightTint = this.getLightTint(light);
 
@@ -781,7 +814,7 @@ class LightingManager {
      * Returns a tint in 0xRRGGBB to multiply into the sprite's native tint.
      */
     getFloorTint(x, y, fogOfWar = false) {
-        const light = this.getLightLevel(x, y);
+        const light = this.getRenderLight(x, y);
         const lightTint = this.getLightTint(light);
         const darkness = this.getDarknessAlpha(x, y, fogOfWar);
 
@@ -817,7 +850,7 @@ class LightingManager {
      */
     getOverlayDarknessAlpha(x, y, fogOfWar = false) {
         const hasControlled = this.hasControlledActors();
-        const light = this.getLightLevel(x, y);
+        const light = this.getRenderLight(x, y);
 
         // Observer mode (no controlled actor): no LOS restriction at all — dim purely by
         // light level, matching getDarknessAlpha's !hasControlled branch.
@@ -859,7 +892,7 @@ class LightingManager {
      * the darkness layer). 0xFFFFFF means full brightness (no dimming).
      */
     getOverlayTint(x, y, fogOfWar = false) {
-        const light = this.getLightLevel(x, y);
+        const light = this.getRenderLight(x, y);
         const lightTint = this.getLightTint(light);
         const darkness = this.getOverlayDarknessAlpha(x, y, fogOfWar);
 
@@ -897,7 +930,7 @@ class LightingManager {
      * player loses line of sight to it. Returns 0xRRGGBB; 0xFFFFFF means untinted.
      */
     getBackgroundTint(x, y, fogOfWar = false) {
-        const light = this.getLightLevel(x, y);
+        const light = this.getRenderLight(x, y);
         const lightTint = this.getLightTint(light);
         const darkness = this.getOverlayDarknessAlpha(x, y, fogOfWar);
 

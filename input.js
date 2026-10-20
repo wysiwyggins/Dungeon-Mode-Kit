@@ -1731,6 +1731,7 @@ class InputManager {
         // Check if the player is hallucinating (scramble non-player descriptions)
         const player = entityManager.player;
         const isHallucinating = player?.hasStateProperty?.('hallucinating');
+        const isBlind = !!player?.findStateWithProperty?.('vision_cap');
 
         // A hidden actor keeps its name to itself — including a disguised one,
         // which is `visible` because it renders wall tiles.
@@ -1750,6 +1751,9 @@ class InputManager {
                     hallucinatedName = this._getHallucinatedName(actor, hoveredTopHalf);
                 }
                 entities.push(hallucinatedName);
+            } else if (isBlind && !actor.isPlayerControlled()) {
+                // Blind: you can tell something is there, not what
+                entities.push('something');
             } else {
                 entities.push(this.getEntityDescription(actor));
             }

@@ -350,7 +350,9 @@ While active, the holder behaves as if it had the attribute.
 | `grants_immunity` | string | Grants an immunity attribute (`"fireproof"`). |
 | `grants_attribute` | string or array | Grants any attribute — `"ignites"` makes the holder set fire to its neighbors. |
 | `suppresses_attribute` | string or array | Takes an attribute away for the duration, whether it is innate or granted by another state. Wins over any grant. |
-| `on_apply_effect` | object | One-off stat/property change applied on start and reversed on removal (`{ "visionRange": -3 }`). |
+| `on_apply_effect` | object | One-off numeric property change applied on start and reversed on removal (`{ "visionRange": 2 }`). |
+| `vision_cap` | number | Caps the holder's vision range at this many tiles. On a dark level a capped player also sees no light, and while the player is capped, other creatures go unnamed ("something") in messages, hover text, the sidebar and info panels, just as when hallucinating. Items whose type has an `unidentified_template` (potions, scrolls, rings, wands, staffs) show only their type's name ("potion") with no color tint, and their info panel says nothing more. The `blinded` state uses 1. See [LIGHTING.md](LIGHTING.md). |
+| `cannot_read` | boolean | Can't use items whose `use_verb` is `"Read"` (scrolls). The attempt is refused without spending a turn. |
 | `flying` | boolean | Hovers above the ground: no falling into voids, no submersion, immune to ground hazards (lava, fire), doesn't trigger traps or collapse platforms, and liquids don't douse it. |
 | `invisible`, `telepathic`, `stuck`, `hallucinating` | boolean | Flags the engine reads directly for that behavior. |
 

@@ -110,7 +110,8 @@
     "name": "Blinded",
     "duration": 60,
     "tint": "#222222",
-    "on_apply_effect": { "visionRange": -3 },
+    "vision_cap": 1,
+    "cannot_read": true,
     "effect_description": "Darkness closes in around you",
     "on_apply_message": "Darkness closes in around [actor_name]!",
     "on_remove_message": "[actor_name]'s vision clears."

@@ -1718,8 +1718,9 @@ class DungeonEngine {
     }
 
     /**
-     * Enable the lighting/darkness system at runtime on a level that doesn't normally have it.
-     * Used by the "blinded" state to create visual darkness on bright levels.
+     * Enable the lighting/FOV system at runtime on a level that doesn't normally have it.
+     * Used by vision_cap states (blinded) so the cap shows on bright levels. Ambient
+     * light is full: a bright level stays bright, only limited by how far you can see.
      */
     enableRuntimeDarkness() {
         if (this.lightingManager) return;
@@ -1730,7 +1731,7 @@ class DungeonEngine {
         this.lightingManager.initialize(
             this.mapManager.width,
             this.mapManager.height,
-            { player_auto_light: true, ambient_light: 0.0 }
+            { player_auto_light: false, ambient_light: 1.0 }
         );
         this.renderer.initializeDarkness(this.mapManager.width, this.mapManager.height);
         this.updateLighting();
@@ -1791,6 +1792,10 @@ class DungeonEngine {
         }
         if (player.isConfused()) {
             this.renderer?.applyConfusionEffect();
+        }
+        // A vision cap on a bright floor needs the runtime FOV system rebuilt
+        if (player.findStateWithProperty('vision_cap')) {
+            this.enableRuntimeDarkness();
         }
     }
 
@@ -4114,6 +4119,7 @@ class DungeonEngine {
         if (this.lightingManager) {
             this.lightingManager = null;
         }
+        this._runtimeDarknessActive = false; // runtime FOV belonged to the torn-down floor
 
         // Reset viewport state
         this.viewportEnabled = false;
@@ -4163,6 +4169,7 @@ class DungeonEngine {
         if (this.lightingManager) {
             this.lightingManager = null;
         }
+        this._runtimeDarknessActive = false; // runtime FOV belonged to the torn-down floor
 
         // Reset viewport state
         this.viewportEnabled = false;
@@ -5325,6 +5332,9 @@ class Item extends Entity {
      * @returns {string} The name to display
      */
     getDisplayName() {
+        const blindName = this.getBlindName();
+        if (blindName) return blindName;
+
         const template = this.identified ? this.identifiedTemplate : this.unidentifiedTemplate;
 
         let name = resolveTemplate(template || this.name, this, {
@@ -5347,6 +5357,21 @@ class Item extends Entity {
             }
         }
         return name;
+    }
+
+    /**
+     * What a blind viewer (a `vision_cap` state) calls this item, or null when they
+     * can see. Kinds told apart by sight — anything with an unidentified template:
+     * potions, scrolls, rings, wands, staffs — shrink to their type's noun, so color,
+     * material, glyph and identified name all drop away. A sword is still a sword.
+     * @returns {string|null}
+     */
+    getBlindName() {
+        if (!this.unidentifiedTemplate) return null;
+        const viewer = this.engine?.entityManager?.getPrimaryViewpoint?.();
+        if (!viewer?.findStateWithProperty?.('vision_cap')) return null;
+        const category = this.getCategory();
+        return this.engine.currentPrototype?.types?.[category]?.name || category || null;
     }
 
     /**
@@ -7508,12 +7533,13 @@ class Actor extends Entity {
                 }
             }
             this.states[stateName]._savedValues = savedValues;
+        }
 
-            // If vision was modified on a player, enable runtime darkness
-            if (stateData.on_apply_effect.visionRange && this.isPlayerControlled()) {
-                this.engine.enableRuntimeDarkness?.();
-                this.engine.updateLighting?.();
-            }
+        // A vision cap on the player needs the FOV system to show it; a bright
+        // level has none, so stand one up for the duration.
+        if (typeof stateData.vision_cap === 'number' && this.isPlayerControlled()) {
+            this.engine.enableRuntimeDarkness?.();
+            this.engine.updateLighting?.();
         }
 
         // Flying: emerge from submersion when gaining flight
@@ -7670,10 +7696,10 @@ class Actor extends Entity {
             }
         }
 
-        // If vision was modified on a player, check if runtime darkness should be disabled
-        if (state.data.on_apply_effect?.visionRange && this.isPlayerControlled()) {
+        // Lifting a vision cap: drop the runtime FOV system unless another cap remains
+        if (typeof state.data.vision_cap === 'number' && this.isPlayerControlled()) {
             const hasOtherVisionState = Object.entries(this.states).some(
-                ([name, s]) => name !== stateName && s.data.on_apply_effect?.visionRange
+                ([name, s]) => name !== stateName && typeof s.data.vision_cap === 'number'
             );
             if (!hasOtherVisionState) {
                 this.engine.disableRuntimeDarkness?.();
@@ -9192,6 +9218,21 @@ class Actor extends Entity {
     }
 
     /**
+     * Why this actor can't use `item` right now, or null if it can. A state with
+     * `cannot_read` (blinded) blocks anything whose use_verb is "Read".
+     * @param {Item} item
+     * @returns {string|null} Message explaining the refusal
+     */
+    getItemUseBlocker(item) {
+        if (item?.getAttribute('use_verb') === 'Read' && this.hasStateProperty('cannot_read')) {
+            return this.isPlayerControlled()
+                ? "You can't see to read!"
+                : `${this.getNameWithArticle(true)} can't see to read.`;
+        }
+        return null;
+    }
+
+    /**
      * Use an item from inventory
      * @param {Item} item - The item to use
      * @returns {boolean} True if item was used successfully
@@ -9207,6 +9248,14 @@ class Actor extends Entity {
         const useVerb = item.getAttribute('use_verb');
         if (!useVerb) {
             console.log(`${item.name} cannot be used`);
+            return false;
+        }
+
+        const blocker = this.getItemUseBlocker(item);
+        if (blocker) {
+            if (this.isPlayerControlled()) {
+                this.engine.inputManager?.showMessage(blocker, { style: 'warning' });
+            }
             return false;
         }
 
@@ -10026,7 +10075,7 @@ class Actor extends Entity {
      */
     isAnonymous() {
         if (this.isPlayerControlled()) return false;
-        if (this.isViewerHallucinating()) return true;
+        if (this.isViewerHallucinating() || this.isViewerBlind()) return true;
         return this.isUnseen() || !this.hasAttribute('visible') || this.hasAttribute('hidden');
     }
 
@@ -10043,6 +10092,19 @@ class Actor extends Entity {
         const viewer = this.engine?.entityManager?.getPrimaryViewpoint?.();
         if (!viewer || viewer === this) return false;
         return viewer.hasStateProperty?.('hallucinating') === true;
+    }
+
+    /**
+     * Is whoever is reading these messages blind (a `vision_cap` state)? Like
+     * hallucination this belongs to the viewer: a creature brushing past a blind
+     * player is felt, not identified, so it goes unnamed.
+     *
+     * @returns {boolean}
+     */
+    isViewerBlind() {
+        const viewer = this.engine?.entityManager?.getPrimaryViewpoint?.();
+        if (!viewer || viewer === this) return false;
+        return !!viewer.findStateWithProperty?.('vision_cap');
     }
 
     /**
@@ -12482,6 +12544,9 @@ class Actor extends Entity {
                 }
             }
         }
+        // A state's vision_cap (blinded) is a hard ceiling, applied after every bonus
+        const cap = this.findStateWithProperty('vision_cap', { lowest: true });
+        if (cap) range = Math.min(range, cap.value);
         return range;
     }
 
@@ -17342,7 +17407,9 @@ class RenderSystem {
             if (!vis.showBase) continue;
 
             if (item.sprite) {
-                item.sprite.tint = this.blendTints(item.tint, vis.baseTint);
+                // Blind: a potion or wand within reach shows no color (see Item.getBlindName)
+                const ownTint = item.getBlindName?.() ? 0xFFFFFF : item.tint;
+                item.sprite.tint = this.blendTints(ownTint, vis.baseTint);
             }
         }
 
@@ -17359,7 +17426,10 @@ class RenderSystem {
                 continue;
             }
 
-            if (entity.hasAttribute('ignore_darkness')) {
+            if (entity.hasAttribute('light_shadow') && lightingManager._lightSuppressed) {
+                // Blind in the dark: no light is drawn, so neither are its shadows
+                entity.sprite.visible = false;
+            } else if (entity.hasAttribute('ignore_darkness')) {
                 // Always visible with original tint
                 entity.sprite.visible = true;
                 entity.sprite.tint = entity.tint;
