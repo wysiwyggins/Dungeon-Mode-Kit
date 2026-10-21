@@ -190,6 +190,10 @@ class InputManager {
         this.engine = engine;
         this.enabled = true;
 
+        // Open text input window, if any. See openTextInput().
+        this.textInput = null;
+        this.textInputElement = null;
+
         // Mouse tracking
         this.hoveredTile = { x: -1, y: -1 };
         this.descriptionElement = document.getElementById('description');
@@ -523,6 +527,12 @@ class InputManager {
         // Suppress synthetic mouse events fired after touch
         if (Date.now() - this.lastTouchTime < 500) return;
 
+        if (this.textInput) {
+            this.handleTextInputClick(this.hoveredTile.x, this.hoveredTile.y);
+            event.preventDefault();
+            return;
+        }
+
         // Check if in throw aiming mode
         if (this.engine.interfaceManager?.handleThrowClick()) {
             event.preventDefault();
@@ -736,7 +746,7 @@ class InputManager {
         } else {
             // Swipe gesture — single-step directional move
             const player = this.engine.player;
-            if (player) {
+            if (player && !this.textInput) {
                 if (this.autoWalking) {
                     this.cancelAutoWalk();
                 } else {
@@ -2052,6 +2062,10 @@ class InputManager {
     handleKeyDown(event) {
         if (!this.enabled) return;
 
+        // The text input window owns the keyboard. Keys go to its hidden <input>
+        // natively; nothing here should also treat them as game commands.
+        if (this.textInput) return;
+
         // Cancel auto-walk on any key press
         if (this.cancelAutoWalk()) {
             event.preventDefault();
@@ -2503,6 +2517,275 @@ class InputManager {
         }
 
         return null; // No hazard
+    }
+
+    // ========================================================================
+    // TEXT INPUT WINDOW
+    // ========================================================================
+
+    /**
+     * Open a modal window for typing a line of text — a character name, an item's
+     * name, an epitaph.
+     *
+     * Drawn as an interface box like the confirm dialog, but the keystrokes come
+     * from a hidden native <input> that holds focus while the window is open. That
+     * gets paste, key repeat, dead keys and the phone's soft keyboard for free; the
+     * box just mirrors its value.
+     *
+     * Enter submits and Esc cancels whether or not any buttons are shown.
+     *
+     * @param {Object} [options]
+     * @param {string} [options.prompt] - Text above the field, word-wrapped
+     * @param {string} [options.initial] - Starting value
+     * @param {string} [options.placeholder] - Dim text shown while the field is empty
+     * @param {number} [options.maxLength=20] - Longest value accepted
+     * @param {number} [options.width=20] - Visible field width; longer text scrolls
+     * @param {boolean} [options.allowEmpty=false] - Whether an empty value may be submitted
+     * @param {Array<string|{label: string, action: function}>} [options.buttons] -
+     *        'submit' and 'cancel' are built in. A custom button's action gets
+     *        (value, handle), where handle has setValue/submit/cancel.
+     * @param {function(string)} [options.onSubmit]
+     * @param {function()} [options.onCancel]
+     * @returns {Promise<string|null>} The trimmed value, or null if cancelled
+     */
+    openTextInput(options = {}) {
+        // Opening over an existing window cancels it, so its promise still settles.
+        if (this.textInput) this.closeTextInput(null);
+
+        const im = this.engine.interfaceManager;
+        im?.clearTargetingHighlights();
+
+        const maxLength = options.maxLength ?? 20;
+        const buttons = (options.buttons || []).map(b => {
+            if (b === 'submit') return { label: 'Submit', action: (v, h) => h.submit() };
+            if (b === 'cancel') return { label: 'Cancel', action: (v, h) => h.cancel() };
+            return b;
+        });
+
+        return new Promise(resolve => {
+            this.textInput = {
+                prompt: options.prompt || '',
+                placeholder: options.placeholder || '',
+                maxLength,
+                width: options.width ?? 20,
+                allowEmpty: !!options.allowEmpty,
+                buttons,
+                onSubmit: options.onSubmit,
+                onCancel: options.onCancel,
+                value: '',
+                resolve
+            };
+
+            const el = this._getTextInputElement();
+            el.maxLength = maxLength;
+            el.value = this._sanitizeTextInput(options.initial || '').slice(0, maxLength);
+            this.textInput.value = el.value;
+            el.focus();
+
+            this.renderTextInput();
+        });
+    }
+
+    /**
+     * Close the text input window.
+     * @param {string|null} result - The submitted value, or null for a cancel
+     */
+    closeTextInput(result = null) {
+        const win = this.textInput;
+        if (!win) return;
+        this.textInput = null;
+
+        this.textInputElement?.blur();
+        const im = this.engine.interfaceManager;
+        im?.removeBox('text_input');
+        im?.updateBoxOverlays();
+
+        if (result === null) win.onCancel?.();
+        else win.onSubmit?.(result);
+        win.resolve(result);
+    }
+
+    /** @returns {boolean} Whether a text input window is open */
+    hasTextInput() {
+        return this.textInput !== null;
+    }
+
+    /** Submit the current value, unless it's empty and empties aren't allowed. */
+    submitTextInput() {
+        if (!this.textInput) return;
+        const value = this.textInput.value.trim();
+        if (!value && !this.textInput.allowEmpty) return;
+        this.closeTextInput(value);
+    }
+
+    /**
+     * The hidden <input> that receives keystrokes. Created once and reused. Kept on
+     * screen (but invisible) rather than display:none, which can't take focus.
+     */
+    _getTextInputElement() {
+        if (this.textInputElement) return this.textInputElement;
+
+        const el = document.createElement('input');
+        el.type = 'text';
+        el.autocomplete = 'off';
+        el.spellcheck = false;
+        el.setAttribute('autocapitalize', 'off');
+        el.setAttribute('aria-label', 'Text input');
+        Object.assign(el.style, {
+            position: 'fixed', left: '0', top: '0', width: '1px', height: '1px',
+            opacity: '0', border: '0', padding: '0', pointerEvents: 'none'
+        });
+
+        el.addEventListener('input', () => {
+            if (!this.textInput) return;
+            const clean = this._sanitizeTextInput(el.value);
+            if (clean !== el.value) el.value = clean;
+            this.textInput.value = clean;
+            this.renderTextInput();
+        });
+
+        el.addEventListener('keydown', (e) => {
+            if (!this.textInput) return;
+            // Stop here, or the document listener would see the Enter/Esc that just
+            // closed the window and run it as a game key.
+            e.stopPropagation();
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.submitTextInput();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                this.closeTextInput(null);
+            } else if (e.key === 'Tab') {
+                e.preventDefault();   // keep focus here
+            }
+        });
+
+        // Focus can wander (a click on the page, a window switch). Pull it back.
+        el.addEventListener('blur', () => {
+            if (this.textInput) setTimeout(() => this.textInput && el.focus(), 0);
+        });
+
+        document.body.appendChild(el);
+        this.textInputElement = el;
+        return el;
+    }
+
+    /**
+     * Keep only characters the interface font can draw. Square brackets go too:
+     * interface text treats [c=...] as color markup.
+     */
+    _sanitizeTextInput(text) {
+        const im = this.engine.interfaceManager;
+        return Array.from(String(text))
+            .filter(ch => ch !== '[' && ch !== ']')
+            .filter(ch => !im?.getTileNameForChar || im.getTileNameForChar(ch))
+            .join('');
+    }
+
+    /** Draw (or redraw) the text input box from the current state. */
+    renderTextInput() {
+        const win = this.textInput;
+        const im = this.engine.interfaceManager;
+        if (!win || !im) return;
+
+        const dim = im.inactiveTintColor;
+        const lines = [];
+        if (win.prompt) {
+            lines.push(...im.wrapText(win.prompt, Math.max(win.width + 1, 24)));
+            lines.push('');
+        }
+
+        // The field: the tail of the value that fits, then the cursor. The caret is
+        // always at the end — the hidden input's own caret isn't shown.
+        const fieldWidth = win.width + 1;
+        const fieldLine = lines.length;
+        if (win.value) {
+            lines.push(win.value.slice(-win.width) + '_');
+        } else if (win.placeholder) {
+            lines.push('_' + im.markup(win.placeholder.slice(0, win.width), dim));
+        } else {
+            lines.push('_');
+        }
+
+        // Buttons, recording each one's column span for click hit-testing.
+        const buttonSpans = [];
+        let buttonLine = null;
+        if (win.buttons.length) {
+            lines.push('');
+            buttonLine = lines.length;
+            let row = '';
+            win.buttons.forEach((b, i) => {
+                if (row) row += '  ';
+                const label = `[${b.label}]`;
+                buttonSpans.push({ start: row.length, end: row.length + label.length, index: i });
+                row += label;
+            });
+            lines.push(row);
+        }
+
+        const padding = 1;
+        const contentWidth = Math.max(fieldWidth, ...lines.map(l => im.stripMarkup(l).length));
+        const boxWidth = contentWidth + padding * 2 + 2;
+        const boxHeight = lines.length + padding * 2 + 2;
+
+        // Keep the box where it first opened, so it doesn't hop as the text grows.
+        const existing = im.boxes.get('text_input');
+        const pos = (existing && existing._boxWidth === boxWidth)
+            ? { x: existing._boxX, y: existing._boxY }
+            : im.placeBoxAwayFromPlayer(boxWidth, boxHeight);
+
+        const box = im.createBox('text_input', pos.x, pos.y, boxWidth, boxHeight);
+        if (!box) return;
+        box._padding = padding;
+        box._buttonLine = buttonLine;
+        box._buttonSpans = buttonSpans;
+
+        const TW = globalVars.TILE_WIDTH;
+        const TH = globalVars.TILE_HEIGHT;
+        const textX = (padding + 1) * TW;
+        const textY = (padding + 1) * TH;
+
+        // Underline the field so it reads as a place to type.
+        const g = new PIXI.Graphics();
+        g.beginFill(im.listStripeColor);
+        g.drawRect(textX, textY + fieldLine * TH, fieldWidth * TW, TH);
+        g.endFill();
+        box.addChild(g);
+
+        lines.forEach((line, i) => im.renderTextLine(box, line, textX, textY + i * TH));
+
+        im.updateBoxOverlays();
+    }
+
+    /**
+     * A click while the window is open. Buttons run; anything else just returns
+     * focus to the field — a stray click shouldn't throw away what was typed.
+     */
+    handleTextInputClick(tileX, tileY) {
+        const win = this.textInput;
+        const im = this.engine.interfaceManager;
+        const box = im?.boxes.get('text_input');
+        if (!win || !box) return;
+
+        const hit = im._hitTestBox(box, tileX, tileY);
+        if (hit && hit.contentLine === box._buttonLine) {
+            const span = box._buttonSpans.find(s => hit.contentCol >= s.start && hit.contentCol < s.end);
+            if (span) {
+                const handle = {
+                    setValue: (v) => {
+                        if (this.textInput !== win) return;
+                        const el = this._getTextInputElement();
+                        el.value = this._sanitizeTextInput(v).slice(0, win.maxLength);
+                        win.value = el.value;
+                        this.renderTextInput();
+                    },
+                    submit: () => this.submitTextInput(),
+                    cancel: () => this.closeTextInput(null)
+                };
+                win.buttons[span.index].action?.(win.value, handle);
+            }
+        }
+        if (this.textInput) this._getTextInputElement().focus();
     }
 
     enable() {

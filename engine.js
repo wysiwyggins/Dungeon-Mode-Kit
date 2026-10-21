@@ -5187,6 +5187,9 @@ class Item extends Entity {
 
         this.count = 1;
         this.enchantment = data.enchantment ?? 0;
+        // A name the player gave this item (see `nameable`). Replaces the item's own
+        // name in getDisplayName(); the enchantment still shows.
+        this.customName = null;
 
         // Roll random enchantment on spawn if enchant_range is defined and no explicit enchantment
         if (data.enchantment === undefined && data.attributes?.enchant_range) {
@@ -5390,15 +5393,18 @@ class Item extends Entity {
      * a random word picked for the name stays put across renders instead of the
      * item appearing to rename itself on every hover.
      *
+     * @param {Object} [options]
+     * @param {boolean} [options.ignoreCustomName] - Show what the item really is,
+     *        not what the player named it
      * @returns {string} The name to display
      */
-    getDisplayName() {
+    getDisplayName({ ignoreCustomName = false } = {}) {
         const blindName = this.getBlindName();
         if (blindName) return blindName;
 
         const template = this.identified ? this.identifiedTemplate : this.unidentifiedTemplate;
 
-        let name = resolveTemplate(template || this.name, this, {
+        let name = (!ignoreCustomName && this.customName) || resolveTemplate(template || this.name, this, {
             memoize: true,
             // The raw noun, so "[item_name] of [reagents.reagents]" can build on it
             // without recursing back into this method.
@@ -5433,6 +5439,15 @@ class Item extends Entity {
         if (!viewer?.findStateWithProperty?.('vision_cap')) return null;
         const category = this.getCategory();
         return this.engine.currentPrototype?.types?.[category]?.name || category || null;
+    }
+
+    /**
+     * Whether the player may give this item a name: it has `nameable` and is
+     * identified, so you know what you're naming.
+     * @returns {boolean}
+     */
+    canBeNamed() {
+        return !!this.getAttribute('nameable') && this.identified !== false;
     }
 
     /**
@@ -5706,6 +5721,7 @@ class Item extends Entity {
             stats: this.stats ? JSON.parse(JSON.stringify(this.stats)) : {},
             count: this.count,
             enchantment: this.enchantment,
+            customName: this.customName,
             combatUseCount: this.combatUseCount || 0,
             wornTurns: this.wornTurns || 0,
             isItem: true
@@ -5721,6 +5737,7 @@ class Item extends Entity {
         if (data.combatUseCount !== undefined) this.combatUseCount = data.combatUseCount;
         if (data.wornTurns !== undefined) this.wornTurns = data.wornTurns;
         if (data.enchantment !== undefined) this.enchantment = data.enchantment;
+        if (data.customName) this.customName = data.customName;
     }
 }
 
@@ -17949,6 +17966,25 @@ window.testWinScreen = (message) => {
     console.log(`Win screen rendered with message (${text.length} chars). Call location.reload() to dismiss.`);
 };
 
+// Debug: open the text input window. Takes the same options as
+// InputManager.openTextInput; with none, a name prompt with Submit/Cancel.
+//   testTextInput({ prompt: 'Epitaph', maxLength: 60, width: 24, buttons: ['submit'] })
+//   testTextInput({ buttons: [] })   // keyboard only: Enter / Esc
+window.testTextInput = async (options = {}) => {
+    if (!engine?.inputManager) {
+        console.error('Engine not initialized.');
+        return;
+    }
+    const result = await engine.inputManager.openTextInput({
+        prompt: 'Enter a name',
+        buttons: ['submit', 'cancel'],
+        ...options
+    });
+    console.log(result === null ? 'Text input cancelled.' : `Text input submitted: "${result}"`);
+    return result;
+};
+
 console.log('Dungeon Mode Kit loaded. Call initializeGame() to start.');
 console.log('Level utilities: listLevels(), loadLevel("prototypeName"), giveItem("itemType", count), goToFloor(n)');
 console.log('Debug: testWinScreen("optional custom message") — render the win screen to test line-wrapping.');
+console.log('Debug: testTextInput({ prompt, maxLength, width, buttons }) — open the text input window.');

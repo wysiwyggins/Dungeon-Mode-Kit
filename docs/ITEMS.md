@@ -161,6 +161,7 @@ If `health` drops to 0 or below, the target dies. See [COMBAT.md](COMBAT.md). Ef
 | `enchantable` | Item can receive enchantment bonuses (from scrolls or on spawn) |
 | `enchant_range` | `[min, max]` — random enchantment rolled on spawn. E.g. `[-1, 3]`. |
 | `id_blows` | Blows struck (weapons) or taken while worn (armor) before the item auto-identifies. Set on the `weapon` and `armor` types; defaults to 20. |
+| `nameable` | Once identified, the item's action menu offers **Name**, letting the player give it a name that replaces its own in the pack and in messages (the enchantment still shows). Set on the `weapon` type. |
 | `id_turns` | Turns a ring must be worn before it auto-identifies. Set on the `ring` type; defaults to 1500. |
 
 ### Launchers and Ammo

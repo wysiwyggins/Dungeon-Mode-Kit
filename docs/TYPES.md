@@ -182,7 +182,7 @@ Naming one of these instead of an item id spawns a random member — see
 | ---- | ------ | ----- |
 | `potion` | `name: potion`, `random_color`, `consumable`, `stackable`, `breakable`, `use_verb: Quaff`, `use_sound: swallow` | color-coded until identified |
 | `food` | `consumable`, `stackable`, `mass_noun`, `flammable`, `use_verb: Eat`, `use_sound: swallow` | Members name themselves (meat, apple) |
-| `weapon` | `weapon`, `enchantable`, `enchant_range: [-1, 3]`, `id_blows: 20`, `attack_sound`, `collision_sound`, `stackable: false` | Damage and reach are per-weapon |
+| `weapon` | `weapon`, `enchantable`, `nameable`, `enchant_range: [-1, 3]`, `id_blows: 20`, `attack_sound`, `collision_sound`, `stackable: false` | Damage and reach are per-weapon |
 | `armor` | `enchantable`, `enchant_range: [-1, 2]`, `id_blows: 20`, `stackable: false` | The slot (`wearable`) is per-piece |
 | `staff` | `name`-less, `random_material`, `charge_stat: pow`, `treasure_loot`, `use_verb: Zap` | Recharges over time; `per_turn` is what distinguishes it from a wand |
 | `scroll` | `name: scroll`, `random_glyph_name`, `consumable`, `use_ceremony`, `use_verb: Read`, `use_sound: magic` | Titled with nonsense glyphs until read |

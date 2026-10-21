@@ -306,6 +306,7 @@
       "attack_sound": "bow",
       "collision_sound": "hit",
       "enchantable": true,
+      "nameable": true,
       "pickupable": true,
       "stackable": false,
       "visible": true,

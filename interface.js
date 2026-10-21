@@ -440,7 +440,9 @@ class InterfaceManager {
     updateBoxOverlays() {
         // Determine the active box ID based on the current UI mode priority
         let activeBoxId = null;
-        if (this.helpWindowMode) {
+        if (this.engine.inputManager?.hasTextInput()) {
+            activeBoxId = 'text_input';
+        } else if (this.helpWindowMode) {
             activeBoxId = 'help_window';
         } else if (this.actorInfoMode) {
             activeBoxId = 'actor_info';
@@ -1497,6 +1499,10 @@ class InterfaceManager {
         const lines = [];
         const displayName = item.getDisplayName ? item.getDisplayName() : item.name;
         lines.push(displayName);
+        // Under a player-given name, say what it actually is.
+        if (item.customName) {
+            lines.push(this.markup(item.getDisplayName({ ignoreCustomName: true }), this.inactiveTintColor));
+        }
         lines.push(''); // blank line
 
         // Description, effect, equip forecast and charges — the same text the standalone
@@ -1542,6 +1548,12 @@ class InterfaceManager {
         const useVerb = item.getAttribute('use_verb');
         if (useVerb) {
             lines.push(`  ${actionNum}) ${this.capitalize(useVerb)}`);
+            actionNum++;
+        }
+
+        // Name, for a `nameable` item you've identified
+        if (item.canBeNamed?.()) {
+            lines.push(`  ${actionNum}) Name`);
             actionNum++;
         }
 
@@ -1786,6 +1798,15 @@ class InterfaceManager {
         }
         if (useVerb) currentAction++;
 
+        // Name action
+        if (item.canBeNamed?.()) {
+            if (actionNum === currentAction) {
+                this.executeNameItem(item);
+                return true;
+            }
+            currentAction++;
+        }
+
         // Throw action (always available)
         if (actionNum === currentAction) {
             this.enterThrowAimingMode(item);
@@ -1794,6 +1815,38 @@ class InterfaceManager {
         currentAction++;
 
         return false;
+    }
+
+    /**
+     * Ask for a name for an item and apply it. Submitting an empty name restores
+     * the item's own. The inventory stays open underneath.
+     */
+    async executeNameItem(item) {
+        const inputManager = this.engine.inputManager;
+        if (!inputManager) return;
+
+        const name = await inputManager.openTextInput({
+            prompt: `What will you call your ${item.getDisplayName()}?`,
+            initial: item.customName || '',
+            maxLength: 20,
+            allowEmpty: true,
+            buttons: ['submit', 'cancel']
+        });
+        if (name === null) return;
+
+        item.customName = name || null;
+        inputManager.showMessage(name
+            ? `You name it ${item.getDisplayName()}.`
+            : `Your ${item.getDisplayName()} is nameless again.`);
+
+        // Redraw so the pack and the action menu show the new name.
+        if (this.inventoryMode && this.currentPlayer) {
+            const index = this.selectedItemIndex;
+            this.showPlayerInfo(this.currentPlayer);
+            if (index !== null && this.currentPlayer.inventory[index] === item) {
+                this.showItemActionMenu(index);
+            }
+        }
     }
 
     /**
