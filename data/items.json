@@ -1405,6 +1405,16 @@
     }
   },
 
+  "scroll_of_sanctuary": {
+    "type": "scroll",
+    "identified_template": "Scroll of Sanctuary",
+    "effect_description": "Sacred glyphs spread across the floor around you. Hostile creatures cannot enter them.",
+    "attributes": {
+      "use_effect": "sanctuary",
+      "effect_radius": 2
+    }
+  },
+
   "scroll_of_protection": {
     "type": "scroll",
     "identified_template": "Scroll of Protection",

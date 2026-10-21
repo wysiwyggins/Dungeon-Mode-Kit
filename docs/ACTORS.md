@@ -685,7 +685,7 @@ Give the gas `damage_type: "fall"` too, so monsters route around it before the h
 
 ### Ward Gas
 
-A gas actor with a `ward` attribute affects only the actor types it lists. `types` matches either an actor id (`"skeleton"`) or its actor type (`"undead"`). The ward carries over as the gas spreads, disperses into mist, and merges.
+An actor with a `ward` attribute (usually a gas) affects only the actor types it lists. `types` matches either an actor id (`"skeleton"`) or its actor type (`"undead"`). The ward carries over as the gas spreads, disperses into mist, and merges.
 
 ```json
 "ward": {
@@ -696,9 +696,10 @@ A gas actor with a `ward` attribute affects only the actor types it lists. `type
 ```
 
 - `repel`: matching actors won't path, step, or attack into a warded tile, and one caught in the gas spends its turn stepping out.
+- `hostile`: when true, the ward also affects every hostile creature (a hostile personality or `hostile` attribute), whatever its type. The player is never affected.
 - `collision_effect`: applied each turn (by `cloud_affect_actors`) to matching actors in the gas only, ignoring `gas_immune`.
 
-`incense_smoke`, released by burning `incense`, is the built-in example.
+`incense_smoke`, released by burning `incense`, is the built-in example. `sacred_glyph`, laid by the Scroll of Sanctuary, is a non-gas ward with `hostile: true` and `repel`.
 
 ## Collision Effects
 

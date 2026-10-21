@@ -254,6 +254,7 @@ Pass an object to modify stats, attributes, or apply states directly:
 | `"aggravate_monsters"` | *non-working stub* - All hostile actors on the level become aware of the player |
 | `"summon_monsters"` | Spawns 2–4 random monsters adjacent to the player |
 | `"recharge_items"` | Restores all `charge_stat` items in inventory to full |
+| `"sanctuary"` | Spawns a `glyph_actor` (default `sacred_glyph`) on every floor tile within `effect_radius` steps (default 2), flooding outward so it doesn't pass through walls. The glyph's hostile `ward` keeps hostile creatures out. |
 | `"shatter_walls"` | Destroys breakable solid actors within radius 3; triggers a screen shake, amber flash, and radiating tile fill effect |
 | `"targeted_spell"` (bolt) | Bolt spells display a white-blue tile fill along the bolt path with screen shake, instead of a projectile sprite |
 | `"darkness_field"` | Extinguishes all light-source items within radius 5 |

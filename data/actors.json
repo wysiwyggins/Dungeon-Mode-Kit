@@ -413,7 +413,6 @@
       "health": -4
     },
     "attributes": {
-      "no_polymorph": true,
       "accuracy": 55,
       "defense": 4
     },
@@ -1866,6 +1865,18 @@
     },
     "collision_effect": {},
     "lifetime": 8
+  },
+  "sacred_glyph": {
+    "name": "sacred glyphs",
+    "tileIndexBase": "EVIL_EYE",
+    "tint": "#E8C860",
+    "description": "Holy sigils burned into the floor. No hostile creature can bear to cross them.",
+    "attributes": {
+      "solid": false,
+      "mass_noun": true,
+      "render_layer": "bottom",
+      "ward": { "hostile": true, "repel": true }
+    }
   },
   "poison_gas_trap": {
     "name": "poison gas trap",

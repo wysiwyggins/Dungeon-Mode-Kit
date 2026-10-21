@@ -9746,6 +9746,42 @@ class Actor extends Entity {
                 return true;
             }
 
+            case 'sanctuary': {
+                // Lay a glyph actor on every floor tile within effect_radius steps,
+                // flooding outward so the glyphs don't leak through walls.
+                const radius = item?.getAttribute('effect_radius') ?? 2;
+                const glyphType = item?.getAttribute('glyph_actor') ?? 'sacred_glyph';
+                const em = this.engine.entityManager;
+                const seen = new Set([this.x * 10000 + this.y]);
+                let frontier = [{ x: this.x, y: this.y }];
+                let placed = 0;
+                for (let step = 0; step <= radius && frontier.length; step++) {
+                    const next = [];
+                    for (const p of frontier) {
+                        if (!this.hasFloorAt(p.x, p.y)) continue;
+                        const solid = em.getSolidActorAt(p.x, p.y);
+                        if (solid && !solid.hasAttribute('sentient')) continue;
+                        if (!em.getActorsAt(p.x, p.y).some(a => a.type === glyphType && !a.isDead)) {
+                            if (em.spawnActor(glyphType, p.x, p.y)) placed++;
+                        }
+                        for (const d of ALL_DIRS) {
+                            const key = (p.x + d.dx) * 10000 + (p.y + d.dy);
+                            if (seen.has(key)) continue;
+                            seen.add(key);
+                            next.push({ x: p.x + d.dx, y: p.y + d.dy });
+                        }
+                    }
+                    frontier = next;
+                }
+                if (placed > 0) this.flash();
+                if (this.isPlayerControlled()) {
+                    this.engine.inputManager?.showMessage(placed > 0
+                        ? 'Sacred glyphs spread across the floor around you.'
+                        : 'The words fade, but nothing happens.');
+                }
+                return placed > 0;
+            }
+
             case 'summon_monsters': {
                 const floorConfig = this.engine.getFloorConfig(this.engine.currentFloor);
                 const randomActors = floorConfig?.random_actors || this.engine.currentPrototype?.config?.random_actors;
@@ -12647,7 +12683,18 @@ class Actor extends Entity {
     }
 
     /**
-     * True if a gas on (x, y) carries a `ward` that repels this actor — incense
+     * True if a `ward` affects this actor: its id or type is listed in `types`,
+     * or the ward is `hostile` (sacred glyphs) and this is a hostile creature.
+     * @param {Object} ward
+     */
+    isWardedBy(ward) {
+        if (this.matchesActorType(ward.types)) return true;
+        if (!ward.hostile || this.isPlayerControlled()) return false;
+        return !!this.personality?.hostile || this.hasAttribute('hostile');
+    }
+
+    /**
+     * True if an actor on (x, y) carries a `ward` that repels this actor — incense
      * smoke against the undead. Repelled actors won't path, step, or attack into
      * the tile, and step out of it if the gas drifts over them.
      */
@@ -12655,7 +12702,7 @@ class Actor extends Entity {
         for (const other of this.engine.entityManager.getActorsAt(x, y)) {
             if (other === this || other.isDead) continue;
             const ward = other.getAttribute('ward');
-            if (ward?.repel && this.matchesActorType(ward.types)) return true;
+            if (ward?.repel && this.isWardedBy(ward)) return true;
         }
         return false;
     }
