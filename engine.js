@@ -17970,21 +17970,21 @@ window.testWinScreen = (message) => {
 // InputManager.openTextInput; with none, a name prompt with Submit/Cancel.
 //   testTextInput({ prompt: 'Epitaph', maxLength: 60, width: 24, buttons: ['submit'] })
 //   testTextInput({ buttons: [] })   // keyboard only: Enter / Esc
-window.testTextInput = async (options = {}) => {
-    if (!engine?.inputManager) {
-        console.error('Engine not initialized.');
-        return;
-    }
-    const result = await engine.inputManager.openTextInput({
-        prompt: 'Enter a name',
-        buttons: ['submit', 'cancel'],
-        ...options
-    });
-    console.log(result === null ? 'Text input cancelled.' : `Text input submitted: "${result}"`);
-    return result;
-};
+// window.testTextInput = async (options = {}) => {
+//     if (!engine?.inputManager) {
+//         console.error('Engine not initialized.');
+//         return;
+//     }
+//     const result = await engine.inputManager.openTextInput({
+//         prompt: 'Enter a name',
+//         buttons: ['submit', 'cancel'],
+//         ...options
+//     });
+//     console.log(result === null ? 'Text input cancelled.' : `Text input submitted: "${result}"`);
+//     return result;
+// };
 
 console.log('Dungeon Mode Kit loaded. Call initializeGame() to start.');
 console.log('Level utilities: listLevels(), loadLevel("prototypeName"), giveItem("itemType", count), goToFloor(n)');
 console.log('Debug: testWinScreen("optional custom message") — render the win screen to test line-wrapping.');
-console.log('Debug: testTextInput({ prompt, maxLength, width, buttons }) — open the text input window.');
+// console.log('Debug: testTextInput({ prompt, maxLength, width, buttons }) — open the text input window.');

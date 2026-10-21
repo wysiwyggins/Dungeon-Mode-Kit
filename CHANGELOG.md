@@ -20,7 +20,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 - **Gas potions release named gas actors.** Each gas potion names its gas with `burst_into` (`caustic_gas`, `poison_gas`, `confusion_gas`, `paralysis_gas` and so on, new in `actors.json`), so a gas has a fixed color and its effects live on the actor rather than borrowed from the potion's `use_effect`. Random-effect potions still build a generic cloud.
 - **Scroll of Sanctuary.** Reading it lays `sacred_glyph` actors on the floor within 2 steps, and hostile creatures won't path, step or attack into them. It works through the incense `ward` attribute, which now takes `hostile: true` to repel every hostile creature instead of a list of types, and works on any actor, not just gas.
 - **Bows and arrows.** A wielded `bow` turns a throw of the ammo it `launches` into a shot, as in Moria: (ammo damage + bow enchantment) × `launch_multiplier`, out to `launch_range`, with a `launch_accuracy` bonus. The new **f** key fires the first matching ammo in your pack, and launcher and ammo fields are in the item editor.
-- **Text input window and weapon naming.** `inputManager.openTextInput()` opens a typing window with optional Submit/Cancel or custom buttons; try it from the console with `testTextInput()`. Its first use: an identified weapon (a `nameable` type attribute) gets a **Name** action in its menu.
+- **Text input window and weapon naming.** `inputManager.openTextInput()` opens a typing window with optional Submit/Cancel or custom buttons. Its first use: an identified weapon (a `nameable` type attribute) gets a **Name** action in its menu.
 
 ### Changed
 
