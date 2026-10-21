@@ -160,6 +160,8 @@ If `health` drops to 0 or below, the target dies. See [COMBAT.md](COMBAT.md). Ef
 | `collision_sound` | Sound played on successful hit. Typically `"hit"`. |
 | `enchantable` | Item can receive enchantment bonuses (from scrolls or on spawn) |
 | `enchant_range` | `[min, max]` — random enchantment rolled on spawn. E.g. `[-1, 3]`. |
+| `id_blows` | Blows struck (weapons) or taken while worn (armor) before the item auto-identifies. Set on the `weapon` and `armor` types; defaults to 20. |
+| `id_turns` | Turns a ring must be worn before it auto-identifies. Set on the `ring` type; defaults to 1500. |
 
 ### Launchers and Ammo
 
@@ -254,7 +256,7 @@ Pass an object to modify stats, attributes, or apply states directly:
 | `"aggravate_monsters"` | *non-working stub* - All hostile actors on the level become aware of the player |
 | `"summon_monsters"` | Spawns 2–4 random monsters adjacent to the player |
 | `"recharge_items"` | Restores all `charge_stat` items in inventory to full |
-| `"sanctuary"` | Spawns a `glyph_actor` (default `sacred_glyph`) on every floor tile within `effect_radius` steps (default 2), flooding outward so it doesn't pass through walls. The glyph's hostile `ward` keeps hostile creatures out. |
+| `"sanctuary"` | Spawns a `glyph_actor` (default `sacred_glyph`) on every floor tile within `effect_radius` steps (default 2), flooding outward so it doesn't pass through walls. The glyph's hostile `ward` keeps hostile creatures out. `effect_message` and `fail_message` replace the built-in result text. |
 | `"shatter_walls"` | Destroys breakable solid actors within radius 3; triggers a screen shake, amber flash, and radiating tile fill effect |
 | `"targeted_spell"` (bolt) | Bolt spells display a white-blue tile fill along the bolt path with screen shake, instead of a projectile sprite |
 | `"darkness_field"` | Extinguishes all light-source items within radius 5 |
@@ -566,7 +568,7 @@ Templates support substitution tokens in `[brackets]`:
 | `[adjectives.yucky]` | Random entry from the `adjectives.yucky` list in `data/words.json` |
 | `[item_name]` | The item's current display name (identified or not) |
 
-Weapons, armor and rings also identify themselves through use: a weapon after `Item.COMBAT_ID_THRESHOLD` (20) blows struck with it, armor after that many blows taken while wearing it, and a ring after `Item.RING_ID_TURNS` (1500) turns worn. The counts are kept per item (`combatUseCount`, `wornTurns`) and the info panel shows how many blows or turns remain.
+Weapons, armor and rings also identify themselves through use: a weapon after `id_blows` (20) blows struck with it, armor after `id_blows` blows taken while wearing it, and a ring after `id_turns` (1500) turns worn. Both are type attributes, so a prototype can tune them per type or override them on a single item. The counts are kept per item (`combatUseCount`, `wornTurns`) and the info panel shows how many blows or turns remain.
 
 ### Potions
 
@@ -712,7 +714,7 @@ Rings provide bonuses while carried in inventory — they don't need to be equip
 | `visionRange` | Extends AI detection/vision range |
 | `health_per_turn` | Adds to health regeneration rate |
 | `nutrition_per_turn` | Modifies nutrition drain rate (positive = slower drain) |
-| `recharge_bonus` | `wear_effect` only, so the ring must be worn: carried staffs recharge 1.3× faster per point, compounding (Brogue's ring of wisdom). Scaled by enchantment like `awareness`, so a cursed ring slows them. Wands don't recharge, so it doesn't touch them. |
+| `recharge_multiplier` | `wear_effect` only, so the ring must be worn: carried staffs recharge this many times faster, raised to the power of (1 + enchantment), and several worn items multiply together. Brogue's ring of wisdom is `1.3`. A cursed ring slows them. Wands don't recharge, so it doesn't touch them. |
 
 Rings can also use `light_source: true` to emit light while carried (no fuel stat needed — glows permanently).
 
@@ -759,10 +761,12 @@ Wands are single-target charged items that apply effects at range. Like staves, 
 | `beckon_target` | boolean | Pull target toward the caster |
 | `target_effect` | object | Stat changes on the target, friend or foe: `{ "health": 15 }` heals |
 | `clone_target` | boolean | A copy of the target appears beside it and they split its current health; the copy carries nothing. Not the player or chain creatures |
-| `polymorph_target` | boolean | The target becomes a random other creature (see `no_polymorph` in [ACTORS.md](ACTORS.md)), keeping its health fraction and what it carries |
+| `polymorph_target` | boolean, string, string[] or object | The target becomes a random other creature (see `no_polymorph` in [ACTORS.md](ACTORS.md)), keeping its health fraction and what it carries. `true` draws from any creature; an actor id or actor type (or a list of them, e.g. `"beast"`) limits the draw. `{ "floors": "current" }` draws from what can randomly spawn on this floor (biome catalog rows and `random_actors`); give a range instead (`"3-6"` or `[3, 6]`) for those floors |
 | `tunnel` | number | Bore this many tiles from the caster toward the aim point, turning breakable obstructions to rubble. Passes through creatures, stops at the first unbreakable solid. Pair with `target_filter: ["tile"]` to aim at walls |
 | `fill` | string | Actor spawned over the open ground where the bolt stopped, flooding out from the last open tile before whatever stopped it. Walls contain it, and tiles a solid actor holds are skipped |
 | `fill_radius` | number | Reach of `fill` from its center (default `1`) |
+
+`clone_target`, `polymorph_target` and `tunnel` print built-in result messages. Set `effect_message` and `fail_message` on the item's attributes to replace them; both take `[item_name]` and `[target_name]` (capitalized, for the start of a sentence), and polymorph adds `[new_form_name]`. Tunneling only has a `fail_message`.
 
 These can be combined with the area-effect properties (`center`, `radius`, `outer`) used by staves. A spell with only single-target properties fires a projectile but spawns no area actors.
 

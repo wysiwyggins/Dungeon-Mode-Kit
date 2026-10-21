@@ -13,7 +13,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 - **Wand of Plenty, Wand of Polymorph, Staff of Tunneling, Whip.** New `spell_effect` keys `clone_target`, `polymorph_target` and `tunnel`, and a `lash` attack style that strikes a hostile creature up to `lash_range` tiles away in a straight line. `no_polymorph` keeps chain segments and illusions out of polymorph.
 - **Potion of Life, Potion of Descent, Staff of Healing, Staff of Obstruction, Ring of Wisdom.** Life raises max health, heals fully and cures every condition. Descent's vapor opens temporary, shaded holes that drop whatever stands in them to the floor below, and the obstruction staff conjures green `crystal` that melts after 20 turns.
-- **New effect keys.** `use_effect` takes `<stat>_max`, `"max"` and `remove_all_states`. `spell_effect` takes `target_effect` (stat changes on the target) and `fill`/`fill_radius` (flood an actor over open ground). Worn items take `recharge_bonus`, gas takes `opens_floor`, and the `expire` behavior removes any temporary actor when its `lifetime` runs out.
+- **New effect keys.** `use_effect` takes `<stat>_max`, `"max"` and `remove_all_states`. `spell_effect` takes `target_effect` (stat changes on the target) and `fill`/`fill_radius` (flood an actor over open ground). Worn items take `recharge_multiplier`, gas takes `opens_floor`, and the `expire` behavior removes any temporary actor when its `lifetime` runs out.
 - **More items.** Broadsword, banded and splint mail, javelins, incendiary darts, a potion of caustic gas, a potion of blindness (thrown, it bursts into blinding gas), a staff of haste other, a wand of invisibility, and the scroll of protection (now in the default data, not just the dungeon).
 - **Discord.** A `discordant` state makes its holder and everyone else enemies regardless of faction, so it attacks the nearest creature and its allies turn on it. The new staff of discord applies it, and the scroll of discord now does too instead of confusing.
 - **`burst_into` items.** An item with `burst_into` is used up where it lands and spawns that actor there, without an accuracy roll or damage: the incendiary dart bursts into fire. On a potion it names the gas the potion releases.
@@ -23,6 +23,8 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 ### Changed
 
+- **Polymorph pools and effect messages.** `polymorph_target` can name an actor id or type (or a list) to draw the new form from, or `{ "floors": "current" }` / a floor range to draw from that depth's spawn pool. Plenty, polymorph, tunneling and sanctuary take `effect_message` / `fail_message` to replace their built-in text.
+- **Gear auto-ID thresholds are type attributes.** `id_blows` (weapon and armor, 20) and `id_turns` (ring, 1500) replace the hardcoded engine constants, which remain as fallbacks.
 - **Blindness actually limits sight.** The `blinded` state now uses a new `vision_cap` state key (1 tile) instead of a -3 vision penalty, which did nothing next to a 25-tile vision range and a torch. On dark levels a blinded player also sees no light, so the adjacent tiles look as they would with no light source at all. While blind, other creatures go unnamed as when hallucinating, potions, scrolls, rings, wands and staffs show only as "potion", "scroll" and so on, and a new `cannot_read` state key stops you reading scrolls.
 
 ## [1.19b]

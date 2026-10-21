@@ -4040,25 +4040,33 @@ class InterfaceManager {
             const target = entityManager.getSolidActorAt(x, y);
             if (target && target !== caster && !target.isDead) {
                 const name = target.getNameWithArticle(true);
+                const providers = { target_name: () => name };
                 this.engine.inputManager?.showMessage(target.cloneSelf()
-                    ? `${name} is beside itself!` : `${name} shudders, but stays single.`, { x, y });
+                    ? item.getEffectMessage('effect_message', `${name} is beside itself!`, providers)
+                    : item.getEffectMessage('fail_message', `${name} shudders, but stays single.`, providers), { x, y });
             }
         }
 
-        // Wand of polymorph: { "polymorph_target": true }
+        // Wand of polymorph: { "polymorph_target": true }, or an actor id/type
+        // (or list of them) to draw the new form from: { "polymorph_target": "beast" },
+        // or a floor range's spawn pool: { "polymorph_target": { "floors": "current" } }
         if (spellEffect.polymorph_target) {
             const target = entityManager.getSolidActorAt(x, y);
             if (target && target !== caster && !target.isDead) {
                 const name = target.getNameWithArticle(true);
-                const creature = target.polymorph();
+                const pool = spellEffect.polymorph_target === true ? undefined : spellEffect.polymorph_target;
+                const creature = target.polymorph(pool);
+                const newName = creature?.getNameWithArticle(false);
+                const providers = { target_name: () => name, new_form_name: () => newName };
                 this.engine.inputManager?.showMessage(creature
-                    ? `${name} turns into ${creature.getNameWithArticle(false)}!` : `${name} resists the change.`, { x, y });
+                    ? item.getEffectMessage('effect_message', `${name} turns into ${newName}!`, providers)
+                    : item.getEffectMessage('fail_message', `${name} resists the change.`, providers), { x, y });
             }
         }
 
         // Staff of tunneling: { "tunnel": 5 } — see tunnelAlong
         if (spellEffect.tunnel) {
-            this.tunnelAlong(caster, landingPoint, spellEffect.tunnel);
+            this.tunnelAlong(caster, landingPoint, spellEffect.tunnel, item);
         }
 
         // Change the target's stats: { "target_effect": { "health": 20 } }
@@ -4202,8 +4210,9 @@ class InterfaceManager {
      * @param {Actor} caster
      * @param {{x: number, y: number}} toward - Where the bolt was aimed
      * @param {number} distance - Reach in tiles
+     * @param {Item} [item] - The staff, for its `fail_message`
      */
-    tunnelAlong(caster, toward, distance) {
+    tunnelAlong(caster, toward, distance, item) {
         const entityManager = this.engine.entityManager;
         const dx = toward.x - caster.x;
         const dy = toward.y - caster.y;
@@ -4224,7 +4233,8 @@ class InterfaceManager {
         }
 
         if (cleared.length === 0) {
-            this.engine.inputManager?.showMessage('The bolt splashes harmlessly against the stone.');
+            const failure = 'The bolt splashes harmlessly against the stone.';
+            this.engine.inputManager?.showMessage(item?.getEffectMessage('fail_message', failure) ?? failure);
             return;
         }
         entityManager.revealDugArea(cleared);
@@ -5897,8 +5907,8 @@ class InterfaceManager {
             push('It is protected from acid.');
         }
 
-        // Gear identifies itself through use: rings by turns worn (Item.RING_ID_TURNS),
-        // weapons and armor by blows (Item.COMBAT_ID_THRESHOLD). Wands and staffs are
+        // Gear identifies itself through use: rings by turns worn (`id_turns`),
+        // weapons and armor by blows (`id_blows`). Wands and staffs are
         // enchantable too but identify on use, hence the weapon/wearable gate.
         const isWeapon = item.hasAttribute?.('weapon');
         const wearable = item.getAttribute?.('wearable');
@@ -5906,10 +5916,10 @@ class InterfaceManager {
             const plural = (n, word) => `${n} more ${word}${n === 1 ? '' : 's'}`;
             gap();
             if (wearable === 'ring') {
-                const turns = Math.max(1, Item.RING_ID_TURNS - (item.wornTurns || 0));
+                const turns = Math.max(1, item.getIdTurns() - (item.wornTurns || 0));
                 push(`You will know it after ${plural(turns, 'turn')} wearing it.`);
             } else {
-                const blows = Math.max(1, Item.COMBAT_ID_THRESHOLD - (item.combatUseCount || 0));
+                const blows = Math.max(1, item.getIdBlows() - (item.combatUseCount || 0));
                 push(isWeapon
                     ? `You will know it after ${plural(blows, 'blow')} struck with it.`
                     : `You will know it after ${plural(blows, 'blow')} taken while wearing it.`);

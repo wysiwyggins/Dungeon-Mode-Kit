@@ -2671,6 +2671,41 @@ class DungeonEngine {
         return out;
     }
 
+    /**
+     * Every actor id that can randomly spawn on any floor in `range` ("current",
+     * "3-6", 5 or [3,6]): biome catalog rows eligible at that depth plus the keys of
+     * each floor's random_actors. Unlike getFloorConfig this skips the budget raffle,
+     * so it's the full candidate list, not one roll of it.
+     */
+    getFloorActorPool(range = 'current') {
+        const config = this.currentPrototype?.config || {};
+        let lo, hi;
+        if (range === 'current') lo = hi = this.currentFloor;
+        else if (Array.isArray(range)) [lo, hi] = range;
+        else if (typeof range === 'number') lo = hi = range;
+        else {
+            [lo, hi] = String(range).split('-').map(s => parseInt(s.trim(), 10));
+            hi = hi ?? lo;
+        }
+        hi = Math.min(hi, this.getTotalFloors());
+        const ids = new Set();
+        const biomes = config.biomes || {};
+        const plan = Array.isArray(config.floor_plan) ? config.floor_plan : [];
+        for (let floor = lo; floor <= hi; floor++) {
+            const override = this._getFloorOverride(config, floor);
+            const entry = plan.find(p => this._floorInRange(floor, p.floors));
+            const biome = entry && biomes[entry.biome];
+            // Same precedence as getFloorConfig: a floor override's random_actors
+            // replaces the biome's, which replaces the prototype default.
+            if (override.random_actors) Object.keys(override.random_actors).forEach(id => ids.add(id));
+            else if (biome?.actors) {
+                biome.actors.filter(r => floor >= (r.min ?? 1) && floor <= (r.max ?? Infinity))
+                    .forEach(r => ids.add(r.id));
+            } else Object.keys(config.random_actors || {}).forEach(id => ids.add(id));
+        }
+        return ids;
+    }
+
     // Is 1-based `floor` inside a floor_plan range? Accepts "1-8", "5", or [1,8].
     _floorInRange(floor, range) {
         if (Array.isArray(range)) return floor >= range[0] && floor <= range[1];
@@ -4978,8 +5013,13 @@ class Item extends Entity {
         'description', 'use_description', 'effect_description', 'collision_description'
     ];
 
-    /** Blows struck (weapons) or taken while worn (armor) before gear auto-identifies. */
+    /** Fallback for the `id_blows` attribute: blows struck (weapons) or taken while worn (armor) before gear auto-identifies. */
     static COMBAT_ID_THRESHOLD = 20;
+
+    /** Blows this weapon or armor needs before it auto-identifies (type attribute `id_blows`). */
+    getIdBlows() {
+        return this.getAttribute('id_blows') ?? Item.COMBAT_ID_THRESHOLD;
+    }
 
     /**
      * Count one telling blow toward identifying an unidentified weapon: a melee
@@ -4989,14 +5029,35 @@ class Item extends Entity {
     noteCombatUse(user) {
         if (!user?.isPlayerControlled() || this.identified !== false || !this.hasAttribute('enchantable')) return;
         this.combatUseCount = (this.combatUseCount || 0) + 1;
-        if (this.combatUseCount >= Item.COMBAT_ID_THRESHOLD) {
+        if (this.combatUseCount >= this.getIdBlows()) {
             this.identify();
             user.engine.inputManager?.showMessage(`You are now confident about your ${this.getDisplayName()}.`);
         }
     }
 
-    /** Turns a ring must be worn before it auto-identifies (Brogue's RING_DELAY_TO_AUTO_ID). */
+    /**
+     * An authored effect message (e.g. `effect_message`, `fail_message`) resolved
+     * as a template, or `fallback` when this item doesn't set one. `[item_name]`
+     * is always available; callers add tokens like `[target_name]`.
+     * @param {string} key - Attribute holding the message
+     * @param {string} fallback - Built-in text
+     * @param {Object} [providers] - Extra template tokens: { name: () => string }
+     */
+    getEffectMessage(key, fallback, providers = {}) {
+        const authored = this.getAttribute(key);
+        if (!authored) return fallback;
+        return resolveTemplate(authored, this, {
+            providers: { item_name: () => this.getDisplayName(), ...providers }
+        });
+    }
+
+    /** Fallback for the `id_turns` attribute: turns a ring must be worn before it auto-identifies (Brogue's RING_DELAY_TO_AUTO_ID). */
     static RING_ID_TURNS = 1500;
+
+    /** Turns this ring must be worn before it auto-identifies (type attribute `id_turns`). */
+    getIdTurns() {
+        return this.getAttribute('id_turns') ?? Item.RING_ID_TURNS;
+    }
 
     constructor(x, y, type, data, engine) {
         super(x, y, type, engine);
@@ -8516,7 +8577,7 @@ class Actor extends Entity {
     }
 
     /**
-     * Unidentified rings identify themselves after Item.RING_ID_TURNS turns worn.
+     * Unidentified rings identify themselves after their `id_turns` turns worn.
      * The count lives on the ring (wornTurns), so it survives taking it off.
      */
     processRingIdentification() {
@@ -8525,7 +8586,7 @@ class Actor extends Entity {
             const ring = this.equipment?.[slot];
             if (!ring || ring.identified !== false) continue;
             ring.wornTurns = (ring.wornTurns || 0) + 1;
-            if (ring.wornTurns >= Item.RING_ID_TURNS) {
+            if (ring.wornTurns >= ring.getIdTurns()) {
                 ring.identify();
                 this.engine.inputManager?.showMessage(
                     `You are now familiar enough with your ${ring.getDisplayName()} to identify it.`
@@ -8781,17 +8842,23 @@ class Actor extends Entity {
      * `no_polymorph`. Keeps whichever leaves more health: the same fraction of the
      * new maximum, or the new maximum less the damage already taken. Carried
      * items come along.
+     * @param {string|string[]} [pool] - Draw only from these actor ids or actor
+     *   types (e.g. "beast"); omitted, any eligible creature will do
      * @returns {Actor|null} The new creature
      */
-    polymorph() {
+    polymorph(pool) {
         if (this.isPlayerControlled() || this._chainHead || this.hasAttribute('no_polymorph')) return null;
         const health = this.stats?.health;
         if (!health || typeof health.current !== 'number') return null;
 
         const proto = this.engine.currentPrototype;
+        // { floors: "current" | "3-6" | [3,6] } draws from that depth's spawn pool.
+        const poolNames = pool?.floors !== undefined ? [...this.engine.getFloorActorPool(pool.floors)]
+            : typeof pool === 'string' ? [pool] : Array.isArray(pool) ? pool : null;
         const candidates = Object.keys(proto.actors).filter(id => {
             if (id === this.type) return false;
             const def = proto.getActorData(id);
+            if (poolNames && !poolNames.includes(id) && !poolNames.includes(def?.type)) return false;
             const attrs = def?.attributes || {};
             return def?.personality && def.stats?.health !== undefined && attrs.sentient
                 && !attrs.controlled && !attrs.no_polymorph;
@@ -9775,9 +9842,11 @@ class Actor extends Entity {
                 }
                 if (placed > 0) this.flash();
                 if (this.isPlayerControlled()) {
+                    const success = 'Sacred glyphs spread across the floor around you.';
+                    const failure = 'The words fade, but nothing happens.';
                     this.engine.inputManager?.showMessage(placed > 0
-                        ? 'Sacred glyphs spread across the floor around you.'
-                        : 'The words fade, but nothing happens.');
+                        ? (item?.getEffectMessage('effect_message', success) ?? success)
+                        : (item?.getEffectMessage('fail_message', failure) ?? failure));
                 }
                 return placed > 0;
             }
@@ -10658,7 +10727,7 @@ class Actor extends Entity {
                             const armor = target.equipment?.[slot];
                             if (armor?.identified === false && armor.hasAttribute('enchantable')) {
                                 armor.combatUseCount = (armor.combatUseCount || 0) + 1;
-                                if (armor.combatUseCount >= Item.COMBAT_ID_THRESHOLD) {
+                                if (armor.combatUseCount >= armor.getIdBlows()) {
                                     armor.identify();
                                     target.engine.inputManager?.showMessage(
                                         `You are now confident about your ${armor.getDisplayName()}.`
@@ -12612,22 +12681,22 @@ class Actor extends Entity {
     }
 
     /**
-     * How fast this actor's staffs recharge: 1.3 per point of `recharge_bonus`
-     * from worn items, compounding — Brogue's ring of wisdom (ringWisdomMultiplier).
-     * Enchantment scales the ring as it does awareness, so a cursed ring slows
-     * recharging.
+     * How fast this actor's staffs recharge: each worn item's `recharge_multiplier`
+     * raised to (1 + enchantment), all multiplied together — Brogue's ring of
+     * wisdom (ringWisdomMultiplier) at 1.3. A cursed item inverts the effect, so
+     * it slows recharging.
      * @returns {number} Multiplier on a staff's per-turn recharge
      */
     getRechargeMultiplier() {
-        let bonus = 0;
+        let multiplier = 1;
         for (const slot of ['weapon', 'top', 'middle', 'lower', 'ring1', 'ring2']) {
             const item = this.equipment?.[slot];
             const wearEffect = item?.getAttribute('wear_effect');
-            if (wearEffect && typeof wearEffect.recharge_bonus === 'number') {
-                bonus += wearEffect.recharge_bonus * (1 + (item.enchantment || 0));
+            if (wearEffect && typeof wearEffect.recharge_multiplier === 'number') {
+                multiplier *= Math.pow(wearEffect.recharge_multiplier, 1 + (item.enchantment || 0));
             }
         }
-        return Math.pow(1.3, bonus);
+        return multiplier;
     }
 
     canSeeTarget(target) {

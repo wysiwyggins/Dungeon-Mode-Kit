@@ -302,6 +302,7 @@
     "identified": false,
     "attributes": {
       "enchant_range": [-1, 3],
+      "id_blows": 20,
       "attack_sound": "bow",
       "collision_sound": "hit",
       "enchantable": true,
@@ -324,6 +325,7 @@
           2
         ],
       "enchantable": true,
+      "id_blows": 20,
       "pickupable": true,
       "stackable": false,
       "visible": true
@@ -386,6 +388,7 @@
           2
         ],
       "enchantable": true,
+      "id_turns": 1500,
       "pickupable": true,
       "stackable": false,
       "visible": true,

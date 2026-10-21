@@ -1562,7 +1562,7 @@
     "effect_description": "Your staffs hum with energy",
     "attributes": {
       "wear_effect": {
-        "recharge_bonus": 1
+        "recharge_multiplier": 1.3
       },
       "description": "Your staffs recharge faster while it is worn. A cursed one slows them."
     }
