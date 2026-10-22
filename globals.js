@@ -50,6 +50,11 @@ const globalVars = {
   // most attribute checks are. Mirrors `damage_type` or `deep` in actors.json;
   // add an id here when adding a liquid with either.
   HAZARD_BLOB_ACTORS: ['lava', 'fire', 'quicksand', 'deep_water', 'deep_sewage'],
+
+  // Detect magic: the EVIL_EYE marker's tint for each polarity (Item.getMagicPolarity),
+  // shared by the inventory icon and the map marker.
+  MAGIC_POLARITY_TILE: 'EVIL_EYE',
+  MAGIC_POLARITY_TINTS: { good: 0x3D7DFF, bad: 0xE03030 },
 };
 
 // Attach to window

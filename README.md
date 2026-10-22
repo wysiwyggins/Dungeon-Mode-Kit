@@ -49,7 +49,7 @@ Prototype JSON files are merged with global `data/` files at load — you only n
 - [PROTOTYPE.md](docs/PROTOTYPE.md) — Full prototype config reference, map generation, item catalogs
 - [MAP.md](docs/MAP.md) — Designer's guide to making maps in Tiled
 - [TILES.pdf](/docs/TILES.pdf) - visual index of all tile names
-- [TILED_KEY.md](docs/TILED_KEY.md) — Complete reference of wildcard-layer tiles and the actors/generators they spawn ([printable PDF](docs/TILED_KEY.pdf))
+- [TILED_KEY.md](docs/TILED_KEY.md) — Complete reference of wildcard-layer tiles and the actors/generators they spawn
 - [ACTORS.md](docs/ACTORS.md) — Actor attributes, stats, personalities, behaviors
 - [TYPES.md](docs/TYPES.md) — Reusable actor defaults inherited via `type`
 - [ITEMS.md](docs/ITEMS.md) — Full item attribute reference, use effects, equipment

@@ -263,6 +263,7 @@ Pass an object to modify stats, attributes, or apply states directly:
 | `"darkness_field"` | Extinguishes all light-source items within radius 5 |
 | `"enchant_item"` | Opens item picker; player selects an `enchantable` item to increase its enchantment by +1 |
 | `"remove_curse"` | Clears `cursed` attribute from all currently equipped items |
+| `"detect_magic"` | Senses the polarity of every item on the level (on the floor or carried by a creature) and in the pack. See [Detect Magic](#detect-magic) |
 | `"dig"` | Prompts for a tile within one step (including your own) and digs any `breakable` actor there — a grave underfoot, or a wall beside you. Works with the tool **in the pack**: the item you dug with supplies the `mining_power`, `dig_chance` and `condition`, so it needn't be equipped. Digging a wall this way is the same single swing as bumping it while equipped. Requires `mining: true` on the same item. |
 
 ### Magic Mapping
@@ -649,6 +650,19 @@ The `"enchant_item"` use effect opens a picker showing all `enchantable` items i
 ### Scroll of Protection
 
 The `"protect_item"` use effect (with `deferred: true`) opens the same picker, listing every weapon and wearable in the inventory that isn't already `protected`. The chosen item gains `protected: true`, which makes it immune to `acidic` corrosion (see Acid in ACTORS.md), and its info panel then reads "It is protected from acid." The scroll is defined only in the dungeon prototype, where acid monsters live, so it stays out of other prototypes' scroll pools.
+
+### Detect Magic
+
+`detect_magic` (the Potion of Detect Magic) marks items as detected. A detected item shows an `EVIL_EYE` beside it in the pack: blue for good magic, red for bad. A detected item you can't currently see also gets an eye on the map, and so does an unseen creature carrying one. Plain weapons and armor (enchantment 0) are identified outright, since there's nothing left to learn.
+
+An item's polarity follows Brogue:
+
+1. `cursed` or negative enchantment → bad.
+2. Otherwise the `magic_polarity` attribute, `"good"` or `"bad"`. The potion, scroll, staff and wand types default to `"good"`, and harmful items override it with `"bad"`.
+3. Otherwise an `enchantable` item with positive enchantment → good.
+4. Anything else has no magic and shows nothing.
+
+A `random_effect` potion takes its polarity from its roll: a stat drain is bad, a stat boost good, and a state is bad if it declares `"magic_polarity": "bad"` in `states.json`.
 
 ### Cursed Items
 

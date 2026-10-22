@@ -429,6 +429,7 @@
     "identified_template": "Potion of Incineration",
     "use_description": "The potion explodes!",
     "attributes": {
+      "magic_polarity": "bad",
       "flammable": true,
       "explosive": true,
       "fire_explosion": true,
@@ -443,6 +444,7 @@
     "use_description": "You gag on the salty water.",
     "description": "It induces vomiting",
     "attributes": {
+      "magic_polarity": "bad",
       "use_effect": {
         "apply_state": "nauseated"
       }
@@ -894,6 +896,7 @@
       }
     },
     "attributes": {
+      "magic_polarity": "bad",
       "uses": 2,
       "spell_effect": {
         "apply_state": "hasted"
@@ -946,6 +949,7 @@
       }
     },
     "attributes": {
+      "magic_polarity": "bad",
       "uses": 2,
       "spell_effect": {
         "target_effect": {
@@ -1047,6 +1051,7 @@
     "effect_description": "You feel ill",
     "use_description": "The [item_name] tastes [adjectives.yucky].",
     "attributes": {
+      "magic_polarity": "bad",
       "flammable": true,
       "explosive": true,
       "explode_sound": "gas",
@@ -1063,6 +1068,7 @@
     "identified_template": "Potion of Caustic Gas",
     "use_description": "Caustic gas billows out of the flask!",
     "attributes": {
+      "magic_polarity": "bad",
       "flammable": true,
       "explosive": true,
       "explode_sound": "gas",
@@ -1078,6 +1084,7 @@
     "effect_description": "Everything spins",
     "use_description": "The [item_name] tastes [adjectives.yucky].",
     "attributes": {
+      "magic_polarity": "bad",
       "flammable": true,
       "explosive": true,
       "explode_sound": "gas",
@@ -1114,6 +1121,7 @@
     "effect_description": "You can't move",
     "use_description": "The [item_name] tastes [adjectives.yucky].",
     "attributes": {
+      "magic_polarity": "bad",
       "flammable": true,
       "explosive": true,
       "explode_sound": "gas",
@@ -1147,6 +1155,7 @@
     "effect_description": "Nothing looks right",
     "use_description": "The [item_name] tastes [adjectives.yucky]. The world begins to melt.",
     "attributes": {
+      "magic_polarity": "bad",
       "flammable": true,
       "explosive": false,
       "use_effect": {
@@ -1162,6 +1171,7 @@
     "effect_description": "Darkness closes in around you",
     "use_description": "The [item_name] tastes [adjectives.yucky]. Your sight dims.",
     "attributes": {
+      "magic_polarity": "bad",
       "explosive": true,
       "explode_sound": "gas",
       "burst_into": "blindness_gas",
@@ -1233,6 +1243,7 @@
     "effect_description": "You feel sluggish",
     "use_description": "The [item_name] tastes [adjectives.yucky]. Your limbs feel heavy.",
     "attributes": {
+      "magic_polarity": "bad",
       "flammable": true,
       "explosive": true,
       "explode_sound": "gas",
@@ -1257,6 +1268,16 @@
     }
   },
 
+  "detect_magic_potion": {
+    "type": "potion",
+    "identified_template": "Potion of Detect Magic",
+    "effect_description": "You sense the magic on this level and in your pack",
+    "attributes": {
+      "use_effect": "detect_magic",
+      "description": "Reveals whether the magic in nearby items is benevolent or malevolent, both on this level and in your pack."
+    }
+  },
+
   "life_potion": {
     "type": "potion",
     "identified_template": "Potion of Life",
@@ -1277,6 +1298,7 @@
     "identified_template": "Potion of Descent",
     "use_description": "Vapor pours out of the flask and the floor disappears!",
     "attributes": {
+      "magic_polarity": "bad",
       "explosive": true,
       "explode_sound": "gas",
       "use_at_self": true,
@@ -1318,6 +1340,7 @@
     "identified_template": "Scroll of Aggravate Monsters",
     "effect_description": "Every creature stirs with sudden rage.",
     "attributes": {
+      "magic_polarity": "bad",
       "use_effect": "aggravate_monsters"
     }
   },
@@ -1327,6 +1350,7 @@
     "identified_template": "Scroll of Summon Monsters",
     "effect_description": "Something answers the call.",
     "attributes": {
+      "magic_polarity": "bad",
       "use_effect": "summon_monsters"
     }
   },
@@ -1630,6 +1654,7 @@
     "identified_template": "Wand of Invisibility",
     "effect_description": "The target fades from sight.",
     "attributes": {
+      "magic_polarity": "bad",
       "spell_effect": {
         "apply_state": "invisible"
       },
@@ -1644,6 +1669,7 @@
     "identified_template": "Wand of Plenty",
     "effect_description": "The target is beside itself — literally.",
     "attributes": {
+      "magic_polarity": "bad",
       "spell_effect": {
         "clone_target": true
       },

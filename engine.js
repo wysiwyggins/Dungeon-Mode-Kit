@@ -5190,6 +5190,8 @@ class Item extends Entity {
         // A name the player gave this item (see `nameable`). Replaces the item's own
         // name in getDisplayName(); the enchantment still shows.
         this.customName = null;
+        // Set by detect magic (see detectMagic); shows the item's polarity to the player.
+        this.magicDetected = false;
 
         // Roll random enchantment on spawn if enchant_range is defined and no explicit enchantment
         if (data.enchantment === undefined && data.attributes?.enchant_range) {
@@ -5366,8 +5368,14 @@ class Item extends Entity {
         this.templateVars.effect_description = roll.effect_description;
         if (roll.apply_state) {
             this.setAttribute('use_effect', { apply_state: roll.apply_state });
+            // A harmful state declares itself bad; anything else keeps the type's default
+            if (engine.globalStates?.[roll.apply_state]?.magic_polarity === 'bad') {
+                this.setAttribute('magic_polarity', 'bad');
+            }
         } else if (roll.collision_effect) {
             this.setAttribute('use_effect', roll.collision_effect);
+            const delta = Object.values(roll.collision_effect)[0];
+            this.setAttribute('magic_polarity', delta < 0 ? 'bad' : 'good');
         }
     }
 
@@ -5458,6 +5466,48 @@ class Item extends Entity {
         if (!this.hasAttribute('enchantable') && this.engine.currentPrototype) {
             this.engine.currentPrototype.identifyType(this.type);
         }
+    }
+
+    /**
+     * Whether this item carries good or bad magic, or none — what detect magic
+     * senses. Mirrors Brogue's itemMagicChar (Items.c): a curse or negative
+     * enchantment is always bad; otherwise an authored `magic_polarity` ("good" /
+     * "bad", set per type and overridden per item) decides; failing that, enchanted
+     * gear is good and plain gear has no magic at all.
+     * @returns {'good'|'bad'|null}
+     */
+    getMagicPolarity() {
+        if (this.hasAttribute('cursed') || this.enchantment < 0) return 'bad';
+        const declared = this.getAttribute('magic_polarity');
+        if (declared === 'good' || declared === 'bad') return declared;
+        if (this.hasAttribute('enchantable') && this.enchantment > 0) return 'good';
+        return null;
+    }
+
+    /**
+     * Detect magic on this item (Brogue's detectMagicOnItem). Once detected, its
+     * polarity shows beside it in the pack and as a marker on the map. Plain
+     * weapons and armor have nothing left to learn, so they identify outright.
+     * @returns {'good'|'bad'|null} The polarity sensed, or null for a mundane item
+     */
+    detectMagic() {
+        this.magicDetected = true;
+        const wearable = this.getAttribute('wearable');
+        if (this.identified === false && this.hasAttribute('enchantable') && this.enchantment === 0
+            && (this.hasAttribute('weapon') || (wearable && wearable !== 'ring'))) {
+            this.identify();
+        }
+        return this.getMagicPolarity();
+    }
+
+    /**
+     * The polarity the player knows about — null until magic has been detected on
+     * this item. Read live, so enchanting or uncursing a detected item updates it.
+     * @returns {'good'|'bad'|null}
+     */
+    getDetectedMagicPolarity() {
+        if (!this.magicDetected) return null;
+        return this.getMagicPolarity();
     }
 
     /**
@@ -5722,6 +5772,7 @@ class Item extends Entity {
             count: this.count,
             enchantment: this.enchantment,
             customName: this.customName,
+            magicDetected: this.magicDetected,
             combatUseCount: this.combatUseCount || 0,
             wornTurns: this.wornTurns || 0,
             isItem: true
@@ -5738,6 +5789,7 @@ class Item extends Entity {
         if (data.wornTurns !== undefined) this.wornTurns = data.wornTurns;
         if (data.enchantment !== undefined) this.enchantment = data.enchantment;
         if (data.customName) this.customName = data.customName;
+        if (data.magicDetected) this.magicDetected = true;
     }
 }
 
@@ -6108,6 +6160,7 @@ class Actor extends Entity {
                 const existing = this.inventory[j];
                 if (existing.canStackWith(item)) {
                     existing.count = (existing.count || 1) + (item.count || 1);
+                    if (item.magicDetected) existing.magicDetected = true;
                     this.inventory.splice(i, 1);
                     break;
                 }
@@ -7057,6 +7110,8 @@ class Actor extends Entity {
             const existing = this.inventory.find(inv => inv.canStackWith(item));
             if (existing) {
                 existing.count = (existing.count || 1) + (item.count || 1);
+                // Same type, same polarity: what was sensed on either half holds for the stack
+                if (item.magicDetected) existing.magicDetected = true;
                 this.engine.entityManager.removeEntity(item);
                 if (this.isPlayerControlled()) {
                     this.engine.playSound(item.getAttribute('pickup_sound') || 'tone3');
@@ -9660,6 +9715,41 @@ class Actor extends Entity {
                 if (this.isPlayerControlled()) {
                     this.engine.renderer?.centerViewportOnPlayer?.();
                     this.engine.inputManager?.showMessage('You are whisked away in a flash of light.');
+                }
+                return true;
+            }
+
+            case 'detect_magic': {
+                // Brogue's potion of detect magic: sense the polarity of every item on
+                // this level (lying on the floor or carried by a creature) and in the
+                // pack. Detected items show a red/blue eye in the pack and on the map.
+                const em = this.engine.entityManager;
+                let onLevel = false;
+                let inPack = false;
+                for (const floorItem of em?.items || []) {
+                    if (floorItem.detectMagic()) onLevel = true;
+                }
+                for (const actor of em?.actors || []) {
+                    if (actor === this || actor.isDead) continue;
+                    for (const carried of actor.inventory || []) {
+                        if (carried.detectMagic()) onLevel = true;
+                    }
+                }
+                for (const packItem of this.inventory) {
+                    const polarity = packItem.detectMagic();
+                    // The last potion of the stack is being drunk; it isn't "in the pack"
+                    if (polarity && !(packItem === item && (item.count || 1) <= 1)) inPack = true;
+                }
+
+                if (this.isPlayerControlled()) {
+                    let message;
+                    if (onLevel && inPack) message = 'You can somehow feel the presence of magic on the level and in your pack.';
+                    else if (onLevel) message = 'You can somehow feel the presence of magic on the level.';
+                    else if (inPack) message = 'You can somehow feel the presence of magic in your pack.';
+                    else message = 'You can somehow feel the absence of magic on the level and in your pack.';
+                    this.engine.inputManager?.showMessage(message, { style: 'discovery' });
+                    this.engine.interfaceManager?.updatePlayerInfo();
+                    this.engine.renderer?.updateMagicDetectionMarkers?.();
                 }
                 return true;
             }
@@ -16097,6 +16187,68 @@ class RenderSystem {
     }
 
     /**
+     * Rebuild the detect-magic markers: a red or blue eye over each detected item the
+     * player can't currently see — lying on the floor, or carried by a creature that
+     * is out of sight (Brogue's ITEM_DETECTED cells). A visible item draws itself, so
+     * it gets no marker. Reads sprite visibility rather than lighting, so it runs
+     * after the entity-lighting pass and works the same on dark and bright levels.
+     * Called from updateProximityTransparency, the funnel both render paths share.
+     */
+    updateMagicDetectionMarkers() {
+        if (this.magicDetectionSprites) {
+            for (const sprite of this.magicDetectionSprites) {
+                this.uiContainer.removeChild(sprite);
+                sprite.destroy();
+            }
+        }
+        this.magicDetectionSprites = [];
+
+        const em = this.engine.entityManager;
+        if (!em) return;
+
+        // One marker per tile; a bad item outranks a good one beneath it.
+        const markers = new Map();
+        const mark = (x, y, polarity) => {
+            if (this._spriteOffscreen(x, y)) return;
+            const key = `${x},${y}`;
+            if (markers.get(key)?.polarity !== 'bad') markers.set(key, { x, y, polarity });
+        };
+
+        for (const item of em.items) {
+            if (item.sprite?.visible) continue;
+            const polarity = item.getDetectedMagicPolarity?.();
+            if (polarity) mark(item.x, item.y, polarity);
+        }
+        for (const actor of em.actors) {
+            if (actor.isDead || actor.hasAttribute('controlled') || !actor.inventory?.length) continue;
+            if (actor.spriteBase?.visible) continue;
+            for (const carried of actor.inventory) {
+                const polarity = carried.getDetectedMagicPolarity?.();
+                if (polarity) mark(actor.x, actor.y, polarity);
+            }
+        }
+        if (markers.size === 0) return;
+
+        const tileIndex = this.engine.spriteLibrary.resolveTile(globalVars.MAGIC_POLARITY_TILE);
+        if (!tileIndex) return;
+        const tileWidth = globalVars.TILE_WIDTH;
+        const tileHeight = globalVars.TILE_HEIGHT;
+        const texture = this.getTileTexture(tileIndex.x * tileWidth, tileIndex.y * tileHeight);
+
+        for (const { x, y, polarity } of markers.values()) {
+            const sprite = new PIXI.Sprite(texture);
+            sprite.x = x * tileWidth;
+            sprite.y = y * tileHeight;
+            sprite.tint = globalVars.MAGIC_POLARITY_TINTS[polarity];
+            // Low zIndex in uiContainer, beside the infrastructure overlay, so UI
+            // windows still draw over it.
+            sprite.zIndex = 2;
+            this.uiContainer.addChild(sprite);
+            this.magicDetectionSprites.push(sprite);
+        }
+    }
+
+    /**
      * Show a walk path highlight using A* pathfinding
      * Uses yellow-tinted overlay for path tiles
      * @param {number} startX - Starting tile X
@@ -17678,6 +17830,9 @@ class RenderSystem {
         // dark path (updateDarkness calls updateProximityTransparency) and the
         // bright path (updateLighting calls it directly), so it's the single funnel.
         this.updateInfrastructureVisibility();
+
+        // Detect-magic eyes over unseen detected items (after sprite visibility is set)
+        this.updateMagicDetectionMarkers();
     }
 
     /**

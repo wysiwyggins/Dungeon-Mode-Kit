@@ -11,6 +11,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 ### Added
 
+- **Potion of Detect Magic.** Senses whether items on the level and in your pack carry good or bad magic, shown as a blue or red eye beside them in the inventory and on the map wherever you can't see the item. Polarity comes from curses and enchantment, or the new `magic_polarity` attribute (`"good"` on the potion, scroll, staff and wand types; `"bad"` on harmful items and states).
 - **Wand of Plenty, Wand of Polymorph, Staff of Tunneling, Whip.** New `spell_effect` keys `clone_target`, `polymorph_target` and `tunnel`, and a `lash` attack style that strikes a hostile creature up to `lash_range` tiles away in a straight line. `no_polymorph` keeps chain segments and illusions out of polymorph.
 - **Potion of Life, Potion of Descent, Staff of Healing, Staff of Obstruction, Ring of Wisdom.** Life raises max health, heals fully and cures every condition. Descent's vapor opens temporary, shaded holes that drop whatever stands in them to the floor below, and the obstruction staff conjures green `crystal` that melts after 20 turns.
 - **New effect keys.** `use_effect` takes `<stat>_max`, `"max"` and `remove_all_states`. `spell_effect` takes `target_effect` (stat changes on the target) and `fill`/`fill_radius` (flood an actor over open ground). Worn items take `recharge_multiplier`, gas takes `opens_floor`, and the `expire` behavior removes any temporary actor when its `lifetime` runs out.

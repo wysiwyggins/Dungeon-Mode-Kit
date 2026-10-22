@@ -226,6 +226,7 @@
     "tileIndex": "FEMALE_SYMBOL",
     "unidentified_template": "[color] potion",
     "attributes": {
+      "magic_polarity": "good",
       "use_sound": "swallow",
       "break_sound": "glass",
       "breakable": true,
@@ -342,6 +343,7 @@
     "tileIndex": "SOLIDUS",
     "unidentified_template": "[material] staff",
     "attributes": {
+      "magic_polarity": "good",
       "charge_stat": "pow",
       "deferred": true,
       "description": "A [material] staff.",
@@ -363,6 +365,7 @@
     "tileIndex": "BEAMED_EIGHTH_NOTES",
     "unidentified_template": "[glyph_name] scroll",
     "attributes": {
+      "magic_polarity": "good",
       "use_sound": "magic",
       "consumable": true,
       "description": "A dusty roll of parchment filled with strange markings.",
@@ -413,6 +416,7 @@
     "tileIndex": "EXCLAMATION_MARK",
     "unidentified_template": "[color] wand",
     "attributes": {
+      "magic_polarity": "good",
       "cast_sound": "magic",
       "charge_stat": "pow",
       "deferred": true,

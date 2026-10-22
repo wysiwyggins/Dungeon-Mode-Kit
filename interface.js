@@ -738,6 +738,34 @@ class InterfaceManager {
     }
 
     /**
+     * Draw the detect-magic eye for an item — blue for good magic, red for bad —
+     * if magic has been detected on it (Item.getDetectedMagicPolarity). Inventory
+     * lists draw it in the blank column just left of the item's tile.
+     * @param {PIXI.Container} container - Container to add sprite to
+     * @param {Item} item - The item whose polarity to show
+     * @param {number} x - X position in pixels
+     * @param {number} y - Y position in pixels
+     */
+    renderMagicPolarityIcon(container, item, x, y) {
+        const polarity = item.getDetectedMagicPolarity?.();
+        if (!polarity || !this.tileset) return;
+        const tileCoords = this.spriteLibrary.getTileByName(globalVars.MAGIC_POLARITY_TILE);
+        if (!tileCoords) return;
+
+        const rect = new PIXI.Rectangle(
+            tileCoords.x * globalVars.TILE_WIDTH,
+            tileCoords.y * globalVars.TILE_HEIGHT,
+            globalVars.TILE_WIDTH,
+            globalVars.TILE_HEIGHT
+        );
+        const sprite = new PIXI.Sprite(new PIXI.Texture(this.tileset.texture.baseTexture, rect));
+        sprite.x = x;
+        sprite.y = y;
+        sprite.tint = globalVars.MAGIC_POLARITY_TINTS[polarity];
+        container.addChild(sprite);
+    }
+
+    /**
      * Create a text sprite for a single character
      * @param {string} char - Single character
      * @param {number} x - X position in pixels
@@ -1417,6 +1445,7 @@ class InterfaceManager {
             const tileX = textStartX + (5 * globalVars.TILE_WIDTH); // Position after "  a)  "
             const tileY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
             this.renderItemTile(boxContainer, item, tileX, tileY);
+            this.renderMagicPolarityIcon(boxContainer, item, tileX - globalVars.TILE_WIDTH, tileY);
         }
 
         // Render thermometer bars for continuous item stats (torch fuel, condition) in
@@ -4810,6 +4839,7 @@ class InterfaceManager {
             const tileX = textStartX + (5 * globalVars.TILE_WIDTH);
             const tileY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
             this.renderItemTile(boxContainer, item, tileX, tileY);
+            this.renderMagicPolarityIcon(boxContainer, item, tileX - globalVars.TILE_WIDTH, tileY);
         }
 
         this.updateBoxOverlays();
@@ -5048,6 +5078,7 @@ class InterfaceManager {
             const tileX = textStartX + (5 * globalVars.TILE_WIDTH);
             const tileY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
             this.renderItemTile(boxContainer, entry.item, tileX, tileY);
+            this.renderMagicPolarityIcon(boxContainer, entry.item, tileX - globalVars.TILE_WIDTH, tileY);
         }
 
         this.updateBoxOverlays();
@@ -5479,6 +5510,7 @@ class InterfaceManager {
             const tileX = textStartX + (4 * globalVars.TILE_WIDTH);
             const tileY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
             this.renderItemTile(boxContainer, item, tileX, tileY);
+            this.renderMagicPolarityIcon(boxContainer, item, tileX - globalVars.TILE_WIDTH, tileY);
         }
 
         this.updateBoxOverlays();
@@ -5958,6 +5990,15 @@ class InterfaceManager {
         if (item.getAttribute?.('protected')) {
             gap();
             push('It is protected from acid.');
+        }
+
+        // Detect magic: name what was sensed (the eye beside it in the pack says the same)
+        const polarity = item.getDetectedMagicPolarity?.();
+        if (polarity) {
+            gap();
+            push(polarity === 'bad'
+                ? 'You can feel a malevolent magic lurking within it.'
+                : 'You can feel a benevolent magic within it.');
         }
 
         // Gear identifies itself through use: rings by turns worn (`id_turns`),
