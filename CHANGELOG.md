@@ -11,6 +11,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 ### Added
 
+- **Condition locks.** Any door or chest can take `unlock_conditions`, using the same conditions as a floor's `win_conditions`, and stays locked until they hold (re-locking if they stop). The new `killed:linked` opens it when every actor sharing its `machine_id` is dead, so a vault can open when its one guardian dies.
 - **Potion of Detect Magic.** Senses whether items on the level and in your pack carry good or bad magic, shown as a blue or red eye beside them in the inventory and on the map wherever you can't see the item. Polarity comes from curses and enchantment, or the new `magic_polarity` attribute (`"good"` on the potion, scroll, staff and wand types; `"bad"` on harmful items and states).
 - **Wand of Plenty, Wand of Polymorph, Staff of Tunneling, Whip.** New `spell_effect` keys `clone_target`, `polymorph_target` and `tunnel`, and a `lash` attack style that strikes a hostile creature up to `lash_range` tiles away in a straight line. `no_polymorph` keeps chain segments and illusions out of polymorph.
 - **Potion of Life, Potion of Descent, Staff of Healing, Staff of Obstruction, Ring of Wisdom.** Life raises max health, heals fully and cures every condition. Descent's vapor opens temporary, shaded holes that drop whatever stands in them to the floor below, and the obstruction staff conjures green `crystal` that melts after 20 turns.
@@ -25,6 +26,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 ### Changed
 
+- **Actor editor attribute groups.** Attributes are sorted into collapsible groups (Combat, Movement, Terrain, Doors & Locks, Mechanisms, Traps, Naming), each showing a count of set values and opening on load when it has any. The lock-conditions, switch, and trap settings now sit inside their groups, and dependent fields such as `lock_color` and `trap_type` stay hidden until their parent attribute is checked. `lock_color` gets a swatch picker of the named colors in `data/colors.json`, where a hex sorts the closest names first.
 - **Polymorph pools and effect messages.** `polymorph_target` can name an actor id or type (or a list) to draw the new form from, or `{ "floors": "current" }` / a floor range to draw from that depth's spawn pool. Plenty, polymorph, tunneling and sanctuary take `effect_message` / `fail_message` to replace their built-in text.
 - **Gear auto-ID thresholds are type attributes.** `id_blows` (weapon and armor, 20) and `id_turns` (ring, 1500) replace the hardcoded engine constants, which remain as fallbacks.
 - **Blindness actually limits sight.** The `blinded` state now uses a new `vision_cap` state key (1 tile) instead of a -3 vision penalty, which did nothing next to a 25-tile vision range and a torch. On dark levels a blinded player also sees no light, so the adjacent tiles look as they would with no light source at all. While blind, other creatures go unnamed as when hallucinating, potions, scrolls, rings, wands and staffs show only as "potion", "scroll" and so on, and a new `cannot_read` state key stops you reading scrolls.

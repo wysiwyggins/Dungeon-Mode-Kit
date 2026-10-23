@@ -4,6 +4,8 @@ author: Wiley Wiggins
 project: "Dungeon Mode Kit"
 ---
 
+# next steps
+
 I haven't written a journal in a while because I've been journaling for school projects and just kind of picking wish-and-buglist items off one by one for DMK. I won't rehash changelog stuff here, I'll stick to writing about next steps and current issues etc.
 
 As far as recent features go, the biggest ones that jump to mind are building out the blindness state, which now does clever things with item name masking and prevents you from using scrolls (even though this is kind of hardcoded, opinionated stuff, I felt like it was worth it). Also a bow weapon that must be equipped and launches items, pretty much just like bows and crossbows in moria. That one is more in data and modular/reusable. Some things that were hardcoded before have been surfaced to data like they should be. A long-time performance bug that was happening whenever swamp gas was being spawned en masse in dark levels is fixed, I had tried many different ways of fixing it, and fixing map epistemology actually fixed it (I could see the gas spawning in 'remembered' areas that were outside of field of vision and fixing that also fixed the performance).

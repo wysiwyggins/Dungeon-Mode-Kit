@@ -1214,6 +1214,7 @@ class DungeonEngine {
         this.pendingFallenItems = new Map();  // floor# → [serialized item data] (items that fell through void/collapse)
         this.pendingStairFollowers = new Map(); // floor# → [serialized actor data] (monsters that chased the player through a stairway)
         this.sealedDownFloors = new Set(); // floor#s whose down-stairway is sealed (win conditions unmet) → that floor's N+1 up-stairway must be locked
+        this.pendingConditionRelocks = new Set(); // re-locked unlock_conditions actors held open by an occupant; closed once clear
         this.mappedFloors = new Set();   // floor#s revealed by magic mapping; a lasting per-level reveal (layout + machine links) that survives leaving and returning
         this.gameplayStarted = false;    // false during the load sequence; gates sounds/messages so load-time state changes don't leak feedback before the player begins play
 
@@ -2158,6 +2159,7 @@ class DungeonEngine {
             // Play has begun — feedback (sounds/messages) is allowed from here on,
             // including this function's own loaded_sound and floor banner below.
             this.gameplayStarted = true;
+            this.refreshConditionLocks();
             this.initializeTurnEngine();
 
             if (prototypeConfig.loaded_sound) {
@@ -2447,6 +2449,7 @@ class DungeonEngine {
         // Restoring a cached floor has no splash/click step — play resumes immediately,
         // so allow feedback before showing the floor banner below.
         this.gameplayStarted = true;
+        this.refreshConditionLocks();
 
         this.initializeTurnEngine();
 
@@ -2958,10 +2961,42 @@ class DungeonEngine {
      * Check a single win condition
      * @param {string|object} condition - The condition to check
      * @param {Actor} player - The player actor
+     * @param {Actor} [lock] - A condition-locked actor being evaluated (see
+     *   refreshConditionLocks). Enables `killed:linked` and the lock's kill latch.
      * @returns {boolean} True if condition is met
      */
-    checkWinCondition(condition, player) {
+    checkWinCondition(condition, player, lock = null) {
         if (typeof condition === 'string') {
+            // A lock's `killed:` conditions only count once a living match has been
+            // seen, latched on the lock itself (it serializes with the floor). Without
+            // it a door whose foe never spawned would pop open, and on a revisited
+            // floor — where the dead aren't restored — a satisfied kill would read as
+            // "never existed" and re-lock the door.
+            if (lock && condition.startsWith('killed:')) {
+                const operand = condition.substring(7);
+                let alive;
+                if (operand === 'linked') {
+                    const machineId = lock.getAttribute('machine_id');
+                    if (!machineId) {
+                        console.warn(`${lock.name}: "killed:linked" needs a machine_id`);
+                        return false;
+                    }
+                    alive = this.entityManager.actors.some(a =>
+                        a !== lock && !a.isDead && a.getAttribute('machine_id') === machineId
+                    );
+                } else {
+                    alive = this.entityManager.actors.some(a =>
+                        a.type === operand && !a.isDead
+                    );
+                }
+                const seen = lock.getAttribute('unlock_seen') || [];
+                if (alive) {
+                    if (!seen.includes(condition)) lock.setAttribute('unlock_seen', [...seen, condition]);
+                    return false;
+                }
+                return seen.includes(condition);
+            }
+
             // Format: "wearing:item_type" - player must have item equipped
             if (condition.startsWith('wearing:')) {
                 const itemType = condition.substring(8);
@@ -3120,6 +3155,84 @@ class DungeonEngine {
         this.sealedDownFloors.delete(this.currentFloor);
 
         this.setPortalsRevealed(true);
+    }
+
+    /**
+     * Re-evaluate every actor carrying `unlock_conditions` (doors, chests — any
+     * openable lock) and lock or unlock it to match. Same vocabulary as
+     * win_conditions, plus `killed:linked` (every other actor sharing the lock's
+     * machine_id is dead). Unlocking leaves the actor closed for the player to bump
+     * open; re-locking closes it, deferred while something stands in the doorway.
+     * Called from the same hooks as checkWinConditions, and on floor entry.
+     */
+    refreshConditionLocks() {
+        const actors = this.entityManager?.actors;
+        if (!actors) return;
+        const player = this.entityManager.player;
+        let changed = false;
+
+        for (const lock of actors) {
+            const conds = lock.getAttribute('unlock_conditions');
+            if (!Array.isArray(conds) || conds.length === 0 || lock.isDead) continue;
+
+            // Evaluate even during load so kill latches are seeded, but only flip
+            // state once play has begun (load-time equips mustn't emit feedback).
+            // map before every: each condition must run so every kill latch seeds,
+            // not just those before the first unmet condition.
+            const met = !!player && conds.map(c => this.checkWinCondition(c, player, lock)).every(Boolean);
+            if (!this.gameplayStarted) continue;
+
+            const locked = !!lock.getAttribute('locked');
+            if (met && locked) {
+                lock.setAttribute('locked', false);
+                this.pendingConditionRelocks.delete(lock);
+                this.playSound?.('lock');
+                const visible = this.isTileVisible(lock.x, lock.y);
+                const msg = lock.getAttribute('unlock_message') ||
+                    (visible ? `${lock.getNameWithArticle(true)} unlocks.` : 'You hear a distant click.');
+                this.inputManager?.showMessage(msg, { style: 'discovery' });
+                changed = true;
+            } else if (!met && !locked) {
+                lock.setAttribute('locked', true);
+                if (lock.hasAttribute('open')) {
+                    if (this.isLockTileClear(lock)) lock.close(true);
+                    else this.pendingConditionRelocks.add(lock);
+                }
+                changed = true;
+            }
+        }
+
+        if (changed) this.updateLighting();
+    }
+
+    /**
+     * Close re-locked doors that were held open by an occupant once their tile
+     * clears. Called at the top of each player turn.
+     */
+    closePendingConditionLocks() {
+        if (this.pendingConditionRelocks.size === 0) return;
+        let closed = false;
+        for (const lock of this.pendingConditionRelocks) {
+            // Unlocked again, already shut, or left behind on another floor.
+            if (lock.isDead || !lock.getAttribute('locked') || !lock.hasAttribute('open') ||
+                !this.entityManager.actors.includes(lock)) {
+                this.pendingConditionRelocks.delete(lock);
+                continue;
+            }
+            if (this.isLockTileClear(lock)) {
+                lock.close(true);
+                this.pendingConditionRelocks.delete(lock);
+                closed = true;
+            }
+        }
+        if (closed) this.updateLighting();
+    }
+
+    /** True if nothing but the lock itself occupies its tile (safe to swing shut). */
+    isLockTileClear(lock) {
+        const em = this.entityManager;
+        if (em.getActorsAt(lock.x, lock.y).some(a => a !== lock && !a.isDead)) return false;
+        return !em.items.some(i => i.x === lock.x && i.y === lock.y);
     }
 
     /**
@@ -6393,6 +6506,9 @@ class Actor extends Entity {
         }
 
         for (const target of targets) {
+            // A condition lock may share a machine_id with its guardian (for
+            // `killed:linked`); a switch on the same id must not bypass it.
+            if (target.getAttribute('unlock_conditions')) continue;
             for (const [key, value] of Object.entries(effects)) {
                 if (key === 'open') continue;
                 if (activated) {
@@ -6512,6 +6628,8 @@ class Actor extends Entity {
         // Monotonic "my turn number", used to cap fire damage at once per turn
         // regardless of how many overlapping fires hit this actor.
         this._turnCount = (this._turnCount || 0) + 1;
+
+        if (this.isPlayerControlled()) this.engine.closePendingConditionLocks();
 
         // Viewport AI margin: skip entire turn for off-screen actors
         if (this.engine.viewportEnabled && !this.isPlayerControlled()) {
@@ -6983,6 +7101,9 @@ class Actor extends Entity {
         if (!this.isPlayerControlled() && this.engine.checkWinConditions()) {
             this.engine.unlockWinConditionStairways();
         }
+        if (!this.isPlayerControlled()) {
+            this.engine.refreshConditionLocks();
+        }
 
         // Check if this death satisfies the prototype's game-win conditions
         if (!this.isPlayerControlled()) {
@@ -7220,6 +7341,7 @@ class Actor extends Entity {
             if (this.engine.checkWinConditions()) {
                 this.engine.unlockWinConditionStairways();
             }
+            this.engine.refreshConditionLocks();
             this.engine.maybeTriggerGameWin();
         }
 
@@ -7271,6 +7393,9 @@ class Actor extends Entity {
         if (this.isPlayerControlled() && this.engine.checkWinConditions()) {
             this.engine.unlockWinConditionStairways();
         }
+        if (this.isPlayerControlled()) {
+            this.engine.refreshConditionLocks();
+        }
 
         // Check if equipping this satisfies the prototype's game-win conditions
         if (this.isPlayerControlled()) {
@@ -7307,6 +7432,9 @@ class Actor extends Entity {
         // Check if this breaks win conditions (for player only)
         if (this.isPlayerControlled() && !this.engine.checkWinConditions()) {
             this.engine.lockWinConditionStairways();
+        }
+        if (this.isPlayerControlled()) {
+            this.engine.refreshConditionLocks();
         }
     }
 
@@ -11009,15 +11137,16 @@ class Actor extends Entity {
                 }
                 else if (currentValue !== undefined) {
                     // Any key opens any GENERIC locked door (lockable, no color_locked),
-                    // but never a stairway (owned by the win-condition system) or a gate
-                    // (switch/machine-driven). Color-locked doors took the branch above.
+                    // but never a stairway (owned by the win-condition system), a gate
+                    // (switch/machine-driven), or an unlock_conditions lock. Color-locked doors took the branch above.
                     // All other boolean effects set freely.
                     const isKeyUnlock = isUnlock && source.item?.hasAttribute('key');
                     if (isKeyUnlock) {
                         const isGenericLockableDoor = target.hasAttribute('lockable') &&
                             !target.hasAttribute('color_locked') &&
                             !target.hasAttribute('stairway') &&
-                            !target.hasAttribute('gate');
+                            !target.hasAttribute('gate') &&
+                            !target.getAttribute('unlock_conditions');
                         if (isGenericLockableDoor) {
                             console.log(`${source.name} unlocks ${target.name} (generic lock)`);
                             targetPassable = this._unlockTarget(target, key, value, source);

@@ -465,6 +465,33 @@ property on the actor object — see
 | `container` | boolean | This openable is furniture, not a doorway — see below |
 | `trap_chance` | number | Percent chance a container is trapped instead of holding loot |
 | `smash_loss` | number | Percent chance *per item* that contents are destroyed when it's broken open |
+| `unlock_conditions` | array | Locked until all conditions hold; re-locks if they stop. See below |
+| `unlock_message` | string | Shown when `unlock_conditions` opens the lock |
+
+**Condition locks.** `unlock_conditions` takes the same conditions as a floor's
+[`win_conditions`](PROTOTYPE.md#win-conditions), plus `killed:linked`: every other actor sharing
+this one's `machine_id` is dead. Give a vault door and its guardian the same `machine_id` in
+Tiled and the door opens when that one guardian falls, not every monster of its type. A `killed:`
+condition only counts once a living match has been seen, so a lock whose foe never spawned stays
+shut. Keys and switches don't open these locks. When the conditions break (say, the crown comes
+off) the lock re-seals, closing once nothing stands in the doorway.
+
+```json
+"ogre_vault_door": {
+  "name": "door",
+  "type": "doorway",
+  "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
+  "tileIndexTop": "OPAQUE_DOOR_TOP",
+  "tileIndexBase_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
+  "tileIndexTop_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
+  "attributes": {
+    "locked": true,
+    "unlock_conditions": ["killed:linked"],
+    "collision_description": "The door is sealed by the ogre's ward.",
+    "unlock_message": "Somewhere, a heavy bolt slides back."
+  }
+}
+```
 
 **Containers.** A chest is an ordinary `openable` plus `container: true`. Opening one is the
 whole mechanism: `open()` sets `solid: false`, and stepping onto a non-solid actor already

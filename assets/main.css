@@ -594,6 +594,68 @@ body.editor .tile-picker-tooltip {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+body.editor .color-picker {
+  width: 640px;
+}
+body.editor .color-picker-hex-row input[type=color] {
+  width: 32px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  cursor: pointer;
+}
+body.editor .color-picker-readout {
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+body.editor .color-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 16px);
+  gap: 2px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+body.editor .color-picker-swatch {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+body.editor .color-picker-swatch:hover {
+  outline: 1px solid var(--text);
+  outline-offset: 1px;
+}
+body.editor .color-picker-swatch.nearest {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+body.editor .color-picker-swatch.current {
+  outline: 2px solid #e94560;
+  outline-offset: 1px;
+}
+body.editor .color-name-swatch {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+body.editor .color-name-swatch.empty {
+  background: repeating-linear-gradient(45deg, var(--input-bg) 0 4px, var(--border) 4px 5px);
+}
+body.editor .color-name-warning {
+  display: none;
+  font-size: 10px;
+  color: #e94560;
+  white-space: nowrap;
+}
+body.editor .color-name-warning.visible {
+  display: inline;
+}
 body.editor .flip-grid {
   display: grid;
   grid-template-columns: repeat(3, auto);
@@ -649,6 +711,36 @@ body.editor.actor-editor .form-panel > details.section {
   width: 100%;
   max-width: 500px;
   margin: 0 0 8px;
+}
+body.editor.actor-editor .attr-group-core {
+  margin-bottom: 4px;
+}
+body.editor.actor-editor details.attr-group {
+  border-top: 1px solid var(--border);
+  padding: 5px 0;
+}
+body.editor.actor-editor details.attr-group > summary {
+  font-size: 11px;
+  color: var(--accent);
+}
+body.editor.actor-editor details.attr-group:last-of-type {
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+body.editor.actor-editor .attr-group-body {
+  padding: 6px 0 2px 10px;
+}
+body.editor.actor-editor .attr-group-extra {
+  border-left: 2px solid var(--border);
+  padding-left: 10px;
+  margin: 6px 0;
+}
+body.editor.actor-editor .attr-dependent:not(.visible) {
+  display: none;
+}
+body.editor.actor-editor .attr-dependent {
+  border-left: 2px solid var(--border);
+  padding-left: 6px;
 }
 body.editor.item-editor .field-row label {
   min-width: 150px;

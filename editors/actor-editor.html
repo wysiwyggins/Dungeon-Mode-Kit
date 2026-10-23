@@ -159,10 +159,117 @@
         <details class="section" open>
             <summary>Attributes</summary>
             <div class="section-body">
-                <div id="bool-attrs">
+                <!-- Groups are filled from ATTR_GROUPS by initAttrGroups(); the nested
+                     blocks below show only while their gating attribute is set. -->
+                <div class="attr-group attr-group-core" data-group="core">
+                    <div class="checkbox-grid"></div>
+                    <div class="typed-attrs"></div>
                 </div>
-                <div style="margin: 6px 0 4px; font-size:11px; color:var(--accent)">Numeric / String Attributes</div>
-                <div id="typed-attrs" class="typed-attrs"></div>
+                <details class="sub-collapsible attr-group" data-group="combat">
+                    <summary>Combat &amp; Durability<span class="sub-count"></span></summary>
+                    <div class="attr-group-body">
+                        <div class="checkbox-grid"></div>
+                        <div class="typed-attrs"></div>
+                    </div>
+                </details>
+                <details class="sub-collapsible attr-group" data-group="movement">
+                    <summary>Movement &amp; Senses<span class="sub-count"></span></summary>
+                    <div class="attr-group-body">
+                        <div class="checkbox-grid"></div>
+                        <div class="typed-attrs"></div>
+                    </div>
+                </details>
+                <details class="sub-collapsible attr-group" data-group="terrain">
+                    <summary>Terrain &amp; Hazards<span class="sub-count"></span></summary>
+                    <div class="attr-group-body">
+                        <div class="checkbox-grid"></div>
+                        <div class="typed-attrs"></div>
+                    </div>
+                </details>
+                <details class="sub-collapsible attr-group" data-group="locks">
+                    <summary>Doors &amp; Locks<span class="sub-count"></span></summary>
+                    <div class="attr-group-body">
+                        <div class="checkbox-grid"></div>
+                        <div class="typed-attrs"></div>
+                        <div class="conditional-section attr-group-extra" id="lock-conditions-section">
+                            <div class="sub-section-title">Lock Conditions</div>
+                            <div class="hint" style="margin:0 0 4px 0">Locked until <em>all</em> conditions hold, re-locking if they stop. Same forms as win_conditions: <code>killed:ogre</code>, <code>wearing:crown</code>, <code>holding:x</code>, <code>collected:x</code>, a JSON stat compare, or <code>killed:linked</code> (every actor sharing this one's <code>machine_id</code>, set in Tiled, is dead). Keys and switches don't open it.</div>
+                            <div id="unlock-conditions-list" class="dynamic-list"></div>
+                            <button class="add-btn" id="btn-add-unlock-condition">+ Add Condition</button>
+                            <div class="field-row" style="margin-top:8px">
+                                <label>Unlock Message</label>
+                                <input type="text" id="f-unlock_message" placeholder="defaults to &quot;The door unlocks.&quot; / &quot;You hear a distant click.&quot;">
+                            </div>
+                        </div>
+                    </div>
+                </details>
+                <details class="sub-collapsible attr-group" data-group="mechanisms">
+                    <summary>Mechanisms<span class="sub-count"></span></summary>
+                    <div class="attr-group-body">
+                        <div class="checkbox-grid"></div>
+                        <div class="typed-attrs"></div>
+                        <div class="conditional-section attr-group-extra" id="switch-section">
+                            <div style="margin-bottom:6px; font-size:11px; color:var(--accent)">Switch Effects (attribute: value applied to targets)</div>
+                            <div id="switch-effects-list" class="dynamic-list"></div>
+                            <button class="add-btn" id="btn-add-switch-effect">+ Add Effect</button>
+                            <div class="field-row" style="margin-top:8px">
+                                <label>Switch Message</label>
+                                <input type="text" id="f-switch_message" placeholder="">
+                            </div>
+                            <div class="field-row">
+                                <label>Switch Sound</label>
+                                <input type="text" id="f-switch_sound" placeholder="">
+                            </div>
+                        </div>
+                    </div>
+                </details>
+                <details class="sub-collapsible attr-group" data-group="traps">
+                    <summary>Traps<span class="sub-count"></span></summary>
+                    <div class="attr-group-body">
+                        <div class="checkbox-grid"></div>
+                        <div class="typed-attrs"></div>
+                        <div class="conditional-section attr-group-extra" id="trap-section">
+                            <div class="sub-section-title">Area Effect</div>
+                            <div class="field-row">
+                                <label>Center (actor type)</label>
+                                <input type="text" id="f-trap_effect_center" placeholder="intense_fire">
+                            </div>
+                            <div class="field-row">
+                                <label>Radius</label>
+                                <input type="number" id="f-trap_effect_radius" min="0" value="">
+                            </div>
+                            <div class="field-row">
+                                <label>Outer (actor type)</label>
+                                <input type="text" id="f-trap_effect_outer" placeholder="fire">
+                            </div>
+                            <div class="sub-section-title" style="margin-top:8px">Simple Spawn</div>
+                            <div class="field-row">
+                                <label>Trap Spawn</label>
+                                <input type="text" id="f-trap_spawn" placeholder="cloud">
+                            </div>
+                            <div class="field-row">
+                                <label>Spawn Tint</label>
+                                <input type="color" id="f-trap_spawn_tint" value="#ffffff">
+                                <input type="text" id="f-trap_spawn_tint_hex" placeholder="#rrggbb" style="width:80px">
+                            </div>
+                            <div class="field-row">
+                                <label>Apply State</label>
+                                <input type="text" id="f-trap_apply_state" placeholder="poisoned">
+                            </div>
+                            <div class="field-row">
+                                <label>Trap Message</label>
+                                <input type="text" id="f-trap_message" placeholder="">
+                            </div>
+                        </div>
+                    </div>
+                </details>
+                <details class="sub-collapsible attr-group" data-group="naming">
+                    <summary>Naming &amp; Spawning<span class="sub-count"></span></summary>
+                    <div class="attr-group-body">
+                        <div class="checkbox-grid"></div>
+                        <div class="typed-attrs"></div>
+                    </div>
+                </details>
                 <div style="margin: 8px 0 4px; font-size:11px; color:var(--accent)">Custom Attributes</div>
                 <div id="custom-attrs" class="dynamic-list"></div>
                 <button class="add-btn" id="btn-add-custom-attr">+ Add Custom Attribute</button>
@@ -263,62 +370,6 @@
             </div>
         </details>
 
-        <!-- Switch -->
-        <details class="section conditional-section" id="switch-section">
-            <summary>Switch / Mechanism</summary>
-            <div class="section-body">
-                <div style="margin-bottom:6px; font-size:11px; color:var(--accent)">Switch Effects (attribute: value applied to targets)</div>
-                <div id="switch-effects-list" class="dynamic-list"></div>
-                <button class="add-btn" id="btn-add-switch-effect">+ Add Effect</button>
-                <div class="field-row" style="margin-top:8px">
-                    <label>Switch Message</label>
-                    <input type="text" id="f-switch_message" placeholder="">
-                </div>
-                <div class="field-row">
-                    <label>Switch Sound</label>
-                    <input type="text" id="f-switch_sound" placeholder="">
-                </div>
-            </div>
-        </details>
-
-        <!-- Trap -->
-        <details class="section conditional-section" id="trap-section">
-            <summary>Trap</summary>
-            <div class="section-body">
-                <div class="sub-section-title">Area Effect</div>
-                <div class="field-row">
-                    <label>Center (actor type)</label>
-                    <input type="text" id="f-trap_effect_center" placeholder="intense_fire">
-                </div>
-                <div class="field-row">
-                    <label>Radius</label>
-                    <input type="number" id="f-trap_effect_radius" min="0" value="">
-                </div>
-                <div class="field-row">
-                    <label>Outer (actor type)</label>
-                    <input type="text" id="f-trap_effect_outer" placeholder="fire">
-                </div>
-                <div class="sub-section-title" style="margin-top:8px">Simple Spawn</div>
-                <div class="field-row">
-                    <label>Trap Spawn</label>
-                    <input type="text" id="f-trap_spawn" placeholder="cloud">
-                </div>
-                <div class="field-row">
-                    <label>Spawn Tint</label>
-                    <input type="color" id="f-trap_spawn_tint" value="#ffffff">
-                    <input type="text" id="f-trap_spawn_tint_hex" placeholder="#rrggbb" style="width:80px">
-                </div>
-                <div class="field-row">
-                    <label>Apply State</label>
-                    <input type="text" id="f-trap_apply_state" placeholder="poisoned">
-                </div>
-                <div class="field-row">
-                    <label>Trap Message</label>
-                    <input type="text" id="f-trap_message" placeholder="">
-                </div>
-            </div>
-        </details>
-
         <!-- Misc -->
         <details class="section">
             <summary>Misc</summary>
@@ -351,6 +402,7 @@
 <!-- Tile picker modal -->
 <!-- The tile-picker overlay is injected by scripts/tile-picker.js on first use. -->
 <script src="scripts/tile-picker.js"></script>
+<script src="scripts/color-picker.js"></script>
 <script src="scripts/effect-params.js"></script>
 
 <script>
@@ -359,19 +411,35 @@ const SCALE = 4;
 const SPRITESHEET_PATH = '../assets/sprites/static-tiles.png';
 const TILE_DATA_PATH = '../data/static-tiles.json';
 
-const PRIMARY_BOOL_ATTRS = [
-    'solid','visible','hostile','sentient','opaque',
-    'flammable','conductive','breakable','pushable','light_source','dark_vision','flies',
-    'blocks_diagonal'
+// Attributes sorted into the groups of the Attributes section. `bools` become
+// checkboxes, `typed` name TYPED_ATTRS entries. Each id matches a data-group shell
+// in the markup; 'core' is always shown, the rest collapse.
+const ATTR_GROUPS = [
+    { id: 'core', bools: ['solid','visible','opaque','blocks_diagonal','hostile','sentient','controlled','light_source'], typed: [] },
+    { id: 'combat', bools: ['breakable','pushable','splits'],
+      typed: ['accuracy','defense','strength','inventory','remains','lode','lode_chance','split_min_health','chain_segment_type'] },
+    { id: 'movement', bools: ['flies','aquatic','web_immune','hazard_immune','dark_vision','follows_thread','pack','conceals_when_submerged'], typed: [] },
+    { id: 'terrain', bools: ['liquid','deep','flammable','conductive','spreads','ignites','platform','collapsible','consume_on_escape'],
+      typed: ['damage_type','apply_state','entry_sound'] },
+    { id: 'locks', bools: ['openable','lockable','locked','color_locked','gate'], typed: ['lock_color'] },
+    { id: 'mechanisms', bools: ['switchable','pausable','toggled','one_shot','pedestal','display_inventory','portal'], typed: ['machine_id','stairway'] },
+    { id: 'traps', bools: ['trap','hidden'], typed: ['trap_type'] },
+    { id: 'naming', bools: ['mass_noun','proper_named'], typed: ['paint_tile'] },
 ];
-const SECONDARY_BOOL_ATTRS = [
-    'controlled','hazard_immune','pack','follows_thread','mass_noun','proper_named',
-    'liquid','deep','spreads','ignites','openable','lockable','color_locked','gate',
-    'switchable','toggled','pausable','one_shot','pedestal','display_inventory',
-    'platform','collapsible','portal','trap','hidden','splits','consume_on_escape',
-    'aquatic','conceals_when_submerged','web_immune'
-];
-const BOOL_ATTRS = [...PRIMARY_BOOL_ATTRS, ...SECONDARY_BOOL_ATTRS];
+const BOOL_ATTRS = ATTR_GROUPS.flatMap(g => g.bools);
+
+// Fields that only mean something once a parent attribute is set. They stay hidden
+// until any listed parent is checked, unless they already hold a value.
+const ATTR_DEPENDS = {
+    deep: ['liquid'],
+    color_locked: ['lockable'],
+    lock_color: ['color_locked'],
+    lode: ['breakable'],
+    lode_chance: ['breakable'],
+    split_min_health: ['splits'],
+    trap_type: ['trap'],
+    toggled: ['switchable', 'pausable'],
+};
 
 const BOOL_HINTS = {
     solid: 'Default: true. Blocks movement.',
@@ -400,6 +468,7 @@ const BOOL_HINTS = {
     ignites: 'Sets flammable neighbors on fire.',
     openable: 'Can be opened/closed (doors, gates).',
     lockable: 'Can be locked.',
+    locked: 'Starts locked.',
     color_locked: 'Requires matching color key to unlock.',
     gate: 'Gate actor (opened by mechanisms).',
     switchable: 'Toggle-able mechanism.',
@@ -435,7 +504,7 @@ const TYPED_ATTRS = [
     { key: 'remains', type: 'text', label: 'Remains', hint: 'Actor type spawned on death. e.g. skull, rubble, blood, mist, log.' },
     { key: 'damage_type', type: 'select', label: 'Damage Type', hint: 'Hazard damage category. Grants immunity via {type}_immune attribute.', options: ['', 'fire', 'poison', 'electric'] },
     { key: 'lode', type: 'text', label: 'Lode (item type)', hint: 'Item type dropped when broken. e.g. gold_nugget, uranium_nugget.' },
-    { key: 'lock_color', type: 'text', label: 'Lock Color', hint: 'Fixed lock color (overrides random). Matches color key items.' },
+    { key: 'lock_color', type: 'colorname', label: 'Lock Color', hint: 'Fixed lock color (overrides random): a color name from data/colors.json, matched against color key items.' },
     { key: 'machine_id', type: 'text', label: 'Machine ID', hint: 'Links switches to targets. All actors with the same machine_id are affected together.' },
     { key: 'trap_type', type: 'text', label: 'Trap Type', hint: 'Trap identifier. Known: fire, poison_gas, paralysis_gas, confusion_gas.' },
     { key: 'stairway', type: 'text', label: 'Stairway (up/down)', hint: '"up" or "down". Links floors in multi-level prototypes.' },
@@ -1007,6 +1076,8 @@ function randomizeAppearance() {
 
 function updatePreview() {
     updateQuarryHints();
+    updateAttrGroupCounts();
+    updateColorNameFields();
     renderPreview();
     updateJSONOutput();
     if (hasActiveAnimation()) startAnimLoop();
@@ -1065,6 +1136,14 @@ function openTilePicker(target) {
 
 // ---- Boolean attributes ----
 
+/** Mark a field that waits on a parent attribute (see ATTR_DEPENDS). */
+function markDependent(el, key) {
+    if (!ATTR_DEPENDS[key]) return;
+    el.classList.add('attr-dependent');
+    el.dataset.dependsOn = ATTR_DEPENDS[key].join(',');
+    el.dataset.attrKey = key;
+}
+
 function makeBoolCheckbox(attr, container) {
     const label = document.createElement('label');
     if (BOOL_HINTS[attr]) label.title = BOOL_HINTS[attr];
@@ -1078,84 +1157,107 @@ function makeBoolCheckbox(attr, container) {
     });
     label.appendChild(cb);
     label.appendChild(document.createTextNode(' ' + attr));
+    markDependent(label, attr);
     container.appendChild(label);
 }
 
-function initBoolAttrs() {
-    const wrapper = document.getElementById('bool-attrs');
-
-    const primaryGrid = document.createElement('div');
-    primaryGrid.className = 'checkbox-grid';
-    for (const attr of PRIMARY_BOOL_ATTRS) makeBoolCheckbox(attr, primaryGrid);
-    wrapper.appendChild(primaryGrid);
-
-    const toggle = document.createElement('button');
-    toggle.className = 'add-btn';
-    toggle.textContent = '+ More attributes...';
-    toggle.style.marginTop = '4px';
-    wrapper.appendChild(toggle);
-
-    const secondaryGrid = document.createElement('div');
-    secondaryGrid.className = 'checkbox-grid';
-    secondaryGrid.style.display = 'none';
-    secondaryGrid.style.marginTop = '6px';
-    for (const attr of SECONDARY_BOOL_ATTRS) makeBoolCheckbox(attr, secondaryGrid);
-    wrapper.appendChild(secondaryGrid);
-
-    toggle.addEventListener('click', () => {
-        const open = secondaryGrid.style.display !== 'none';
-        secondaryGrid.style.display = open ? 'none' : 'grid';
-        toggle.textContent = open ? '+ More attributes...' : '- Fewer attributes';
-    });
+function makeTypedField(ta, container) {
+    const row = document.createElement('div');
+    row.className = 'field-row';
+    if (ta.hint) row.title = ta.hint;
+    const lbl = document.createElement('label');
+    lbl.textContent = ta.label;
+    row.appendChild(lbl);
+    if (ta.type === 'select') {
+        const sel = document.createElement('select');
+        sel.id = 'attr-' + ta.key;
+        for (const opt of ta.options) {
+            const o = document.createElement('option');
+            o.value = opt;
+            o.textContent = opt || '— none —';
+            sel.appendChild(o);
+        }
+        sel.addEventListener('change', updatePreview);
+        row.appendChild(sel);
+    } else if (ta.type === 'color') {
+        const ci = document.createElement('input');
+        ci.type = 'color';
+        ci.id = 'attr-' + ta.key;
+        ci.value = '#ffffff';
+        ci.addEventListener('input', updatePreview);
+        row.appendChild(ci);
+        const ti = document.createElement('input');
+        ti.type = 'text';
+        ti.id = 'attr-' + ta.key + '-hex';
+        ti.placeholder = '#rrggbb';
+        ti.style.width = '80px';
+        ti.addEventListener('input', () => {
+            if (/^#[0-9a-fA-F]{6}$/.test(ti.value)) ci.value = ti.value;
+            updatePreview();
+        });
+        ci.addEventListener('input', () => { ti.value = ci.value; });
+        row.appendChild(ti);
+    } else if (ta.type === 'colorname') {
+        // A color *name* from data/colors.json (see scripts/color-picker.js). The
+        // text input is the stored value; the swatch opens the picker.
+        const sw = document.createElement('button');
+        sw.type = 'button';
+        sw.className = 'color-name-swatch';
+        sw.id = 'attr-' + ta.key + '-swatch';
+        sw.title = 'Pick a named color';
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.id = 'attr-' + ta.key;
+        inp.placeholder = 'color name';
+        inp.addEventListener('input', updatePreview);
+        sw.addEventListener('click', () => ColorPicker.open({
+            current: inp.value.trim() || null,
+            label: ta.key,
+            onPick: (name) => { inp.value = name || ''; updatePreview(); },
+        }));
+        const warn = document.createElement('span');
+        warn.className = 'color-name-warning';
+        warn.id = 'attr-' + ta.key + '-warning';
+        warn.textContent = 'not in colors.json';
+        row.appendChild(sw);
+        row.appendChild(inp);
+        row.appendChild(warn);
+    } else {
+        const inp = document.createElement('input');
+        inp.type = ta.type;
+        inp.id = 'attr-' + ta.key;
+        inp.addEventListener('input', updatePreview);
+        if (ta.type === 'number') inp.style.width = '100px';
+        row.appendChild(inp);
+    }
+    markDependent(row, ta.key);
+    container.appendChild(row);
 }
 
-function initTypedAttrs() {
-    const container = document.getElementById('typed-attrs');
+/** Paint each color-name field's swatch, and flag names colors.json doesn't know. */
+function updateColorNameFields() {
     for (const ta of TYPED_ATTRS) {
-        const row = document.createElement('div');
-        row.className = 'field-row';
-        if (ta.hint) row.title = ta.hint;
-        const lbl = document.createElement('label');
-        lbl.textContent = ta.label;
-        row.appendChild(lbl);
-        if (ta.type === 'select') {
-            const sel = document.createElement('select');
-            sel.id = 'attr-' + ta.key;
-            for (const opt of ta.options) {
-                const o = document.createElement('option');
-                o.value = opt;
-                o.textContent = opt || '— none —';
-                sel.appendChild(o);
-            }
-            sel.addEventListener('change', updatePreview);
-            row.appendChild(sel);
-        } else if (ta.type === 'color') {
-            const ci = document.createElement('input');
-            ci.type = 'color';
-            ci.id = 'attr-' + ta.key;
-            ci.value = '#ffffff';
-            ci.addEventListener('input', updatePreview);
-            row.appendChild(ci);
-            const ti = document.createElement('input');
-            ti.type = 'text';
-            ti.id = 'attr-' + ta.key + '-hex';
-            ti.placeholder = '#rrggbb';
-            ti.style.width = '80px';
-            ti.addEventListener('input', () => {
-                if (/^#[0-9a-fA-F]{6}$/.test(ti.value)) ci.value = ti.value;
-                updatePreview();
-            });
-            ci.addEventListener('input', () => { ti.value = ci.value; });
-            row.appendChild(ti);
-        } else {
-            const inp = document.createElement('input');
-            inp.type = ta.type;
-            inp.id = 'attr-' + ta.key;
-            inp.addEventListener('input', updatePreview);
-            if (ta.type === 'number') inp.style.width = '100px';
-            row.appendChild(inp);
-        }
-        container.appendChild(row);
+        if (ta.type !== 'colorname') continue;
+        const name = document.getElementById('attr-' + ta.key).value.trim();
+        const hex = ColorPicker.hexOf(name);
+        const sw = document.getElementById('attr-' + ta.key + '-swatch');
+        sw.style.background = hex || '';
+        sw.classList.toggle('empty', !hex);
+        document.getElementById('attr-' + ta.key + '-warning')
+            .classList.toggle('visible', !!name && !hex);
+    }
+}
+
+/** Fill each data-group shell in the Attributes section from ATTR_GROUPS. */
+function initAttrGroups() {
+    const typedByKey = Object.fromEntries(TYPED_ATTRS.map(ta => [ta.key, ta]));
+    for (const group of ATTR_GROUPS) {
+        const shell = document.querySelector(`.attr-group[data-group="${group.id}"]`);
+        const grid = shell.querySelector('.checkbox-grid');
+        const typed = shell.querySelector('.typed-attrs');
+        for (const attr of group.bools) makeBoolCheckbox(attr, grid);
+        for (const key of group.typed) makeTypedField(typedByKey[key], typed);
+        if (!group.typed.length) typed.remove();
     }
 }
 
@@ -1392,6 +1494,28 @@ function addQuarryRow(listId, val, withActors) {
     container.appendChild(row);
 }
 
+/** One unlock condition per row; a value starting with `{` is a JSON stat compare. */
+function addUnlockConditionRow(cond) {
+    const container = document.getElementById('unlock-conditions-list');
+    const row = document.createElement('div');
+    row.className = 'list-item';
+    const inp = document.createElement('input');
+    inp.type = 'text'; inp.placeholder = 'killed:linked';
+    inp.value = cond && typeof cond === 'object' ? JSON.stringify(cond) : (cond || '');
+    inp.addEventListener('input', updatePreview);
+    const btn = document.createElement('button');
+    btn.className = 'remove-btn'; btn.textContent = 'x';
+    btn.addEventListener('click', () => { row.remove(); updatePreview(); });
+    row.appendChild(inp); row.appendChild(btn);
+    container.appendChild(row);
+}
+
+function readUnlockConditions() {
+    return [...document.querySelectorAll('#unlock-conditions-list input')]
+        .map(i => i.value.trim()).filter(Boolean)
+        .map(v => { if (!v.startsWith('{')) return v; try { return JSON.parse(v); } catch { return v; } });
+}
+
 function addHuntRow(val) { addQuarryRow('hunts-list', val, true); }
 function addSeekRow(val) { addQuarryRow('seeks-list', val, false); }
 
@@ -1439,6 +1563,7 @@ function addSwitchEffectRow(key, val) {
 
 function updateConditionalSections() {
     const openable = document.getElementById('attr-openable').checked;
+    const lockable = document.getElementById('attr-lockable').checked;
     const switchable = document.getElementById('attr-switchable').checked;
     const pausable = document.getElementById('attr-pausable').checked;
     const trap = document.getElementById('attr-trap').checked;
@@ -1447,6 +1572,56 @@ function updateConditionalSections() {
     document.getElementById('toggled-tiles-section').classList.toggle('visible', switchable);
     document.getElementById('switch-section').classList.toggle('visible', switchable || pausable);
     document.getElementById('trap-section').classList.toggle('visible', trap);
+    document.getElementById('lock-conditions-section').classList.toggle('visible', openable || lockable);
+
+    // A dependent field shows once a parent is set, or while it holds a value of its
+    // own so nothing an actor declares is ever hidden. Only re-evaluated here (on a
+    // checkbox change or a load), so clearing a field doesn't yank it away mid-edit.
+    for (const el of document.querySelectorAll('.attr-dependent')) {
+        const parentSet = el.dataset.dependsOn.split(',')
+            .some(p => document.getElementById('attr-' + p)?.checked);
+        el.classList.toggle('visible', parentSet || attrHasValue(el.dataset.attrKey));
+    }
+}
+
+/** True when an attribute field holds something the actor would declare. */
+function attrHasValue(key) {
+    const el = document.getElementById('attr-' + key);
+    if (!el) return false;
+    if (el.type === 'checkbox') return el.checked !== boolDefault(key);
+    if (el.type === 'color') return !!document.getElementById('attr-' + key + '-hex')?.value.trim();
+    return el.value.trim() !== '';
+}
+
+/** How many values a group's fields (and nested block, if any) currently hold. */
+function attrGroupCount(group, shell) {
+    let n = group.bools.filter(attrHasValue).length + group.typed.filter(attrHasValue).length;
+    const extra = shell.querySelector('.attr-group-extra');
+    if (extra) {
+        n += extra.querySelectorAll('.list-item').length;
+        n += [...extra.querySelectorAll('.field-row input:not([type="color"])')]
+            .filter(i => i.value.trim() !== '').length;
+    }
+    return n;
+}
+
+/** Refresh each collapsible group's summary count. */
+function updateAttrGroupCounts() {
+    for (const group of ATTR_GROUPS) {
+        const shell = document.querySelector(`.attr-group[data-group="${group.id}"]`);
+        const badge = shell.querySelector('.sub-count');
+        if (!badge) continue;
+        const n = attrGroupCount(group, shell);
+        badge.textContent = n ? `(${n})` : '';
+    }
+}
+
+/** Open the groups that hold values and close the rest. Runs when an actor loads. */
+function syncAttrGroupOpenState() {
+    for (const group of ATTR_GROUPS) {
+        const shell = document.querySelector(`.attr-group[data-group="${group.id}"]`);
+        if (shell.tagName === 'DETAILS') shell.open = attrGroupCount(group, shell) > 0;
+    }
 }
 
 // ---- Form population ----
@@ -1476,10 +1651,6 @@ function clearForm() {
     document.querySelector('input[name="defaultFacing"][value="left"]').checked = true;
 
     for (const attr of BOOL_ATTRS) document.getElementById('attr-' + attr).checked = boolDefault(attr);
-    const secGrid = document.getElementById('bool-attrs').querySelector('.checkbox-grid:last-of-type');
-    const secToggle = document.getElementById('bool-attrs').querySelector('.add-btn');
-    if (secGrid) secGrid.style.display = 'none';
-    if (secToggle) secToggle.textContent = '+ More attributes...';
     for (const ta of TYPED_ATTRS) {
         const el = document.getElementById('attr-' + ta.key);
         if (el) el.value = ta.type === 'color' ? '#ffffff' : '';
@@ -1492,6 +1663,8 @@ function clearForm() {
     document.getElementById('default-items-list').innerHTML = '';
     document.getElementById('hunts-list').innerHTML = '';
     document.getElementById('seeks-list').innerHTML = '';
+    document.getElementById('unlock-conditions-list').innerHTML = '';
+    document.getElementById('f-unlock_message').value = '';
     document.getElementById('f-search_radius').value = '';
     document.getElementById('switch-effects-list').innerHTML = '';
 
@@ -1523,6 +1696,7 @@ function clearForm() {
     document.getElementById('f-spread_chance').value = '';
 
     updateConditionalSections();
+    syncAttrGroupOpenState();
 }
 
 function populateForm(key, data) {
@@ -1582,7 +1756,6 @@ function populateForm(key, data) {
     // does have them at runtime) but are NOT written back unless changed, so
     // opening and exporting an actor doesn't pin its inherited values.
     const typeAttrs = typeAttrsFor(data.type);
-    let hasSecondary = false;
     for (const attr of BOOL_ATTRS) {
         // Use the stored value when present, else what the type gives, else the
         // attribute's own default. This keeps an explicit `false` (e.g. solid:false)
@@ -1591,17 +1764,12 @@ function populateForm(key, data) {
         const v = attrs[attr] !== undefined ? attrs[attr]
             : (typeAttrs[attr] !== undefined ? typeAttrs[attr] : boolDefault(attr));
         document.getElementById('attr-' + attr).checked = !!v;
-        if (v && SECONDARY_BOOL_ATTRS.includes(attr)) hasSecondary = true;
     }
-    const secGrid = document.getElementById('bool-attrs').querySelector('.checkbox-grid:last-of-type');
-    const secToggle = document.getElementById('bool-attrs').querySelector('.add-btn');
-    if (secGrid && secToggle) {
-        secGrid.style.display = hasSecondary ? 'grid' : 'none';
-        secToggle.textContent = hasSecondary ? '- Fewer attributes' : '+ More attributes...';
-    }
-    const knownKeys = new Set([...BOOL_ATTRS, ...TYPED_ATTRS.map(t => t.key), 'hunts', 'seeks', 'search_radius']);
+    const knownKeys = new Set([...BOOL_ATTRS, ...TYPED_ATTRS.map(t => t.key), 'hunts', 'seeks', 'search_radius', 'unlock_conditions', 'unlock_message']);
     for (const q of [attrs.hunts].flat().filter(Boolean)) addHuntRow(q);
     for (const q of [attrs.seeks].flat().filter(Boolean)) addSeekRow(q);
+    for (const c of [attrs.unlock_conditions].flat().filter(Boolean)) addUnlockConditionRow(c);
+    document.getElementById('f-unlock_message').value = attrs.unlock_message || '';
     document.getElementById('f-search_radius').value = attrs.search_radius ?? '';
     for (const ta of TYPED_ATTRS) {
         const val = attrs[ta.key];
@@ -1682,6 +1850,7 @@ function populateForm(key, data) {
     document.getElementById('f-spread_chance').value = data.spread_chance || '';
 
     updateConditionalSections();
+    syncAttrGroupOpenState();
     updatePreview();
 }
 
@@ -1834,6 +2003,10 @@ function readForm() {
     if (seeks.length) attrs.seeks = seeks.length === 1 ? seeks[0] : seeks;
     const searchRadius = parseInt(document.getElementById('f-search_radius').value);
     if (!isNaN(searchRadius)) attrs.search_radius = searchRadius;
+    const unlockConds = readUnlockConditions();
+    if (unlockConds.length) attrs.unlock_conditions = unlockConds;
+    const unlockMsg = document.getElementById('f-unlock_message').value.trim();
+    if (unlockMsg) attrs.unlock_message = unlockMsg;
     if (Object.keys(attrs).length) obj.attributes = attrs;
 
     // Stats
@@ -1993,6 +2166,7 @@ function initEventListeners() {
     document.getElementById('btn-add-stat').addEventListener('click', () => addStatRow('', 0));
     document.getElementById('btn-add-innate-state').addEventListener('click', () => addInnateStateRow(''));
     document.getElementById('btn-add-hunt').addEventListener('click', () => { addHuntRow(''); updatePreview(); });
+    document.getElementById('btn-add-unlock-condition').addEventListener('click', () => { addUnlockConditionRow(''); updatePreview(); });
     document.getElementById('btn-add-seek').addEventListener('click', () => { addSeekRow(''); updatePreview(); });
     document.getElementById('btn-add-item').addEventListener('click', () => addItemRow(''));
     document.getElementById('btn-add-switch-effect').addEventListener('click', () => addSwitchEffectRow('', ''));
@@ -2034,8 +2208,7 @@ async function populatePrototypeSelect() {
 }
 
 async function init() {
-    initBoolAttrs();
-    initTypedAttrs();
+    initAttrGroups();
     initTileSlots();
     initTintSync();
 
@@ -2043,7 +2216,7 @@ async function init() {
     // because this page draws its own tile previews and actor composite from
     // state.spritesheetImg.
     await Promise.all([
-        loadBaseData(), loadSpritesheet(), loadBaseAnimations(), TilePicker.load(),
+        loadBaseData(), loadSpritesheet(), loadBaseAnimations(), TilePicker.load(), ColorPicker.load(),
     ]);
     populateTypeDropdown();
     await populatePrototypeSelect();

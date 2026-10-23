@@ -502,6 +502,8 @@ Each floor spawns `base` items guaranteed, then rolls up to `max_extra` addition
 ## Win Conditions
 
 `win_conditions` is an array of conditions that must all be met to unlock the floor's stairway.
+To gate a single door or chest the same way, give that actor `unlock_conditions` (see
+[ACTORS.md](ACTORS.md#doors--containers)).
 
 ```json
 "win_conditions": ["killed:ghast", "wearing:crown"]
