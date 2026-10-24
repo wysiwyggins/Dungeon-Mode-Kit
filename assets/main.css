@@ -29,6 +29,10 @@
   font-weight: normal;
   font-style: normal;
 }
+body {
+  background-color: rgb(245, 240, 229);
+}
+
 #game {
   line-height: 0;
 }
@@ -728,6 +732,12 @@ body.editor .typed-attrs .field-row select {
   width: auto;
   min-width: 0;
 }
+body.editor .typed-attrs .field-row.ref-row {
+  grid-column: 1/-1;
+}
+body.editor .typed-attrs .field-row.ref-row input[type=text] {
+  flex: 2 1 0;
+}
 body.editor .actor-key-field,
 body.editor .item-key-field,
 body.editor .personality-key-field {
@@ -774,12 +784,6 @@ body.editor.actor-editor .attr-group-extra {
   padding-left: 10px;
   margin: 6px 0;
 }
-body.editor.actor-editor .typed-attrs .field-row.ref-row {
-  grid-column: 1/-1;
-}
-body.editor.actor-editor .typed-attrs .field-row.ref-row input[type=text] {
-  flex: 2 1 0;
-}
 body.editor.actor-editor .attr-dependent:not(.visible) {
   display: none;
 }
@@ -809,6 +813,26 @@ body.editor.item-editor .form-panel > details.section {
   width: 100%;
   max-width: 500px;
   margin: 0 0 8px;
+}
+body.editor.entity-editor .form-panel {
+  -moz-column-width: 460px;
+       column-width: 460px;
+  -moz-column-gap: 8px;
+       column-gap: 8px;
+  display: flex;
+  flex-flow: row wrap;
+}
+body.editor.entity-editor .form-panel > details.section {
+  -moz-column-break-inside: avoid;
+       break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+  display: inline-block;
+  width: 100%;
+  max-width: 500px;
+  margin: 0 0 8px;
+}
+body.editor.entity-editor #used-by {
+  margin-top: 6px;
 }
 body.editor .item-filter-wrap {
   position: relative;
