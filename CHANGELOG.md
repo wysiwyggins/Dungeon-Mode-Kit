@@ -93,6 +93,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 ### Fixed
 
+- **Canvas fits small screens.** The game canvas now shrinks to the width of a narrow screen instead of overflowing it, keeping its proportions and full resolution.
 - **Read/quaff/jam menu icons.** The item tile in these menus no longer covers the first letter of the item name; the rows now use the same spacing as the other item menus.
 - **Hunters and scavengers have to see items to want them.** Item hunting and `seek_item` found items through walls, and `hunt` ignored the actor's vision range, always using 10. Both now use the same sight test as hunting actors.
 - **Monsters no longer walk into lava.** Their pathfinding, and the direct step it falls back on when no path exists, only checked for floor and walls, so a chase could run straight through lava or fire. All monster movement now goes around any hazard the mover isn't immune to, and the player's auto-explore and walk paths honor `fireproof`, which they had been checking under the wrong name (`fire_immune`).

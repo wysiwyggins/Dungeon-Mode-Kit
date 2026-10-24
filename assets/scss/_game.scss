@@ -4,10 +4,17 @@ body {
 
 #game {
   line-height: 0;
+  min-width: 0;      // flex item: allow shrinking below the canvas's px width
+  max-width: 100%;
 }
 #game canvas {
   display: block;
-} 
+  // engine.js sets an inline px size (half the backing resolution for crisp tiles).
+  // On screens narrower than that, shrink to fit and let the canvas's own aspect
+  // ratio set the height (the inline height has to be overridden for that).
+  max-width: 100%;
+  height: auto !important;
+}
 
 .game-container {
  //justify-content: center;
