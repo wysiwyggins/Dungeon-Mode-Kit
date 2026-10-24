@@ -11,10 +11,10 @@
   "slime": {
     "name": "slime",
     "tileIndex": null,
-    "fillColor": "#00008B",
+    "fillColor": "#ebf38f",
     "attributes": {
-      "walk_description": "The floor here is green and slippery.",
-      "visible": true
+      "visible": true,
+      "walk_description": "The floor here is green and slippery."
     }
   },
   "vomit": {
@@ -29,7 +29,7 @@
   "mud": {
     "name": "mud",
     "tileIndex": null,
-    "fillColor": "#442F38",
+    "fillColor": "#a77b00",
     "attributes": {
       "visible": true
     }
@@ -49,6 +49,16 @@
     "attributes": {
       "visible": true,
       "walk_description": "You trod a small hill of soil and leaf litter."
+    }
+  },
+  "ashes": {
+    "name": "ashes",
+    "tileIndex": "IMPERFECT_DOTTED_WHITE_SHADE",
+    "fillColor": "#d6d6d6",
+    "tint": "#aaaaaa",
+    "attributes": {
+      "visible": true,
+      "walk_description": "you trod through soft, fine ash"
     }
   },
   "moss": {
@@ -78,11 +88,19 @@
     }
   },
   "skull": {
-    "name": "Skull",
+    "name": "skull",
     "tileIndex": "SKULL",
     "attributes": {
       "visible": true,
       "walk_description": "You step past a skull."
+    }
+  },
+  "glyph": {
+    "name": "glyph",
+    "tileIndex": "EVIL_EYE",
+    "attributes": {
+      "visible": true,
+      "walk_description": "a magic symbol made of some unknown substance"
     }
   },
   "thread_trail": {

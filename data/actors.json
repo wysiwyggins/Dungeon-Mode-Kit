@@ -245,14 +245,14 @@
     "facingEnabled": true,
     "personality": "goblin",
     "collision_effect": {
-      "health": -6
+      "health": -8
     },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] strikes back at [attacked_actor_name]!",
     "attributes": {
       "accuracy": 38,
       "defense": 8,
-      "strength": 5
+      "strength": 6
     },
     "stats": {
       "health": 25
@@ -504,8 +504,7 @@
       "light_source": true,
       "accuracy": 65,
       "defense": 12,
-      "strength": 12,
-      "remains": "mist"
+      "strength": 12
     },
     "stats": {
       "health": 40
@@ -739,8 +738,7 @@
     "attributes": {
       "light_source": true,
       "accuracy": 70,
-      "defense": 12,
-      "remains": "mist"
+      "defense": 12
     },
     "stats": {
       "health": 25

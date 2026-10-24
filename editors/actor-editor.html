@@ -498,7 +498,7 @@ const TYPED_ATTRS = [
     { key: 'strength', type: 'number', label: 'Strength', hint: 'Melee damage when using "-{strength}" in collision_effect. Typical: 1-18.' },
     { key: 'inventory', type: 'number', label: 'Inventory slots', hint: 'Number of items this actor can carry. 0 = none, player default is 4.' },
     { key: 'lode_chance', type: 'number', label: 'Lode Chance (0-100)', hint: 'Percent chance to drop a lode item when broken. Requires breakable + lode.' },
-    { key: 'remains', type: 'text', ref: 'actor', label: 'Remains', hint: 'Actor type spawned on death. e.g. skull, rubble, blood, mist, log.' },
+    { key: 'remains', type: 'text', ref: 'entity', label: 'Remains', hint: 'Entity (data/entities.json) left on death, e.g. skull, rubble, blood, log.' },
     { key: 'damage_type', type: 'select', label: 'Damage Type', hint: 'Hazard damage category. Grants immunity via {type}_immune attribute.', options: ['', 'fire', 'poison', 'electric'] },
     { key: 'lode', type: 'text', ref: 'item', label: 'Lode (item type)', hint: 'Item type dropped when broken. e.g. gold_nugget, uranium_nugget.' },
     { key: 'lock_color', type: 'colorname', label: 'Lock Color', hint: 'Fixed lock color (overrides random): a color name from data/colors.json, matched against color key items.' },
@@ -613,7 +613,7 @@ function loadSpritesheet() {
 }
 
 async function loadBaseData() {
-    const [tilesData, actors, personalities, states, types, effects, items, sounds] = await Promise.all([
+    const [tilesData, actors, personalities, states, types, effects, items, sounds, entities] = await Promise.all([
         fetchJSON(TILE_DATA_PATH),
         fetchJSON('../data/actors.json'),
         fetchJSON('../data/personalities.json'),
@@ -622,9 +622,12 @@ async function loadBaseData() {
         fetchJSON('../data/effects.json'),
         fetchJSON('../data/items.json'),
         fetchJSON('../data/sounds.json'),
+        fetchJSON('../data/entities.json'),
     ]);
     // Sound names are the sprite keys; sounds are global (prototypes don't add any).
     state.soundNames = Object.keys(sounds?.sprite || {}).sort();
+    // Entities are global only: the engine reads remains from engine.globalEntities.
+    state.entities = entities || {};
     state.effects = effects || {};
     state.baseItems = items || {};
     TILE_W = tilesData.tilePixelWidth || TILE_W;
@@ -1334,6 +1337,8 @@ function initRefFields() {
     RefFields.define('state', { file: 'states.json', names: () => keysOf(state.mergedStates),
         label: (k) => state.mergedStates[k]?.name });
     RefFields.define('sound', { file: 'sounds.json', names: () => state.soundNames || [] });
+    RefFields.define('entity', { file: 'entities.json', names: () => RefFields.keysOf(state.entities),
+        label: (k) => state.entities[k]?.name });
     RefFields.define('item', { file: 'items.json', names: () => keysOf(state.mergedItems),
         label: (k) => state.mergedItems[k]?.name });
     RefFields.define('trap_type', { kind: 'label', names: () => valuesInUse(state.mergedActors, 'trap_type') });

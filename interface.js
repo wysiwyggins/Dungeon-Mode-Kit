@@ -5472,7 +5472,9 @@ class InterfaceManager {
             const letter = String.fromCharCode(97 + i);
             let displayName = item.getDisplayName ? item.getDisplayName() : item.name;
             displayName = this.colorizeItemName(this.truncateText(displayName, 22));
-            lines.push(` ${letter}) ${displayName}`);
+            // Same row shape as the other item menus: polarity icon in the gap
+            // before the tile, tile in the gap before the name.
+            lines.push(`  ${letter})  ${displayName}`);
         }
 
         lines.push('');
@@ -5507,7 +5509,7 @@ class InterfaceManager {
         for (let i = 0; i < this.useMenuItems.length; i++) {
             const item = this.useMenuItems[i];
             const lineIndex = i + 2;
-            const tileX = textStartX + (4 * globalVars.TILE_WIDTH);
+            const tileX = textStartX + (5 * globalVars.TILE_WIDTH);
             const tileY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
             this.renderItemTile(boxContainer, item, tileX, tileY);
             this.renderMagicPolarityIcon(boxContainer, item, tileX - globalVars.TILE_WIDTH, tileY);

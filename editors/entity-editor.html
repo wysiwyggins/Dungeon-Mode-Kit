@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entity Editor — Dungeon Mode Kit</title>
+<link rel="stylesheet" href="../assets/main.css">
+</head>
+<body class="editor entity-editor">
+
+<!-- Entities are the inert floor dressing in data/entities.json: blood, rubble,
+     skulls, moss. They're global — prototypes can't add their own (the engine
+     reads only engine.globalEntities) — so there is no prototype picker here. -->
+<header>
+    <h1>Entity Editor</h1>
+    <label>Entity:
+        <select id="entity-select" style="min-width:180px"></select>
+    </label>
+    <button id="btn-duplicate">Duplicate</button>
+    <button id="btn-new">New Blank</button>
+    <button id="btn-export" class="btn-accent">Export JSON</button>
+    <button id="btn-copy" class="btn-accent">Copy to Clipboard</button>
+</header>
+
+<div id="workspace" class="workspace">
+    <aside id="preview-panel" class="preview-panel">
+        <h3>Preview</h3>
+        <canvas id="preview-canvas" class="preview-canvas" width="200" height="200"></canvas>
+        <div class="preview-label">Tile</div>
+        <canvas class="preview-tile" id="preview-tile" width="80" height="60"></canvas>
+    </aside>
+
+    <div id="form-panel" class="form-panel">
+        <!-- Identity -->
+        <details class="section" open>
+            <summary>Identity</summary>
+            <div class="section-body">
+                <div class="field-row">
+                    <label>Entity Key</label>
+                    <input type="text" id="entity-key" placeholder="e.g. ash_pile">
+                </div>
+                <div class="field-row">
+                    <label>Name</label>
+                    <input type="text" id="f-name" placeholder="Display name">
+                </div>
+                <div class="field-row">
+                    <label>Walk Description</label>
+                    <input type="text" id="f-walk_description" placeholder="Shown when the player steps here"
+                           title="Message when the player steps onto this entity. Templates like [name] and word lists work.">
+                </div>
+                <div class="hint" id="used-by"></div>
+            </div>
+        </details>
+
+        <!-- Appearance -->
+        <details class="section" open>
+            <summary>Appearance</summary>
+            <div class="section-body">
+                <div class="field-row"><label>Tile</label>
+                    <div class="tile-slot" data-target="tileIndex"><canvas width="40" height="30"></canvas><span class="tile-name">—</span><button class="clear-btn" title="Clear">x</button></div>
+                </div>
+                <div class="field-row" title="Colors the tile sprite.">
+                    <label>Tint</label>
+                    <input type="color" id="f-tint" value="#ffffff">
+                    <input type="text" id="f-tint-hex" value="" placeholder="#rrggbb" style="width:80px">
+                </div>
+                <div class="field-row" title="A whole-tile color multiplied over the floor, drawn under the tile. Blood and slime are fill-only.">
+                    <label>Fill Color</label>
+                    <input type="color" id="f-fillColor" value="#ffffff">
+                    <input type="text" id="f-fillColor-hex" value="" placeholder="#rrggbb" style="width:80px">
+                </div>
+                <div class="hint">An entity needs a tile, a fill color, or both. With neither there is nothing to draw.</div>
+            </div>
+        </details>
+
+        <!-- Attributes -->
+        <details class="section" open>
+            <summary>Attributes</summary>
+            <div class="section-body">
+                <div id="bool-attrs" class="checkbox-grid"></div>
+                <div style="margin: 8px 0 4px; font-size:11px; color:var(--accent)">Custom Attributes</div>
+                <div id="custom-attrs" class="dynamic-list"></div>
+                <button class="add-btn" id="btn-add-custom-attr">+ Add Custom Attribute</button>
+            </div>
+        </details>
+    </div>
+</div>
+
+<div id="json-output-panel" class="json-output-panel">
+    <div class="output-header">
+        <h3>JSON Output</h3>
+        <span id="entity-key-field" class="item-key-field"></span>
+    </div>
+    <textarea id="json-output" class="json-output" readonly rows="8"></textarea>
+</div>
+
+<!-- The tile-picker overlay is injected by scripts/tile-picker.js on first use. -->
+<script src="scripts/tile-picker.js"></script>
+
+<script>
+let TILE_W = 40, TILE_H = 30;
+const SPRITESHEET_PATH = '../assets/sprites/static-tiles.png';
+const TILE_DATA_PATH = '../data/static-tiles.json';
+const FLOOR_BG = '#d0cfc8';
+
+// The attributes the engine reads on a plain entity. Anything else goes in
+// Custom Attributes, which round-trips whatever the file already holds.
+const BOOL_ATTRS = {
+    visible: { def: true, hint: 'Drawn on the map.' },
+    ignore_darkness: { def: false, hint: 'Always drawn at full color, above the darkness (e.g. the thread trail).' },
+    light_shadow: { def: false, hint: 'Hidden while the player is blind in the dark.' },
+    flammable: { def: false, hint: 'Burned away by fire on its tile.' },
+};
+
+let state = {
+    tileMap: {},
+    spritesheetImg: null,
+    entities: {},
+    currentTile: null,
+    usedBy: {},   // entity key -> ['actors.json: skeleton (remains)', ...]
+};
+
+// ---- Data loading ----
+
+async function fetchJSON(url) {
+    try {
+        const r = await fetch(url);
+        if (!r.ok) return {};
+        const text = await r.text();
+        if (!text.trim()) return {};
+        return JSON.parse(text);
+    } catch { return {}; }
+}
+
+function loadSpritesheet() {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => { state.spritesheetImg = img; resolve(); };
+        img.onerror = () => resolve();
+        img.src = SPRITESHEET_PATH;
+    });
+}
+
+async function loadBaseData() {
+    const [tilesData, entities] = await Promise.all([
+        fetchJSON(TILE_DATA_PATH),
+        fetchJSON('../data/entities.json'),
+    ]);
+    TILE_W = tilesData.tilePixelWidth || TILE_W;
+    TILE_H = tilesData.tilePixelHeight || TILE_H;
+    state.tileMap = tilesData.tiles || {};
+    state.entities = entities || {};
+}
+
+/**
+ * Find every place that names an entity: an actor's `remains` and a
+ * `decorations` row's `entity`, in the base data and every prototype. Shown
+ * under Identity so renaming or deleting an entity doesn't silently break them.
+ */
+async function loadUsages() {
+    const idx = await fetchJSON('../data/prototypes.json');
+    const protos = Array.isArray(idx.prototypes) ? idx.prototypes : [];
+    const files = ['../data/actors.json', '../data/biomes.json'];
+    for (const p of protos) {
+        for (const f of ['actors.json', 'biomes.json', 'prototype.json']) files.push(`../prototypes/${p}/${f}`);
+    }
+    const docs = await Promise.all(files.map(fetchJSON));
+    const usedBy = {};
+    const add = (key, where) => (usedBy[key] ??= []).push(where);
+    docs.forEach((doc, i) => {
+        const file = files[i].replace('../', '');
+        const walk = (node, path) => {
+            if (!node || typeof node !== 'object') return;
+            if (typeof node.remains === 'string') add(node.remains, `${file}: ${path} (remains)`);
+            if (typeof node.entity === 'string') add(node.entity, `${file}: ${path} (decorations)`);
+            for (const [k, v] of Object.entries(node)) {
+                if (v && typeof v === 'object') walk(v, Array.isArray(node) ? path : (path ? path : k));
+            }
+        };
+        walk(doc, '');
+    });
+    state.usedBy = usedBy;
+}
+
+// ---- Dropdown ----
+
+function populateEntityDropdown(selectKey) {
+    const sel = document.getElementById('entity-select');
+    sel.innerHTML = '';
+    for (const k of Object.keys(state.entities).filter(k => !k.startsWith('_')).sort()) {
+        const opt = document.createElement('option');
+        opt.value = k;
+        const name = state.entities[k].name;
+        opt.textContent = name && name !== k ? `${k} (${name})` : k;
+        sel.appendChild(opt);
+    }
+    if (selectKey) sel.value = selectKey;
+}
+
+// ---- Drawing ----
+
+function resolveTile(ref) {
+    if (!ref || ref === 'BLANK' || ref === 'NULL') return null;
+    if (typeof ref === 'string') {
+        const coords = state.tileMap[ref];
+        return coords ? { x: coords[0], y: coords[1] } : null;
+    }
+    if (typeof ref === 'object' && ref.x !== undefined) return ref;
+    return null;
+}
+
+/**
+ * Draw the entity the way the renderer does: the fill color multiplied over the
+ * floor, then the tinted tile on top (engine.js createEntitySprite).
+ */
+function drawEntity(canvas, tileRef, tint, fill) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    const scale = Math.floor(Math.min(w / TILE_W, h / TILE_H));
+    const dw = TILE_W * scale, dh = TILE_H * scale;
+    const px = (w - dw) / 2, py = (h - dh) / 2;
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = FLOOR_BG;
+    ctx.fillRect(0, 0, w, h);
+    if (fill) {
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.fillStyle = fill;
+        ctx.fillRect(px, py, dw, dh);
+        ctx.globalCompositeOperation = 'source-over';
+    }
+    const coords = resolveTile(tileRef);
+    if (!coords || !state.spritesheetImg) return;
+    const off = document.createElement('canvas');
+    off.width = TILE_W; off.height = TILE_H;
+    const octx = off.getContext('2d');
+    octx.drawImage(state.spritesheetImg, coords.x * TILE_W, coords.y * TILE_H, TILE_W, TILE_H, 0, 0, TILE_W, TILE_H);
+    if (tint && tint.toLowerCase() !== '#ffffff') {
+        octx.globalCompositeOperation = 'multiply';
+        octx.fillStyle = tint;
+        octx.fillRect(0, 0, TILE_W, TILE_H);
+        octx.globalCompositeOperation = 'destination-in';
+        octx.drawImage(state.spritesheetImg, coords.x * TILE_W, coords.y * TILE_H, TILE_W, TILE_H, 0, 0, TILE_W, TILE_H);
+    }
+    ctx.drawImage(off, 0, 0, TILE_W, TILE_H, px, py, dw, dh);
+}
+
+function hexValue(id) {
+    const v = document.getElementById(id + '-hex').value.trim();
+    return /^#[0-9a-fA-F]{6}$/.test(v) ? v : null;
+}
+
+function renderPreview() {
+    const tint = hexValue('f-tint');
+    const fill = hexValue('f-fillColor');
+    drawEntity(document.getElementById('preview-canvas'), state.currentTile, tint, fill);
+    drawEntity(document.getElementById('preview-tile'), state.currentTile, tint, fill);
+}
+
+function updateUsedBy() {
+    const key = document.getElementById('entity-key').value.trim();
+    const uses = state.usedBy[key] || [];
+    document.getElementById('used-by').textContent = uses.length
+        ? `Used by ${uses.length}: ${uses.join('; ')}`
+        : 'Not referenced by any actor remains or decorations.';
+}
+
+function updatePreview() {
+    renderPreview();
+    updateUsedBy();
+    updateJSONOutput();
+}
+
+// ---- Tile slot ----
+
+function updateTileSlot() {
+    const slot = document.querySelector('.tile-slot[data-target="tileIndex"]');
+    const canvas = slot.querySelector('canvas');
+    const ref = state.currentTile;
+    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+    if (!ref) { slot.querySelector('.tile-name').textContent = '—'; return; }
+    drawEntity(canvas, ref, null, null);
+    slot.querySelector('.tile-name').textContent = typeof ref === 'string' ? ref : `{${ref.x}, ${ref.y}}`;
+}
+
+function initTileSlot() {
+    const slot = document.querySelector('.tile-slot[data-target="tileIndex"]');
+    slot.addEventListener('click', (e) => {
+        if (e.target.classList.contains('clear-btn')) {
+            state.currentTile = null;
+        } else {
+            TilePicker.open({
+                current: state.currentTile,
+                label: 'tileIndex',
+                onPick: (value) => { state.currentTile = value; updateTileSlot(); updatePreview(); },
+            });
+            return;
+        }
+        updateTileSlot();
+        updatePreview();
+    });
+}
+
+// ---- Color pairs ----
+
+/** Keep a color swatch and its hex box in step. The hex box is the stored value. */
+function initColorPair(id) {
+    const ci = document.getElementById(id);
+    const ti = document.getElementById(id + '-hex');
+    ci.addEventListener('input', () => { ti.value = ci.value; updatePreview(); });
+    ti.addEventListener('input', () => {
+        if (/^#[0-9a-fA-F]{6}$/.test(ti.value)) ci.value = ti.value;
+        updatePreview();
+    });
+}
+
+function setColorPair(id, value) {
+    document.getElementById(id + '-hex').value = value || '';
+    document.getElementById(id).value = /^#[0-9a-fA-F]{6}$/.test(value || '') ? value : '#ffffff';
+}
+
+// ---- Attributes ----
+
+function initBoolAttrs() {
+    const container = document.getElementById('bool-attrs');
+    for (const [attr, { hint }] of Object.entries(BOOL_ATTRS)) {
+        const label = document.createElement('label');
+        label.title = hint;
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.id = 'attr-' + attr;
+        cb.addEventListener('change', updatePreview);
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(' ' + attr));
+        container.appendChild(label);
+    }
+}
+
+function addCustomAttrRow(key, val) {
+    const container = document.getElementById('custom-attrs');
+    const row = document.createElement('div');
+    row.className = 'list-item';
+    const ki = document.createElement('input');
+    ki.type = 'text'; ki.placeholder = 'key'; ki.value = key || '';
+    ki.style.width = '120px'; ki.style.flex = '0';
+    ki.addEventListener('input', updatePreview);
+    const vi = document.createElement('input');
+    vi.type = 'text'; vi.placeholder = 'value'; vi.value = val !== undefined ? String(val) : '';
+    vi.addEventListener('input', updatePreview);
+    const btn = document.createElement('button');
+    btn.className = 'remove-btn'; btn.textContent = 'x';
+    btn.addEventListener('click', () => { row.remove(); updatePreview(); });
+    row.appendChild(ki); row.appendChild(vi); row.appendChild(btn);
+    container.appendChild(row);
+}
+
+function parseValue(str) {
+    str = str.trim();
+    if (str === 'true') return true;
+    if (str === 'false') return false;
+    const n = Number(str);
+    if (!isNaN(n) && str !== '') return n;
+    return str;
+}
+
+// ---- Form <-> data ----
+
+function populateForm(key, data) {
+    data = data || {};
+    const attrs = data.attributes || {};
+    document.getElementById('entity-key').value = key || '';
+    document.getElementById('f-name').value = data.name || '';
+    document.getElementById('f-walk_description').value = attrs.walk_description || '';
+    state.currentTile = data.tileIndex || null;
+    setColorPair('f-tint', data.tint);
+    setColorPair('f-fillColor', data.fillColor);
+    for (const [attr, { def }] of Object.entries(BOOL_ATTRS)) {
+        document.getElementById('attr-' + attr).checked = attrs[attr] ?? (key ? false : def);
+    }
+    document.getElementById('custom-attrs').innerHTML = '';
+    for (const [k, v] of Object.entries(attrs)) {
+        if (k === 'walk_description' || k in BOOL_ATTRS) continue;
+        addCustomAttrRow(k, typeof v === 'object' ? JSON.stringify(v) : v);
+    }
+    updateTileSlot();
+    updatePreview();
+}
+
+function readForm() {
+    const obj = {};
+    const name = document.getElementById('f-name').value.trim();
+    if (name) obj.name = name;
+    // Fill-only entities keep an explicit null, as entities.json writes them.
+    obj.tileIndex = state.currentTile || null;
+    const fill = hexValue('f-fillColor');
+    if (fill) obj.fillColor = fill;
+    const tint = hexValue('f-tint');
+    if (tint) obj.tint = tint;
+
+    const attrs = {};
+    for (const attr of Object.keys(BOOL_ATTRS)) {
+        // Only true is written: every one of these defaults to false on an entity.
+        if (document.getElementById('attr-' + attr).checked) attrs[attr] = true;
+    }
+    const walk = document.getElementById('f-walk_description').value.trim();
+    if (walk) attrs.walk_description = walk;
+    for (const row of document.querySelectorAll('#custom-attrs .list-item')) {
+        const [ki, vi] = row.querySelectorAll('input');
+        const k = ki.value.trim();
+        if (!k) continue;
+        const raw = vi.value.trim();
+        try { attrs[k] = /^[\[{]/.test(raw) ? JSON.parse(raw) : parseValue(raw); }
+        catch { attrs[k] = raw; }
+    }
+    if (Object.keys(attrs).length) obj.attributes = attrs;
+    return obj;
+}
+
+function currentKey() {
+    return document.getElementById('entity-key').value.trim() || 'new_entity';
+}
+
+function updateJSONOutput() {
+    document.getElementById('entity-key-field').textContent = `"${currentKey()}"`;
+    document.getElementById('json-output').value = JSON.stringify(readForm(), null, 2);
+}
+
+// ---- Events ----
+
+function initEventListeners() {
+    document.getElementById('entity-select').addEventListener('change', (e) => {
+        populateForm(e.target.value, state.entities[e.target.value]);
+    });
+    document.getElementById('btn-new').addEventListener('click', () => populateForm('', null));
+    document.getElementById('btn-duplicate').addEventListener('click', () => {
+        const data = readForm();
+        populateForm(currentKey() + '_copy', data);
+    });
+    document.getElementById('btn-export').addEventListener('click', updateJSONOutput);
+    document.getElementById('btn-copy').addEventListener('click', () => {
+        const full = `"${currentKey()}": ${JSON.stringify(readForm(), null, 2)}`;
+        navigator.clipboard.writeText(full).then(() => {
+            const btn = document.getElementById('btn-copy');
+            btn.textContent = 'Copied!';
+            setTimeout(() => btn.textContent = 'Copy to Clipboard', 1500);
+        });
+    });
+    document.getElementById('btn-add-custom-attr').addEventListener('click', () => addCustomAttrRow('', ''));
+
+    document.getElementById('f-name').addEventListener('input', (e) => {
+        const key = e.target.value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+        document.getElementById('entity-key').value = key;
+    });
+    for (const id of ['entity-key', 'f-name', 'f-walk_description']) {
+        document.getElementById(id).addEventListener('input', updatePreview);
+    }
+}
+
+// ---- Init ----
+
+async function init() {
+    initBoolAttrs();
+    initTileSlot();
+    initColorPair('f-tint');
+    initColorPair('f-fillColor');
+    initEventListeners();
+
+    await Promise.all([loadBaseData(), loadSpritesheet(), TilePicker.load(), loadUsages()]);
+    populateEntityDropdown();
+    const firstKey = document.getElementById('entity-select').value;
+    if (firstKey) populateForm(firstKey, state.entities[firstKey]);
+}
+
+init();
+</script>
+</body>
+</html>

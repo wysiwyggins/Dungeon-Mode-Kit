@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 These versions are pretty arbitrary, I know. When (if) other folks get involved, I'll formalize it a little.
 
 ### Added
+- **Entity editor.** `editors/entity-editor.html` edits the floor dressing in `data/entities.json` (name, tile, tint, fill color, walk description and the attributes the engine reads on entities), with a renderer-accurate preview. It lists every actor `remains` and `decorations` row that uses the entity, so a rename doesn't silently break them.
 - **Editor reference pickers.** Across the actor, item, personality and prototype editors, text fields that name an actor, state, sound, item, effect or prototype now drop down the names that exist (shared `editors/scripts/ref-fields.js`) and flag values that don't. Free labels like `trap_type`, `machine_id` and `use_verb` suggest the values already in use, and `stairway` is an up/down select.
 
 - **Condition locks.** Any door or chest can take `unlock_conditions`, using the same conditions as a floor's `win_conditions`, and stays locked until they hold (re-locking if they stop). The new `killed:linked` opens it when every actor sharing its `machine_id` is dead, so a vault can open when its one guardian dies.
@@ -92,6 +93,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 ### Fixed
 
+- **Read/quaff/jam menu icons.** The item tile in these menus no longer covers the first letter of the item name; the rows now use the same spacing as the other item menus.
 - **Hunters and scavengers have to see items to want them.** Item hunting and `seek_item` found items through walls, and `hunt` ignored the actor's vision range, always using 10. Both now use the same sight test as hunting actors.
 - **Monsters no longer walk into lava.** Their pathfinding, and the direct step it falls back on when no path exists, only checked for floor and walls, so a chase could run straight through lava or fire. All monster movement now goes around any hazard the mover isn't immune to, and the player's auto-explore and walk paths honor `fireproof`, which they had been checking under the wrong name (`fire_immune`).
 - **Gas no longer shows through the fog.** A new actor's sprite stayed visible until the next lighting pass, and spawns that neither light nor shade (sewer gas, spores) never trigger one, so gas bubbling up in a remembered room was drawn there. New sprites now follow the same out-of-sight rule as the lighting pass.
