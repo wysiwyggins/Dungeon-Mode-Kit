@@ -316,6 +316,11 @@
     "description": "An enormous black bear",
     "tileIndexBase": "FULL_BLOCK_WITH_MISSING_TOP_LEFT_CORNER",
     "tileIndexTop": "BEAR_HEAD",
+    "tileIndexSide": "BOTTOM_RIGHT_DOT",
+    "sideOffset": {
+      "dx": -1,
+      "dy": 0
+    },
     "personality": "hunter_melee",
     "attributes": {
       "strength": 7,

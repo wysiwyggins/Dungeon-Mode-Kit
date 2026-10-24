@@ -472,7 +472,8 @@
         "WHITE_MEDIUM_SHADE":[16,19],
         "WHITE_FLAG": [17,19],
         "FIDDLEHEAD": [18,19],
-        "FULL_BLOCK_WITH_MISSING_TOP_LEFT_CORNER": [19,19]
+        "FULL_BLOCK_WITH_MISSING_TOP_LEFT_CORNER": [19,19],
+        "BOTTOM_RIGHT_DOT": [20,19]
         
     }
 }

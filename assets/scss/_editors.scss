@@ -1,21 +1,126 @@
-// Shared styles for all editor pages (actor, item, personality).
-// Scoped under body.editor so they don't affect game pages.
+// Shared styles for all editor pages (actor, item, personality, effects,
+// prototype, biome, sound player). Scoped under body.editor so they don't
+// affect game pages.
 
-@mixin section-wrap($col: 460px, $max: 500px, $gap: 8px) {
+// ================================================================
+// Tokens
+// ================================================================
+
+// Type scale. Page body and form fields are $fs-lg; compact widgets step down.
+$fs-xs: 9px;     // badges, micro labels
+$fs-sm: 10px;    // secondary labels, notes
+$fs-md: 11px;    // checkboxes, sub-headings, compact controls
+$fs-base: 12px;  // buttons, summaries, list text
+$fs-lg: 14px;    // page body, form fields
+$fs-xl: 16px;    // page title
+
+// Spacing: $sp-N is N × 2px.
+$sp-1: 2px;
+$sp-2: 4px;
+$sp-3: 6px;
+$sp-4: 8px;
+$sp-5: 10px;
+$sp-6: 12px;
+$sp-8: 16px;
+
+// Padding inside text inputs and selects; the compact one is for dense rows.
+$control-pad-y: 3px;
+$control-pad: $control-pad-y $sp-3;
+$control-pad-sm: $sp-1 $sp-2;
+
+$hairline: 1px solid var(--border);
+$label-w: 130px;        // .field-row label; editors with longer names widen it
+$panel-w: 220px;        // left-hand preview / behavior palette
+$tile-bg: #d0cfc8;      // behind tile canvases, so transparent pixels read
+$warn: #e94560;
+$mono: 'Courier New', monospace;   // numeric readouts, where digits must align
+
+// ================================================================
+// Mixins
+// ================================================================
+
+// Inputs, selects and plain buttons share one look.
+@mixin control {
+    background: var(--input-bg);
+    color: var(--text);
+    border: $hairline;
+    font-family: inherit;
+}
+@mixin focus-ring { &:focus { outline: 1px solid var(--accent); } }
+
+// Transparent button with a colored border that fills on hover.
+@mixin outline-btn($color, $hover-text) {
+    color: $color;
+    background: none;
+    border: 1px solid $color;
+    font-family: inherit;
+    cursor: pointer;
+    &:hover { background: $color; color: $hover-text; }
+}
+
+@mixin ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+// '+ ' / '- ' marker on a <details>' summary, replacing the native triangle.
+@mixin disclosure {
+    > summary {
+        cursor: pointer;
+        user-select: none;
+        list-style: none;
+        &::-webkit-details-marker { display: none; }
+        &::before { content: '+ '; }
+    }
+    &[open] > summary::before { content: '- '; }
+}
+
+// A checkbox and its text on one line.
+@mixin check-label($size, $gap) {
+    font-size: $size;
+    display: flex;
+    align-items: center;
+    gap: $gap;
+    cursor: pointer;
+    color: var(--text);
+    min-width: unset;
+}
+
+// A full-height column beside the form.
+@mixin side-panel {
+    width: $panel-w;
+    min-width: $panel-w;
+    padding: $sp-6;
+    border-right: $hairline;
+    overflow-y: auto;
+    background: var(--bg2);
+}
+
+// A details.section packed into a multi-column (masonry) container.
+@mixin column-section($max) {
+    break-inside: avoid;        // don't split a section across columns
+    -webkit-column-break-inside: avoid;
+    display: inline-block;      // makes break-inside:avoid reliable in multicol
+    width: 100%;
+    max-width: $max;
+    margin: 0 0 $sp-4;          // vertical rhythm (multicol has no row gap)
+}
+
+@mixin section-wrap($col: 460px, $max: 500px) {
     .form-panel {
         column-width: $col;
-        column-gap: $gap;
+        column-gap: $sp-4;
         display: flex;
         flex-flow: row wrap;
     }
-    .form-panel > details.section {
-        break-inside: avoid;        // don't split a section across columns
-        -webkit-column-break-inside: avoid;
-        display: inline-block;      // makes break-inside:avoid reliable in multicol
-        width: 100%;
-        max-width: $max;
-        margin: 0 0 $gap;           // vertical rhythm (multicol has no row gap)
-    }
+    .form-panel > details.section { @include column-section($max); }
+}
+
+@mixin range-thumb {
+    pointer-events: auto;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 1px solid var(--bg);
+    cursor: pointer;
 }
 
 :root {
@@ -37,9 +142,8 @@ body.editor {
     background: var(--bg);
     color: var(--text);
     font-family: 'courier_prime_coderegular', monospace;
-    font-size: 14px;
+    font-size: $fs-lg;
     overflow-x: hidden;
-    padding: 0;
 
     * { margin: 0; padding: 0; }
     a { color: var(--accent); }
@@ -48,25 +152,22 @@ body.editor {
 
     header {
         background: var(--bg2);
-        padding: 10px 16px;
-        border-bottom: 1px solid var(--border);
+        padding: $sp-5 $sp-8;
+        border-bottom: $hairline;
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: 10px;
+        gap: $sp-5;
 
-        h1 { font-size: 16px; color: var(--accent); margin-right: 12px; }
-        label { color: var(--text-dim); font-size: 14px; }
+        h1 { font-size: $fs-xl; color: var(--accent); margin-right: $sp-6; }
+        label { color: var(--text-dim); font-size: $fs-lg; }
         select, button {
-            background: var(--input-bg);
-            color: var(--text);
-            border: 1px solid var(--border);
-            padding: 4px 8px;
-            font-family: inherit;
-            font-size: 14px;
+            @include control;
+            @include focus-ring;
+            padding: $sp-2 $sp-4;
+            font-size: $fs-lg;
             cursor: pointer;
         }
-        select:focus, button:focus { outline: 1px solid var(--accent); }
         button:hover { background: var(--bg3); }
     }
 
@@ -87,29 +188,25 @@ body.editor {
     .form-panel {
         flex: 1;
         overflow-y: auto;
-        padding: 12px 16px;
+        padding: $sp-6 $sp-8;
     }
 
     // ---- Collapsible sections ----
 
     details.section {
-        border: 1px solid var(--border);
-        margin-bottom: 8px;
+        @include disclosure;
+        border: $hairline;
+        margin-bottom: $sp-4;
         background: var(--surface);
 
         > summary {
-            cursor: pointer;
-            padding: 8px 12px;
+            padding: $sp-4 $sp-6;
             font-weight: bold;
-            font-size: 12px;
+            font-size: $fs-base;
             color: var(--accent);
             background: var(--bg2);
-            user-select: none;
-            list-style: none;
-            &::before { content: '+ '; }
         }
-        &[open] > summary::before { content: '- '; }
-        > .section-body { padding: 10px 12px; }
+        > .section-body { padding: $sp-5 $sp-6; }
     }
 
     // ---- Form fields ----
@@ -117,52 +214,41 @@ body.editor {
     .field-row {
         display: flex;
         align-items: center;
-        gap: 8px;
-        margin-bottom: 6px;
+        gap: $sp-4;
+        margin-bottom: $sp-3;
 
         label {
-            min-width: 130px;
-            font-size: 14px;
+            min-width: $label-w;
+            font-size: $fs-lg;
             color: var(--text-dim);
         }
         input[type="text"],
         input[type="number"],
         textarea,
         select {
-            background: var(--input-bg);
-            color: var(--text);
-            border: 1px solid var(--border);
-            padding: 3px 6px;
-            font-family: inherit;
-            font-size: 14px;
+            @include control;
+            padding: $control-pad;
+            font-size: $fs-lg;
             flex: 1;
             min-width: 0;
         }
         input[type="number"] { width: 100px; min-width: 100px; flex: 0; }
         input[type="color"] {
-            width: 40px; height: 24px; padding: 0;
-            border: 1px solid var(--border);
-            background: var(--input-bg); cursor: pointer;
+            @include control;
+            width: 40px; height: 24px;
+            cursor: pointer;
         }
         textarea { resize: vertical; min-height: 40px; }
-        input:focus, select:focus, textarea:focus { outline: 1px solid var(--accent); }
+        input, select, textarea { @include focus-ring; }
     }
 
     .checkbox-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
-        gap: 3px 8px;
-        margin-bottom: 10px;
+        gap: $sp-2 $sp-4;
+        margin-bottom: $sp-5;
 
-        label {
-            font-size: 11px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            cursor: pointer;
-            color: var(--text);
-            min-width: unset;
-        }
+        label { @include check-label($fs-md, $sp-2); }
         input[type="checkbox"] { accent-color: var(--accent); }
     }
 
@@ -171,41 +257,35 @@ body.editor {
     .dynamic-list .list-item {
         display: flex;
         align-items: center;
-        gap: 6px;
-        margin-bottom: 4px;
+        gap: $sp-3;
+        margin-bottom: $sp-2;
         input, select { flex: 1; }
     }
 
     .remove-btn {
-        font-size: 12px; color: var(--accent2); cursor: pointer; background: none;
-        border: 1px solid var(--accent2); padding: 4px; font-family: inherit;
-        &:hover { background: var(--accent2); color: #fff; }
+        @include outline-btn(var(--accent2), #fff);
+        font-size: $fs-base;
+        padding: $sp-2;
     }
 
     .add-btn {
-        font-size: 12px; color: var(--accent); cursor: pointer; background: none;
-        border: 1px solid var(--accent); padding: 2px 8px; margin-top: 4px; font-family: inherit;
-        &:hover { background: var(--accent); color: var(--bg); }
+        @include outline-btn(var(--accent), var(--bg));
+        font-size: $fs-base;
+        padding: $sp-1 $sp-4;
+        margin-top: $sp-2;
     }
 
-    .sub-section { border-left: 2px solid var(--border); padding-left: 10px; margin: 6px 0; }
-    .sub-section-title { font-size: 11px; color: var(--accent); margin-bottom: 4px; }
+    .sub-section { border-left: 2px solid var(--border); padding-left: $sp-5; margin: $sp-3 0; }
+    .sub-section-title { font-size: $fs-md; color: var(--accent); margin-bottom: $sp-2; }
 
     // Collapsible sub-section (long depth-ranged catalogs). Follows the same
     // '+ '/'- ' marker convention as details.section, one level quieter.
     details.sub-collapsible {
-        > summary {
-            cursor: pointer;
-            user-select: none;
-            list-style: none;
-            &::-webkit-details-marker { display: none; }
-            &::before { content: '+ '; }
-            &:hover { color: var(--text); }
-        }
-        &[open] > summary::before { content: '- '; }
+        @include disclosure;
+        > summary:hover { color: var(--text); }
 
         .sub-count {
-            margin-left: 6px;
+            margin-left: $sp-3;
             font-weight: normal;
             color: var(--text-dim);
         }
@@ -216,9 +296,9 @@ body.editor {
     .json-output-panel {
         display: none;
         //going to hide this for now, clipboard output is fine
-        border-top: 1px solid var(--border);
+        border-top: $hairline;
         background: var(--bg2);
-        padding: 8px 16px;
+        padding: $sp-4 $sp-8;
         //display: flex;
         flex-direction: column;
         height: 200px;
@@ -226,19 +306,19 @@ body.editor {
         .output-header {
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin-bottom: 6px;
+            gap: $sp-4;
+            margin-bottom: $sp-3;
         }
-        h3 { font-size: 14px; color: var(--accent); }
+        h3 { font-size: $fs-lg; color: var(--accent); }
     }
 
     .json-output {
         background: #111;
         color: #0f8;
-        border: 1px solid var(--border);
-        font-family: 'Courier New', monospace;
-        font-size: 12px;
-        padding: 8px;
+        border: $hairline;
+        font-family: $mono;
+        font-size: $fs-base;
+        padding: $sp-4;
         flex: 1;
         resize: vertical;
         white-space: pre;
@@ -246,63 +326,67 @@ body.editor {
         tab-size: 2;
     }
 
-    // ---- Visibility toggles ----
+    // ---- Visibility toggles & hint text ----
 
     .hidden { display: none !important; }
-    .conditional-section { display: none; &.visible { display: block; } }
+    .conditional-section,
     .stat-advanced { display: none; &.visible { display: block; } }
-    .empty-hint { font-size: 12px; color: var(--text-dim); font-style: italic; padding: 8px 0; }
+    .empty-hint { font-size: $fs-base; color: var(--text-dim); font-style: italic; padding: $sp-4 0; }
+    // Explanatory text under a section title or field (margins are set inline per use).
+    .hint {
+        display: block;
+        font-size: $fs-md;
+        line-height: 1.45;
+        color: var(--text-dim);
+        code { font-size: $fs-sm; color: var(--accent); }
+        &:empty { display: none; }
+    }
+    .status-text { font-size: $fs-md; color: var(--text-dim); }
 
     // ---- Preview panel (actor & item editors) ----
 
     .preview-panel {
-        width: 220px;
-        min-width: 220px;
-        padding: 12px;
-        border-right: 1px solid var(--border);
-        overflow-y: auto;
-        background: var(--bg2);
-        h3 { font-size: 14px; color: var(--accent); margin-bottom: 8px; }
+        @include side-panel;
+        h3 { font-size: $fs-lg; color: var(--accent); margin-bottom: $sp-4; }
     }
 
-    .preview-canvas { background: #d0cfc8; border: 1px solid var(--border); display: block; margin-bottom: 12px;  }
-    .preview-label { font-size: 12px; color: var(--text-dim); margin-top: 8px; margin-bottom: 2px; }
-    .preview-tile { display: inline-block; border: 1px solid var(--border); margin-right: 4px; background: #d0cfc8; }
+    .preview-canvas { background: $tile-bg; border: $hairline; display: block; margin-bottom: $sp-6; }
+    .preview-label { font-size: $fs-base; color: var(--text-dim); margin: $sp-4 0 $sp-1; }
+    .preview-tile { display: inline-block; border: $hairline; margin-right: $sp-2; background: $tile-bg; }
 
     // ---- Tile slots (actor & item editors) ----
 
     .tile-slot {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
+        gap: $sp-4;
         cursor: pointer;
-        padding: 4px;
+        padding: $sp-2;
         border: 1px dashed var(--border);
-        margin-bottom: 6px;
+        margin-bottom: $sp-3;
         min-height: 38px;
         &:hover { border-color: var(--accent); }
 
-        canvas { background: #d0cfc8; display: block; }
-        .tile-name { font-size: 12px; color: var(--text-dim); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        canvas { background: $tile-bg; display: block; }
+        .tile-name { @include ellipsis; font-size: $fs-base; color: var(--text-dim); max-width: 180px; }
         .clear-btn {
-            font-size: 12px; color: var(--accent2); cursor: pointer;
-            padding: 2px 4px; border: 1px solid var(--accent2); background: none;
+            font-size: $fs-base; color: var(--accent2); cursor: pointer;
+            padding: $control-pad-sm; border: 1px solid var(--accent2); background: none;
         }
     }
 
     // Inline tile field (prototype editor's default_floor): a small preview beside
     // the tile name and the picker button, rather than the clickable slot above.
     .tile-preview {
-        
-        background: #d0cfc8;
-        border: 1px solid var(--border);
+        background: $tile-bg;
+        border: $hairline;
         display: block;
         flex: 0 0 auto;
     }
     .tile-field-name {
-        font-size: 12px; color: var(--text-dim);
+        @include ellipsis;
+        font-size: $fs-base; color: var(--text-dim);
         flex: 1 1 auto; min-width: 0;
-        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
 
     // ---- Tile picker modal (shared: actor, item & prototype editors) ----
@@ -310,7 +394,7 @@ body.editor {
     .tile-picker-overlay {
         display: none;
         position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
+        inset: 0;
         background: rgba(0,0,0,0.85);
         z-index: 1000;
         justify-content: center;
@@ -322,7 +406,7 @@ body.editor {
     .tile-picker {
         background: var(--bg2);
         border: 1px solid var(--accent);
-        padding: 12px;
+        padding: $sp-6;
         max-height: 90vh;
         overflow-y: auto;
         width: fit-content;
@@ -331,74 +415,77 @@ body.editor {
     .tile-picker-header {
         display: flex;
         align-items: center;
-        gap: 8px;
-        margin-bottom: 8px;
+        gap: $sp-4;
+        margin-bottom: $sp-4;
 
-        input {
-            background: var(--input-bg); color: var(--text); border: 1px solid var(--border);
-            padding: 4px 8px; font-family: inherit; font-size: 12px; width: 250px;
-        }
-        button {
-            background: var(--input-bg); color: var(--text); border: 1px solid var(--border);
-            padding: 4px 10px; cursor: pointer; font-family: inherit; font-size: 12px;
-        }
+        input, button { @include control; font-size: $fs-base; }
+        input { padding: $sp-2 $sp-4; width: 250px; }
+        button { padding: $sp-2 $sp-5; cursor: pointer; }
     }
- 
-    .tile-picker-target { font-size: 11px; color: var(--accent); }
+
+    .tile-picker-target { font-size: $fs-md; color: var(--accent); }
     .tile-picker-canvas { cursor: crosshair; display: block; }
     .tile-picker-tooltip {
+        @include ellipsis;
         position: fixed;
         background: var(--bg);
         color: var(--accent);
-        padding: 3px 8px;
-        font-size: 11px;
+        padding: $control-pad-y $sp-4;
+        font-size: $fs-md;
         border: 1px solid var(--accent);
         pointer-events: none;
         display: none;
         z-index: 1001;
-        white-space: nowrap;
         max-width: 400px;
-        overflow: hidden;
-        text-overflow: ellipsis;
     }
 
     // ---- Named-color picker (shared; reuses the .tile-picker* overlay chrome) ----
 
     .color-picker { width: 640px; }
-    .color-picker-hex-row {
-        input[type="color"] {
-            width: 32px; height: 24px; padding: 0;
-            border: 1px solid var(--border); background: var(--input-bg); cursor: pointer;
-        }
+    .color-picker-hex-row input[type="color"] {
+        @include control;
+        width: 32px; height: 24px;
+        cursor: pointer;
     }
-    .color-picker-readout { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+    .color-picker-readout { font-size: $fs-md; color: var(--text-dim); white-space: nowrap; }
     .color-picker-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, 16px);
-        gap: 2px;
+        gap: $sp-1;
         max-height: 60vh;
         overflow-y: auto;
     }
     .color-picker-swatch {
-        width: 16px; height: 16px; padding: 0;
+        width: 16px; height: 16px;
         border: 1px solid rgba(0,0,0,0.4);
         cursor: pointer;
-        &:hover { outline: 1px solid var(--text); outline-offset: 1px; }
-        &.nearest { outline: 2px solid var(--accent); outline-offset: 1px; }
-        &.current { outline: 2px solid #e94560; outline-offset: 1px; }
+        outline-offset: 1px;
+        &:hover { outline: 1px solid var(--text); }
+        &.nearest { outline: 2px solid var(--accent); }
+        &.current { outline: 2px solid $warn; }
     }
 
-    // Inline color-name field: swatch button, name input, unknown-name warning.
-    .color-name-swatch {
+    // Inline color-name / tile-name fields: a picker button beside the name
+    // input, and a warning for a name the data file doesn't know.
+    .color-name-swatch,
+    .tile-name-thumb {
         flex: 0 0 auto;
-        width: 24px; height: 24px; padding: 0;
-        border: 1px solid var(--border);
+        border: $hairline;
         cursor: pointer;
+    }
+    .color-name-swatch {
+        width: 24px; height: 24px;
         &.empty { background: repeating-linear-gradient(45deg, var(--input-bg) 0 4px, var(--border) 4px 5px); }
+    }
+    .tile-name-thumb {
+        padding: 1px;
+        line-height: 0;
+        background: var(--input-bg);
+        canvas { width: 32px; height: 24px; image-rendering: pixelated; }
     }
     .color-name-warning {
         display: none;
-        font-size: 10px; color: #e94560; white-space: nowrap;
+        font-size: $fs-sm; color: $warn; white-space: nowrap;
         &.visible { display: inline; }
     }
 
@@ -407,32 +494,43 @@ body.editor {
     .flip-grid {
         display: grid;
         grid-template-columns: repeat(3, auto);
-        gap: 2px 12px;
-        margin-bottom: 6px;
-        label { font-size: 10px; display: flex; align-items: center; gap: 3px; cursor: pointer; color: var(--text); min-width: unset; }
+        gap: $sp-1 $sp-6;
+        margin-bottom: $sp-3;
+        label { @include check-label($fs-sm, $sp-2); }
     }
 
     // ---- Inline fields ----
 
     .field-inline {
-        display: inline-flex; align-items: center; gap: 4px; margin-right: 12px;
+        display: inline-flex; align-items: center; gap: $sp-2; margin-right: $sp-6;
         label { min-width: unset; }
     }
 
     // ---- Typed attributes (actor & item editors) ----
 
+    // Two columns of compact fields, dropping to one when the section is too
+    // narrow. The label takes whatever width the input leaves (wrapping if it
+    // must), so the input never pushes out over the next column or the section.
     .typed-attrs {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px 16px;
-        .field-row { flex: 0 0 calc(50% - 8px); min-width: 220px; }
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: $sp-2 $sp-8;
+
+        .field-row {
+            flex-wrap: wrap;    // an extra (e.g. an unknown-name warning) takes its own line
+            min-width: 0;
+            label { flex: 1 1 0; min-width: 0; font-size: $fs-md; }
+            input[type="text"],
+            input[type="number"],
+            select { flex: 0 0 50%; width: auto; min-width: 0; }
+        }
     }
 
     // ---- Key display fields ----
 
     .actor-key-field,
     .item-key-field,
-    .personality-key-field { font-size: 12px; color: var(--accent); }
+    .personality-key-field { font-size: $fs-base; color: var(--accent); }
 
     // ================================================================
     // Actor editor specifics
@@ -442,25 +540,25 @@ body.editor {
         @include section-wrap;
 
         // Attributes section: an always-open core grid, then themed groups.
-        .attr-group-core { margin-bottom: 4px; }
+        .attr-group-core { margin-bottom: $sp-2; }
         details.attr-group {
-            border-top: 1px solid var(--border);
-            padding: 5px 0;
-            > summary { font-size: 11px; color: var(--accent); }
-            &:last-of-type { border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+            border-top: $hairline;
+            padding: $sp-2 0;
+            > summary { font-size: $fs-md; color: var(--accent); }
+            &:last-of-type { border-bottom: $hairline; margin-bottom: $sp-2; }
         }
-        .attr-group-body { padding: 6px 0 2px 10px; }
+        .attr-group-body { padding: $sp-3 0 $sp-1 $sp-5; }
         .attr-group-extra {
             border-left: 2px solid var(--border);
-            padding-left: 10px;
-            margin: 6px 0;
+            padding-left: $sp-5;
+            margin: $sp-3 0;
         }
 
         // Fields waiting on a parent attribute (ATTR_DEPENDS); indented under it.
         .attr-dependent {
             &:not(.visible) { display: none; }
             border-left: 2px solid var(--border);
-            padding-left: 6px;
+            padding-left: $sp-3;
         }
     }
 
@@ -470,19 +568,17 @@ body.editor {
 
     &.item-editor {
         .field-row label { min-width: 150px; }
+        .typed-attrs .field-row label { min-width: 0; }
         @include section-wrap;
     }
 
     .item-filter-wrap { position: relative; display: inline-block; }
     .item-filter {
-        background: var(--input-bg);
-        color: var(--text);
-        border: 1px solid var(--border);
-        padding: 4px 8px;
-        font-family: inherit;
-        font-size: 12px;
+        @include control;
+        @include focus-ring;
+        padding: $sp-2 $sp-4;
+        font-size: $fs-base;
         width: 180px;
-        &:focus { outline: 1px solid var(--accent); }
     }
 
     .item-filter-results {
@@ -494,18 +590,18 @@ body.editor {
         max-height: 300px;
         overflow-y: auto;
         background: var(--surface);
-        border: 1px solid var(--border);
+        border: $hairline;
         z-index: 100;
-        font-size: 11px;
+        font-size: $fs-md;
         &.active { display: block; }
 
         .filter-item {
-            padding: 4px 8px;
+            padding: $sp-2 $sp-4;
             cursor: pointer;
             display: flex;
             justify-content: space-between;
             &:hover { background: var(--bg3); }
-            .filter-cat { color: var(--text-dim); font-size: 10px; }
+            .filter-cat { color: var(--text-dim); font-size: $fs-sm; }
         }
     }
 
@@ -513,38 +609,35 @@ body.editor {
     // Personality editor specifics
     // ================================================================
 
+    $personality-label-w: 160px;
+
     &.personality-editor {
-        .field-row label { min-width: 160px; }
+        .field-row label { min-width: $personality-label-w; }
         @include section-wrap;
     }
 
     .behavior-panel {
-        width: 220px;
-        min-width: 220px;
-        padding: 12px;
-        border-right: 1px solid var(--border);
-        overflow-y: auto;
-        background: var(--bg2);
-        h3 { font-size: 12px; color: var(--accent); margin-bottom: 8px; }
+        @include side-panel;
+        h3 { font-size: $fs-base; color: var(--accent); margin-bottom: $sp-4; }
     }
 
     .behavior-search {
+        @include control;
+        @include focus-ring;
         width: 100%;
-        background: var(--input-bg);
-        color: var(--text);
-        border: 1px solid var(--border);
-        padding: 4px 8px;
-        font-family: inherit;
-        font-size: 12px;
-        margin-bottom: 8px;
-        &:focus { outline: 1px solid var(--accent); }
+        padding: $sp-2 $sp-4;
+        font-size: $fs-base;
+        margin-bottom: $sp-4;
     }
 
-    .behavior-category { font-size: 10px; color: var(--accent); margin: 8px 0 3px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+    .behavior-category {
+        font-size: $fs-sm; color: var(--accent); margin: $sp-4 0 $sp-2;
+        font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;
+    }
 
     .behavior-palette-item {
-        font-size: 11px;
-        padding: 2px 6px;
+        font-size: $fs-md;
+        padding: $sp-1 $sp-3;
         cursor: pointer;
         border: 1px solid transparent;
         &:hover { background: var(--bg3); border-color: var(--accent); }
@@ -553,69 +646,69 @@ body.editor {
 
     // ---- Behavior list ----
 
-    .behavior-list-container { min-height: 30px; margin-bottom: 8px; }
+    .behavior-list-container { min-height: 30px; margin-bottom: $sp-4; }
 
     .behavior-list-item {
         display: flex;
         align-items: center;
-        gap: 6px;
-        margin-bottom: 3px;
-        padding: 4px 6px;
+        gap: $sp-3;
+        margin-bottom: $sp-2;
+        padding: $sp-2 $sp-3;
         background: var(--input-bg);
-        border: 1px solid var(--border);
+        border: $hairline;
         user-select: none;
 
-        .drag-handle { color: var(--text-dim); font-size: 14px; cursor: grab; user-select: none; padding: 0 2px; &:active { cursor: grabbing; } }
-        .behavior-index { font-size: 10px; color: var(--text-dim); min-width: 18px; text-align: right; }
-        .behavior-name { flex: 1; font-size: 12px; font-weight: bold; }
-        .behavior-hint { font-size: 9px; color: var(--text-dim); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .drag-handle { color: var(--text-dim); font-size: $fs-lg; cursor: grab; padding: 0 $sp-1; &:active { cursor: grabbing; } }
+        .behavior-index { font-size: $fs-sm; color: var(--text-dim); min-width: 18px; text-align: right; }
+        .behavior-name { flex: 1; font-size: $fs-base; font-weight: bold; }
+        .behavior-hint { @include ellipsis; font-size: $fs-xs; color: var(--text-dim); max-width: 200px; }
         &.dragging { opacity: 0.3; }
         &.drag-over { border-top: 2px solid var(--accent); margin-top: -2px; }
     }
 
     .move-btn {
-        font-size: 10px; color: var(--accent); cursor: pointer; background: none;
-        border: 1px solid var(--accent); padding: 1px 4px; font-family: inherit; line-height: 1;
-        &:hover { background: var(--accent); color: var(--bg); }
+        @include outline-btn(var(--accent), var(--bg));
+        font-size: $fs-sm;
+        padding: 1px $sp-2;
+        line-height: 1;
         &:disabled { opacity: 0.3; cursor: default; &:hover { background: none; color: var(--accent); } }
     }
 
     .behavior-add-row {
-        display: flex; align-items: center; gap: 6px;
-        select {
-            background: var(--input-bg); color: var(--text); border: 1px solid var(--border);
-            padding: 3px 6px; font-family: inherit; font-size: 12px; flex: 1;
-        }
+        display: flex; align-items: center; gap: $sp-3;
+        select { @include control; padding: $control-pad; font-size: $fs-base; flex: 1; }
     }
 
     // ---- Contextual parameters ----
 
     .param-row { transition: opacity 0.15s; &.inactive { display: none; } }
-    .param-hint { font-size: 9px; color: var(--text-dim); margin-left: 168px; margin-top: -4px; margin-bottom: 6px; }
+    // Indented to line up with the inputs: personality label width plus the row gap.
+    .param-hint { font-size: $fs-xs; color: var(--text-dim); margin: -$sp-2 0 $sp-3 ($personality-label-w + $sp-4); }
 
     // ================================================================
     // Effects editor specifics
     // ================================================================
 
     &.effects-editor {
-        .field-row label { min-width: 140px; }
+        $effects-label-w: 140px;
+        .field-row label { min-width: $effects-label-w; }
         @include section-wrap;
 
         .waveform-canvas {
             background: #111;
-            border: 1px solid var(--border);
+            border: $hairline;
             display: block;
             width: 100%;
             height: 120px;
-            margin-bottom: 8px;
+            margin-bottom: $sp-4;
         }
 
         .timing-readout {
             display: flex;
-            gap: 12px;
-            font-size: 11px;
+            gap: $sp-6;
+            font-size: $fs-md;
             color: var(--text-dim);
-            margin-bottom: 8px;
+            margin-bottom: $sp-4;
             .timing-lighter { color: #cc9933; }
             .timing-base { color: var(--text); }
             .timing-darker { color: #6688bb; }
@@ -624,39 +717,40 @@ body.editor {
         .range-pair {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: $sp-4;
             flex: 1;
             input[type="range"] { flex: 1; }
             input[type="number"] { width: 90px; flex: 0; }
         }
 
+        // Indented under the inputs: label width plus the row gap.
         .cv-breakdown {
             display: none;
             &.visible { display: block; }
-            padding-left: 148px;
-            margin-bottom: 6px;
-            .field-row { margin-bottom: 3px; }
-            label { min-width: 20px !important; font-size: 10px; }
+            padding-left: $effects-label-w + $sp-4;
+            margin-bottom: $sp-3;
+            .field-row { margin-bottom: $sp-1; }
+            label { min-width: 20px !important; font-size: $fs-sm; }
         }
 
         .layer-item {
-            border: 1px solid var(--border);
+            border: $hairline;
             background: var(--surface);
-            margin-bottom: 8px;
-            padding: 8px 10px;
+            margin-bottom: $sp-4;
+            padding: $sp-4 $sp-5;
         }
 
         .layer-header {
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin-bottom: 8px;
+            gap: $sp-4;
+            margin-bottom: $sp-4;
             select { flex: 1; }
         }
 
         .layer-params {
-            border-top: 1px solid var(--border);
-            padding-top: 8px;
+            border-top: $hairline;
+            padding-top: $sp-4;
         }
     }
 
@@ -672,6 +766,8 @@ body.editor {
     // leave the biome editor's cards, depth catalogs and dual-ranges unstyled.
     &.prototype-editor,
     &.biome-editor {
+        $compact-label-w: 92px;     // labels inside grid cells and slider rows
+
         .workspace {
             display: block;
             height: calc(100vh - 48px);
@@ -687,11 +783,6 @@ body.editor {
             flex: 1;
             overflow: hidden;
         }
-        .form-panel {
-            flex: 1;            // fill the width of .proto-main (beside the JSON panel)
-            overflow-y: auto;
-            padding: 12px 16px;
-        }
 
         // ---- Section-level masonry (CSS multi-columns) ----
         // Sections flow into ~460px columns and pack top-to-bottom, so variable
@@ -701,17 +792,9 @@ body.editor {
         // .form-panel, because of its floor-tabs + JSON-panel layout.)
         .form-sections {
             column-width: 460px;
-            column-gap: 8px;
-            max-width: none;
+            column-gap: $sp-4;
         }
-        details.section {
-            break-inside: avoid;
-            -webkit-column-break-inside: avoid;
-            display: inline-block;
-            width: 100%;
-            max-width: 500px;
-            margin: 0 0 8px;
-        }
+        details.section { @include column-section(520px); }
 
         // ---- Responsive field grid (still used by JS-built sections) ----
         // Some sections built in JS (map generator, item budget, advanced, …)
@@ -726,8 +809,8 @@ body.editor {
             // Inside a narrow grid cell, the fixed 130px label crowds the
             // input — shrink it so the control keeps usable width.
             .field-row, .sub, .slider-row {
-                margin-bottom: 6px;
-                > label { min-width: 92px; }
+                margin-bottom: $sp-3;
+                > label { min-width: $compact-label-w; }
             }
             // Let inputs/selects fill the cell rather than a fixed 100px.
             .field-row input[type="number"] { width: auto; min-width: 0; flex: 1; }
@@ -738,60 +821,25 @@ body.editor {
         // flow into TWO columns on wide screens, one column when narrow.
         // `minmax(0, 1fr)` lets each column shrink below its content width so
         // children with min-width:0 stay inside their card border.
-        .spawn-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 6px 12px;
-            align-items: start;
-            margin-bottom: 6px;
-
-            @media (min-width: 900px) {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-
-            .spawn-row { margin-bottom: 0; } // gap handles spacing in the grid
-        }
+        .spawn-grid,
         .pattern-grid {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 8px 12px;
             align-items: start;
 
             @media (min-width: 900px) {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
-
+        }
+        .spawn-grid {
+            gap: $sp-3 $sp-6;
+            margin-bottom: $sp-3;
+            .spawn-row { margin-bottom: 0; } // gap handles spacing in the grid
+        }
+        .pattern-grid {
+            gap: $sp-4 $sp-6;
             .pattern-box { margin-bottom: 0; }
         }
-
-        // Keep card contents inside the border in a narrow grid cell.
-        // Flex children must be allowed to shrink (min-width:0) or their
-        // intrinsic content width (long <select> options) overflows the card.
-        .spawn-row {
-            min-width: 0;
-            overflow: hidden; // safety net against any residual overflow
-
-            .spawn-head {
-                flex-wrap: wrap; // id select + expected + remove wrap if tight
-                select { min-width: 0; flex: 1; }
-            }
-            // chance: fixed label, slider grows, value pinned right
-            .slider-row {
-                > label { min-width: 0; flex: 0 0 auto; }
-                input[type="range"] { min-width: 0; flex: 1; }
-            }
-            // count: fixed "count" label, then the dual-range row fills the rest
-            .sub {
-                > label { min-width: 0; flex: 0 0 3.4em; }
-                > .slider-row { flex: 1; min-width: 0; }
-            }
-        }
-        .pattern-box { min-width: 0; }
-
-        // The dual-range needs a real track width to be legible — without it the
-        // two thumbs pile up at the left edge over the value text. (Its base
-        // rule already sets flex:1 + min-width:110px; just guard the value text.)
-        .range-vals { flex: 0 0 auto; white-space: nowrap; }
 
         // ---- Tooltip affordance ----
         // Labels/fields carry their help text in the native title attribute
@@ -804,25 +852,25 @@ body.editor {
         .toggle-line {
             display: flex;
             align-items: center;
-            gap: 4px;
-            font-size: 11px;
+            gap: $sp-2;
+            font-size: $fs-md;
             color: var(--accent);
             cursor: pointer;
-            margin: 6px 0 4px;
+            margin: $sp-3 0 $sp-2;
             min-width: unset;
         }
         // Top-of-form cutscene switch: reads as a mode selector, not a field.
         .cutscene-toggle {
-            margin: 0 0 8px;
-            padding: 8px 10px;
-            border: 1px solid var(--border, #333);
+            margin: 0 0 $sp-4;
+            padding: $sp-4 $sp-5;
+            border: $hairline;
             border-radius: 4px;
             background: rgba(255, 255, 255, 0.03);
 
-            .toggle-line { margin: 0; font-size: 12px; }
+            .toggle-line { margin: 0; font-size: $fs-base; }
         }
         .mini-label {
-            font-size: 9px;
+            font-size: $fs-xs;
             color: var(--text-dim);
             cursor: help;
         }
@@ -831,15 +879,15 @@ body.editor {
         .floor-tabs {
             display: flex;
             flex-wrap: wrap;
-            gap: 4px;
+            gap: $sp-2;
             align-items: center;
-            padding: 8px 16px;
+            padding: $sp-4 $sp-8;
             background: var(--bg2);
-            border-bottom: 1px solid var(--border);
+            border-bottom: $hairline;
 
             .add-btn { margin-top: 0; }
             .floor-hint {
-                font-size: 10px;
+                font-size: $fs-sm;
                 color: var(--text-dim);
                 margin-left: auto;
                 font-style: italic;
@@ -852,28 +900,22 @@ body.editor {
         .design-bar .design-floors-label {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            font-size: 11px;
+            gap: $sp-3;
+            font-size: $fs-md;
             color: var(--text);
 
             input[type=number] {
+                @include control;
                 width: 60px;
-                font-family: inherit;
-                font-size: 11px;
-                background: var(--input-bg);
-                color: var(--text);
-                border: 1px solid var(--border);
-                padding: 2px 4px;
+                font-size: $fs-md;
+                padding: $control-pad-sm;
             }
         }
         .floor-tab {
-            font-family: inherit;
-            font-size: 11px;
+            @include control;
+            font-size: $fs-md;
             cursor: pointer;
-            background: var(--input-bg);
-            color: var(--text);
-            border: 1px solid var(--border);
-            padding: 3px 10px;
+            padding: $control-pad-y $sp-5;
 
             &:hover { background: var(--bg3); }
             &.active {
@@ -883,7 +925,7 @@ body.editor {
             }
             &.proto-tab {
                 font-weight: bold;
-                margin-right: 8px;
+                margin-right: $sp-4;
             }
         }
 
@@ -892,8 +934,8 @@ body.editor {
         .section-enable-toggle {
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            font-size: 10px;
+            gap: $sp-2;
+            font-size: $fs-sm;
             color: var(--accent);
             cursor: pointer;
             margin-left: auto;
@@ -920,13 +962,13 @@ body.editor {
         .section-summary-row {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: $sp-4;
             width: 100%;
             flex: 1 1 auto;
             .sec-title { flex: 0 0 auto; }
         }
         .inherit-badge {
-            font-size: 9px;
+            font-size: $fs-xs;
             color: var(--text-dim);
             font-style: italic;
         }
@@ -935,12 +977,12 @@ body.editor {
         .slider-row {
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin-bottom: 6px;
+            gap: $sp-4;
+            margin-bottom: $sp-3;
 
             > label {
-                min-width: 130px;
-                font-size: 11px;
+                min-width: $compact-label-w;
+                font-size: $fs-md;
                 color: var(--text-dim);
             }
             input[type="range"] {
@@ -949,11 +991,11 @@ body.editor {
                 min-width: 80px;
             }
             .slider-val {
-                font-size: 11px;
+                font-size: $fs-md;
                 color: var(--text);
                 min-width: 58px;
                 text-align: right;
-                font-family: 'Courier New', monospace;
+                font-family: $mono;
                 &.guaranteed { color: var(--accent); font-weight: bold; }
             }
         }
@@ -967,29 +1009,25 @@ body.editor {
             display: flex;
             align-items: center;
 
-            .track {
-                position: absolute;
-                left: 0;
-                right: 0;
-                top: 50%;
-                transform: translateY(-50%);
-                height: 4px;
-                background: #cdcdc5;
-                border: 1px solid var(--border);
-            }
+            .track,
             .track-fill {
                 position: absolute;
                 top: 50%;
                 transform: translateY(-50%);
                 height: 4px;
-                background: var(--accent);
             }
+            .track {
+                left: 0;
+                right: 0;
+                background: #cdcdc5;
+                border: $hairline;
+            }
+            .track-fill { background: var(--accent); }
             input[type="range"] {
                 position: absolute;
                 left: 0;
                 right: 0;
                 width: 100%;
-                margin: 0;
                 -webkit-appearance: none;
                 appearance: none;
                 background: none;
@@ -998,142 +1036,133 @@ body.editor {
                 &::-webkit-slider-thumb {
                     -webkit-appearance: none;
                     appearance: none;
-                    pointer-events: auto;
-                    width: 13px;
-                    height: 13px;
-                    border-radius: 50%;
-                    background: var(--accent);
-                    border: 1px solid var(--bg);
-                    cursor: pointer;
+                    @include range-thumb;
                 }
-                &::-moz-range-thumb {
-                    pointer-events: auto;
-                    width: 13px;
-                    height: 13px;
-                    border-radius: 50%;
-                    background: var(--accent);
-                    border: 1px solid var(--bg);
-                    cursor: pointer;
-                }
+                &::-moz-range-thumb { @include range-thumb; }
                 &::-moz-range-track { background: none; }
             }
         }
+        // The dual-range needs a real track width to be legible — without it the
+        // two thumbs pile up at the left edge over the value text. (Its base
+        // rule already sets flex:1 + min-width:110px; just guard the value text.)
         .range-vals {
-            font-size: 11px;
+            flex: 0 0 auto;
+            white-space: nowrap;
+            font-size: $fs-md;
             color: var(--text);
             min-width: 64px;
-            font-family: 'Courier New', monospace;
+            font-family: $mono;
         }
 
-        // Spawn distribution rows
+        // Spawn distribution rows. Keep card contents inside the border in a
+        // narrow grid cell: flex children must be allowed to shrink (min-width:0)
+        // or their intrinsic content width (long <select> options) overflows.
         .spawn-row {
-            border: 1px solid var(--border);
+            border: $hairline;
             background: var(--surface);
-            padding: 6px 8px;
-            margin-bottom: 6px;
+            padding: $sp-3 $sp-4;
+            margin-bottom: $sp-3;
+            min-width: 0;
+            overflow: hidden; // safety net against any residual overflow
 
             .spawn-head {
                 display: flex;
+                flex-wrap: wrap; // id select + expected + remove wrap if tight
                 align-items: center;
-                gap: 6px;
-                margin-bottom: 4px;
+                gap: $sp-3;
+                margin-bottom: $sp-2;
 
                 select {
+                    @include control;
                     flex: 1;
-                    font-family: inherit;
-                    font-size: 12px;
-                    background: var(--input-bg);
-                    color: var(--text);
-                    border: 1px solid var(--border);
-                    padding: 3px 6px;
+                    min-width: 0;
+                    font-size: $fs-base;
+                    padding: $control-pad;
                 }
             }
             .pool-hint {
-                font-size: 9px;
+                font-size: $fs-xs;
                 color: var(--accent2);
                 white-space: nowrap;
             }
             .expected {
-                font-size: 10px;
+                font-size: $fs-sm;
                 color: var(--text-dim);
                 font-style: italic;
                 white-space: nowrap;
-                margin-left: 4px;
+                margin-left: $sp-2;
             }
+            // chance: fixed label, slider grows, value pinned right
+            .slider-row {
+                > label { min-width: 0; flex: 0 0 auto; }
+                input[type="range"] { min-width: 0; flex: 1; }
+            }
+            // count: fixed "count" label, then the dual-range row fills the rest
             .sub {
                 display: flex;
                 align-items: center;
-                gap: 8px;
+                gap: $sp-4;
                 > label {
                     min-width: 64px;
-                    font-size: 10px;
+                    flex: 0 0 3.4em;
+                    font-size: $fs-sm;
                     color: var(--text-dim);
                 }
+                > .slider-row { flex: 1; min-width: 0; }
             }
         }
 
         // Weighted-pool bars (lakes/abyss types, roomWeights, item_catalog)
-        .weight-table { margin: 4px 0; }
+        .weight-table { margin: $sp-2 0; }
         .weight-row {
             display: flex;
             align-items: center;
-            gap: 6px;
-            margin-bottom: 3px;
+            gap: $sp-3;
+            margin-bottom: $sp-2;
 
             .wlabel {
                 min-width: 90px;
-                font-size: 11px;
+                font-size: $fs-md;
                 color: var(--text);
             }
-            select.wlabel-sel {
-                min-width: 90px;
-                flex: 0 0 auto;
-                font-family: inherit;
-                font-size: 11px;
-                background: var(--input-bg);
-                color: var(--text);
-                border: 1px solid var(--border);
-                padding: 2px 4px;
+            select.wlabel-sel,
+            input[type="number"] {
+                @include control;
+                font-size: $fs-md;
+                padding: $control-pad-sm;
             }
+            select.wlabel-sel { min-width: 90px; flex: 0 0 auto; }
+            input[type="number"] { width: 56px; }
             .wbar-wrap {
                 flex: 1;
                 height: 14px;
                 background: #e4e3db;
-                border: 1px solid var(--border);
+                border: $hairline;
                 position: relative;
                 min-width: 60px;
             }
             .wbar-fill { height: 100%; background: var(--accent); }
             .wbar-pct {
                 position: absolute;
-                right: 3px;
+                right: $sp-1;
                 top: 0;
-                font-size: 9px;
+                font-size: $fs-xs;
                 color: var(--text);
                 line-height: 14px;
-            }
-            input[type="number"] {
-                width: 56px;
-                font-family: inherit;
-                font-size: 11px;
-                background: var(--input-bg);
-                color: var(--text);
-                border: 1px solid var(--border);
-                padding: 2px 4px;
             }
         }
 
         // Misc helpers
         .hint-inline {
-            font-size: 10px;
+            font-size: $fs-sm;
             color: var(--text-dim);
             font-style: italic;
-            margin: 2px 0 6px;
+            margin: $sp-1 0 $sp-3;
         }
         .field-note {
-            font-size: 10px;
+            font-size: $fs-sm;
             color: var(--accent2);
-            margin-left: 6px;
+            margin-left: $sp-3;
         }
         .two-col {
             display: grid;
@@ -1141,49 +1170,43 @@ body.editor {
             gap: 0 18px;
         }
         .pattern-box {
-            border: 1px solid var(--border);
+            border: $hairline;
             background: var(--surface);
-            padding: 8px;
-            margin-bottom: 8px;
+            padding: $sp-4;
+            margin-bottom: $sp-4;
+            min-width: 0;
         }
         // ---- Biome authoring (multi-level prototypes) ----
         .biome-card {
+            @include disclosure;
             border: 1px solid var(--accent);
             background: var(--surface);
-            margin: 6px 0;
+            margin: $sp-3 0;
             > summary {
-                cursor: pointer;
-                padding: 6px 10px;
+                padding: $sp-3 $sp-5;
                 background: var(--bg3);
                 color: var(--accent);
                 font-weight: bold;
-                font-size: 12px;
-                list-style: none;
-                &::before { content: '+ '; }
+                font-size: $fs-base;
             }
-            &[open] > summary::before { content: '- '; }
-            > .section-body { padding: 8px 10px; }
+            > .section-body { padding: $sp-4 $sp-5; }
         }
-        .depth-catalog { margin: 4px 0 8px; }
+        .depth-catalog { margin: $sp-2 0 $sp-4; }
         .depth-row-head {
             display: flex;
             align-items: center;
-            gap: 6px;
-            margin-bottom: 4px;
+            gap: $sp-3;
+            margin-bottom: $sp-2;
         }
         .depth-preview {
-            margin-top: 6px;
-            .weight-row { margin: 2px 0; }
+            margin-top: $sp-3;
+            .weight-row { margin: $sp-1 0; }
         }
         .unknown-keys {
-            font-size: 10px;
+            font-size: $fs-sm;
             color: var(--accent2);
             white-space: pre-wrap;
             word-break: break-all;
-        }
-        .status-text {
-            font-size: 11px;
-            color: var(--text-dim);
         }
     }
 
@@ -1192,23 +1215,23 @@ body.editor {
     // ================================================================
 
     &.sound-player {
-        .sound-body { padding: 14px 16px; max-width: 1100px; }
+        .sound-body { padding: $sp-6 $sp-8; max-width: 1100px; }
 
         .sound-intro {
-            font-size: 12px;
+            font-size: $fs-base;
             color: var(--text-dim);
-            margin-bottom: 12px;
+            margin-bottom: $sp-6;
             max-width: 640px;
             line-height: 1.5;
 
-            code { font-size: 11px; color: var(--accent); }
+            code { font-size: $fs-md; color: var(--accent); }
             kbd {
                 font-family: inherit;
-                font-size: 10px;
+                font-size: $fs-sm;
                 background: var(--input-bg);
-                border: 1px solid var(--border);
+                border: $hairline;
                 border-radius: 2px;
-                padding: 0 3px;
+                padding: 0 $sp-1;
             }
         }
 
@@ -1217,21 +1240,21 @@ body.editor {
         .sound-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 6px;
+            gap: $sp-3;
         }
 
         .sound-chip {
             display: flex;
             align-items: baseline;
             justify-content: space-between;
-            gap: 8px;
+            gap: $sp-4;
             background: var(--surface);
-            border: 1px solid var(--border);
+            border: $hairline;
             color: var(--text);
             font-family: inherit;
-            font-size: 13px;
+            font-size: $fs-base;
             text-align: left;
-            padding: 7px 9px;
+            padding: $sp-4 $sp-5;
             cursor: pointer;
 
             &:hover { background: var(--bg3); }
@@ -1245,27 +1268,21 @@ body.editor {
         }
 
         .sound-name { overflow: hidden; text-overflow: ellipsis; }
-        .sound-duration { font-size: 10px; color: var(--text-dim); flex-shrink: 0; }
+        .sound-duration { font-size: $fs-sm; color: var(--text-dim); flex-shrink: 0; }
 
-        .status-text { font-size: 11px; color: var(--text-dim); }
         .status-error { color: var(--accent2); }
     }
 }
-// arena has it's own extra ui
 
-body.arena {
-    .controls-panel {
-        font-size: x-small;
-        h2, h3 {
-            font-size: smaller;
-        }
-        font-family: 'Courier New', Courier, monospace;
-        display: flex;
-        .stat-row {
-            padding:2px;
-        }
-        > div {
-            padding: 5px;
-        }
-    }
+// ================================================================
+// Arena (combat test page) — its own extra UI
+// ================================================================
+
+body.arena .controls-panel {
+    display: flex;
+    font-family: $mono;
+    font-size: x-small;
+    h2, h3 { font-size: smaller; }
+    .stat-row { padding: $sp-1; }
+    > div { padding: $sp-2; }
 }

@@ -48,11 +48,10 @@
                     <label>Name</label>
                     <input type="text" id="f-name" placeholder="Display name">
                 </div>
-                <div class="field-row">
+                <div class="field-row" id="type-row">
                     <label>Type</label>
                     <select id="f-type"></select>
                 </div>
-                <div class="hint" id="type-hint" style="margin:-4px 0 8px 0"></div>
                 <div class="field-row">
                     <label>Description</label>
                     <textarea id="f-description" rows="2" placeholder="Flavor text"></textarea>
@@ -192,13 +191,12 @@
                         <div class="checkbox-grid"></div>
                         <div class="typed-attrs"></div>
                         <div class="conditional-section attr-group-extra" id="lock-conditions-section">
-                            <div class="sub-section-title">Lock Conditions</div>
-                            <div class="hint" style="margin:0 0 4px 0">Locked until <em>all</em> conditions hold, re-locking if they stop. Same forms as win_conditions: <code>killed:ogre</code>, <code>wearing:crown</code>, <code>holding:x</code>, <code>collected:x</code>, a JSON stat compare, or <code>killed:linked</code> (every actor sharing this one's <code>machine_id</code>, set in Tiled, is dead). Keys and switches don't open it.</div>
+                            <div class="sub-section-title" title="Locked until all conditions hold, re-locking if one stops holding. Keys and switches don't open it.&#10;Same forms as win_conditions: killed:ogre, wearing:crown, holding:x, collected:x, a JSON stat compare, or killed:linked (every actor sharing this one's machine_id, set in Tiled, is dead).">Lock Conditions</div>
                             <div id="unlock-conditions-list" class="dynamic-list"></div>
                             <button class="add-btn" id="btn-add-unlock-condition">+ Add Condition</button>
                             <div class="field-row" style="margin-top:8px">
                                 <label>Unlock Message</label>
-                                <input type="text" id="f-unlock_message" placeholder="defaults to &quot;The door unlocks.&quot; / &quot;You hear a distant click.&quot;">
+                                <input type="text" id="f-unlock_message" placeholder="The door unlocks.&quot;/&quot;You hear a distant click.&quot;">
                             </div>
                         </div>
                     </div>
@@ -341,13 +339,11 @@
                     <label>Vision Range</label>
                     <input type="number" id="f-vision_range" min="0" value="">
                 </div>
-                <div style="margin: 6px 0 4px; font-size:11px; color:var(--accent)">Hunts</div>
-                <div class="hint" style="margin:0 0 4px 0">Actors to kill and items to collect, by id or by type. Needs a personality with the <code>hunt</code> behavior.</div>
+                <div style="margin: 6px 0 4px; font-size:11px; color:var(--accent)" title="Actors to kill and items to collect, by id or by type. Needs a personality with the hunt behavior.">Hunts</div>
                 <div id="hunts-list" class="dynamic-list"></div>
                 <button class="add-btn" id="btn-add-hunt">+ Add Quarry</button>
                 <div class="hint" id="hunts-hint" style="margin:4px 0 8px 0"></div>
-                <div style="margin: 6px 0 4px; font-size:11px; color:var(--accent)">Seeks</div>
-                <div class="hint" style="margin:0 0 4px 0">Items to pick up, by id or by type. Overrides the personality's <code>item_type</code>; leave empty to use it. Needs the <code>seek_item</code> behavior.</div>
+                <div style="margin: 6px 0 4px; font-size:11px; color:var(--accent)" title="Items to pick up, by id or by type. Overrides the personality's item_type; leave empty to use it. Needs the seek_item behavior.">Seeks</div>
                 <div id="seeks-list" class="dynamic-list"></div>
                 <button class="add-btn" id="btn-add-seek">+ Add Item</button>
                 <div class="field-row" style="margin-top:6px">
@@ -512,7 +508,7 @@ const TYPED_ATTRS = [
     { key: 'entry_sound', type: 'text', label: 'Entry Sound', hint: 'Sound played when another actor steps on this tile. e.g. step_mud.' },
     { key: 'apply_state', type: 'text', label: 'Apply State', hint: 'State applied on contact (non-combat). e.g. nauseated. For combat use collision_effect.' },
     { key: 'split_min_health', type: 'number', label: 'Split Min Health', hint: 'Minimum health needed to split. Actor stops splitting once below this threshold.' },
-    { key: 'paint_tile', type: 'text', label: 'Paint Tile', hint: 'Tile name on the Tiled wildcards layer that spawns this actor. Must be unique per actor.' },
+    { key: 'paint_tile', type: 'tilename', label: 'Paint Tile', hint: 'Tile name on the Tiled wildcards layer that spawns this actor. Must be unique per actor.' },
 ];
 
 const TILE_FIELDS = ['tileIndexBase','tileIndexTop','tileIndexSide','tileIndexBase_open','tileIndexTop_open','tileIndexBase_toggled','tileIndexTop_toggled'];
@@ -744,14 +740,13 @@ function typeAttrsFor(typeKey) {
  * inherits rather than declares. Anything the actor sets itself overrides these.
  */
 function updateTypeHint() {
-    const hint = document.getElementById('type-hint');
+    const row = document.getElementById('type-row');
     const key = document.getElementById('f-type').value;
     const def = key && state.types?.[key];
-    if (!def) { hint.textContent = ''; return; }
+    if (!def) { row.title = ''; return; }
     const attrs = Object.entries(def.attributes || {})
         .map(([k, v]) => `${k}: ${v}`).join(', ');
-    hint.textContent = (def.description ? def.description + ' ' : '')
-        + (attrs ? `Inherits — ${attrs}` : '');
+    row.title = [def.description, attrs && `Inherits — ${attrs}`].filter(Boolean).join('\n');
 }
 
 // ---- Tile drawing ----
@@ -1078,6 +1073,7 @@ function updatePreview() {
     updateQuarryHints();
     updateAttrGroupCounts();
     updateColorNameFields();
+    updateTileNameFields();
     renderPreview();
     updateJSONOutput();
     if (hasActiveAnimation()) startAnimLoop();
@@ -1222,6 +1218,45 @@ function makeTypedField(ta, container) {
         row.appendChild(sw);
         row.appendChild(inp);
         row.appendChild(warn);
+    } else if (ta.type === 'tilename') {
+        // A tile *name* from static-tiles.json (Tiled matches by name, so bare
+        // coordinates won't do). The text input is the stored value; the
+        // thumbnail opens the shared tile picker.
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'tile-name-thumb';
+        btn.title = 'Pick a tile';
+        const cv = document.createElement('canvas');
+        cv.id = 'attr-' + ta.key + '-thumb';
+        cv.width = TILE_W; cv.height = TILE_H;
+        btn.appendChild(cv);
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.id = 'attr-' + ta.key;
+        inp.placeholder = 'tile name';
+        inp.addEventListener('input', updatePreview);
+        const warn = document.createElement('span');
+        warn.className = 'color-name-warning';
+        warn.id = 'attr-' + ta.key + '-warning';
+        btn.addEventListener('click', () => TilePicker.open({
+            current: inp.value.trim() || null,
+            label: ta.key,
+            onPick: (value) => {
+                // Unnamed cells come back as {x, y}; use an alias if the cell has one.
+                const name = typeof value === 'string' ? value
+                    : value && TilePicker.byCoord[`${value.x},${value.y}`]?.[0];
+                if (value && !name) {
+                    warn.textContent = 'that tile has no name';
+                    warn.classList.add('visible');
+                    return;
+                }
+                inp.value = name || '';
+                updatePreview();
+            },
+        }));
+        row.appendChild(btn);
+        row.appendChild(inp);
+        row.appendChild(warn);
     } else {
         const inp = document.createElement('input');
         inp.type = ta.type;
@@ -1245,6 +1280,19 @@ function updateColorNameFields() {
         sw.classList.toggle('empty', !hex);
         document.getElementById('attr-' + ta.key + '-warning')
             .classList.toggle('visible', !!name && !hex);
+    }
+}
+
+/** Draw each tile-name field's thumbnail, and flag names static-tiles.json doesn't know. */
+function updateTileNameFields() {
+    for (const ta of TYPED_ATTRS) {
+        if (ta.type !== 'tilename') continue;
+        const name = document.getElementById('attr-' + ta.key).value.trim();
+        const known = !!TilePicker.resolve(name);
+        drawTileOnCanvas(document.getElementById('attr-' + ta.key + '-thumb'), known ? name : null);
+        const warn = document.getElementById('attr-' + ta.key + '-warning');
+        warn.textContent = 'not in static-tiles.json';
+        warn.classList.toggle('visible', !!name && !known);
     }
 }
 

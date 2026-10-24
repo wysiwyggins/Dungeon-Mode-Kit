@@ -171,7 +171,6 @@ body.editor {
   font-family: "courier_prime_coderegular", monospace;
   font-size: 14px;
   overflow-x: hidden;
-  padding: 0;
 }
 body.editor * {
   margin: 0;
@@ -202,13 +201,15 @@ body.editor header select, body.editor header button {
   background: var(--input-bg);
   color: var(--text);
   border: 1px solid var(--border);
-  padding: 4px 8px;
   font-family: inherit;
-  font-size: 14px;
-  cursor: pointer;
 }
 body.editor header select:focus, body.editor header button:focus {
   outline: 1px solid var(--accent);
+}
+body.editor header select, body.editor header button {
+  padding: 4px 8px;
+  font-size: 14px;
+  cursor: pointer;
 }
 body.editor header button:hover {
   background: var(--bg3);
@@ -231,28 +232,33 @@ body.editor .form-panel {
   overflow-y: auto;
   padding: 12px 16px;
 }
-body.editor details.section {
-  border: 1px solid var(--border);
-  margin-bottom: 8px;
-  background: var(--surface);
-}
 body.editor details.section > summary {
   cursor: pointer;
-  padding: 8px 12px;
-  font-weight: bold;
-  font-size: 12px;
-  color: var(--accent);
-  background: var(--bg2);
   -webkit-user-select: none;
      -moz-user-select: none;
           user-select: none;
   list-style: none;
+}
+body.editor details.section > summary::-webkit-details-marker {
+  display: none;
 }
 body.editor details.section > summary::before {
   content: "+ ";
 }
 body.editor details.section[open] > summary::before {
   content: "- ";
+}
+body.editor details.section {
+  border: 1px solid var(--border);
+  margin-bottom: 8px;
+  background: var(--surface);
+}
+body.editor details.section > summary {
+  padding: 8px 12px;
+  font-weight: bold;
+  font-size: 12px;
+  color: var(--accent);
+  background: var(--bg2);
 }
 body.editor details.section > .section-body {
   padding: 10px 12px;
@@ -275,8 +281,8 @@ body.editor .field-row select {
   background: var(--input-bg);
   color: var(--text);
   border: 1px solid var(--border);
-  padding: 3px 6px;
   font-family: inherit;
+  padding: 3px 6px;
   font-size: 14px;
   flex: 1;
   min-width: 0;
@@ -287,11 +293,12 @@ body.editor .field-row input[type=number] {
   flex: 0;
 }
 body.editor .field-row input[type=color] {
+  background: var(--input-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  font-family: inherit;
   width: 40px;
   height: 24px;
-  padding: 0;
-  border: 1px solid var(--border);
-  background: var(--input-bg);
   cursor: pointer;
 }
 body.editor .field-row textarea {
@@ -304,7 +311,7 @@ body.editor .field-row input:focus, body.editor .field-row select:focus, body.ed
 body.editor .checkbox-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 3px 8px;
+  gap: 4px 8px;
   margin-bottom: 10px;
 }
 body.editor .checkbox-grid label {
@@ -329,31 +336,35 @@ body.editor .dynamic-list .list-item input, body.editor .dynamic-list .list-item
   flex: 1;
 }
 body.editor .remove-btn {
-  font-size: 12px;
   color: var(--accent2);
-  cursor: pointer;
   background: none;
   border: 1px solid var(--accent2);
-  padding: 4px;
   font-family: inherit;
+  cursor: pointer;
 }
 body.editor .remove-btn:hover {
   background: var(--accent2);
   color: #fff;
 }
-body.editor .add-btn {
+body.editor .remove-btn {
   font-size: 12px;
+  padding: 4px;
+}
+body.editor .add-btn {
   color: var(--accent);
-  cursor: pointer;
   background: none;
   border: 1px solid var(--accent);
-  padding: 2px 8px;
-  margin-top: 4px;
   font-family: inherit;
+  cursor: pointer;
 }
 body.editor .add-btn:hover {
   background: var(--accent);
   color: var(--bg);
+}
+body.editor .add-btn {
+  font-size: 12px;
+  padding: 2px 8px;
+  margin-top: 4px;
 }
 body.editor .sub-section {
   border-left: 2px solid var(--border);
@@ -378,11 +389,11 @@ body.editor details.sub-collapsible > summary::-webkit-details-marker {
 body.editor details.sub-collapsible > summary::before {
   content: "+ ";
 }
-body.editor details.sub-collapsible > summary:hover {
-  color: var(--text);
-}
 body.editor details.sub-collapsible[open] > summary::before {
   content: "- ";
+}
+body.editor details.sub-collapsible > summary:hover {
+  color: var(--text);
 }
 body.editor details.sub-collapsible .sub-count {
   margin-left: 6px;
@@ -425,15 +436,11 @@ body.editor .json-output {
 body.editor .hidden {
   display: none !important;
 }
-body.editor .conditional-section {
-  display: none;
-}
-body.editor .conditional-section.visible {
-  display: block;
-}
+body.editor .conditional-section,
 body.editor .stat-advanced {
   display: none;
 }
+body.editor .conditional-section.visible,
 body.editor .stat-advanced.visible {
   display: block;
 }
@@ -442,6 +449,23 @@ body.editor .empty-hint {
   color: var(--text-dim);
   font-style: italic;
   padding: 8px 0;
+}
+body.editor .hint {
+  display: block;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+body.editor .hint code {
+  font-size: 10px;
+  color: var(--accent);
+}
+body.editor .hint:empty {
+  display: none;
+}
+body.editor .status-text {
+  font-size: 11px;
+  color: var(--text-dim);
 }
 body.editor .preview-panel {
   width: 220px;
@@ -465,8 +489,7 @@ body.editor .preview-canvas {
 body.editor .preview-label {
   font-size: 12px;
   color: var(--text-dim);
-  margin-top: 8px;
-  margin-bottom: 2px;
+  margin: 8px 0 2px;
 }
 body.editor .preview-tile {
   display: inline-block;
@@ -492,12 +515,12 @@ body.editor .tile-slot canvas {
   display: block;
 }
 body.editor .tile-slot .tile-name {
-  font-size: 12px;
-  color: var(--text-dim);
-  max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-dim);
+  max-width: 180px;
 }
 body.editor .tile-slot .clear-btn {
   font-size: 12px;
@@ -514,21 +537,18 @@ body.editor .tile-preview {
   flex: 0 0 auto;
 }
 body.editor .tile-field-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 12px;
   color: var(--text-dim);
   flex: 1 1 auto;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 body.editor .tile-picker-overlay {
   display: none;
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(0, 0, 0, 0.85);
   z-index: 1000;
   justify-content: center;
@@ -553,23 +573,20 @@ body.editor .tile-picker-header {
   gap: 8px;
   margin-bottom: 8px;
 }
-body.editor .tile-picker-header input {
+body.editor .tile-picker-header input, body.editor .tile-picker-header button {
   background: var(--input-bg);
   color: var(--text);
   border: 1px solid var(--border);
-  padding: 4px 8px;
   font-family: inherit;
   font-size: 12px;
+}
+body.editor .tile-picker-header input {
+  padding: 4px 8px;
   width: 250px;
 }
 body.editor .tile-picker-header button {
-  background: var(--input-bg);
-  color: var(--text);
-  border: 1px solid var(--border);
   padding: 4px 10px;
   cursor: pointer;
-  font-family: inherit;
-  font-size: 12px;
 }
 body.editor .tile-picker-target {
   font-size: 11px;
@@ -580,6 +597,9 @@ body.editor .tile-picker-canvas {
   display: block;
 }
 body.editor .tile-picker-tooltip {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   position: fixed;
   background: var(--bg);
   color: var(--accent);
@@ -589,20 +609,18 @@ body.editor .tile-picker-tooltip {
   pointer-events: none;
   display: none;
   z-index: 1001;
-  white-space: nowrap;
   max-width: 400px;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 body.editor .color-picker {
   width: 640px;
 }
 body.editor .color-picker-hex-row input[type=color] {
+  background: var(--input-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  font-family: inherit;
   width: 32px;
   height: 24px;
-  padding: 0;
-  border: 1px solid var(--border);
-  background: var(--input-bg);
   cursor: pointer;
 }
 body.editor .color-picker-readout {
@@ -620,32 +638,41 @@ body.editor .color-picker-grid {
 body.editor .color-picker-swatch {
   width: 16px;
   height: 16px;
-  padding: 0;
   border: 1px solid rgba(0, 0, 0, 0.4);
   cursor: pointer;
+  outline-offset: 1px;
 }
 body.editor .color-picker-swatch:hover {
   outline: 1px solid var(--text);
-  outline-offset: 1px;
 }
 body.editor .color-picker-swatch.nearest {
   outline: 2px solid var(--accent);
-  outline-offset: 1px;
 }
 body.editor .color-picker-swatch.current {
   outline: 2px solid #e94560;
-  outline-offset: 1px;
 }
-body.editor .color-name-swatch {
+body.editor .color-name-swatch,
+body.editor .tile-name-thumb {
   flex: 0 0 auto;
-  width: 24px;
-  height: 24px;
-  padding: 0;
   border: 1px solid var(--border);
   cursor: pointer;
 }
+body.editor .color-name-swatch {
+  width: 24px;
+  height: 24px;
+}
 body.editor .color-name-swatch.empty {
   background: repeating-linear-gradient(45deg, var(--input-bg) 0 4px, var(--border) 4px 5px);
+}
+body.editor .tile-name-thumb {
+  padding: 1px;
+  line-height: 0;
+  background: var(--input-bg);
+}
+body.editor .tile-name-thumb canvas {
+  width: 32px;
+  height: 24px;
+  image-rendering: pixelated;
 }
 body.editor .color-name-warning {
   display: none;
@@ -666,7 +693,7 @@ body.editor .flip-grid label {
   font-size: 10px;
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   cursor: pointer;
   color: var(--text);
   min-width: unset;
@@ -681,13 +708,25 @@ body.editor .field-inline label {
   min-width: unset;
 }
 body.editor .typed-attrs {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 4px 16px;
 }
 body.editor .typed-attrs .field-row {
-  flex: 0 0 calc(50% - 8px);
-  min-width: 220px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+body.editor .typed-attrs .field-row label {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 11px;
+}
+body.editor .typed-attrs .field-row input[type=text],
+body.editor .typed-attrs .field-row input[type=number],
+body.editor .typed-attrs .field-row select {
+  flex: 0 0 50%;
+  width: auto;
+  min-width: 0;
 }
 body.editor .actor-key-field,
 body.editor .item-key-field,
@@ -717,7 +756,7 @@ body.editor.actor-editor .attr-group-core {
 }
 body.editor.actor-editor details.attr-group {
   border-top: 1px solid var(--border);
-  padding: 5px 0;
+  padding: 4px 0;
 }
 body.editor.actor-editor details.attr-group > summary {
   font-size: 11px;
@@ -745,6 +784,9 @@ body.editor.actor-editor .attr-dependent {
 body.editor.item-editor .field-row label {
   min-width: 150px;
 }
+body.editor.item-editor .typed-attrs .field-row label {
+  min-width: 0;
+}
 body.editor.item-editor .form-panel {
   -moz-column-width: 460px;
        column-width: 460px;
@@ -770,13 +812,15 @@ body.editor .item-filter {
   background: var(--input-bg);
   color: var(--text);
   border: 1px solid var(--border);
-  padding: 4px 8px;
   font-family: inherit;
-  font-size: 12px;
-  width: 180px;
 }
 body.editor .item-filter:focus {
   outline: 1px solid var(--accent);
+}
+body.editor .item-filter {
+  padding: 4px 8px;
+  font-size: 12px;
+  width: 180px;
 }
 body.editor .item-filter-results {
   display: none;
@@ -841,22 +885,24 @@ body.editor .behavior-panel h3 {
   margin-bottom: 8px;
 }
 body.editor .behavior-search {
-  width: 100%;
   background: var(--input-bg);
   color: var(--text);
   border: 1px solid var(--border);
-  padding: 4px 8px;
   font-family: inherit;
-  font-size: 12px;
-  margin-bottom: 8px;
 }
 body.editor .behavior-search:focus {
   outline: 1px solid var(--accent);
 }
+body.editor .behavior-search {
+  width: 100%;
+  padding: 4px 8px;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
 body.editor .behavior-category {
   font-size: 10px;
   color: var(--accent);
-  margin: 8px 0 3px;
+  margin: 8px 0 4px;
   font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -887,7 +933,7 @@ body.editor .behavior-list-item {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 3px;
+  margin-bottom: 4px;
   padding: 4px 6px;
   background: var(--input-bg);
   border: 1px solid var(--border);
@@ -899,9 +945,6 @@ body.editor .behavior-list-item .drag-handle {
   color: var(--text-dim);
   font-size: 14px;
   cursor: grab;
-  -webkit-user-select: none;
-     -moz-user-select: none;
-          user-select: none;
   padding: 0 2px;
 }
 body.editor .behavior-list-item .drag-handle:active {
@@ -919,12 +962,12 @@ body.editor .behavior-list-item .behavior-name {
   font-weight: bold;
 }
 body.editor .behavior-list-item .behavior-hint {
-  font-size: 9px;
-  color: var(--text-dim);
-  max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 9px;
+  color: var(--text-dim);
+  max-width: 200px;
 }
 body.editor .behavior-list-item.dragging {
   opacity: 0.3;
@@ -934,18 +977,20 @@ body.editor .behavior-list-item.drag-over {
   margin-top: -2px;
 }
 body.editor .move-btn {
-  font-size: 10px;
   color: var(--accent);
-  cursor: pointer;
   background: none;
   border: 1px solid var(--accent);
-  padding: 1px 4px;
   font-family: inherit;
-  line-height: 1;
+  cursor: pointer;
 }
 body.editor .move-btn:hover {
   background: var(--accent);
   color: var(--bg);
+}
+body.editor .move-btn {
+  font-size: 10px;
+  padding: 1px 4px;
+  line-height: 1;
 }
 body.editor .move-btn:disabled {
   opacity: 0.3;
@@ -964,8 +1009,8 @@ body.editor .behavior-add-row select {
   background: var(--input-bg);
   color: var(--text);
   border: 1px solid var(--border);
-  padding: 3px 6px;
   font-family: inherit;
+  padding: 3px 6px;
   font-size: 12px;
   flex: 1;
 }
@@ -978,9 +1023,7 @@ body.editor .param-row.inactive {
 body.editor .param-hint {
   font-size: 9px;
   color: var(--text-dim);
-  margin-left: 168px;
-  margin-top: -4px;
-  margin-bottom: 6px;
+  margin: -4px 0 6px 168px;
 }
 body.editor.effects-editor .field-row label {
   min-width: 140px;
@@ -1050,7 +1093,7 @@ body.editor.effects-editor .cv-breakdown {
   margin-bottom: 6px;
 }
 body.editor.effects-editor .cv-breakdown .field-row {
-  margin-bottom: 3px;
+  margin-bottom: 2px;
 }
 body.editor.effects-editor .cv-breakdown label {
   min-width: 20px !important;
@@ -1090,17 +1133,11 @@ body.editor.prototype-editor .proto-main, body.editor.biome-editor .proto-main {
   flex: 1;
   overflow: hidden;
 }
-body.editor.prototype-editor .form-panel, body.editor.biome-editor .form-panel {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px 16px;
-}
 body.editor.prototype-editor .form-sections, body.editor.biome-editor .form-sections {
   -moz-column-width: 460px;
        column-width: 460px;
   -moz-column-gap: 8px;
        column-gap: 8px;
-  max-width: none;
 }
 body.editor.prototype-editor details.section, body.editor.biome-editor details.section {
   -moz-column-break-inside: avoid;
@@ -1108,7 +1145,7 @@ body.editor.prototype-editor details.section, body.editor.biome-editor details.s
   -webkit-column-break-inside: avoid;
   display: inline-block;
   width: 100%;
-  max-width: 500px;
+  max-width: 520px;
   margin: 0 0 8px;
 }
 body.editor.prototype-editor .field-grid, body.editor.biome-editor .field-grid {
@@ -1128,68 +1165,32 @@ body.editor.prototype-editor .field-grid .field-row input[type=number], body.edi
   min-width: 0;
   flex: 1;
 }
-body.editor.prototype-editor .spawn-grid, body.editor.biome-editor .spawn-grid {
+body.editor.prototype-editor .spawn-grid,
+body.editor.prototype-editor .pattern-grid, body.editor.biome-editor .spawn-grid,
+body.editor.biome-editor .pattern-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 6px 12px;
   align-items: start;
-  margin-bottom: 6px;
 }
 @media (min-width: 900px) {
-  body.editor.prototype-editor .spawn-grid, body.editor.biome-editor .spawn-grid {
+  body.editor.prototype-editor .spawn-grid,
+  body.editor.prototype-editor .pattern-grid, body.editor.biome-editor .spawn-grid,
+  body.editor.biome-editor .pattern-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+body.editor.prototype-editor .spawn-grid, body.editor.biome-editor .spawn-grid {
+  gap: 6px 12px;
+  margin-bottom: 6px;
 }
 body.editor.prototype-editor .spawn-grid .spawn-row, body.editor.biome-editor .spawn-grid .spawn-row {
   margin-bottom: 0;
 }
 body.editor.prototype-editor .pattern-grid, body.editor.biome-editor .pattern-grid {
-  display: grid;
-  grid-template-columns: 1fr;
   gap: 8px 12px;
-  align-items: start;
-}
-@media (min-width: 900px) {
-  body.editor.prototype-editor .pattern-grid, body.editor.biome-editor .pattern-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 body.editor.prototype-editor .pattern-grid .pattern-box, body.editor.biome-editor .pattern-grid .pattern-box {
   margin-bottom: 0;
-}
-body.editor.prototype-editor .spawn-row, body.editor.biome-editor .spawn-row {
-  min-width: 0;
-  overflow: hidden;
-}
-body.editor.prototype-editor .spawn-row .spawn-head, body.editor.biome-editor .spawn-row .spawn-head {
-  flex-wrap: wrap;
-}
-body.editor.prototype-editor .spawn-row .spawn-head select, body.editor.biome-editor .spawn-row .spawn-head select {
-  min-width: 0;
-  flex: 1;
-}
-body.editor.prototype-editor .spawn-row .slider-row > label, body.editor.biome-editor .spawn-row .slider-row > label {
-  min-width: 0;
-  flex: 0 0 auto;
-}
-body.editor.prototype-editor .spawn-row .slider-row input[type=range], body.editor.biome-editor .spawn-row .slider-row input[type=range] {
-  min-width: 0;
-  flex: 1;
-}
-body.editor.prototype-editor .spawn-row .sub > label, body.editor.biome-editor .spawn-row .sub > label {
-  min-width: 0;
-  flex: 0 0 3.4em;
-}
-body.editor.prototype-editor .spawn-row .sub > .slider-row, body.editor.biome-editor .spawn-row .sub > .slider-row {
-  flex: 1;
-  min-width: 0;
-}
-body.editor.prototype-editor .pattern-box, body.editor.biome-editor .pattern-box {
-  min-width: 0;
-}
-body.editor.prototype-editor .range-vals, body.editor.biome-editor .range-vals {
-  flex: 0 0 auto;
-  white-space: nowrap;
 }
 body.editor.prototype-editor .toggle-line, body.editor.biome-editor .toggle-line {
   display: flex;
@@ -1204,7 +1205,7 @@ body.editor.prototype-editor .toggle-line, body.editor.biome-editor .toggle-line
 body.editor.prototype-editor .cutscene-toggle, body.editor.biome-editor .cutscene-toggle {
   margin: 0 0 8px;
   padding: 8px 10px;
-  border: 1px solid var(--border, #333);
+  border: 1px solid var(--border);
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.03);
 }
@@ -1243,21 +1244,21 @@ body.editor.prototype-editor .design-bar .design-floors-label, body.editor.biome
   color: var(--text);
 }
 body.editor.prototype-editor .design-bar .design-floors-label input[type=number], body.editor.biome-editor .design-bar .design-floors-label input[type=number] {
-  width: 60px;
-  font-family: inherit;
-  font-size: 11px;
   background: var(--input-bg);
   color: var(--text);
   border: 1px solid var(--border);
+  font-family: inherit;
+  width: 60px;
+  font-size: 11px;
   padding: 2px 4px;
 }
 body.editor.prototype-editor .floor-tab, body.editor.biome-editor .floor-tab {
-  font-family: inherit;
-  font-size: 11px;
-  cursor: pointer;
   background: var(--input-bg);
   color: var(--text);
   border: 1px solid var(--border);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
   padding: 3px 10px;
 }
 body.editor.prototype-editor .floor-tab:hover, body.editor.biome-editor .floor-tab:hover {
@@ -1335,7 +1336,7 @@ body.editor.prototype-editor .slider-row, body.editor.biome-editor .slider-row {
   margin-bottom: 6px;
 }
 body.editor.prototype-editor .slider-row > label, body.editor.biome-editor .slider-row > label {
-  min-width: 130px;
+  min-width: 92px;
   font-size: 11px;
   color: var(--text-dim);
 }
@@ -1363,21 +1364,21 @@ body.editor.prototype-editor .dualrange, body.editor.biome-editor .dualrange {
   display: flex;
   align-items: center;
 }
-body.editor.prototype-editor .dualrange .track, body.editor.biome-editor .dualrange .track {
+body.editor.prototype-editor .dualrange .track,
+body.editor.prototype-editor .dualrange .track-fill, body.editor.biome-editor .dualrange .track,
+body.editor.biome-editor .dualrange .track-fill {
   position: absolute;
-  left: 0;
-  right: 0;
   top: 50%;
   transform: translateY(-50%);
   height: 4px;
+}
+body.editor.prototype-editor .dualrange .track, body.editor.biome-editor .dualrange .track {
+  left: 0;
+  right: 0;
   background: #cdcdc5;
   border: 1px solid var(--border);
 }
 body.editor.prototype-editor .dualrange .track-fill, body.editor.biome-editor .dualrange .track-fill {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  height: 4px;
   background: var(--accent);
 }
 body.editor.prototype-editor .dualrange input[type=range], body.editor.biome-editor .dualrange input[type=range] {
@@ -1385,7 +1386,6 @@ body.editor.prototype-editor .dualrange input[type=range], body.editor.biome-edi
   left: 0;
   right: 0;
   width: 100%;
-  margin: 0;
   -webkit-appearance: none;
   -moz-appearance: none;
        appearance: none;
@@ -1416,6 +1416,8 @@ body.editor.prototype-editor .dualrange input[type=range]::-moz-range-track, bod
   background: none;
 }
 body.editor.prototype-editor .range-vals, body.editor.biome-editor .range-vals {
+  flex: 0 0 auto;
+  white-space: nowrap;
   font-size: 11px;
   color: var(--text);
   min-width: 64px;
@@ -1426,20 +1428,24 @@ body.editor.prototype-editor .spawn-row, body.editor.biome-editor .spawn-row {
   background: var(--surface);
   padding: 6px 8px;
   margin-bottom: 6px;
+  min-width: 0;
+  overflow: hidden;
 }
 body.editor.prototype-editor .spawn-row .spawn-head, body.editor.biome-editor .spawn-row .spawn-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   margin-bottom: 4px;
 }
 body.editor.prototype-editor .spawn-row .spawn-head select, body.editor.biome-editor .spawn-row .spawn-head select {
-  flex: 1;
-  font-family: inherit;
-  font-size: 12px;
   background: var(--input-bg);
   color: var(--text);
   border: 1px solid var(--border);
+  font-family: inherit;
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
   padding: 3px 6px;
 }
 body.editor.prototype-editor .spawn-row .pool-hint, body.editor.biome-editor .spawn-row .pool-hint {
@@ -1454,6 +1460,14 @@ body.editor.prototype-editor .spawn-row .expected, body.editor.biome-editor .spa
   white-space: nowrap;
   margin-left: 4px;
 }
+body.editor.prototype-editor .spawn-row .slider-row > label, body.editor.biome-editor .spawn-row .slider-row > label {
+  min-width: 0;
+  flex: 0 0 auto;
+}
+body.editor.prototype-editor .spawn-row .slider-row input[type=range], body.editor.biome-editor .spawn-row .slider-row input[type=range] {
+  min-width: 0;
+  flex: 1;
+}
 body.editor.prototype-editor .spawn-row .sub, body.editor.biome-editor .spawn-row .sub {
   display: flex;
   align-items: center;
@@ -1461,8 +1475,13 @@ body.editor.prototype-editor .spawn-row .sub, body.editor.biome-editor .spawn-ro
 }
 body.editor.prototype-editor .spawn-row .sub > label, body.editor.biome-editor .spawn-row .sub > label {
   min-width: 64px;
+  flex: 0 0 3.4em;
   font-size: 10px;
   color: var(--text-dim);
+}
+body.editor.prototype-editor .spawn-row .sub > .slider-row, body.editor.biome-editor .spawn-row .sub > .slider-row {
+  flex: 1;
+  min-width: 0;
 }
 body.editor.prototype-editor .weight-table, body.editor.biome-editor .weight-table {
   margin: 4px 0;
@@ -1471,22 +1490,29 @@ body.editor.prototype-editor .weight-row, body.editor.biome-editor .weight-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 3px;
+  margin-bottom: 4px;
 }
 body.editor.prototype-editor .weight-row .wlabel, body.editor.biome-editor .weight-row .wlabel {
   min-width: 90px;
   font-size: 11px;
   color: var(--text);
 }
-body.editor.prototype-editor .weight-row select.wlabel-sel, body.editor.biome-editor .weight-row select.wlabel-sel {
-  min-width: 90px;
-  flex: 0 0 auto;
-  font-family: inherit;
-  font-size: 11px;
+body.editor.prototype-editor .weight-row select.wlabel-sel,
+body.editor.prototype-editor .weight-row input[type=number], body.editor.biome-editor .weight-row select.wlabel-sel,
+body.editor.biome-editor .weight-row input[type=number] {
   background: var(--input-bg);
   color: var(--text);
   border: 1px solid var(--border);
+  font-family: inherit;
+  font-size: 11px;
   padding: 2px 4px;
+}
+body.editor.prototype-editor .weight-row select.wlabel-sel, body.editor.biome-editor .weight-row select.wlabel-sel {
+  min-width: 90px;
+  flex: 0 0 auto;
+}
+body.editor.prototype-editor .weight-row input[type=number], body.editor.biome-editor .weight-row input[type=number] {
+  width: 56px;
 }
 body.editor.prototype-editor .weight-row .wbar-wrap, body.editor.biome-editor .weight-row .wbar-wrap {
   flex: 1;
@@ -1502,20 +1528,11 @@ body.editor.prototype-editor .weight-row .wbar-fill, body.editor.biome-editor .w
 }
 body.editor.prototype-editor .weight-row .wbar-pct, body.editor.biome-editor .weight-row .wbar-pct {
   position: absolute;
-  right: 3px;
+  right: 2px;
   top: 0;
   font-size: 9px;
   color: var(--text);
   line-height: 14px;
-}
-body.editor.prototype-editor .weight-row input[type=number], body.editor.biome-editor .weight-row input[type=number] {
-  width: 56px;
-  font-family: inherit;
-  font-size: 11px;
-  background: var(--input-bg);
-  color: var(--text);
-  border: 1px solid var(--border);
-  padding: 2px 4px;
 }
 body.editor.prototype-editor .hint-inline, body.editor.biome-editor .hint-inline {
   font-size: 10px;
@@ -1538,6 +1555,23 @@ body.editor.prototype-editor .pattern-box, body.editor.biome-editor .pattern-box
   background: var(--surface);
   padding: 8px;
   margin-bottom: 8px;
+  min-width: 0;
+}
+body.editor.prototype-editor .biome-card > summary, body.editor.biome-editor .biome-card > summary {
+  cursor: pointer;
+  -webkit-user-select: none;
+     -moz-user-select: none;
+          user-select: none;
+  list-style: none;
+}
+body.editor.prototype-editor .biome-card > summary::-webkit-details-marker, body.editor.biome-editor .biome-card > summary::-webkit-details-marker {
+  display: none;
+}
+body.editor.prototype-editor .biome-card > summary::before, body.editor.biome-editor .biome-card > summary::before {
+  content: "+ ";
+}
+body.editor.prototype-editor .biome-card[open] > summary::before, body.editor.biome-editor .biome-card[open] > summary::before {
+  content: "- ";
 }
 body.editor.prototype-editor .biome-card, body.editor.biome-editor .biome-card {
   border: 1px solid var(--accent);
@@ -1545,19 +1579,11 @@ body.editor.prototype-editor .biome-card, body.editor.biome-editor .biome-card {
   margin: 6px 0;
 }
 body.editor.prototype-editor .biome-card > summary, body.editor.biome-editor .biome-card > summary {
-  cursor: pointer;
   padding: 6px 10px;
   background: var(--bg3);
   color: var(--accent);
   font-weight: bold;
   font-size: 12px;
-  list-style: none;
-}
-body.editor.prototype-editor .biome-card > summary::before, body.editor.biome-editor .biome-card > summary::before {
-  content: "+ ";
-}
-body.editor.prototype-editor .biome-card[open] > summary::before, body.editor.biome-editor .biome-card[open] > summary::before {
-  content: "- ";
 }
 body.editor.prototype-editor .biome-card > .section-body, body.editor.biome-editor .biome-card > .section-body {
   padding: 8px 10px;
@@ -1583,12 +1609,8 @@ body.editor.prototype-editor .unknown-keys, body.editor.biome-editor .unknown-ke
   white-space: pre-wrap;
   word-break: break-all;
 }
-body.editor.prototype-editor .status-text, body.editor.biome-editor .status-text {
-  font-size: 11px;
-  color: var(--text-dim);
-}
 body.editor.sound-player .sound-body {
-  padding: 14px 16px;
+  padding: 12px 16px;
   max-width: 1100px;
 }
 body.editor.sound-player .sound-intro {
@@ -1608,7 +1630,7 @@ body.editor.sound-player .sound-intro kbd {
   background: var(--input-bg);
   border: 1px solid var(--border);
   border-radius: 2px;
-  padding: 0 3px;
+  padding: 0 2px;
 }
 body.editor.sound-player .sound-grid {
   display: grid;
@@ -1624,9 +1646,9 @@ body.editor.sound-player .sound-chip {
   border: 1px solid var(--border);
   color: var(--text);
   font-family: inherit;
-  font-size: 13px;
+  font-size: 12px;
   text-align: left;
-  padding: 7px 9px;
+  padding: 8px 10px;
   cursor: pointer;
 }
 body.editor.sound-player .sound-chip:hover {
@@ -1651,29 +1673,23 @@ body.editor.sound-player .sound-duration {
   color: var(--text-dim);
   flex-shrink: 0;
 }
-body.editor.sound-player .status-text {
-  font-size: 11px;
-  color: var(--text-dim);
-}
 body.editor.sound-player .status-error {
   color: var(--accent2);
 }
 
 body.arena .controls-panel {
+  display: flex;
+  font-family: "Courier New", monospace;
   font-size: x-small;
 }
 body.arena .controls-panel h2, body.arena .controls-panel h3 {
   font-size: smaller;
 }
-body.arena .controls-panel {
-  font-family: "Courier New", Courier, monospace;
-  display: flex;
-}
 body.arena .controls-panel .stat-row {
   padding: 2px;
 }
 body.arena .controls-panel > div {
-  padding: 5px;
+  padding: 4px;
 }
 
 body {
