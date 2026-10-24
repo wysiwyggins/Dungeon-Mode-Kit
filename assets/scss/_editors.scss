@@ -526,6 +526,13 @@ body.editor {
         }
     }
 
+    // Typed attributes that name existing data (scripts/ref-fields.js) span the
+    // grid, so the input and its suggestion popup are wide enough to read.
+    .typed-attrs .field-row.ref-row {
+        grid-column: 1 / -1;
+        input[type="text"] { flex: 2 1 0; }
+    }
+
     // ---- Key display fields ----
 
     .actor-key-field,

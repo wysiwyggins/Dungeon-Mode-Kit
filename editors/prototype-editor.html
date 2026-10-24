@@ -64,6 +64,7 @@
            data-bind="{{bind}}" data-type="{{#if type}}{{type}}{{else}}text{{/if}}"
            {{#if scope}}data-scope="{{scope}}"{{/if}} data-empty="delete"
            {{#if placeholder}}placeholder="{{placeholder}}"{{/if}}
+           {{#if ref}}data-ref="{{ref}}"{{/if}}
            {{#if tip}}title="{{tip}}"{{/if}}>
   </div>
 </script>
@@ -96,9 +97,9 @@
   <div class="hint-inline">Use \n in description for line breaks (newlines are preserved).</div>
   {{> selectRow label="Loaded sound" bind="loaded_sound" options=soundIds tip="Sound effect played once when the level finishes loading."}}
   {{> fieldRow label="Turn speed (ms)" bind="turn_speed" type="number" tip="Milliseconds per turn tick. Lower = faster animation/AI cadence. Default 50."}}
-  {{> fieldRow label="Next prototype" bind="next_level" placeholder="prototype name" tip="Prototype loaded when the player exits downward from the final floor."}}
-  {{> fieldRow label="Last prototype" bind="previous_level" placeholder="prototype name" tip="Prototype reachable by going back up the entrance stairway."}}
-  {{> fieldRow label="Intro cutscene" bind="intro_cutscene" placeholder="prototype name" tip="Prototype (flipbook cutscene) played before this level begins."}}
+  {{> fieldRow label="Next prototype" bind="next_level" ref="prototype" tip="Prototype loaded when the player exits downward from the final floor."}}
+  {{> fieldRow label="Last prototype" bind="previous_level" ref="prototype" tip="Prototype reachable by going back up the entrance stairway."}}
+  {{> fieldRow label="Intro cutscene" bind="intro_cutscene" ref="prototype" tip="Prototype (flipbook cutscene) played before this level begins."}}
 </script>
 
 <!-- ---- Mechanics section body (templated portion) ---- -->
@@ -130,6 +131,7 @@
      dependency order (shared global scope, no bundler); proto-render.js
      calls init() last. See those files to edit behavior. -->
 <script src="scripts/tile-picker.js"></script>
+<script src="scripts/ref-fields.js"></script>
 <script src="scripts/editor-constants.js"></script>
 <script src="scripts/proto-state.js"></script>
 <script src="scripts/proto-widgets.js"></script>

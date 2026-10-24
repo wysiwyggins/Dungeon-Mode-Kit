@@ -242,7 +242,7 @@
                             </div>
                             <div class="sub-section-title" style="margin-top:8px">Simple Spawn</div>
                             <div class="field-row">
-                                <label>Trap Spawn</label>
+                                <label>Trap Spawn (actor type)</label>
                                 <input type="text" id="f-trap_spawn" placeholder="cloud">
                             </div>
                             <div class="field-row">
@@ -398,6 +398,7 @@
 <!-- Tile picker modal -->
 <!-- The tile-picker overlay is injected by scripts/tile-picker.js on first use. -->
 <script src="scripts/tile-picker.js"></script>
+<script src="scripts/ref-fields.js"></script>
 <script src="scripts/color-picker.js"></script>
 <script src="scripts/effect-params.js"></script>
 
@@ -497,16 +498,16 @@ const TYPED_ATTRS = [
     { key: 'strength', type: 'number', label: 'Strength', hint: 'Melee damage when using "-{strength}" in collision_effect. Typical: 1-18.' },
     { key: 'inventory', type: 'number', label: 'Inventory slots', hint: 'Number of items this actor can carry. 0 = none, player default is 4.' },
     { key: 'lode_chance', type: 'number', label: 'Lode Chance (0-100)', hint: 'Percent chance to drop a lode item when broken. Requires breakable + lode.' },
-    { key: 'remains', type: 'text', label: 'Remains', hint: 'Actor type spawned on death. e.g. skull, rubble, blood, mist, log.' },
+    { key: 'remains', type: 'text', ref: 'actor', label: 'Remains', hint: 'Actor type spawned on death. e.g. skull, rubble, blood, mist, log.' },
     { key: 'damage_type', type: 'select', label: 'Damage Type', hint: 'Hazard damage category. Grants immunity via {type}_immune attribute.', options: ['', 'fire', 'poison', 'electric'] },
-    { key: 'lode', type: 'text', label: 'Lode (item type)', hint: 'Item type dropped when broken. e.g. gold_nugget, uranium_nugget.' },
+    { key: 'lode', type: 'text', ref: 'item', label: 'Lode (item type)', hint: 'Item type dropped when broken. e.g. gold_nugget, uranium_nugget.' },
     { key: 'lock_color', type: 'colorname', label: 'Lock Color', hint: 'Fixed lock color (overrides random): a color name from data/colors.json, matched against color key items.' },
-    { key: 'machine_id', type: 'text', label: 'Machine ID', hint: 'Links switches to targets. All actors with the same machine_id are affected together.' },
-    { key: 'trap_type', type: 'text', label: 'Trap Type', hint: 'Trap identifier. Known: fire, poison_gas, paralysis_gas, confusion_gas.' },
-    { key: 'stairway', type: 'text', label: 'Stairway (up/down)', hint: '"up" or "down". Links floors in multi-level prototypes.' },
-    { key: 'chain_segment_type', type: 'text', label: 'Chain Segment Type', hint: 'Actor type for body segments. Used by chain creatures (e.g. scutigera).' },
-    { key: 'entry_sound', type: 'text', label: 'Entry Sound', hint: 'Sound played when another actor steps on this tile. e.g. step_mud.' },
-    { key: 'apply_state', type: 'text', label: 'Apply State', hint: 'State applied on contact (non-combat). e.g. nauseated. For combat use collision_effect.' },
+    { key: 'machine_id', type: 'text', ref: 'machine_id', label: 'Machine ID', hint: 'Links switches to targets. All actors with the same machine_id are affected together. Pick an existing ID to join that machine, or type a new one.' },
+    { key: 'trap_type', type: 'text', ref: 'trap_type', label: 'Trap Type', hint: 'Descriptive label only; the engine does not read it (what a trap does comes from the Trap section). Pick an existing label or type a new one.' },
+    { key: 'stairway', type: 'select', label: 'Stairway', hint: 'Links floors in multi-level prototypes.', options: ['', 'up', 'down'] },
+    { key: 'chain_segment_type', type: 'text', ref: 'actor', label: 'Chain Segment Type', hint: 'Actor type for body segments. Used by chain creatures (e.g. scutigera).' },
+    { key: 'entry_sound', type: 'text', ref: 'sound', label: 'Entry Sound', hint: 'Sound played when another actor steps on this tile. e.g. step_mud.' },
+    { key: 'apply_state', type: 'text', ref: 'state', label: 'Apply State', hint: 'State applied on contact (non-combat). e.g. nauseated. For combat use collision_effect.' },
     { key: 'split_min_health', type: 'number', label: 'Split Min Health', hint: 'Minimum health needed to split. Actor stops splitting once below this threshold.' },
     { key: 'paint_tile', type: 'tilename', label: 'Paint Tile', hint: 'Tile name on the Tiled wildcards layer that spawns this actor. Must be unique per actor.' },
 ];
@@ -612,7 +613,7 @@ function loadSpritesheet() {
 }
 
 async function loadBaseData() {
-    const [tilesData, actors, personalities, states, types, effects, items] = await Promise.all([
+    const [tilesData, actors, personalities, states, types, effects, items, sounds] = await Promise.all([
         fetchJSON(TILE_DATA_PATH),
         fetchJSON('../data/actors.json'),
         fetchJSON('../data/personalities.json'),
@@ -620,7 +621,10 @@ async function loadBaseData() {
         fetchJSON('../data/types.json'),
         fetchJSON('../data/effects.json'),
         fetchJSON('../data/items.json'),
+        fetchJSON('../data/sounds.json'),
     ]);
+    // Sound names are the sprite keys; sounds are global (prototypes don't add any).
+    state.soundNames = Object.keys(sounds?.sprite || {}).sort();
     state.effects = effects || {};
     state.baseItems = items || {};
     TILE_W = tilesData.tilePixelWidth || TILE_W;
@@ -644,27 +648,31 @@ async function loadPrototype(name) {
         state.protoActors = {};
         state.protoPersonalities = {};
         state.protoItems = {};
+        state.protoStates = {};
     } else {
         if (state.prototypeCache[name]) {
             state.protoActors = state.prototypeCache[name].actors;
             state.protoPersonalities = state.prototypeCache[name].personalities;
             state.protoItems = state.prototypeCache[name].items;
+            state.protoStates = state.prototypeCache[name].states;
             protoAnimations = state.prototypeCache[name].animations;
             protoEffects = state.prototypeCache[name].effects;
         } else {
-            const [a, p, anim, eff, it] = await Promise.all([
+            const [a, p, anim, eff, it, st] = await Promise.all([
                 fetchJSON(`../prototypes/${name}/actors.json`),
                 fetchJSON(`../prototypes/${name}/personalities.json`),
                 fetchJSON(`../prototypes/${name}/animations.json`),
                 fetchJSON(`../prototypes/${name}/effects.json`),
                 fetchJSON(`../prototypes/${name}/items.json`),
+                fetchJSON(`../prototypes/${name}/states.json`),
             ]);
             state.protoActors = a;
             state.protoPersonalities = p;
             state.protoItems = it;
+            state.protoStates = st;
             protoAnimations = anim;
             protoEffects = eff;
-            state.prototypeCache[name] = { actors: a, personalities: p, animations: anim, effects: eff, items: it };
+            state.prototypeCache[name] = { actors: a, personalities: p, animations: anim, effects: eff, items: it, states: st };
         }
     }
     // A prototype's own effects.json merges over the base library, the way the
@@ -673,6 +681,8 @@ async function loadPrototype(name) {
     state.mergedActors = { ...state.baseActors, ...state.protoActors };
     state.mergedPersonalities = { ...state.basePersonalities, ...state.protoPersonalities };
     state.mergedItems = { ...state.baseItems, ...state.protoItems };
+    // As in the engine, a prototype's states.json merges over the base library.
+    state.mergedStates = { ...state.baseStates, ...state.protoStates };
 
     // A prototype's own animations join the dropdowns, and their sheets load from the
     // prototype folder. Sheets already fetched stay cached in state.animImages, so
@@ -684,6 +694,7 @@ async function loadPrototype(name) {
     populatePersonalityDropdown();
     populateAnimDropdowns();
     populateSpriteEffectSelect(document.getElementById('f-tint_effect'), state.mergedEffects);
+    RefFields.refresh();
 }
 
 // ---- Dropdowns ----
@@ -1074,6 +1085,7 @@ function updatePreview() {
     updateAttrGroupCounts();
     updateColorNameFields();
     updateTileNameFields();
+    RefFields.update();
     renderPreview();
     updateJSONOutput();
     if (hasActiveAnimation()) startAnimLoop();
@@ -1296,6 +1308,41 @@ function updateTileNameFields() {
     }
 }
 
+// ---- Reference fields (scripts/ref-fields.js) ----
+
+/** Fixed form inputs that name another definition (typed attributes declare `ref`). */
+const REF_FIELDS = {
+    'f-trap_effect_center': 'actor',
+    'f-trap_effect_outer': 'actor',
+    'f-trap_spawn': 'actor',
+    'f-trap_apply_state': 'state',
+    'f-switch_sound': 'sound',
+    'f-ce-apply_state': 'state',
+    'f-collision_sound': 'sound',
+    'f-death_sound': 'sound',
+    'f-grab_state': 'state',
+    'f-grab_sound': 'sound',
+    'f-split_into': 'actor',
+    'f-split_sound': 'sound',
+};
+
+/** Define this page's sources and wire the reference inputs. Runs once. */
+function initRefFields() {
+    const { keysOf, valuesInUse } = RefFields;
+    RefFields.define('actor', { file: 'actors.json', names: () => keysOf(state.mergedActors),
+        label: (k) => state.mergedActors[k]?.name });
+    RefFields.define('state', { file: 'states.json', names: () => keysOf(state.mergedStates),
+        label: (k) => state.mergedStates[k]?.name });
+    RefFields.define('sound', { file: 'sounds.json', names: () => state.soundNames || [] });
+    RefFields.define('item', { file: 'items.json', names: () => keysOf(state.mergedItems),
+        label: (k) => state.mergedItems[k]?.name });
+    RefFields.define('trap_type', { kind: 'label', names: () => valuesInUse(state.mergedActors, 'trap_type') });
+    RefFields.define('machine_id', { kind: 'label', names: () => valuesInUse(state.mergedActors, 'machine_id') });
+
+    for (const [id, src] of Object.entries(REF_FIELDS)) RefFields.attach(document.getElementById(id), src);
+    for (const ta of TYPED_ATTRS) if (ta.ref) RefFields.attach(document.getElementById('attr-' + ta.key), ta.ref);
+}
+
 /** Fill each data-group shell in the Attributes section from ATTR_GROUPS. */
 function initAttrGroups() {
     const typedByKey = Object.fromEntries(TYPED_ATTRS.map(ta => [ta.key, ta]));
@@ -1458,12 +1505,12 @@ function addInnateStateRow(val) {
     const blank = document.createElement('option');
     blank.value = ''; blank.textContent = '— select state —';
     sel.appendChild(blank);
-    const keys = Object.keys(state.baseStates || {}).sort();
+    const keys = Object.keys(state.mergedStates || {}).filter(k => !k.startsWith('_')).sort();
     if (val && !keys.includes(val)) keys.push(val);
     for (const k of keys) {
         const opt = document.createElement('option');
         opt.value = k;
-        const sd = state.baseStates && state.baseStates[k];
+        const sd = state.mergedStates && state.mergedStates[k];
         opt.textContent = sd && sd.name ? `${k} (${sd.name})` : k;
         sel.appendChild(opt);
     }
@@ -2257,6 +2304,7 @@ async function populatePrototypeSelect() {
 
 async function init() {
     initAttrGroups();
+    initRefFields();
     initTileSlots();
     initTintSync();
 

@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 These versions are pretty arbitrary, I know. When (if) other folks get involved, I'll formalize it a little.
 
 ### Added
+- **Editor reference pickers.** Across the actor, item, personality and prototype editors, text fields that name an actor, state, sound, item, effect or prototype now drop down the names that exist (shared `editors/scripts/ref-fields.js`) and flag values that don't. Free labels like `trap_type`, `machine_id` and `use_verb` suggest the values already in use, and `stairway` is an up/down select.
 
 - **Condition locks.** Any door or chest can take `unlock_conditions`, using the same conditions as a floor's `win_conditions`, and stays locked until they hold (re-locking if they stop). The new `killed:linked` opens it when every actor sharing its `machine_id` is dead, so a vault can open when its one guardian dies.
 - **Potion of Detect Magic.** Senses whether items on the level and in your pack carry good or bad magic, shown as a blue or red eye beside them in the inventory and on the map wherever you can't see the item. Polarity comes from curses and enchantment, or the new `magic_polarity` attribute (`"good"` on the potion, scroll, staff and wand types; `"bad"` on harmful items and states).

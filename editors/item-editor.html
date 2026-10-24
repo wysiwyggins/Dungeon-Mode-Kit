@@ -467,6 +467,7 @@
 <!-- The tile-picker overlay is injected by scripts/tile-picker.js on first use. -->
 <script src="scripts/tile-picker.js"></script>
 <script src="scripts/effect-params.js"></script>
+<script src="scripts/ref-fields.js"></script>
 
 <script>
 let TILE_W = 40, TILE_H = 30, SS_COLS = 23, SS_ROWS = 17;
@@ -552,13 +553,20 @@ function loadSpritesheet() {
 }
 
 async function loadBaseData() {
-    const [tilesData, items, types, effects] = await Promise.all([
+    const [tilesData, items, types, effects, actors, states, sounds] = await Promise.all([
         fetchJSON(TILE_DATA_PATH),
         fetchJSON('../data/items.json'),
         fetchJSON('../data/types.json'),
         fetchJSON('../data/effects.json'),
+        fetchJSON('../data/actors.json'),
+        fetchJSON('../data/states.json'),
+        fetchJSON('../data/sounds.json'),
     ]);
     state.effects = effects || {};
+    // Only read to suggest names for the reference fields (scripts/ref-fields.js).
+    state.baseActors = actors || {};
+    state.baseStates = states || {};
+    state.soundNames = Object.keys(sounds?.sprite || {});
     TILE_W = tilesData.tilePixelWidth || TILE_W;
     TILE_H = tilesData.tilePixelHeight || TILE_H;
     state.tileMap = tilesData.tiles || {};
@@ -575,20 +583,28 @@ async function loadPrototype(name) {
     let protoEffects = {};
     if (!name) {
         state.protoItems = {};
+        state.protoActors = {};
+        state.protoStates = {};
     } else {
         if (state.prototypeCache[name]) {
-            state.protoItems = state.prototypeCache[name].items;
+            ({ items: state.protoItems, actors: state.protoActors, states: state.protoStates } = state.prototypeCache[name]);
             protoEffects = state.prototypeCache[name].effects;
         } else {
-            const [items, effects] = await Promise.all([
+            const [items, effects, actors, states] = await Promise.all([
                 fetchJSON(`../prototypes/${name}/items.json`),
                 fetchJSON(`../prototypes/${name}/effects.json`),
+                fetchJSON(`../prototypes/${name}/actors.json`),
+                fetchJSON(`../prototypes/${name}/states.json`),
             ]);
             state.protoItems = items;
+            state.protoActors = actors;
+            state.protoStates = states;
             protoEffects = effects;
-            state.prototypeCache[name] = { items, effects };
+            state.prototypeCache[name] = { items, effects, actors, states };
         }
     }
+    state.mergedActors = { ...state.baseActors, ...state.protoActors };
+    state.mergedStates = { ...state.baseStates, ...state.protoStates };
     state.mergedItems = { ...state.items, ...state.protoItems };
     // A prototype's own effects.json merges over the base library, the way the
     // engine merges it (engine.js:4107), so its effects are offered here too.
@@ -596,6 +612,7 @@ async function loadPrototype(name) {
     state.protoItemKeys = new Set(Object.keys(state.protoItems));
     populateItemDropdown();
     populateSpriteEffectSelect(document.getElementById('f-tint_effect'), state.mergedEffects);
+    RefFields.refresh();
     const firstKey = document.getElementById('item-select').value;
     if (firstKey && state.mergedItems[firstKey]) {
         populateForm(firstKey, state.mergedItems[firstKey]);
@@ -848,6 +865,8 @@ function renderPreview() {
 }
 
 function updatePreview() {
+    // refresh, not update: the stat source reads the Stats rows, which may have changed.
+    RefFields.refresh();
     renderPreview();
     updateConditionalSections();
     updateJSONOutput();
@@ -1027,8 +1046,9 @@ function addStringRow(containerId, val) {
     const row = document.createElement('div');
     row.className = 'list-item';
     const inp = document.createElement('input');
-    inp.type = 'text'; inp.value = val || ''; inp.placeholder = 'item type key';
+    inp.type = 'text'; inp.value = val || '';
     inp.addEventListener('input', updatePreview);
+    RefFields.attach(inp, 'item');
     const btn = document.createElement('button');
     btn.className = 'remove-btn'; btn.textContent = 'x';
     btn.addEventListener('click', () => { row.remove(); updatePreview(); });
@@ -2115,12 +2135,52 @@ async function populatePrototypeSelect() {
     }
 }
 
+// ---- Reference fields (scripts/ref-fields.js) ----
+
+/** Form inputs that name another definition, by source. */
+const REF_FIELDS = {
+    'f-ce-apply_state': 'state',
+    'f-collision_sound': 'sound',
+    'f-attack_sound': 'sound',
+    'f-launch_sound': 'sound',
+    'f-burst_into': 'actor',
+    'f-use_verb': 'use_verb',
+    'f-use_sound': 'sound',
+    'f-charge_stat': 'stat',
+    'f-cast_sound': 'sound',
+    'f-burns_out_item': 'item',
+    'f-break_sound': 'sound',
+    'f-breaks_into': 'item',
+    'f-explode_sound': 'sound',
+    'f-pickup_sound': 'sound',
+};
+
+/** Define this page's sources and wire the reference inputs. Runs once. */
+function initRefFields() {
+    const { keysOf, valuesInUse } = RefFields;
+    RefFields.define('actor', { file: 'actors.json', names: () => keysOf(state.mergedActors),
+        label: (k) => state.mergedActors[k]?.name });
+    RefFields.define('state', { file: 'states.json', names: () => keysOf(state.mergedStates),
+        label: (k) => state.mergedStates[k]?.name });
+    RefFields.define('sound', { file: 'sounds.json', names: () => state.soundNames || [] });
+    RefFields.define('item', { file: 'items.json', names: () => keysOf(state.mergedItems),
+        label: (k) => state.mergedItems[k]?.name });
+    RefFields.define('use_verb', { kind: 'label', names: () => valuesInUse(state.mergedItems, 'use_verb') });
+    // charge_stat must name a stat this item declares, so the Stats rows are the source.
+    RefFields.define('stat', { file: 'the Stats section', names: () =>
+        [...document.querySelectorAll('#stats-list .list-item > input[type="text"]')]
+            .map(i => i.value.trim()).filter(Boolean) });
+
+    for (const [id, src] of Object.entries(REF_FIELDS)) RefFields.attach(document.getElementById(id), src);
+}
+
 async function init() {
     await populatePrototypeSelect();
     initBoolAttrs();
     initTypedAttrs();
     initTileSlots();
     initTintSync();
+    initRefFields();
 
     // TilePicker.load() feeds the shared picker overlay; loadSpritesheet still runs
     // because this page draws its own tile previews from state.spritesheetImg.

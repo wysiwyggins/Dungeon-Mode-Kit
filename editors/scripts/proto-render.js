@@ -70,6 +70,15 @@ async function copyProtoJSON(okMsg) {
 }
 
 /* =========================================================================
+   Reference fields (scripts/ref-fields.js)
+   ========================================================================= */
+// names() read state live; render() refreshes the lists after a prototype loads.
+function initRefFields() {
+    RefFields.define('prototype', { file: 'prototypes.json', names: () => state.prototypeNames || [] });
+    RefFields.define('actor', { file: 'actors.json', names: () => state.mergedActorIds || [] });
+}
+
+/* =========================================================================
    Wiring
    ========================================================================= */
 async function init() {
@@ -81,6 +90,7 @@ async function init() {
     });
     // TilePicker.load() pulls the spritesheet for the default_floor tile picker.
     await Promise.all([loadBaseData(), TilePicker.load()]);
+    initRefFields();
     populatePrototypeSelect();
     document.getElementById('prototype-select').addEventListener('change', async (e) => {
         const name = e.target.value;

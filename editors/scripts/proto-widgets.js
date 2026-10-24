@@ -87,6 +87,7 @@ function fieldRow(label, obj, key, opts = {}) {
     }
     if (opts.placeholder) input.placeholder = opts.placeholder;
     if (opts.tip) input.setAttribute('title', opts.tip);
+    if (opts.ref) RefFields.attach(input, opts.ref);   // scripts/ref-fields.js
     // Numeric bounds were accepted by callers but never forwarded, so every
     // number field was unbounded — a depth of 0 or -3 saved fine even though
     // floors are 1-based. Only set what the caller asked for: an omitted bound
@@ -668,8 +669,9 @@ function condRow(cond, i, redraw, obj, key) {
     row.appendChild(typeSel);
 
     if (curType === 'stat') {
-        const a = el('input', { type: 'text', placeholder: 'actor (player)', style: 'flex:0 0 90px;' });
+        const a = el('input', { type: 'text', style: 'flex:0 0 90px;', title: 'Actor whose stat is compared (default: player).' });
         a.value = cond.actor || ''; a.addEventListener('input', () => { cond.actor = a.value || undefined; commit(); });
+        RefFields.attach(a, 'actor');
         const s = el('input', { type: 'text', placeholder: 'stat', style: 'flex:0 0 80px;' });
         s.value = cond.stat || ''; s.addEventListener('input', () => { cond.stat = s.value; commit(); });
         const op = el('select', { style: 'flex:0 0 60px;' });

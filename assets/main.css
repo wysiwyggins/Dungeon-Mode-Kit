@@ -774,6 +774,12 @@ body.editor.actor-editor .attr-group-extra {
   padding-left: 10px;
   margin: 6px 0;
 }
+body.editor.actor-editor .typed-attrs .field-row.ref-row {
+  grid-column: 1/-1;
+}
+body.editor.actor-editor .typed-attrs .field-row.ref-row input[type=text] {
+  flex: 2 1 0;
+}
 body.editor.actor-editor .attr-dependent:not(.visible) {
   display: none;
 }

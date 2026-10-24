@@ -117,6 +117,7 @@
     <textarea id="json-output" class="json-output" readonly rows="8"></textarea>
 </div>
 
+<script src="scripts/ref-fields.js"></script>
 <script>
 
 // ---- Behavior definitions ----
@@ -255,14 +256,14 @@ const PARAM_DEFS = [
     { key: 'blink_spawn', type: 'actor-select', label: 'Blink Spawn', hint: 'Actor type spawned at blink origin (e.g. fire)' },
     { key: 'loot_search_radius', type: 'number', label: 'Loot Search Radius', hint: 'How far to look for loot/escape routes' },
     { key: 'search_radius', type: 'number', label: 'Search Radius', hint: 'How far to search for ground items' },
-    { key: 'item_type', type: 'text', label: 'Item Type', hint: 'Specific item type to seek' },
+    { key: 'item_type', type: 'text', ref: 'item', label: 'Item Type', hint: 'Specific item type to seek' },
     { key: 'heal_amount', type: 'number', label: 'Heal Amount', hint: 'HP restored per heal' },
-    { key: 'heal_sound', type: 'text', label: 'Heal Sound', hint: 'Sound played when healing' },
+    { key: 'heal_sound', type: 'text', ref: 'sound', label: 'Heal Sound', hint: 'Sound played when healing' },
     { key: 'summon_type', type: 'actor-select', label: 'Summon Type', hint: 'Actor type key to summon' },
     { key: 'summon_cooldown', type: 'number', label: 'Summon Cooldown', hint: 'Turns between summons' },
     { key: 'summon_cap', type: 'number', label: 'Summon Cap', hint: 'Max active summons at once' },
-    { key: 'summon_sound', type: 'text', label: 'Summon Sound', hint: 'Sound played when summoning' },
-    { key: 'aura_state', type: 'text', label: 'Aura State', hint: 'State applied by aura (e.g. poisoned, hallucinating)' },
+    { key: 'summon_sound', type: 'text', ref: 'sound', label: 'Summon Sound', hint: 'Sound played when summoning' },
+    { key: 'aura_state', type: 'text', ref: 'state', label: 'Aura State', hint: 'State applied by aura (e.g. poisoned, hallucinating)' },
     { key: 'aura_chance', type: 'number', label: 'Aura Chance', hint: 'Percent chance per turn to apply aura' },
     { key: 'aura_duration', type: 'number', label: 'Aura Duration', hint: 'Turns the aura state lasts' },
     { key: 'aura_hostile_only', type: 'boolean', label: 'Aura Hostile Only', hint: 'Only affect hostile targets' },
@@ -300,23 +301,23 @@ const PARAM_DEFS = [
     { key: 'item_drop_chance', type: 'number', label: 'Item Drop Chance', hint: 'Probability (0-1) to strip an item per turn', step: 0.05 },
     { key: 'item_drift_chance', type: 'number', label: 'Item Drift Chance', hint: 'Probability (0-1) to drift a ground item', step: 0.05 },
     { key: 'suction_range', type: 'number', label: 'Suction Range', hint: 'Tile radius for drain pull effect' },
-    { key: 'bolt_sound', type: 'text', label: 'Bolt Sound', hint: 'Sound sprite key for bolt (default: squarewave)' },
-    { key: 'bolt_effect', type: 'text', label: 'Bolt Effect', hint: 'Visual effect name for bolt (default: lightning_bolt)' },
-    { key: 'blink_sound', type: 'text', label: 'Blink Sound', hint: 'Sound sprite key for blink (default: magic)' },
-    { key: 'blink_effect', type: 'text', label: 'Blink Effect', hint: 'Visual effect name for blink (default: blink)' },
+    { key: 'bolt_sound', type: 'text', ref: 'sound', label: 'Bolt Sound', hint: 'Sound sprite key for bolt (default: squarewave)' },
+    { key: 'bolt_effect', type: 'text', ref: 'effect', label: 'Bolt Effect', hint: 'Visual effect name for bolt (default: lightning_bolt)' },
+    { key: 'blink_sound', type: 'text', ref: 'sound', label: 'Blink Sound', hint: 'Sound sprite key for blink (default: magic)' },
+    { key: 'blink_effect', type: 'text', ref: 'effect', label: 'Blink Effect', hint: 'Visual effect name for blink (default: blink)' },
     { key: 'spread_chance', type: 'number', label: 'Spread Chance', hint: 'Probability (0-1) of fire spreading per turn. Default: 0.3', step: 0.05 },
     { key: 'fire_lifetime', type: 'number', label: 'Fire Lifetime', hint: 'Turns before spawned fire burns out. Default: 5' },
     { key: 'damage_per_turn', type: 'number', label: 'Damage Per Turn', hint: 'HP damage dealt each turn by fire. Default: 10' },
-    { key: 'burn_state', type: 'text', label: 'Burn State', hint: 'State applied to victims (default: burning)' },
+    { key: 'burn_state', type: 'text', ref: 'state', label: 'Burn State', hint: 'State applied to victims (default: burning)' },
     { key: 'cloud_lifetime', type: 'number', label: 'Cloud Lifetime', hint: 'Turns before emitted/spread cloud expires' },
-    { key: 'trap_sound', type: 'text', label: 'Trap Sound', hint: 'Sound sprite key when trap triggers (default: tap2)' },
+    { key: 'trap_sound', type: 'text', ref: 'sound', label: 'Trap Sound', hint: 'Sound sprite key when trap triggers (default: tap2)' },
     { key: 'trap_cloud_lifetime', type: 'number', label: 'Trap Cloud Lifetime', hint: 'Turns trap-spawned clouds persist. Default: 8' },
-    { key: 'hit_sound', type: 'text', label: 'Hit Sound', hint: 'Sound on ranged hit (default: arrow_hit)' },
-    { key: 'miss_sound', type: 'text', label: 'Miss Sound', hint: 'Sound on ranged miss (default: arrow_miss)' },
+    { key: 'hit_sound', type: 'text', ref: 'sound', label: 'Hit Sound', hint: 'Sound on ranged hit (default: arrow_hit)' },
+    { key: 'miss_sound', type: 'text', ref: 'sound', label: 'Miss Sound', hint: 'Sound on ranged miss (default: arrow_miss)' },
     { key: 'interval', type: 'number', label: 'Interval', hint: 'Turns between countdown events. Default: 5' },
-    { key: 'countdown_event', type: 'text', label: 'Countdown Event', hint: 'Behavior to call at zero (e.g. toggle_and_propagate)' },
-    { key: 'countdown_sound', type: 'text', label: 'Countdown Sound', hint: 'Sound played when countdown fires' },
-    { key: 'countdown_display', type: 'text', label: 'Countdown Display', hint: 'Display mode for countdown (e.g. digit)' },
+    { key: 'countdown_event', type: 'text', ref: 'behavior', label: 'Countdown Event', hint: 'Behavior to call at zero (e.g. toggle_and_propagate)' },
+    { key: 'countdown_sound', type: 'text', ref: 'sound', label: 'Countdown Sound', hint: 'Sound played when countdown fires' },
+    { key: 'countdown_display', type: 'text', ref: 'countdown_display', label: 'Countdown Display', hint: 'Display mode for countdown (e.g. digit)' },
 ];
 
 const FLAG_KEYS = new Set(['name', 'hostile', 'controlled', 'tactical', 'alert_allies', 'flee_threshold', 'preferred_positions', 'behaviors']);
@@ -350,30 +351,48 @@ async function fetchJSON(url) {
 }
 
 async function loadBaseData() {
-    state.basePersonalities = await fetchJSON('../data/personalities.json');
-    state.baseActors = await fetchJSON('../data/actors.json');
+    const [personalities, actors, items, states, effects, sounds] = await Promise.all([
+        fetchJSON('../data/personalities.json'),
+        fetchJSON('../data/actors.json'),
+        fetchJSON('../data/items.json'),
+        fetchJSON('../data/states.json'),
+        fetchJSON('../data/effects.json'),
+        fetchJSON('../data/sounds.json'),
+    ]);
+    state.basePersonalities = personalities;
+    state.baseActors = actors;
+    // Only read to suggest names for the reference fields (scripts/ref-fields.js).
+    state.baseItems = items;
+    state.baseStates = states;
+    state.baseEffects = effects;
+    state.soundNames = Object.keys(sounds?.sprite || {});
 }
 
 async function loadPrototype(name) {
     if (!name) {
         state.protoPersonalities = {};
         state.protoActors = {};
+        state.protoItems = {};
+        state.protoStates = {};
+        state.protoEffects = {};
     } else {
-        if (state.prototypeCache[name]) {
-            state.protoPersonalities = state.prototypeCache[name].personalities;
-            state.protoActors = state.prototypeCache[name].actors;
-        } else {
-            const p = await fetchJSON(`../prototypes/${name}/personalities.json`);
-            const a = await fetchJSON(`../prototypes/${name}/actors.json`);
-            state.protoPersonalities = p;
-            state.protoActors = a;
-            state.prototypeCache[name] = { personalities: p, actors: a };
+        if (!state.prototypeCache[name]) {
+            const [personalities, actors, items, states, effects] = await Promise.all(
+                ['personalities', 'actors', 'items', 'states', 'effects']
+                    .map(f => fetchJSON(`../prototypes/${name}/${f}.json`)));
+            state.prototypeCache[name] = { personalities, actors, items, states, effects };
         }
+        ({ personalities: state.protoPersonalities, actors: state.protoActors, items: state.protoItems,
+           states: state.protoStates, effects: state.protoEffects } = state.prototypeCache[name]);
     }
+    state.mergedItems = { ...state.baseItems, ...state.protoItems };
+    state.mergedStates = { ...state.baseStates, ...state.protoStates };
+    state.mergedEffects = { ...state.baseEffects, ...state.protoEffects };
     state.mergedPersonalities = { ...state.basePersonalities, ...state.protoPersonalities };
     state.mergedActorKeys = Object.keys({ ...state.baseActors, ...state.protoActors }).sort();
     populateDropdown();
     populateActorSelects();
+    RefFields.refresh();
 }
 
 // ---- Dropdown ----
@@ -693,6 +712,7 @@ function buildParamRows() {
             input.type = 'text';
             input.id = 'param-' + pd.key;
             input.addEventListener('input', updateJSONOutput);
+            if (pd.ref) RefFields.attach(input, pd.ref);
         }
         fieldRow.appendChild(input);
         wrapper.appendChild(fieldRow);
@@ -852,6 +872,7 @@ function updateJSONOutput() {
     const key = document.getElementById('personality-key').value.trim() || 'new_personality';
     document.getElementById('personality-key-field').textContent = `"${key}"`;
     document.getElementById('json-output').value = JSON.stringify(obj, null, 2);
+    RefFields.update();   // populateForm sets values without firing input events
 }
 
 // ---- Event wiring ----
@@ -941,7 +962,26 @@ async function populatePrototypeSelect() {
     }
 }
 
+// ---- Reference fields (scripts/ref-fields.js) ----
+
+/** Define this page's sources; buildParamRows attaches inputs whose def has `ref`. */
+function initRefFields() {
+    const { keysOf } = RefFields;
+    RefFields.define('item', { file: 'items.json', names: () => keysOf(state.mergedItems),
+        label: (k) => state.mergedItems[k]?.name });
+    RefFields.define('state', { file: 'states.json', names: () => keysOf(state.mergedStates),
+        label: (k) => state.mergedStates[k]?.name });
+    RefFields.define('effect', { file: 'effects.json', names: () => keysOf(state.mergedEffects) });
+    RefFields.define('sound', { file: 'sounds.json', names: () => state.soundNames || [] });
+    // Any BehaviorLibrary entry works and the palette doesn't list them all, so
+    // these are suggestions rather than a closed set.
+    RefFields.define('behavior', { kind: 'label', names: () => BEHAVIOR_CATEGORIES.flatMap(c => c.behaviors) });
+    // behaviors.js countdown_display only knows 'digit'.
+    RefFields.define('countdown_display', { noun: 'display mode', names: () => ['digit'] });
+}
+
 async function init() {
+    initRefFields();
     await loadBaseData();
     await populatePrototypeSelect();
     await loadPrototype('');

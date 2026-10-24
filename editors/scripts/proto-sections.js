@@ -25,6 +25,9 @@ function render() {
     );
     renderFloorTabs();
     renderForm();
+    // Templated data-ref inputs, then refill the lists (a prototype switch changes the actors).
+    RefFields.attachAll(document.getElementById('form-sections'));
+    RefFields.refresh();
     if (openTitles.size) {
         for (const d of document.querySelectorAll('#form-sections details.section')) {
             const title = d.querySelector('.sec-title')?.textContent;

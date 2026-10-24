@@ -660,7 +660,7 @@ area effect** — set one style or the other.
 | Field | Type | Description |
 | ------- | ------ | ------------- |
 | `trap` | boolean | Marks this actor as a trap. |
-| `trap_type` | string | Trap identifier (`"fire"`, `"poison_gas"`, `"paralysis_gas"`, `"confusion_gas"`). |
+| `trap_type` | string | Descriptive label (e.g. `"fire"`, `"poison_gas"`). The engine does not read it; a trap's behavior comes from `trap_effect` / `trap_spawn` / `trap_apply_state`. |
 | `trap_spawn` | string | Actor type to spawn when triggered (cloud style). |
 | `trap_spawn_tint` | string | Tint applied to the spawned actor. |
 | `trap_collision_effect` | object | Stat effect carried by the spawned cloud (e.g. `{ "health": -3 }`). |
