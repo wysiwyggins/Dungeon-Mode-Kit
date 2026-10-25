@@ -14,11 +14,11 @@
     "attributes": {
       "flammable": true,
       "controlled": true,
-      "inventory": 10,
+      "inventory": 14,
       "strength": 5,
       "remains": "skull",
       "proper_named": true,
-      "accuracy": 50,
+      "accuracy": 40,
       "defense": 5
     },
     "stats": {

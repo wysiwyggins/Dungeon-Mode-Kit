@@ -29,7 +29,7 @@
      wallActorIds(), blobActorIds()
                                — actor id filters for the generator's wall fill and
                                  lake fill. Also defined in both state files.
-     EditorTemplate            — lib/editor-template.js (+ Handlebars)
+     EditorTemplate            — editors/scripts/editor-template.js (+ Handlebars)
    Plus the widgets in proto-widgets.js (el, section, dualRange, weightEditor, ...).
 
    This file must NOT reference prototype-only code. sectionMapGenerator takes the
