@@ -2,8 +2,7 @@
  * Prototype: a loaded prototype folder, its config and its merged data libraries.
  */
 
-import { mergeEntityDef, mergeEntityLibrary, randomElement } from '../core/util.js';
-import { globalVars } from '../globals.js';
+import { BASE_PATH, mergeEntityDef, mergeEntityLibrary, randomElement } from '../core/util.js';
 
 // ============================================================================
 // PROTOTYPE CLASS  (levels)
@@ -14,7 +13,7 @@ export class Prototype {
         this.name = name;
         this.config = config;
         this.engine = engine;
-        this.basePath = `${globalVars.BASE_PATH}/prototypes/${name}/`;
+        this.basePath = `${BASE_PATH}/prototypes/${name}/`;
 
         // Identification tracking: maps item type -> true if identified this session
         this.identifiedTypes = new Set();

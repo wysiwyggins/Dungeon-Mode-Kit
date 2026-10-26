@@ -1,5 +1,5 @@
 import { computeExploreTarget, getChebyshevDistance } from './core/pathfinding.js';
-import { globalVars } from './globals.js';
+import { TILE_HEIGHT, TILE_WIDTH } from './core/util.js';
 
 // ============================================================================
 // INPUT MANAGER
@@ -2743,8 +2743,8 @@ export class InputManager {
         box._buttonLine = buttonLine;
         box._buttonSpans = buttonSpans;
 
-        const TW = globalVars.TILE_WIDTH;
-        const TH = globalVars.TILE_HEIGHT;
+        const TW = TILE_WIDTH;
+        const TH = TILE_HEIGHT;
         const textX = (padding + 1) * TW;
         const textY = (padding + 1) * TH;
 

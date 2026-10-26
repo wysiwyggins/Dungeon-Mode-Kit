@@ -10,7 +10,7 @@ import { EffectRunner } from '../../effects.js';
 import { RenderLighting } from './lighting-tints.js';
 import { RenderOverlays } from './overlays.js';
 import { RenderSprites } from './sprites.js';
-import { globalVars } from '../../globals.js';
+import { TILE_HEIGHT, TILE_WIDTH } from '../../core/util.js';
 
 // ============================================================================
 // RENDER SYSTEM
@@ -352,10 +352,10 @@ export class RenderSystem {
 
         const blockCoords = this.engine.spriteLibrary.getTileByName('OPAQUE_FULL_BLOCK');
         const rect = new PIXI.Rectangle(
-            blockCoords.x * globalVars.TILE_WIDTH,
-            blockCoords.y * globalVars.TILE_HEIGHT,
-            globalVars.TILE_WIDTH,
-            globalVars.TILE_HEIGHT
+            blockCoords.x * TILE_WIDTH,
+            blockCoords.y * TILE_HEIGHT,
+            TILE_WIDTH,
+            TILE_HEIGHT
         );
         const blockTexture = new PIXI.Texture(tileset.texture.baseTexture, rect);
 
@@ -367,8 +367,8 @@ export class RenderSystem {
             for (let x = 0; x < viewportWidth; x++) {
                 const sprite = new PIXI.Sprite(blockTexture);
                 sprite.anchor.set(0.5);
-                sprite.x = x * globalVars.TILE_WIDTH + globalVars.TILE_WIDTH / 2;
-                sprite.y = y * globalVars.TILE_HEIGHT + globalVars.TILE_HEIGHT / 2;
+                sprite.x = x * TILE_WIDTH + TILE_WIDTH / 2;
+                sprite.y = y * TILE_HEIGHT + TILE_HEIGHT / 2;
                 sprite.scale.x = Math.random() < 0.5 ? -1 : 1;
                 sprite.scale.y = Math.random() < 0.5 ? -1 : 1;
                 this.splashContainer.addChild(sprite);
@@ -384,8 +384,8 @@ export class RenderSystem {
         for (let i = 0; i < text.length; i++) {
             const charSprite = this.engine.interfaceManager.createCharSprite(
                 text[i],
-                (textX + i) * globalVars.TILE_WIDTH,
-                textY * globalVars.TILE_HEIGHT,
+                (textX + i) * TILE_WIDTH,
+                textY * TILE_HEIGHT,
                 0xFFFFFF,
                 true
             );
@@ -485,10 +485,10 @@ export class RenderSystem {
 
         const blockCoords = this.engine.spriteLibrary.getTileByName('WHITE_FULL_BLOCK');
         const rect = new PIXI.Rectangle(
-            blockCoords.x * globalVars.TILE_WIDTH,
-            blockCoords.y * globalVars.TILE_HEIGHT,
-            globalVars.TILE_WIDTH,
-            globalVars.TILE_HEIGHT
+            blockCoords.x * TILE_WIDTH,
+            blockCoords.y * TILE_HEIGHT,
+            TILE_WIDTH,
+            TILE_HEIGHT
         );
         const blockTexture = new PIXI.Texture(tileset.texture.baseTexture, rect);
 
@@ -503,8 +503,8 @@ export class RenderSystem {
             for (let x = 0; x < viewportWidth; x++) {
                 const sprite = new PIXI.Sprite(blockTexture);
                 sprite.anchor.set(0.5);
-                sprite.x = x * globalVars.TILE_WIDTH + globalVars.TILE_WIDTH / 2;
-                sprite.y = y * globalVars.TILE_HEIGHT + globalVars.TILE_HEIGHT / 2;
+                sprite.x = x * TILE_WIDTH + TILE_WIDTH / 2;
+                sprite.y = y * TILE_HEIGHT + TILE_HEIGHT / 2;
                 sprite.scale.x = Math.random() < 0.5 ? -1 : 1;
                 sprite.scale.y = Math.random() < 0.5 ? -1 : 1;
                 sprite.tint = 0xFFFFFF;
@@ -532,8 +532,8 @@ export class RenderSystem {
                 // color-cycled white field.
                 const charSprite = this.engine.interfaceManager.createCharSprite(
                     text[i],
-                    (textX + i) * globalVars.TILE_WIDTH,
-                    textY * globalVars.TILE_HEIGHT,
+                    (textX + i) * TILE_WIDTH,
+                    textY * TILE_HEIGHT,
                     0x000000,
                     false
                 );

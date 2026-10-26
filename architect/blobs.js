@@ -3,8 +3,6 @@
  * stamping them, walling their rims, and repairing the connectivity they break.
  */
 
-import { globalVars } from '../globals.js';
-
 export const ArchitectBlobs = {
     /**
      * Lakes and abysses, generated the way Brogue does it (designLakes,
@@ -195,7 +193,7 @@ export const ArchitectBlobs = {
                 // The abyss layer contract addBaseAndShadows keys off: floorless,
                 // void background, nothing above it.
                 this.floorMap[y][x] = null;
-                this.backgroundMap[y][x] = { tileId: globalVars.VOID_FILL, layer: 'background' };
+                this.backgroundMap[y][x] = { tileId: this.config.voidTileId, layer: 'background' };
                 this.overlayMap[y][x] = null;
                 continue;
             }
@@ -242,7 +240,7 @@ export const ArchitectBlobs = {
                 // already a legitimate edge. Papering floor back over it would
                 // strand a walled cell mid-chasm and stop the cliff shading.
                 const background = this.backgroundMap[ny][nx];
-                if (background && globalVars.VOID_TILE_IDS.includes(background.tileId)) continue;
+                if (background && this.isVoidTile(background.tileId)) continue;
 
                 this.floorMap[ny][nx] = this._floorTile();
                 this.pendingWallSpawns.push({ x: nx, y: ny });
@@ -288,7 +286,7 @@ export const ArchitectBlobs = {
         const isAbyss = (x, y) => {
             if (x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
             const bg = this.backgroundMap[y][x];
-            return bg && globalVars.VOID_TILE_IDS.includes(bg.tileId) && this.floorMap[y][x] === null;
+            return bg && this.isVoidTile(bg.tileId) && this.floorMap[y][x] === null;
         };
 
         let causeways = 0;

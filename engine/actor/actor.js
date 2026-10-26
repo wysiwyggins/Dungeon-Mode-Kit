@@ -16,6 +16,8 @@ import {
 } from '../../core/pathfinding.js';
 import {
     ALL_DIRS,
+    TILE_HEIGHT,
+    TILE_WIDTH,
     isDiagonalBlocked,
     parseTint,
     randomElement,
@@ -30,7 +32,6 @@ import { ActorPassives } from './passives.js';
 import { ActorStates } from './states.js';
 import { Entity } from '../entity.js';
 import { Item } from '../item.js';
-import { globalVars } from '../../globals.js';
 
 export class Actor extends Entity {
     /**
@@ -599,13 +600,13 @@ export class Actor extends Entity {
         if (!sprite) return;
         if (flipV) {
             sprite.anchor.set(0.5, 0.5);
-            sprite.x = tileX * globalVars.TILE_WIDTH + globalVars.TILE_WIDTH / 2;
-            sprite.y = tileY * globalVars.TILE_HEIGHT + globalVars.TILE_HEIGHT / 2;
+            sprite.x = tileX * TILE_WIDTH + TILE_WIDTH / 2;
+            sprite.y = tileY * TILE_HEIGHT + TILE_HEIGHT / 2;
             sprite.scale.y = -1;
         } else {
             sprite.anchor.set(0, 0);
-            sprite.x = tileX * globalVars.TILE_WIDTH;
-            sprite.y = tileY * globalVars.TILE_HEIGHT;
+            sprite.x = tileX * TILE_WIDTH;
+            sprite.y = tileY * TILE_HEIGHT;
             sprite.scale.y = 1;
         }
     }
@@ -685,8 +686,8 @@ export class Actor extends Entity {
             if (!this.spriteTop) {
                 this.spriteTop = this.engine.renderer?.createActorSprite(
                     this, item.tileIndex, null,
-                    this.x * globalVars.TILE_WIDTH,
-                    (this.y - 1) * globalVars.TILE_HEIGHT,
+                    this.x * TILE_WIDTH,
+                    (this.y - 1) * TILE_HEIGHT,
                     11, {}
                 );
             } else {

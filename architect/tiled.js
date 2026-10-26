@@ -3,7 +3,7 @@
  * and filling wildcard regions with generated content.
  */
 
-import { globalVars } from '../globals.js';
+import { VOID_DIAGONAL, VOID_FILL, VOID_SHADE } from './architect.js';
 
 // Tiled GID flip flags (high bits) and the mask that strips them off.
 const TILED_FLIP_MASK = 0x1FFFFFFF;
@@ -74,12 +74,12 @@ export const ArchitectTiled = {
 
     processBackgroundLayer(layer) {
         console.log('Processing background layer...');
-        //why are we still doing this remap? globals already has both opaque and transparent background tiles
+        //why are we still doing this remap? architect.js already has both opaque and transparent background tiles
         //and we don't use the transparent for background any more, just fix it
         const VOID_REMAP = {
-            217: globalVars.VOID_FILL,      // FULL_BLOCK
-            178: globalVars.VOID_SHADE,     // DARK_SHADE
-            128: globalVars.VOID_DIAGONAL   // shadow diagonal
+            217: VOID_FILL,      // FULL_BLOCK
+            178: VOID_SHADE,     // DARK_SHADE
+            128: VOID_DIAGONAL   // shadow diagonal
         };
 
         let remapped = 0;

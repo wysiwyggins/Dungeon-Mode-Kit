@@ -674,6 +674,7 @@ area effect** — set one style or the other.
 | ----------- | ------ | ------------- |
 | `liquid` | boolean | Non-solid liquid (player can walk through) |
 | `deep` | boolean | Submerges actors that enter (deep water, lava) |
+| `hazard` | boolean | Map generation keeps items and monsters from spawning on this blob actor (lava, quicksand, deep water). Give it to any liquid with `damage_type` or `deep` |
 | `light_source` | boolean | Emits light |
 | `lightRadius` | number | Light range for a `light_source` actor (overrides the default radius) |
 | `entry_sound` | string | Sound played when an actor steps onto this tile |

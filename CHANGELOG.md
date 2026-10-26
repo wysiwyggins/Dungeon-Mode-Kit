@@ -5,15 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+These versions are pretty arbitrary, I know. When (if) other folks get involved, I'll formalize it a little.
+
 ## [1.3b]
+
+### Added
+
+- **`hazard` actor attribute.** Map generation keeps items and monsters off blob actors that have it (lava, fire, quicksand, deep water, deep sewage). This replaces the hardcoded `HAZARD_BLOB_ACTORS` list.
+- **`void_tile` prototype setting.** Names the flat void tile painted under abysses, holes and collapsed floor (default `OPAQUE_FULL_BLOCK`). You can set it in the prototype editor.
 
 ### Changed
 
 - Refactored to ES6 Modules, ESLint error cleanup
+- **`globals.js` removed.** The asset path and tile size constants moved to `core/util.js`, the void tile ids to `architect/architect.js`, and the detect-magic marker tile and tints to `engine/render/overlays.js`.
 
 ## [1.2b]
-
-These versions are pretty arbitrary, I know. When (if) other folks get involved, I'll formalize it a little.
 
 ### Added
 

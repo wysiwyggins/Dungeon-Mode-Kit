@@ -4,6 +4,22 @@
  */
 
 // ============================================================================
+// FIXED CONSTANTS
+// ============================================================================
+
+// Asset root: '.' when served locally, '/dungeonkit' in production.
+// (globalThis.location is absent in Node, where the tools/ scripts load the Architect.)
+const hostname = globalThis.location?.hostname;
+const isLocal = !hostname || hostname === 'localhost' || hostname === '127.0.0.1';
+export const BASE_PATH = isLocal ? '.' : '/dungeonkit';
+
+// The static-tiles spritesheet and its cell size in pixels.
+export const SPRITESHEET_PATH = `${BASE_PATH}/assets/sprites/static-tiles.png`;
+export const SPRITESHEET_COLS = 23;
+export const TILE_WIDTH = 40;
+export const TILE_HEIGHT = 30;
+
+// ============================================================================
 // UTILITY FUNCTIONS
 // ============================================================================
 

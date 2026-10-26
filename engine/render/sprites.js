@@ -3,8 +3,7 @@
  * equipment and items, and their z-ordering.
  */
 
-import { DEFAULT_ANIMATION_SPEED, ITEM_Z, parseTint } from '../../core/util.js';
-import { globalVars } from '../../globals.js';
+import { DEFAULT_ANIMATION_SPEED, ITEM_Z, SPRITESHEET_COLS, TILE_HEIGHT, TILE_WIDTH, parseTint } from '../../core/util.js';
 
 export const RenderSprites = {
     render() {
@@ -169,17 +168,17 @@ export const RenderSprites = {
         const tileId = typeof tile === 'number' ? tile : tile.tileId;
         // Convert Tiled tile ID (1-indexed) to spritesheet coordinates
         const tileIndex = tileId - 1;
-        const tileX = tileIndex % globalVars.SPRITESHEET_COLS;
-        const tileY = Math.floor(tileIndex / globalVars.SPRITESHEET_COLS);
+        const tileX = tileIndex % SPRITESHEET_COLS;
+        const tileY = Math.floor(tileIndex / SPRITESHEET_COLS);
 
         const texture = this.getTileTexture(
-            tileX * globalVars.TILE_WIDTH,
-            tileY * globalVars.TILE_HEIGHT
+            tileX * TILE_WIDTH,
+            tileY * TILE_HEIGHT
         );
         const sprite = new PIXI.Sprite(texture);
 
-        sprite.x = x * globalVars.TILE_WIDTH;
-        sprite.y = y * globalVars.TILE_HEIGHT;
+        sprite.x = x * TILE_WIDTH;
+        sprite.y = y * TILE_HEIGHT;
 
         // A tile may carry its own tint (a prototype's default_floor.tint). Only the
         // floor layer uses this: lighting recomputes background and overlay tints
@@ -194,16 +193,16 @@ export const RenderSprites = {
             if (tile.flipD) {
                 // Diagonal flip = 90° rotation + horizontal flip
                 sprite.anchor.set(0.5, 0.5);
-                sprite.x += globalVars.TILE_WIDTH / 2;
-                sprite.y += globalVars.TILE_HEIGHT / 2;
+                sprite.x += TILE_WIDTH / 2;
+                sprite.y += TILE_HEIGHT / 2;
                 sprite.rotation = Math.PI / 2;
                 sprite.scale.x = tile.flipH ? 1 : -1;
                 sprite.scale.y = tile.flipV ? -1 : 1;
             } else {
                 if (tile.flipH || tile.flipV) {
                     sprite.anchor.set(0.5, 0.5);
-                    sprite.x += globalVars.TILE_WIDTH / 2;
-                    sprite.y += globalVars.TILE_HEIGHT / 2;
+                    sprite.x += TILE_WIDTH / 2;
+                    sprite.y += TILE_HEIGHT / 2;
                     if (tile.flipH) sprite.scale.x = -1;
                     if (tile.flipV) sprite.scale.y = -1;
                 }
@@ -250,8 +249,8 @@ export const RenderSprites = {
                 actor,
                 actor.getDisplayTileBase(),
                 actor.animationBase,
-                actor.x * globalVars.TILE_WIDTH,
-                actor.y * globalVars.TILE_HEIGHT,
+                actor.x * TILE_WIDTH,
+                actor.y * TILE_HEIGHT,
                 baseZ,
                 { flipH: actor.flipBaseH, flipV: actor.flipBaseV }
             );
@@ -261,8 +260,8 @@ export const RenderSprites = {
                 actor,
                 actor.getDisplayTileTop(),
                 actor.animationTop,
-                actor.x * globalVars.TILE_WIDTH,
-                (actor.y - 1) * globalVars.TILE_HEIGHT,
+                actor.x * TILE_WIDTH,
+                (actor.y - 1) * TILE_HEIGHT,
                 topZ,
                 { flipH: actor.flipTopH, flipV: actor.flipTopV }
             );
@@ -274,8 +273,8 @@ export const RenderSprites = {
                     actor,
                     actor.tileIndexSide,
                     actor.animationSide,
-                    (actor.x + sideOffset.dx) * globalVars.TILE_WIDTH,
-                    (actor.y + sideOffset.dy) * globalVars.TILE_HEIGHT,
+                    (actor.x + sideOffset.dx) * TILE_WIDTH,
+                    (actor.y + sideOffset.dy) * TILE_HEIGHT,
                     baseZ,
                     { flipH: actor.flipSideH, flipV: actor.flipSideV }
                 );
@@ -318,7 +317,7 @@ export const RenderSprites = {
         let texture = this._tileTextureCache.get(key);
         if (!texture) {
             const tileset = PIXI.Loader.shared.resources.tiles;
-            const rect = new PIXI.Rectangle(px, py, globalVars.TILE_WIDTH, globalVars.TILE_HEIGHT);
+            const rect = new PIXI.Rectangle(px, py, TILE_WIDTH, TILE_HEIGHT);
             texture = new PIXI.Texture(tileset.texture.baseTexture, rect);
             this._tileTextureCache.set(key, texture);
         }
@@ -359,8 +358,8 @@ export const RenderSprites = {
             actor,
             actor.getDisplayTileBase?.() ?? actor.tileIndexBase,
             actor.animationBase,
-            actor.x * globalVars.TILE_WIDTH,
-            actor.y * globalVars.TILE_HEIGHT,
+            actor.x * TILE_WIDTH,
+            actor.y * TILE_HEIGHT,
             baseZ,
             { flipH: actor.flipBaseH, flipV: actor.flipBaseV }
         );
@@ -370,8 +369,8 @@ export const RenderSprites = {
             actor,
             actor.getDisplayTileTop?.() ?? actor.tileIndexTop,
             actor.animationTop,
-            actor.x * globalVars.TILE_WIDTH,
-            (actor.y - 1) * globalVars.TILE_HEIGHT,
+            actor.x * TILE_WIDTH,
+            (actor.y - 1) * TILE_HEIGHT,
             topZ,
             { flipH: actor.flipTopH, flipV: actor.flipTopV }
         );
@@ -383,8 +382,8 @@ export const RenderSprites = {
                 actor,
                 actor.tileIndexSide,
                 actor.animationSide,
-                (actor.x + sideOffset.dx) * globalVars.TILE_WIDTH,
-                (actor.y + sideOffset.dy) * globalVars.TILE_HEIGHT,
+                (actor.x + sideOffset.dx) * TILE_WIDTH,
+                (actor.y + sideOffset.dy) * TILE_HEIGHT,
                 baseZ,
                 { flipH: actor.flipSideH, flipV: actor.flipSideV }
             );
@@ -474,8 +473,8 @@ export const RenderSprites = {
         // Fall back to static sprite
         if (tileIndex) {
             const texture = this.getTileTexture(
-                tileIndex.x * globalVars.TILE_WIDTH,
-                tileIndex.y * globalVars.TILE_HEIGHT
+                tileIndex.x * TILE_WIDTH,
+                tileIndex.y * TILE_HEIGHT
             );
             const sprite = new PIXI.Sprite(texture);
 
@@ -486,8 +485,8 @@ export const RenderSprites = {
             // Set anchor to center for flipping, then adjust position
             if (options.flipH || options.flipV) {
                 sprite.anchor.set(0.5, 0.5);
-                sprite.x = x + globalVars.TILE_WIDTH / 2;
-                sprite.y = y + globalVars.TILE_HEIGHT / 2;
+                sprite.x = x + TILE_WIDTH / 2;
+                sprite.y = y + TILE_HEIGHT / 2;
                 if (options.flipH) {
                     sprite.scale.x = -1;
                 }
@@ -521,8 +520,8 @@ export const RenderSprites = {
      * @param {Entity} entity - The entity to create a sprite for
      */
     createEntitySprite(entity) {
-        const x = entity.x * globalVars.TILE_WIDTH;
-        const y = entity.y * globalVars.TILE_HEIGHT;
+        const x = entity.x * TILE_WIDTH;
+        const y = entity.y * TILE_HEIGHT;
 
         // Entities that ignore darkness go in uiContainer (above darkness layer)
         const ignoreDarkness = entity.hasAttribute('ignore_darkness');
@@ -535,7 +534,7 @@ export const RenderSprites = {
             const graphics = new PIXI.Graphics();
             graphics.beginFill(entity.fillColor);
             graphics.blendMode = PIXI.BLEND_MODES.MULTIPLY;
-            graphics.drawRect(0, 0, globalVars.TILE_WIDTH, globalVars.TILE_HEIGHT);
+            graphics.drawRect(0, 0, TILE_WIDTH, TILE_HEIGHT);
             graphics.endFill();
             graphics.x = x;
             graphics.y = y;
@@ -548,8 +547,8 @@ export const RenderSprites = {
         // If entity has a tile index, create a sprite on top of any fill
         if (entity.tileIndex) {
             const texture = this.getTileTexture(
-                entity.tileIndex.x * globalVars.TILE_WIDTH,
-                entity.tileIndex.y * globalVars.TILE_HEIGHT
+                entity.tileIndex.x * TILE_WIDTH,
+                entity.tileIndex.y * TILE_HEIGHT
             );
             const sprite = new PIXI.Sprite(texture);
 
@@ -581,33 +580,33 @@ export const RenderSprites = {
         if (!tileset || !item.tileIndex) return null;
 
         const texture = this.getTileTexture(
-            item.tileIndex.x * globalVars.TILE_WIDTH,
-            item.tileIndex.y * globalVars.TILE_HEIGHT
+            item.tileIndex.x * TILE_WIDTH,
+            item.tileIndex.y * TILE_HEIGHT
         );
         const sprite = new PIXI.Sprite(texture);
 
         const useCenterAnchor = actor.facingEnabled;
-        const hw = globalVars.TILE_WIDTH / 2;
-        const hh = globalVars.TILE_HEIGHT / 2;
+        const hw = TILE_WIDTH / 2;
+        const hh = TILE_HEIGHT / 2;
 
-        let x = actor.x * globalVars.TILE_WIDTH;
+        let x = actor.x * TILE_WIDTH;
         let y, zIndex;
 
         switch (slot) {
             case 'top':
-                y = (actor.y - 2) * globalVars.TILE_HEIGHT;
+                y = (actor.y - 2) * TILE_HEIGHT;
                 zIndex = 13;
                 break;
             case 'middle':
-                y = (actor.y - 1) * globalVars.TILE_HEIGHT;
+                y = (actor.y - 1) * TILE_HEIGHT;
                 zIndex = 12;
                 break;
             case 'lower':
-                y = actor.y * globalVars.TILE_HEIGHT;
+                y = actor.y * TILE_HEIGHT;
                 zIndex = 12;
                 break;
             default:
-                y = actor.y * globalVars.TILE_HEIGHT;
+                y = actor.y * TILE_HEIGHT;
                 zIndex = 12;
         }
 
@@ -653,21 +652,21 @@ export const RenderSprites = {
         if (!tileset || !item.tileIndex) return;
 
         const texture = this.getTileTexture(
-            item.tileIndex.x * globalVars.TILE_WIDTH,
-            item.tileIndex.y * globalVars.TILE_HEIGHT
+            item.tileIndex.x * TILE_WIDTH,
+            item.tileIndex.y * TILE_HEIGHT
         );
         const sprite = new PIXI.Sprite(texture);
 
-        sprite.x = item.x * globalVars.TILE_WIDTH;
-        sprite.y = item.y * globalVars.TILE_HEIGHT;
+        sprite.x = item.x * TILE_WIDTH;
+        sprite.y = item.y * TILE_HEIGHT;
         sprite.zIndex = this.getItemZIndex(item);
         sprite.tint = item.tint;
 
         // Apply horizontal/vertical flip using anchor at center
         if (item.flipH || item.flipV) {
             sprite.anchor.set(0.5, 0.5);
-            sprite.x += globalVars.TILE_WIDTH / 2;
-            sprite.y += globalVars.TILE_HEIGHT / 2;
+            sprite.x += TILE_WIDTH / 2;
+            sprite.y += TILE_HEIGHT / 2;
             sprite.scale.x = item.flipH ? -1 : 1;
             sprite.scale.y = item.flipV ? -1 : 1;
         }

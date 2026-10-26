@@ -14,7 +14,6 @@ import { ArchitectRegions } from './regions.js';
 import { ArchitectSpawning } from './spawning.js';
 import { ArchitectTiled } from './tiled.js';
 import { installMethods } from '../core/mixin.js';
-import { globalVars } from '../globals.js';
 
 // pendingWallSpawns types that are free-standing architecture rather than part of
 // a wall run. A light source replacing one becomes a `brazier`;
@@ -22,6 +21,24 @@ import { globalVars } from '../globals.js';
 const FREESTANDING_WALL_TYPES = new Set(['column']);
 
 // Neighbour offsets used by the helpers below and by applyTilePattern's tileContext.
+// Void background tiles: the flat fill, plus the cliff shading addBaseAndShadows
+// paints along abyss edges. A prototype can swap the fill with `void_tile`
+// (config.voidTileId); the shade and diagonal are this module's own art.
+export const VOID_FILL = 231;      // OPAQUE_FULL_BLOCK — flat void
+export const VOID_SHADE = 207;     // OPAQUE_DARK_SHADE — shadow body under a cliff lip
+export const VOID_DIAGONAL = 372;  // OPAQUE_BLACK_LOWER_LEFT_TRIANGLE_WITH_DARK_SHADE_UPPER_RIGHT_TRIANGLE
+
+// Background tiles that count as void, both families. isVoidTile adds the
+// prototype's own fill on top.
+const VOID_TILE_IDS = new Set([
+    217, 178, 128,     // transparent family: FULL_BLOCK, DARK_SHADE, diagonal
+    VOID_FILL, VOID_SHADE, VOID_DIAGONAL
+]);
+// The flat fills only. A tile from this set sitting on the FLOOR layer means
+// void rather than walkable floor; the shade/diagonal values are background art
+// and never appear on the floor layer.
+const VOID_FLOOR_FILLS = new Set([217, VOID_FILL]); // FULL_BLOCK, OPAQUE_FULL_BLOCK
+
 export const TP_DIRS4 = [[0, -1], [-1, 0], [1, 0], [0, 1]];
 export const TP_DIRS8 = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
 
@@ -97,8 +114,23 @@ export class Architect {
         this.config = {
             defaultFloorTileId: 158,
             defaultFloorTint: null,
+            // Flat void fill painted under abysses, holes and collapsed floor.
+            voidTileId: VOID_FILL,
+            // Resolved actor definition by id, or null. Lets generation read actor
+            // attributes (e.g. `hazard`) before any actor exists.
+            getActorData: null,
             ...options.config
         };
+    }
+
+    /** Is this background tile id void (flat fill or cliff shading)? */
+    isVoidTile(tileId) {
+        return tileId === this.config.voidTileId || VOID_TILE_IDS.has(tileId);
+    }
+
+    /** Does this tile id on the FLOOR layer mean void rather than floor? */
+    isVoidFloorFill(tileId) {
+        return tileId === this.config.voidTileId || VOID_FLOOR_FILLS.has(tileId);
     }
 
     /**
@@ -204,11 +236,11 @@ export class Architect {
      * _blobRebuildWalkableTiles subtracts from walkableTiles — so an item never
      * lands in lava and a monster never starts sunk in quicksand.
      *
-     * Reads the list in globals rather than the actor's own `damage_type`/`deep`,
+     * Reads the `hazard` attribute off the actor definition (via config.getActorData),
      * because blobs are placed during generation, before any actor exists to ask.
      */
     _isHazardousBlobType(type) {
-        return globalVars.HAZARD_BLOB_ACTORS.includes(type);
+        return !!this.config.getActorData?.(type)?.attributes?.hazard;
     }
 
     /**
@@ -765,14 +797,13 @@ export class Architect {
      * 
      **/
     addBaseAndShadows(bounds = null) {
-        // The three tile values live in globalVars (globals.js)
-        const SHADE = globalVars.VOID_SHADE;
-        const DIAGONAL = globalVars.VOID_DIAGONAL;
+        const SHADE = VOID_SHADE;
+        const DIAGONAL = VOID_DIAGONAL;
 
         // Flat void on the FLOOR layer means void, not walkable floor.
         const hasFloor = (tileContext, x, y) => {
             const t = tileContext.on('floor', x, y);
-            return t !== null && !globalVars.VOID_FLOOR_FILLS.includes(t);
+            return t !== null && !this.isVoidFloorFill(t);
         };
 
         // Void this pass hasn't painted over yet. Excluding the paint values is what
@@ -780,7 +811,7 @@ export class Architect {
         const isUnpaintedVoid = (tileContext, x, y) => {
             const bg = tileContext.get(x, y);
             if (bg === null || bg === SHADE || bg === DIAGONAL) return false;
-            return globalVars.VOID_TILE_IDS.includes(bg);
+            return this.isVoidTile(bg);
         };
 
         // Only unpainted void with no floor is eligible; every rule below assumes it.

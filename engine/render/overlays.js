@@ -9,7 +9,12 @@ import {
     isOpenableDoorTile,
     traceBoltPath
 } from '../../core/pathfinding.js';
-import { globalVars } from '../../globals.js';
+import { TILE_HEIGHT, TILE_WIDTH } from '../../core/util.js';
+
+// Detect magic: the marker tile and its tint for each polarity (Item.getMagicPolarity),
+// shared by the map marker below and the inventory icon (InterfaceManager.renderMagicPolarityIcon).
+export const MAGIC_POLARITY_TILE = 'EVIL_EYE';
+export const MAGIC_POLARITY_TINTS = { good: 0x3D7DFF, bad: 0xE03030 };
 
 export const RenderOverlays = {
     /**
@@ -173,8 +178,8 @@ export const RenderOverlays = {
         const em = this.engine.entityManager;
         if (!em) return;
 
-        const tileWidth = globalVars.TILE_WIDTH;
-        const tileHeight = globalVars.TILE_HEIGHT;
+        const tileWidth = TILE_WIDTH;
+        const tileHeight = TILE_HEIGHT;
 
         // Group members already visited as a hub or target, so each machine draws once.
         const seen = new Set();
@@ -384,17 +389,17 @@ export const RenderOverlays = {
         }
         if (markers.size === 0) return;
 
-        const tileIndex = this.engine.spriteLibrary.resolveTile(globalVars.MAGIC_POLARITY_TILE);
+        const tileIndex = this.engine.spriteLibrary.resolveTile(MAGIC_POLARITY_TILE);
         if (!tileIndex) return;
-        const tileWidth = globalVars.TILE_WIDTH;
-        const tileHeight = globalVars.TILE_HEIGHT;
+        const tileWidth = TILE_WIDTH;
+        const tileHeight = TILE_HEIGHT;
         const texture = this.getTileTexture(tileIndex.x * tileWidth, tileIndex.y * tileHeight);
 
         for (const { x, y, polarity } of markers.values()) {
             const sprite = new PIXI.Sprite(texture);
             sprite.x = x * tileWidth;
             sprite.y = y * tileHeight;
-            sprite.tint = globalVars.MAGIC_POLARITY_TINTS[polarity];
+            sprite.tint = MAGIC_POLARITY_TINTS[polarity];
             // Low zIndex in uiContainer, beside the infrastructure overlay, so UI
             // windows still draw over it.
             sprite.zIndex = 2;

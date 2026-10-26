@@ -7,7 +7,7 @@ import { Architect } from '../../architect/architect.js';
 import { Actor } from '../actor/actor.js';
 import { EntityManager } from '../entity-manager/entity-manager.js';
 import { Prototype } from '../prototype.js';
-import { globalVars } from '../../globals.js';
+import { BASE_PATH } from '../../core/util.js';
 import { LightingManager } from '../../lighting.js';
 
 export const DungeonEngineFloors = {
@@ -89,16 +89,11 @@ export const DungeonEngineFloors = {
         // Determine map generator config: floor-specific overrides prototype-level
         const mapGenerator = floorConfig.map_generator ?? prototypeConfig.map_generator;
 
-        // Same floor-over-prototype precedence for the floor's look. Only reaches
-        // generated maps: an authored .tmj names a tile for every cell deliberately,
-        // so there is no "default" left to fill in.
-        const defaultFloor = floorConfig.default_floor ?? prototypeConfig.default_floor;
-
-        this.mapManager = new Architect({ config: this.buildFloorConfigOverrides(defaultFloor) });
+        this.mapManager = new Architect({ config: this.buildArchitectConfig(floorConfig) });
         const hasAuthoredMap = await this.checkForAuthoredMap(this.currentPrototype.name, floor);
         if (hasAuthoredMap) {
             const mapFile = floor === 1 ? 'map.tmj' : `${floor}.tmj`;
-            await this.mapManager.loadTiledMap(`${globalVars.BASE_PATH}/prototypes/${this.currentPrototype.name}/${mapFile}`);
+            await this.mapManager.loadTiledMap(`${BASE_PATH}/prototypes/${this.currentPrototype.name}/${mapFile}`);
         } else {
             this.mapManager.generateProceduralMap(mapGenerator);
         }
@@ -371,7 +366,7 @@ export const DungeonEngineFloors = {
         // Fetch and parse the .tmj once. We keep an Architect instance only for its parseTileGID
         // (the Tiled flip-flag parser); we do NOT run the normal map-collapse pipeline.
         this.mapManager = new Architect();
-        const mapPath = `${globalVars.BASE_PATH}/prototypes/${this.currentPrototype.name}/${flipbook}`;
+        const mapPath = `${BASE_PATH}/prototypes/${this.currentPrototype.name}/${flipbook}`;
         console.log(`Loading cutscene flipbook: ${mapPath}`);
         const tiledData = await (await fetch(mapPath)).json();
 
@@ -466,11 +461,13 @@ export const DungeonEngineFloors = {
             ROT.RNG.setState(saved.rngState);
         }
 
-        this.mapManager = new Architect();
+        // Same config as loadFloor: holes and digging on a revisited floor still
+        // need the prototype's void tile.
+        const floorConfig = this.getFloorConfig(floor);
+        this.mapManager = new Architect({ config: this.buildArchitectConfig(floorConfig) });
         this.mapManager.deserializeMap(saved.map);
 
         // Viewport setup — use floor-specific mechanics (includes ambient_light, etc.)
-        const floorConfig = this.getFloorConfig(floor);
         const mechanics = floorConfig.mechanics || prototypeConfig.mechanics || {};
         const vpW = mechanics.viewport_width || null;
         const vpH = mechanics.viewport_height || null;
@@ -644,6 +641,36 @@ export const DungeonEngineFloors = {
     },
     
     /**
+     * Architect config for one floor: the floor look, the prototype's void tile,
+     * and actor-definition lookup so generation can read attributes like `hazard`.
+     *
+     * `default_floor` takes the usual floor-over-prototype precedence. It only
+     * reaches generated maps: an authored .tmj names a tile for every cell
+     * deliberately, so there is no "default" left to fill in.
+     *
+     * @param {Object} floorConfig - Merged config for this floor (getFloorConfig)
+     * @returns {Object} Config for `new Architect({ config })`
+     */
+    buildArchitectConfig(floorConfig) {
+        const prototypeConfig = this.currentPrototype.config;
+        const config = {
+            ...this.buildFloorConfigOverrides(floorConfig.default_floor ?? prototypeConfig.default_floor),
+            getActorData: (type) => this.currentPrototype.getActorData(type),
+        };
+
+        if (prototypeConfig.void_tile) {
+            const tileId = this.spriteLibrary?.getTileIdByName(prototypeConfig.void_tile);
+            if (tileId) {
+                config.voidTileId = tileId;
+            } else {
+                console.warn(`void_tile: unknown tile name "${prototypeConfig.void_tile}" — using the built-in void tile`);
+            }
+        }
+
+        return config;
+    },
+
+    /**
      * Turn a prototype's `default_floor` block into Architect config overrides.
      *
      * `tile` is authored as a NAME, like every other tile reference in the data
@@ -674,7 +701,7 @@ export const DungeonEngineFloors = {
 
     async loadPrototypeConfig(prototypeName) {
         try {
-            const response = await fetch(`${globalVars.BASE_PATH}/prototypes/${prototypeName}/prototype.json`);
+            const response = await fetch(`${BASE_PATH}/prototypes/${prototypeName}/prototype.json`);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             return await response.json();
         } catch (error) {
@@ -689,7 +716,7 @@ export const DungeonEngineFloors = {
     async checkForAuthoredMap(prototypeName, floor = 1) {
         const mapFile = floor === 1 ? 'map.tmj' : `${floor}.tmj`;
         try {
-            const response = await fetch(`${globalVars.BASE_PATH}/prototypes/${prototypeName}/${mapFile}`, { method: 'HEAD' });
+            const response = await fetch(`${BASE_PATH}/prototypes/${prototypeName}/${mapFile}`, { method: 'HEAD' });
             return response.ok;
         } catch {
             return false;

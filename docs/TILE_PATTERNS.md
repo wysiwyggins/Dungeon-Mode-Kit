@@ -287,13 +287,13 @@ This is the pattern that gives every abyss its hard 45° drop shadow. It runs on
 Three shared helpers set up the vocabulary first:
 
 ```js
-const SHADE = globalVars.VOID_SHADE;         // 207 — the shadow body
-const DIAGONAL = globalVars.VOID_DIAGONAL;   // 372 — the 45° edge glyph
+const SHADE = VOID_SHADE;         // 207 — the shadow body
+const DIAGONAL = VOID_DIAGONAL;   // 372 — the 45° edge glyph
 
 // Flat void on the FLOOR layer means void, not walkable floor.
 const hasFloor = (tileContext, x, y) => {
     const t = tileContext.on('floor', x, y);
-    return t !== null && !globalVars.VOID_FLOOR_FILLS.includes(t);
+    return t !== null && !this.isVoidFloorFill(t);
 };
 
 // Void this pass hasn't painted over yet. Excluding the paint values is what
@@ -301,14 +301,14 @@ const hasFloor = (tileContext, x, y) => {
 const isUnpaintedVoid = (tileContext, x, y) => {
     const bg = tileContext.get(x, y);
     if (bg === null || bg === SHADE || bg === DIAGONAL) return false;
-    return globalVars.VOID_TILE_IDS.includes(bg);
+    return this.isVoidTile(bg);
 };
 
 const eligible = (tileContext, x, y) =>
     isUnpaintedVoid(tileContext, x, y) && !hasFloor(tileContext, x, y);
 ```
 
-`isUnpaintedVoid` is the recognition/paint split described above: `VOID_TILE_IDS` is the set of tiles that *count as* void, and the two values this pattern paints are explicitly excluded from it. Without those two exclusions the rules would keep matching their own output.
+`isUnpaintedVoid` is the recognition/paint split described above: `isVoidTile` answers which tiles *count as* void (the built-in set in `architect.js` plus the prototype's `void_tile`), and the two values this pattern paints are explicitly excluded from it. Without those two exclusions the rules would keep matching their own output.
 
 **Rule 1 — start a diagonal** where floor sits directly above void, at the corner where the drop begins:
 
@@ -424,7 +424,7 @@ A frontend has to supply four things itself:
 - **The return *type* depends on `options.collect`** — a number normally, an array or a `Set` when collecting. Only reachable by opting in.
 - **`bounds` restricts visiting, not reading or `ctx.paint`.** A rule can still read and paint outside the box.
 - **Ids, not names.** Rules deal in numbers; there is no name lookup inside `MapManager`.
-- **One name in `data/static-tiles.json` has a stray space** — `OPAQUE_BLACK_LOWER_LEFT_TRIANGLE_WITH_DARK_SHADE_UPPER_RIGHT _TRIANGLE`. Nothing is broken today because `globals.js` hardcodes the id (`372`), but a `getTileIdByName` lookup using the sensible spelling returns `null`.
+- **One name in `data/static-tiles.json` has a stray space** — `OPAQUE_BLACK_LOWER_LEFT_TRIANGLE_WITH_DARK_SHADE_UPPER_RIGHT _TRIANGLE`. Nothing is broken today because `architect.js` hardcodes the id (`372`), but a `getTileIdByName` lookup using the sensible spelling returns `null`.
 
 ---
 

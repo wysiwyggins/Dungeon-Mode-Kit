@@ -2,9 +2,8 @@
  * Item: an item on the floor or in an inventory.
  */
 
-import { parseTint, resolveEntityEffect, resolveTemplate, rollRandomEffect } from '../core/util.js';
+import { TILE_HEIGHT, TILE_WIDTH, parseTint, resolveEntityEffect, resolveTemplate, rollRandomEffect } from '../core/util.js';
 import { Entity } from './entity.js';
-import { globalVars } from '../globals.js';
 
 export class Item extends Entity {
     /**
@@ -760,13 +759,13 @@ export class Item extends Entity {
     updateSpritePosition() {
         if (!this.sprite) return;
 
-        let x = this.x * globalVars.TILE_WIDTH;
-        let y = this.y * globalVars.TILE_HEIGHT;
+        let x = this.x * TILE_WIDTH;
+        let y = this.y * TILE_HEIGHT;
 
         // Account for center anchor when item has flip
         if (this.flipH || this.flipV) {
-            x += globalVars.TILE_WIDTH / 2;
-            y += globalVars.TILE_HEIGHT / 2;
+            x += TILE_WIDTH / 2;
+            y += TILE_HEIGHT / 2;
         }
 
         this.sprite.x = x;

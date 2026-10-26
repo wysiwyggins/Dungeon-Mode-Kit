@@ -5,7 +5,7 @@
  */
 
 import { Item } from '../engine/item.js';
-import { globalVars } from '../globals.js';
+import { TILE_HEIGHT, TILE_WIDTH } from '../core/util.js';
 import { MODIFIER_KEYS } from './interface-manager.js';
 
 export const UIMenus = {
@@ -130,11 +130,11 @@ export const UIMenus = {
         boxContainer._actionCount = actionNum - 1;
 
         // Add text sprites
-        const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
-        const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
+        const textStartX = (padding + 1) * TILE_WIDTH;
+        const textStartY = (padding + 1) * TILE_HEIGHT;
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-            const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+            const charY = textStartY + (lineIndex * TILE_HEIGHT);
             this.renderTextLine(boxContainer, lines[lineIndex], textStartX, charY);
         }
 
@@ -541,11 +541,11 @@ export const UIMenus = {
         boxContainer._confirmYNLine = lines.length - 1;
 
         // Add text sprites
-        const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
-        const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
+        const textStartX = (padding + 1) * TILE_WIDTH;
+        const textStartY = (padding + 1) * TILE_HEIGHT;
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-            const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+            const charY = textStartY + (lineIndex * TILE_HEIGHT);
             this.renderTextLine(boxContainer, lines[lineIndex], textStartX, charY, textTint);
         }
 
@@ -934,11 +934,11 @@ export const UIMenus = {
         this.drawListStripes(boxContainer, stripeRows, contentWidth, padding);
 
         // Add text sprites
-        const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
-        const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
+        const textStartX = (padding + 1) * TILE_WIDTH;
+        const textStartY = (padding + 1) * TILE_HEIGHT;
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-            const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+            const charY = textStartY + (lineIndex * TILE_HEIGHT);
             this.renderTextLine(boxContainer, lines[lineIndex], textStartX, charY);
         }
 
@@ -946,10 +946,10 @@ export const UIMenus = {
         for (let i = 0; i < player.inventory.length; i++) {
             const item = player.inventory[i];
             const lineIndex = i + 2; // Account for header and blank line
-            const tileX = textStartX + (5 * globalVars.TILE_WIDTH);
-            const tileY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+            const tileX = textStartX + (5 * TILE_WIDTH);
+            const tileY = textStartY + (lineIndex * TILE_HEIGHT);
             this.renderItemTile(boxContainer, item, tileX, tileY);
-            this.renderMagicPolarityIcon(boxContainer, item, tileX - globalVars.TILE_WIDTH, tileY);
+            this.renderMagicPolarityIcon(boxContainer, item, tileX - TILE_WIDTH, tileY);
         }
 
         this.updateBoxOverlays();
@@ -1113,11 +1113,11 @@ export const UIMenus = {
         }
 
         // Add text sprites
-        const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
-        const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
+        const textStartX = (padding + 1) * TILE_WIDTH;
+        const textStartY = (padding + 1) * TILE_HEIGHT;
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-            const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+            const charY = textStartY + (lineIndex * TILE_HEIGHT);
             this.renderTextLine(boxContainer, lines[lineIndex], textStartX, charY);
         }
 
@@ -1125,10 +1125,10 @@ export const UIMenus = {
         for (let i = 0; i < this.equipmentMenuItems.length; i++) {
             const entry = this.equipmentMenuItems[i];
             const lineIndex = itemsStartLine + i;
-            const tileX = textStartX + (5 * globalVars.TILE_WIDTH);
-            const tileY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+            const tileX = textStartX + (5 * TILE_WIDTH);
+            const tileY = textStartY + (lineIndex * TILE_HEIGHT);
             this.renderItemTile(boxContainer, entry.item, tileX, tileY);
-            this.renderMagicPolarityIcon(boxContainer, entry.item, tileX - globalVars.TILE_WIDTH, tileY);
+            this.renderMagicPolarityIcon(boxContainer, entry.item, tileX - TILE_WIDTH, tileY);
         }
 
         this.updateBoxOverlays();
@@ -1252,21 +1252,21 @@ export const UIMenus = {
             (_, i) => ({ lineIndex: 2 + i }));
         this.drawListStripes(boxContainer, stripeRows, contentWidth, padding);
 
-        const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
-        const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
+        const textStartX = (padding + 1) * TILE_WIDTH;
+        const textStartY = (padding + 1) * TILE_HEIGHT;
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-            const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+            const charY = textStartY + (lineIndex * TILE_HEIGHT);
             this.renderTextLine(boxContainer, lines[lineIndex], textStartX, charY);
         }
 
         for (let i = 0; i < this.useMenuItems.length; i++) {
             const item = this.useMenuItems[i];
             const lineIndex = i + 2;
-            const tileX = textStartX + (5 * globalVars.TILE_WIDTH);
-            const tileY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+            const tileX = textStartX + (5 * TILE_WIDTH);
+            const tileY = textStartY + (lineIndex * TILE_HEIGHT);
             this.renderItemTile(boxContainer, item, tileX, tileY);
-            this.renderMagicPolarityIcon(boxContainer, item, tileX - globalVars.TILE_WIDTH, tileY);
+            this.renderMagicPolarityIcon(boxContainer, item, tileX - TILE_WIDTH, tileY);
         }
 
         this.updateBoxOverlays();

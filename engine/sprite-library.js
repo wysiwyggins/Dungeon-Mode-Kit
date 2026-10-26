@@ -2,8 +2,7 @@
  * Sprite library: tile names to spritesheet frames.
  */
 
-import { randomElement } from '../core/util.js';
-import { globalVars } from '../globals.js';
+import { BASE_PATH, randomElement } from '../core/util.js';
 
 // ============================================================================
 // SPRITE LIBRARY
@@ -16,7 +15,7 @@ export class SpriteLibrary {
     
     async load() {
         try {
-            const response = await fetch(`${globalVars.BASE_PATH}/data/static-tiles.json`);
+            const response = await fetch(`${BASE_PATH}/data/static-tiles.json`);
             const data = await response.json();
             this.tiles = data.tiles;
             this.tileNames = Object.keys(this.tiles);

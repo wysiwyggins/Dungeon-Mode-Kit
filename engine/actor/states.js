@@ -3,9 +3,8 @@
  * state-derived checks (confused, incapacitated, escape chance).
  */
 
-import { parseTint } from '../../core/util.js';
+import { TILE_HEIGHT, TILE_WIDTH, parseTint } from '../../core/util.js';
 import { Actor } from './actor.js';
-import { globalVars } from '../../globals.js';
 
 export const ActorStates = {
     /**
@@ -496,12 +495,12 @@ export const ActorStates = {
                     state.attachedActor.y = this.y;
                     // Update sprite position
                     if (state.attachedActor.spriteBase) {
-                        state.attachedActor.spriteBase.x = this.x * globalVars.TILE_WIDTH;
-                        state.attachedActor.spriteBase.y = this.y * globalVars.TILE_HEIGHT;
+                        state.attachedActor.spriteBase.x = this.x * TILE_WIDTH;
+                        state.attachedActor.spriteBase.y = this.y * TILE_HEIGHT;
                     }
                     if (state.attachedActor.spriteTop) {
-                        state.attachedActor.spriteTop.x = this.x * globalVars.TILE_WIDTH;
-                        state.attachedActor.spriteTop.y = (this.y - 1) * globalVars.TILE_HEIGHT;
+                        state.attachedActor.spriteTop.x = this.x * TILE_WIDTH;
+                        state.attachedActor.spriteTop.y = (this.y - 1) * TILE_HEIGHT;
                     }
                 }
             }

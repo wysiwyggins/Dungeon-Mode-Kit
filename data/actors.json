@@ -1366,6 +1366,7 @@
     "effect": "ripple_tint",
     "personality": "deep_water",
     "attributes": {
+      "hazard": true,
       "deep": true,
       "walk_description": "You plunge into the dark waters."
     }
@@ -1395,6 +1396,7 @@
     "animation_frames": "fluid",
     "personality": "deep_water",
     "attributes": {
+      "hazard": true,
       "deep": true,
       "walk_description": "You wade out into the vile morass."
     }
@@ -1435,6 +1437,7 @@
     "personality": "lava",
     "lightRadius": 5,
     "attributes": {
+      "hazard": true,
       "solid": false,
       "flammable": false,
       "damage_type": "fire",
@@ -1454,6 +1457,7 @@
     "tint": "#9b7340",
     "personality": "quicksand",
     "attributes": {
+      "hazard": true,
       "deep": true,
       "apply_state": "stuck",
       "paint_tile": "MEDIUM_SHADE_LOWER_ONE_HALF_BLOCK"
@@ -1469,6 +1473,7 @@
     "effect": "flicker_tint",
     "personality": "fire",
     "attributes": {
+      "hazard": true,
       "solid": false,
       "flammable": false,
       "ignites": true,

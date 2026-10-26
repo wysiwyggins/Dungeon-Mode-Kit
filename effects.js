@@ -4,8 +4,7 @@
  * Effects are defined in data/effects.json and can be overridden per-prototype.
  */
 
-import { randomElement } from './core/util.js';
-import { globalVars } from './globals.js';
+import { TILE_HEIGHT, TILE_WIDTH, randomElement } from './core/util.js';
 
 const HALLUCINATION_TINTS = [0xFFFF4F, 0xEE4266, 0x540D6E, 0x3BCEFF, 0x0EAD69];
 
@@ -150,13 +149,13 @@ export const EffectPrimitives = {
                 graphics.beginFill(tint);
                 if (ctx.engine.viewportEnabled) {
                     graphics.drawRect(
-                        ctx.engine.sectionOriginX * globalVars.TILE_WIDTH,
-                        ctx.engine.sectionOriginY * globalVars.TILE_HEIGHT,
-                        ctx.engine.viewportWidth * globalVars.TILE_WIDTH,
-                        ctx.engine.viewportHeight * globalVars.TILE_HEIGHT
+                        ctx.engine.sectionOriginX * TILE_WIDTH,
+                        ctx.engine.sectionOriginY * TILE_HEIGHT,
+                        ctx.engine.viewportWidth * TILE_WIDTH,
+                        ctx.engine.viewportHeight * TILE_HEIGHT
                     );
                 } else {
-                    graphics.drawRect(0, 0, ctx.mapWidth * globalVars.TILE_WIDTH, ctx.mapHeight * globalVars.TILE_HEIGHT);
+                    graphics.drawRect(0, 0, ctx.mapWidth * TILE_WIDTH, ctx.mapHeight * TILE_HEIGHT);
                 }
                 graphics.endFill();
 
@@ -677,8 +676,8 @@ export const EffectPrimitives = {
 
         return {
             apply() {
-                const tw = globalVars.TILE_WIDTH;
-                const th = globalVars.TILE_HEIGHT;
+                const tw = TILE_WIDTH;
+                const th = TILE_HEIGHT;
                 const origColor = ctx.engine.config.backgroundColor;
                 const origR = (origColor >> 16) & 0xFF;
                 const origG = (origColor >> 8) & 0xFF;
@@ -781,8 +780,8 @@ export const EffectPrimitives = {
                 const actors = entityManager?.actors;
                 if (!actors || !spriteLib) return;
 
-                const tw = globalVars.TILE_WIDTH;
-                const th = globalVars.TILE_HEIGHT;
+                const tw = TILE_WIDTH;
+                const th = TILE_HEIGHT;
 
                 if (!originalActorTextures) {
                     originalActorTextures = new Map();
@@ -956,13 +955,13 @@ export const EffectPrimitives = {
                 graphics.beginFill(colorNum);
                 if (ctx.engine.viewportEnabled) {
                     graphics.drawRect(
-                        ctx.engine.sectionOriginX * globalVars.TILE_WIDTH,
-                        ctx.engine.sectionOriginY * globalVars.TILE_HEIGHT,
-                        ctx.engine.viewportWidth * globalVars.TILE_WIDTH,
-                        ctx.engine.viewportHeight * globalVars.TILE_HEIGHT
+                        ctx.engine.sectionOriginX * TILE_WIDTH,
+                        ctx.engine.sectionOriginY * TILE_HEIGHT,
+                        ctx.engine.viewportWidth * TILE_WIDTH,
+                        ctx.engine.viewportHeight * TILE_HEIGHT
                     );
                 } else {
-                    graphics.drawRect(0, 0, ctx.mapWidth * globalVars.TILE_WIDTH, ctx.mapHeight * globalVars.TILE_HEIGHT);
+                    graphics.drawRect(0, 0, ctx.mapWidth * TILE_WIDTH, ctx.mapHeight * TILE_HEIGHT);
                 }
                 graphics.endFill();
 
@@ -1020,8 +1019,8 @@ export const EffectPrimitives = {
             apply(runtimeParams) {
                 const target = runtimeParams?._target;
                 if (!target) return;
-                const tw = globalVars.TILE_WIDTH;
-                const th = globalVars.TILE_HEIGHT;
+                const tw = TILE_WIDTH;
+                const th = TILE_HEIGHT;
                 const cx = target.x;
                 const cy = target.y;
                 const colorNum = typeof color === 'string' ? parseInt(color, 16) : color;
@@ -1105,8 +1104,8 @@ export const EffectPrimitives = {
             apply(runtimeParams) {
                 const path = runtimeParams?.path;
                 if (!path || path.length === 0) return;
-                const tw = globalVars.TILE_WIDTH;
-                const th = globalVars.TILE_HEIGHT;
+                const tw = TILE_WIDTH;
+                const th = TILE_HEIGHT;
                 const colorNum = typeof color === 'string' ? parseInt(color, 16) : color;
                 const blendMode = PIXI.BLEND_MODES[blend_mode?.toUpperCase()] || PIXI.BLEND_MODES.ADD;
 

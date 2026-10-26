@@ -51,12 +51,11 @@ Prototype JSON files are merged with global `data/` files at load — you only n
 
 ### Engine source
 
-The engine is plain ES modules, no bundler: each game page loads the `lib/` scripts (rot, pixi, tween, howler) as globals, then `main.js`, which imports everything else.
+The engine is plain ES modules, no bundler: each game page loads the vendor `lib/` scripts (rot, pixi, tween, howler) as globals, then `main.js`, which imports everything else.
 
 ```
 main.js           <- entry point: initializeGame() and console debug helpers
-globals.js        <- shared constants (paths, tile sizes, tile ids)
-core/             <- helpers with no engine dependencies (util, pathfinding, mixin)
+core/             <- helpers with no engine dependencies (util, pathfinding, mixin); util also holds the asset path and tile size constants
 engine/           <- DungeonEngine, Prototype, Entity, Item, Actor, EntityManager, RenderSystem
 architect/        <- map building: Tiled loading and the procedural generators
 behaviors/        <- Personality and the BehaviorLibrary of AI/environment behaviors

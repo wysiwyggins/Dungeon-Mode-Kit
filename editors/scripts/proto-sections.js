@@ -160,6 +160,7 @@ function renderForm() {
         // the biome editor, not here.
         root.appendChild(sectionMapGenerator(state.proto, { placedFeatures: trapsSwitchesBody }).det);
         root.appendChild(sectionDefaultFloor(state.proto).det);
+        root.appendChild(sectionVoidTile(state.proto).det);
         root.appendChild(sectionItemCatalog().det);
         root.appendChild(sectionSpawns(state.proto, { open: true }).det);
         if (isMultiLevel()) {
@@ -266,6 +267,18 @@ function sectionDefaultFloor(obj, opts = {}) {
         'default floor tile'));
     body.appendChild(colorRow('tint', df, 'tint',
         'Color multiplied over floor tiles. Leave clear for untinted.'));
+    return { det };
+}
+
+/**
+ * void_tile — the flat void the engine paints under abysses, holes and collapsed
+ * floor. Unset keeps the engine default (OPAQUE_FULL_BLOCK).
+ */
+function sectionVoidTile(obj) {
+    const { det, body } = section('Void tile');
+    body.appendChild(tileRow('tile', obj, 'void_tile',
+        'Tile painted as void under abysses, holes and collapsed floor. Leave unset for OPAQUE_FULL_BLOCK.',
+        'void tile'));
     return { det };
 }
 
@@ -563,7 +576,7 @@ function effectsEditor(pat) {
 // manage must be listed, or the editor reports its own fields as unrecognized.
 const KNOWN_TOP_KEYS = new Set([
     'name','description','loaded_sound','turn_speed','next_level','previous_level','intro_cutscene',
-    'mechanics','win_state','win_conditions','map_generator','default_floor','item_catalog','item_budget',
+    'mechanics','win_state','win_conditions','map_generator','default_floor','void_tile','item_catalog','item_budget',
     'random_actors','random_items','traps','switch_puzzles','levels','cutscene',
     // Multi-level / biome keys, edited by the Biome plan section.
     'floors','floor_plan','biomes',

@@ -6,13 +6,12 @@
  */
 
 import { installMethods } from '../../core/mixin.js';
-import { ALL_DIRS, CARDINAL_DIRS, parseTint, randomElement } from '../../core/util.js';
+import { ALL_DIRS, CARDINAL_DIRS, TILE_HEIGHT, TILE_WIDTH, parseTint, randomElement } from '../../core/util.js';
 import { Actor } from '../actor/actor.js';
 import { EntityManagerQueries } from './queries.js';
 import { EntityManagerSpawning } from './spawning.js';
 import { Entity } from '../entity.js';
 import { Item } from '../item.js';
-import { globalVars } from '../../globals.js';
 
 // ============================================================================
 // ENTITY MANAGER
@@ -328,7 +327,7 @@ export class EntityManager {
 
         const mapManager = this.engine.mapManager;
         const floor = mapManager?.floorMap[y]?.[x];
-        if (!floor || floor.tileId <= 0 || globalVars.VOID_FLOOR_FILLS.includes(floor.tileId)) return false;
+        if (!floor || floor.tileId <= 0 || mapManager.isVoidFloorFill(floor.tileId)) return false;
         const blocked = this.getActorsAt(x, y).some(a =>
             !a.isDead && a.stats?.health === undefined && this._gasDensity(a) === 0);
         if (blocked) return false;
@@ -396,7 +395,7 @@ export class EntityManager {
             x2: Math.max(...cells.map(c => c.x)) + 1, y2: Math.max(...cells.map(c => c.y)) + 1
         };
         for (const hole of holes) {
-            mapManager.backgroundMap[hole.y][hole.x] = { tileId: globalVars.VOID_FILL, layer: 'background' };
+            mapManager.backgroundMap[hole.y][hole.x] = { tileId: mapManager.config.voidTileId, layer: 'background' };
         }
         if (holes.length > 0) mapManager.addBaseAndShadows(bounds);
         for (const hole of holes) {
@@ -417,10 +416,9 @@ export class EntityManager {
         // Void backgrounds: the flat void fill plus the cliffside shading that
         // addBaseAndShadows (architect/architect.js) paints along abyss edges. All of them are
         // only ever set on floorless cells, so each still means "bottomless void",
-        // just rendered as a shaded cliff. Sourced from globalVars so it cannot drift
+        // just rendered as a shaded cliff. Asks the Architect so it cannot drift
         // out of sync with what the generator paints — if a shaded cliff cell stopped
         // reading as void here, digging beside an abyss would pave over the pit.
-        const VOID_BG_TILES = new Set(globalVars.VOID_TILE_IDS);
         const clearedSet = new Set(clearedPositions.map(p => `${p.x},${p.y}`));
 
         // An abyss cell (void background, no floor) is a deliberate bottomless pit —
@@ -429,7 +427,7 @@ export class EntityManager {
         // (including its shaded cliff edges, which read as void too).
         const isAbyss = (x, y) => {
             const bg = mapManager.backgroundMap[y]?.[x];
-            return bg && VOID_BG_TILES.has(bg.tileId) && mapManager.floorMap[y]?.[x] == null;
+            return bg && mapManager.isVoidTile(bg.tileId) && mapManager.floorMap[y]?.[x] == null;
         };
 
         for (const { x, y } of clearedPositions) {
@@ -1015,10 +1013,10 @@ export class EntityManager {
         entity._trackExitDir = exitDir;
         const tileset = PIXI.Loader.shared.resources.tiles;
         const rect = new PIXI.Rectangle(
-            tileIndex.x * globalVars.TILE_WIDTH,
-            tileIndex.y * globalVars.TILE_HEIGHT,
-            globalVars.TILE_WIDTH,
-            globalVars.TILE_HEIGHT
+            tileIndex.x * TILE_WIDTH,
+            tileIndex.y * TILE_HEIGHT,
+            TILE_WIDTH,
+            TILE_HEIGHT
         );
         entity.sprite.texture = new PIXI.Texture(tileset.texture.baseTexture, rect);
     }

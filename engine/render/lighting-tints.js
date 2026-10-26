@@ -4,8 +4,7 @@
  */
 
 import { getChebyshevDistance, isImportantActor } from '../../core/pathfinding.js';
-import { STATE_TINT_MIX, lerpColor } from '../../core/util.js';
-import { globalVars } from '../../globals.js';
+import { STATE_TINT_MIX, TILE_HEIGHT, TILE_WIDTH, lerpColor } from '../../core/util.js';
 
 export const RenderLighting = {
     initializeDarkness(width, height) {
@@ -23,17 +22,17 @@ export const RenderLighting = {
         const blockCoords = this.engine.spriteLibrary.getTileByName('OPAQUE_FULL_BLOCK')
             || { x: 0, y: 10 };
         const rect = new PIXI.Rectangle(
-            blockCoords.x * globalVars.TILE_WIDTH,
-            blockCoords.y * globalVars.TILE_HEIGHT,
-            globalVars.TILE_WIDTH,
-            globalVars.TILE_HEIGHT
+            blockCoords.x * TILE_WIDTH,
+            blockCoords.y * TILE_HEIGHT,
+            TILE_WIDTH,
+            TILE_HEIGHT
         );
         this.darkTexture = new PIXI.Texture(tileset.texture.baseTexture, rect);
         this.solidDarkTexture = this.darkTexture;
 
         const whiteGraphics = new PIXI.Graphics();
         whiteGraphics.beginFill(0xFFFFFF);
-        whiteGraphics.drawRect(0, 0, globalVars.TILE_WIDTH, globalVars.TILE_HEIGHT);
+        whiteGraphics.drawRect(0, 0, TILE_WIDTH, TILE_HEIGHT);
         whiteGraphics.endFill();
         this.lightColorTexture = this.app.renderer.generateTexture(whiteGraphics);
         whiteGraphics.destroy();
@@ -44,8 +43,8 @@ export const RenderLighting = {
             for (let x = 0; x < width; x++) {
                 // Light color overlay (multiply blend)
                 const lightSprite = new PIXI.Sprite(this.lightColorTexture);
-                lightSprite.x = x * globalVars.TILE_WIDTH;
-                lightSprite.y = y * globalVars.TILE_HEIGHT;
+                lightSprite.x = x * TILE_WIDTH;
+                lightSprite.y = y * TILE_HEIGHT;
                 lightSprite.alpha = 0;
                 lightSprite.tint = 0xFFFFFF;
                 lightSprite.blendMode = PIXI.BLEND_MODES.MULTIPLY;
@@ -54,13 +53,13 @@ export const RenderLighting = {
 
                 // Darkness overlay
                 const sprite = new PIXI.Sprite(this.solidDarkTexture);
-                sprite.x = x * globalVars.TILE_WIDTH;
-                sprite.y = y * globalVars.TILE_HEIGHT;
+                sprite.x = x * TILE_WIDTH;
+                sprite.y = y * TILE_HEIGHT;
                 sprite.alpha = 1.0;
 
                 sprite.anchor.set(0.5, 0.5);
-                sprite.x += globalVars.TILE_WIDTH / 2;
-                sprite.y += globalVars.TILE_HEIGHT / 2;
+                sprite.x += TILE_WIDTH / 2;
+                sprite.y += TILE_HEIGHT / 2;
                 if (Math.random() < 0.5) sprite.scale.x = -1;
                 if (Math.random() < 0.5) sprite.scale.y = -1;
 
@@ -500,10 +499,10 @@ export const RenderLighting = {
         const tileset = PIXI.Loader.shared.resources.tiles;
         if (!tileset) return;
         const rect = new PIXI.Rectangle(
-            tileIndex.x * globalVars.TILE_WIDTH,
-            tileIndex.y * globalVars.TILE_HEIGHT,
-            globalVars.TILE_WIDTH,
-            globalVars.TILE_HEIGHT
+            tileIndex.x * TILE_WIDTH,
+            tileIndex.y * TILE_HEIGHT,
+            TILE_WIDTH,
+            TILE_HEIGHT
         );
         sprite.texture = new PIXI.Texture(tileset.texture.baseTexture, rect);
     },

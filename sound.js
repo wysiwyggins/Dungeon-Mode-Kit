@@ -1,4 +1,4 @@
-import { globalVars } from './globals.js';
+import { BASE_PATH } from './core/util.js';
 
 // ============================================================================
 // AUDIO MANAGER
@@ -25,12 +25,12 @@ export class AudioManager {
             if (urls && urls.length > 0) {
                 urls = urls.map(url => {
                     if (url.startsWith('/')) {
-                        return globalVars.BASE_PATH + url;
+                        return BASE_PATH + url;
                     }
                     return url;
                 });
             } else {
-                const basePath = `${globalVars.BASE_PATH}/assets/audio/effects`;
+                const basePath = `${BASE_PATH}/assets/audio/effects`;
                 const formats = ['mp3', 'ogg', 'm4a'];
                 urls = formats.map(ext => `${basePath}.${ext}`);
             }

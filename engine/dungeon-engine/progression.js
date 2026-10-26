@@ -3,7 +3,7 @@
  * win, stairway and condition locks, portal reveal.
  */
 
-import { globalVars } from '../../globals.js';
+import { TILE_HEIGHT, TILE_WIDTH } from '../../core/util.js';
 
 export const DungeonEngineProgression = {
     async transitionToPrototype(prototypeName, saveState = true, entryDirection = null, fromCutscene = false) {
@@ -261,10 +261,10 @@ export const DungeonEngineProgression = {
             if (stairway.tileIndexBase && stairway.spriteBase) {
                 const tileset = PIXI.Loader.shared.resources.tiles;
                 const rect = new PIXI.Rectangle(
-                    stairway.tileIndexBase.x * globalVars.TILE_WIDTH,
-                    stairway.tileIndexBase.y * globalVars.TILE_HEIGHT,
-                    globalVars.TILE_WIDTH,
-                    globalVars.TILE_HEIGHT
+                    stairway.tileIndexBase.x * TILE_WIDTH,
+                    stairway.tileIndexBase.y * TILE_HEIGHT,
+                    TILE_WIDTH,
+                    TILE_HEIGHT
                 );
                 stairway.spriteBase.texture = new PIXI.Texture(tileset.texture.baseTexture, rect);
             }

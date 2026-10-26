@@ -6,7 +6,8 @@
  */
 
 import { installMethods } from '../core/mixin.js';
-import { globalVars } from '../globals.js';
+import { MAGIC_POLARITY_TILE, MAGIC_POLARITY_TINTS } from '../engine/render/overlays.js';
+import { TILE_HEIGHT, TILE_WIDTH } from '../core/util.js';
 import { UIAiming } from './aiming.js';
 import { UIMenus } from './menus.js';
 import { UIPanels } from './panels.js';
@@ -292,14 +293,14 @@ export class InterfaceManager {
 
         // Create container for this box
         const boxContainer = new PIXI.Container();
-        boxContainer.x = x * globalVars.TILE_WIDTH;
-        boxContainer.y = y * globalVars.TILE_HEIGHT;
+        boxContainer.x = x * TILE_WIDTH;
+        boxContainer.y = y * TILE_HEIGHT;
         boxContainer.zIndex = 10; // Above thread trails (zIndex 1-2) but below projectiles (100)
 
         // Create solid fill background
         const fill = new PIXI.Graphics();
         fill.beginFill(fillColor);
-        fill.drawRect(0, 0, width * globalVars.TILE_WIDTH, height * globalVars.TILE_HEIGHT);
+        fill.drawRect(0, 0, width * TILE_WIDTH, height * TILE_HEIGHT);
         fill.endFill();
         boxContainer.addChild(fill);
 
@@ -363,17 +364,17 @@ export class InterfaceManager {
         if (!tileCoords || !this.tileset) return;
 
         const rect = new PIXI.Rectangle(
-            tileCoords.x * globalVars.TILE_WIDTH,
-            tileCoords.y * globalVars.TILE_HEIGHT,
-            globalVars.TILE_WIDTH,
-            globalVars.TILE_HEIGHT
+            tileCoords.x * TILE_WIDTH,
+            tileCoords.y * TILE_HEIGHT,
+            TILE_WIDTH,
+            TILE_HEIGHT
         );
 
         const texture = new PIXI.Texture(this.tileset.texture.baseTexture, rect);
         const sprite = new PIXI.Sprite(texture);
 
-        sprite.x = tileX * globalVars.TILE_WIDTH;
-        sprite.y = tileY * globalVars.TILE_HEIGHT;
+        sprite.x = tileX * TILE_WIDTH;
+        sprite.y = tileY * TILE_HEIGHT;
         sprite.tint = tint;
 
         container.addChild(sprite);
@@ -402,7 +403,7 @@ export class InterfaceManager {
 
         const overlay = new PIXI.Graphics();
         overlay.beginFill(this.inactiveTintColor, this.inactiveTintAlpha);
-        overlay.drawRect(0, 0, box._boxWidth * globalVars.TILE_WIDTH, box._boxHeight * globalVars.TILE_HEIGHT);
+        overlay.drawRect(0, 0, box._boxWidth * TILE_WIDTH, box._boxHeight * TILE_HEIGHT);
         overlay.endFill();
         box.addChild(overlay);
         box._inactiveOverlay = overlay;
@@ -433,7 +434,7 @@ export class InterfaceManager {
      */
     drawListStripes(boxContainer, rows, contentWidth, padding) {
         if (!boxContainer || !rows || rows.length === 0) return;
-        const TW = globalVars.TILE_WIDTH, TH = globalVars.TILE_HEIGHT;
+        const TW = TILE_WIDTH, TH = TILE_HEIGHT;
         const stripeX = (padding + 1) * TW; // align with textStartX (inside border+pad)
         const stripeW = contentWidth * TW;  // span the content columns
         const g = new PIXI.Graphics();
@@ -689,16 +690,16 @@ export class InterfaceManager {
             const tileCoords = filled ? fullBlockCoords : lightShadeCoords;
 
             const rect = new PIXI.Rectangle(
-                tileCoords.x * globalVars.TILE_WIDTH,
-                tileCoords.y * globalVars.TILE_HEIGHT,
-                globalVars.TILE_WIDTH,
-                globalVars.TILE_HEIGHT
+                tileCoords.x * TILE_WIDTH,
+                tileCoords.y * TILE_HEIGHT,
+                TILE_WIDTH,
+                TILE_HEIGHT
             );
 
             const texture = new PIXI.Texture(this.tileset.texture.baseTexture, rect);
             const sprite = new PIXI.Sprite(texture);
 
-            sprite.x = x + (i * globalVars.TILE_WIDTH);
+            sprite.x = x + (i * TILE_WIDTH);
             sprite.y = y;
 
             // Tint colored fills (filled tiles only — background shade stays neutral)
@@ -721,10 +722,10 @@ export class InterfaceManager {
         if (!item.tileIndex || !this.tileset) return;
 
         const rect = new PIXI.Rectangle(
-            item.tileIndex.x * globalVars.TILE_WIDTH,
-            item.tileIndex.y * globalVars.TILE_HEIGHT,
-            globalVars.TILE_WIDTH,
-            globalVars.TILE_HEIGHT
+            item.tileIndex.x * TILE_WIDTH,
+            item.tileIndex.y * TILE_HEIGHT,
+            TILE_WIDTH,
+            TILE_HEIGHT
         );
 
         const texture = new PIXI.Texture(this.tileset.texture.baseTexture, rect);
@@ -742,8 +743,8 @@ export class InterfaceManager {
         // Apply horizontal/vertical flip using anchor at center
         if (item.flipH || item.flipV) {
             sprite.anchor.set(0.5, 0.5);
-            sprite.x += globalVars.TILE_WIDTH / 2;
-            sprite.y += globalVars.TILE_HEIGHT / 2;
+            sprite.x += TILE_WIDTH / 2;
+            sprite.y += TILE_HEIGHT / 2;
             sprite.scale.x = item.flipH ? -1 : 1;
             sprite.scale.y = item.flipV ? -1 : 1;
         }
@@ -763,19 +764,19 @@ export class InterfaceManager {
     renderMagicPolarityIcon(container, item, x, y) {
         const polarity = item.getDetectedMagicPolarity?.();
         if (!polarity || !this.tileset) return;
-        const tileCoords = this.spriteLibrary.getTileByName(globalVars.MAGIC_POLARITY_TILE);
+        const tileCoords = this.spriteLibrary.getTileByName(MAGIC_POLARITY_TILE);
         if (!tileCoords) return;
 
         const rect = new PIXI.Rectangle(
-            tileCoords.x * globalVars.TILE_WIDTH,
-            tileCoords.y * globalVars.TILE_HEIGHT,
-            globalVars.TILE_WIDTH,
-            globalVars.TILE_HEIGHT
+            tileCoords.x * TILE_WIDTH,
+            tileCoords.y * TILE_HEIGHT,
+            TILE_WIDTH,
+            TILE_HEIGHT
         );
         const sprite = new PIXI.Sprite(new PIXI.Texture(this.tileset.texture.baseTexture, rect));
         sprite.x = x;
         sprite.y = y;
-        sprite.tint = globalVars.MAGIC_POLARITY_TINTS[polarity];
+        sprite.tint = MAGIC_POLARITY_TINTS[polarity];
         container.addChild(sprite);
     }
 
@@ -795,10 +796,10 @@ export class InterfaceManager {
         if (!tileCoords || !this.tileset) return null;
 
         const rect = new PIXI.Rectangle(
-            tileCoords.x * globalVars.TILE_WIDTH,
-            tileCoords.y * globalVars.TILE_HEIGHT,
-            globalVars.TILE_WIDTH,
-            globalVars.TILE_HEIGHT
+            tileCoords.x * TILE_WIDTH,
+            tileCoords.y * TILE_HEIGHT,
+            TILE_WIDTH,
+            TILE_HEIGHT
         );
 
         const texture = new PIXI.Texture(this.tileset.texture.baseTexture, rect);
@@ -900,7 +901,7 @@ export class InterfaceManager {
             // A colored glyph (anything not the plain black default) must use the
             // tintable white variant so the tint shows; honor baseWhite otherwise.
             const white = baseWhite || color !== this.defaultTextTint;
-            const sprite = this.createCharSprite(chars[i], startX + i * globalVars.TILE_WIDTH, y, color, white);
+            const sprite = this.createCharSprite(chars[i], startX + i * TILE_WIDTH, y, color, white);
             if (sprite) container.addChild(sprite);
         }
     }
@@ -1050,11 +1051,11 @@ export class InterfaceManager {
             }
 
             // Add text sprites
-            const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
-            const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
+            const textStartX = (padding + 1) * TILE_WIDTH;
+            const textStartY = (padding + 1) * TILE_HEIGHT;
 
             for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-                const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+                const charY = textStartY + (lineIndex * TILE_HEIGHT);
                 this.renderTextLine(boxContainer, lines[lineIndex], textStartX, charY, textTint);
             }
 
@@ -1150,7 +1151,7 @@ export class InterfaceManager {
         for (const id of this.textBoxStack) {
             const box = this.boxes.get(id);
             if (box) {
-                box.y = yPosition * globalVars.TILE_HEIGHT;
+                box.y = yPosition * TILE_HEIGHT;
                 // Keep _boxY in step — click hit-testing reads it, so leaving it at the
                 // old row makes the box unclickable where it now appears.
                 box._boxY = yPosition;

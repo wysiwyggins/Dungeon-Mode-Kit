@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="../assets/main.css">
 <!-- Plays the real sprite through the real Howler build, so what you hear here
      is exactly what the game plays. sound.js is skipped on purpose: AudioManager
-     reads globalVars.BASE_PATH, which is "." — correct for pages at the repo
+     reads BASE_PATH (core/util.js), which is "." — correct for pages at the repo
      root, wrong from /editors/. This page builds its own Howl with ../ paths. -->
 <script src="../lib/howler.js"></script>
 <script src="scripts/sound-player.js"></script>

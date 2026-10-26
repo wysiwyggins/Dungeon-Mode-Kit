@@ -7,14 +7,13 @@
  */
 
 import { installMethods } from '../core/mixin.js';
-import { buildWordRegistry, shuffleArray } from '../core/util.js';
+import { BASE_PATH, SPRITESHEET_PATH, TILE_HEIGHT, TILE_WIDTH, buildWordRegistry, shuffleArray } from '../core/util.js';
 import { DungeonEngineFloors } from './dungeon-engine/floors.js';
 import { DungeonEnginePersistence } from './dungeon-engine/persistence.js';
 import { DungeonEngineProgression } from './dungeon-engine/progression.js';
 import { DungeonEngineStairways } from './dungeon-engine/stairways.js';
 import { RenderSystem } from './render/render-system.js';
 import { SpriteLibrary } from './sprite-library.js';
-import { globalVars } from '../globals.js';
 import { InputManager } from '../input.js';
 import { LightingManager } from '../lighting.js';
 import { AudioManager } from '../sound.js';
@@ -96,22 +95,22 @@ export class DungeonEngine {
         try {
             // Load global entity definitions
             const [actorsRes, itemsRes, personalitiesRes, entitiesRes, colorsRes, reagentsRes, substancesRes, statesRes, wordsRes, effectsRes, keybindingsRes, fungiTypesRes, biomesRes, typesRes, attributeInfoRes, animationsRes] = await Promise.all([
-                fetch(`${globalVars.BASE_PATH}/data/actors.json`),
-                fetch(`${globalVars.BASE_PATH}/data/items.json`),
-                fetch(`${globalVars.BASE_PATH}/data/personalities.json`),
-                fetch(`${globalVars.BASE_PATH}/data/entities.json`),
-                fetch(`${globalVars.BASE_PATH}/data/colors.json`),
-                fetch(`${globalVars.BASE_PATH}/data/reagents.json`),
-                fetch(`${globalVars.BASE_PATH}/data/substances.json`),
-                fetch(`${globalVars.BASE_PATH}/data/states.json`),
-                fetch(`${globalVars.BASE_PATH}/data/words.json`),
-                fetch(`${globalVars.BASE_PATH}/data/effects.json`),
-                fetch(`${globalVars.BASE_PATH}/data/keybindings.json`),
-                fetch(`${globalVars.BASE_PATH}/data/fungi_types.json`),
-                fetch(`${globalVars.BASE_PATH}/data/biomes.json`),
-                fetch(`${globalVars.BASE_PATH}/data/types.json`),
-                fetch(`${globalVars.BASE_PATH}/data/attribute-info.json`),
-                fetch(`${globalVars.BASE_PATH}/data/animations.json`)
+                fetch(`${BASE_PATH}/data/actors.json`),
+                fetch(`${BASE_PATH}/data/items.json`),
+                fetch(`${BASE_PATH}/data/personalities.json`),
+                fetch(`${BASE_PATH}/data/entities.json`),
+                fetch(`${BASE_PATH}/data/colors.json`),
+                fetch(`${BASE_PATH}/data/reagents.json`),
+                fetch(`${BASE_PATH}/data/substances.json`),
+                fetch(`${BASE_PATH}/data/states.json`),
+                fetch(`${BASE_PATH}/data/words.json`),
+                fetch(`${BASE_PATH}/data/effects.json`),
+                fetch(`${BASE_PATH}/data/keybindings.json`),
+                fetch(`${BASE_PATH}/data/fungi_types.json`),
+                fetch(`${BASE_PATH}/data/biomes.json`),
+                fetch(`${BASE_PATH}/data/types.json`),
+                fetch(`${BASE_PATH}/data/attribute-info.json`),
+                fetch(`${BASE_PATH}/data/animations.json`)
             ]);
 
             this.globalActors = await actorsRes.json();
@@ -271,7 +270,7 @@ export class DungeonEngine {
                         reject(error);
                     });
                     
-                    PIXI.Loader.shared.add('tiles', globalVars.SPRITESHEET_PATH);
+                    PIXI.Loader.shared.add('tiles', SPRITESHEET_PATH);
                     this.queueAnimationSheets(this.globalAnimations);
                     PIXI.Loader.shared
                         .load(() => {
@@ -292,7 +291,7 @@ export class DungeonEngine {
         
 
         try {
-            const audioData = await fetch(`${globalVars.BASE_PATH}/data/sounds.json`).then(r => r.json());
+            const audioData = await fetch(`${BASE_PATH}/data/sounds.json`).then(r => r.json());
             this.audioManager = new AudioManager(audioData);
             console.log('Audio loaded successfully');
         } catch (error) {
@@ -320,7 +319,7 @@ export class DungeonEngine {
      * @param {Object} manifest - name -> { file, speed?, description? }
      * @param {string} [basePath] - Directory the `file` values are relative to
      */
-    queueAnimationSheets(manifest, basePath = `${globalVars.BASE_PATH}/assets/sprites/`) {
+    queueAnimationSheets(manifest, basePath = `${BASE_PATH}/assets/sprites/`) {
         for (const [name, def] of Object.entries(manifest || {})) {
             const file = typeof def === 'string' ? def : def?.file;
             if (!file) {
@@ -362,12 +361,12 @@ export class DungeonEngine {
             }
 
             const baseTexture = resource.texture.baseTexture;
-            const frameCount = Math.floor(baseTexture.width / globalVars.TILE_WIDTH);
+            const frameCount = Math.floor(baseTexture.width / TILE_WIDTH);
             const frames = [];
             for (let i = 0; i < frameCount; i++) {
                 const rect = new PIXI.Rectangle(
-                    i * globalVars.TILE_WIDTH, 0,
-                    globalVars.TILE_WIDTH, globalVars.TILE_HEIGHT
+                    i * TILE_WIDTH, 0,
+                    TILE_WIDTH, TILE_HEIGHT
                 );
                 frames.push(new PIXI.Texture(baseTexture, rect));
             }

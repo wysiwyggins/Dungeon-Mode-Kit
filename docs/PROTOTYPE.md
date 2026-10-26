@@ -39,6 +39,7 @@ missing from the index is invisible in the editors.
 | `previous_level` | string | Prototype folder name to return to (via up stairway from floor 1) |
 | `win_state` | object | Escape-style overall victory for the whole prototype: `{ via: "escape", exit_floor, conditions, message }`. Reaching `exit_floor`'s exit with `conditions` met wins the run (distinct from per-floor `win_conditions`, which just unlock a floor's stairway). |
 | `default_floor` | object | Floor tile and tint for generated maps — see [Default Floor](#default-floor). |
+| `void_tile` | string | Tile name for the flat void the engine paints under abysses, holes and collapsed floor. Default `OPAQUE_FULL_BLOCK`. See [Void Tile](#void-tile). |
 | `rank_order` | array | Actor ids weakest to strongest, forming a capture hierarchy. Higher rank takes lower and the first entry takes the last. See [Rank hierarchies](ACTORS.md#rank-hierarchies). |
 | `floors`, `biomes`, `floor_plan` | — | Multi-floor / biome configuration — see [Multi-Floor Prototypes](#multi-floor-prototypes) and [Biomes](#biomes). |
 
@@ -206,9 +207,9 @@ An id that names no actor is skipped with a console warning rather than silently
 becoming water.
 
 Blob actors that hurt or swallow what stands on them — lava, quicksand, deep water —
-are excluded from the walkable set, so items and monsters never spawn on one. That
-list is `HAZARD_BLOB_ACTORS` in `globals.js`; add an id there when adding a liquid
-with `damage_type` or `deep`.
+are excluded from the walkable set, so items and monsters never spawn on one. Those
+are the actors with the `hazard` attribute; give it to any new liquid with
+`damage_type` or `deep`.
 
 `abyss` is not an actor. It is floorless void with a special tile signature, which
 bridges, causeways and collapsing floors all key off, so its `types` is always
@@ -323,6 +324,22 @@ there is no default left to fill in and neither field applies to it.
 
 The tint rides on the floor layer, which lighting leaves alone (floors are dimmed
 by a separate overlay), so it coexists with `darkness` and fog of war.
+
+---
+
+## Void Tile
+
+`void_tile` names the background tile the engine paints wherever it opens up void:
+abyss blobs, collapsing floors, temporary holes. An unknown name logs a warning and
+falls back to the default `OPAQUE_FULL_BLOCK`.
+
+```json
+"void_tile": "OPAQUE_FULL_BLOCK"
+```
+
+The tile also counts as void wherever the engine checks for it (bridges, digging,
+cliff shading), alongside the built-in void tiles. The diagonal cliff shadows drawn
+along abyss edges are always the engine's own tiles.
 
 Both fields are editable in the prototype editor's **Default floor** section, which
 includes the same visual tile picker the actor and item editors use. A biome card

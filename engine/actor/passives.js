@@ -4,7 +4,7 @@
  */
 
 import { Entity } from '../entity.js';
-import { globalVars } from '../../globals.js';
+import { TILE_HEIGHT, TILE_WIDTH } from '../../core/util.js';
 
 export const ActorPassives = {
     // ========================================================================
@@ -267,10 +267,10 @@ export const ActorPassives = {
             // Update sprite texture
             const tileset = PIXI.Loader.shared.resources.tiles;
             const rect = new PIXI.Rectangle(
-                tileIndex.x * globalVars.TILE_WIDTH,
-                tileIndex.y * globalVars.TILE_HEIGHT,
-                globalVars.TILE_WIDTH,
-                globalVars.TILE_HEIGHT
+                tileIndex.x * TILE_WIDTH,
+                tileIndex.y * TILE_HEIGHT,
+                TILE_WIDTH,
+                TILE_HEIGHT
             );
             segment.entity.sprite.texture = new PIXI.Texture(tileset.texture.baseTexture, rect);
         }
@@ -278,12 +278,12 @@ export const ActorPassives = {
 
     updateSpritePosition() {
         const useCenterAnchor = this.facingEnabled;
-        const hw = globalVars.TILE_WIDTH / 2;
-        const hh = globalVars.TILE_HEIGHT / 2;
+        const hw = TILE_WIDTH / 2;
+        const hh = TILE_HEIGHT / 2;
 
         if (this.spriteBase) {
-            let bx = this.x * globalVars.TILE_WIDTH;
-            let by = this.y * globalVars.TILE_HEIGHT;
+            let bx = this.x * TILE_WIDTH;
+            let by = this.y * TILE_HEIGHT;
             if (useCenterAnchor || this.flipBaseH || this.flipBaseV) {
                 bx += hw;
                 by += hh;
@@ -292,8 +292,8 @@ export const ActorPassives = {
             this.spriteBase.y = by;
         }
         if (this.spriteTop) {
-            let tx = this.x * globalVars.TILE_WIDTH;
-            let ty = (this.y - 1) * globalVars.TILE_HEIGHT;
+            let tx = this.x * TILE_WIDTH;
+            let ty = (this.y - 1) * TILE_HEIGHT;
             if (useCenterAnchor || this.flipTopH || this.flipTopV) {
                 tx += hw;
                 ty += hh;
@@ -303,8 +303,8 @@ export const ActorPassives = {
         }
         if (this.spriteSide) {
             const sideOffset = this.getEffectiveSideOffset();
-            let sx = (this.x + sideOffset.dx) * globalVars.TILE_WIDTH;
-            let sy = (this.y + sideOffset.dy) * globalVars.TILE_HEIGHT;
+            let sx = (this.x + sideOffset.dx) * TILE_WIDTH;
+            let sy = (this.y + sideOffset.dy) * TILE_HEIGHT;
             if (useCenterAnchor || this.flipSideH || this.flipSideV) {
                 sx += hw;
                 sy += hh;
@@ -315,24 +315,24 @@ export const ActorPassives = {
         // Update equipment sprite positions
         // top: above actor's top tile (y - 2)
         if (this.spriteEquipment.top) {
-            let ex = this.x * globalVars.TILE_WIDTH;
-            let ey = (this.y - 2) * globalVars.TILE_HEIGHT;
+            let ex = this.x * TILE_WIDTH;
+            let ey = (this.y - 2) * TILE_HEIGHT;
             if (useCenterAnchor) { ex += hw; ey += hh; }
             this.spriteEquipment.top.x = ex;
             this.spriteEquipment.top.y = ey;
         }
         // middle: on actor's top tile (y - 1)
         if (this.spriteEquipment.middle) {
-            let ex = this.x * globalVars.TILE_WIDTH;
-            let ey = (this.y - 1) * globalVars.TILE_HEIGHT;
+            let ex = this.x * TILE_WIDTH;
+            let ey = (this.y - 1) * TILE_HEIGHT;
             if (useCenterAnchor) { ex += hw; ey += hh; }
             this.spriteEquipment.middle.x = ex;
             this.spriteEquipment.middle.y = ey;
         }
         // lower: on actor's base tile (y)
         if (this.spriteEquipment.lower) {
-            let ex = this.x * globalVars.TILE_WIDTH;
-            let ey = this.y * globalVars.TILE_HEIGHT;
+            let ex = this.x * TILE_WIDTH;
+            let ey = this.y * TILE_HEIGHT;
             if (useCenterAnchor) { ex += hw; ey += hh; }
             this.spriteEquipment.lower.x = ex;
             this.spriteEquipment.lower.y = ey;

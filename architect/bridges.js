@@ -2,8 +2,6 @@
  * Architect methods: rope bridges across abyss blobs and collapsing floors.
  */
 
-import { globalVars } from '../globals.js';
-
 export const ArchitectBridges = {
     generateBridges(config) {
         const maxBridges = config.max || 1;
@@ -11,7 +9,7 @@ export const ArchitectBridges = {
         const isAbyss = (x, y) => {
             if (x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
             const bg = this.backgroundMap[y][x];
-            return bg && globalVars.VOID_TILE_IDS.includes(bg.tileId) && this.floorMap[y][x] === null;
+            return bg && this.isVoidTile(bg.tileId) && this.floorMap[y][x] === null;
         };
 
         const hasFloor = (x, y) => {
@@ -276,7 +274,7 @@ export const ArchitectBridges = {
         const isAbyss = (x, y) => {
             if (x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
             const bg = this.backgroundMap[y][x];
-            return bg && globalVars.VOID_TILE_IDS.includes(bg.tileId) && this.floorMap[y][x] === null;
+            return bg && this.isVoidTile(bg.tileId) && this.floorMap[y][x] === null;
         };
 
         const hasFloor = (x, y) => {
@@ -364,7 +362,7 @@ export const ArchitectBridges = {
 
             for (const c of patch) {
                 this.floorMap[c.y][c.x] = null;
-                this.backgroundMap[c.y][c.x] = { tileId: globalVars.VOID_FILL, layer: 'background' };
+                this.backgroundMap[c.y][c.x] = { tileId: this.config.voidTileId, layer: 'background' };
                 this.pendingCollapsingFloorSpawns.push(c);
                 usedCells.add(`${c.x},${c.y}`);
             }

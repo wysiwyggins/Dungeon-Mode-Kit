@@ -4,8 +4,7 @@
  * hover info) and the help window.
  */
 
-import { randomElement, resolveTemplate } from '../core/util.js';
-import { globalVars } from '../globals.js';
+import { TILE_HEIGHT, TILE_WIDTH, randomElement, resolveTemplate } from '../core/util.js';
 import { InputManager } from '../input.js';
 import { InterfaceManager } from './interface-manager.js';
 
@@ -269,8 +268,8 @@ export const UIPanels = {
         this.drawListStripes(boxContainer, stripeRows, contentWidth, padding);
 
         // Add text sprites
-        const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
-        const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
+        const textStartX = (padding + 1) * TILE_WIDTH;
+        const textStartY = (padding + 1) * TILE_HEIGHT;
 
         // Item stat sub-lines (charges, fuel, etc.) render in the amber accent color —
         // except a `dim` line (a part-used but idle consumable), whose label follows its
@@ -282,33 +281,33 @@ export const UIPanels = {
             const accent = accentLineSet.has(lineIndex);
             const baseColor = dimLineSet.has(lineIndex) ? this.inactiveTintColor
                 : accent ? this.statAccentColor : this.defaultTextTint;
-            const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+            const charY = textStartY + (lineIndex * TILE_HEIGHT);
             // accent lines are wholly amber (baseWhite); markup spans color individual words
             this.renderTextLine(boxContainer, lines[lineIndex], textStartX, charY, baseColor, accent);
         }
 
         // Render thermometer bars for health/nutrition stats
         for (const { lineIndex, label, stat } of thermometerLineIndices) {
-            const barX = textStartX + (label.length * globalVars.TILE_WIDTH);
-            const barY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+            const barX = textStartX + (label.length * TILE_WIDTH);
+            const barY = textStartY + (lineIndex * TILE_HEIGHT);
             this.renderThermometerBar(boxContainer, stat.current, stat.max, barX, barY);
         }
 
         // Render item tiles in inventory list
         // Format is "  a)  [tile] _ Item Name" - tile at offset 5, blank gap at offset 6, name at offset 7
         for (const { lineIndex, item } of inventoryLineIndices) {
-            const tileX = textStartX + (5 * globalVars.TILE_WIDTH); // Position after "  a)  "
-            const tileY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+            const tileX = textStartX + (5 * TILE_WIDTH); // Position after "  a)  "
+            const tileY = textStartY + (lineIndex * TILE_HEIGHT);
             this.renderItemTile(boxContainer, item, tileX, tileY);
-            this.renderMagicPolarityIcon(boxContainer, item, tileX - globalVars.TILE_WIDTH, tileY);
+            this.renderMagicPolarityIcon(boxContainer, item, tileX - TILE_WIDTH, tileY);
         }
 
         // Render thermometer bars for continuous item stats (torch fuel, condition) in
         // the amber accent color. Charge-based items opt out via noBar 
         for (const { lineIndex, label, current, max, noBar, dim } of itemStatLineIndices) {
             if (noBar) continue;
-            const barX = textStartX + (label.length * globalVars.TILE_WIDTH);
-            const barY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+            const barX = textStartX + (label.length * TILE_WIDTH);
+            const barY = textStartY + (lineIndex * TILE_HEIGHT);
             this.renderThermometerBar(boxContainer, current, max, barX, barY,
                 dim ? this.inactiveTintColor : this.statAccentColor);
         }
@@ -318,8 +317,8 @@ export const UIPanels = {
         // just outside the content area.
         const helpSprite = this.createCharSprite(
             '?',
-            (boxWidth - 2) * globalVars.TILE_WIDTH,
-            (boxHeight - 2) * globalVars.TILE_HEIGHT
+            (boxWidth - 2) * TILE_WIDTH,
+            (boxHeight - 2) * TILE_HEIGHT
         );
         if (helpSprite) boxContainer.addChild(helpSprite);
 
@@ -410,13 +409,13 @@ export const UIPanels = {
         const boxContainer = this.createBox(boxId, x, y, boxWidth, boxHeight);
         if (!boxContainer) return;
 
-        const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
-        const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
+        const textStartX = (padding + 1) * TILE_WIDTH;
+        const textStartY = (padding + 1) * TILE_HEIGHT;
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
             // The title line (0) renders white; the rest use the default black.
             const baseColor = lineIndex === 0 ? 0xFFFFFF : this.defaultTextTint;
-            const charY = textStartY + lineIndex * globalVars.TILE_HEIGHT;
+            const charY = textStartY + lineIndex * TILE_HEIGHT;
             this.renderTextLine(boxContainer, lines[lineIndex], textStartX, charY, baseColor);
         }
 
@@ -937,11 +936,11 @@ export const UIPanels = {
             const boxContainer = this.createBox(boxId, x, y, boxWidth, boxHeight);
             if (!boxContainer) { this.actorInfoMode = false; this.actorInfoActor = null; return; }
 
-            const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
-            const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
+            const textStartX = (padding + 1) * TILE_WIDTH;
+            const textStartY = (padding + 1) * TILE_HEIGHT;
             for (let i = 0; i < lines.length; i++) {
                 this.renderTextLine(boxContainer, lines[i],
-                    textStartX, textStartY + (i * globalVars.TILE_HEIGHT));
+                    textStartX, textStartY + (i * TILE_HEIGHT));
             }
 
             this.updateBoxOverlays();
@@ -1396,11 +1395,11 @@ export const UIPanels = {
         // Zebra-stripe the keybinding rows
         this.drawListStripes(boxContainer, bindingLines, contentWidth, padding);
 
-        const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
-        const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
+        const textStartX = (padding + 1) * TILE_WIDTH;
+        const textStartY = (padding + 1) * TILE_HEIGHT;
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-            const charY = textStartY + (lineIndex * globalVars.TILE_HEIGHT);
+            const charY = textStartY + (lineIndex * TILE_HEIGHT);
             this.renderTextLine(boxContainer, lines[lineIndex], textStartX, charY);
         }
 

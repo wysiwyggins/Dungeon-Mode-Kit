@@ -5,8 +5,7 @@
  */
 
 import { getChebyshevDistance, getLinePath } from '../core/pathfinding.js';
-import { ALL_DIRS } from '../core/util.js';
-import { globalVars } from '../globals.js';
+import { ALL_DIRS, TILE_HEIGHT, TILE_WIDTH } from '../core/util.js';
 import { MODIFIER_KEYS, SPELL_DEFAULT_TARGETS } from './interface-manager.js';
 
 export const UISpells = {
@@ -108,11 +107,11 @@ export const UISpells = {
             (_, i) => ({ lineIndex: 2 + i }));
         this.drawListStripes(boxContainer, stripeRows, maxLineLength, padding);
 
-        const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
-        const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
+        const textStartX = (padding + 1) * TILE_WIDTH;
+        const textStartY = (padding + 1) * TILE_HEIGHT;
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-            const charY = textStartY + lineIndex * globalVars.TILE_HEIGHT;
+            const charY = textStartY + lineIndex * TILE_HEIGHT;
             this.renderTextLine(boxContainer, lines[lineIndex], textStartX, charY);
         }
 
@@ -205,11 +204,11 @@ export const UISpells = {
             (_, i) => ({ lineIndex: 2 + i }));
         this.drawListStripes(boxContainer, stripeRows, maxLineLength, padding);
 
-        const textStartX = (padding + 1) * globalVars.TILE_WIDTH;
-        const textStartY = (padding + 1) * globalVars.TILE_HEIGHT;
+        const textStartX = (padding + 1) * TILE_WIDTH;
+        const textStartY = (padding + 1) * TILE_HEIGHT;
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-            const charY = textStartY + lineIndex * globalVars.TILE_HEIGHT;
+            const charY = textStartY + lineIndex * TILE_HEIGHT;
             this.renderTextLine(boxContainer, lines[lineIndex], textStartX, charY);
         }
 
