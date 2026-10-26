@@ -5,11 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3b]
+
+### Changed
+
+- Refactored to ES6 Modules, ESLint error cleanup
+
 ## [1.2b]
 
 These versions are pretty arbitrary, I know. When (if) other folks get involved, I'll formalize it a little.
 
 ### Added
+
 - **Entity editor.** `editors/entity-editor.html` edits the floor dressing in `data/entities.json` (name, tile, tint, fill color, walk description and the attributes the engine reads on entities), with a renderer-accurate preview. It lists every actor `remains` and `decorations` row that uses the entity, so a rename doesn't silently break them.
 - **Editor reference pickers.** Across the actor, item, personality and prototype editors, text fields that name an actor, state, sound, item, effect or prototype now drop down the names that exist (shared `editors/scripts/ref-fields.js`) and flag values that don't. Free labels like `trap_type`, `machine_id` and `use_verb` suggest the values already in use, and `stairway` is an up/down select.
 
