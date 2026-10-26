@@ -19,7 +19,7 @@ Tiles are identified by a numeric **tile ID**. For a tile at column `col`, row `
 tileId = row * 23 + col + 1
 ```
 
-This matches the gid Tiled stores in the `wildcards` layer. Actor matching happens in `architect.js` (`getActorWildcardType` → `getTileIdByName`); builtin generators live in `architect.js` `builtinWildcards`. The name→coordinate table is `data/static-tiles.json`.
+This matches the gid Tiled stores in the `wildcards` layer. Actor matching happens in `architect/tiled.js` (`getActorWildcardType` → `getTileIdByName`); builtin generators live in `architect/tiled.js` `builtinWildcards`. The name→coordinate table is `data/static-tiles.json`.
 
 ---
 
@@ -124,4 +124,4 @@ The data here is derived from three sources — re-derive if any of them change:
 
 - `data/actors.json` — the `attributes.paint_tile` on each actor
 - `data/static-tiles.json` — the tile name → `[col, row]` table
-- `architect.js` — the `builtinWildcards` generator map in `getWildcardType`
+- `architect/tiled.js` — the `builtinWildcards` generator map in `getWildcardType`

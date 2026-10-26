@@ -206,7 +206,7 @@ The same caution applies to `actors` rows: an `id` that only exists in one proto
 
 ## Notes for implementers
 
-- `config.biomes` has exactly **one reader**, `resolveBiome` (`engine.js`). `loadAssets()`
+- `config.biomes` has exactly **one reader**, `resolveBiome` (`engine/dungeon-engine/floors.js`). `loadAssets()`
   publishes the merged library there before the first `loadFloor`, which is why nothing
   downstream needs to know libraries exist.
 - **`resolveBiome` is not pure.** `_budgetCount` and `_weightedPick` both draw from

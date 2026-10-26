@@ -14,21 +14,15 @@
 //   node tools/generator-golden.js > /tmp/after.txt
 //   diff /tmp/before.txt /tmp/after.txt && echo IDENTICAL
 //
-// Loads the real architect.js (same trick as palladian-dump.js) so it checks the
+// Loads the real Architect (tools/load-architect.js) so it checks the
 // shipped code rather than a copy. Reads the Architect's OUTPUT structures, which
 // is the contract the engine actually consumes.
 
-const fs = require('fs');
-const path = require('path');
 const crypto = require('crypto');
 
-const ROOT = path.join(__dirname, '..');
-const ROT = require(path.join(ROOT, 'lib/rot.js'));
+const { loadArchitect } = require('./load-architect');
 
-const src = fs.readFileSync(path.join(ROOT, 'architect.js'), 'utf8');
-const Architect = new Function('ROT', 'console', src + '\n;return Architect;')(ROT, {
-    log: () => {}, warn: () => {}, error: () => {}
-});
+const { Architect, ROT, out } = loadArchitect({ silenceErrors: true });
 
 const FULL = process.argv.includes('--full');
 
@@ -82,7 +76,7 @@ for (const type of GENERATORS) {
             err = e;
         }
         if (err) {
-            console.log(`${type.padEnd(14)} seed ${String(seed).padEnd(4)} ERROR ${err.message}`);
+            out.log(`${type.padEnd(14)} seed ${String(seed).padEnd(4)} ERROR ${err.message}`);
             failures++;
             continue;
         }
@@ -90,10 +84,10 @@ for (const type of GENERATORS) {
             .filter(([, v]) => v.length)
             .map(([k, v]) => `${k.replace(/^pending|Spawns$/g, '')}=${v.length}`)
             .join(' ');
-        console.log(
+        out.log(
             `${type.padEnd(14)} seed ${String(seed).padEnd(4)} ${digest(snap)}  ` +
             `walkable=${String(snap.walkable.length).padEnd(5)} rooms=${String(snap.rooms).padEnd(4)} ${counts}`);
-        if (FULL) console.log(JSON.stringify(snap, null, 1));
+        if (FULL) out.log(JSON.stringify(snap, null, 1));
     }
 }
 

@@ -510,7 +510,7 @@ function wallTypesEditor(obj, key, defaultType) {
         defaultType,
         noun: 'a wall actor',
         // The secret/pushable pass converts walls of type 'wall' only
-        // (architect.js), so any other choice silently switches both off.
+        // (architect/), so any other choice silently switches both off.
         warn: (list) => (list.length && !list.some(e => e.type === 'wall'))
             ? 'No "wall" entry: secret doors and pushable walls are off for this map. ' +
               'That conversion pass only rewrites walls of type "wall".'

@@ -37,15 +37,18 @@ fi
 echo "Creating directories..."
 mkdir -p "$DEST"/{lib,assets/sprites,assets/audio,data,prototypes/default,prototypes/test,prototypes/labyrinth,prototypes/arena,prototypes/automatons,prototypes/dungeon}
 
-# Core JavaScript files
+# Core JavaScript files (ES modules: main.js is the entry, the rest are its imports)
 echo "Copying core JS files..."
-cp "$SCRIPT_DIR/architect.js" "$DEST/"
-cp "$SCRIPT_DIR/engine.js" "$DEST/"
-cp "$SCRIPT_DIR/behaviors.js" "$DEST/"
+cp "$SCRIPT_DIR/main.js" "$DEST/"
+mkdir -p "$DEST/core"
+cp "$SCRIPT_DIR"/core/*.js "$DEST/core/"
+cp -R "$SCRIPT_DIR/architect" "$DEST/"
+cp -R "$SCRIPT_DIR/engine" "$DEST/"
+cp -R "$SCRIPT_DIR/behaviors" "$DEST/"
 cp "$SCRIPT_DIR/effects.js" "$DEST/"
 cp "$SCRIPT_DIR/globals.js" "$DEST/"
 cp "$SCRIPT_DIR/input.js" "$DEST/"
-cp "$SCRIPT_DIR/interface.js" "$DEST/"
+cp -R "$SCRIPT_DIR/ui" "$DEST/"
 cp "$SCRIPT_DIR/lighting.js" "$DEST/"
 cp "$SCRIPT_DIR/sound.js" "$DEST/"
 

@@ -28,10 +28,19 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 ### Changed
 
+- **The engine is ES modules.** Game pages load one `<script type="module" src="main.js">`, which imports the rest; engine.js's pure helpers moved to `core/util.js` and `core/pathfinding.js`. `window.engine` is now set for console debugging, and the tools/ generator checks load architect.js through `tools/load-architect.js`.
+- **engine.js is split up.** Its classes now live in `engine/` (one file per class), and the big ones are spread across method-group files: `engine/actor/` (combat, states, items, movement…), `engine/dungeon-engine/`, `engine/entity-manager/` and `engine/render/`. The groups are installed on the class prototype (`core/mixin.js`), so calls like `actor.tryMove()` are unchanged.
+- **interface.js is split up.** `InterfaceManager` now lives in `ui/`: `interface-manager.js` (boxes, text, markup) plus `panels`, `menus`, `aiming`, `throwing` and `spells`.
+- **architect.js is split up.** `Architect` now lives in `architect/`: `architect.js` (map infrastructure, finalizing, serialization) plus `tiled`, `procedural`, `blobs`, `bridges`, `regions`, `spawning`, `brogue` and `palladian`. The generator golden output is byte-identical to before the split.
+- **behaviors.js is split up.** `behaviors/behaviors.js` keeps `Personality`, `springTrapPayload` and the merged `BehaviorLibrary`; the behaviors themselves are in `ai`, `environment`, `ranged` and `special`.
 - **Actor editor attribute groups.** Attributes are sorted into collapsible groups (Combat, Movement, Terrain, Doors & Locks, Mechanisms, Traps, Naming), each showing a count of set values and opening on load when it has any. The lock-conditions, switch, and trap settings now sit inside their groups, and dependent fields such as `lock_color` and `trap_type` stay hidden until their parent attribute is checked. `lock_color` gets a swatch picker of the named colors in `data/colors.json`, where a hex sorts the closest names first.
 - **Polymorph pools and effect messages.** `polymorph_target` can name an actor id or type (or a list) to draw the new form from, or `{ "floors": "current" }` / a floor range to draw from that depth's spawn pool. Plenty, polymorph, tunneling and sanctuary take `effect_message` / `fail_message` to replace their built-in text.
 - **Gear auto-ID thresholds are type attributes.** `id_blows` (weapon and armor, 20) and `id_turns` (ring, 1500) replace the hardcoded engine constants, which remain as fallbacks.
 - **Blindness actually limits sight.** The `blinded` state now uses a new `vision_cap` state key (1 tile) instead of a -3 vision penalty, which did nothing next to a 25-tile vision range and a torch. On dark levels a blinded player also sees no light, so the adjacent tiles look as they would with no light source at all. While blind, other creatures go unnamed as when hallucinating, potions, scrolls, rings, wands and staffs show only as "potion", "scroll" and so on, and a new `cannot_read` state key stops you reading scrolls.
+
+### Fixed
+
+- **Web spray crashed.** `spray_web` used a line-of-sight callback outside the loop that declared it, so a spider throwing a web hit a ReferenceError.
 
 ## [1.19b]
 

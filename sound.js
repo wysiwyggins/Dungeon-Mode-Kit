@@ -1,9 +1,11 @@
+import { globalVars } from './globals.js';
+
 // ============================================================================
 // AUDIO MANAGER
 // ============================================================================
 // Handles sound effects using Howler.js audio sprites
 
-class AudioManager {
+export class AudioManager {
     constructor(audioSpriteData) {
         this.audioSpriteData = audioSpriteData;
         this.sound = null;

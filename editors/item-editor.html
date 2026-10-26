@@ -607,7 +607,7 @@ async function loadPrototype(name) {
     state.mergedStates = { ...state.baseStates, ...state.protoStates };
     state.mergedItems = { ...state.items, ...state.protoItems };
     // A prototype's own effects.json merges over the base library, the way the
-    // engine merges it (engine.js:4107), so its effects are offered here too.
+    // engine merges it (Prototype.loadAssets in engine/prototype.js), so its effects are offered here too.
     state.mergedEffects = { ...state.effects, ...protoEffects };
     state.protoItemKeys = new Set(Object.keys(state.protoItems));
     populateItemDropdown();
@@ -1949,7 +1949,7 @@ function updateTypeHint() {
 /**
  * An item's effective definition, with its type's defaults layered underneath.
  *
- * Mirrors Prototype.getItemData in engine.js. The form deliberately edits the
+ * Mirrors Prototype.getItemData in engine/prototype.js. The form deliberately edits the
  * raw entry — you author what an item declares, not what it inherits — but
  * anything that shows the item as it will appear in game wants this.
  */

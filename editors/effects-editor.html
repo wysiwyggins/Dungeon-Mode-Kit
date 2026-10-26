@@ -5,13 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Effects Editor — Dungeon Mode Kit</title>
 <link rel="stylesheet" href="../assets/main.css">
-<!-- The preview runs the ENGINE's effects, not a copy of them: pixi + globals +
-     effects.js are the same files the game loads, so what you see here is what
-     the game does. Previously this page reimplemented the tint math in Canvas 2D
+<!-- The preview runs the ENGINE's effects, not a copy of them: pixi, rot and
+     effects.js (with the modules it imports) are the same files the game loads,
+     so what you see here is what the game does. Previously this page reimplemented the tint math in Canvas 2D
      and the two drifted. -->
+<script src="../lib/rot.js"></script>
 <script src="../lib/pixi.min.js"></script>
-<script src="../globals.js"></script>
-<script src="../effects.js"></script>
 <script src="scripts/tile-picker.js"></script>
 <script src="scripts/effect-params.js"></script>
 </head>
@@ -105,7 +104,13 @@
 
 <!-- The tile picker injects its own markup on first open (scripts/tile-picker.js). -->
 
-<script>
+<script type="module">
+// effects.js is an ES module (it imports randomElement from core/util.js, which
+// draws from ROT.RNG, hence lib/rot.js above). effect-params.js is a classic
+// script that reads EffectPrimitives as a global, so hand it over before use.
+import { EffectPrimitives, EffectRunner } from '../effects.js';
+window.EffectPrimitives = EffectPrimitives;
+
 // ============================================================================
 // Constants & State
 // ============================================================================
@@ -268,7 +273,7 @@ function computeTintCycleWave(params, time) {
 // ============================================================================
 
 // The preview builds a miniature of what RenderSystem gives EffectRunner: the same
-// container names, the same ctx keys (effects.js:1307), and real PIXI sprites. That
+// container names, the same ctx keys (EffectRunner's ctx in effects.js), and real PIXI sprites. That
 // lets us call the ENGINE's primitives instead of reimplementing them — the three
 // hand-written copies of the tint math that used to live here disagreed with the
 // engine and with each other.
@@ -278,13 +283,6 @@ function computeTintCycleWave(params, time) {
 // radial_tile_fill) to have something to chew on.
 
 const PREVIEW_COLS = 9, PREVIEW_ROWS = 7;
-
-// texture_scramble calls randomElement, which lives in engine.js (and uses ROT.RNG)
-// rather than in effects.js. Loading the whole engine here for one helper isn't worth
-// it, so define it if it isn't already present — the preview doesn't need a seeded RNG.
-if (typeof randomElement === 'undefined') {
-    window.randomElement = arr => arr[Math.floor(Math.random() * arr.length)];
-}
 
 let pixiApp = null;
 let previewRunner = null;
@@ -364,7 +362,7 @@ function buildPreviewRenderer() {
         mapHeight: PREVIEW_ROWS,
 
         // Shared per-primitive ticker state. Most primitives create these lazily,
-        // but tint_cycle assumes RenderSystem already made them (engine.js:14159)
+        // but tint_cycle assumes RenderSystem already made them (engine/render/render-system.js constructor)
         // and throws otherwise, so mirror what the constructor sets up.
         _tintCycleSprites: [],
         _tintCycleTickerFn: null,

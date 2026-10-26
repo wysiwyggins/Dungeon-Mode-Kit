@@ -1,10 +1,12 @@
+import { Entity } from './engine/entity.js';
+
 // ============================================================================
 // LIGHTING MANAGER
 // ============================================================================
 // Handles FOV computation, visibility, and light source management
 // using ROT.js PreciseShadowcasting
 
-class LightingManager {
+export class LightingManager {
     constructor(engine) {
         this.engine = engine;
         this.width = 0;
@@ -918,7 +920,7 @@ class LightingManager {
 
     /**
      * The tint a background-layer tile should end up with. Background tiles are the
-     * void fill and the cliffside shading that addBaseAndShadows paints (architect.js),
+     * void fill and the cliffside shading that addBaseAndShadows paints (architect/architect.js),
      * and they render BELOW the darkness layer — but they still need the ambient hue
      * applied directly, because getLightColorOverlay deliberately skips any cell
      * without a floor tile, and void cells are floorless by definition. Without this

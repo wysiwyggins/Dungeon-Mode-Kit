@@ -3,15 +3,16 @@
 *A path from the local static-file kit to a hosted, Bitsy-style web app where
 anyone can make and share a roguelike prototype.*
 
-Status: planning · Last updated: 2026-06-26
+Status: planning · Last updated: 2026-10-25
 
 ---
 
 ## Context
 
 Today the Dungeon Mode Kit is a 100% client-side, static-file project: plain HTML
-pages with global `<script>` tags (`rot.js`, `pixi.js`, `tween.js`, `howler.js`),
-a single un-minified `engine.js`, served locally with `python3 -m http.server` and
+pages that load the libraries as global `<script>` tags (`rot.js`, `pixi.js`,
+`tween.js`, `howler.js`) and the engine as un-bundled ES modules (`main.js` and
+its imports), served locally with `python3 -m http.server` and
 "deployed" by [`deploy.sh`](../deploy.sh) copying files into a separate Jekyll
 site for iframe embedding. There is no backend, database, or auth.
 
@@ -44,10 +45,10 @@ phase is independently shippable and the early phases need **no backend at all**
 The runtime invariant — *"a prototype adds to or overrides `/data`, but can never
 mutate it"* — is already true:
 
-- **Baseline load:** [`engine.js`](../engine.js) `loadGlobalData()` (≈651–725)
+- **Baseline load:** [`engine/dungeon-engine.js`](../engine/dungeon-engine.js) `loadGlobalData()`
   `fetch()`es the 13 `/data/*.json` files once into `engine.globalActors`,
   `engine.globalItems`, etc.
-- **The merge:** `Prototype.loadAssets()` (≈2692–2725) does a shallow per-key
+- **The merge:** `Prototype.loadAssets()` ([`engine/prototype.js`](../engine/prototype.js)) does a shallow per-key
   spread — `this.actors = { ...engine.globalActors, ...prototypeActors }`. A
   prototype key that matches a base key **replaces** it; new keys are **added**;
   the base objects are never mutated (the spread builds a fresh object).
@@ -126,12 +127,12 @@ content is *hosted and untrusted*, the threats shift, and each is addressed:
    prototype strings for `innerHTML` sinks and enforce text-only / sanitized
    rendering. **Prototype content is data, never code** — no `eval`, no
    user-supplied scripts; behaviors stay data-driven (the existing
-   `behaviors.js` / personalities model already supports this).
+   `behaviors/` / personalities model already supports this).
 4. **Resource abuse.** Enforce a bundle-size cap from Phase 1 onward.
 
 ### Host-agnostic paths (a concrete blocker to fix)
 
-[`globals.js`](../globals.js):15 hardcodes `BASE_PATH = isLocal ? '.' : '/dungeonkit'`,
+[`globals.js`](../globals.js) hardcodes `BASE_PATH = isLocal ? '.' : '/dungeonkit'`,
 baking the deploy subpath and a local/prod hostname check into the client. For a
 real host this must become configurable (relative paths + a `<base>` tag, or a
 small runtime config). Relatedly, **there is no prototype-discovery manifest** —
@@ -152,7 +153,7 @@ dependency spine is **Phase 0 (bundle abstraction) → everything else**.
   from a bundle, not just from fetched files.
 - **Key work:**
   - Introduce `PrototypeBundle`; teach `loadPrototype()` / `Prototype.loadAssets()`
-    to accept a bundle as an alternative to `fetch()`. *(engine.js)*
+    to accept a bundle as an alternative to `fetch()`. *(engine/dungeon-engine/floors.js, engine/prototype.js)*
   - Add localStorage/IndexedDB persistence to the five editors (they already emit
     correct JSON — redirect the output, don't rewrite). *(prototype-editor.html + 4
     entity editors)*
@@ -170,7 +171,7 @@ dependency spine is **Phase 0 (bundle abstraction) → everything else**.
   - Compress a bundle (e.g. LZ-string) into a URL hash (`#proto=…`) and/or a
     downloadable `.dmk`/`.json`.
   - Add "Open from URL / file" to the player; extend the existing prototype
-    selector (`?prototype=` / data-attr / `DUNGEON_CONFIG`, engine.js ≈11751–11771)
+    selector (`?prototype=` / data-attr / `DUNGEON_CONFIG`, `initializeGame()` in main.js)
     to also accept `#proto=<bundle>`.
   - Make `BASE_PATH` host-agnostic; host the static app on GitHub Pages / Netlify /
     Cloudflare Pages (free).
@@ -188,7 +189,7 @@ dependency spine is **Phase 0 (bundle abstraction) → everything else**.
   - A canvas/PIXI editor that reads the shared spritesheet + the prototype's merged
     actor/item defs; paints floor/wall/overlay tile layers; places entity objects
     with live tile+tint preview.
-  - Reuse [`architect.js`](../architect.js)'s GID/layer parsing as the import/export
+  - Reuse [`architect/tiled.js`](../architect/tiled.js)'s GID/layer parsing as the import/export
     contract; export `.tmj`-compatible JSON into the bundle.
 - **Unlocks:** Removes the external-Tiled dependency — the biggest barrier to
   non-technical creators, and the thing that makes it *feel* like Bitsy.
@@ -233,14 +234,14 @@ dependency spine is **Phase 0 (bundle abstraction) → everything else**.
 
 **Reuse as-is (foundations — do not rebuild):**
 
-- The supplement/override **merge** — `Prototype.loadAssets()` (engine.js ≈2692–2725).
+- The supplement/override **merge** — `Prototype.loadAssets()` (`engine/prototype.js`).
   The "can't change `/data`" invariant is already true at runtime.
-- The `/data` **baseline loader** — `loadGlobalData()` (engine.js ≈651–725).
+- The `/data` **baseline loader** — `loadGlobalData()` (`engine/dungeon-engine.js`).
 - The **editors' JSON output** — they already emit the exact per-prototype override
   files a bundle needs; they need a save target, not a rewrite.
-- [`architect.js`](../architect.js) **GID/layer parsing** — the import/export
+- [`architect/tiled.js`](../architect/tiled.js) **GID/layer parsing** — the import/export
   contract for the new map editor.
-- **Prototype-selection plumbing** (engine.js ≈11751–11771) — extends naturally to
+- **Prototype-selection plumbing** (`initializeGame()` in `main.js`) — extends naturally to
   `#proto=<bundle>`.
 - **Seed URLs / serialization** ([SAVING.md](SAVING.md)) — already share *runs*
   deterministically; complementary to bundle sharing.
@@ -271,7 +272,7 @@ dependency spine is **Phase 0 (bundle abstraction) → everything else**.
    file/backend path — but that's out of scope, see Appendix A.)
 5. **Keep the no-build static client?** Yes, through Phase 4. The only "backend" is
    a managed BaaS, never a bespoke server. Revisit *minification only* (not a
-   framework) if `engine.js` load time becomes a real problem.
+   framework) if the engine's load time (many small un-bundled modules) becomes a real problem.
 
 ---
 
@@ -282,7 +283,7 @@ spritesheet for now. This is recorded because it's the one requirement that figh
 the current architecture, so a future effort can pick it up with eyes open.
 
 **Why it's hard:** the spritesheet is a *single global PIXI resource* loaded once
-(engine.js, `PIXI.Loader … .add('tiles', globalVars.SPRITESHEET_PATH)`), on a fixed
+(`engine/dungeon-engine.js`, `PIXI.Loader … .add('tiles', globalVars.SPRITESHEET_PATH)`), on a fixed
 23×12 / 40×30 grid (`globals.js`), with a name→coordinate map in
 `data/static-tiles.json`. Maps reference tiles by GID into this one sheet. There is
 no per-prototype texture hook.
@@ -305,15 +306,17 @@ offset).
 
 ## Critical files
 
-- [`engine.js`](../engine.js) — `loadGlobalData()` (≈651–725), `loadPrototype()` /
-  map fetch (≈1673–1690), `Prototype.loadAssets()` merge (≈2692–2725), prototype
-  selection (≈11751–11771). The bundle refactor and the isolation invariant live
-  here.
+- [`engine/dungeon-engine.js`](../engine/dungeon-engine.js) — `loadGlobalData()`;
+  [`engine/dungeon-engine/floors.js`](../engine/dungeon-engine/floors.js) —
+  `loadPrototype()` / `loadPrototypeConfig()` / map fetch;
+  [`engine/prototype.js`](../engine/prototype.js) — `Prototype.loadAssets()` merge;
+  [`main.js`](../main.js) — prototype selection. The bundle refactor and the
+  isolation invariant live here.
 - [`globals.js`](../globals.js) — `BASE_PATH`, spritesheet path, fixed tile-grid
   constants. The host-agnostic-path fix touches this.
-- [`architect.js`](../architect.js) — `.tmj` GID/layer parsing; the import/export
+- [`architect/tiled.js`](../architect/tiled.js) — `.tmj` GID/layer parsing; the import/export
   contract for the web map editor.
-- [`prototype-editor.html`](../prototype-editor.html) — already understands the
+- [`editors/prototype-editor.html`](../editors/prototype-editor.html) — already understands the
   override model and exports correct JSON; template for adding persistence/export,
   and home of the hardcoded-prototype-list problem.
 - [`deploy.sh`](../deploy.sh) — current Jekyll copy-deploy; superseded by static

@@ -230,10 +230,10 @@ Game actions that currently produce no sound. Organized by category with suggest
 
 | Sound Needed | Description | How to Wire In |
 | ------------- | ------------- | --------------- |
-| **Equip weapon** | Metallic slide or click — blade drawn from sheath | Add `playSound` call in `executeWearItem()` in `interface.js` when the item has `weapon` attribute |
-| **Wear armor** | Heavy cloth settling or plate clinking | Add `playSound` call in `executeWearItem()` in `interface.js` when the item has `wearable` attribute |
-| **Unequip item** | Lighter version of equip — buckle unfasten, cloth shift | Add `playSound` call in `executeRemoveItem()` in `interface.js` |
-| **Drop item** | Soft thud on stone floor | Add `playSound` call in `executeDropItem()` in `interface.js` |
+| **Equip weapon** | Metallic slide or click — blade drawn from sheath | Add `playSound` call in `executeWearItem()` in `ui/menus.js` when the item has `weapon` attribute |
+| **Wear armor** | Heavy cloth settling or plate clinking | Add `playSound` call in `executeWearItem()` in `ui/menus.js` when the item has `wearable` attribute |
+| **Unequip item** | Lighter version of equip — buckle unfasten, cloth shift | Add `playSound` call in `executeRemoveItem()` in `ui/menus.js` |
+| **Drop item** | Soft thud on stone floor | Add `playSound` call in `executeDropItem()` in `ui/menus.js` |
 
 ### Status Effects
 
@@ -256,32 +256,32 @@ Optional: Add `on_remove_sound` values as well (reversal of the apply sound).
 
 | Sound Needed | Description | How to Wire In |
 | ------------- | ------------- | --------------- |
-| **Door locked** | Rattle/jiggle of a locked handle | Use the existing `lock` sound (already in sprite, never called). Add `playSound('lock')` when a locked door rejects the player in `engine.js` collision handling. |
-| **Stairway use** | Stone scraping or portal whoosh when transitioning levels | Add `playSound` call in the stairway interaction code in `engine.js` |
-| **Fire spread** | Quick crackle when fire spreads to an adjacent tile | Add `playSound` call in the `_spreadFire` behavior in `engine.js` (use `playSoundVaried` to avoid machine-gun repetition) |
-| **Gas/cloud spread** | Hissing puff as poison cloud expands | Add `playSound` call in `_spreadCloud` behavior in `engine.js` |
+| **Door locked** | Rattle/jiggle of a locked handle | Locked doors currently play `plunk3` in `tryMove()` (`engine/actor/movement.js`); a dedicated rattle would replace it there. (`lock` is the unlock/success sound, so don't reuse it for rejection.) |
+| **Stairway use** | Stone scraping or portal whoosh when transitioning levels | Add `playSound` call in `useStairway()` in `engine/dungeon-engine/stairways.js` |
+| **Fire spread** | Quick crackle when fire spreads to an adjacent tile | Add `playSound` call in the `fire_spread` behavior in `behaviors/environment.js` (use `playSoundVaried` to avoid machine-gun repetition) |
+| **Gas/cloud spread** | Hissing puff as poison cloud expands | Add `playSound` call in the `cloud_spread` behavior in `behaviors/environment.js` |
 
 ### Combat
 
 | Sound Needed | Description | How to Wire In |
 | ------------- | ------------- | --------------- |
-| **Critical hit** | Heavier impact — crunch or metallic slam on top of normal hit sound | Add a `playSound` call in the critical hit branch of damage calculation in `engine.js` |
-| **Knockback impact** | Body-hitting-wall thud when knockback weapon shoves a target | Add `playSound` call in the knockback handling code in `engine.js` |
+| **Critical hit** | Heavier impact — crunch or metallic slam on top of normal hit sound | Add a `playSound` call in the critical hit branch of damage calculation (`checkCriticalHit` in `engine/actor/combat.js`) |
+| **Knockback impact** | Body-hitting-wall thud when knockback weapon shoves a target | `_procKnockback()` (`engine/actor/combat.js`) plays the generic `push1`; swap in a dedicated thud there. |
 
 ### UI
 
 | Sound Needed | Description | How to Wire In |
 | ------------- | ------------- | --------------- |
-| **Inventory open** | Paper rustle or bag opening | Add `playSound` call in `showPlayerInfo()` in `interface.js` |
-| **Menu close** | Soft click or paper fold | Add `playSound` call in `hidePlayerInfo()` in `interface.js` |
+| **Inventory open** | Paper rustle or bag opening | Add `playSound` call in `showPlayerInfo()` in `ui/panels.js` |
+| **Menu close** | Soft click or paper fold | Add `playSound` call in `hidePlayerInfo()` in `ui/panels.js` |
 
 ### Victory & Events
 
 | Sound Needed | Description | How to Wire In |
 | ------------- | ------------- | --------------- |
-| **Win condition met** | Short fanfare or triumphant chime | Add `playSound` call in `checkWinConditions()` in `engine.js` when win triggers |
-| **Exit unlocked** | Heavy stone door grinding open | Add `playSound` call in `unlockWinConditionStairways()` in `engine.js` |
-| **Map revealed** | Magical shimmer / page unfurl | Add `playSound` call in the `reveal_map` use effect handler in `engine.js` |
+| **Win condition met** | Short fanfare or triumphant chime | Add `playSound` call in `checkWinConditions()` in `engine/dungeon-engine/progression.js` when win triggers |
+| **Exit unlocked** | Heavy stone door grinding open | `unlockWinConditionStairways()` (`engine/dungeon-engine/progression.js`) plays the generic `lock`; swap in a dedicated grind there. |
+| **Map revealed** | Magical shimmer / page unfurl | Add `playSound` call in the `reveal_map` use effect handler (`executeItemEffect` in `engine/actor/items.js`) |
 
 ---
 

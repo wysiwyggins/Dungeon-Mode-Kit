@@ -1,10 +1,11 @@
 
 ## Bugs
 
-- ~~we shouldn't see sewer gas spawning in "remembered" areas outside of FOV~~ — fixed, new sprites are hidden when spawned out of sight (`_hideIfSpawnedOutOfSight`)
+- objects shouldn't float out of a locked chest in water
 
 ## Tweaks
 
+- pull the random spawned locked doors and chests out of test prototype
 - There should be description messages for equipping and unequipping weapons and wearables
 - There are a lot of items and actors in default data. Always be looking for opportunities to create types in data and move specific data to prototypes so that designers aren't overwhelmed by default actors and items.
 - **`flicker_tint` (the effect) vs `tint_flicker` (the primitive)** — the words are reversed between the two layers, which is genuinely confusing when reading `effects.json`. Renaming either breaks data or code, so left alone for now.

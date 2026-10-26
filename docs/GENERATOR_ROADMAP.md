@@ -4,7 +4,7 @@
 WFC from authored maps, modular generators, and a rename/audit of the generator and
 biome vocabulary.*
 
-Status: planning · Last updated: 2026-08-29
+Status: planning · Last updated: 2026-10-25
 
 ---
 
@@ -23,9 +23,13 @@ generator:
 This document checks each against the code, then sequences the work. Numbers below are
 measured, not estimated from impression.
 
-### What architect.js actually looks like
+### What architect.js actually looked like
 
-5,826 lines, 113 methods, one class, no ES module boundary.
+5,826 lines, 113 methods, one class, no ES module boundary (as of 2026-08-29). Since
+2026-10-25 the class is split by subsystem into `architect/` (`architect.js` core plus
+`tiled`, `procedural`, `blobs`, `bridges`, `regions`, `spawning`, `brogue`, `palladian`),
+but it is still one `Architect` class with shared instance state, so the coupling below
+is unchanged.
 
 | Subsystem | Methods | Lines | Notes |
 | --- | ---: | ---: | --- |
@@ -70,28 +74,29 @@ There is also **cross-generator reuse**, which the journal doesn't account for �
 less of it than an earlier draft of this document claimed. Of the 17 `_brogue*` helpers,
 only **three** had callers outside the generator:
 
-- `_brogueFinalizeMap` — called by the **palladian** generator (architect.js:1009, 1024);
+- `_brogueFinalizeMap` — called by the **palladian** generator (in `generateProceduralMap`);
   `_palladianFinalizeRegion` is documented as a region-scoped variant of it.
-- `_brogueMakeRoomRecord` — called by `_palladianMakeRecords` (5365, 5376).
-- `_brogueMakeCavern` — builds the shapes for the **blob/lake** system (1390).
+- `_brogueMakeRoomRecord` — called by `_palladianMakeRecords`.
+- `_brogueMakeCavern` — builds the shapes for the **blob/lake** system.
 
 The other 14 are genuinely private. Note `_brogueBFS` is *deliberately* not shared: the
-comment at 1278 explains that `_isWorthwhileShortcut` cannot reuse it because it reads the
+comment on `_isWorthwhileShortcut` explains that it cannot reuse it because it reads the
 transient `dungeonGrid` rather than the finished `floorMap`. Resolved in Phase 1 — the
 three shared helpers were de-prefixed, the rest took the generator's new name.
 
-### Constraint: no module system
+### Loading: ES modules, no bundler
 
-`index.html` loads plain `<script>` tags in dependency order (`rot.js`, `pixi`, `tween`,
-`howler`, `globals.js`, `architect.js`, …). There is no bundler, no `import`. "Separate
-files that fail gracefully when missing" therefore means either extra `<script>` tags with
-a global registry, or a `fetch`-based loader. This is a **hosting-roadmap-adjacent
-decision** — see [HOSTING_ROADMAP.md](HOSTING_ROADMAP.md), which describes the same
-static-file constraint — and the two should agree rather than each inventing a loader.
+*Updated 2026-10-25.* When this was written, `index.html` loaded plain `<script>` tags with
+no `import`. The engine is now un-bundled ES modules: pages load the `lib/` scripts as
+globals, then `main.js`, which imports everything else (architect included). A generator in
+its own file is now just a module, imported statically (always present) or with a dynamic
+`import()` that can fail gracefully when it is missing. Which of the two is a
+**hosting-roadmap-adjacent decision**. See [HOSTING_ROADMAP.md](HOSTING_ROADMAP.md); the two
+should agree rather than each inventing a loader.
 
 ### Determinism
 
-All randomness in architect.js is `ROT.RNG.*` (71 calls; zero `Math.random`). Seeded
+All randomness in the Architect is `ROT.RNG.*` (71 calls; zero `Math.random`). Seeded
 reproducibility per [SAVING.md](SAVING.md) is intact, and **any WFC library must be
 driven by `ROT.RNG`**, not its own generator, or `?seed=` silently stops working. This
 disqualifies drop-in use of most libraries without a patch point.
@@ -104,10 +109,10 @@ disqualifies drop-in use of most libraries without a patch point.
 
 **What's already in place.** More than the journal assumes:
 
-- `generateWildcardContent` (architect.js:2267) is a clean `switch` on region type. A
+- `generateWildcardContent` (`architect/tiled.js`) is a clean `switch` on region type. A
   `wfc` case slots in beside `maze`/`dungeon`/`cave` with no restructuring.
 - Region discovery (`findWildcardRegion`) already hands a generator a bounded rect.
-- **`paint_tile` already exists.** `getActorWildcardType` (architect.js:577) builds a
+- **`paint_tile` already exists.** `getActorWildcardType` (`architect/tiled.js`) builds a
   tile-id → actor-type map from any actor declaring a `paint_tile` attribute. The
   journal's "add a wildcard tile selector to the actor editor" is *mostly already built* —
   what's missing is only the editor UI for a field the engine reads today.
@@ -122,7 +127,7 @@ disqualifies drop-in use of most libraries without a patch point.
   describes. WFC is a *local* constraint solver — it cannot guarantee the level is
   traversable. Every serious roguelike WFC use pairs it with a connectivity repair pass.
   The good news: **that pass already exists** and is generator-agnostic
-  (`repairBlobConnectivity`, architect.js:1619).
+  (`repairBlobConnectivity`, `architect/blobs.js`).
 - **Failure/contradiction handling.** WFC fails; it needs retry-with-backtrack and a
   fallback, on a 100×100 map (the size every current biome uses).
 - **Library fit.** [kchapelier/wavefunctioncollapse](https://github.com/kchapelier/wavefunctioncollapse)
@@ -211,10 +216,10 @@ old generator name survives as a silent alias in the dispatch.
 
 **Ossuary biome.** Needs skull-wall actors plus a wall-actor selector in the biome editor.
 Note that `wall_types` **already exists** as a weighted list in generator options
-(`_pickWeightedWallType`, architect.js:160) and is honored by **every wall-producing
-generator** — `cellular` (677), `infernal` (792), `dungeon` (834), `palladian` (990, which
-defaults to `brick_wall`), and `digger` (1068) — plus the region-scoped cave and palladian
-wildcard paths (2552, 2670). So this is an editor-surface task over a fully implemented
+(`_pickWeightedWallType`, `architect/architect.js`) and is honored by **every wall-producing
+generator** — `cellular`, `infernal`, `dungeon`, `palladian` (which defaults to
+`brick_wall`) and `digger`, all in `generateProceduralMap` (`architect/procedural.js`) —
+plus the region-scoped cave and palladian wildcard paths (`architect/regions.js`). So this is an editor-surface task over a fully implemented
 engine feature, the same shape as the `paint_tile` finding above. The six thin wrappers
 produce no walls at all and so can't support it.
 
@@ -263,8 +268,14 @@ precedent for this kind of harness.*
 
 1. Move palladian out first — largest win, most self-contained, already has a dump tool.
 2. Then the renamed dungeon generator + its shared helpers.
-3. Add `<script>` tags; registry absence → fallback. Coordinate the loading story with
+3. Load them as modules (static `import`, or dynamic `import()` for optional ones);
+   registry absence → fallback. Coordinate the loading story with
    [HOSTING_ROADMAP.md](HOSTING_ROADMAP.md) rather than inventing a second one.
+
+*Partial progress (2026-10-25): the module split already moved the palladian and dungeon
+helpers into `architect/palladian.js` and `architect/brogue.js`. They are still methods of
+`Architect` installed as mixins, not registry-driven generators, so Phase 2's interface
+is still the prerequisite for real extraction.*
 
 *Risk: medium, mostly mechanical after Phase 2. Load-order bugs are the likely failure and
 they're loud.*

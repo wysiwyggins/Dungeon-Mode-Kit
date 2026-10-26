@@ -1,7 +1,7 @@
 
 ## Order of operations: an actor attempting to move into a tile
 
-This is the sequence inside `Actor.tryMove(newX, newY)` (`engine.js:~9055`), the single entry point for movement and bump-attacks (`moveBy` → `tryMove`). Steps run top to bottom; the **first** one that returns ends the turn's move attempt. `solid` here means the actor's runtime `solid` attribute (defaults to **true** unless the data sets `solid: false`).
+This is the sequence inside `Actor.tryMove(newX, newY)` (`engine/actor/movement.js`), the single entry point for movement and bump-attacks (`moveBy` → `tryMove`). Steps run top to bottom; the **first** one that returns ends the turn's move attempt. `solid` here means the actor's runtime `solid` attribute (defaults to **true** unless the data sets `solid: false`).
 
 1. **Hide walk-path highlight** (cosmetic).
 2. **Bounds check** — target off-map → return `{moved:false, actionTaken:false}` (no turn).
@@ -21,7 +21,7 @@ This is the sequence inside `Actor.tryMove(newX, newY)` (`engine.js:~9055`), the
    Note this is also why bumping only ever reaches **solid** actors: `getSolidActorAt` is the only
    lookup here. A non-solid `breakable` (a grave you stand on) can't be dug this way; it's dug with a
    mining tool's **Dig** verb, which calls `applyCollisionEffects` directly — the same thing
-   `mine_nearby_wall` (`behaviors.js:767`) does for AI miners, bypassing `tryMove` entirely. That verb
+   `mine_nearby_wall` (`behaviors/ai.js`) does for AI miners, bypassing `tryMove` entirely. That verb
    also accepts solid walls, where it does exactly what one bump would, and it passes its own tool to
    `applyCollisionEffects` so a mattock still in the pack digs as well as an equipped one.
 6. **Floor/void check** — no floor/platform under target and not flying → step in and `fall()` to the next level → return `{moved:true}`.

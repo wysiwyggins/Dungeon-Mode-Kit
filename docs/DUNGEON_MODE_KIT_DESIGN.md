@@ -18,7 +18,7 @@
 
 Based on previous experiments — [grotto roguelike](https://github.com/wysiwyggins/grotto_roguelike), [didaktik gama](https://github.com/wysiwyggins/Didaktik-Gama)
 
-Dungeon Mode Kit is a [tileset](https://codeberg.org/wysiwyggins/Dungeon-Mode-Kit/src/branch/main/docs/tiles.pdf), sound fx sprite (of sounds mostly made by recording and manipulating [one real instrument](https://larkinthemorning.com/products/round-sansula-thumb-piano)), and scripts that sit on top of some existing javascript libraries to allow for the quick prototyping of roguelike games using the free tilemap editor [Tiled](https://www.mapeditor.org) and human-readable data files, separate from code. The ultimate goal would be an online suite of tools with their own tilemap editor, similar to [Bitsy](https://www.bitsy.org). Where DMK diverges from Bitsy is that it allows the creation of games with mixed procedurally generated maps and authored maps. [ZZT](https://zzt.org) is also an inspiration.
+Dungeon Mode Kit is a [tileset](https://codeberg.org/wysiwyggins/Dungeon-Mode-Kit/src/branch/main/docs/TILES.pdf), sound fx sprite (of sounds mostly made by recording and manipulating [one real instrument](https://larkinthemorning.com/products/round-sansula-thumb-piano)), and scripts that sit on top of some existing javascript libraries to allow for the quick prototyping of roguelike games using the free tilemap editor [Tiled](https://www.mapeditor.org) and human-readable data files, separate from code. The ultimate goal would be an online suite of tools with their own tilemap editor, similar to [Bitsy](https://www.bitsy.org). Where DMK diverges from Bitsy is that it allows the creation of games with mixed procedurally generated maps and authored maps. [ZZT](https://zzt.org) is also an inspiration.
 
 ---
 
@@ -83,7 +83,7 @@ Maps are authored in [Tiled](https://www.mapeditor.org/) or generated procedural
 
 **Wildcards** are special tiles painted on a tile layer that the engine replaces with procedural content at runtime — dungeon rooms, caves, mazes, lava pools, or Actor spawn points. This allows mixing hand-crafted and generated content on the same map.
 
-See [MAP.md](MAP.md), [PROTOTYPE.md](PROTOTYPE.md), [Tile Index](/docs/tiles.pdf), [Wildcard Tile Key](/docs/TILED_KEY.pdf), [Tile_Patterns](/docs/TILE_PATTERNS.md).
+See [MAP.md](MAP.md), [PROTOTYPE.md](PROTOTYPE.md), [Tile Index](TILES.pdf), [Wildcard Tile Key](TILED_KEY.pdf), [Tile_Patterns](/docs/TILE_PATTERNS.md).
 
 ## Prototype System
 

@@ -301,7 +301,7 @@ function dualRangeRow(label, obj, minKey, maxKey, opts = {}) {
     return el('div', { class: 'sub' }, labelEl(label, opts.tip), dualRange(obj, minKey, maxKey, opts));
 }
 
-// Per-shape size ranges for the dungeon generator. Defaults mirror architect.js's
+// Per-shape size ranges for the dungeon generator. Defaults mirror the Architect's
 // `case 'dungeon'` block — keep them in sync, since they're what the engine falls back
 // to when a key is absent and what the sliders seed an unset field with.
 //

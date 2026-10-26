@@ -485,7 +485,7 @@ const BOOL_HINTS = {
     conceals_when_submerged: 'Becomes hidden (invisible) while submerged in deep liquid; its attacks stay anonymous.',
 };
 
-// Runtime defaults applied by the engine's Actor constructor (engine.js:3331-3334),
+// Runtime defaults applied by the engine's Actor constructor (engine/actor/actor.js),
 // before the actor data's attributes are applied. Any attribute not listed defaults
 // to false. Checkboxes initialize to these defaults, and readForm() only writes a
 // boolean when it DIFFERS from its default (so a default-true can be saved as false).
@@ -679,7 +679,7 @@ async function loadPrototype(name) {
         }
     }
     // A prototype's own effects.json merges over the base library, the way the
-    // engine merges it (engine.js:4107), so its effects are offered here too.
+    // engine merges it (Prototype.loadAssets in engine/prototype.js), so its effects are offered here too.
     state.mergedEffects = { ...state.effects, ...protoEffects };
     state.mergedActors = { ...state.baseActors, ...state.protoActors };
     state.mergedPersonalities = { ...state.basePersonalities, ...state.protoPersonalities };

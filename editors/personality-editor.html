@@ -976,7 +976,7 @@ function initRefFields() {
     // Any BehaviorLibrary entry works and the palette doesn't list them all, so
     // these are suggestions rather than a closed set.
     RefFields.define('behavior', { kind: 'label', names: () => BEHAVIOR_CATEGORIES.flatMap(c => c.behaviors) });
-    // behaviors.js countdown_display only knows 'digit'.
+    // behaviors/special.js countdown_display only knows 'digit'.
     RefFields.define('countdown_display', { noun: 'display mode', names: () => ['digit'] });
 }
 

@@ -4,6 +4,8 @@
  * Effects are defined in data/effects.json and can be overridden per-prototype.
  */
 
+import { randomElement } from './core/util.js';
+import { globalVars } from './globals.js';
 
 const HALLUCINATION_TINTS = [0xFFFF4F, 0xEE4266, 0x540D6E, 0x3BCEFF, 0x0EAD69];
 
@@ -52,7 +54,7 @@ function hsvToRgbInt(h, s, v) {
  * Each primitive is a function (ctx, params) => { apply(), tick?(), remove() }
  * ctx provides access to the renderer's PIXI objects.
  */
-const EffectPrimitives = {
+export const EffectPrimitives = {
 
     /**
      * Ticker-driven sine hue shift on a ColorMatrixFilter applied to the stage.
@@ -1258,7 +1260,7 @@ const EffectPrimitives = {
 // EFFECT RUNNER
 // ============================================================================
 
-class EffectRunner {
+export class EffectRunner {
     constructor(renderer) {
         this.renderer = renderer;
         this._effects = {};       // Loaded effect definitions from JSON

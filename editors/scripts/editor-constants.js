@@ -2,7 +2,7 @@
    editor-constants.js — vocabulary shared by the biome and prototype editors
    -------------------------------------------------------------------------
    These lists name things the ENGINE knows about, so they are not editor
-   preferences: each one has a counterpart in data/ or in engine.js, and drift
+   preferences: each one has a counterpart in data/ or in the engine, and drift
    between the two is a silent bug — an option missing here is simply
    unreachable from the editors even though the engine would honour it.
 
@@ -50,5 +50,5 @@ const GEN_TYPES = ['dungeon','palladian','infernal','digger','cellular',
 const WALL_BUILDING_GEN_TYPES = ['dungeon','palladian','infernal','digger','cellular'];
 
 // Placement patterns for a biome `decorations` row.
-// Mirrors DECORATION_PATTERN_NAMES in engine.js.
+// Mirrors DECORATION_PATTERN_NAMES in core/util.js.
 const DECORATION_PATTERNS = ['scatter','clusters','wall_hugging','near_liquid','room_floor'];

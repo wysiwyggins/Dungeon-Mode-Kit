@@ -74,7 +74,7 @@ Older messages use CSS classes for visual hierarchy (defined in `_typography.scs
 ## Template System
 
 Any player-facing string in the data files can contain `[token]`s, resolved at
-runtime by one shared function — `resolveTemplate` in `engine.js`. That includes
+runtime by one shared function — `resolveTemplate` in `core/util.js`. That includes
 **names**, not just descriptions:
 
 | Field | On | Resolved |
@@ -223,7 +223,7 @@ from `words.json` → `attacks` → `melee_verbs`:
 
 Adding a namespace here **does** make it available to templates: every list is
 flattened into one `namespace.category` registry at load (`buildWordRegistry` in
-`engine.js`), so no code names the namespaces it accepts. `data/reagents.json` and
+`core/util.js`), so no code names the namespaces it accepts. `data/reagents.json` and
 `data/substances.json` are flat rather than nested, so they take their filename as
 the namespace — hence `[reagents.reagents]` and `[substances.substances]`.
 

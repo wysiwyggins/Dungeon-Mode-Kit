@@ -3,7 +3,7 @@
 This is a document for me (the developer) rather than designers. The method is
 still ahead of its uses, in preparation for future things like a visual editor.
 
-`MapManager.applyTilePattern(layerName, rules, options)` lives in `architect.js`. It walks every cell of a layer (or a sub-rectangle of it), tries your rules in order, and paints the first one that matches. `addBaseAndShadows` (the diagonal cliff shading on abyss edges) is the worked example at the bottom of this doc.
+`MapManager.applyTilePattern(layerName, rules, options)` lives in `architect/architect.js`. It walks every cell of a layer (or a sub-rectangle of it), tries your rules in order, and paints the first one that matches. `addBaseAndShadows` (the diagonal cliff shading on abyss edges) is the worked example at the bottom of this doc.
 
 ### Who calls this
 
@@ -22,7 +22,7 @@ place Entities rather than tiles, their placement rules read *actor* positions
 (walls, liquids) which are not a tile layer, they need a global count budget, and
 they need a per-cell RNG roll (which would make rule *order* silently change map
 output for a given seed). That lives in `EntityManager.placeBiomeDecorations`
-(`engine.js`) as a candidate-set → filter → sample pass. See [BIOMES.md](BIOMES.md).
+(`engine/entity-manager/spawning.js`) as a candidate-set → filter → sample pass. See [BIOMES.md](BIOMES.md).
 
 This doc explains what a rule is, when it fires, what it can read, what it can write, and in what order cells are visited.
 
@@ -165,7 +165,7 @@ Off-map neighbours are still passed to `pred`, where `get`/`on` return `null` fo
 them, so they normally test false. A predicate that needs a different edge policy
 should check `ctx.inBounds` itself.
 
-> `architect.js` also has module-scope `anyNeighbor8(pred, x, y)` and
+> `architect/architect.js` also has module-scope `anyNeighbor8(pred, x, y)` and
 > `countNeighbors8(pred, x, y)` for generator code that isn't inside a tile pattern.
 > **Those take a plain `(x, y)` predicate**, not `(ctx, x, y)` — the generators that
 > use them already have `(x, y)` closures in hand. Don't mix the two signatures up.
@@ -352,7 +352,7 @@ const eligible = (tileContext, x, y) =>
 
 Rule 3 paints a whole horizontal run itself rather than one cell, so it uses `tileContext.paint` — and it returns `null` so the driver doesn't write the origin cell a second time. The cells it painted ahead of the cursor are still visited later, but by then `eligible` rejects them, because `isUnpaintedVoid` excludes `SHADE`.
 
-The whole pattern is **idempotent** for the same reason: running it over already-shaded background matches nothing. It is called on both the generation path (`engine.js`, after the map is built) and the save-restore path, and running twice is harmless.
+The whole pattern is **idempotent** for the same reason: running it over already-shaded background matches nothing. It is called on both the generation path (`loadFloor` in `engine/dungeon-engine/floors.js`, after the map is built) and the save-restore path, and running twice is harmless.
 
 ---
 

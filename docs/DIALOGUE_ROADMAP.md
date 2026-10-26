@@ -3,7 +3,7 @@
 *A path to conversations with non-hostile actors (multiple-choice dialogue trees)
 and taunt lines for hostile actors.*
 
-Status: planning · Last updated: 2026-06-26
+Status: planning · Last updated: 2026-10-25
 
 ---
 
@@ -32,15 +32,15 @@ Status: planning · Last updated: 2026-06-26
 
 | Concern | Location | Note |
 |---|---|---|
-| Player bump → attack | `tryMove()` `engine.js` ≈7184–7613; attack at `applyCollisionEffects(actorAtTarget)` ≈7318 | Insert dialogue check after the solid-actor lookup (≈7225), before attack resolution. |
-| Hostility flag | `Personality` ctor `behaviors.js`:9 `this.hostile = data.hostile \|\| false`; data in `personalities.json` | Non-hostile = `personality.hostile === false`. An informal `friendly` actor attribute also exists (`input.js` ≈714). |
-| Actor death | `die()` `engine.js` ≈4145; death message ≈4162 | Fire before-death taunt just before the death message, while still "alive." |
-| Hostile first attack | `attack_adjacent` behavior `behaviors.js`:38 (calls `applyCollisionEffects`) | Fire first-attack taunt once per actor (guard with a flag). |
-| Canvas textbox | `showTextBox(id, text, options)` `interface.js`:755, `wrapText()` ≈713, `renderTextLine()` ≈695, `createCharSprite()` ≈589 | Already word-wraps + stacks (`uiContainer`, zIndex 6). Add a char-limit/truncation option. |
-| Sidebar text | `showMessage()` `input.js`:913, `displayMessages()` ≈994 | Writes via `textContent`/`createElement` — **XSS-safe**; no truncation. |
-| Modal click router | `_hitTestBox()` `interface.js`:1916 → `_handle*Click(box, contentLine)` (e.g. `_handleInventoryClick` ≈1966) | Central router hit-tests the active box's content lines. Clone for dialogue. |
-| Modal key chain | `handleKeyDown()` `input.js`:1113 checks mode flags in precedence order; `disable()/enable()` ≈1446; `turnEngine.lock/unlock` | Add a `dialogueMode` branch; gate game input while open. |
-| Confirm-dialog template | `showConfirmDialog()` `interface.js`:1682, `handleConfirmKey()` ≈1756, `_handleConfirmClick()` ≈1945 | Closest existing analog (modal box + options + click + key); the model to follow. |
+| Player bump → attack | `tryMove()` in `engine/actor/movement.js`; attack at `applyCollisionEffects(actorAtTarget)` (`engine/actor/combat.js`) | Insert dialogue check after the solid-actor lookup, before attack resolution. |
+| Hostility flag | `Personality` ctor in `behaviors/behaviors.js` `this.hostile = data.hostile \|\| false`; data in `personalities.json` | Non-hostile = `personality.hostile === false`. An informal `friendly` actor attribute also exists (`input.js`). |
+| Actor death | `die()` in `engine/actor/actor.js`, near its death message | Fire before-death taunt just before the death message, while still "alive." |
+| Hostile first attack | `attack_adjacent` behavior in `behaviors/ai.js` (calls `applyCollisionEffects`) | Fire first-attack taunt once per actor (guard with a flag). |
+| Canvas textbox | `showTextBox(id, text, options)`, `wrapText()`, `renderTextLine()`, `createCharSprite()` in `ui/interface-manager.js` | Already word-wraps + stacks (`uiContainer`, zIndex 6). Add a char-limit/truncation option. |
+| Sidebar text | `showMessage()`, `displayMessages()` in `input.js` | Writes via `textContent`/`createElement` — **XSS-safe**; no truncation. |
+| Modal click router | `handleDialogClick()` → `_hitTestBox()` → `_handle*Click(box, contentLine)` (e.g. `_handleInventoryClick`) in `ui/menus.js` | Central router hit-tests the active box's content lines. Clone for dialogue. |
+| Modal key chain | `handleKeyDown()` in `input.js` checks mode flags in precedence order; `disable()/enable()`; `turnEngine.lock/unlock` | Add a `dialogueMode` branch; gate game input while open. |
+| Confirm-dialog template | `showConfirmDialog()`, `handleConfirmKey()`, `_handleConfirmClick()` in `ui/menus.js` | Closest existing analog (modal box + options + click + key); the model to follow. |
 
 ---
 
@@ -136,14 +136,14 @@ are simpler and make a good warm-up.
   - **Goal:** A reusable dialogue window: shows a node's text + a list of selectable
   choices; supports click and keyboard; gates game input while open.
 - **Work:**
-  - Add `showDialogue(node, controller)` to `interface.js`, modeled on
+  - Add `showDialogue(node, controller)` as a new `ui/` group (e.g. `ui/dialogue.js`), modeled on
     `showConfirmDialog()` — a `createBox()` with wrapped text, then one line per
     choice (prefixed `a)`/`b)`… or `1)`/`2)…`), storing a line→choiceIndex map on
     the box (the `_inventoryLineIndices` pattern).
-  - **Click:** add a `dialogueMode` branch to the click router (`interface.js`
-    ≈1840+) using `_hitTestBox()` → new `_handleDialogueClick(box, contentLine)`.
+  - **Click:** add a `dialogueMode` branch to the click router (`handleDialogClick`
+    in `ui/menus.js`) using `_hitTestBox()` → new `_handleDialogueClick(box, contentLine)`.
   - **Keyboard:** add `handleDialogueKey()` and a `dialogueMode` flag; insert into
-    the `handleKeyDown()` precedence chain (`input.js` ≈1113) above movement.
+    the `handleKeyDown()` precedence chain (`input.js`) above movement.
   - **Gating:** on open, `inputManager.disable()` game actions + `turnEngine.lock()`;
     on close, re-enable + unlock (mirror the confirm-dialog lifecycle).
   - Implement the **conversation controller** over the JSON tree
@@ -160,7 +160,7 @@ are simpler and make a good warm-up.
 
 - **Goal:** Bumping a non-hostile actor opens its dialogue instead of attacking.
 - **Work:**
-  - In `tryMove()` after the solid-actor lookup (`engine.js` ≈7225) and **before**
+  - In `tryMove()` after the solid-actor lookup (`engine/actor/movement.js`) and **before**
     `applyCollisionEffects`, if the target is non-hostile (`personality.hostile ===
     false`, or has `friendly`) and has a resolvable `dialogue`, open the dialogue
     UI (Phase B), consume the move (no attack, no turn spent — or spend a turn, a
@@ -193,13 +193,13 @@ are simpler and make a good warm-up.
 
 **Reuse as-is:**
 
-- Hostility flag (`behaviors.js`:9 / `personalities.json`).
-- Collision seam `tryMove()` / `applyCollisionEffects` (`engine.js`).
-- `die()` taunt point (`engine.js` ≈4162).
-- Canvas textbox `showTextBox()` + `wrapText()` + `renderTextLine()` (`interface.js`).
+- Hostility flag (`Personality` in `behaviors/behaviors.js` / `personalities.json`).
+- Collision seam `tryMove()` / `applyCollisionEffects` (`engine/actor/movement.js`, `engine/actor/combat.js`).
+- `die()` taunt point (`engine/actor/actor.js`).
+- Canvas textbox `showTextBox()` + `wrapText()` + `renderTextLine()` (`ui/interface-manager.js`).
 - Sidebar `showMessage()` / `displayMessages()` (`input.js`) — XSS-safe.
 - Modal click model `_hitTestBox()` + `_handle*Click` and the confirm-dialog
-  lifecycle (`interface.js`); key precedence chain + input gating (`input.js`).
+  lifecycle (`ui/menus.js`); key precedence chain + input gating (`input.js`).
 - The supplement/override merge, so dialogue/taunts are per-prototype overridable.
 
 **Must build:**
@@ -236,16 +236,17 @@ are simpler and make a good warm-up.
 
 ## Critical files
 
-- [`behaviors.js`](../behaviors.js) — hostility flag (`Personality` ctor, :9);
-  `attack_adjacent` (:38) for the first-attack taunt.
-- [`engine.js`](../engine.js) — `tryMove()` (≈7184–7613) collision seam;
-  `applyCollisionEffects` (≈7318); `die()` (≈4145, taunt ≈4162); attribute
-  accessors (≈2942).
-- [`interface.js`](../interface.js) — `showTextBox()` (755), `showConfirmDialog()`
-  (1682) template, click router + `_hitTestBox()` (≈1840–1940), char/line rendering
-  (≈589–843). Home of the new `showDialogue()`.
-- [`input.js`](../input.js) — `handleKeyDown()` precedence (1113), `showMessage()`
-  (913), input gating (≈1446). Home of `dialogueMode` + `handleDialogueKey`.
+- [`behaviors/behaviors.js`](../behaviors/behaviors.js) — hostility flag (`Personality` ctor);
+  [`behaviors/ai.js`](../behaviors/ai.js) `attack_adjacent` for the first-attack taunt.
+- [`engine/actor/movement.js`](../engine/actor/movement.js) — `tryMove()` collision seam;
+  [`engine/actor/combat.js`](../engine/actor/combat.js) `applyCollisionEffects`;
+  [`engine/actor/actor.js`](../engine/actor/actor.js) `die()` (taunt point) and the
+  attribute accessors (on `Entity`, `engine/entity.js`).
+- [`ui/interface-manager.js`](../ui/interface-manager.js) — `showTextBox()` and
+  char/line rendering; [`ui/menus.js`](../ui/menus.js) — `showConfirmDialog()` template,
+  click router + `_hitTestBox()`. The new `showDialogue()` would be its own `ui/` group.
+- [`input.js`](../input.js) — `handleKeyDown()` precedence, `showMessage()`, input
+  gating. Home of `dialogueMode` + `handleDialogueKey`.
 - [`data/personalities.json`](../data/personalities.json) — where `dialogue` /
   `taunts` attach; optional per-actor override in `data/actors.json`.
 - [`index.html`](../index.html) — `<details id="description">` sidebar target.

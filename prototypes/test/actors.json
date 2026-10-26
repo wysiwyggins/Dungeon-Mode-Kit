@@ -34,47 +34,5 @@
     "default_items": [
       "butter_knife"
     ]
-  },
-  "warded_door": {
-    "name": "warded door",
-    "type": "doorway",
-    "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
-    "tileIndexTop": "OPAQUE_DOOR_TOP",
-    "tileIndexBase_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
-    "tileIndexTop_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
-    "collision_description": "A ward holds the door shut. Something nearby sustains it.",
-    "attributes": {
-      "locked": true,
-      "unlock_conditions": ["killed:linked"],
-      "unlock_message": "The ward on the door gutters out."
-    }
-  },
-  "crown_door": {
-    "name": "crown door",
-    "type": "doorway",
-    "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
-    "tileIndexTop": "OPAQUE_DOOR_TOP",
-    "tileIndexBase_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
-    "tileIndexTop_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
-    "collision_description": "The door bears the sign of a crown.",
-    "attributes": {
-      "locked": true,
-      "unlock_conditions": ["wearing:crown"]
-    }
-  },
-  "goblin_chest": {
-    "name": "chest",
-    "type": "container",
-    "description": "A chest stamped with a goblin's face.",
-    "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
-    "tileIndexTop": "UNDERSCORE",
-    "tileIndexBase_open": "OPAQUE_DOOR_BOTTOM",
-    "tileIndexTop_open": "PRISON_WINDOW",
-    "collision_description": "It won't open while goblins live.",
-    "attributes": {
-      "locked": true,
-      "unlock_conditions": ["killed:goblin"],
-      "drops": [{ "item": "ring", "weight": 1 }]
-    }
   }
 }

@@ -10,16 +10,10 @@
 // clobber state belonging to other generators on the same floor. That is what this
 // checks, across a range of region sizes and placements.
 
-const fs = require('fs');
-const path = require('path');
 
-const ROOT = path.join(__dirname, '..');
-const ROT = require(path.join(ROOT, 'lib/rot.js'));
+const { loadArchitect } = require('./load-architect');
 
-const src = fs.readFileSync(path.join(ROOT, 'architect.js'), 'utf8');
-const Architect = new Function('ROT', 'console', src + '\n;return Architect;')(ROT, {
-    log: () => {}, warn: () => {}, error: (...a) => console.error(...a)
-});
+const { Architect, ROT, out } = loadArchitect();
 
 const SEEDS = Number(process.argv[2]) || 40;
 
@@ -113,16 +107,16 @@ for (const [mw, mh, rx, ry, rw, rh] of CASES) {
             r = run(seed, mw, mh, rx, ry, rw, rh);
         } catch (e) {
             failures++;
-            console.error(`seed ${seed} region ${rw}x${rh}@${rx},${ry} on ${mw}x${mh}: THREW ${e.message}`);
+            out.error(`seed ${seed} region ${rw}x${rh}@${rx},${ry} on ${mw}x${mh}: THREW ${e.message}`);
             continue;
         }
         if (r.fails.length) {
             failures++;
-            console.error(`seed ${seed} region ${rw}x${rh}@${rx},${ry} on ${mw}x${mh}:`);
-            for (const f of r.fails) console.error(`    ${f}`);
+            out.error(`seed ${seed} region ${rw}x${rh}@${rx},${ry} on ${mw}x${mh}:`);
+            for (const f of r.fails) out.error(`    ${f}`);
         }
     }
 }
 
-console.log(`wildcard: ${runs} runs, ${failures} failures`);
+out.log(`wildcard: ${runs} runs, ${failures} failures`);
 process.exit(failures ? 1 : 0);

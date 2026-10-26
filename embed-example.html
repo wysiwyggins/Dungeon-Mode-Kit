@@ -62,15 +62,10 @@
 &lt;script src="lib/pixi.min.js"&gt;&lt;/script&gt;
 &lt;script src="lib/tweenjs.js"&gt;&lt;/script&gt;
 &lt;script src="lib/howler.js"&gt;&lt;/script&gt;
-&lt;script src="globals.js"&gt;&lt;/script&gt;
-&lt;script src="lighting.js"&gt;&lt;/script&gt;
-&lt;script src="sound.js"&gt;&lt;/script&gt;
-&lt;script src="interface.js"&gt;&lt;/script&gt;
-&lt;script src="input.js"&gt;&lt;/script&gt;
-&lt;script src="engine.js"&gt;&lt;/script&gt;
+&lt;script type="module" src="main.js"&gt;&lt;/script&gt;
 
 &lt;script&gt;
-    initializeGame();
+    window.addEventListener('load', () =&gt; initializeGame());
 &lt;/script&gt;</pre>
     </div>
 
@@ -86,10 +81,10 @@
 &lt;div id="game"&gt;&lt;/div&gt;
 
 &lt;!-- Load scripts... --&gt;
-&lt;script src="engine.js"&gt;&lt;/script&gt;
+&lt;script type="module" src="main.js"&gt;&lt;/script&gt;
 
 &lt;script&gt;
-    initializeGame();
+    window.addEventListener('load', () =&gt; initializeGame());
 &lt;/script&gt;</pre>
     </div>
 
@@ -131,12 +126,7 @@
     &lt;script src="lib/pixi.min.js"&gt;&lt;/script&gt;
     &lt;script src="lib/tweenjs.js"&gt;&lt;/script&gt;
     &lt;script src="lib/howler.js"&gt;&lt;/script&gt;
-    &lt;script src="globals.js"&gt;&lt;/script&gt;
-    &lt;script src="lighting.js"&gt;&lt;/script&gt;
-    &lt;script src="sound.js"&gt;&lt;/script&gt;
-    &lt;script src="interface.js"&gt;&lt;/script&gt;
-    &lt;script src="input.js"&gt;&lt;/script&gt;
-    &lt;script src="engine.js"&gt;&lt;/script&gt;
+    &lt;script type="module" src="main.js"&gt;&lt;/script&gt;
 
     &lt;script&gt;
         window.addEventListener('load', () =&gt; initializeGame());

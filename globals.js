@@ -1,22 +1,12 @@
-// globals is an artifact of the old roguelike protoype and can probably just be folded into engine.
-//there's no reason why the shadow background tiles need to be defined here
-let tiles = [];
-let tileMap = [];
-let spritesheet;
-let spritesheetData;
-let baseColor;
-let colors = [];
-let sounds = [];
-// Function to convert x, y coordinates to an index
-function xyToIndex(x, y) {
-  return y * 23 + x;
-}
+// Shared constants: asset paths, tile/canvas dimensions and tile ids used across the engine.
 
 // Detect if running locally or on production
-const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+// (globalThis.location is absent in Node, where the tools/ scripts load the Architect.)
+const hostname = globalThis.location?.hostname;
+const isLocal = !hostname || hostname === 'localhost' || hostname === '127.0.0.1';
 const BASE_PATH = isLocal ? '.' : '/dungeonkit';
 
-const globalVars = {
+export const globalVars = {
   BASE_PATH: BASE_PATH,
   SPRITESHEET_PATH: `${BASE_PATH}/assets/sprites/static-tiles.png`,
   SPRITE_DATA_PATH: `${BASE_PATH}/data/sprites/static-tiles.json`,
@@ -56,6 +46,3 @@ const globalVars = {
   MAGIC_POLARITY_TILE: 'EVIL_EYE',
   MAGIC_POLARITY_TINTS: { good: 0x3D7DFF, bad: 0xE03030 },
 };
-
-// Attach to window
-window.myAppGlobals = globalVars;

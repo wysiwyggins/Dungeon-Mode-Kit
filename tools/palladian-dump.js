@@ -6,7 +6,7 @@
 //   node tools/palladian-dump.js --fuzz          # all sizes x 60 seeds, quiet
 //   node tools/palladian-dump.js 7 --enfilade    # mark sight-lines
 //
-// Loads the real architect.js so the checks run against the shipped code rather
+// Loads the real Architect so the checks run against the shipped code rather
 // than a copy. Reads only the Architect's OUTPUT structures (walkableTiles,
 // pendingWallSpawns, diggerRooms, namedRegions), so it validates the contract the
 // engine actually consumes.
@@ -14,18 +14,11 @@
 // Exits non-zero on any failed invariant, so this works as a fuzz loop:
 //   for s in $(seq 1 200); do node tools/palladian-dump.js $s || break; done
 
-const fs = require('fs');
-const path = require('path');
 
-const ROOT = path.join(__dirname, '..');
-const ROT = require(path.join(ROOT, 'lib/rot.js'));
+const { loadArchitect } = require('./load-architect');
 
-// architect.js is a plain script declaring `class Architect`; it only touches
-// `fetch` inside loadTiledMap, which we never call.
-const src = fs.readFileSync(path.join(ROOT, 'architect.js'), 'utf8');
-const Architect = new Function('ROT', 'console', src + '\n;return Architect;')(ROT, {
-    log: () => {}, warn: () => {}, error: (...a) => console.error(...a)
-});
+// The Architect only touches `fetch` inside loadTiledMap, which we never call.
+const { Architect, ROT, out } = loadArchitect();
 
 // ---------------------------------------------------------------- arg parsing
 
@@ -245,15 +238,15 @@ function check(a, w, h, label) {
 function render(res, w, h, a) {
     const { g, axisX } = res;
     const lines = g.map(row => row.join(''));
-    console.log(lines.join('\n'));
+    out.log(lines.join('\n'));
     if (axisX !== null && Number.isInteger(axisX)) {
-        console.log(' '.repeat(axisX) + '^ axis x=' + axisX);
+        out.log(' '.repeat(axisX) + '^ axis x=' + axisX);
     }
-    console.log('');
-    console.log('legend  . floor   # wall   M metal_wall   I column   W window(fortification)');
-    console.log('        + door    t torch  P pushable   S secret door   L hidden lever');
+    out.log('');
+    out.log('legend  . floor   # wall   M metal_wall   I column   W window(fortification)');
+    out.log('        + door    t torch  P pushable   S secret door   L hidden lever');
     const sanct = res.rooms.find(r => r.isSanctum);
-    console.log(`rooms ${res.rooms.length}   floor ${res.floorCount}   ` +
+    out.log(`rooms ${res.rooms.length}   floor ${res.floorCount}   ` +
         `sanctum ${sanct ? `${sanct.shape} @ ${sanct._x1},${sanct._y1}-${sanct._x2},${sanct._y2}` : 'none'}   ` +
         `columns ${res.cols.length}   ` +
         `regions [${Object.keys(a.namedRegions || {}).join(', ') || 'none'}]`);
@@ -263,7 +256,7 @@ function render(res, w, h, a) {
 // enfilade is eyeballable. ASCII shows this better than the game does.
 function renderEnfilade(res, w, h) {
     const { g, axisX } = res;
-    console.log('\n--- enfilade: rows with an unbroken run through 3+ rooms ---');
+    out.log('\n--- enfilade: rows with an unbroken run through 3+ rooms ---');
     for (let y = 0; y < h; y++) {
         const row = g[y];
         let run = 0, best = 0, gaps = 0;
@@ -273,12 +266,12 @@ function renderEnfilade(res, w, h) {
             else if (c === 'W' || c === 'I') { run++; }        // see-through
             else { if (run > 0) gaps++; run = 0; }
         }
-        if (best >= Math.floor(w * 0.45)) console.log(`y=${String(y).padStart(3)} ${row.join('')}`);
+        if (best >= Math.floor(w * 0.45)) out.log(`y=${String(y).padStart(3)} ${row.join('')}`);
     }
     if (axisX !== null) {
         let col = '';
         for (let y = 0; y < h; y++) col += g[y][axisX];
-        console.log(`\naxial (x=${axisX}, read top-to-bottom): ${col}`);
+        out.log(`\naxial (x=${axisX}, read top-to-bottom): ${col}`);
     }
 }
 
@@ -307,8 +300,8 @@ if (flags.has('--fuzz')) {
                 runs++;
                 let a;
                 try { a = generate(seed, w, h, opts); }
-                catch (e) { bad++; console.error(`THROW ${w}x${h} seed ${seed} ${JSON.stringify(opts)}: ${e.message}`); continue; }
-                if (!a.walkableTiles.length) { bad++; console.error(`EMPTY ${w}x${h} seed ${seed} ${JSON.stringify(opts)}`); continue; }
+                catch (e) { bad++; out.error(`THROW ${w}x${h} seed ${seed} ${JSON.stringify(opts)}: ${e.message}`); continue; }
+                if (!a.walkableTiles.length) { bad++; out.error(`EMPTY ${w}x${h} seed ${seed} ${JSON.stringify(opts)}`); continue; }
                 const res = check(a, w, h, `${w}x${h}#${seed}`);
                 for (const f of res.fails) {
                     bad++;
@@ -321,22 +314,22 @@ if (flags.has('--fuzz')) {
             }
         }
     }
-    console.log(`fuzz: ${runs} runs, ${bad} failures`);
+    out.log(`fuzz: ${runs} runs, ${bad} failures`);
     for (const [kind, examples] of seen) {
-        console.log(`\n[${kind}]`);
-        for (const e of examples) console.log('  ' + e);
+        out.log(`\n[${kind}]`);
+        for (const e of examples) out.log('  ' + e);
     }
     process.exit(bad ? 1 : 0);
 }
 
 const a = generate(SEED, WIDTH, HEIGHT, optOverride);
 const res = check(a, WIDTH, HEIGHT, 'single');
-console.log(`palladian  seed ${SEED}  ${WIDTH}x${HEIGHT}  ${JSON.stringify(optOverride)}\n`);
+out.log(`palladian  seed ${SEED}  ${WIDTH}x${HEIGHT}  ${JSON.stringify(optOverride)}\n`);
 render(res, WIDTH, HEIGHT, a);
 if (flags.has('--enfilade')) renderEnfilade(res, WIDTH, HEIGHT);
-console.log('');
+out.log('');
 if (res.fails.length) {
-    for (const f of res.fails) console.log('FAIL  ' + f);
+    for (const f of res.fails) out.log('FAIL  ' + f);
     process.exit(1);
 }
-console.log('PASS  all invariants');
+out.log('PASS  all invariants');

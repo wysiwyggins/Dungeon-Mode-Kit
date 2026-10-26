@@ -2,7 +2,7 @@
 
 How rope bridges are generated across abysses in procedurally-generated levels, and how to configure them-
 
-Bridge generation lives entirely in `architect.js` (`generateBridges`), runs during map generation, and produces `rope_bridge` actors. This doc covers the terrain model, the algorithm, configuration, and how the approach compares to Brogue's `buildABridge`.
+Bridge generation lives entirely in the Architect (`generateBridges` in `architect/bridges.js`, spawned by `spawnPendingBridges` in `architect/spawning.js`), runs during map generation, and produces `rope_bridge` actors. This doc covers the terrain model, the algorithm, configuration, and how the approach compares to Brogue's `buildABridge`.
 
 ---
 
@@ -17,7 +17,7 @@ A rope bridge is a straight line of walkable tiles that spans an **abyss** from 
 | `flammable` | `true` | can burn (fire destroys the crossing) |
 | `render_layer` | `bottom` | drawn under actors standing on it |
 
-A bridge cell keeps `floorMap === null` — the crossing is **purely** the platform actor sitting over the void, exactly like a `collapsing_floor`. No real floor tile is laid beneath it. This is what makes it walk correctly *and* burn correctly: movement and fire code check `hasPlatformAt` alongside `hasFloorAt` (see `behaviors.js`), so while the bridge exists the cell is walkable, and when it burns the platform vanishes and the void (with its cliffside background) is revealed rather than a leftover floor tile. See [Burning and destruction](#burning-and-destruction).
+A bridge cell keeps `floorMap === null` — the crossing is **purely** the platform actor sitting over the void, exactly like a `collapsing_floor`. No real floor tile is laid beneath it. This is what makes it walk correctly *and* burn correctly: movement and fire code check `hasPlatformAt` alongside `hasFloorAt` (see `engine/actor/movement.js` and the fire behaviors in `behaviors/environment.js`), so while the bridge exists the cell is walkable, and when it burns the platform vanishes and the void (with its cliffside background) is revealed rather than a leftover floor tile. See [Burning and destruction](#burning-and-destruction).
 Rope bridge actors use connected box-drawing tiles, like the thread trail left by the ball of thread item.
 
 ---
@@ -70,7 +70,7 @@ Blobs are processed **largest-first**. For each, the **narrowest** valid crossin
 
 ### Sprite orientation
 
-`spawnPendingBridges` chooses each cell's box-drawing tile from **which of its four neighbours are also bridge cells** (the same connection-aware approach as `getTrailTileName` in `engine.js`), not from `dir` alone. A straight run stays straight; a `+` intersection cell (all four neighbours are bridge cells) becomes `INVERSE_BOX_VERTICAL_HORIZONTAL`; a cell with three connections becomes the matching T (`INVERSE_BOX_UP_/DOWN_HORIZONTAL`, `INVERSE_BOX_LEFT_/RIGHT_VERTICAL`); a two-connection bend becomes the matching corner (`INVERSE_BOX_TOP_LEFT` etc.); and an endpoint (0–1 connections) falls back to the straight tile for its `dir`. Every pattern maps to a tile in `data/static-tiles.json` — the full inverse-box junction set (`+`, all four `T`s, all four corners) is present. The actor's catalog entry is never mutated; each spawn uses a shallow-cloned `actorData` with the resolved `tileIndexBase`.
+`spawnPendingBridges` chooses each cell's box-drawing tile from **which of its four neighbours are also bridge cells** (the same connection-aware approach as `getTrailTileName` in `engine/actor/passives.js`), not from `dir` alone. A straight run stays straight; a `+` intersection cell (all four neighbours are bridge cells) becomes `INVERSE_BOX_VERTICAL_HORIZONTAL`; a cell with three connections becomes the matching T (`INVERSE_BOX_UP_/DOWN_HORIZONTAL`, `INVERSE_BOX_LEFT_/RIGHT_VERTICAL`); a two-connection bend becomes the matching corner (`INVERSE_BOX_TOP_LEFT` etc.); and an endpoint (0–1 connections) falls back to the straight tile for its `dir`. Every pattern maps to a tile in `data/static-tiles.json` — the full inverse-box junction set (`+`, all four `T`s, all four corners) is present. The actor's catalog entry is never mutated; each spawn uses a shallow-cloned `actorData` with the resolved `tileIndexBase`.
 
 ---
 

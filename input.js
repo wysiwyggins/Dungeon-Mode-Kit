@@ -1,3 +1,5 @@
+import { computeExploreTarget, getChebyshevDistance } from './core/pathfinding.js';
+import { globalVars } from './globals.js';
 
 // ============================================================================
 // INPUT MANAGER
@@ -81,7 +83,7 @@ const AIM_TILE_TOKENS = new Set(['tile']);
  * @param {Object} [origin] - Actor to measure distance from (defaults to the player)
  * @returns {Array<{x: number, y: number, entity: Object, dist: number}>} Sorted candidates
  */
-function collectAimTargets(engine, tokens, origin = null) {
+export function collectAimTargets(engine, tokens, origin = null) {
     const em = engine?.entityManager;
     const from = origin || em?.player;
     if (!em || !from) return [];
@@ -146,7 +148,7 @@ function collectAimTargets(engine, tokens, origin = null) {
  * @param {string[]} defaultTokens - Tokens to use when the item declares none
  * @returns {string[]} Category tokens for collectAimTargets
  */
-function getAimTargetTokens(item, defaultTokens) {
+export function getAimTargetTokens(item, defaultTokens) {
     if (item && item.identified === false) return ['hostile', 'ally'];
     const declared = item?.getAttribute?.('target_filter');
     if (Array.isArray(declared) && declared.length > 0) return declared;
@@ -185,7 +187,7 @@ function isTravelTarget(actor) {
     return actor.stats?.health !== undefined;
 }
 
-class InputManager {
+export class InputManager {
     constructor(engine) {
         this.engine = engine;
         this.enabled = true;

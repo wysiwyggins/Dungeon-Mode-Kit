@@ -22,7 +22,7 @@
                               so a floor can inherit a flag instead of being forced to
                               pin it. Without this, an unchecked box writes `false`,
                               which the engine's mechanics merge treats as an explicit
-                              override (engine.js: config -> biome -> floor spread) —
+                              override (engine: config -> biome -> floor spread) —
                               there is then no way back to the inherited value.
                               Renders as indeterminate while the key is absent.
 
