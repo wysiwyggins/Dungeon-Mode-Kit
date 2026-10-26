@@ -7,11 +7,11 @@
 // FIXED CONSTANTS
 // ============================================================================
 
-// Asset root: '.' when served locally, '/dungeonkit' in production.
-// (globalThis.location is absent in Node, where the tools/ scripts load the Architect.)
-const hostname = globalThis.location?.hostname;
-const isLocal = !hostname || hostname === 'localhost' || hostname === '127.0.0.1';
-export const BASE_PATH = isLocal ? '.' : '/dungeonkit';
+// Asset root: the kit folder this module was served from, with no trailing slash
+// ('' at a site root, '/dungeonkit' on the Jekyll site). Read off this file's own
+// URL, so it's right whatever page loads the engine: a game page, a blog post or
+// an editor.
+export const BASE_PATH = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
 
 // The static-tiles spritesheet and its cell size in pixels.
 export const SPRITESHEET_PATH = `${BASE_PATH}/assets/sprites/static-tiles.png`;

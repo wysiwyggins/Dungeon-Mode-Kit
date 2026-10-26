@@ -13,11 +13,21 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 - **`hazard` actor attribute.** Map generation keeps items and monsters off blob actors that have it (lava, fire, quicksand, deep water, deep sewage). This replaces the hardcoded `HAZARD_BLOB_ACTORS` list.
 - **`void_tile` prototype setting.** Names the flat void tile painted under abysses, holes and collapsed floor (default `OPAQUE_FULL_BLOCK`). You can set it in the prototype editor.
+- **`unlock_conditions` Tiled property.** A door or chest placed as an object can be condition-locked from the map, e.g. a chest with `machine_id` = `guard` and `unlock_conditions` = `killed:linked` opens once its goblin guard dies.
+- **`iron_chest` actor.** A chest with no health or keyhole that can't be smashed, burned or tunnelled open, only unlocked by `unlock_conditions` or a linked switch. Meant for quest items.
+- **Wildcard regions connect to authored floor.** On Tiled maps, a pass after region generation carves a passage from any stranded floor area through region cells only, with a 50% chance of a door at the seam. Controlled by the `connect_regions` and `connect_door_chance` mechanics.
 
 ### Changed
 
 - Refactored to ES6 Modules, ESLint error cleanup
+- **`chest` renamed `wooden_chest`.** Update any map object or prototype that places `chest`.
 - **`globals.js` removed.** The asset path and tile size constants moved to `core/util.js`, the void tile ids to `architect/architect.js`, and the detect-magic marker tile and tints to `engine/render/overlays.js`.
+- **Asset root follows the engine's location.** `BASE_PATH` now comes from where `core/util.js` was served instead of a localhost check, so embeds work under a local `jekyll serve` and from any folder.
+
+### Fixed
+
+- **Small digger-region wildcards no longer crash the map load.** ROT's Digger could place its first room off the edge of a narrow region; room sizes are now capped to fit, and regions under 3×3 are skipped with a warning.
+- **Chests no longer wear what they hold.** A container's starting items were auto-equipped like a creature's, so a chest holding a crown drew the crown on top of itself.
 
 ## [1.2b]
 

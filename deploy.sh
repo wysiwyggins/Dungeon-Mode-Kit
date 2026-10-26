@@ -2,7 +2,9 @@
 
 # Dungeon Mode Kit - Deploy Script
 # This script is just for copying the needed files to my jekyll site so that embedding prototypes works. Not needed for running locally or on a regular site
-# Copies required game files to a destination folder (e.g., Jekyll site)
+# Mirrors the game files into a destination folder (e.g., Jekyll site). The
+# engine, data, prototype, editor, lib and asset folders are synced with
+# --delete, so files removed from the repo are removed from the site too.
 
 # Configuration - update this path to your Jekyll site's game folder
 DEST="${1:-/path/to/your/jekyll/site/games/dungeon}"
@@ -33,77 +35,50 @@ if [[ "$DEST" == "/path/to/your/jekyll/site/games/dungeon" ]]; then
     exit 1
 fi
 
-# Create destination directories
-echo "Creating directories..."
-mkdir -p "$DEST"/{lib,assets/sprites,assets/audio,data,prototypes/default,prototypes/test,prototypes/labyrinth,prototypes/arena,prototypes/automatons,prototypes/dungeon}
+mkdir -p "$DEST"
 
-# Core JavaScript files (ES modules: main.js is the entry, the rest are its imports)
-echo "Copying core JS files..."
-cp "$SCRIPT_DIR/main.js" "$DEST/"
-mkdir -p "$DEST/core"
-cp "$SCRIPT_DIR"/core/*.js "$DEST/core/"
-cp -R "$SCRIPT_DIR/architect" "$DEST/"
-cp -R "$SCRIPT_DIR/engine" "$DEST/"
-cp -R "$SCRIPT_DIR/behaviors" "$DEST/"
-cp "$SCRIPT_DIR/effects.js" "$DEST/"
-cp "$SCRIPT_DIR/globals.js" "$DEST/"
-cp "$SCRIPT_DIR/input.js" "$DEST/"
-cp -R "$SCRIPT_DIR/ui" "$DEST/"
-cp "$SCRIPT_DIR/lighting.js" "$DEST/"
-cp "$SCRIPT_DIR/sound.js" "$DEST/"
+# Folders mirrored exactly. main.js is the ES module entry; it imports from
+# core/, engine/, architect/, behaviors/ and ui/.
+SYNC_DIRS=(core architect engine behaviors ui editors data prototypes lib assets)
 
-# Library files
-echo "Copying library files..."
-cp "$SCRIPT_DIR/lib/rot.js" "$DEST/lib/"
-cp "$SCRIPT_DIR/lib/pixi.min.js" "$DEST/lib/"
-cp "$SCRIPT_DIR/lib/tweenjs.js" "$DEST/lib/"
-cp "$SCRIPT_DIR/lib/howler.js" "$DEST/lib/"
-
-# Assets
-echo "Copying assets..."
-cp "$SCRIPT_DIR/assets/main.css" "$DEST/assets/"
-echo "Rewriting font paths for Jekyll..."
-sed -i '' 's|/assets/fonts/|/fonts/|g' "$DEST/assets/main.css"
-cp "$SCRIPT_DIR/assets/audio/sounds.mp3" "$DEST/assets/audio/"
-cp "$SCRIPT_DIR/assets/sprites/"*.png "$DEST/assets/sprites/"
-
-# Data files
-echo "Copying data files..."
-cp "$SCRIPT_DIR/data/"*.json "$DEST/data/"
-
-# Prototypes
-echo "Copying prototypes..."
-cp "$SCRIPT_DIR/prototypes/default/"*.json "$DEST/prototypes/default/"
-cp "$SCRIPT_DIR/prototypes/default/"*.tmj "$DEST/prototypes/default/" 2>/dev/null
-cp "$SCRIPT_DIR/prototypes/test/"*.json "$DEST/prototypes/test/"
-cp "$SCRIPT_DIR/prototypes/test/"*.tmj "$DEST/prototypes/test/"
-cp "$SCRIPT_DIR/prototypes/labyrinth/"*.json "$DEST/prototypes/labyrinth/"
-cp "$SCRIPT_DIR/prototypes/labyrinth/"*.tmj "$DEST/prototypes/labyrinth/"
-cp "$SCRIPT_DIR/prototypes/arena/"*.json "$DEST/prototypes/arena/" 2>/dev/null
-cp "$SCRIPT_DIR/prototypes/arena/"*.tmj "$DEST/prototypes/arena/" 2>/dev/null
-cp "$SCRIPT_DIR/prototypes/automatons/"*.json "$DEST/prototypes/automatons/" 2>/dev/null
-cp "$SCRIPT_DIR/prototypes/automatons/"*.tmj "$DEST/prototypes/automatons/" 2>/dev/null
-cp "$SCRIPT_DIR/prototypes/dungeon/"*.json "$DEST/prototypes/dungeon/" 2>/dev/null
-cp "$SCRIPT_DIR/prototypes/dungeon/"*.tmj "$DEST/prototypes/dungeon/" 2>/dev/null
-
-# A prototype may ship its own animation sheet (see data/animations.json and
-# Prototype.loadAnimationSheets), so its PNGs travel with its data.
-for d in "$DEST"/prototypes/*/; do
-    name=$(basename "$d")
-    cp "$SCRIPT_DIR/prototypes/$name/"*.png "$d" 2>/dev/null
+echo "Syncing folders..."
+for dir in "${SYNC_DIRS[@]}"; do
+    rsync -a --delete \
+        --exclude '.DS_Store' \
+        --exclude 'audio/source/' \
+        "$SCRIPT_DIR/$dir/" "$DEST/$dir/"
 done
 
-# Copy index.html as a reference (optional - you may want to customize this)
-echo "Copying index.html template..."
-cp "$SCRIPT_DIR/index.html" "$DEST/"
+# Root files: the module entry, the root-level modules and the game pages.
+echo "Copying root files..."
+ROOT_FILES=(
+    main.js effects.js input.js lighting.js sound.js
+    index.html dungeon.html labyrinth.html mine.html automatons.html
+    hallucination_test.html test.html embed-example.html
+    LICENSE.txt README.md
+)
+for file in "${ROOT_FILES[@]}"; do
+    cp "$SCRIPT_DIR/$file" "$DEST/"
+done
 
-# Editor tools
-echo "Copying editor tools..."
-cp "$SCRIPT_DIR/editors/item-editor.html" "$DEST/"
-cp "$SCRIPT_DIR/editors/actor-editor.html" "$DEST/"
-cp "$SCRIPT_DIR/editors/personality-editor.html" "$DEST/"
-cp "$SCRIPT_DIR/editors/prototype-editor.html" "$DEST/"
-cp "$SCRIPT_DIR/editors/biome-editor.html" "$DEST/"
+# Leftovers from before the ES module refactor, and from old deploys that put
+# the editors at the root (they only work from editors/).
+echo "Removing orphaned files..."
+ORPHANS=(
+    globals.js engine.js architect.js interface.js behaviors.js
+    actor-editor.html item-editor.html personality-editor.html
+    prototype-editor.html biome-editor.html
+    arena.html sewer.html
+)
+for file in "${ORPHANS[@]}"; do
+    if [[ -e "$DEST/$file" ]]; then
+        rm "$DEST/$file"
+        echo "  removed $file"
+    fi
+done
+
+echo "Rewriting font paths for Jekyll..."
+sed -i '' 's|/assets/fonts/|/fonts/|g' "$DEST/assets/main.css"
 
 echo ""
 echo -e "${GREEN}Deploy complete!${NC}"

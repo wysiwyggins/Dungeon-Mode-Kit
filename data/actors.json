@@ -1093,7 +1093,7 @@
       "locked": true
     }
   },
-  "chest": {
+  "wooden_chest": {
     "name": "chest",
     "type": "container",
     "description": "A stout wooden chest. No telling what is inside until the lid is up.",
@@ -1152,6 +1152,22 @@
     },
     "collision_description": "[a-an] [color] lock holds the lid fast."
   },
+  "iron_chest": {
+    "name": "iron chest",
+    "type": "container",
+    "description": "A chest bound in iron, with no keyhole. It answers to some other mechanism.",
+    "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
+    "tileIndexTop": "UNDERSCORE",
+    "tileIndexBase_open": "OPAQUE_DOOR_BOTTOM",
+    "tileIndexTop_open": "PRISON_WINDOW",
+    "tint": "#8C939B",
+    "attributes": {
+      "locked": true,
+      "breakable": false,
+      "flammable": false
+    },
+    "collision_description": "The iron lid won't budge."
+  },
   "door": {
     "name": "door",
     "type": "doorway",
@@ -1161,7 +1177,8 @@
     "tileIndexBase_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
     "attributes": {
       "swings_shut": true,
-      "locked": false
+      "locked": false,
+      "paint_tile": "DOOR_TOP"
     }
   },
   "locked_door": {

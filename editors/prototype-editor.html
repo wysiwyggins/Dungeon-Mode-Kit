@@ -118,11 +118,13 @@
     <label title="Tiles you have seen stay remembered but dim when out of view; unseen tiles are hidden."><input type="checkbox" data-bind="fog_of_war" data-type="checkbox" data-tristate data-scope="mechanics"> fog_of_war</label>
     <label title="Level is dark — only lit areas (torches, light sources, player light) are visible."><input type="checkbox" data-bind="darkness" data-type="checkbox" data-tristate data-scope="mechanics"> darkness</label>
     <label title="Player emits their own light automatically, so they can always see nearby tiles even in darkness."><input type="checkbox" data-bind="player_auto_light" data-type="checkbox" data-tristate data-scope="mechanics"> player_auto_light</label>
+    <label title="Tiled maps only: carve passages so wildcard regions join the authored floor around them. On by default."><input type="checkbox" data-bind="connect_regions" data-type="checkbox" data-tristate data-scope="mechanics"> connect_regions</label>
   </div>
   <div class="hint-inline">Flag boxes are three-state: dash = inherit the default, checked = force on, unchecked = force off.</div>
   <div data-mount="treasure_room"></div>
   {{> fieldRow label="viewport_width" bind="viewport_width" type="number" scope="mechanics" tip="Visible columns. If smaller than the map, the level scrolls. Leave blank to show the whole map."}}
   {{> fieldRow label="viewport_height" bind="viewport_height" type="number" scope="mechanics" tip="Visible rows. If smaller than the map, the level scrolls. Leave blank to show the whole map."}}
+  {{> fieldRow label="connect_door_chance" bind="connect_door_chance" type="number" scope="mechanics" tip="Tiled maps only: percent chance (0-100) each passage connect_regions carves gets a door where it meets the floor it joins. Default 50."}}
   {{> fieldRow label="ai_margin" bind="ai_margin" type="number" scope="mechanics" tip="Scrolling levels only: actors more than this many tiles outside the viewport skip their turn (perf optimization). Default 5; ignored when the whole map is visible."}}
   <div data-mount="ambient_light_group"></div>
 </script>

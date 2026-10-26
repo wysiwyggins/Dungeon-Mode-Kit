@@ -1,7 +1,7 @@
 {
   "name": "Default Test Prototype",
   "loaded_sound": "tone3",
-  "description": "Welcome to the Dungeon of Doom. \nFind the crown and wear it to clear the way downward. \nPress '?' for help. Use arrows/numpad or mouse to move.",
+  "description": "Welcome to the Dungeon of Doom. \nFind the crown and wear it to unseal the stairs up. \nPress '?' for help. Use arrows/numpad or mouse to move.",
   "turn_speed": 50,
   "win_conditions": [
     "wearing:crown"
@@ -11,12 +11,12 @@
     "conditions": []
   },
   "mechanics": {
-    "fog_of_war": false,
-    "darkness": false
+    "fog_of_war": true,
+    "darkness": true
   },
   "traps": {
-    "min": 2,
-    "max": 5
+    "min": 0,
+    "max": 1
   },
   "random_actors": {
     "skeleton": {
@@ -31,16 +31,6 @@
     },
     "monkey": {
       "chance": 30,
-      "min": 0,
-      "max": 1
-    },
-    "goblin": {
-      "chance": 20,
-      "min": 0,
-      "max": 2
-    },
-    "dynamo": {
-      "chance": 10,
       "min": 0,
       "max": 1
     }

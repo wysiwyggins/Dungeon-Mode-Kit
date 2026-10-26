@@ -150,20 +150,36 @@ export const ArchitectRegions = {
 
     generateDiggerRegionAt(startX, startY, width, height, context = null) {
         const minDimension = Math.min(width, height);
+        // A room needs a wall on every side, so anything thinner digs nothing.
+        if (minDimension < 3) {
+            console.warn(`Digger region at (${startX}, ${startY}) is ${width}x${height}; it needs at least 3x3 — skipped`);
+            return;
+        }
 
         const maxRoomWidth = Math.min(12, Math.max(7, Math.floor(width / 4)));
         const maxRoomHeight = Math.min(10, Math.max(5, Math.floor(height / 5)));
         const maxCorridorLength = Math.min(8, Math.max(5, Math.floor(minDimension / 8)));
         const dugPercentage = Math.min(0.5, 0.25 + (minDimension / 200));
 
+        // ROT places the first room at a random offset around the region's centre
+        // with no bounds check, and _addDoors then reads one cell past the room on
+        // every side. A room wider than this can land on the edge and throw, which
+        // is what a small painted region (e.g. 5 wide) did.
+        const fitRoom = (lo, hi, span) => {
+            const cap = Math.min(Math.floor(span / 2), span - 1 - Math.floor(span / 2));
+            return [Math.min(lo, cap), Math.min(hi, cap)];
+        };
+        const roomWidth = fitRoom(3, maxRoomWidth, width);
+        const roomHeight = fitRoom(3, maxRoomHeight, height);
+
         const dungeon = new ROT.Map.Digger(width, height, {
-            roomWidth: [3, maxRoomWidth],
-            roomHeight: [3, maxRoomHeight],
+            roomWidth,
+            roomHeight,
             corridorLength: [2, maxCorridorLength],
             dugPercentage: dugPercentage
         });
 
-        console.log(`Digger region: ${width}x${height}, rooms ${3}-${maxRoomWidth} x ${3}-${maxRoomHeight}, corridors 2-${maxCorridorLength}, dug ${(dugPercentage * 100).toFixed(0)}%`);
+        console.log(`Digger region: ${width}x${height}, rooms ${roomWidth.join('-')} x ${roomHeight.join('-')}, corridors 2-${maxCorridorLength}, dug ${(dugPercentage * 100).toFixed(0)}%`);
 
         const floorCells = new Set();
         const wallPositions = [];

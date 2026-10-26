@@ -444,7 +444,7 @@ casters with something to read and something to drink.
 
 `default_items` **ignores the `inventory` capacity attribute**: that attribute governs what an
 actor can pick up or be looted for at runtime, not what it can start holding. This is why a
-`pedestal` or a `chest` holds an item without declaring an `inventory` at all.
+`pedestal` or a `wooden_chest` holds an item without declaring an `inventory` at all.
 
 A single placement's loadout can be overridden from Tiled with a `default_items` custom
 property on the actor object — see
@@ -508,6 +508,16 @@ Contents come from `default_items`, or from a weighted `drops` table rolled once
 **Authored contents win outright** — they suppress both the roll and the trap, so a chest a
 designer filled always yields what they put in it. A trapped container holds nothing and
 spends its trap payload (the same `trap_*` keys floor traps use) on whoever opens it.
+
+**Wooden vs. iron chests.** `wooden_chest` is the random-loot chest: it has health and
+`breakable`, so it can be smashed open (losing some contents to `smash_loss`). `iron_chest`
+has no health, isn't `breakable` or flammable, and has no keyhole, so attacks, fire and
+tunnelling can't get into it. It starts locked and opens only through `unlock_conditions` or
+a linked switch. Use it for a chest that holds a quest item, so the player has to solve the
+puzzle rather than hit it.
+
+Containers never wear what they hold: a chest given a crown keeps it in its inventory
+rather than equipping it, so nothing is drawn on top of the chest.
 
 Don't give a container `swings_shut` — the lid would close as you stepped away, before you
 could take anything.
@@ -1096,7 +1106,7 @@ An actor with no `health` stat reports that it cannot be harmed; one whose
 }
 
 // Chest — bump to open, step in to take. Conceals its contents, unlike a pedestal.
-"chest": {
+"wooden_chest": {
   "name": "chest",
   "description": "A stout wooden chest. No telling what is inside until the lid is up.",
   "tileIndexBase": "OPAQUE_DOOR_BOTTOM",

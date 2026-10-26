@@ -84,6 +84,7 @@ By default an actor object inherits everything from its type definition in `data
 | `switch_radius` | number | Override the proximity radius a switch activates within (when not using `machine_id`). |
 | `one_shot` | bool | Mark a switch/trap as single-use. |
 | `default_items` | string | Override the actor type's starting inventory **for this placement only**. |
+| `unlock_conditions` | string | Lock this door or chest until the conditions hold, e.g. `killed:linked` (every other actor sharing its `machine_id` is dead). Comma-separated, or a JSON array for `{actor, stat, op, value}` conditions. Same vocabulary as `win_conditions`. |
 
 **`default_items` override.** An actor's `default_items` (the items it spawns holding — see [ACTORS.md](ACTORS.md#default-items)) normally comes from the shared type definition. For example, the global `pedestal` defines `"default_items": ["key"]`, so *every* pedestal holds a key. To make one specific pedestal hold something else, set a `default_items` custom property on that object. Accepted formats:
 
@@ -93,11 +94,14 @@ By default an actor object inherits everything from its type definition in `data
 
 The pedestal's `display_inventory` attribute renders whatever it holds on top of it, so a pedestal with `default_items` = `["crown"]` displays and guards a crown instead of a key. This override applies before the item is created, so key/door color pairing still resolves correctly.
 
-The same property fills any container. A `chest` placed as an object and given
+The same property fills any container. A `wooden_chest` placed as an object and given
 `default_items` = `crown` holds a crown instead of rolling its own `drops` table — authored
 contents win, and they also suppress the chest's trap chance, so a chest you filled
 deliberately always yields what you put in it. Unlike the pedestal a chest conceals what it
 holds, so nothing shows on the map until it's opened.
+
+For a quest item, use an `iron_chest` instead: it can't be attacked, burned or tunnelled
+open, so pair it with `unlock_conditions` (e.g. `killed:linked`) or a linked lever.
 
 Note this only works for an actor placed as an **object**. An actor painted on the
 `wildcards` layer has no per-tile property surface, so it can't carry an override — give it a
@@ -157,6 +161,21 @@ See **[TILED_KEY.md](TILED_KEY.md)** ([printable PDF](TILED_KEY.pdf)) for the co
 - Paint a large contiguous region for best results
 - You can combine multiple wildcard types on the same map
 - Hand-painted floor tiles are preserved — wildcards only fill their own region
+
+### Connecting Regions
+
+Each region is generated on its own, without seeing the map around it, and most generators
+put a ring of wall around what they make. So the engine runs one more pass once every region
+is filled: any floor area that can't reach the rest of the map gets a passage carved to the
+nearest floor that can. Usually that's just the region's edge wall where it meets your floor.
+Each new passage has a 50% chance of a door where it meets the floor it joins.
+
+- **Only region cells are carved.** The passage goes through wildcard-region cells only, never
+  through anything you drew. An authored area sealed off by painted walls (a secret room
+  behind a lever, say) has no carvable route, so it's left as drawn.
+- **Turn it off or tune it** per prototype or floor with the `connect_regions` and
+  `connect_door_chance` mechanics (see [PROTOTYPE.md](PROTOTYPE.md#special-modes)).
+- Floor areas under 3 tiles are treated as scenery and left alone.
 - See `prototypes/sewer/map.tmj` (digger region, tile 152) and `prototypes/mine/map.tmj` (cave, tile 10) for examples
 
 ---

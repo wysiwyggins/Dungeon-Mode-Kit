@@ -99,6 +99,8 @@ secret doors, concealed levers, undiscovered traps). See `docs/ACTORS.md`.
 | ------- | ------ | --------- | ------------- |
 | `observer_mode` | boolean | `false` | Disable stairway placement. Use for spectator-only prototypes (e.g. cellular automata demos). |
 | `treasure_room` | number | `0` | Percent chance (0-100) to spawn a treasure room on the level |
+| `connect_regions` | boolean | `true` | Tiled maps only. After wildcard regions are filled, carve a passage from any floor area that can't reach the rest, so regions join the authored floor around them and each other. Only cells inside wildcard regions are carved; an area you sealed with authored walls stays sealed. See [MAP.md](MAP.md#connecting-regions). |
+| `connect_door_chance` | number | `50` | Percent chance (0-100) that each passage `connect_regions` carves gets a door where it meets the floor it joins, if that spot is a doorway (walled on both sides). |
 | `up_stairway_region` | string | generator's choice | Place the up (entry) stairway inside a named region the generator published. Some generators suggest one — `palladian` puts the entry stair in its `portico` courtyard, since arriving in the middle of an interior room reads as a mistake. Set explicitly to override, or to `null` for random placement. |
 | `down_stairway_region` | string | generator's choice | Same for the down stairway. No generator currently suggests one; set it to e.g. `"sanctum"` on a palladian floor to put the descent behind the boss. |
 

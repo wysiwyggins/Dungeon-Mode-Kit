@@ -371,6 +371,11 @@ export class Actor extends Entity {
             this.inventory.push(item);
             console.log(`${this.name} starts with ${item.name}`);
 
+            // Containers (chests, pedestals) hold their items, never wear them: an
+            // equipped crown would draw on top of the chest. A pedestal shows its
+            // item through display_inventory instead.
+            if (this.hasAttribute('container')) continue;
+
             // Check stat requirements before auto-equipping
             const { canEquip } = this.canEquipItem(item);
             if (!canEquip) continue;

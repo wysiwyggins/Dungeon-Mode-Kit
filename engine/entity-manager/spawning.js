@@ -815,9 +815,9 @@ export const EntityManagerSpawning = {
             // locked door already gates the room, so the chest stays unlocked — it's a
             // second beat, not a second lock. If the prototype has no chest actor, fall
             // back to the bare item so a prototype without one still gets its loot.
-            const chestData = prototype.getActorData('chest');
+            const chestData = prototype.getActorData('wooden_chest');
             if (chestData) {
-                const chest = new Actor(lootPos.x, lootPos.y, 'chest', chestData, this.engine);
+                const chest = new Actor(lootPos.x, lootPos.y, 'wooden_chest', chestData, this.engine);
                 this.addEntity(chest);
                 // Hand it the rolled prize directly: `defaultItems` is read by
                 // loadDefaultItems, which then skips the `drops` roll, so the vault
@@ -907,6 +907,24 @@ export const EntityManagerSpawning = {
                         // Accepts a JSON array (e.g. ["crown"]) or a comma-separated list
                         // (e.g. "crown, torch"). An empty value clears the defaults.
                         actor.defaultItems = parseItemList(prop.value);
+                    } else if (prop.name === 'unlock_conditions') {
+                        // Condition lock for this placement (see refreshConditionLocks).
+                        // A comma-separated list ("killed:linked, holding:key") or a JSON
+                        // array, which can also carry {actor, stat, op, value} conditions.
+                        const raw = String(prop.value).trim();
+                        let conds = null;
+                        if (raw.startsWith('[')) {
+                            try {
+                                conds = JSON.parse(raw);
+                            } catch (e) {
+                                console.warn(`Invalid unlock_conditions JSON for ${actorType}:`, prop.value);
+                            }
+                        } else {
+                            conds = raw.split(',').map(s => s.trim()).filter(Boolean);
+                        }
+                        if (Array.isArray(conds) && conds.length > 0) {
+                            actor.setAttribute('unlock_conditions', conds);
+                        }
                     }
                 }
             }

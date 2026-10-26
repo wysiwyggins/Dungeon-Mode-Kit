@@ -1,5 +1,5 @@
 {
-      "player": {
+  "player": {
     "name": "Player",
     "description": "It's you!",
     "tileIndexBase": "LEG",
@@ -22,17 +22,18 @@
       "remains": "skull",
       "accuracy": 50,
       "opaque": true,
-      "strength": 5,
+      "strength": 7,
       "tactician": true
     },
     "stats": {
       "health": {
-        "max": 40,
+        "max": 50,
         "per_turn": 1
       }
     },
     "default_items": [
-      "butter_knife"
+      "butter_knife",
+      "torch"
     ]
   }
 }

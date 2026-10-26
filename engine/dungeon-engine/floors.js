@@ -128,6 +128,18 @@ export const DungeonEngineFloors = {
 
         await this.mapManager.processWildcards(architectContext);
 
+        // Join wildcard regions to the authored floor around them (and to each
+        // other). Generators can't see past their own region, so without this a
+        // region beside authored floor only connects by luck.
+        if (hasAuthoredMap && mechanics.connect_regions !== false) {
+            this.mapManager.connectRegions({
+                doorChance: mechanics.connect_door_chance ?? 50,
+                isBlockedByActor: (x, y) => this.entityManager.getActorsAt(x, y).some(a =>
+                    !a.isDead && a.hasAttribute('solid') &&
+                    !a.hasAttribute('openable') && !a.hasAttribute('pushable'))
+            });
+        }
+
         // Check for treasure room before pending doors are spawned
         const treasureRoomChance = mechanics.treasure_room ?? 0;
         let treasureRoomData = null;

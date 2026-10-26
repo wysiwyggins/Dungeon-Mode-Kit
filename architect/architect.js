@@ -8,6 +8,7 @@
 import { ArchitectBlobs } from './blobs.js';
 import { ArchitectBridges } from './bridges.js';
 import { ArchitectBrogue } from './brogue.js';
+import { ArchitectConnect } from './connect.js';
 import { ArchitectPalladian } from './palladian.js';
 import { ArchitectProcedural } from './procedural.js';
 import { ArchitectRegions } from './regions.js';
@@ -911,4 +912,4 @@ export class Architect {
     }
 }
 
-installMethods(Architect, ArchitectTiled, ArchitectProcedural, ArchitectBlobs, ArchitectBridges, ArchitectRegions, ArchitectSpawning, ArchitectBrogue, ArchitectPalladian);
+installMethods(Architect, ArchitectTiled, ArchitectProcedural, ArchitectBlobs, ArchitectBridges, ArchitectRegions, ArchitectSpawning, ArchitectBrogue, ArchitectPalladian, ArchitectConnect);
