@@ -34,8 +34,10 @@ Each actor below defines a `paint_tile` in `data/actors.json`. Paint that tile o
 | `wall` | ![WALL_TOP](../assets/images/WALL_TOP.png) | 132 | `WALL_TOP` | Standard walls |
 | `brick_wall` | ![BRICK_WALL](../assets/images/BRICK_WALL.png) | 255 | `BRICK_WALL` | Masonry walls |
 | `rock_wall` | ![DARK_SHADE](../assets/images/DARK_SHADE.png) | 178 | `DARK_SHADE` | Natural rock walls (mineable) |
+| `bone_wall` | ![BONE_WALL](../assets/images/BONE_WALL.png) | 439 | `BONE_WALL` | Walls of piled bone (breakable) |
+| `metal_wall` | ![OPAQUE_MEDIUM_SHADE](../assets/images/OPAQUE_MEDIUM_SHADE.png) | 129 | `OPAQUE_MEDIUM_SHADE` | Reflective metal walls (unbreakable) |
 | `fortification` | ![BALLOT_BOX](../assets/images/BALLOT_BOX.png) | 249 | `BALLOT_BOX` | See-through battlements |
-| `pedestal` | ![WHITE_DOOR_TOP](../assets/images/WHITE_DOOR_TOP.png) | | `WHITE_DOOR_TOP`| locked plinth for items |
+| `door` | ![DOOR_TOP](../assets/images/DOOR_TOP.png) | 172 | `DOOR_TOP` | Unlocked doors that swing shut |
 
 ### Terrain & Liquids
 
@@ -63,9 +65,14 @@ Deep water and deep sewage are spawned automatically wherever large contiguous r
 | Actor | Tile | Tile ID | Tile Name | Use For |
 |-------|------|---------|-----------|---------|
 | `pedestal` | ![WHITE_DOOR_TOP](../assets/images/WHITE_DOOR_TOP.png) | 371 | `WHITE_DOOR_TOP` | Solid plinth that displays the item it holds (a key by default) |
+| `column` | ![CANDLE_STICK](../assets/images/CANDLE_STICK.png) | 145 | `CANDLE_STICK` | Breakable see-through columns |
+| `wall_torch` | ![TORCH_ON_WALL](../assets/images/TORCH_ON_WALL.png) | 438 | `TORCH_ON_WALL` | Flickering wall-mounted light source |
+| `teleporter` | ![TWO_WHITE_DIAMONDS](../assets/images/TWO_WHITE_DIAMONDS.png) | 381 | `TWO_WHITE_DIAMONDS` | Teleport pad that sends you to its twin |
+| `down_stairway` | ![DOWNWARDS_ARROW_ON_LIGHT_SHADE](../assets/images/DOWNWARDS_ARROW_ON_LIGHT_SHADE.png) | 21 | `DOWNWARDS_ARROW_ON_LIGHT_SHADE` | Stairs down |
+| `up_stairway` | ![UPWARDS_ARROW_ON_LIGHT_SHADE](../assets/images/UPWARDS_ARROW_ON_LIGHT_SHADE.png) | 22 | `UPWARDS_ARROW_ON_LIGHT_SHADE` | Stairs up |
 
-Unlike the terrain actors above, a pedestal is usually painted as single tiles rather than
-a filled region — one tile, one pedestal.
+Unlike the terrain actors above, fixtures are usually painted as single tiles rather than
+a filled region — one tile, one fixture.
 
 Paint the floor underneath it on the floor layer, as you would for any actor wildcard. A
 tile painted with an actor wildcard is not part of any generator region around it, so
@@ -82,6 +89,7 @@ These tiles are hardcoded generator markers. Paint a contiguous region and the e
 |-----------|------|---------|-----------|-----------------|
 | Digger region | ![PRISON_WINDOW](../assets/images/PRISON_WINDOW.png) | 16 | `PRISON_WINDOW` | Walled rooms + corridors + doors (ROT.js Digger) |
 | Cave | ![INVERSE_BULLET](../assets/images/INVERSE_BULLET.png) | 10 | `INVERSE_BULLET` | Organic cave shapes |
+| Palladian | ![CROWN](../assets/images/CROWN.png) | 226 | `CROWN` | Symmetrical villa: axial sanctum, portico, colonnade |
 | Infernal | ![OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE_AND_OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE](../assets/images/OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE_AND_OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE.png) | 230 | `OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE_AND_OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE` | Cave + lava pools |
 | Maze | ![DESERET_CAPITAL_LETTER_ES](../assets/images/DESERET_CAPITAL_LETTER_ES.png) | 210 | `DESERET_CAPITAL_LETTER_ES` | Perfect maze corridors |
 | Room | ![INVERTED_CHECKER_BOARD](../assets/images/INVERTED_CHECKER_BOARD.png) | 143 | `INVERTED_CHECKER_BOARD` | Single walled room |
@@ -108,7 +116,7 @@ Tile 16 (`PRISON_WINDOW`) is the recommended `digger_region` wildcard. Tiles 9 (
 
 ## Regenerating Tile Images
 
-The per-tile images above are generated from the spritesheet, not committed to git. If `assets/images/` is missing or a tile image doesn't render, regenerate them:
+The per-tile images above are sliced from the spritesheet. If a tile image is missing or out of date, regenerate them:
 
 ```
 python3 scripts/slice-tiles.py

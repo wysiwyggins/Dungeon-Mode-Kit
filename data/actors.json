@@ -951,7 +951,8 @@
     "tint": "#33CCAA",
     "attributes": {
       "breakable": false,
-      "reflective": true
+      "reflective": true,
+      "paint_tile": "OPAQUE_MEDIUM_SHADE"
     }
   },
   "crystal": {
@@ -1556,7 +1557,8 @@
     "attributes": {
       "solid": false,
       "flammable": false,
-      "stairway": "down"
+      "stairway": "down",
+      "paint_tile": "DOWNWARDS_ARROW_ON_LIGHT_SHADE"
     }
   },
   "locked_down_stairway": {
@@ -1586,7 +1588,8 @@
     "attributes": {
       "solid": false,
       "flammable": false,
-      "stairway": "up"
+      "stairway": "up",
+      "paint_tile": "UPWARDS_ARROW_ON_LIGHT_SHADE"
     }
   },
   "locked_up_stairway": {
