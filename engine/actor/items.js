@@ -767,12 +767,7 @@ export const ActorItems = {
                 this.engine.playSound(releaseSound);
                 this.engine.renderer?.effectRunner.apply(releaseEffect, this);
 
-                let success = false;
-                if (useEffect) {
-                    success = this.executeItemEffect(item, useEffect);
-                } else {
-                    success = true;
-                }
+                const success = useEffect ? this.executeItemEffect(item, useEffect) : true;
 
                 if (!item.hasAttribute('deferred')) {
                     this._completeItemUse(item, success);
@@ -792,7 +787,7 @@ export const ActorItems = {
         }
 
         // Get the use effect to determine what happens
-        let success = false;
+        let success;
 
         if (useEffect) {
             success = this.executeItemEffect(item, useEffect);
@@ -1437,7 +1432,7 @@ export const ActorItems = {
                 return true;
             }
 
-            case 'targeted_spell':
+            case 'targeted_spell': {
                 // Targeted spell enters aiming mode - handled by interface
                 // Check if item stat is ready (for charged items like staffs)
                 const chargeStat = item.getAttribute('charge_stat');
@@ -1458,6 +1453,7 @@ export const ActorItems = {
                 // Enter spell aiming mode via interface manager
                 this.engine.interfaceManager?.enterSpellAimingMode(item, this);
                 return true; // Returns true but turn is consumed in executeSpell
+            }
             default:
                 console.log(`Unknown item effect: ${effect}`);
                 if (this.isPlayerControlled()) {

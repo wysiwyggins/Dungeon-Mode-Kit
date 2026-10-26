@@ -2310,7 +2310,7 @@ export class InputManager {
                 this.onPlayerAction();
                 break;
 
-            case 'pickup':
+            case 'pickup': {
                 const item = this.engine.entityManager.getItemAt(player.x, player.y);
                 if (item) {
                     const pickedUp = player.pickUpItem(item);
@@ -2329,6 +2329,7 @@ export class InputManager {
                     console.log('Nothing to pick up here.');
                 }
                 break;
+            }
 
             case 'player_info':
                 if (this.engine.interfaceManager) {

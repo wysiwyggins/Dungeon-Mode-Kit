@@ -119,7 +119,7 @@ async function copyText(txt, okMsg) {
     tmp.value = txt;
     document.body.appendChild(tmp);
     tmp.focus(); tmp.select();
-    let ok = false;
+    let ok;
     try { ok = document.execCommand('copy'); } catch { ok = false; }
     tmp.remove();
     setStatus(ok ? okMsg : 'copy failed — select the JSON panel text manually');

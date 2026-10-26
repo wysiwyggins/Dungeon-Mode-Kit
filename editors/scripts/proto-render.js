@@ -63,7 +63,7 @@ async function copyProtoJSON(okMsg) {
     tmp.value = txt;
     document.body.appendChild(tmp);
     tmp.focus(); tmp.select();
-    let ok = false;
+    let ok;
     try { ok = document.execCommand('copy'); } catch { ok = false; }
     tmp.remove();
     status.textContent = ok ? okMsg : 'copy failed';

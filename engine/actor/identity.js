@@ -70,7 +70,7 @@ export const ActorIdentity = {
         const second = this.isPlayerControlled();
         // Split branches before resolving, so a nested [actor_name] is only
         // resolved on the branch that survives.
-        const chosen = template.replace(/\[([^\[\]|]*(?:\[[^\]]*\][^\[\]|]*)*)\|([^\[\]|]*(?:\[[^\]]*\][^\[\]|]*)*)\]/g,
+        const chosen = template.replace(/\[([^[\]|]*(?:\[[^\]]*\][^[\]|]*)*)\|([^[\]|]*(?:\[[^\]]*\][^[\]|]*)*)\]/g,
             (_, you, it) => second ? you : it);
 
         const result = resolveTemplate(chosen, this, { providers: this._nameProviders() });

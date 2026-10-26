@@ -342,7 +342,6 @@ export const UIMenus = {
             this.enterThrowAimingMode(item);
             return true;
         }
-        currentAction++;
 
         return false;
     },

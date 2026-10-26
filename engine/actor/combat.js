@@ -411,10 +411,9 @@ export const ActorCombat = {
             const passivePerTurn = perTurn - basePerTurn;
 
             // Apply base per-turn with restore_from gate
-            let baseGain = 0;
             if (basePerTurn !== 0) {
                 const afterBase = Math.max(0, Math.min(stat.max, stat.current + basePerTurn));
-                baseGain = afterBase - stat.current;
+                let baseGain = afterBase - stat.current;
 
                 if (stat.restore_from && baseGain > 0) {
                     const sourceStat = this.stats[stat.restore_from];

@@ -210,7 +210,7 @@ export const DungeonEngineProgression = {
         if (typeof condition === 'object') {
             const { actor: actorTarget, stat, treasure, op, value } = condition;
             if ((stat || treasure) && op !== undefined && value !== undefined) {
-                let target = null;
+                let target;
                 if (actorTarget === 'player') {
                     target = player;
                 } else if (actorTarget) {

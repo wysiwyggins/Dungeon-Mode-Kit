@@ -258,7 +258,7 @@ export class DungeonEngine {
             console.log(`Renderer initialized: ${this.canvasWidth}x${this.canvasHeight}px canvas, scaled to ${this.canvasWidth/2}x${this.canvasHeight/2}px display`);
         } catch (error) {
             console.error('Failed to initialize PIXI renderer:', error);
-            throw new Error(`Renderer initialization failed: ${error.message}`);
+            throw new Error(`Renderer initialization failed: ${error.message}`, { cause: error });
         }
     }
     

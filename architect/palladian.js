@@ -284,7 +284,6 @@ export const ArchitectPalladian = {
                 if (shape === 'cross' && (nRows < 3 || nCols < 3)) continue;
                 if (shape === 'tee' && nCols < 3) continue;
                 if (shape === 'eye' && nRows < 2) continue;
-                want = shape;
                 sanctumShape = shape;
                 break;
             }

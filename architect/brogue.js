@@ -532,7 +532,7 @@ export const ArchitectBrogue = {
 
         // Cells this corridor has already claimed. Kept separate from the grid so a
         // rejected path leaves nothing behind.
-        let claimed = new Set();
+        let claimed;
 
         // Every room's wall ring, minus the cells that are the room itself. A
         // corridor may pierce this ring at its own mouth but must never run along
