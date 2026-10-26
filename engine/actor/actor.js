@@ -441,6 +441,25 @@ export class Actor extends Entity {
         if (this._trapArmed) {
             this._trapArmed = false;
             springTrapPayload(this, opener);
+            return;
+        }
+
+        // Tell the player what's inside as the lid comes up, rather than making
+        // them step in to find out. Names go through the same identification-aware
+        // path as pickup messages, so an unidentified potion stays "a murky potion".
+        if (this.hasAttribute('container') && opener?.isPlayerControlled?.()) {
+            const input = this.engine.inputManager;
+            const names = this.inventory.map(item => {
+                const named = input?.getEntityNameWithArticle(item) ?? item.name;
+                return item.count > 1 ? `${named} (${item.count})` : named;
+            });
+            if (names.length === 0) {
+                input?.showMessage('It is empty.');
+            } else {
+                const list = names.length === 1 ? names[0]
+                    : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+                input?.showMessage(`Inside you find ${list}.`, { style: 'discovery' });
+            }
         }
     }
 

@@ -16,6 +16,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 - **`unlock_conditions` Tiled property.** A door or chest placed as an object can be condition-locked from the map, e.g. a chest with `machine_id` = `guard` and `unlock_conditions` = `killed:linked` opens once its goblin guard dies.
 - **`iron_chest` actor.** A chest with no health or keyhole that can't be smashed, burned or tunnelled open, only unlocked by `unlock_conditions` or a linked switch. Meant for quest items.
 - **Wildcard regions connect to authored floor.** On Tiled maps, a pass after region generation carves a passage from any stranded floor area through region cells only, with a 50% chance of a door at the seam. Controlled by the `connect_regions` and `connect_door_chance` mechanics.
+- **Opened chests list their contents.** When the player opens a chest, the message log says what's inside ("Inside you find a crown.") or that it's empty, using identification-aware names.
 
 ### Changed
 
