@@ -80,7 +80,8 @@ A white texture with `PIXI.BLEND_MODES.MULTIPLY` blend mode. When tinted with a 
 | `darkness` | `false` | Enable lighting system |
 | `fog_of_war` | `false` | Remember explored tiles |
 | `ambient_light` | `0.0` | Minimum light level (0-1) |
-| `player_light_radius` | `6` | Light radius for controlled actors |
+| `player_auto_light` | `true` | Controlled (and `pov`) actors emit light automatically. Set `false` to make the player rely on a carried light source (torch, glowing ring) |
+| `player_light_radius` | `6` | Light radius for controlled actors, when `player_auto_light` is on |
 
 ### Actor Attributes
 
@@ -88,7 +89,7 @@ A white texture with `PIXI.BLEND_MODES.MULTIPLY` blend mode. When tinted with a 
 |-----------|-------------|
 | `light_source` | Actor emits light |
 | `solid` | Actor blocks light (and movement) |
-| `controlled` | Actor emits player light |
+| `controlled` | Actor emits player light (unless `player_auto_light` is `false`) |
 
 ### Actor Properties
 

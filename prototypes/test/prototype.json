@@ -12,7 +12,8 @@
   },
   "mechanics": {
     "fog_of_war": true,
-    "darkness": true
+    "darkness": true,
+    "player_auto_light": false
   },
   "traps": {
     "min": 0,

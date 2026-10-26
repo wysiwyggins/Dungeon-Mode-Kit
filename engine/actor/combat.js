@@ -1471,12 +1471,12 @@ export const ActorCombat = {
     _unlockTarget(target, key, value, source) {
         target.setAttribute(key, value);
         this.engine.playSound?.('lock');
-        target.open(this);
-        this.engine.updateLighting();
-
+        // Before open(), so the log reads unlock → opens → what's inside.
         if (this.isPlayerControlled()) {
             this.engine.inputManager?.showMessage(`The ${source.name} unlocks ${target.getNameWithArticle()}!`);
         }
+        target.open(this);
+        this.engine.updateLighting();
 
         if (source.item?.hasAttribute('consumable')) {
             this.inventory = this.inventory.filter(i => i !== source.item);
