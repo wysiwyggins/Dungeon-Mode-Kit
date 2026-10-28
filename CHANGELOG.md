@@ -24,10 +24,13 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 - **`iron_chest` actor.** A chest with no health or keyhole that can't be smashed, burned or tunnelled open, only unlocked by `unlock_conditions` or a linked switch. Meant for quest items.
 - **Wildcard regions connect to authored floor.** On Tiled maps, a pass after region generation carves a passage from any stranded floor area through region cells only, with a 50% chance of a door at the seam. Controlled by the `connect_regions` and `connect_door_chance` mechanics.
 - **Opened chests list their contents.** When the player opens a chest, the message log says what's inside ("Inside you find a crown.") or that it's empty, using identification-aware names.
+- **Actor decoration rows in the biome editor.** Decoration rows can now name a non-solid actor (like `grave`) as well as an entity, and the add menu lists both.
+- Jackal actor: weak (5 HP) hostile creature that spawns in packs of 3-5 using `aggressive_melee` personality
+- Pack spawn mechanic: actors with `pack: true` attribute spawn clustered within Manhattan distance 2 of each other
 
 ### Changed
 
-- A little docs cleanup, waiting until editors are wired up in next version to do them all. assets/images/ and journal moved to docs.
+- A little docs cleanup, waiting until editors are wired up in next version to do them all. assets/images/ and journal moved to docs. BIOMES.md rewritten and checked against the code.
 - Refactored to ES6 Modules, ESLint error cleanup
 - **`chest` renamed `wooden_chest`.** Update any map object or prototype that places `chest`.
 - **`globals.js` removed.** The asset path and tile size constants moved to `core/util.js`, the void tile ids to `architect/architect.js`, and the detect-magic marker tile and tints to `engine/render/overlays.js`.
@@ -37,6 +40,9 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 - **Small digger-region wildcards no longer crash the map load.** ROT's Digger could place its first room off the edge of a narrow region; room sizes are now capped to fit, and regions under 3×3 are skipped with a warning.
 - **Chests no longer wear what they hold.** A container's starting items were auto-equipped like a creature's, so a chest holding a crown drew the crown on top of itself.
+- **Spawn entries at `chance` 100 respect `min` and `max`.** They used to place exactly one, so biome `count` values and repeat picks did nothing and root entries like `rat: { chance: 100, min: 2, max: 4 }` spawned a single rat. Prototypes that relied on this will now get the counts they ask for.
+- **`floor_plan` prototypes without `levels`.** Win conditions and random spawning now read the current floor's biome settings instead of the prototype's top-level ones.
+- **Biome editor no longer corrupts actor decoration rows.** Editing one wrote a stray `entity` key next to `actor`; the stray keys in `data/biomes.json` are removed, and "Copy this biome" now says to paste into a prototype's `biomes.json`.
 
 ## [1.2b]
 
@@ -482,13 +488,6 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
   - `player_only` state property: restricts state application to controlled actors
   - `random_apply_states` state property: general-purpose per-turn random sub-state rolls with configurable chance, duration, and message
   - `condition_state` stat property: data-driven state application/removal at stat thresholds — any stat can trigger a state
-
-## [1.3b] 2026-03-17
-
-### Added
-
-- Jackal actor: weak (5 HP) hostile creature that spawns in packs of 3-5 using `aggressive_melee` personality
-- Pack spawn mechanic: actors with `pack: true` attribute spawn clustered within Manhattan distance 2 of each other
 
 ## [1.2b] 2026-03-17
 

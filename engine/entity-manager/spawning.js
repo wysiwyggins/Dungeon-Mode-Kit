@@ -116,10 +116,9 @@ export const EntityManagerSpawning = {
         const skipActorTypes = new Set(['player', 'wall', 'door', 'stairway_up', 'stairway_down']);
 
         // Also skip actor types that are configured in random_actors (they'll be spawned separately)
-        // For multi-level prototypes, check the current floor's random_actors
-        const floorConfig = prototype.config?.levels
-            ? this.engine.getFloorConfig(this.engine.currentFloor)
-            : prototype.config;
+        // getFloorConfig resolves the current floor for multi-level prototypes
+        // (levels or floor_plan) and returns the root config for flat ones.
+        const floorConfig = this.engine.getFloorConfig(this.engine.currentFloor);
         const randomActorTypes = new Set(Object.keys(floorConfig?.random_actors || {}));
 
         // Skip chain segment types - they're spawned by spawnChainCreatures via their head
@@ -133,7 +132,7 @@ export const EntityManagerSpawning = {
 
         // In multi-level prototypes, per-floor random_actors fully controls spawning —
         // don't auto-spawn unplaced prototype actors on every floor
-        if (prototype.config?.levels) return;
+        if (prototype.config?.levels || prototype.config?.floor_plan) return;
 
         // Spawn unplaced actors (only prototype-specific ones, single-level prototypes only)
         for (const actorType of prototype.prototypeActorTypes || []) {

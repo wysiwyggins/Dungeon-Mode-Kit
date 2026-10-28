@@ -44,8 +44,9 @@ export const DungeonEngineProgression = {
      */
     checkWinConditions() {
         const config = this.currentPrototype?.config;
-        // Use floor-specific win conditions if multi-level prototype
-        const floorConfig = config?.levels ? this.getFloorConfig(this.currentFloor) : config;
+        // getFloorConfig returns the root config for a flat prototype, and the
+        // resolved floor (override, biome, root) for a levels or floor_plan one.
+        const floorConfig = config ? this.getFloorConfig(this.currentFloor) : null;
         const winConditions = floorConfig?.win_conditions || [];
 
         // No conditions = always unlocked
