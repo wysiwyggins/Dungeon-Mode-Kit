@@ -1,53 +1,36 @@
-# Prototype System
+# Prototypes
 
-A **prototype** is a defines a dungeon mode prototype. Each prototype lives in its own folder under `prototypes/` and is configured primarily through `prototype.json`.
+## About Prototypes
+
+A prototype is a playable game or level built with Dungeon Mode Kit. Each prototype lives in its own folder under `prototypes/` and is mostly configured through a `prototype.json` file. The folder can also hold its own data files, which are merged with the global files in `data/` when the prototype loads. You only need to define what is new or different.
 
 ```
 prototypes/
   my_level/
-    prototype.json          ← prototype rules (required)
-    actors.json             ← actor overrides/additions (optional)
-    items.json              ← item overrides/additions (optional)
-    personalities.json      ← AI behavior overrides (optional)
-    biomes.json             ← biome library for this prototype (optional)
-    animations.json         ← animated sprites this prototype ships (optional)
-    *.png                   ← sprite sheets named by animations.json (optional)
-    map.tmj                 ← authored Tiled map, floor 1 (optional)
-    2.tmj, 3.tmj, ...      ← authored maps for floors 2+ (optional)
+    prototype.json       (required)
+    actors.json
+    items.json
+    personalities.json
+    biomes.json
+    animations.json
+    *.png                (sprite sheets named in animations.json)
+    map.tmj              (authored Tiled map for floor 1)
+    2.tmj, 3.tmj, ...    (authored maps for later floors)
 ```
-
-Prototype-specific data files are merged with the global `data/` files at load. You only need to define what's new or different for a given level.
 
 Load a prototype by adding `?prototype=my_level` to the URL.
 
-**When you add a prototype folder, add its name to `data/prototypes.json`.** Static HTTP
-can't list a directory, so that file is the index the editors read to populate their
-prototype dropdowns. The game itself doesn't need it — it loads by name — but a prototype
-missing from the index is invisible in the editors.
+When you add a new prototype folder, also add its name to `data/prototypes.json`. A static web server can't list a folder's contents, so the editors use that file to fill their prototype menus. The game itself doesn't need it, but a prototype missing from that list won't show up in the editors.
 
----
+## Basic Fields
 
-## Top-Level Fields
+`name` is the display name, and `description` is the text shown when the level loads (use `\n` for line breaks). `turn_speed` is how many milliseconds each AI turn takes, so lower is faster. The default is 50. `loaded_sound` is a sound played when the prototype loads.
 
-| Field | Type | Description |
-| ------- | ------ | ------------- |
-| `name` | string | Display name shown in the UI |
-| `description` | string | Text shown on level load. Supports `\n` for line breaks. |
-| `turn_speed` | number | Milliseconds per AI turn (lower = faster). Default `50`. |
-| `loaded_sound` | string | Sound played when the prototype loads |
-| `next_level` | string | Prototype folder name to advance to (via down stairway) |
-| `previous_level` | string | Prototype folder name to return to (via up stairway from floor 1) |
-| `win_state` | object | Escape-style overall victory for the whole prototype: `{ via: "escape", exit_floor, conditions, message }`. Reaching `exit_floor`'s exit with `conditions` met wins the run (distinct from per-floor `win_conditions`, which just unlock a floor's stairway). |
-| `default_floor` | object | Floor tile and tint for generated maps — see [Default Floor](#default-floor). |
-| `void_tile` | string | Tile name for the flat void the engine paints under abysses, holes and collapsed floor. Default `OPAQUE_FULL_BLOCK`. See [Void Tile](#void-tile). |
-| `rank_order` | array | Actor ids weakest to strongest, forming a capture hierarchy. Higher rank takes lower and the first entry takes the last. See [Rank hierarchies](ACTORS.md#rank-hierarchies). |
-| `floors`, `biomes`, `floor_plan` | — | Multi-floor / biome configuration — see [Multi-Floor Prototypes](#multi-floor-prototypes) and [Biomes](#biomes). |
-
----
+Other top level fields are covered in their own sections below.
 
 ## Mechanics
 
-The `mechanics` object controls core gameplay systems for the level. All fields are optional.
+The `mechanics` object turns core systems on and off. Every field is optional.
 
 ```json
 "mechanics": {
@@ -61,54 +44,41 @@ The `mechanics` object controls core gameplay systems for the level. All fields 
 }
 ```
 
-### Visibility & Lighting
+### Lighting and Visibility
 
-| Field | Type | Default | Description |
-| ------- | ------ | --------- | ------------- |
-| `fog_of_war` | boolean | `false` | Remember explored tiles; unexplored areas are hidden |
-| `darkness` | boolean | `false` | Enable dynamic lighting. Without this, the entire map is fully lit. |
-| `ambient_light` | number | `0.0` | Minimum light level (0-1) when `darkness` is enabled. `0` = pitch black outside light sources, `1` = fully lit everywhere. |
-| `player_light_radius` | number | `6` | Radius of the player's auto-light in tiles (only applies when `player_auto_light` is true) |
-| `player_auto_light` | boolean | `true` | Player emits light automatically. Set `false` to require a carried light source (torch, lantern). |
-| `tint` | string | none | Hex color overlay applied to the entire level (e.g. `"#3355AA"` for a blue tint) |
+`fog_of_war` remembers explored tiles and hides unexplored ones. `darkness` turns on dynamic lighting; without it the whole map is lit. `ambient_light` is the minimum light level from 0 (pitch black away from light sources) to 1 (fully lit). `player_auto_light` makes the player glow on their own and is on by default; turn it off to make the player carry a torch or lantern. `player_light_radius` sets the size of that glow in tiles (default 6). `tint` is a hex color laid over the whole level.
 
-See [LIGHTING.md](LIGHTING.md) for the full lighting system reference.
+See [LIGHTING.md](LIGHTING.md) for more.
 
-### Viewport & Scrolling
+### Viewport and Scrolling
 
-| Field | Type | Default | Description |
-| ------- | ------ | --------- | ------------- |
-| `viewport_width` | number | map width | Visible width in tiles. When smaller than the map, the camera scrolls to follow the player. |
-| `viewport_height` | number | map height | Visible height in tiles. When smaller than the map, the camera scrolls to follow the player. |
-| `ai_margin` | number | `5` | How many tiles beyond the viewport edge AI actors continue to take turns. Actors outside this margin skip their turn. Only applies when viewport scrolling is active; ignored (treated as infinite) when the full map is visible. |
+`viewport_width` and `viewport_height` set how many tiles are visible. If the map is bigger than the viewport, the camera scrolls to follow the player. `ai_margin` is how many tiles past the edge of the screen AI actors keep taking turns (default 5). Actors further away skip their turns. This only matters when the map scrolls.
 
 ### Searching
 
-Tunables for the `(s)earch` action and hidden actors (any actor with `hidden: true` —
-secret doors, concealed levers, undiscovered traps). See `docs/ACTORS.md`.
+These control the search action and hidden actors like secret doors, concealed levers and traps.
 
-| Field | Type | Default | Description |
-| ------- | ------ | --------- | ------------- |
-| `search_radius` | number | `5` | How far a completed five-turn search reaches, in tiles. Everything hidden within this radius and in line of sight is found; nothing outside it is. Capped independently of strength so a finished search reliably means "this area is clear" — raise it for sprawling maps, lower it to make searching a room a multi-position job. |
-| `thorough_search_strength` | number | `200` | Odds of the five-turn search. Chance at a tile is `strength - 10 × distance`, two-thirds that for solid things like a door set in a wall. At the default it is certain everywhere inside `search_radius`; drop it below ~`10 × search_radius × 1.5` and finds start becoming a dice roll the player may want to repeat. |
-| `passive_search_strength` | number | `30` | The glance you get for free the first time you stand on a tile. Uses a strength-derived radius rather than `search_radius`, so it naturally reaches ~2 tiles and the Ring of Awareness (`awareness`) widens it. Set to `0` to disable passive searching and make the search action the only way to find secrets. |
+`search_radius` is how far a full five turn search reaches (default 5). Everything hidden within that distance and in sight is found, so a finished search reliably means the area is clear.
 
-### Special Modes
+`thorough_search_strength` sets the odds of that search (default 200). The chance at each tile is the strength minus 10 per tile of distance, and a bit lower for solid things like a door set in a wall. At the default, everything inside the radius is found. Lower it to make searching a dice roll the player may want to repeat.
 
-| Field | Type | Default | Description |
-| ------- | ------ | --------- | ------------- |
-| `observer_mode` | boolean | `false` | Disable stairway placement. Use for spectator-only prototypes (e.g. cellular automata demos). |
-| `treasure_room` | number | `0` | Percent chance (0-100) to spawn a treasure room on the level |
-| `connect_regions` | boolean | `true` | Tiled maps only. After wildcard regions are filled, carve a passage from any floor area that can't reach the rest, so regions join the authored floor around them and each other. Only cells inside wildcard regions are carved; an area you sealed with authored walls stays sealed. See [MAP.md](MAP.md#connecting-regions). |
-| `connect_door_chance` | number | `50` | Percent chance (0-100) that each passage `connect_regions` carves gets a door where it meets the floor it joins, if that spot is a doorway (walled on both sides). |
-| `up_stairway_region` | string | generator's choice | Place the up (entry) stairway inside a named region the generator published. Some generators suggest one — `palladian` puts the entry stair in its `portico` courtyard, since arriving in the middle of an interior room reads as a mistake. Set explicitly to override, or to `null` for random placement. |
-| `down_stairway_region` | string | generator's choice | Same for the down stairway. No generator currently suggests one; set it to e.g. `"sanctum"` on a palladian floor to put the descent behind the boss. |
+`passive_search_strength` is the free glance the player gets the first time they stand on a tile (default 30). It reaches about two tiles, and the Ring of Awareness widens it. Set it to 0 to make the search action the only way to find secrets.
 
----
+See [EPISTEMOLOGY.md](EPISTEMOLOGY.md) for how hidden things work.
+
+### Other Mechanics
+
+`observer_mode` turns off stairways, for prototypes with no player like the cellular automata demo.
+
+`treasure_room` is the percent chance (0 to 100) that a floor gets a locked treasure room.
+
+`connect_regions` applies to Tiled maps only and is on by default. After wildcard regions are filled in, it carves passages so no floor area is cut off from the rest. It only carves inside wildcard regions, so an area you walled off yourself stays sealed. `connect_door_chance` is the percent chance each carved passage gets a door where it joins existing floor (default 50). See [MAP.md](MAP.md#connecting-regions).
+
+`up_stairway_region` and `down_stairway_region` place a stairway inside a named region (see [Named Regions](#named-regions)). Some generators pick one for you. The palladian generator puts the up stairway in its portico, for example. Set one yourself to override it, or set it to `null` for random placement.
 
 ## Map Generation
 
-When no Tiled map file exists for a floor, the engine generates a procedural map using the `map_generator` block.
+If a floor has no Tiled map, the engine generates one using the `map_generator` block. If a floor has both, the Tiled map wins.
 
 ```json
 "map_generator": {
@@ -126,58 +96,31 @@ When no Tiled map file exists for a floor, the engine generates a procedural map
 
 ### Generator Types
 
-**Walls?** matters more than it looks. A generator that builds walls also queues doors,
-torches and `wall_types`, and publishes rooms as named regions — so region-targeted
-stairways, treasure rooms and switch puzzles have something to attach to. The floor-only
-generators carve open space and nothing else; a biome using one gets no walls, doors,
-torches or room regions no matter what else it configures.
+Some generators build walls and some only carve open floor. This matters more than it seems. Generators that build walls also place doors, torches and `wall_types`, and they mark rooms as named regions that stairways, treasure rooms and switch puzzles can attach to. Floor only generators give you none of that.
 
-| Type | Walls? | Rooms? | Description |
-| ------ | :------: | :------: | ------------- |
-| `dungeon` | yes | yes | Rooms (rectangle, cross, circular, cavern) attached via corridors, plus loops, dead-end secret doors and lakes. The main generator |
-| `palladian` | yes | yes | Symmetrical villa: a mirrored grid of rooms around a central axial sanctum, with a columned portico. Built for boss floors and vaults |
-| `infernal` | yes | — | Cave with lava pools |
-| `digger` | yes | yes | Rooms connected by corridors (the fallback when a type is unknown) |
-| `cellular` | yes | — | Cave-like organic shapes |
-| `uniform` | — | — | Evenly distributed rooms, floor only |
-| `rogue` | — | — | Classic roguelike grid rooms, floor only |
-| `arena` | — | — | Simple empty rectangle |
-| `divided_maze` | — | — | Recursive division maze |
-| `icey_maze` | — | — | Maze with regularity control |
-| `eller_maze` | — | — | Perfect maze (Eller's algorithm) |
+These generators build walls: `dungeon` (the main generator, with varied room shapes, corridors, loops, secret doors and lakes), `palladian` (a symmetrical villa, good for boss floors), `infernal` (a cave with lava pools), `digger` (rooms and corridors, and the fallback if a type is unknown) and `cellular` (organic caves). Of these, `dungeon`, `palladian` and `digger` also mark rooms.
 
-`brogue` is the former name of `dungeon`, from when it was written while studying Brogue's
-architect. The engine still accepts it as a silent alias, so old prototypes keep loading,
-but new work should say `dungeon`.
+These only carve floor: `uniform` (evenly spaced rooms), `rogue` (classic grid of rooms), `arena` (an empty rectangle), `divided_maze`, `icey_maze` and `eller_maze`.
+
+`brogue` is the old name for `dungeon`. It still works, but use `dungeon` for new prototypes.
 
 ### Common Options
 
-| Option | Type | Description |
-| -------- | ------ | ------------- |
-| `map_width` | number | Map width in tiles |
-| `map_height` | number | Map height in tiles |
-| `roomWidth` | `[min, max]` | Room width range (digger, uniform, rogue) |
-| `roomHeight` | `[min, max]` | Room height range (digger, uniform, rogue) |
-| `corridorLength` | `[min, max]` | Corridor length range (digger) |
-| `dugPercentage` | number | Target percentage of map to carve (digger) |
-| `probability` | number | Fraction of cells seeded as wall before the automaton runs (cellular, default `0.5`). Sharply nonlinear — on 40×50, `0.35` leaves ~2% filled, `0.45` ~23%, `0.55` ~55%. Around `0.45` gives distinct clumps with walkable clearings. |
-| `iterations` | number | Smoothing passes; more passes mean fewer, larger blobs (cellular, default `4`) |
-| `connected` | boolean | Carve links between isolated pockets so everything is reachable (cellular, default `true`). Set `false` for sealed areas the player must dig or burn into. |
-| `wall_types` | array | Weighted wall types: `[{ "type": "rock_wall", "weight": 95 }]`. Any actor of the `terrain` type works — including `tree` and `hedge`, for woods rather than masonry. Honored by the wall-building generators only (`dungeon`, `palladian`, `infernal`, `digger`, `cellular`); the rest carve floor and queue no walls. |
-| `lakes` | object | Organic blobs of a liquid actor — see [Carved Regions](#carved-regions). |
-| `abyss` | object | Organic blobs of bottomless void, spannable by bridges — see [Carved Regions](#carved-regions). |
-| `pushableWallChance` | number | Percent chance an interior wall with floor on both sides becomes a pushable wall (default `2`). Only applies to walls of type `wall`. |
-| `secretWallChance` | number | Percent chance the same wall becomes a **hidden door** instead — found by searching, not shoving (default `0`, off). Rolled independently of `pushableWallChance`, so it is not competing for a share of that 2%. |
+`map_width` and `map_height` set the map size in tiles.
 
-Both of the last two convert walls the generator was going to place anyway, so they
-scale with map area: the same percentage yields ~5× as many secrets on a 100×100 map
-as on a 50×50 one. Tune per prototype rather than reusing one number. See
-[EPISTEMOLOGY.md](EPISTEMOLOGY.md) for how hidden things are found.
+For `digger`, `uniform` and `rogue`, `roomWidth` and `roomHeight` are `[min, max]` size ranges. `digger` also takes `corridorLength` and `dugPercentage`, which is how much of the map to carve.
 
-#### Carved Regions
+For `cellular`, `probability` is how much of the map starts as wall (default 0.5). Small changes make a big difference: on a 40 by 50 map, 0.35 leaves almost nothing filled in, while 0.55 fills more than half. Around 0.45 gives separate clumps with clearings between them. `iterations` is the number of smoothing passes (default 4). More passes give fewer, bigger blobs. `connected` joins isolated pockets so everything is reachable (default true). Turn it off for sealed areas the player has to dig or burn into.
 
-`lakes` and `abyss` stamp organic blobs onto the generated map. Both take the same
-shape and run through the same code; they differ only in what fills them.
+`wall_types` is a weighted list of wall actors, like `[{ "type": "rock_wall", "weight": 95 }]`. Any actor of the `terrain` type works, including `tree` and `hedge` for woods instead of stone. Only the generators that build walls use it.
+
+`pushableWallChance` is the percent chance an interior wall becomes a wall the player can push (default 2). `secretWallChance` is the percent chance it becomes a hidden door that has to be found by searching (default 0). Both only apply to walls of type `wall`. They scale with map size, so the same number gives about five times as many secrets on a 100 by 100 map as on a 50 by 50 one.
+
+`lakes` and `abyss` add blobs of liquid or empty void. See the next section.
+
+### Lakes and Abyss
+
+`lakes` and `abyss` stamp organic blobs onto a generated map. They take the same options and differ only in what fills them.
 
 ```json
 "lakes": {
@@ -191,75 +134,45 @@ shape and run through the same code; they differ only in what fills them.
 }
 ```
 
-| Field | Type | Description |
-| ------- | ------ | ------------- |
-| `count` | `[min, max]` or number | How many separate blobs to attempt per floor. |
-| `types` | array | Weighted pool of what fills them (see below). |
-| `minSize`, `maxSize` | number | Size range of a single blob, in tiles. |
+`count` is how many blobs to try per floor, as a number or a `[min, max]` range. `minSize` and `maxSize` set the size of each blob in tiles. `types` is what fills them. This can be any non-solid actor that paints a tile, not just water, sewage and lava. You can give weights as above, or just list ids and repeat one to make it more common: `["water", "sewage", "sewage"]`. An id that doesn't match an actor is skipped with a warning.
 
-**`lakes.types` takes any non-solid actor that paints a tile**, not just water,
-sewage and lava — `quicksand` works, and so does anything you add with the same
-shape. Two forms are accepted:
+Items and monsters never spawn on dangerous liquids like lava, quicksand or deep water. That is controlled by the `hazard` attribute, so give it to any new liquid that does damage or is deep.
 
-- `[{ "type": "water", "weight": 75 }, …]` — explicit weights. What the editor writes.
-- `["water", "sewage", "sewage"]` — a plain pool, weighted by repetition. Every
-  prototype in the repo is authored this way and keeps working.
+`abyss` is bottomless empty space rather than an actor. Bridges, causeways and collapsing floors all depend on it, so its `types` is always `["abyss"]`. See [BRIDGES.md](BRIDGES.md).
 
-An id that names no actor is skipped with a console warning rather than silently
-becoming water.
+### Dungeon Options
 
-Blob actors that hurt or swallow what stands on them — lava, quicksand, deep water —
-are excluded from the walkable set, so items and monsters never spawn on one. Those
-are the actors with the `hazard` attribute; give it to any new liquid with
-`damage_type` or `deep`.
+The `dungeon` generator takes these extra options:
 
-`abyss` is not an actor. It is floorless void with a special tile signature, which
-bridges, causeways and collapsing floors all key off, so its `types` is always
-`["abyss"]` and cannot be changed.
+`maxRooms` and `maxAttempts` control how full the map gets. Leave them out and they scale with the map size automatically. `roomWeights` sets how often each room shape appears; the default is `{ "rectangle": 30, "cross": 25, "circular": 20, "cavern": 25 }`.
 
-#### Brogue-Specific Options
+`corridorChance` (default 55) and `corridorLength` (default `[3, 9]`) control corridors between rooms. `doorChance` (default 50) is the chance of a door where rooms connect, and `torchChance` (default 30) is the chance of a torch in a room.
 
-| Option | Type | Default | Description |
-| -------- | ------ | --------- | ------------- |
-| `maxRooms` | number | auto | Maximum rooms to generate. Optional — when omitted, auto-computed from map size (`≈ map_width × map_height / 200`, clamped 8–120) so larger maps fill out. An explicit value overrides the auto default. Not exposed in the prototype editor. |
-| `maxAttempts` | number | auto | Room-placement attempts (the practical cap on density, since many attempts fail to place). Optional — when omitted, auto-scaled to `≈ maxRooms × 4` (clamped 50–600) so it can reach the size-scaled room target. An explicit value overrides. Larger = denser. |
-| `corridorChance` | number | `55` | Percent chance to add a corridor between rooms |
-| `corridorLength` | `[min, max]` | `[3, 9]` | Corridor length range |
-| `doorChance` | number | `50` | Percent chance to place a door at room connections |
-| `torchChance` | number | `30` | Percent chance to place a torch in a room |
-| `roomWeights` | object | `{ rectangle: 30, cross: 25, circular: 20, cavern: 25 }` | Relative weights for room types |
-| `loopMinDistance` | number | `20` | Minimum path distance between rooms before a loop shortcut is added |
-| `maxLoops` | number | `5` | Maximum loop connections to add |
-| `secretDoorChance` | number | `35` | Percent of **dead-end shortcuts** that become hidden doors rather than pushable walls. These are the cells Brogue's own dead-end fixer identifies — a blind corridor with a room one or two tiles beyond the wall — so they are the most rewarding thing a search can turn up. `0` restores the all-pushable behaviour. Distinct from the shared `secretWallChance` above, which converts ordinary interior walls. |
+`loopMinDistance` (default 20) and `maxLoops` (default 5) add shortcuts between rooms that would otherwise be far apart.
 
-#### Palladian-Specific Options
+`secretDoorChance` (default 35) is the percent of dead end shortcuts that become hidden doors instead of pushable walls. These are blind corridors with a room just past the wall, so they make good finds for a search. This is separate from `secretWallChance`, which converts ordinary walls.
 
-The `palladian` generator implements the parametric shape grammar from Stiny & Mitchell, *"The Palladian grammar"* (1978) — the formal grammar behind Palladio's villa plans. Unlike the other generators it produces a space that reads as deliberately *built*: a "tartan" grid of an **odd** number of east–west bays by any number of north–south rows, mirrored about a central axis, with adjacent bays separated by exactly one wall. Bays are then merged into larger rooms, and one room may be a non-rectangular cross-hall straddling the axis — the **sanctum**, meant to hold a boss or a reward.
+### Palladian Options
 
-Interior doors are aligned with each other and with the exterior windows, producing the *enfilade* Palladio is known for: an unbroken sight-line through the whole villa, including one straight down the axis from the rear door, through the sanctum, and out through the portico.
+The `palladian` generator is based on Stiny and Mitchell's 1978 "Palladian grammar," a formal description of Palladio's villa plans. It builds something that looks designed: a grid of rooms mirrored around a central axis, with some rooms merged into larger halls. One room on the axis can be a cross shaped hall called the sanctum, meant to hold a boss or a reward. Doors line up with each other and with the windows, so there is a long view straight through the villa along the axis.
 
-| Option | Type | Default | Description |
-| -------- | ------ | --------- | ------------- |
-| `bayColumns` | `[min, max]` | `[3, 7]` | Number of east–west bays. **Always forced odd** — the centre bay is bisected by the symmetry axis. `5` is the canonical villa. |
-| `bayRows` | `[min, max]` | `[2, 4]` | Number of north–south bay rows. `3` is canonical. |
-| `bayWidth` | `[min, max]` | `[4, 11]` | Interior width of one bay, in tiles. |
-| `bayHeight` | `[min, max]` | `[4, 9]` | Interior height of one bay, in tiles. |
-| `centralBias` | number | `150` | Percent width of the central axial bay relative to a flanking bay. Above 100 gives a grander salone. |
-| `mergeChance` | number | `45` | Percent chance a mirrored pair of adjacent bays merges into one room. `0` = a warren of small rooms; `100` = a few vast halls. |
-| `sanctumChance` | number | `70` | Percent chance the plan has a non-rectangular cross-hall on the axis. The grammar permits **at most one**. |
-| `sanctumShapes` | array | `["cross","tee","eye"]` | Eligible cross-hall shapes, as a weighted pool (repeat an entry to weight it). `cross` (+) keeps the sanctum tightest; `eye` (I) swallows most of the plan. Falls back `cross → tee → eye → rect` when the grid is too small for the pick. |
-| `porticoStyle` | string | `"prostyle"` | `prostyle` (porch projects out), `in_antis` (recessed into the facade), `random`, or `none`. |
-| `porticoDepth` | number | `3` | Tiles the porch projects out or is recessed in. Clamped to fit the map. |
-| `columnSpacing` | number | `2` | Tiles between colonnade columns; `0` = no colonnade. The column count is forced **even** so the axis stays an open doorway — Palladio never blocks the axis with a column. |
-| `doorChance` | number | `55` | Percent chance a non-axial interior opening gets a door actor. Axial openings are always open, so the axial sight-line can't be closed off. |
-| `torchChance` | number | `40` | Percent chance to place a brazier in a room (higher than the dungeon generator's 30 — temples are lit). |
-| `wall_types` | array | `[{ "type": "brick_wall", "weight": 100 }]` | Weighted wall types. **Note:** the shared `pushableWallChance` / `secretWallChance` pass only converts walls of type `wall`, so the `brick_wall` default disables both. The villa gets its concealed routes from `secretPassageChance` below instead, which does not care about wall type. |
-| `secretPassageChance` | number | `40` | Percent chance a non-axial interior door is concealed — a doorway that reads as blank wall until searched out. The axial door is never eligible: it carries the enfilade, and hiding it would break the one sight-line the generator exists to produce. A room always keeps at least one door you can simply walk through, so a secret is a shortcut, never the only way in. Mirrored twins are concealed as a pair, so the villa never gives itself away by being asymmetric. |
-| `secretPassageLeverChance` | number | `35` | Percent of those concealed doorways that spawn as `barred_hidden_door` (locked) instead of `hidden_door`, paired by `machine_id` to a **hidden lever**. Finding the door is not enough — it stays shut until the lever is found and pulled. The lever is itself disguised as wall, sited in one of the two rooms the passage joins, and mirrored with its twin. |
+`bayColumns` (default `[3, 7]`) and `bayRows` (default `[2, 4]`) set the size of the grid. The column count is always made odd so there is a center column. `bayWidth` (default `[4, 11]`) and `bayHeight` (default `[4, 9]`) set the size of each grid cell in tiles. `centralBias` (default 150) makes the center column wider than the others, as a percent.
 
-The generator reuses existing actors — `column` for the colonnade, `fortification` for windows (solid but see-through, so it reads as a barred opening), `brick_wall`, `wall_torch` for wall sconces, and `brazier` for freestanding centrepieces. No new art is required.
+`mergeChance` (default 45) is the chance that neighboring rooms merge. At 0 you get lots of small rooms; at 100, a few huge halls.
 
-**Region-targeted spawning.** The generator publishes two named regions, `sanctum` and `portico`. A `random_actors` or `random_items` entry can name one to confine its spawns, which is how a boss is placed in the room built for it:
+`sanctumChance` (default 70) is the chance of a sanctum. `sanctumShapes` (default `["cross", "tee", "eye"]`) lists the shapes it can take. `cross` keeps the sanctum small, while `eye` can take up most of the plan. Use `["cross"]` if you want a tight boss room.
+
+`porticoStyle` (default `"prostyle"`) sets the entrance porch: `prostyle` sticks out from the building, `in_antis` is set into it, or use `random` or `none`. `porticoDepth` (default 3) is how deep the porch is. `columnSpacing` (default 2) is the gap between columns, or 0 for none.
+
+`doorChance` (default 55) is the chance of a door in an interior doorway. Doorways on the main axis always stay open. `torchChance` (default 40) is the chance of a brazier in a room.
+
+`wall_types` defaults to `brick_wall`. Because pushable and secret walls only come from walls of type `wall`, the villa gets its secrets another way. `secretPassageChance` (default 40) is the chance an interior door is hidden. Every room keeps at least one normal door, and mirrored doors are hidden in pairs so the symmetry doesn't give them away. `secretPassageLeverChance` (default 35) is the percent of those hidden doors that are also locked and opened by a hidden lever in one of the two rooms they join.
+
+The villa uses existing actors for its parts: `column`, `fortification` for windows, `brick_wall`, `wall_torch` and `brazier`.
+
+### Named Regions
+
+Generators can mark areas of the map as named regions, and spawn settings can target them with `"region"`. This is how you put a boss in the room built for it:
 
 ```json
 "levels": {
@@ -275,35 +188,20 @@ The generator reuses existing actors — `column` for the colonnade, `fortificat
 }
 ```
 
-`region` is optional and generator-agnostic: an unknown name warns and falls back to the whole map rather than failing. Prefer `sanctumShapes: ["cross"]` when you want a *tight* boss chamber — an `eye` sanctum can span most of the plan, which makes the region barely a constraint.
+`largest_room` is the biggest room, from `dungeon`, `digger` or `palladian`. `treasure_room` is the inside of the treasure room, when one spawns. `sanctum` and `portico` come from `palladian`.
 
-#### Named Regions
-
-A generator can publish named areas that spawn entries target with `"region"`. Available regions by generator:
-
-| Region | Published by | Description |
-| -------- | -------------- | ------------- |
-| `largest_room` | `dungeon`, `digger`, `palladian` | The biggest single room by floor area — a natural arena for a guaranteed boss or a hoard. |
-| `treasure_room` | any generator, when the `treasure_room` mechanic fires | The locked vault's interior. Target it to put a guardian inside with the loot. |
-| `sanctum` | `palladian` | The axial cross-hall, when the plan has one. |
-| `portico` | `palladian` | The entrance courtyard. Also where the entry stairway lands by default. |
-
-`region` is honoured by `random_actors`, `random_items`, `traps`, `fungus`, and `item_budget`. On the per-entry configs (`random_actors`, `random_items`) it goes on the individual entry; on the single-block configs (`traps`, `fungus`, `item_budget`) it goes on the block:
+`random_actors`, `random_items`, `traps`, `fungus` and `item_budget` all accept `region`. For `random_actors` and `random_items` it goes on each entry. For the others it goes on the whole block:
 
 ```json
 "traps":  { "min": 4, "max": 8, "region": "sanctum" },
 "fungus": { "min": 2, "max": 5, "region": "largest_room" }
 ```
 
-If both a `map.tmj` and `map_generator` exist for a floor, the `.tmj` takes priority.
-
----
+If a region doesn't exist on a floor, the engine warns and uses the whole map instead.
 
 ## Default Floor
 
-`default_floor` sets the tile every generator paints as open floor, and an optional
-color multiplied over it. Both fields are optional; omit the block entirely to keep
-the engine's built-in floor tile.
+`default_floor` sets the tile generators use for open floor, plus an optional color tint. Leave it out to use the engine's built-in floor tile.
 
 ```json
 "default_floor": {
@@ -312,46 +210,23 @@ the engine's built-in floor tile.
 }
 ```
 
-| Field | Type | Description |
-| ------- | ------ | ------------- |
-| `tile` | string | A tile name from `data/static-tiles.json`. An unknown name logs a warning and falls back to the default. |
-| `tint` | string | Hex color (`#RRGGBB`) multiplied over floor tiles. Omit for untinted. |
-
-Like `map_generator` and `mechanics`, a floor entry may override it — set
-`default_floor` on that floor and it wins over the prototype-level value. A biome may
-also set it, sitting between the two: floor override → biome → prototype.
-
-**Generated maps only.** A hand-authored `.tmj` names a tile for every cell, so
-there is no default left to fill in and neither field applies to it.
-
-The tint rides on the floor layer, which lighting leaves alone (floors are dimmed
-by a separate overlay), so it coexists with `darkness` and fog of war.
-
----
+`tile` is a tile name from `data/static-tiles.json`. `tint` is a hex color. A biome or a single floor can set its own `default_floor`, and the most specific one wins. This only affects generated maps, since a Tiled map already names a tile for every cell. The tint works fine alongside darkness and fog of war.
 
 ## Void Tile
 
-`void_tile` names the background tile the engine paints wherever it opens up void:
-abyss blobs, collapsing floors, temporary holes. An unknown name logs a warning and
-falls back to the default `OPAQUE_FULL_BLOCK`.
+`void_tile` is the tile drawn wherever the map opens into empty space: abyss, collapsing floors and holes. The default is `OPAQUE_FULL_BLOCK`.
 
 ```json
 "void_tile": "OPAQUE_FULL_BLOCK"
 ```
 
-The tile also counts as void wherever the engine checks for it (bridges, digging,
-cliff shading), alongside the built-in void tiles. The diagonal cliff shadows drawn
-along abyss edges are always the engine's own tiles.
+Both the default floor and void tile can be picked visually in the prototype editor's Default floor section.
 
-Both fields are editable in the prototype editor's **Default floor** section, which
-includes the same visual tile picker the actor and item editors use. A biome card
-carries its own **default floor** block, in both the prototype and biome editors.
+## Spawning
 
----
+### Random Actors and Items
 
-## Random Spawning
-
-`random_actors` and `random_items` control what entities are scattered on the map at load time.
+`random_actors` and `random_items` scatter things around the map when a floor loads.
 
 ```json
 "random_actors": {
@@ -364,34 +239,21 @@ carries its own **default floor** block, in both the prototype and biome editors
 }
 ```
 
-| Field | Type | Description |
-| ------- | ------ | ------------- |
-| `chance` | number | Percent probability (0-100) that this entity type spawns at all |
-| `min` | number | Minimum count if spawned (default `1`) |
-| `max` | number | Maximum count if spawned (default `1`) |
+Each entry rolls on its own. `chance` is the percent chance it spawns at all, and if it does, a number between `min` and `max` are placed (both default to 1). Ids can come from the global data files or the prototype's own.
 
-Each entity type rolls independently. If the roll succeeds, a random count between `min` and `max` is placed on walkable tiles.
-
-Actor and item IDs reference definitions in `data/actors.json`, `data/items.json`, or the prototype's own `actors.json` / `items.json`.
+You can also use an item type like `potion`, `weapon` or `scroll` instead of a specific item id. This spawns a random item of that type. Any item with `"type": "potion"` is part of the potion pool automatically. See [TYPES.md](TYPES.md).
 
 ### Traps
 
-`traps` spawns hidden trap actors on random walkable tiles. The engine picks from all actors with the `trap` attribute defined in actors.json.
+`traps` hides trap actors on random tiles, picking from every actor with the `trap` attribute.
 
 ```json
 "traps": { "min": 1, "max": 10 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `min` | number | Minimum traps to spawn |
-| `max` | number | Maximum traps to spawn |
-
-Can be set at the prototype level or per-floor (overrides prototype default).
-
 ### Switch Puzzles
 
-`switch_puzzles` spawns switch-and-target pairs on the map (e.g., a lever that opens a gate).
+`switch_puzzles` places linked pairs of actors, like a lever that opens a gate.
 
 ```json
 "switch_puzzles": {
@@ -409,64 +271,11 @@ Can be set at the prototype level or per-floor (overrides prototype default).
 }
 ```
 
-| Field | Type | Description |
-| ------- | ------ | ------------- |
-| `min` | number | Minimum puzzles to spawn |
-| `max` | number | Maximum puzzles to spawn |
-| `patterns` | array | Available puzzle patterns to choose from |
+Each pattern names the actor used as the switch, the actor it controls, and the attributes to change on the target when the switch is used. `weight` sets how often a pattern is picked when there are several. In `switch_message`, `[name]` is replaced with the switch's name, including its color if it has one. See [Machines](ACTORS.md#machines).
 
-Each pattern defines:
+### Item Catalog
 
-| Field | Type | Description |
-| ------- | ------ | ------------- |
-| `type` | string | Pattern type (e.g. `"gated_room"`) |
-| `weight` | number | Relative spawn probability when multiple patterns exist |
-| `switch_actor` | string | Actor type ID for the switch |
-| `target_actor` | string | Actor type ID for the target |
-| `switch_effects` | object | Attributes to set on the target when the switch is activated |
-| `switch_message` | string | Message shown when the switch is activated. `[name]` interpolates the switch's color-aware name (see [ACTORS.md](ACTORS.md#paired-colors)) |
-
-Can be set at the prototype level or per-floor.
-
-### Item Pools (item types)
-
-Naming an **item type** instead of an item ID spawns a random member of that type. The pool is
-derived from membership: every item declaring `"type": "potion"` is a potion, so adding one is
-enough to put it in the pool — there is no list to keep in sync. See [TYPES.md](TYPES.md).
-
-The built-in item types are `potion`, `food`, `weapon`, `armor`, `staff`, `scroll`, `ring` and
-`wand`.
-
-```json
-// data/items.json — declaring the type is the whole membership step
-"health_potion": {
-  "type": "potion",
-  "identified_template": "Aqua Vita",
-  "attributes": { "use_effect": { "health": 20 } }
-}
-```
-
-For a hand-curated pool that isn't simply "everything of this type", an item entry may still carry
-an explicit `random_type` array, which wins over derived membership.
-
-Use type names in `random_items` to spawn a random item from a category:
-
-```json
-"random_items": {
-  "potion": { "chance": 60 },
-  "weapon": { "chance": 30 },
-  "armor": { "chance": 20 }
-}
-```
-
-A prototype can add its own item types in `prototypes/<name>/types.json`, or add members to a
-built-in type just by declaring it on an item in its `items.json`.
-
----
-
-## Item Catalog
-
-The `item_catalog` defines which item categories are active for the prototype, how many types per category are available per run, and how frequently each category appears when using the budget system.
+`item_catalog` sets which item types appear in a prototype and how common each one is.
 
 ```json
 "item_catalog": {
@@ -478,23 +287,15 @@ The `item_catalog` defines which item categories are active for the prototype, h
 }
 ```
 
-| Field | Type | Description |
-| ------- | ------ | ------------- |
-| `count` | number | (Optional) Randomly select this many types from the pool at the start of a run. Omit to use all types. |
-| `weight` | number | Relative probability when drawing from the budget system. Higher = more common. |
-| `pool` | array | (Optional) Explicit list of item IDs. If omitted, the pool is every item declaring this type (or the category's `random_type` array, if it has one). |
+`count` picks that many items of the type at random when a run starts, and only those appear for the rest of the run. If there are 16 potions and `count` is 10, the player will only ever find 10 kinds. Leave it out to use them all. `weight` is how common the type is when the item budget picks items. `pool` is an optional list of specific item ids to use instead of every item of that type.
 
-**How `count` works:** If the potion pool has 16 types and `count` is 10, the engine shuffles the pool and picks 10 at random when the prototype loads. Only those 10 potion types will appear for the entire run.
+When a catalog is set, using a type like `"potion"` in `random_items` draws from the catalog's picks. Using a specific id like `"health_potion"` always works.
 
-When an item catalog is active, `random_items` pool references (like `"potion"`) draw from the catalog's subset instead of the full pool. Specific item IDs (like `"health_potion"`) bypass the catalog and always spawn.
+Press `d` in game to see how many items of each type have been identified.
 
-**Discovery UI**: Press `d` to show discovery progress for each catalog category. Identifying an item marks its type as discovered. The panel shows a progress bar per category (e.g., `Potions ████░░░░ 4/10`).
+### Item Budget
 
----
-
-## Item Budget
-
-The `item_budget` supplements `random_items` by spawning additional items drawn from catalog categories using weighted random selection.
+`item_budget` spawns extra items on each floor, picked from the item catalog by weight. It does nothing without an `item_catalog`.
 
 ```json
 "item_budget": {
@@ -504,74 +305,52 @@ The `item_budget` supplements `random_items` by spawning additional items drawn 
 }
 ```
 
-| Field | Type | Default | Description |
-| ------- | ------ | --------- | ------------- |
-| `base` | number | `3` | Guaranteed number of items spawned per floor |
-| `extra_chance` | number | `50` | Percent chance for each bonus item |
-| `max_extra` | number | `3` | Maximum bonus items to roll for |
+Each floor gets `base` items (default 3), then rolls up to `max_extra` more (default 3), each with an `extra_chance` percent chance (default 50). It runs after `random_items`, so the two add together.
 
-Each floor spawns `base` items guaranteed, then rolls up to `max_extra` additional items at `extra_chance`% each. Items are drawn from categories using `weight` from `item_catalog`.
-
-`item_budget` can be set at the prototype level (applies to all floors) or per-floor (overrides the prototype default). It runs after `random_items`, so both systems stack.
-
-**Requires `item_catalog`** — the budget system does nothing without a catalog definition.
-
----
+Spawn settings can be set once for the whole prototype or changed for a single floor.
 
 ## Win Conditions
 
-`win_conditions` is an array of conditions that must all be met to unlock the floor's stairway.
-To gate a single door or chest the same way, give that actor `unlock_conditions` (see
-[ACTORS.md](ACTORS.md#doors--containers)).
+`win_conditions` is a list of conditions that must all be met before the floor's down stairway unlocks. To lock a single door or chest the same way, give it `unlock_conditions` (see [ACTORS.md](ACTORS.md)).
 
 ```json
 "win_conditions": ["killed:ghast", "wearing:crown"]
 ```
 
-### String Formats
+`killed:actor_id` is met when every actor of that kind is dead. `collected:item_id` is met when none of that item is left lying on the floor. It is not met if the item never spawned. `wearing:item_id` means the player has it equipped, and `holding:item_id` means it's in their inventory.
 
-| Format | When met |
-| -------- | ---------- |
-| `"killed:actor_type"` | All living actors of that type are dead |
-| `"collected:item_id"` | No item of that type is left on the floor. Unmet if the type never spawned, so a floor without it doesn't win by default |
-| `"wearing:item_id"` | Player has that item equipped |
-| `"holding:item_id"` | Player has that item in inventory |
-
-### Object Format
-
-For stat or attribute comparisons:
+You can also compare a stat:
 
 ```json
-{
-  "actor": "player",
-  "stat": "health",
-  "op": ">",
-  "value": 50
-}
+{ "actor": "player", "stat": "health", "op": ">", "value": 50 }
 ```
 
-| Field | Description |
-| ------- | ------------- |
-| `actor` | `"player"` or an actor type string |
-| `stat` | Stat or attribute name to check |
-| `treasure` | Instead of `stat`: a treasure total name, or an array of them to sum, e.g. `["gold nugget", "thaler coin"]` |
-| `op` | Comparison: `">"`, `">="`, `"<"`, `"<="`, `"=="`, `"!="` |
-| `value` | Number to compare against |
+`actor` is `"player"` or an actor id. `op` can be `>`, `>=`, `<`, `<=`, `==` or `!=`. Instead of `stat` you can use `treasure` with a treasure name, or a list of names to add together, like `["gold nugget", "thaler coin"]`.
 
----
+`win_state` is different. It wins the whole game rather than unlocking a floor: `{ "via": "escape", "exit_floor": 1, "conditions": [...], "message": "..." }`. Reaching the exit on `exit_floor` with the conditions met ends the run in victory.
 
-## Multi-Floor Prototypes
+## Rank
 
-Add a `levels` array to create multiple floors within one prototype. Each entry is a floor configuration object.
+`rank_order` gives a prototype chess-like capture rules instead of dice combat. It is a list of actor ids from weakest to strongest, based on the rules of Animal Chess (Dou Shou Qi).
+
+```json
+"rank_order": ["rat", "cat", "dog", "wolf", "leopard", "tiger", "lion", "elephant"]
+```
+
+An actor can capture anything of equal or lower rank, and an attack on a higher rank does nothing. The one exception is that the first actor in the list can capture the last, the way the rat takes the elephant. An actor can also have a numeric `rank` attribute, which takes priority over the list. This is useful for things like disguises or promotions.
+
+Actors with no rank are left out of these rules, so a ranked prototype can still have ordinary monsters. Rank only controls damage. The AI doesn't know about it, so a ranked monster will keep attacking a piece it can't capture unless its behavior checks for that.
+
+## Multiple Floors
+
+Add a `levels` list to give a prototype more than one floor. Each entry configures one floor.
 
 ```json
 {
   "name": "A Dungeon",
   "mechanics": { "fog_of_war": true, "darkness": true },
-  "next_level": "caverns",
   "levels": [
     {
-      "win_conditions": [],
       "mechanics": { "ambient_light": 0.7, "tint": "#3355AA" },
       "map_generator": { "type": "digger", "options": { "map_width": 40, "map_height": 40 } },
       "random_actors": { "rat": { "chance": 100, "min": 2, "max": 3 } },
@@ -585,67 +364,24 @@ Add a `levels` array to create multiple floors within one prototype. Each entry 
 }
 ```
 
-### Per-Floor Overrides
+A floor can set `win_conditions`, `mechanics`, `map_generator`, `default_floor`, `random_actors`, `random_items`, `item_budget`, `traps`, `fungus` and `switch_puzzles`. Anything a floor leaves out comes from its biome if it has one, and otherwise from the top of `prototype.json`. `mechanics` settings are merged together, so a floor only needs the ones it changes. The other fields replace the default completely.
 
-Each floor object can override these fields from the prototype root:
-
-| Field | Description |
-| ------- | ------------- |
-| `win_conditions` | Win conditions for this floor |
-| `mechanics` | Mechanics overrides (merged with prototype-level mechanics) |
-| `map_generator` | Map generator config for this floor |
-| `random_actors` | Actor spawns for this floor |
-| `random_items` | Item spawns for this floor |
-| `item_budget` | Override the prototype-level item budget for this floor |
-| `traps` | Trap spawn config for this floor |
-| `fungus` | Fungus scatter config for this floor (`{ min, max, tall_chance? }`) |
-| `switch_puzzles` | Switch puzzle config for this floor |
-
-Resolution order per key: a floor override wins, else the biome for that floor (see [Biomes](#biomes)), else the prototype-root default. `mechanics` is deep-merged (root ← biome ← floor); all other keys replace wholesale.
-
-`levels` may also be written as a **sparse object keyed by floor number** — useful with biomes, where only a few floors are hand-authored:
+`levels` can also be written as an object keyed by floor number. This is handy with biomes, where only a few floors need hand authoring:
 
 ```json
 "floors": 26,
 "levels": { "6": { "win_conditions": ["killed:ghast"] }, "26": { "map": "throne.tmj" } }
 ```
 
-Fields not specified in a floor object fall back to the prototype-level defaults.
+The engine places a down stairway on every floor except the last. Each floor's stairway stays locked until its win conditions are met. When the player leaves a floor its state is saved, and it is restored when they come back.
 
-### Floor Behavior
-
-- **Stairways** move between floors (not prototypes). The engine auto-places `down_stairway` on every floor except the last.
-- **Win conditions** are per-floor. Each floor's stairway is locked until its conditions are met.
-- **Going up from floor 1** transitions to `previous_level` (if set).
-- **Floor state** is saved when leaving and restored when returning. Entities, map, and RNG state persist.
-
-### Floor Map Files
-
-| Floor | File |
-| ------- | ------ |
-| 1 | `map.tmj` |
-| 2 | `2.tmj` |
-| 3 | `3.tmj` |
-| N | `{N}.tmj` |
-
-Missing floor maps are generated procedurally using the floor's `map_generator` (or the prototype-level default).
-
----
+Authored maps are named by floor: `map.tmj` for floor 1, then `2.tmj`, `3.tmj` and so on. Floors without a map file are generated.
 
 ## Biomes
 
-Biomes let a multi-floor prototype **ramp difficulty by depth without authoring every floor**. Instead of writing out `random_actors`/`traps`/etc. on each floor, you define a **biome** — a themed bundle of depth-ranged catalogs — and assign it to a range of floors. As depth increases, catalog entries fade in and out of their `[min, max]` windows, so the monster/item/hazard mix ramps automatically. (Modeled on Brogue's depth-distribution system; see `docs/BIOMES.md` for the design rationale.)
+Biomes let a long prototype get harder as the player goes deeper without authoring every floor. A biome is a themed set of monsters, items and hazards, each with a range of floors it can appear on. As the player descends, things fade in and out of the mix on their own. This is modeled on Brogue. See [BIOMES.md](BIOMES.md) for details.
 
-Biomes are **opt-in and additive** — a prototype with no `floor_plan` behaves exactly as before.
-
-### Top-level keys
-
-| Key | Type | Description |
-|-----|------|-------------|
-| `floors` | number | Total floor count (use instead of a dense `levels` array when floors are biome-driven). |
-| `floor_plan` | array | Ordered `{ biome, floors }` assignments. `floors` is an inclusive range (`"1-8"`), a single number, or `[lo, hi]`. Ranges should tile `1..floors` without gaps. |
-
-`prototype.json` names biomes but does not define them:
+`prototype.json` assigns biomes to floors with `floor_plan`, and uses `floors` for the total floor count:
 
 ```json
 {
@@ -657,33 +393,19 @@ Biomes are **opt-in and additive** — a prototype with no `floor_plan` behaves 
 }
 ```
 
-Each name is looked up in `data/biomes.json`, or in this prototype's own `biomes.json`
-if it defines one (see [Prototype-Specific Data Files](#prototype-specific-data-files)).
-A name neither library defines logs a warning, and those floors fall back to the
-prototype's own defaults.
+A range can be written as `"1-8"`, a single number, or `[1, 8]`. The ranges should cover every floor without gaps.
 
-### Biome definition
+Biomes themselves are defined in `data/biomes.json` or the prototype's own `biomes.json`, not in `prototype.json`. A prototype's biome replaces a global one with the same name completely. If a biome name can't be found, those floors use the prototype's defaults. Biomes are easiest to build in the Biome Editor (`editors/biome-editor.html`).
 
-A biome is one entry in `data/biomes.json` (or a prototype's `biomes.json`), keyed by name:
+A biome can have an `actors` list, where each entry is `{ "id", "min", "max", "freq" }`. `min` and `max` are the floors it can appear on, `freq` is how common it is, and an optional `count` range spawns several at once. `actor_budget` sets how many picks to make per floor, using the same `base`, `extra_chance` and `max_extra` fields as the item budget. `items` and `item_budget` work the same way, using item types from the item catalog instead of actor ids.
 
-| Field | Type | Description |
-| ------- | ------ | ------------- |
-| `actors` | array | Depth-ranged monster catalog. Each row: `{ id, min, max, freq, count? }` — `min`/`max` are the floor window, `freq` the raffle weight, `count` an optional `[lo, hi]` per-pick spawn count. |
-| `actor_budget` | object | `{ base, extra_chance, max_extra }` — how many weighted picks to make per floor from the eligible `actors`. |
-| `items` | array | Depth-ranged item catalog. Rows use `type` (a category from `item_catalog`) plus `min`/`max`/`freq`. |
-| `item_budget` | object | Standard `{ base, extra_chance, max_extra }` budget (see [Item Budget](#item-budget)). |
-| `traps`, `fungus` | object | Hazard **count ramp**: `{ min_depth, intercept, slope, max }`. Count at floor `d` = `clamp(intercept + d*slope, 0, max)`, active only at `d ≥ min_depth`. `fungus` also takes `tall_chance`. |
-| `map_generator`, `mechanics` | object | Applied to every floor in the biome (a biome is one theme). A floor can still override. |
-| `default_floor` | object | Floor tile and tint for this biome's floors — same pattern as the prototype-level [Default Floor](#default-floor). Sits between a floor override and the prototype value. |
+`traps` and `fungus` grow with depth: `{ "min_depth", "intercept", "slope", "max" }`. From `min_depth` on, each floor gets `intercept` plus `slope` times the floor number, up to `max`. `fungus` also takes `tall_chance`.
 
-Depth = the absolute 1-based floor index. `actors`/`items` rows are picked by filtering to `min ≤ floor ≤ max` and doing a frequency-weighted raffle, `budget` times per floor. Hand-authored `levels` entries still override the biome per key.
+A biome can also set `map_generator`, `mechanics` and `default_floor` for all its floors. A floor in `levels` can still override any of these.
 
----
+## Linking Prototypes
 
-## Prototype Linking
-
-Prototypes can be linked together using `next_level` and `previous_level`.
-This is an artifact of the earliest version of DMK when each prototype was only one level, but it's still usable.
+`next_level` and `previous_level` link prototypes together by folder name. Going down the stairway on the last floor loads `next_level`, and going up from floor 1 loads `previous_level`. This is left over from early versions of the kit, when each prototype was a single level, but it still works.
 
 ```json
 {
@@ -693,44 +415,22 @@ This is an artifact of the earliest version of DMK when each prototype was only 
 }
 ```
 
-- **Down stairway** on the last floor (or single-floor prototype) transitions to `next_level`
-- **Up stairway** on floor 1 transitions to `previous_level`
+See [MAP.md](MAP.md) for more about stairways.
 
-See [MAP.md](MAP.md) for stairway placement and transition details.
+## Prototype Data Files
 
----
+Put these next to `prototype.json` to add or replace definitions for one prototype: `actors.json`, `items.json`, `personalities.json`, `biomes.json` and `animations.json`. Each is merged with the file of the same name in `data/`, and an entry with the same id replaces the global one. In `animations.json`, sprite sheet paths are relative to the prototype folder. A prototype can also add its own item types in `types.json`.
 
-## Prototype-Specific Data Files
-
-Place these files alongside `prototype.json` to add or override entity definitions for a specific level:
-
-| File | Merges with | Purpose |
-| ------ | ------------- | --------- |
-| `actors.json` | `data/actors.json` | Add level-specific actors or override global ones |
-| `items.json` | `data/items.json` | Add level-specific items or override global ones |
-| `personalities.json` | `data/personalities.json` | Add level-specific AI behaviors |
-| `biomes.json` | `data/biomes.json` | Biomes this prototype's `floor_plan` can name |
-| `animations.json` | `data/animations.json` | Animated sprites, with `file` relative to this folder. See [ACTORS.md](ACTORS.md#animated-sprites) |
-
-Prototype-specific entries with the same key as a global entry replace the global version for that level. See [ACTORS.md](ACTORS.md) and [ITEMS.md](ITEMS.md) for the data formats.
-
-Biomes are **not** authored inside `prototype.json`. The defaults live in `data/biomes.json`,
-a prototype's own `biomes.json` adds to or overrides them by name, and `prototype.json` just
-names the result in its `floor_plan` — the same pattern as `actors.json`. A prototype entry
-replaces that whole biome (no per-key merging), so each definition is self-contained.
-Author biomes with the Biome Editor (`editors/biome-editor.html`).
-
----
+See [ACTORS.md](ACTORS.md) and [ITEMS.md](ITEMS.md) for the formats.
 
 ## Examples
 
-### Minimal Single-Floor Prototype
+### A Single Floor
 
 ```json
 {
   "name": "The Arena",
   "description": "A simple test arena.",
-  "turn_speed": 50,
   "mechanics": {
     "fog_of_war": false,
     "darkness": false
@@ -742,72 +442,13 @@ Author biomes with the Biome Editor (`editors/biome-editor.html`).
 }
 ```
 
-### Multi-Floor Dungeon with Progression
-
-```json
-{
-  "name": "The Depths",
-  "description": "Darkness awaits below.",
-  "turn_speed": 50,
-  "next_level": "caverns",
-  "previous_level": "default",
-  "mechanics": {
-    "fog_of_war": true,
-    "darkness": true,
-    "player_auto_light": false,
-    "viewport_width": 40,
-    "viewport_height": 40
-  },
-  "map_generator": {
-    "type": "digger",
-    "options": { "map_width": 80, "map_height": 80 }
-  },
-  "levels": [
-    {
-      "win_conditions": [],
-      "mechanics": { "ambient_light": 0.7, "tint": "#3355AA" },
-      "map_generator": {
-        "type": "digger",
-        "options": { "map_width": 40, "map_height": 40 }
-      },
-      "random_actors": {
-        "rat": { "chance": 100, "min": 2, "max": 3 }
-      },
-      "random_items": {
-        "torch": { "chance": 60, "min": 1, "max": 2 }
-      }
-    },
-    {
-      "win_conditions": [],
-      "random_actors": {
-        "skeleton": { "chance": 100, "min": 2, "max": 4 },
-        "bat": { "chance": 80, "min": 1, "max": 2 }
-      },
-      "random_items": {
-        "potion": { "chance": 60, "min": 1, "max": 2 }
-      }
-    },
-    {
-      "win_conditions": ["killed:ghast"],
-      "random_actors": {
-        "ghast": { "chance": 100, "min": 1, "max": 1 },
-        "skeleton": { "chance": 100, "min": 3, "max": 5 }
-      }
-    }
-  ]
-}
-```
-
-### Observer Mode (No Player)
+### No Player
 
 ```json
 {
   "name": "Cellular Automata",
   "description": "Watch life emerge.",
-  "turn_speed": 50,
   "mechanics": {
-    "fog_of_war": false,
-    "darkness": false,
     "observer_mode": true
   },
   "random_actors": {

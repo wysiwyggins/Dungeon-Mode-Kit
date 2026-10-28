@@ -174,7 +174,7 @@ Each new passage has a 50% chance of a door where it meets the floor it joins.
   through anything you drew. An authored area sealed off by painted walls (a secret room
   behind a lever, say) has no carvable route, so it's left as drawn.
 - **Turn it off or tune it** per prototype or floor with the `connect_regions` and
-  `connect_door_chance` mechanics (see [PROTOTYPE.md](PROTOTYPE.md#special-modes)).
+  `connect_door_chance` mechanics (see [PROTOTYPE.md](PROTOTYPE.md#other-mechanics)).
 - Floor areas under 3 tiles are treated as scenery and left alone.
 - See `prototypes/sewer/map.tmj` (digger region, tile 152) and `prototypes/mine/map.tmj` (cave, tile 10) for examples
 

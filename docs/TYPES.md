@@ -176,7 +176,7 @@ so leaving it out drops the defaults rather than keeping them:
 ## Built-in item types
 
 Naming one of these instead of an item id spawns a random member — see
-[PROTOTYPE.md](PROTOTYPE.md#item-pools-item-types).
+[PROTOTYPE.md](PROTOTYPE.md#random-actors-and-items).
 
 | Type | Grants | Notes |
 | ---- | ------ | ----- |
