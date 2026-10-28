@@ -8,7 +8,7 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parent.parent
 SPRITESHEET = ROOT / "assets" / "sprites" / "static-tiles.png"
 TILES_JSON = ROOT / "data" / "static-tiles.json"
-OUTPUT_DIR = ROOT / "assets" / "images"
+OUTPUT_DIR = ROOT / "docs" / "images"
 
 def main():
     with open(TILES_JSON) as f:

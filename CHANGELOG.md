@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 These versions are pretty arbitrary, I know. When (if) other folks get involved, I'll formalize it a little.
 
+## [1.4b]
+
+### To do
+
+- Editors write to a local prototype folder using [OPFS](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system) folder can be downloaded
+- hosted dmk scripts allow prototype folders to run the game locally
+
 ## [1.3b]
 
 ### Added
@@ -20,6 +27,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 ### Changed
 
+- A little docs cleanup, waiting until editors are wired up in next version to do them all. assets/images/ and journal moved to docs.
 - Refactored to ES6 Modules, ESLint error cleanup
 - **`chest` renamed `wooden_chest`.** Update any map object or prototype that places `chest`.
 - **`globals.js` removed.** The asset path and tile size constants moved to `core/util.js`, the void tile ids to `architect/architect.js`, and the detect-magic marker tile and tints to `engine/render/overlays.js`.

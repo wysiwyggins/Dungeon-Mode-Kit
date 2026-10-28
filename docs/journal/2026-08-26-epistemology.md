@@ -54,11 +54,11 @@ Like the visibility of the eel's tile, the player character's knowledge of its n
 
 Writing all of this down made me split the whole business in two: sight (is it drawn) and knowledge (is it understood). DMK also already has known and unknown items with greeked or color/material names until they are identified through use, which is a pretty standard roguelike mechanic. Unkown names are randomly assigned but *stable* for the session, which is what makes them learnable rather than merely arbitrary; a cloudy potion is the same cloudy potion all run.
 
-![Hallucination state on the test prototype](../assets/images/hallucination.png)
+![Hallucination state on the test prototype](../images/hallucination.png)
 
 In a game like Brogue, being touched by the Toad enemy (or drinking a hallucination potion) causes a player state that continually shifts the identity of every enemy, *through a list of all possible enemies*. This includes enemies that the player character has never encountered. DMK goes one step further, its hallucination state shifts every individual actor tile continuously through the entire catalog of tiles, with the individual tile names as their hover descriptions.  It's interesting to imagine what both hallucination states tell us about each game system. Either hallucinations are some kind of state of gnosis in these worlds or both player characters have innate knowledge of these things. Brogue's player character has learned about all the monsters in the dungeon (and items) and this is why they have a catalog of things to tick off. The DMK player may know about all the items in a specific prototype (but prototypes can have any number of arbitrarily added items!) but their main point of reference for the world is the character set (which I sometimes call Libuše). Everything dissolves into that, the building blocks of that world. One of the few faults I can find with Brogue (which is an almost perfect game in my opinion) is that there are a few "bad" items that don't have some sort of value that can be found. The hallucination potion is one of them, so I have added a couple of secret beneficial uses for it that I hope will be discovered.
 
-![tilemap of shadows cast by a brazier](../assets/images/shadows.png)
+![tilemap of shadows cast by a brazier](../images/shadows.png)
 
 This sprint as given me an idea for the first small prototype that focuses on this subject— a brazier casts light and also blocks vision. Moving around it, a player actor with no torch has both a line-of-sight dead zone beyond the brazier and a shadow cast behind the player by the brazier's light, and the two 'shadows' mirror one another. One is a shadow of "unknowing," although that shadow is filled with a memory of another perspective.
 

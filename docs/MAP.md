@@ -50,11 +50,11 @@ Some existing maps include a `ui` tile layer — the engine ignores it completel
 
 ### Layer Details
 
-**background** — Fill entirely with ![FULL_BLOCK](../assets/images/FULL_BLOCK.png) `FULL_BLOCK` (tile 217, solid black) or its opaque twin `OPAQUE_FULL_BLOCK` (tile 231). The engine clears background behind floor tiles automatically, so this just fills the void. You can also paint other decorative tiles here for effect.
+**background** — Fill entirely with ![FULL_BLOCK](images/FULL_BLOCK.png) `FULL_BLOCK` (tile 217, solid black) or its opaque twin `OPAQUE_FULL_BLOCK` (tile 231). The engine clears background behind floor tiles automatically, so this just fills the void. You can also paint other decorative tiles here for effect.
 
 Prefer the **opaque** variant on levels that use `ambient_light`: a transparent glyph has no pixels for the lighting pass to tint, so the void reads flat black instead of picking up the level's color. Both are recognized as void either way (`Architect.isVoidTile`), so existing maps keep working.
 
-**floor** — Paint walkable areas. ![FLOOR](../assets/images/FLOOR.png) `FLOOR` (tile 158) is the standard floor tile, but any tiles can be used for decorative effect. Leave cells empty (null or tile 0) for impassable void.
+**floor** — Paint walkable areas. ![FLOOR](images/FLOOR.png) `FLOOR` (tile 158) is the standard floor tile, but any tiles can be used for decorative effect. Leave cells empty (null or tile 0) for impassable void.
 
 **wildcards** — Paint regions that the engine fills with procedural content at runtime. See [Wildcard Tiles](#wildcard-tiles-generative-fills) below.
 
@@ -117,19 +117,19 @@ Paint a region on the `wildcards` layer and the engine fills it with procedural 
 
 | Generator | Tile | Tile ID | What It Creates |
 | ----------- | ------ | --------- | ----------------- |
-| Digger region | ![PRISON_WINDOW](../assets/images/PRISON_WINDOW.png) | 16 | Walled rooms + corridors + doors |
-| Cave | ![INVERSE_BULLET](../assets/images/INVERSE_BULLET.png) | 10 | Organic cave shapes |
-| Infernal | ![OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE_AND_OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE](../assets/images/OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE_AND_OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE.png) | 230 | Cave + lava pools |
-| Maze | ![DESERET_CAPITAL_LETTER_ES](../assets/images/DESERET_CAPITAL_LETTER_ES.png) | 210 | Perfect maze corridors |
-| Room | ![INVERTED_CHECKER_BOARD](../assets/images/INVERTED_CHECKER_BOARD.png) | 143 | Single walled room |
-| Dungeon | ![BOX_VERTICAL_HORIZONTAL](../assets/images/BOX_VERTICAL_HORIZONTAL.png) | 197 | Rooms + corridors + loops + secret doors — the main generator |
-| Uniform | ![BLACK_SQUARE](../assets/images/BLACK_SQUARE.png) | 142 | Evenly distributed rooms |
-| Rogue | ![NUMBER_SIGN](../assets/images/NUMBER_SIGN.png) | 36 | Classic grid of rooms (needs a region ~22 tiles a side) |
-| Divided maze | ![CROSS](../assets/images/CROSS.png) | 232 | Recursive-division maze |
-| Icey maze | ![ASTERISK](../assets/images/ASTERISK.png) | 43 | Maze with regularity control |
-| Arena | ![PLUS_SIGN](../assets/images/PLUS_SIGN.png) | 44 | Open walled box |
-| Item spawn | ![BLACK_KEY](../assets/images/BLACK_KEY.png) | 12 | Random items from `random_items` config |
-| Actor spawn | ![OPAQUE_WHITE_SMILING_FACE](../assets/images/OPAQUE_WHITE_SMILING_FACE.png) | 3 | Random actors from `random_actors` config |
+| Digger region | ![PRISON_WINDOW](images/PRISON_WINDOW.png) | 16 | Walled rooms + corridors + doors |
+| Cave | ![INVERSE_BULLET](images/INVERSE_BULLET.png) | 10 | Organic cave shapes |
+| Infernal | ![OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE_AND_OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE](images/OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE_AND_OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE.png) | 230 | Cave + lava pools |
+| Maze | ![DESERET_CAPITAL_LETTER_ES](images/DESERET_CAPITAL_LETTER_ES.png) | 210 | Perfect maze corridors |
+| Room | ![INVERTED_CHECKER_BOARD](images/INVERTED_CHECKER_BOARD.png) | 143 | Single walled room |
+| Dungeon | ![BOX_VERTICAL_HORIZONTAL](images/BOX_VERTICAL_HORIZONTAL.png) | 197 | Rooms + corridors + loops + secret doors — the main generator |
+| Uniform | ![BLACK_SQUARE](images/BLACK_SQUARE.png) | 142 | Evenly distributed rooms |
+| Rogue | ![NUMBER_SIGN](images/NUMBER_SIGN.png) | 36 | Classic grid of rooms (needs a region ~22 tiles a side) |
+| Divided maze | ![CROSS](images/CROSS.png) | 232 | Recursive-division maze |
+| Icey maze | ![ASTERISK](images/ASTERISK.png) | 43 | Maze with regularity control |
+| Arena | ![PLUS_SIGN](images/PLUS_SIGN.png) | 44 | Open walled box |
+| Item spawn | ![BLACK_KEY](images/BLACK_KEY.png) | 12 | Random items from `random_items` config |
+| Actor spawn | ![OPAQUE_WHITE_SMILING_FACE](images/OPAQUE_WHITE_SMILING_FACE.png) | 3 | Random actors from `random_actors` config |
 
 Every map generator now has a wildcard, so anything you can set as a floor's
 `map_generator` can also be painted as a region. Two predate the rest and keep their
@@ -186,16 +186,16 @@ Some actors have a `paint_tile` attribute — paint their tile on the `wildcards
 
 | Actor | Tile | Tile ID | Tile Name | Use For |
 | ------- | ------ | --------- | ----------- | --------- |
-| `wall` | ![WALL_TOP](../assets/images/WALL_TOP.png) | 132 | `WALL_TOP` | Standard walls |
-| `rock_wall` | ![DARK_SHADE](../assets/images/DARK_SHADE.png) | 178 | `DARK_SHADE` | Natural rock walls |
-| `wall-bottom-left-corner` | ![LIGHT_SHADE_UPPER_RIGHT_TRIANGLE](../assets/images/LIGHT_SHADE_UPPER_RIGHT_TRIANGLE.png) | 156 | `LIGHT_SHADE_UPPER_RIGHT_TRIANGLE` | Wall corners |
-| `wall-bottom-right-corner` | ![LIGHT_SHADE_UPPER_LEFT_TRIANGLE](../assets/images/LIGHT_SHADE_UPPER_LEFT_TRIANGLE.png) | 155 | `LIGHT_SHADE_UPPER_LEFT_TRIANGLE` | Wall corners |
-| `wall-top-right-corner` | ![LIGHT_SHADE_LOWER_LEFT_TRIANGLE](../assets/images/LIGHT_SHADE_LOWER_LEFT_TRIANGLE.png) | 134 | `LIGHT_SHADE_LOWER_LEFT_TRIANGLE` | Wall corners |
-| `wall-top-left-corner` | ![LIGHT_SHADE_LOWER_RIGHT_TRIANGLE](../assets/images/LIGHT_SHADE_LOWER_RIGHT_TRIANGLE.png) | 157 | `LIGHT_SHADE_LOWER_RIGHT_TRIANGLE` | Wall corners |
-| `water` | ![WATER](../assets/images/WATER.png) | 389 | `WATER` | Water terrain |
-| `sewage` | ![OPAQUE_DOTTED_LIGHT_SHADE](../assets/images/OPAQUE_DOTTED_LIGHT_SHADE.png) | 135 | `OPAQUE_DOTTED_LIGHT_SHADE` | Toxic water |
-| `lava` | ![DOUBLE_EXCLAMATION_MARK](../assets/images/DOUBLE_EXCLAMATION_MARK.png) | 20 | `DOUBLE_EXCLAMATION_MARK` | Damaging magma |
-| `fire` | ![BLACK_DIAMOND_SUITE](../assets/images/BLACK_DIAMOND_SUITE.png) | 5 | `BLACK_DIAMOND_SUITE` | Spreading fire |
+| `wall` | ![WALL_TOP](images/WALL_TOP.png) | 132 | `WALL_TOP` | Standard walls |
+| `rock_wall` | ![DARK_SHADE](images/DARK_SHADE.png) | 178 | `DARK_SHADE` | Natural rock walls |
+| `wall-bottom-left-corner` | ![LIGHT_SHADE_UPPER_RIGHT_TRIANGLE](images/LIGHT_SHADE_UPPER_RIGHT_TRIANGLE.png) | 156 | `LIGHT_SHADE_UPPER_RIGHT_TRIANGLE` | Wall corners |
+| `wall-bottom-right-corner` | ![LIGHT_SHADE_UPPER_LEFT_TRIANGLE](images/LIGHT_SHADE_UPPER_LEFT_TRIANGLE.png) | 155 | `LIGHT_SHADE_UPPER_LEFT_TRIANGLE` | Wall corners |
+| `wall-top-right-corner` | ![LIGHT_SHADE_LOWER_LEFT_TRIANGLE](images/LIGHT_SHADE_LOWER_LEFT_TRIANGLE.png) | 134 | `LIGHT_SHADE_LOWER_LEFT_TRIANGLE` | Wall corners |
+| `wall-top-left-corner` | ![LIGHT_SHADE_LOWER_RIGHT_TRIANGLE](images/LIGHT_SHADE_LOWER_RIGHT_TRIANGLE.png) | 157 | `LIGHT_SHADE_LOWER_RIGHT_TRIANGLE` | Wall corners |
+| `water` | ![WATER](images/WATER.png) | 389 | `WATER` | Water terrain |
+| `sewage` | ![OPAQUE_DOTTED_LIGHT_SHADE](images/OPAQUE_DOTTED_LIGHT_SHADE.png) | 135 | `OPAQUE_DOTTED_LIGHT_SHADE` | Toxic water |
+| `lava` | ![DOUBLE_EXCLAMATION_MARK](images/DOUBLE_EXCLAMATION_MARK.png) | 20 | `DOUBLE_EXCLAMATION_MARK` | Damaging magma |
+| `fire` | ![BLACK_DIAMOND_SUITE](images/BLACK_DIAMOND_SUITE.png) | 5 | `BLACK_DIAMOND_SUITE` | Spreading fire |
 
 Deep water and deep sewage are spawned automatically by the engine wherever large contiguous regions of `water` or `sewage` exist — you don't need a separate wildcard for them.
 
