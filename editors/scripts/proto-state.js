@@ -193,6 +193,11 @@ function blobActorIds() {
         return attrs.solid === false && !!attrs.paint_tile;
     });
 }
+// Actor ids a decoration row may scatter: non-solid only, since the engine skips
+// solid decoration actors so dressing never walls off a corridor.
+function decorActorIds() {
+    return state.mergedActorIds.filter(id => actorAttrs(id).solid === false);
+}
 // How a switch actor behaves, derived from its own attributes (one_shot vs
 // repeatable). This is defined on the actor, not the puzzle pattern.
 function switchModeLabel(id) {

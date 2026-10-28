@@ -781,14 +781,16 @@ function decorationsEditor(rows) {
 
         // add row. Entities may repeat — two rows of rubble with different patterns
         // is valid — so nothing is filtered out of the dropdown.
+        // Option values carry the row key ("entity:moss", "actor:grave") so one
+        // dropdown can add either kind of row.
         const addSel = el('select', { class: 'wlabel-sel' });
         addSel.appendChild(el('option', { value: '' }, '+ add decoration…'));
-        for (const c of (state.mergedEntityIds || [])) {
-            addSel.appendChild(el('option', { value: c }, c));
-        }
+        addSel.appendChild(decorationOptgroup('entities', 'entity', state.mergedEntityIds || []));
+        addSel.appendChild(decorationOptgroup('actors (non-solid)', 'actor', decorActorIds()));
         addSel.addEventListener('change', () => {
             if (!addSel.value) return;
-            rows.push({ entity: addSel.value, pattern: 'scatter', density: 0.1, min: 0, max: 10, freq: 100 });
+            const [key, id] = addSel.value.split(':');
+            rows.push({ [key]: id, pattern: 'scatter', density: 0.1, min: 0, max: 10, freq: 100 });
             commit(); redraw();
         });
         wrap.appendChild(el('div', { class: 'weight-row' }, addSel));
@@ -797,18 +799,31 @@ function decorationsEditor(rows) {
     return wrap;
 }
 
+function decorationOptgroup(label, key, ids) {
+    const group = el('optgroup', { label });
+    for (const id of ids) group.appendChild(el('option', { value: `${key}:${id}` }, id));
+    return group;
+}
+
 function decorationRow(rows, i, redraw) {
     const row = rows[i];
     const line = el('div', { class: 'depth-row' });
 
-    // entity selector, keeping a value that isn't in the list
-    const sel = el('select', { class: 'wlabel-sel' });
-    for (const c of (state.mergedEntityIds || [])) sel.appendChild(el('option', { value: c }, c));
-    if (!(state.mergedEntityIds || []).includes(row.entity)) {
-        sel.appendChild(el('option', { value: row.entity }, row.entity + ' (?)'));
+    // entity or actor selector, keeping a value that isn't in the list. A row
+    // is one kind or the other; `actor` wins, matching the engine.
+    const key = row.actor != null ? 'actor' : 'entity';
+    const choices = key === 'actor' ? decorActorIds() : (state.mergedEntityIds || []);
+    const sel = el('select', { class: 'wlabel-sel', title: key === 'actor' ? 'actor (non-solid)' : 'entity' });
+    for (const c of choices) sel.appendChild(el('option', { value: c }, c));
+    if (!choices.includes(row[key])) {
+        sel.appendChild(el('option', { value: row[key] }, row[key] + ' (?)'));
     }
-    sel.value = row.entity;
-    sel.addEventListener('change', () => { row.entity = sel.value; commit(); redraw(); });
+    sel.value = row[key];
+    sel.addEventListener('change', () => {
+        row[key] = sel.value;
+        delete row[key === 'actor' ? 'entity' : 'actor'];
+        commit(); redraw();
+    });
 
     // placement pattern
     const patSel = el('select', { class: 'wlabel-sel',

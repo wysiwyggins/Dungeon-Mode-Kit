@@ -20,7 +20,7 @@
     <input id="new-biome-name" type="text" placeholder="new biome name" style="width:130px;">
     <button id="btn-new">+ New Biome</button>
     <button id="btn-copy-library" class="btn-accent" title="Copy the whole data/biomes.json — paste it over that file">Copy library</button>
-    <button id="btn-copy-one" class="btn-accent" title="Copy just this biome as a &quot;name&quot;: { … } fragment, for pasting inline into a prototype.json">Copy this biome</button>
+    <button id="btn-copy-one" class="btn-accent" title="Copy just this biome as a &quot;name&quot;: { … } fragment, for pasting into a prototype's biomes.json">Copy this biome</button>
     <!-- <button id="btn-toggle-json" title="Show or hide the live JSON output panel">Hide JSON</button> -->
     <span id="load-status" class="status-text"></span>
 </header>
@@ -120,7 +120,7 @@
      biome-render.js calls init() last. proto-widgets.js and biome-sections.js
      are shared verbatim with the prototype editor — biome-state.js supplies the
      globals they expect (state, isFloor, totalFloors, CATEGORY_KEYS, GEN_TYPES,
-     wallActorIds, blobActorIds) and biome-render.js supplies commit()/render().
+     wallActorIds, blobActorIds, decorActorIds) and biome-render.js supplies commit()/render().
      tile-picker.js is a dependency of proto-widgets.js's tileRow(). -->
 <script src="scripts/tile-picker.js"></script>
 <script src="scripts/ref-fields.js"></script>

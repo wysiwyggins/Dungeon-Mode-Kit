@@ -178,7 +178,7 @@ async function init() {
     document.getElementById('btn-copy-one').addEventListener('click', () => {
         if (!state.activeBiome) { setStatus('choose a biome first'); return; }
         copyText(serializeOne(state.activeBiome),
-            `copied “${state.activeBiome}” — paste inside a prototype's "biomes" object`);
+            `copied “${state.activeBiome}” — paste into a prototype's biomes.json`);
     });
 
     // JSON panel show/hide, persisted. Separate key from the prototype editor's

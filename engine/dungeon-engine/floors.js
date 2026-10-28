@@ -906,7 +906,7 @@ export const DungeonEngineFloors = {
     },
 
     // How many spawn picks this floor: base + up to max_extra rolls at extra_chance%.
-    // Defaults keep a bare {} budget from spawning nothing unexpectedly.
+    // Every field defaults to 0, so a missing or bare {} budget makes no picks.
     _budgetCount(budget) {
         const b = budget || {};
         const base = b.base ?? 0;

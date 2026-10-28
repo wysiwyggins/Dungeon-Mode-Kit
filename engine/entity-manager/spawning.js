@@ -166,7 +166,7 @@ export const EntityManagerSpawning = {
      * Spawn random actors based on prototype's random_actors config
      * Called after wildcard processing so walkable tiles exist
      * Format: { "actor_type": { "chance": 0-100, "min": 1, "max": 3 }, ... }
-     * If chance is 100, exactly one instance will spawn (guaranteed)
+     * Each entry places min..max (default 1); chance is rolled per spawn, so 100 places them all
      */
     spawnRandomActorsFromConfig(floorConfig = null) {
         const walkableTiles = this.engine.mapManager.walkableTiles;
@@ -347,7 +347,7 @@ export const EntityManagerSpawning = {
             // A row scatters an entity (inert dressing) or an actor (dressing that
             // does something — a grave, a cairn). `id` stands in for whichever it is
             // so the warnings below read the same either way.
-            const id = row?.entity || row?.actor;
+            const id = row?.actor || row?.entity;
             if (!id) continue;
 
             if (row.actor) {
@@ -525,25 +525,8 @@ export const EntityManagerSpawning = {
                 ? () => regionTiles().filter(t => this._getLiquidActorAt(t.x, t.y))
                 : regionTiles;
 
-            // If chance is 100%, spawn exactly one (guaranteed spawn)
-            if (chance >= 100) {
-                const availableTiles = tilesForActor();
-                if (availableTiles.length === 0) {
-                    console.warn(`random_actors: No tiles available for guaranteed spawn of "${actorType}"`);
-                    continue;
-                }
-
-                const tileIndex = Math.floor(ROT.RNG.getUniform() * availableTiles.length);
-                const tile = availableTiles[tileIndex];
-
-                const actor = new Actor(tile.x, tile.y, actorType, actorData, this.engine);
-                this.addEntity(actor);
-                actor.loadDefaultItems();
-                console.log(`random_actors: Spawned guaranteed "${actorType}" at (${tile.x}, ${tile.y})`);
-                continue;
-            }
-
-            // For non-guaranteed spawns, roll for count between min and max
+            // Roll how many to place between min and max. At chance 100 every one
+            // of them lands; below that each spawn rolls chance on its own.
             const count = min + Math.floor(ROT.RNG.getUniform() * (max - min + 1));
 
             // Pack actors spawn clustered together near a single anchor point
@@ -636,35 +619,14 @@ export const EntityManagerSpawning = {
             // (e.g. an artifact in a palladian sanctum).
             const itemTiles = tilesIn ? tilesIn(spawnConfig.region) : getAvailableTiles;
 
-            let resolvedType = itemType;
-            let itemData = prototype.getItemData(itemType);
+            const itemData = prototype.getItemData(itemType);
             if (!itemData) {
                 console.warn(`random_items: No item data found for "${itemType}"`);
                 continue;
             }
 
-            // If chance is 100%, spawn exactly one (guaranteed spawn)
-            if (chance >= 100) {
-                const availableTiles = itemTiles();
-                if (availableTiles.length === 0) {
-                    console.warn(`random_items: No tiles available for guaranteed spawn of "${resolvedType}"`);
-                    continue;
-                }
-
-                // getItemData already rolled if itemType named a category, and
-                // reports which member it picked.
-                resolvedType = itemData.id || resolvedType;
-
-                const tileIndex = Math.floor(ROT.RNG.getUniform() * availableTiles.length);
-                const tile = availableTiles[tileIndex];
-
-                const item = new Item(tile.x, tile.y, resolvedType, itemData, this.engine);
-                this.addEntity(item);
-                console.log(`random_items: Spawned guaranteed "${resolvedType}" at (${tile.x}, ${tile.y})`);
-                continue;
-            }
-
-            // For non-guaranteed spawns, roll for count between min and max
+            // Roll how many to place between min and max. At chance 100 every one
+            // of them lands; below that each spawn rolls chance on its own.
             const count = min + Math.floor(ROT.RNG.getUniform() * (max - min + 1));
 
             // Resolved once and consumed as we go: getAvailableTiles only excludes

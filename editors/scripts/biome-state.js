@@ -152,6 +152,13 @@ function wallActorIds() {
     return state.mergedActorIds.filter(id => state.mergedActors[id]?.type === 'terrain');
 }
 
+// Actor ids a decoration row may scatter. The engine skips solid ones, since
+// dressing must never wall off a corridor, so only non-solid actors are offered.
+function decorActorIds() {
+    return state.mergedActorIds.filter(id =>
+        resolvedActorAttrs(state.mergedActors[id], state.baseTypes).solid === false);
+}
+
 // Actor ids a generator can pour into a blob (map_generator.options.lakes.types).
 // There is no blob type in types.json the way `terrain` covers walls, so this is an
 // attribute filter: non-solid actors that paint a tile. That admits a few odd but

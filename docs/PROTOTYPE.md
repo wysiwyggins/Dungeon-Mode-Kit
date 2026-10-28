@@ -239,7 +239,7 @@ Both the default floor and void tile can be picked visually in the prototype edi
 }
 ```
 
-Each entry rolls on its own. `chance` is the percent chance it spawns at all, and if it does, a number between `min` and `max` are placed (both default to 1). Ids can come from the global data files or the prototype's own.
+Each entry places a number between `min` and `max` (both default to 1). `chance` (default 100) is rolled separately for each of those, so at 100 they all appear and at 50 about half do. An actor with the `pack` attribute rolls once for the whole group, which spawns close together. Ids can come from the global data files or the prototype's own.
 
 You can also use an item type like `potion`, `weapon` or `scroll` instead of a specific item id. This spawns a random item of that type. Any item with `"type": "potion"` is part of the potion pool automatically. See [TYPES.md](TYPES.md).
 
