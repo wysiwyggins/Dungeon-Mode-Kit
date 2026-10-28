@@ -28,7 +28,7 @@
     "stats": {
       "health": {
         "max": 50,
-        "per_turn": 1
+        "per_turn": 0.5
       }
     },
     "default_items": [

@@ -34,6 +34,17 @@
       "chance": 30,
       "min": 0,
       "max": 1
+    },
+    "rat": {
+      "chance": 100
+    },
+    "teleporter": {
+      "chance": 100,
+      "min": 2,
+      "max": 2
+    },
+    "toad": {
+      "chance": 10
     }
   },
   "random_items": {
@@ -43,12 +54,14 @@
       "max": 2
     },
     "potion": {
-      "chance": 70
+      "chance": 70,
+      "min": 1,
+      "max": 2
     },
     "scroll": {
       "chance": 60,
       "min": 0,
-      "max": 1
+      "max": 2
     },
     "hallucination_potion": {
       "chance": 60,
@@ -64,6 +77,20 @@
       "chance": 60,
       "min": 0,
       "max": 1
+    },
+    "powder_keg": {
+      "chance": 30
+    },
+    "javelin": {
+      "chance": 10
+    },
+    "wand": {
+      "chance": 20
     }
+  },
+  "fungus": {
+    "min": 0,
+    "max": 1,
+    "tall_chance": 0.25
   }
 }
