@@ -7,14 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 These versions are pretty arbitrary, I know. When (if) other folks get involved, I'll formalize it a little.
 
-## [1.4b]
+## [1.22b]
 
 ### To do
 
 - Editors write to a local prototype folder using [OPFS](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system) folder can be downloaded
 - hosted dmk scripts allow prototype folders to run the game locally
 
-## [1.3b]
+## [1.21b] 2026-10-28
 
 ### Added
 
@@ -25,8 +25,6 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 - **Wildcard regions connect to authored floor.** On Tiled maps, a pass after region generation carves a passage from any stranded floor area through region cells only, with a 50% chance of a door at the seam. Controlled by the `connect_regions` and `connect_door_chance` mechanics.
 - **Opened chests list their contents.** When the player opens a chest, the message log says what's inside ("Inside you find a crown.") or that it's empty, using identification-aware names.
 - **Actor decoration rows in the biome editor.** Decoration rows can now name a non-solid actor (like `grave`) as well as an entity, and the add menu lists both.
-- Jackal actor: weak (5 HP) hostile creature that spawns in packs of 3-5 using `aggressive_melee` personality
-- Pack spawn mechanic: actors with `pack: true` attribute spawn clustered within Manhattan distance 2 of each other
 
 ### Changed
 
@@ -44,7 +42,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 - **`floor_plan` prototypes without `levels`.** Win conditions and random spawning now read the current floor's biome settings instead of the prototype's top-level ones.
 - **Biome editor no longer corrupts actor decoration rows.** Editing one wrote a stray `entity` key next to `actor`; the stray keys in `data/biomes.json` are removed, and "Copy this biome" now says to paste into a prototype's `biomes.json`.
 
-## [1.2b]
+## [1.20b] 2026-10-24
 
 ### Added
 
@@ -80,7 +78,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 - **Web spray crashed.** `spray_web` used a line-of-sight callback outside the loop that declared it, so a spider throwing a web hit a ReferenceError.
 
-## [1.19b]
+## [1.19b] 2026-10-17
 
 ### Added
 
@@ -179,7 +177,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 - **`pickup_effect` handles `apply_state`.** It previously treated every key as a number to add, so `"apply_state": "foo"` computed `0 + "foo"` and set a garbage attribute instead of applying the state. Now routed through `applyAuthoredState`, matching `use_effect`.
 - **`random_items` no longer stacks a batch onto one tile.** The count loop re-queried available tiles each iteration and `getAvailableTiles` only excludes actor-occupied tiles, so a 50-item spawn could pile several items invisibly on the same spot.
 
-## [1.18b]
+## [1.18b] 2026-08-30
 
 ### Added
 
@@ -195,18 +193,10 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 - **`drops` — a weighted loot table any actor can use.** One `{ item, weight }` alternative wins, an entry with no `item` is the "nothing" outcome, and `item` resolves as an item id, an item *type* (`"weapon"`) or an entity id (`"skull"`) — filling the gap between `remains` and `lode`. See [docs/ACTORS.md](docs/ACTORS.md#death).
 - **`pedestal` can be painted in Tiled.** It gains `paint_tile: WHITE_DOOR_TOP` (tile 371) — its own base tile, so what you paint is what you see. No engine change: `getActorWildcardType` already turns any actor's `paint_tile` into a wildcard.
 - **Every map generator can now be painted as a wildcard region.** Six had no marker tile: `dungeon` (197 `BOX_VERTICAL_HORIZONTAL`), `uniform` (142 `BLACK_SQUARE`), `rogue` (36 `NUMBER_SIGN`), `divided_maze` (232 `CROSS`), `icey_maze` (43 `ASTERISK`) and `arena` (44 `PLUS_SIGN`) — so the main generator, in particular, could be a whole floor but not one feature of one. Each fills the cells it leaves solid with walls honoring `wall_types`, so a painted region has its own boundary; the pre-existing `maze` (210) keeps its wall-less behaviour so no authored map changes. Regions too small for their generator degrade to walled open floor with a warning instead of throwing, which previously would have taken `loadFloor` down. `cave` (10) and `maze` (210) already covered `cellular` and `eller_maze` under older names. See [docs/MAP.md](docs/MAP.md#wildcard-tiles-generative-fills).
-
-### Added
-
 - **Actor info panels.** Clicking a visible actor now describes it instead of walking there; `Tab` then the confirm key (`Enter`) is the keyboard route, and `Esc` closes it. Modelled on Brogue's `monsterDetails`: name, description, a traits sentence, and — for a `tactician` — a two-sided combat forecast ("You have a 49% chance to hit it, and could defeat it in 5 hits"). Travel to a monster's tile is still reachable via `Tab` + `(x)plore`, so nothing was taken away. See [docs/ACTORS.md](docs/ACTORS.md#info-panel).
 - **`data/attribute-info.json`** — maps an actor attribute to the phrase the info panel uses for it. An attribute is described *only* if listed, so engine plumbing stays invisible and a new attribute reveals nothing until someone words it; a string covers the truthy case, an object (`{"true":…,"false":…}`) can also speak for the falsy one, which is how "does not burn" gets said. Adding a trait needs no engine change.
 - **`tactician` attribute** gates the combat forecast on the *viewing* actor, so it can be granted or lost mid-run rather than being fixed per prototype. Set on `player` by default.
 - **`Actor.predictCombat(defender)`** — hit chance, damage, and hits-to-kill in either direction, computed without rolling or mutating anything. Mirrors the live pipeline (base → critical → backstab → strength → enchantment) and reports the random multipliers rather than sampling them, so the panel can say "5 hits, 3 with a lucky strike". Reads the current world, so an unaware monster shows its backstab figure and that figure changes when it notices you.
-
-### Fixed
-
-- **Damage scaling rounded inconsistently once shared between call sites.** Extracting `Actor.scaleDamage` so `applyCollisionEffects` and `predictCombat` cannot drift exposed that `Math.round` breaks halves toward +Infinity: scaling a positive magnitude turned 0.5 into 1 where the old negative-delta path produced 0 — a real off-by-one on odd damage at low strength (the player's `strength: 5` halves every figure). `scaleDamage` now rounds as the live path always did; verified identical across 7,200 damage/strength/enchantment combinations.
-- **Two description fields were authored but unreadable.** `Item`'s constructor extracts a fixed list of root-level keys and silently drops the rest, so the `effect_description` on 34 potions resolved to nothing — and `Actor`'s root-to-attribute bridge omitted `description`, so the text on 23 actors was equally unreachable. Neither was visibly broken: the only item referencing the `[effect_description]` token is `mystery_potion`, which gets its copy from `templateVars` via `random_effect`, and nothing read actor descriptions at all. Both now bridge into attributes and are readable via `Item.getEffectDescription()` and `Actor.getDescription()`. As a side effect `use_description` is now stored as an attribute rather than a bare property, so it survives save/load, which it previously did not.
 
 ### Changed
 
@@ -232,6 +222,8 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 ### Fixed
 
+- **Damage scaling rounded inconsistently once shared between call sites.** Extracting `Actor.scaleDamage` so `applyCollisionEffects` and `predictCombat` cannot drift exposed that `Math.round` breaks halves toward +Infinity: scaling a positive magnitude turned 0.5 into 1 where the old negative-delta path produced 0 — a real off-by-one on odd damage at low strength (the player's `strength: 5` halves every figure). `scaleDamage` now rounds as the live path always did; verified identical across 7,200 damage/strength/enchantment combinations.
+- **Two description fields were authored but unreadable.** `Item`'s constructor extracts a fixed list of root-level keys and silently drops the rest, so the `effect_description` on 34 potions resolved to nothing — and `Actor`'s root-to-attribute bridge omitted `description`, so the text on 23 actors was equally unreachable. Neither was visibly broken: the only item referencing the `[effect_description]` token is `mystery_potion`, which gets its copy from `templateVars` via `random_effect`, and nothing read actor descriptions at all. Both now bridge into attributes and are readable via `Item.getEffectDescription()` and `Actor.getDescription()`. As a side effect `use_description` is now stored as an attribute rather than a bare property, so it survives save/load, which it previously did not.
 - `docs/TILED_KEY.md` listed `collapsing_floor` as tile 47; it is 26. Its generator table also still had two rows called "Dungeon" after the rename — tile 16 is the `digger_region` wildcard.
 - **The biome editor only offered 5 of the engine's 11 map generators.** `GEN_TYPES` listed `brogue`, `digger`, `arena`, `infernal` and `palladian`, leaving `cellular`, `uniform`, `rogue`, `divided_maze`, `icey_maze` and `eller_maze` unpickable — including `cellular`, which `prototypes/mine` actually uses, so a designer could load a biome the editor couldn't represent. All eleven are now listed, ordered by capability, and the generator table in [docs/PROTOTYPE.md](docs/PROTOTYPE.md) marks which build walls and rooms: six of them carve floor only and support no walls, doors, torches or room regions.
 - **`food` was missing from the editors' item-category list and from the dungeon's spawn tables.** `CATEGORY_KEYS` now matches the `domain: "item"` types in `data/types.json`, and food is in the dungeon's `item_catalog` plus all three biomes, so it drops throughout instead of only from floor 1's hand-placed override.
@@ -243,7 +235,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 - **`escape_chance` was read from the wrong states.**
 - **A dropped item was hidden underneath floor dressing.** Items on dry land rendered below any entity carrying a tile, so loot landing on rubble, moss, a skull or a dug-out hole vanished under it; items now render at `ITEM_Z` (7), above the dressing and still below actors.
 
-## [1.17b]
+## [1.17b] 2026-08-23
 
 ### Added
 
@@ -290,7 +282,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 - `docs/ACTORS.md` claimed actors are `flammable` by default; the engine defaults it to `false`.
 - an attempt to fix an intermittent bridge box-drawing tile bug, needs testing
 
-## [1.16b]
+## [1.16b] 2026-08-10
 
 ### Added
 
@@ -488,6 +480,13 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
   - `player_only` state property: restricts state application to controlled actors
   - `random_apply_states` state property: general-purpose per-turn random sub-state rolls with configurable chance, duration, and message
   - `condition_state` stat property: data-driven state application/removal at stat thresholds — any stat can trigger a state
+
+## [1.3b] 2026-03-17
+
+### Added
+
+- Jackal actor: weak (5 HP) hostile creature that spawns in packs of 3-5 using `aggressive_melee` personality
+- Pack spawn mechanic: actors with `pack: true` attribute spawn clustered within Manhattan distance 2 of each other
 
 ## [1.2b] 2026-03-17
 
