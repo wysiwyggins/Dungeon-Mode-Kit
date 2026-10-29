@@ -342,8 +342,12 @@
     "type": "beast",
     "name": "toad",
     "tileIndexBase": "WHITE_DOOR_TOP",
-    "tileIndexTop": "WHITE_QUOTATION_MARK",
-    "flipTopV": true,
+    "tileIndexTop": "BLACK_UP_POINTING_SMALL_TRIANGLE",
+    "tileIndexSide": "TWO_WHITE_DIAMONDS",
+    "sideOffset": {
+      "dx": 0,
+      "dy": -1
+    },
     "tint": "#77bb41",
     "personality": "stationed_melee",
     "collision_effect": {
@@ -351,7 +355,6 @@
     },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] touches the [attacked_actor_name]!",
-    "attributes": {},
     "stats": {
       "health": 10
     }
@@ -1026,13 +1029,17 @@
     }
   },
   "pushable_wall": {
-    "name": "wall",
     "type": "terrain",
+    "name": "wall",
     "tileIndexBase": "OPAQUE_MEDIUM_SHADE",
     "tileIndexTop": "OPAQUE_LIGHT_SHADE",
+    "collision_effect": {
+      "health": -1
+    },
     "attributes": {
+      "breakable": true,
       "pushable": true,
-      "breakable": true
+      "collision_effect": "[object Object]"
     }
   },
   "portal": {
@@ -1098,7 +1105,8 @@
         { "item": "ring", "weight": 6 }
       ],
       "trap_chance": 12,
-      "smash_loss": 50
+      "smash_loss": 50,
+      "opaque": false
     },
     "stats": {
       "health": 10
@@ -1122,6 +1130,7 @@
       "locked": true,
       "lockable": true,
       "color_locked": true,
+      "opaque": false,
       "drops": [
         { "item": "staff", "weight": 28 },
         { "item": "ring", "weight": 22 },
@@ -1149,7 +1158,8 @@
     "attributes": {
       "locked": true,
       "breakable": false,
-      "flammable": false
+      "flammable": false,
+      "opaque": false
     },
     "collision_description": "The iron lid won't budge."
   },

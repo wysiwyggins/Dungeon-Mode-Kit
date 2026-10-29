@@ -275,8 +275,8 @@
                  "type":"pushable_wall",
                  "visible":true,
                  "width":40,
-                 "x":760,
-                 "y":480
+                 "x":680,
+                 "y":660
                 }, 
                 {
                  "height":30,
@@ -382,6 +382,17 @@
                  "width":40,
                  "x":1040,
                  "y":480
+                }, 
+                {
+                 "height":30,
+                 "id":146,
+                 "name":"wall",
+                 "rotation":0,
+                 "type":"pushable_wall",
+                 "visible":true,
+                 "width":40,
+                 "x":760,
+                 "y":510
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -412,7 +423,7 @@
          "y":0
         }],
  "nextlayerid":9,
- "nextobjectid":146,
+ "nextobjectid":147,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",

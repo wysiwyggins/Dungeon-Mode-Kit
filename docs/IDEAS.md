@@ -5,6 +5,9 @@
 
 ## Tweaks
 
+- pushing a block on to a trap triggers it but stops gas from spreading, that's cool! There could also be a description message mentioning "the [pushable actor] covers the [trap name]
+- pushing a pushable actor onto a teleporter ought to teleport it.
+- I thought maybe if I added a collision effect to the pushable block I might magically damage a goblin wedged between it and a wall but no. I wonder how hard that would be to add.
 - pull the random spawned locked doors and chests out of test prototype
 - There should be description messages for equipping and unequipping weapons and wearables
 - There are a lot of items and actors in default data. Always be looking for opportunities to create types in data and move specific data to prototypes so that designers aren't overwhelmed by default actors and items.
