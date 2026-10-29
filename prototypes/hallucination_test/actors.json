@@ -9,7 +9,6 @@
     },
     "collision_sound": "hit",
     "defaultFacing": "left",
-    "facingEnabled": true,
     "death_sound": "ouch",
     "attributes": {
       "flammable": true,

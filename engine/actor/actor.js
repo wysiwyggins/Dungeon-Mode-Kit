@@ -79,9 +79,10 @@ export class Actor extends Entity {
         this.flipSideV = data.flipSideV || false;
         this.sideOffset = data.sideOffset || { dx: 1, dy: 0 };
 
+        // Setting defaultFacing turns facing on. `facingEnabled` is the legacy flag.
         this.facing = data.defaultFacing || 'left';
         this.defaultFacing = data.defaultFacing || 'left';
-        this.facingEnabled = data.facingEnabled || false;
+        this.facingEnabled = !!(data.defaultFacing || data.facingEnabled);
 
         this.spriteBase = null;
         this.spriteTop = null;
@@ -170,8 +171,12 @@ export class Actor extends Entity {
         // Copy lifetime for actors that expire (clouds, fire, etc.)
         this.lifetime = data.lifetime || null;
 
-        // Copy light radius for actors with custom light range
-        if (data.lightRadius !== undefined) {
+        // `light_source: <n>` is a light with radius n; `true` uses the default.
+        // A root-level `lightRadius` is the legacy form.
+        const lightSource = data.attributes?.light_source;
+        if (typeof lightSource === 'number') {
+            this.lightRadius = lightSource;
+        } else if (data.lightRadius !== undefined) {
             this.lightRadius = data.lightRadius;
         }
 

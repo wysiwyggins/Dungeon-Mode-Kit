@@ -6,6 +6,16 @@ import { Entity } from './engine/entity.js';
 // Handles FOV computation, visibility, and light source management
 // using ROT.js PreciseShadowcasting
 
+/**
+ * Light radius of an item: a numeric `light_source` is the radius, `true` means
+ * the default 5. A separate `lightRadius` attribute is the legacy form.
+ */
+function lightRadiusOf(item) {
+    const lightSource = item.getAttribute('light_source');
+    if (typeof lightSource === 'number') return lightSource;
+    return item.getAttribute('lightRadius') || 5;
+}
+
 export class LightingManager {
     constructor(engine) {
         this.engine = engine;
@@ -171,7 +181,7 @@ export class LightingManager {
                 sources.push({
                     x: actor.x,
                     y: actor.y,
-                    radius: item.getAttribute('lightRadius') || 5,
+                    radius: lightRadiusOf(item),
                     intensity: item.getAttribute('lightIntensity') || 1.0,
                     color: item.tint || 0xFFFFFF
                 });
@@ -186,7 +196,7 @@ export class LightingManager {
             sources.push({
                 x: item.x,
                 y: item.y,
-                radius: item.getAttribute('lightRadius') || 5,
+                radius: lightRadiusOf(item),
                 intensity: item.getAttribute('lightIntensity') || 1.0,
                 color: item.tint || 0xFFFFFF
             });
@@ -580,7 +590,7 @@ export class LightingManager {
                 if (item.getAttribute('wearable') === 'ring' && !actor.isItemEquipped?.(item)) continue;
                 const burns = item.stats?.burns;
                 if (burns && burns.current <= 0) continue;
-                personalLightRadius = Math.max(personalLightRadius, item.getAttribute('lightRadius') || 5);
+                personalLightRadius = Math.max(personalLightRadius, lightRadiusOf(item));
             }
         }
 

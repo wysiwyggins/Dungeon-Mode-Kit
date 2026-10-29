@@ -9,7 +9,6 @@
     },
     "collision_sound": "hit",
     "defaultFacing": "left",
-    "facingEnabled": true,
     "death_sound": "ouch",
     "attributes": {
       "flammable": true,
@@ -75,7 +74,6 @@
     "tint": "#ffd9a8",
     "effect": "flicker_tint",
     "animationSide": "fire",
-    "lightRadius": 3,
     "personality": "stationed_melee",
     "collision_effect": {
       "health": "-{strength}"
@@ -105,8 +103,6 @@
     "tileIndexTop": "RIGHT_ONE_HALF_BLOCK",
     "tint": "#ffe4a8",
     "effect": "flicker_tint",
-    "lightRadius": 1,
-    "facingEnabled": true,
     "defaultFacing": "left",
     "personality": "azhdaya_tail",
     "collision_effect": {

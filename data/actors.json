@@ -67,7 +67,6 @@
     "tileIndexBase": "THIN_TORSO",
     "tileIndexTop": "HAUNTED_FACE",
     "tint": "#d4e3fe",
-    "facingEnabled": true,
     "defaultFacing": "left",
     "personality": "aggressive_melee",
     "collision_effect": {
@@ -212,7 +211,6 @@
     "tileIndexBase": "LEG",
     "tileIndexTop": "WHITE_HUNTING_ANIMAL_FACE",
     "tint": "#FFBB55",
-    "facingEnabled": true,
     "defaultFacing": "left",
     "personality": "kobold_miner",
     "vision_range": 10,
@@ -242,7 +240,6 @@
     "tint": "#77bb41",
     "vision_range": 10,
     "defaultFacing": "left",
-    "facingEnabled": true,
     "personality": "goblin",
     "collision_effect": {
       "health": -8
@@ -268,7 +265,6 @@
     "tint": "#5c9a6b",
     "vision_range": 10,
     "defaultFacing": "left",
-    "facingEnabled": true,
     "personality": "goblin_ambusher",
     "collision_effect": {
       "health": -5
@@ -301,7 +297,6 @@
     "flipSideV": true,
     "tint": "#ffe4a8",
     "defaultFacing": "right",
-    "facingEnabled": true,
     "personality": "passive_wanderer",
     "attributes": {
       "inventory": 1
@@ -337,7 +332,6 @@
     "tileIndexBase": "OPAQUE_PRISON_WINDOW",
     "tileIndexTop": "BIRD_HEAD",
     "tint": "#fff2d5",
-    "facingEnabled": true,
     "defaultFacing": "left",
     "personality": "passive_wanderer",
     "stats": {
@@ -396,7 +390,6 @@
     },
     "collision_sound": "hit",
     "defaultFacing": "left",
-    "facingEnabled": true,
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
       "dark_vision": true,
@@ -430,7 +423,6 @@
     "tileIndexBase": "BOX_DRAWING_LIGHT_HORIZONTAL",
     "tileIndexTop": "FLY",
     "tint": "#3a88fe",
-    "facingEnabled": true,
     "defaultFacing": "left",
     "personality": "aggressive_melee",
     "collision_effect": {
@@ -576,14 +568,13 @@
       "dy": 0
     },
     "defaultFacing": "left",
-    "facingEnabled": true,
     "tint": "#C89664",
     "personality": "pickpocket",
     "death_sound": "hit",
     "collision_sound": "bow",
     "collision_description": "The [actor_name] scratches the [attacked_actor_name]!",
+    "vision_range": 10,
     "attributes": {
-      "vision_range": 10,
       "inventory": 1,
       "accuracy": 70,
       "defense": 3,
@@ -603,7 +594,6 @@
       "y": 16
     },
     "tint": "#d6d6d6",
-    "facingEnabled": true,
     "defaultFacing": "left",
     "personality": "guard",
     "vision_range": 8,
@@ -629,7 +619,6 @@
     "tileIndexTop": "EYE_OF_PROVIDENCE",
     "tint": "#AADDFF",
     "vision_range": 10,
-    "lightRadius": 3,
     "personality": "lightning_mage",
     "collision_effect": {
       "health": -5
@@ -640,7 +629,7 @@
       "hostile": true,
       "accuracy": 55,
       "defense": 4,
-      "light_source": true,
+      "light_source": 3,
       "remains": "rubble",
       "conductive": false
     },
@@ -679,7 +668,6 @@
     "tileIndexTop": "WHITE_UPWARD_POINTING_TRIANGLE",
     "flipTopH": true,
     "tint": "#88AA44",
-    "facingEnabled": true,
     "defaultFacing": "left",
     "personality": "shaman",
     "vision_range": 8,
@@ -780,7 +768,6 @@
     "flipTopH": true,
     "tint": "#CC77FF",
     "effect": "flicker_tint",
-    "lightRadius": 1,
     "personality": "illusionist",
     "collision_effect": {
       "health": -4
@@ -791,7 +778,7 @@
       "hostile": true,
       "accuracy": 55,
       "defense": 8,
-      "light_source": true
+      "light_source": 1
     },
     "stats": {
       "health": 30
@@ -872,13 +859,12 @@
     "tileIndexTop": "BLANK",
     "tileIndexSide": "IMPERFECT_DOTTED_WHITE_SHADE",
     "tint": "#33AA77",
-    "lightRadius": 2,
     "attributes": {
       "solid": false,
       "crushable": true,
       "spore_release": true,
       "flammable": true,
-      "light_source": true,
+      "light_source": 2,
       "mass_noun": true,
       "entry_sound": "step_mud",
       "paint_tile": "BLACK_SPADE_SUITE"
@@ -964,11 +950,10 @@
     "tint": "#44DD66",
     "personality": "dissolving",
     "lifetime": 20,
-    "lightRadius": 2,
     "attributes": {
       "opaque": false,
       "breakable": false,
-      "light_source": true,
+      "light_source": 2,
       "mass_noun": true,
       "remains": null
     }
@@ -978,6 +963,7 @@
     "description": "A shallow grave. A mattock would open it.",
     "tileIndexBase": "OPAQUE_DOTTED_LIGHT_SHADE",
     "tint": "#6B4A2F",
+    "death_sound": "plunk3",
     "attributes": {
       "solid": false,
       "visible": true,
@@ -997,8 +983,7 @@
       "mine_messages": {
         "100": "You break open the grave with your [tool_name]."
       },
-      "walk_description": "A low mound of turned earth. Something is buried here.",
-      "death_sound": "plunk3"
+      "walk_description": "A low mound of turned earth. Something is buried here."
     }
   },
   "rock_wall": {
@@ -1031,10 +1016,9 @@
     "tileIndexTop": "OPAQUE_LIGHT_SHADE",
     "tint": "#ffb43f",
     "effect": "flicker_tint",
-    "lightRadius": 9,
     "attributes": {
       "breakable": true,
-      "light_source": true,
+      "light_source": 9,
       "ornament": true,
       "paint_tile": "TORCH_ON_WALL",
       "lode_chance": 50,
@@ -1364,8 +1348,7 @@
     "type": "liquid",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
-    "animated": true,
-    "animation_frames": "fluid",
+    "animationBase": "fluid",
     "tint": "#00645f",
     "personality": "liquid_pooling",
     "attributes": {
@@ -1378,8 +1361,7 @@
     "type": "liquid",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
-    "animated": true,
-    "animation_frames": "fluid",
+    "animationBase": "fluid",
     "tint": "#00464b",
     "effect": "ripple_tint",
     "personality": "deep_water",
@@ -1394,8 +1376,7 @@
     "type": "liquid",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
-    "animated": true,
-    "animation_frames": "fluid",
+    "animationBase": "fluid",
     "tint": "#77bb41",
     "personality": "liquid_pooling",
     "attributes": {
@@ -1410,8 +1391,7 @@
     "tileIndexTop": "BLANK",
     "tint": "#7d9332",
     "effect": "ripple_tint",
-    "animated": true,
-    "animation_frames": "fluid",
+    "animationBase": "fluid",
     "personality": "deep_water",
     "attributes": {
       "hazard": true,
@@ -1449,18 +1429,15 @@
     "name": "lava",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
-    "animated": true,
-    "animation_frames": "fluid",
+    "animationBase": "fluid",
     "tint": "#FF2200",
     "personality": "lava",
-    "lightRadius": 5,
     "attributes": {
       "hazard": true,
       "solid": false,
       "flammable": false,
       "damage_type": "fire",
-      "spreads": false,
-      "light_source": true,
+      "light_source": 5,
       "paint_tile": "DOUBLE_EXCLAMATION_MARK",
       "mass_noun": true
     }
@@ -1470,8 +1447,7 @@
     "type": "liquid",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
-    "animated": true,
-    "animation_frames": "fluid",
+    "animationBase": "fluid",
     "tint": "#9b7340",
     "personality": "quicksand",
     "attributes": {
@@ -1485,8 +1461,7 @@
     "name": "fire",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
-    "animated": true,
-    "animation_frames": "fire",
+    "animationBase": "fire",
     "tint": "#EC7505",
     "effect": "flicker_tint",
     "personality": "fire",
@@ -1510,8 +1485,7 @@
     "tileIndexTop": "BLANK",
     "tint": "#fecb3e",
     "effect": "flicker_tint",
-    "animated": true,
-    "animation_frames": "fire",
+    "animationBase": "fire",
     "personality": "fire",
     "attributes": {
       "flammable": false,
@@ -1530,22 +1504,20 @@
     "animationTop": "fire",
     "tint": "#EC7505",
     "effect": "flicker_tint",
-    "lightRadius": 10,
     "attributes": {
       "opaque": false,
       "flammable": false,
-      "light_source": true
+      "light_source": 10
     }
   },
   "oculus": {
     "name": "oculus",
     "tint": "#fefcdd",
-    "lightRadius": 6,
     "attributes": {
       "solid": false,
       "visible": false,
-      "light_source": true,
-      "flying": true
+      "light_source": 6,
+      "flies": true
     }
   },
   "down_stairway": {
@@ -1569,11 +1541,11 @@
     "tileIndexTop_open": "OPAQUE_QUADRANT_UPPER_LEFT_AND_LOWER_LEFT_AND_LOWER_RIGHT",
     "flipTopV": true,
     "tint": "#84DCCF",
+    "collision_description": "The stairs are sealed. You must fulfill your quest first.",
     "attributes": {
       "flammable": false,
       "stairway": "down",
       "openable": true,
-      "collision_description": "The stairs are sealed. You must fulfill your quest first.",
       "open": false,
       "locked": true
     }
@@ -1601,11 +1573,11 @@
     "flipTopV": true,
     "flipTopH": true,
     "tint": "#EC7505",
+    "collision_description": "The stairs are sealed. You must fulfill your quest first.",
     "attributes": {
       "flammable": false,
       "stairway": "up",
       "openable": true,
-      "collision_description": "The stairs are sealed. You must fulfill your quest first.",
       "open": false,
       "locked": true
     }
@@ -1615,8 +1587,7 @@
     "type": "gas",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
-    "animated": true,
-    "animation_frames": "smoke",
+    "animationBase": "smoke",
     "personality": "cloud",
     "attributes": {
       "hazard_immune": true
@@ -1628,8 +1599,7 @@
     "type": "gas",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
-    "animated": true,
-    "animation_frames": "mist",
+    "animationBase": "mist",
     "personality": "mist",
     "attributes": {
       "hazard_immune": true
@@ -1642,8 +1612,7 @@
     "type": "gas",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
-    "animated": true,
-    "animation_frames": "smoke",
+    "animationBase": "smoke",
     "tint": "#DDDDDD",
     "personality": "cloud",
     "attributes": {},
@@ -1657,8 +1626,7 @@
     "type": "gas",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
-    "animated": true,
-    "animation_frames": "smoke",
+    "animationBase": "smoke",
     "tint": "#555555",
     "personality": "cloud",
     "attributes": {
@@ -1673,8 +1641,7 @@
     "type": "gas",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
-    "animated": true,
-    "animation_frames": "smoke",
+    "animationBase": "smoke",
     "tint": "#AACC33",
     "personality": "cloud",
     "attributes": {
@@ -1691,8 +1658,7 @@
     "type": "gas",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
-    "animated": true,
-    "animation_frames": "smoke",
+    "animationBase": "smoke",
     "tint": "#9944CC",
     "personality": "cloud",
     "attributes": {
@@ -1710,8 +1676,7 @@
     "type": "gas",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
-    "animated": true,
-    "animation_frames": "smoke",
+    "animationBase": "smoke",
     "tint": "#55CC55",
     "personality": "cloud",
     "attributes": {
@@ -1727,8 +1692,7 @@
     "type": "gas",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
-    "animated": true,
-    "animation_frames": "smoke",
+    "animationBase": "smoke",
     "tint": "#CC88FF",
     "personality": "cloud",
     "attributes": {
@@ -1744,8 +1708,7 @@
     "type": "gas",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
-    "animated": true,
-    "animation_frames": "smoke",
+    "animationBase": "smoke",
     "tint": "#FF99CC",
     "personality": "cloud",
     "attributes": {
@@ -1761,8 +1724,7 @@
     "type": "gas",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
-    "animated": true,
-    "animation_frames": "smoke",
+    "animationBase": "smoke",
     "tint": "#555566",
     "personality": "cloud",
     "attributes": {
@@ -1778,8 +1740,7 @@
     "type": "gas",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
-    "animated": true,
-    "animation_frames": "smoke",
+    "animationBase": "smoke",
     "tint": "#6677AA",
     "personality": "cloud",
     "attributes": {
@@ -1795,8 +1756,7 @@
     "type": "gas",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
-    "animated": true,
-    "animation_frames": "smoke",
+    "animationBase": "smoke",
     "tint": "#FFDD44",
     "personality": "cloud",
     "attributes": {
@@ -1812,8 +1772,7 @@
     "type": "gas",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
-    "animated": true,
-    "animation_frames": "smoke",
+    "animationBase": "smoke",
     "tint": "#FF6677",
     "personality": "cloud",
     "attributes": {
@@ -1829,8 +1788,7 @@
     "type": "gas",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
-    "animated": true,
-    "animation_frames": "smoke",
+    "animationBase": "smoke",
     "tint": "#AADDFF",
     "personality": "cloud",
     "attributes": {
@@ -1846,8 +1804,7 @@
     "type": "gas",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
-    "animated": true,
-    "animation_frames": "smoke",
+    "animationBase": "smoke",
     "tint": "#22224A",
     "personality": "cloud",
     "attributes": {
@@ -1864,8 +1821,7 @@
     "type": "gas",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
-    "animated": true,
-    "animation_frames": "mist",
+    "animationBase": "mist",
     "tint": "#88DD66",
     "personality": "spore",
     "attributes": {
@@ -1879,8 +1835,7 @@
     "type": "gas",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
-    "animated": true,
-    "animation_frames": "mist",
+    "animationBase": "mist",
     "tint": "#E4D4EC",
     "personality": "incense_smoke",
     "attributes": {

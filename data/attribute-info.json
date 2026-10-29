@@ -1,7 +1,6 @@
 {
   "flies": "flies",
   "aquatic": "cannot leave the water",
-  "spreads": "spreads to nearby tiles",
   "splits": "splits in two when wounded",
 
   "dark_vision": "sees in the dark",

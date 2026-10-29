@@ -508,7 +508,7 @@ const BOOL_HINTS = {
 };
 
 const TYPED_ATTRS = [
-    { key: 'lightRadius', type: 'number', label: 'Light Radius', hint: 'Radius of emitted light. Requires light_source.' },
+    { key: 'lightRadius', type: 'number', label: 'Light Radius', hint: 'Radius of emitted light, saved as the light_source value. Setting it makes the item a light.' },
 ];
 
 const TILE_FIELDS = ['tileIndex', 'projectile_tile'];
@@ -1396,6 +1396,11 @@ function populateForm(key, data) {
             document.getElementById('attr-' + ta.key).value = val;
         }
     }
+    // A numeric light_source is the radius; a lightRadius attribute is the legacy form.
+    if (typeof attrs.light_source === 'number') {
+        document.getElementById('attr-light_source').checked = true;
+        document.getElementById('attr-lightRadius').value = attrs.light_source;
+    }
 
     // Description (in attributes)
     document.getElementById('f-description').value = attrs.description || '';
@@ -1599,6 +1604,10 @@ function readForm() {
         } else {
             if (el.value.trim()) attrs[ta.key] = el.value.trim();
         }
+    }
+    if (attrs.lightRadius !== undefined) {
+        attrs.light_source = attrs.lightRadius;
+        delete attrs.lightRadius;
     }
 
     // Description
@@ -1873,7 +1882,7 @@ const ITEM_STARTERS = {
         tileIndex: 'SOLIDUS',
         tint: '#ffcc66',
         attributes: {
-            lightRadius: 5,
+            light_source: 5,
             description: 'It casts a steady light.'
         }
     },

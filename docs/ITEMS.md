@@ -339,12 +339,11 @@ Use an object `use_effect` with `apply_state_radius` or `remove_states_radius` f
 
 ## Light Sources
 
-An item with `light_source: true` emits light when carried in an actor's inventory, or when lying on the ground.
+An item with `light_source` emits light when carried in an actor's inventory, or when lying on the ground.
 
 | Attribute | Type | Description |
 | ----------- | ------ | ------------- |
-| `light_source` | boolean | Emits light; uses item `tint` as light color |
-| `lightRadius` | number | Light radius in tiles (default `5`) |
+| `light_source` | boolean or number | Emits light; uses item `tint` as light color. `true` gives a radius of 5, and a number sets the radius in tiles |
 | `lightIntensity` | number | Light strength 0–1 (default `1.0`) |
 | `burns_out_item` | string | Item type to replace this one when its `burns` stat hits 0 |
 | `burnout_message` | string | Message shown to player when the item burns out |
@@ -357,8 +356,7 @@ An item with `light_source: true` emits light when carried in an actor's invento
   "tint": "#EC7505",
   "attributes": {
     "pickupable": true,
-    "light_source": true,
-    "lightRadius": 6,
+    "light_source": 6,
     "burns_out_item": "torch_unlit",
     "burnout_message": "Your torch burns out."
   },

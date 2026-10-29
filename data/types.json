@@ -157,7 +157,6 @@
       "liquid": true,
       "mass_noun": true,
       "flammable": false,
-      "spreads": false,
       "entry_sound": "step_mud"
     }
   },

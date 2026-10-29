@@ -14,6 +14,14 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 - Editors write to a local prototype folder using [OPFS](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system) folder can be downloaded
 - hosted dmk scripts allow prototype folders to run the game locally
 
+### Changed
+
+- **Fewer redundant actor attributes.** `light_source` now takes a radius number in place of a separate `lightRadius`, setting `defaultFacing` turns facing on without `facingEnabled`, and animated actors use `animationBase` instead of `animated` plus `animation_frames`. The old forms still load, and the actor and item editors write the new ones.
+
+### Fixed
+
+- **Ignored actor attributes.** The monkey's `vision_range` and the oculus's flying were set in places the engine never read, so they had no effect, and the unused `spreads` attribute is gone.
+
 ## [1.21b] 2026-10-28
 
 ### Added

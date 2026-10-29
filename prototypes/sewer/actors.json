@@ -10,7 +10,6 @@
     },
     "collision_sound": "hit",
     "defaultFacing": "left",
-    "facingEnabled": true,
     "collision_description": "You punch the [attacked_actor_name]!",
     "death_sound": "ouch",
     "attributes": {

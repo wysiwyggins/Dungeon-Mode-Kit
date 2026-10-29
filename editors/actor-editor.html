@@ -113,13 +113,15 @@
                 </div>
                 <div class="field-row">
                     <label>Light Radius</label>
-                    <input type="number" id="f-lightRadius" min="0" value="">
+                    <input type="number" id="f-lightRadius" min="0" value="" title="Saved as the light_source value. Needs light_source checked; empty uses the default radius of 5.">
                 </div>
                 <div class="field-row">
-                    <label style="min-width:unset"><input type="checkbox" id="f-facingEnabled"> Facing enabled</label>
-                    <label style="min-width:unset">Default:</label>
-                    <label style="min-width:unset"><input type="radio" name="defaultFacing" value="left" checked> left</label>
-                    <label style="min-width:unset"><input type="radio" name="defaultFacing" value="right"> right</label>
+                    <label>Facing</label>
+                    <select id="f-defaultFacing" title="Which way the sprite faces by default. Choosing a side makes it flip to face the way it moves.">
+                        <option value="">none</option>
+                        <option value="left">left</option>
+                        <option value="right">right</option>
+                    </select>
                 </div>
 
                 <!-- Conditional: open-state tiles -->
@@ -416,7 +418,7 @@ const ATTR_GROUPS = [
     { id: 'combat', bools: ['breakable','pushable','splits'],
       typed: ['accuracy','defense','strength','inventory','remains','lode','lode_chance','split_min_health','chain_segment_type'] },
     { id: 'movement', bools: ['flies','aquatic','web_immune','hazard_immune','dark_vision','follows_thread','pack','conceals_when_submerged'], typed: [] },
-    { id: 'terrain', bools: ['liquid','deep','hazard','flammable','conductive','spreads','ignites','platform','collapsible','consume_on_escape'],
+    { id: 'terrain', bools: ['liquid','deep','hazard','flammable','conductive','ignites','platform','collapsible','consume_on_escape'],
       typed: ['damage_type','apply_state','entry_sound'] },
     { id: 'locks', bools: ['openable','lockable','locked','color_locked','gate'], typed: ['lock_color'] },
     { id: 'mechanisms', bools: ['switchable','pausable','toggled','one_shot','pedestal','display_inventory','portal'], typed: ['machine_id','stairway'] },
@@ -450,7 +452,7 @@ const BOOL_HINTS = {
     blocks_diagonal: 'No moving or melee diagonally past this actor\'s corner. Only counts while solid. Supplied by the terrain and doorway types.',
     breakable: 'Can be destroyed by attacks.',
     pushable: 'Can be pushed by collisions.',
-    light_source: 'Emits light (radius set in Appearance).',
+    light_source: 'Emits light. The radius is set with Light Radius in Appearance (default 5).',
     dark_vision: 'AI ignores darkness for targeting.',
     flies: 'Hovers above ground — grants the flying state (skips fall/drown/ground hazards).',
     controlled: 'Player-controlled actor.',
@@ -462,7 +464,6 @@ const BOOL_HINTS = {
     liquid: 'Liquid terrain (water, sewage, lava).',
     deep: 'Deep liquid — drowning hazard.',
     hazard: 'Nothing spawns on this blob actor during generation (lava, quicksand, deep water).',
-    spreads: 'Spreads to adjacent tiles.',
     ignites: 'Sets flammable neighbors on fire.',
     openable: 'Can be opened/closed (doors, gates).',
     lockable: 'Can be locked.',
@@ -1079,7 +1080,7 @@ function randomizeAppearance() {
     document.getElementById('f-animationTop').value = Math.random() < 0.15 ? pickAnim() : '';
     document.getElementById('f-animationSide').value = '';
 
-    document.getElementById('f-facingEnabled').checked = Math.random() < 0.3;
+    document.getElementById('f-defaultFacing').value = Math.random() < 0.3 ? 'left' : '';
 
     updatePreview();
 }
@@ -1748,8 +1749,7 @@ function clearForm() {
     document.getElementById('f-animationTop').value = '';
     document.getElementById('f-animationSide').value = '';
     document.getElementById('f-lightRadius').value = '';
-    document.getElementById('f-facingEnabled').checked = false;
-    document.querySelector('input[name="defaultFacing"][value="left"]').checked = true;
+    document.getElementById('f-defaultFacing').value = '';
 
     for (const attr of BOOL_ATTRS) document.getElementById('attr-' + attr).checked = boolDefault(attr);
     for (const ta of TYPED_ATTRS) {
@@ -1844,12 +1844,11 @@ function populateForm(key, data) {
     if (data.animationTop) document.getElementById('f-animationTop').value = data.animationTop;
     if (data.animationSide) document.getElementById('f-animationSide').value = data.animationSide;
 
-    document.getElementById('f-lightRadius').value = data.lightRadius || '';
-    document.getElementById('f-facingEnabled').checked = !!data.facingEnabled;
-    if (data.defaultFacing) {
-        const radio = document.querySelector(`input[name="defaultFacing"][value="${data.defaultFacing}"]`);
-        if (radio) radio.checked = true;
-    }
+    // A numeric light_source is the radius; root-level lightRadius is the legacy form.
+    const lightSource = data.attributes?.light_source;
+    document.getElementById('f-lightRadius').value = typeof lightSource === 'number' ? lightSource : (data.lightRadius || '');
+    // Setting defaultFacing turns facing on; facingEnabled alone is the legacy form.
+    document.getElementById('f-defaultFacing').value = data.defaultFacing || (data.facingEnabled ? 'left' : '');
 
     // Attributes
     const attrs = data.attributes || {};
@@ -1866,7 +1865,12 @@ function populateForm(key, data) {
             : (typeAttrs[attr] !== undefined ? typeAttrs[attr] : boolDefault(attr));
         document.getElementById('attr-' + attr).checked = !!v;
     }
-    const knownKeys = new Set([...BOOL_ATTRS, ...TYPED_ATTRS.map(t => t.key), 'hunts', 'seeks', 'search_radius', 'unlock_conditions', 'unlock_message']);
+    // `flying` is a state, not an attribute; an old actor that set it meant `flies`.
+    if (attrs.flying && attrs.flies === undefined) document.getElementById('attr-flies').checked = true;
+    // Root-level fields some older actors put inside attributes. They load from
+    // either place and save at root, where the engine reads them.
+    const ROOT_FIELDS_IN_ATTRS = ['collision_description', 'death_sound', 'vision_range', 'flying'];
+    const knownKeys = new Set([...BOOL_ATTRS, ...TYPED_ATTRS.map(t => t.key), 'hunts', 'seeks', 'search_radius', 'unlock_conditions', 'unlock_message', ...ROOT_FIELDS_IN_ATTRS]);
     for (const q of [attrs.hunts].flat().filter(Boolean)) addHuntRow(q);
     for (const q of [attrs.seeks].flat().filter(Boolean)) addSeekRow(q);
     for (const c of [attrs.unlock_conditions].flat().filter(Boolean)) addUnlockConditionRow(c);
@@ -1905,8 +1909,8 @@ function populateForm(key, data) {
         document.getElementById('f-ce-apply_state').value = ce.apply_state || '';
     }
     document.getElementById('f-collision_sound').value = data.collision_sound || '';
-    document.getElementById('f-collision_description').value = data.collision_description || '';
-    document.getElementById('f-death_sound').value = data.death_sound || '';
+    document.getElementById('f-collision_description').value = data.collision_description || attrs.collision_description || '';
+    document.getElementById('f-death_sound').value = data.death_sound || attrs.death_sound || '';
     document.getElementById('f-grab_state').value = data.grab_state || '';
     document.getElementById('f-grab_sound').value = data.grab_sound || '';
     document.getElementById('f-split_into').value = data.split_into || '';
@@ -1914,7 +1918,7 @@ function populateForm(key, data) {
 
     // AI
     document.getElementById('f-personality').value = data.personality || '';
-    document.getElementById('f-vision_range').value = data.vision_range || '';
+    document.getElementById('f-vision_range').value = data.vision_range || attrs.vision_range || '';
     if (data.innate_states) {
         for (const s of data.innate_states) addInnateStateRow(s);
     }
@@ -2015,19 +2019,13 @@ function readForm() {
     const animBase = document.getElementById('f-animationBase').value;
     const animTop = document.getElementById('f-animationTop').value;
     const animSide = document.getElementById('f-animationSide').value;
-    if (animBase) { obj.animated = true; obj.animation_frames = animBase; }
+    if (animBase) obj.animationBase = animBase;
     if (animTop) obj.animationTop = animTop;
     if (animSide) obj.animationSide = animSide;
 
-    // Light
-    const lr = parseInt(document.getElementById('f-lightRadius').value);
-    if (lr > 0) obj.lightRadius = lr;
-
     // Facing
-    if (document.getElementById('f-facingEnabled').checked) {
-        obj.facingEnabled = true;
-        obj.defaultFacing = document.querySelector('input[name="defaultFacing"]:checked').value;
-    }
+    const facing = document.getElementById('f-defaultFacing').value;
+    if (facing) obj.defaultFacing = facing;
 
     // Personality
     const personality = document.getElementById('f-personality').value;
@@ -2076,6 +2074,11 @@ function readForm() {
             ? !!typeAttrs[attr] : boolDefault(attr);
         const checked = document.getElementById('attr-' + attr).checked;
         if (checked !== effectiveDefault) attrs[attr] = checked;
+    }
+    // A light radius is saved as the light_source value, so it only counts when lit.
+    const lightRadius = parseInt(document.getElementById('f-lightRadius').value);
+    if (lightRadius > 0 && document.getElementById('attr-light_source').checked) {
+        attrs.light_source = lightRadius;
     }
     for (const ta of TYPED_ATTRS) {
         const el = document.getElementById('attr-' + ta.key);

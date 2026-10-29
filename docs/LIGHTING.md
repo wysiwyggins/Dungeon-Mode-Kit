@@ -87,7 +87,7 @@ A white texture with `PIXI.BLEND_MODES.MULTIPLY` blend mode. When tinted with a 
 
 | Attribute | Description |
 |-----------|-------------|
-| `light_source` | Actor emits light |
+| `light_source` | Actor emits light. `true` gives a radius of 5, and a number sets the radius in tiles, as in `"light_source": 9` |
 | `solid` | Actor blocks light (and movement) |
 | `controlled` | Actor emits player light (unless `player_auto_light` is `false`) |
 
@@ -96,7 +96,6 @@ A white texture with `PIXI.BLEND_MODES.MULTIPLY` blend mode. When tinted with a 
 | Property | Default | Description |
 |----------|---------|-------------|
 | `tint` | `0xFFFFFF` | Color of emitted light |
-| `lightRadius` | `5` | Tiles of light range |
 | `lightIntensity` | `1.0` | Light brightness (0-1) |
 
 ## Example: Fire Light

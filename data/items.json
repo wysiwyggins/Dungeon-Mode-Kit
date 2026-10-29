@@ -8,8 +8,7 @@
     "identified": false,
     "description": "A shining sigil of starmetal, forged by Marduk.",
     "attributes": {
-      "light_source": true,
-      "lightRadius": 2,
+      "light_source": 2,
       "pickup_sound": "magic"
     }
   },
@@ -24,8 +23,7 @@
     "identified": false,
     "description": "A golden cup, everfilled",
     "attributes": {
-      "light_source": true,
-      "lightRadius": 2,
+      "light_source": 2,
       "pickup_sound": "magic"
     }
   },
@@ -59,7 +57,7 @@
     "attributes": {
       "flammable": true,
       "ignites": true,
-      "lightRadius": 6,
+      "light_source": 6,
       "description": "A small warmth pierces the cold dread surrounding.",
       "use_verb": "Extinguish",
       "use_effect": "toggle_torch",
@@ -130,7 +128,7 @@
     "tint": "#D8B4E2",
     "effect": "flicker_tint",
     "attributes": {
-      "lightRadius": 2,
+      "light_source": 2,
       "description": "A smouldering stick of resin. Its pale smoke is sweet to you and unbearable to the dead.",
       "use_verb": "Snuff",
       "use_effect": "toggle_torch",
@@ -191,7 +189,7 @@
     "effect": "flicker_tint",
     "attributes": {
       "flammable": false,
-      "lightRadius": 8,
+      "light_source": 8,
       "description": "A glass drop that radiates a cool, penetrating light."
     }
   },
@@ -1574,8 +1572,7 @@
     "identified_template": "Ring of Light",
     "effect_description": "A warm glow surrounds you",
     "attributes": {
-      "light_source": true,
-      "lightRadius": 5,
+      "light_source": 5,
       "description": "Emits a soft glow while worn."
     }
   },

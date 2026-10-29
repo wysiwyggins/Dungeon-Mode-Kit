@@ -12,7 +12,6 @@
     },
     "collision_sound": "hit",
     "defaultFacing": "left",
-    "facingEnabled": true,
     "collision_description": "Rodney strikes the [attacked_actor_name]!",
     "death_sound": "ouch",
     "death_description": "Rodney has fallen.",

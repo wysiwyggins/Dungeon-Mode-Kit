@@ -4,10 +4,8 @@
     "description": "An orb with only a maw, and you, to guide its way",
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
-    "animated": true,
-    "animation_frames": "pac",
+    "animationBase": "pac",
     "tint": "#ffff00",
-    "facingEnabled": true,
     "defaultFacing": "right",
     "collision_effect": {
       "health": -1

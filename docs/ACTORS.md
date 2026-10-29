@@ -38,7 +38,7 @@ Other tile attributes exist for things like open and closed states. Check the ex
 
 There are also a few tiles that are animated even when no turns are being taken in order to represent things like liquid, fire and smoke. Check `actors.json` for examples.
 
-Actors can have a default 'facing' direction that will flip depending on which way they are moving. Use it with the attributes `facingEnabled` and `defaultFacing`.
+Actors can have a default 'facing' direction that will flip depending on which way they are moving. Set `defaultFacing` to `"left"` or `"right"` to turn it on.
 
 ## Core Attributes
 
@@ -198,7 +198,7 @@ When using the mouse, you can hover over an actor or item to see data-derived in
 
 Sounds can be previewed and names can be checked in the sound player (localhost/editors/sound-player.html)
 
-Some attribues that take sound names:
+Some attributes that take sound names:
 
 | Attribute | Type | Description |
 | ----------- | ------ | ------------- |
