@@ -14,12 +14,21 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 - Editors write to a local prototype folder using [OPFS](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system) folder can be downloaded
 - hosted dmk scripts allow prototype folders to run the game locally
 
+### Added
+
+- **Covered-trap message.** Pushing a block onto a trap now adds "The [block] covers the [trap]." after the trap springs.
+- **Equip and unequip messages.** Wielding, putting on, putting away or taking off an item now says so in the message log, and swapping names the item being replaced.
+
 ### Changed
 
 - **Fewer redundant actor attributes.** `light_source` now takes a radius number in place of a separate `lightRadius`, setting `defaultFacing` turns facing on without `facingEnabled`, and animated actors use `animationBase` instead of `animated` plus `animation_frames`. The old forms still load, and the actor and item editors write the new ones.
 
 ### Fixed
 
+- **Editors keep object attributes intact.** The actor, item and entity editors saved any object-valued custom attribute as the text `"[object Object]"`. They now show and save it as JSON, and the broken value on `pushable_wall` is removed.
+- **Placed items aren't randomly cursed.** `enchant_range` now only rolls for items placed at random (random items, chests, drops, treasure rooms, type names), so an item placed by name, like the test prototype's crown, comes in at +0. Set `enchantment` on an item to curse it on purpose.
+- **Curses can't be swapped off.** Equipping a weapon, armor or ring over a cursed one used to quietly remove the cursed item. Now it's refused, and a ring goes to whichever hand isn't cursed.
+- **Chests no longer leak in deep water.** The current used to sweep items out of a closed chest standing in deep water or sewage, as if a creature were holding them. Container contents now stay sealed.
 - **Ignored actor attributes.** The monkey's `vision_range` and the oculus's flying were set in places the engine never read, so they had no effect, and the unused `spreads` attribute is gone.
 
 ## [1.21b] 2026-10-28

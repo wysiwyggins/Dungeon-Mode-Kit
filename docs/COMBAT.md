@@ -234,7 +234,7 @@ Remember, all actor attributes are optional, so combat still works without these
 | `collision_description` | Template for weapon attack messages |
 | `wear_effect` | Stat bonuses when equipped (e.g., `{ "accuracy": 5 }`) |
 | `enchantable` | `true` — item can be enchanted |
-| `enchant_range` | `[min, max]` — random enchantment on spawn |
+| `enchant_range` | `[min, max]` — random enchantment for randomly placed items |
 
 ### Item Attributes (Armor)
 

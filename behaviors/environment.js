@@ -791,6 +791,8 @@ export const BehaviorsEnvironment = {
         const other = entityManager._getSolidActorAt(actor.x, actor.y);
         if (!other || other === actor) return false;
         if (!other.inventory || other.inventory.length === 0) return false;
+        // A chest's contents are sealed under its lid, not held loose — the current can't reach them.
+        if (other.hasAttribute('container')) return false;
 
         // Only loose (unequipped) items can be swept away — worn/wielded gear stays put.
         const looseItems = other.isItemEquipped

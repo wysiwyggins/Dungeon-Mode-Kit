@@ -1038,8 +1038,7 @@
     },
     "attributes": {
       "breakable": true,
-      "pushable": true,
-      "collision_effect": "[object Object]"
+      "pushable": true
     }
   },
   "portal": {

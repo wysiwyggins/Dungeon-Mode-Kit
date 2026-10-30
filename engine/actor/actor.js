@@ -372,6 +372,8 @@ export class Actor extends Entity {
             // member and reports it as .id, which must be the instance's id.
             const item = new Item(-1, -1, itemData.id || itemType, itemData, this.engine);
             item.owner = this; // Track item owner for per-turn stat messages
+            // Naming a category ("weapon") is asking for a random one; a named item is placed as authored
+            if (itemData.id && itemData.id !== itemType) item.rollEnchantment();
 
             this.inventory.push(item);
             console.log(`${this.name} starts with ${item.name}`);
@@ -1054,6 +1056,7 @@ export class Actor extends Entity {
         if (!itemData) return;  // an entity id (e.g. "skull") isn't holdable — skip
 
         const item = new Item(-1, -1, itemData.id || row.item, itemData, this.engine);
+        item.rollEnchantment();
         item.owner = this;
         this.inventory.push(item);
     }
@@ -1086,6 +1089,7 @@ export class Actor extends Entity {
         const spawned = isItem
             ? em.spawnItem(chosen.item, this.x, this.y)
             : em.spawnEntity(chosen.item, this.x, this.y);
+        if (isItem) spawned?.rollEnchantment();
 
         if (!spawned) {
             console.warn(`${this.name}: drops entry '${chosen.item}' is neither an item nor an entity`);

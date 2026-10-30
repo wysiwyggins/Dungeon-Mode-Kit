@@ -244,7 +244,7 @@ export const UIThrowing = {
 
         // Unequip item if it's being worn
         if (player.isItemEquipped(item)) {
-            player.unequipItem(item);
+            player.unequipItem(item, { silent: true });  // the throw message says it
         }
 
         // Remove item from inventory (stack-aware)

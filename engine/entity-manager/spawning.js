@@ -659,6 +659,7 @@ export const EntityManagerSpawning = {
                 const tile = availableTiles.splice(tileIndex, 1)[0];
 
                 const item = new Item(tile.x, tile.y, spawnType, spawnData, this.engine);
+                item.rollEnchantment();
                 this.addEntity(item);
                 console.log(`random_items: Spawned "${spawnType}" at (${tile.x}, ${tile.y}) (${i + 1}/${count})`);
             }
@@ -721,6 +722,7 @@ export const EntityManagerSpawning = {
             const tile = availableTiles[tileIndex];
 
             const item = new Item(tile.x, tile.y, itemType, itemData, this.engine);
+            item.rollEnchantment();
             this.addEntity(item);
             console.log(`item_budget: Spawned "${itemType}" (${selectedCategory}) at (${tile.x}, ${tile.y})`);
         }
@@ -785,9 +787,11 @@ export const EntityManagerSpawning = {
                 // decides the contents instead of the chest's own table.
                 chest.defaultItems = [lootType];
                 chest.loadDefaultItems();
+                chest.inventory.forEach(i => i.rollEnchantment());
                 console.log(`Treasure room: chest holding ${lootType} at (${lootPos.x}, ${lootPos.y})`);
             } else {
                 const loot = new Item(lootPos.x, lootPos.y, lootType, lootData, this.engine);
+                loot.rollEnchantment();
                 this.addEntity(loot);
                 console.log(`Treasure room: ${lootType} at (${lootPos.x}, ${lootPos.y})`);
             }
@@ -921,6 +925,8 @@ export const EntityManagerSpawning = {
 
             // A Tiled object may name a category ("potion") — use the rolled member.
             const item = new Item(tileX, tileY, itemData.id || itemType, itemData, this.engine);
+            // Naming a category ("weapon") is asking for a random one; a named item is placed as authored
+            if (itemData.id && itemData.id !== itemType) item.rollEnchantment();
             this.addEntity(item);
 
             console.log(`Spawned ${itemType} at tile (${tileX}, ${tileY})`);

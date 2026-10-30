@@ -159,7 +159,7 @@ If `health` drops to 0 or below, the target dies. See [COMBAT.md](COMBAT.md). Ef
 | `attack_sound` | Sound played on every swing (hit or miss). Typically `"bow"` (swish). |
 | `collision_sound` | Sound played on successful hit. Typically `"hit"`. |
 | `enchantable` | Item can receive enchantment bonuses (from scrolls or on spawn) |
-| `enchant_range` | `[min, max]` — random enchantment rolled on spawn. E.g. `[-1, 3]`. |
+| `enchant_range` | `[min, max]` — random enchantment rolled when the item is placed at random. E.g. `[-1, 3]`. |
 | `id_blows` | Blows struck (weapons) or taken while worn (armor) before the item auto-identifies. Set on the `weapon` and `armor` types; defaults to 20. |
 | `nameable` | Once identified, the item's action menu offers **Name**, letting the player give it a name that replaces its own in the pack and in messages (the enchantment still shows). Set on the `weapon` type. |
 | `id_turns` | Turns a ring must be worn before it auto-identifies. Set on the `ring` type; defaults to 1500. |
@@ -628,7 +628,7 @@ Enchanted items show their bonus as a suffix: **Sword +2**, **Chainmail -1**. It
 
 ### Spawning with Enchantment
 
-Add `enchant_range` to an item's attributes to roll a random enchantment on spawn:
+Add `enchant_range` to an item's attributes to roll a random enchantment when it's placed at random:
 
 ```json
 "sword": {
@@ -640,6 +640,8 @@ Add `enchant_range` to an item's attributes to roll a random enchantment on spaw
 ```
 
 The roll is inclusive: `[-1, 3]` can produce -1, 0, 1, 2, or 3. Items with an explicit `enchantment` value in their data skip the roll.
+
+Only randomly placed items roll: `random_items`, the item budget, chest contents, `drops`, treasure rooms, and any Tiled object or `default_items` entry that names a type (`"weapon"`) instead of a specific item. An item placed by name, like a quest crown in Tiled, comes in at +0. To place a deliberately enchanted or cursed item, give it an explicit `enchantment`.
 
 ### Scroll of Enchantment
 
@@ -664,7 +666,7 @@ A `random_effect` potion takes its polarity from its roll: a stat drain is bad, 
 
 ### Cursed Items
 
-Items with negative enchantment are automatically marked `cursed: true` on spawn. Cursed equipment cannot be unequipped — the player sees "The [item] is cursed! You can't remove it." when they try.
+Items with negative enchantment, rolled or authored, are automatically marked `cursed: true` on spawn. Cursed equipment cannot be unequipped — the player sees "The [item] is cursed! You can't remove it." when they try.
 
 The curse is revealed when the item is equipped: "You feel a malevolent force bind the [item] to you!"
 

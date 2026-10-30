@@ -1374,7 +1374,7 @@ function addCustomAttrRow(key, val) {
     ki.style.width = '120px'; ki.style.flex = '0';
     ki.addEventListener('input', updatePreview);
     const vi = document.createElement('input');
-    vi.type = 'text'; vi.placeholder = 'value'; vi.value = val !== undefined ? String(val) : '';
+    vi.type = 'text'; vi.placeholder = 'value'; vi.value = val === undefined ? '' : typeof val === 'object' ? JSON.stringify(val) : String(val);
     vi.addEventListener('input', updatePreview);
     const btn = document.createElement('button');
     btn.className = 'remove-btn'; btn.textContent = 'x';
@@ -1652,7 +1652,7 @@ function addSwitchEffectRow(key, val) {
     ki.style.width = '120px'; ki.style.flex = '0';
     ki.addEventListener('input', updatePreview);
     const vi = document.createElement('input');
-    vi.type = 'text'; vi.placeholder = 'value (true/false/number)'; vi.value = val !== undefined ? String(val) : '';
+    vi.type = 'text'; vi.placeholder = 'value (true/false/number)'; vi.value = val === undefined ? '' : typeof val === 'object' ? JSON.stringify(val) : String(val);
     vi.addEventListener('input', updatePreview);
     const btn = document.createElement('button');
     btn.className = 'remove-btn'; btn.textContent = 'x';
@@ -1965,6 +1965,10 @@ function parseValue(str) {
     str = str.trim();
     if (str === 'true') return true;
     if (str === 'false') return false;
+    // Objects and arrays round-trip as JSON (an object shown via String() saves as "[object Object]")
+    if (str.startsWith('{') || str.startsWith('[')) {
+        try { return JSON.parse(str); } catch {}
+    }
     const n = Number(str);
     if (!isNaN(n) && str !== '') return n;
     return str;

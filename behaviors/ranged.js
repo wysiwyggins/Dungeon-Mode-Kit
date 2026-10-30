@@ -66,6 +66,14 @@ export const BehaviorsRanged = {
 
         springTrapPayload(actor, actorVictim, data || {});
 
+        // A shoved block springs the trap but then sits on it, smothering the vent
+        if (actorVictim.hasAttribute('pushable')) {
+            actor.engine.inputManager?.showMessage(
+                `${actorVictim.getNameWithArticle(true)} covers ${actor.getNameWithArticle()}.`,
+                { x: actor.x, y: actor.y }
+            );
+        }
+
         // Trap remains on tile (Brogue-style) - no die() call
 
         return true;

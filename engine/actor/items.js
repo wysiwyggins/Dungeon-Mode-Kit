@@ -142,7 +142,7 @@ export const ActorItems = {
             const slot = item.getAttribute('wearable');
             if (slot && ['top', 'middle', 'lower'].includes(slot)) {
                 const { canEquip, reason } = this.canEquipItem(item);
-                if (canEquip) {
+                if (canEquip && !this.equipment[slot]?.hasAttribute('cursed')) {
                     this.equipToSlot(item, slot);
                 } else if (this.isPlayerControlled()) {
                     this.engine.inputManager?.showMessage(`You cannot wear the ${item.name}. ${reason}.`);
@@ -436,6 +436,8 @@ export const ActorItems = {
 
         // Check if it's a weapon (instant equip)
         if (item.hasAttribute('weapon')) {
+            if (this.isSlotCursed('weapon', item)) return false;
+            this.announceEquip(item, 'weapon');
             this.equipToSlot(item, 'weapon');
             return true;
         }
@@ -447,10 +449,16 @@ export const ActorItems = {
             return false;
         }
 
+        if (slot !== 'ring' && this.isSlotCursed(slot, item)) return false;
+
         // Rings use two dedicated slots
         if (slot === 'ring') {
+            // Both hands full: displace whichever ring isn't cursed
             const ringSlot = !this.equipment.ring1 ? 'ring1' :
-                             !this.equipment.ring2 ? 'ring2' : 'ring1';
+                             !this.equipment.ring2 ? 'ring2' :
+                             !this.equipment.ring1.hasAttribute('cursed') ? 'ring1' : 'ring2';
+            if (this.isSlotCursed(ringSlot, item)) return false;
+            this.announceEquip(item, ringSlot);
             this.equipToSlot(item, ringSlot);
             return true;
         }
@@ -472,8 +480,53 @@ export const ActorItems = {
         }
 
         // No strength requirement - instant equip
+        this.announceEquip(item, slot);
         this.equipToSlot(item, slot);
         return true;
+    },
+
+    /**
+     * Whether a slot holds a cursed item that `item` would have to displace. Equipping
+     * over it goes through equipToSlot's plain unequip, which would otherwise slip the
+     * curse — so callers check this first and refuse.
+     * @param {string} slot - The slot `item` is going into
+     * @param {Item} item - The item being equipped
+     * @returns {boolean} True if blocked (and the player has been told)
+     */
+    isSlotCursed(slot, item) {
+        const current = this.equipment[slot];
+        if (!current || current === item || !current.hasAttribute('cursed')) return false;
+        if (this.isPlayerControlled()) {
+            this.engine.inputManager?.showMessage(`The ${current.getDisplayName?.() ?? current.name} is cursed! You can't remove it.`, { style: 'danger' });
+        }
+        return true;
+    },
+
+    /**
+     * Tell the player what they just put on or took up, naming anything it displaces.
+     * Lives in equipItem/unequipItem rather than equipToSlot so NPC auto-equip,
+     * starting gear, drops and breakage — which all go through the slot methods — stay quiet.
+     * Called before equipToSlot so a curse reveal reads after the equip line.
+     * @param {Item} item - The item being equipped
+     * @param {string} slot - The slot it is going into
+     */
+    announceEquip(item, slot) {
+        if (!this.isPlayerControlled()) return;
+        const verb = slot === 'weapon' ? 'wield' : 'put on';
+        const name = item.getDisplayName?.() ?? item.name;
+        const current = this.equipment[slot];
+        const msg = current && current !== item
+            ? `You ${this.unequipVerb(slot)} the ${current.getDisplayName?.() ?? current.name} and ${verb} the ${name}.`
+            : `You ${verb} the ${name}.`;
+        this.engine.inputManager?.showMessage(msg);
+    },
+
+    /**
+     * @param {string} slot - An equipment slot
+     * @returns {string} The verb for removing whatever is in it
+     */
+    unequipVerb(slot) {
+        return slot === 'weapon' ? 'put away' : 'take off';
     },
 
     /**
@@ -540,7 +593,7 @@ export const ActorItems = {
      * @param {Item} item - The item to unequip
      * @returns {boolean} True if successfully unequipped
      */
-    unequipItem(item) {
+    unequipItem(item, { silent = false } = {}) {
         if (item.hasAttribute('cursed')) {
             if (this.isPlayerControlled()) {
                 this.engine.inputManager?.showMessage(`The ${item.getDisplayName?.()} is cursed! You can't remove it.`, { style: 'danger' });
@@ -555,26 +608,36 @@ export const ActorItems = {
                 return false;
             }
             this.unequipFromSlot('weapon');
+            if (!silent) this.announceUnequip(item, 'weapon');
             return true;
         }
 
         // Handle wearable items
-        const slot = item.getAttribute('wearable');
-        if (!slot) return false;
+        const wearable = item.getAttribute('wearable');
+        if (!wearable) return false;
 
-        if (slot === 'ring') {
-            if (this.equipment.ring1 === item) { this.unequipFromSlot('ring1'); return true; }
-            if (this.equipment.ring2 === item) { this.unequipFromSlot('ring2'); return true; }
-            return false;
-        }
+        const slot = wearable !== 'ring' ? wearable
+            : this.equipment.ring1 === item ? 'ring1'
+            : this.equipment.ring2 === item ? 'ring2' : null;
 
-        if (this.equipment[slot] !== item) {
+        if (!slot || this.equipment[slot] !== item) {
             console.log(`${item.name} is not equipped`);
             return false;
         }
 
         this.unequipFromSlot(slot);
+        if (!silent) this.announceUnequip(item, slot);
         return true;
+    },
+
+    /**
+     * @param {Item} item - The item just removed
+     * @param {string} slot - The slot it came out of
+     */
+    announceUnequip(item, slot) {
+        if (!this.isPlayerControlled()) return;
+        const name = item.getDisplayName?.() ?? item.name;
+        this.engine.inputManager?.showMessage(`You ${this.unequipVerb(slot)} the ${name}.`);
     },
 
     /**

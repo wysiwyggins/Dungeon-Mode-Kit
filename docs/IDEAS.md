@@ -1,15 +1,15 @@
 
 ## Bugs
 
-- objects shouldn't float out of a locked chest in water
+- ~~objects shouldn't float out of a locked chest in water~~ — fixed, `strip_inventory` skips containers
 
 ## Tweaks
 
-- pushing a block on to a trap triggers it but stops gas from spreading, that's cool! There could also be a description message mentioning "the [pushable actor] covers the [trap name]
+- ~~pushing a block on to a trap triggers it but stops gas from spreading, that's cool! There could also be a description message mentioning "the [pushable actor] covers the [trap name]~~ — done
 - pushing a pushable actor onto a teleporter ought to teleport it.
 - I thought maybe if I added a collision effect to the pushable block I might magically damage a goblin wedged between it and a wall but no. I wonder how hard that would be to add.
 - pull the random spawned locked doors and chests out of test prototype
-- There should be description messages for equipping and unequipping weapons and wearables
+- ~~There should be description messages for equipping and unequipping weapons and wearables~~ — done
 - There are a lot of items and actors in default data. Always be looking for opportunities to create types in data and move specific data to prototypes so that designers aren't overwhelmed by default actors and items.
 - **`flicker_tint` (the effect) vs `tint_flicker` (the primitive)** — the words are reversed between the two layers, which is genuinely confusing when reading `effects.json`. Renaming either breaks data or code, so left alone for now.
 - Tiled.app tile layers have a tint color property, it would be cool if we could use it for picking floor tile tints in Tiled too. Currently we do this in the prototype editor.

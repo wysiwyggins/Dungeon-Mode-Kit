@@ -200,18 +200,15 @@ export class Item extends Entity {
 
         this.count = 1;
         this.enchantment = data.enchantment ?? 0;
+        this._enchantmentAuthored = data.enchantment !== undefined;
         // A name the player gave this item (see `nameable`). Replaces the item's own
         // name in getDisplayName(); the enchantment still shows.
         this.customName = null;
         // Set by detect magic (see detectMagic); shows the item's polarity to the player.
         this.magicDetected = false;
 
-        // Roll random enchantment on spawn if enchant_range is defined and no explicit enchantment
-        if (data.enchantment === undefined && data.attributes?.enchant_range) {
-            const [min, max] = data.attributes.enchant_range;
-            this.enchantment = min + Math.floor(ROT.RNG.getUniform() * (max - min + 1));
-        }
-
+        // An authored negative enchantment is a deliberate curse. Random rolls happen
+        // in rollEnchantment, which only the random spawners call.
         if (this.enchantment < 0 && this.hasAttribute('enchantable')) {
             this.setAttribute('cursed', true);
         }
@@ -219,6 +216,23 @@ export class Item extends Entity {
         this.effect = resolveEntityEffect(data);
         this.combatUseCount = 0;
         this.wornTurns = 0;
+    }
+
+    /**
+     * Roll this item's enchantment from its `enchant_range`, cursing it on a negative
+     * roll. Only randomly placed items call this (random_items, item_budget, chest and
+     * death drops, treasure rooms, category picks) — an item a designer put somewhere
+     * on purpose, like the crown the level is built around, stays +0 unless its data
+     * sets `enchantment`.
+     */
+    rollEnchantment() {
+        const range = this.getAttribute('enchant_range');
+        if (!Array.isArray(range) || this._enchantmentAuthored) return;
+        const [min, max] = range;
+        this.enchantment = min + Math.floor(ROT.RNG.getUniform() * (max - min + 1));
+        if (this.enchantment < 0 && this.hasAttribute('enchantable')) {
+            this.setAttribute('cursed', true);
+        }
     }
 
     /**
