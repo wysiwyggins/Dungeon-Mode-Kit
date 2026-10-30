@@ -889,6 +889,7 @@ export const ActorCombat = {
 
         if (pushed) {
             target.updateSpritePosition();
+            this.engine.entityManager.notifyTileEntered(target, target.x, target.y);
             target._lastAttacker = null; // Prevent immediate pursuit via defend_self
             target._knockedBack = true; // Skip next turn due to knockback stagger
             this.engine.playSound('push1');

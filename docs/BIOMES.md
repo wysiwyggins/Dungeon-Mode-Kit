@@ -90,7 +90,7 @@ This gives 3 to 6 picks per floor. All three numbers default to 0, so a biome wi
 "traps": { "min_depth": 2, "intercept": 0, "slope": 2.5, "max": 30 }
 ```
 
-With these numbers, floor 1 has no traps, floor 2 has 4 or 5, floor 5 has 12 or 13, floor 8 has 19 or 20, and from floor 12 on it stays at 29 or 30. The result is always one of two neighboring numbers so that floors next to each other aren't identical.
+For `traps` the count is the number of plate and vent pairs. With these numbers, floor 1 has no traps, floor 2 has 4 or 5, floor 5 has 12 or 13, floor 8 has 19 or 20, and from floor 12 on it stays at 29 or 30. The result is always one of two neighboring numbers so that floors next to each other aren't identical.
 
 For `fungus` the count is the number of patches. Patches hold 1 to 4 fungi each unless `cluster` is set to `false`, which places single fungi instead. `tall_chance` (0 to 1) is the chance each one is a tall fungus.
 

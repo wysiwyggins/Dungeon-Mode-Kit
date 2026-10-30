@@ -17,17 +17,16 @@ import { BehaviorsSpecial } from './special.js';
 /**
  * Spring a trap's payload: message, sound, and the spawned effect.
  *
- * Extracted from `trap_check_trigger` so the payload is reusable by anything that
- * springs a trap, not just an actor standing on one. A trapped container calls this
- * when its lid comes up, which is why `victim` is optional and `entityManager` is
- * derived rather than passed — the caller may be `Actor.open()`, which has neither
- * a personality data bag nor a tile-standing victim.
+ * Two callers: a vent fired by its linked pressure plate (Actor.activate, no
+ * victim — the gas finds whoever is near), and a trapped container whose lid
+ * comes up (Actor.open, where the opener is the victim). That's why `victim` is
+ * optional and `entityManager` is derived rather than passed.
  *
- * Reads the same authored keys it always did (`trap_message`, `trap_effect`,
- * `trap_spawn`, `trap_spawn_tint`, `trap_collision_effect`, `trap_apply_state`),
- * so existing trap actors are untouched.
+ * Reads the authored keys `trap_message`, `trap_effect`, `trap_spawn`,
+ * `trap_spawn_tint`, `trap_collision_effect`, `trap_apply_state`, `trap_sound`
+ * and `trap_cloud_lifetime` off the actor's data.
  *
- * @param {Actor} actor - the trap, or the container that was trapped
+ * @param {Actor} actor - the vent, or the container that was trapped
  * @param {Actor|null} victim - who sprang it; receives `trap_apply_state` if present
  * @param {Object} opts - overrides for `trap_sound` / `trap_cloud_lifetime`
  */

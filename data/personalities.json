@@ -365,15 +365,6 @@
 
   
 
-  "trap": {
-    "name": "Trap",
-    "hostile": false,
-    "behaviors": [
-      "trap_check_trigger"
-    ]
-  },
-  "trap_behavior": { "$alias": "trap" },
-
   "stationed_ranged": {
     "name": "Stationed Ranged",
     "hostile": true,

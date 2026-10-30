@@ -528,7 +528,7 @@ offer `["hostile"]` — so most items need no entry at all.
 | --- | --- |
 | `hostile` | Enemies (hostile personality, `hostile` attribute, or `collision_effect`) |
 | `ally` | Non-hostile creatures with a health stat — for beneficial effects |
-| `trap` | Traps, so a thrown object can spring one from a safe distance |
+| `trap` | Revealed trap plates, so a thrown object can spring one from a safe distance |
 | `tile` | Open floor the caster could stand on — for self-teleport effects |
 
 Tokens combine as a union, so `["hostile", "trap"]` cycles both.

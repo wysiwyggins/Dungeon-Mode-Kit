@@ -763,6 +763,36 @@ export class EntityManager {
     }
 
     /**
+     * Something just arrived on (x, y) — a walker, a shoved block, a knocked-back
+     * creature, a teleport arrival or a thrown item — so press any floor switch there.
+     * Every way onto a tile funnels through here so a pressure plate can't miss one.
+     *
+     * Only solid things and items press a plate; flying actors hover over it. A
+     * `rearms` plate (a trap trigger) fires each time it goes from empty to occupied
+     * (see Actor.press); any other plate keeps the old rule and toggles once while
+     * untoggled, so a `one_shot` gate plate still latches.
+     *
+     * @param {Actor|Item} entity - What arrived
+     * @param {number} x - Tile X
+     * @param {number} y - Tile Y
+     */
+    notifyTileEntered(entity, x, y) {
+        if (!entity || entity.isDead) return;
+        const isItem = this.items.includes(entity);
+        if (!isItem && (!entity.hasAttribute('solid') || entity.hasStateProperty?.('flying'))) return;
+
+        for (const plate of [...this.getActorsAt(x, y)]) {
+            if (plate === entity || plate.isDead || plate.hasAttribute('solid')) continue;
+            if (!plate.hasAttribute('switchable')) continue;
+            if (plate.hasAttribute('rearms')) {
+                plate.press(entity);
+            } else if (!plate.hasAttribute('toggled')) {
+                plate.toggle();
+            }
+        }
+    }
+
+    /**
      * Tick items lying on the floor that are burning (a dropped lit torch or stick
      * of incense) so they spend fuel, emit, and burn out as they would when carried.
      * Only burning items tick — a staff left on the floor doesn't recharge.

@@ -168,7 +168,7 @@ so leaving it out drops the defaults rather than keeping them:
 | `terrain` | `solid`, `flammable: false`, `pushable: false`, `conductive: false`, `blocks_diagonal`, `remains: rubble` | Mindless, so it can burn or be stuck but never confused |
 | `gas` | `solid: false`, `flies`, `mass_noun`, `flammable: false` | Clouds, mist, smoke |
 | `liquid` | `solid: false`, `liquid`, `mass_noun`, `flammable: false`, `entry_sound: step_mud` | Water, sewage, quicksand. `paint_tile` stays per-liquid (the Tiled wildcard reads raw defs) |
-| `trap` | `solid: false`, `visible`, `hidden`, `trap`, `flammable: false`, `render_layer: bottom` | Random trap placement resolves through the type |
+| `vent` | `solid: false`, `visible`, `hidden`, `vent`, `flammable: false`, `render_layer: bottom`, its tile and `reveal_message` | Trap payloads. Random trap placement resolves through the type |
 | `doorway` | `openable`, `lockable`, `open: false`, `flammable: false`, `conductive: false`, `blocks_diagonal` | Doors and the gate; `locked`/`swings_shut` are per-door |
 | `container` | `solid`, `openable`, `container`, `open: false`, `flammable`, `breakable`, `death_sound: plunk3` | Chests; `drops` and `smash_loss` are per-chest |
 | `switch` | `switchable`, `toggled: false` | Levers and pressure plates |

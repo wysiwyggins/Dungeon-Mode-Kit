@@ -16,11 +16,16 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 ### Added
 
-- **Covered-trap message.** Pushing a block onto a trap now adds "The [block] covers the [trap]." after the trap springs.
+- **Plate and vent traps.** A trap is now a hidden pressure plate and a hidden floor vent in the same room, linked by `machine_id`. Stepping on the plate reveals both and the gas or fire comes out of the vent, and `traps` counts these pairs.
+- **`rearms` plates.** A floor plate with `rearms` fires each time something steps onto it while it's empty, instead of latching.
+- **Pressed-plate message.** A pushed block landing on a trap plate adds "The [block] presses down the pressure plate."
 - **Equip and unequip messages.** Wielding, putting on, putting away or taking off an item now says so in the message log, and swapping names the item being replaced.
 
 ### Changed
 
+- **Every way onto a tile presses plates.** Pushed blocks, knockback, teleporting and thrown items now press pressure plates as well as walking, and flying actors no longer do. Linked switch targets also get an activation hook, which is what fires a vent.
+- **Fewer traps per floor.** Each trap is now two actors, so the biome trap ramps are cut to about a third, topping out at 14 pairs in the infernal biome instead of 40 traps.
+- **The `trap` type is gone.** It's replaced by the `vent` type; the trap actors became `poison_gas_vent`, `fire_vent`, `paralysis_gas_vent` and `confusion_gas_vent`, and the `trap` personality and `trap_check_trigger` behavior are removed.
 - **Fewer redundant actor attributes.** `light_source` now takes a radius number in place of a separate `lightRadius`, setting `defaultFacing` turns facing on without `facingEnabled`, and animated actors use `animationBase` instead of `animated` plus `animation_frames`. The old forms still load, and the actor and item editors write the new ones.
 
 ### Fixed

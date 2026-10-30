@@ -224,12 +224,12 @@
                     </div>
                 </details>
                 <details class="sub-collapsible attr-group" data-group="traps">
-                    <summary>Traps<span class="sub-count"></span></summary>
+                    <summary>Traps &amp; Vents<span class="sub-count"></span></summary>
                     <div class="attr-group-body">
                         <div class="checkbox-grid"></div>
                         <div class="typed-attrs"></div>
                         <div class="conditional-section attr-group-extra" id="trap-section">
-                            <div class="sub-section-title">Area Effect</div>
+                            <div class="sub-section-title">Vent Payload: Area Effect</div>
                             <div class="field-row">
                                 <label>Center (actor type)</label>
                                 <input type="text" id="f-trap_effect_center" placeholder="intense_fire">
@@ -421,8 +421,8 @@ const ATTR_GROUPS = [
     { id: 'terrain', bools: ['liquid','deep','hazard','flammable','conductive','ignites','platform','collapsible','consume_on_escape'],
       typed: ['damage_type','apply_state','entry_sound'] },
     { id: 'locks', bools: ['openable','lockable','locked','color_locked','gate'], typed: ['lock_color'] },
-    { id: 'mechanisms', bools: ['switchable','pausable','toggled','one_shot','pedestal','display_inventory','portal'], typed: ['machine_id','stairway'] },
-    { id: 'traps', bools: ['trap','hidden'], typed: ['trap_type'] },
+    { id: 'mechanisms', bools: ['switchable','pausable','toggled','one_shot','rearms','pedestal','display_inventory','portal'], typed: ['machine_id','stairway'] },
+    { id: 'traps', bools: ['trap','vent','hidden'], typed: [] },
     { id: 'naming', bools: ['mass_noun','proper_named'], typed: ['paint_tile'] },
 ];
 const BOOL_ATTRS = ATTR_GROUPS.flatMap(g => g.bools);
@@ -436,7 +436,6 @@ const ATTR_DEPENDS = {
     lode: ['breakable'],
     lode_chance: ['breakable'],
     split_min_health: ['splits'],
-    trap_type: ['trap'],
     toggled: ['switchable', 'pausable'],
 };
 
@@ -479,7 +478,9 @@ const BOOL_HINTS = {
     platform: 'Walkable surface over void/liquid.',
     collapsible: 'Collapses when stepped on.',
     portal: 'Teleports actors that step on it.',
-    trap: 'Trap — triggers on step (see Trap section).',
+    trap: 'Trap trigger (a pressure plate). Once revealed, stepping on it asks first and it can be thrown at.',
+    vent: 'Fires its payload (Vent Payload section) when a switch sharing its machine_id activates it.',
+    rearms: 'Pressure plate fires each time something steps onto it while empty, instead of latching.',
     splits: 'Splits into a child actor on non-fatal hits (see Split Into / Split Min Health).',
     consume_on_escape: 'Destroyed when a stuck actor on this tile breaks free (e.g. webs tear; quicksand omits this).',
     web_immune: 'Passes freely through webs without getting stuck (spiders); other hazards still apply.',
@@ -505,7 +506,6 @@ const TYPED_ATTRS = [
     { key: 'lode', type: 'text', ref: 'item', label: 'Lode (item type)', hint: 'Item type dropped when broken. e.g. gold_nugget, uranium_nugget.' },
     { key: 'lock_color', type: 'colorname', label: 'Lock Color', hint: 'Fixed lock color (overrides random): a color name from data/colors.json, matched against color key items.' },
     { key: 'machine_id', type: 'text', ref: 'machine_id', label: 'Machine ID', hint: 'Links switches to targets. All actors with the same machine_id are affected together. Pick an existing ID to join that machine, or type a new one.' },
-    { key: 'trap_type', type: 'text', ref: 'trap_type', label: 'Trap Type', hint: 'Descriptive label only; the engine does not read it (what a trap does comes from the Trap section). Pick an existing label or type a new one.' },
     { key: 'stairway', type: 'select', label: 'Stairway', hint: 'Links floors in multi-level prototypes.', options: ['', 'up', 'down'] },
     { key: 'chain_segment_type', type: 'text', ref: 'actor', label: 'Chain Segment Type', hint: 'Actor type for body segments. Used by chain creatures (e.g. scutigera).' },
     { key: 'entry_sound', type: 'text', ref: 'sound', label: 'Entry Sound', hint: 'Sound played when another actor steps on this tile. e.g. step_mud.' },
@@ -1343,7 +1343,6 @@ function initRefFields() {
         label: (k) => state.entities[k]?.name });
     RefFields.define('item', { file: 'items.json', names: () => keysOf(state.mergedItems),
         label: (k) => state.mergedItems[k]?.name });
-    RefFields.define('trap_type', { kind: 'label', names: () => valuesInUse(state.mergedActors, 'trap_type') });
     RefFields.define('machine_id', { kind: 'label', names: () => valuesInUse(state.mergedActors, 'machine_id') });
 
     for (const [id, src] of Object.entries(REF_FIELDS)) RefFields.attach(document.getElementById(id), src);
@@ -1668,12 +1667,12 @@ function updateConditionalSections() {
     const lockable = document.getElementById('attr-lockable').checked;
     const switchable = document.getElementById('attr-switchable').checked;
     const pausable = document.getElementById('attr-pausable').checked;
-    const trap = document.getElementById('attr-trap').checked;
+    const vent = document.getElementById('attr-vent').checked;
 
     document.getElementById('open-tiles-section').classList.toggle('visible', openable);
     document.getElementById('toggled-tiles-section').classList.toggle('visible', switchable);
     document.getElementById('switch-section').classList.toggle('visible', switchable || pausable);
-    document.getElementById('trap-section').classList.toggle('visible', trap);
+    document.getElementById('trap-section').classList.toggle('visible', vent);
     document.getElementById('lock-conditions-section').classList.toggle('visible', openable || lockable);
 
     // A dependent field shows once a parent is set, or while it holds a value of its

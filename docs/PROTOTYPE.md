@@ -245,10 +245,10 @@ You can also use an item type like `potion`, `weapon` or `scroll` instead of a s
 
 ### Traps
 
-`traps` hides trap actors on random tiles, picking from every actor with the `trap` attribute.
+`traps` hides trap pairs: a pressure plate and a vent, linked by `machine_id` and placed 2 to 5 tiles apart in the same room. The count is the number of pairs. Each vent is picked from every actor with the `vent` attribute, and `plate` names the trigger actor (default `trigger_plate`).
 
 ```json
-"traps": { "min": 1, "max": 10 }
+"traps": { "min": 1, "max": 10, "plate": "trigger_plate" }
 ```
 
 ### Switch Puzzles

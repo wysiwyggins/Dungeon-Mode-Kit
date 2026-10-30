@@ -161,16 +161,18 @@
     }
   },
 
-  "trap": {
-    "name": "trap",
+  "vent": {
+    "name": "vent",
     "domain": "actor",
-    "description": "Hidden floor triggers that spring when stepped on.",
+    "description": "Hidden floor vents that release a trap's gas or fire when a linked pressure plate fires them.",
+    "tileIndexBase": "LIGHT_SHADE_BULLET",
+    "reveal_message": "You spot a vent in the floor!",
     "attributes": {
       "solid": false,
       "visible": true,
       "hidden": true,
       "flammable": false,
-      "trap": true,
+      "vent": true,
       "render_layer": "bottom"
     }
   },

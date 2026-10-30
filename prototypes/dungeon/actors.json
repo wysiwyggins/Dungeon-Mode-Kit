@@ -141,7 +141,8 @@
   },
   "trap_plate": {
     "name": "pressure plate",
-    "tileIndexBase": "INVERSE_BULLET",
+    "tileIndexBase": "BUTTON_UP",
+    "tileIndexBase_toggled": "BULLET",
     "tileIndexTop": "NULL",
     "collision_sound": "push1",
     "attributes": {

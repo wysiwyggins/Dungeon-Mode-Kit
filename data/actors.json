@@ -1223,7 +1223,7 @@
   "pressure_plate": {
     "name": "pressure plate",
     "type": "switch",
-    "tileIndexBase": "INVERSE_BULLET",
+    "tileIndexBase": "BUTTON_UP",
     "tileIndexTop": "BLANK",
     "collision_sound": "push1",
     "attributes": {
@@ -1299,6 +1299,21 @@
     "switch_effects": {
       "solid": false,
       "open": true
+    }
+  },
+  "trigger_plate": {
+    "name": "pressure plate",
+    "type": "switch",
+    "description": "A loose flagstone. Somewhere nearby, something is waiting for it to sink.",
+    "tileIndexBase": "BUTTON_UP",
+    "collision_sound": "push1",
+    "reveal_message": "You spot a pressure plate in the floor!",
+    "attributes": {
+      "solid": false,
+      "hidden": true,
+      "rearms": true,
+      "trap": true,
+      "render_layer": "bottom"
     }
   },
   "hidden_pressure_plate": {
@@ -1870,60 +1885,40 @@
       "ward": { "hostile": true, "repel": true }
     }
   },
-  "poison_gas_trap": {
-    "name": "poison gas trap",
-    "type": "trap",
-    "tileIndexBase": "INVERSE_BULLET",
+  "poison_gas_vent": {
+    "name": "poison gas vent",
+    "type": "vent",
     "tint": "#55AA55",
-    "personality": "trap",
-    "attributes": {
-      "trap_type": "poison_gas"
-    },
     "trap_spawn": "cloud",
     "trap_spawn_tint": "#55FF55",
     "trap_apply_state": "poisoned",
     "trap_message": "A hidden vent releases poisonous gas!"
   },
-  "fire_trap": {
-    "name": "fire trap",
-    "type": "trap",
-    "tileIndexBase": "INVERSE_BULLET",
+  "fire_vent": {
+    "name": "fire vent",
+    "type": "vent",
     "tint": "#FF6622",
-    "personality": "trap",
-    "attributes": {
-      "trap_type": "fire"
-    },
     "trap_effect": {
       "center": "fire",
       "radius": 1,
       "outer": "fire"
     },
-    "collision_sound": "fireball",
+    "trap_sound": "fireball",
     "trap_message": "Flames erupt from the floor!"
   },
-  "paralysis_gas_trap": {
-    "name": "paralysis gas trap",
-    "type": "trap",
-    "tileIndexBase": "INVERSE_BULLET",
+  "paralysis_gas_vent": {
+    "name": "paralysis gas vent",
+    "type": "vent",
     "tint": "#AAAAFF",
-    "personality": "trap",
-    "attributes": {
-      "trap_type": "paralysis_gas"
-    },
     "trap_spawn": "cloud",
     "trap_spawn_tint": "#AADDFF",
     "trap_apply_state": "paralyzed",
     "trap_message": "A numbing gas billows forth!"
   },
-  "confusion_gas_trap": {
-    "name": "confusion gas trap",
-    "type": "trap",
-    "tileIndexBase": "INVERSE_BULLET",
+  "confusion_gas_vent": {
+    "name": "confusion gas vent",
+    "type": "vent",
     "tint": "#FF88FF",
-    "personality": "trap",
-    "attributes": {
-      "trap_type": "confusion_gas"
-    },
     "trap_spawn": "cloud",
     "trap_spawn_tint": "#FFAAFF",
     "trap_apply_state": "confused",

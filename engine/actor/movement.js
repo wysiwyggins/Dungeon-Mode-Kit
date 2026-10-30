@@ -474,6 +474,9 @@ export const ActorMovement = {
                         crushedItem.die();
                     }
 
+                    // The shoved block presses a plate it lands on (no-op if it fell into the void)
+                    this.engine.entityManager.notifyTileEntered(actorAtTarget, pushX, pushY);
+
                     // Now move into the vacated space
                     const pushDx = newX - this.x;
                     if (pushDx > 0) this.setFacing('right');
@@ -481,6 +484,7 @@ export const ActorMovement = {
                     this.x = newX;
                     this.y = newY;
                     this.updateSpritePosition();
+                    this.engine.entityManager.notifyTileEntered(this, newX, newY);
 
                     // Viewport snap check after push-move
                     if (this.isViewpoint() && this.engine.viewportEnabled) {
@@ -838,13 +842,8 @@ export const ActorMovement = {
             this.engine.interfaceManager.onPlayerMove();
         }
 
-        // Trigger non-solid switchable actors at destination (pressure plates, etc.)
-        for (const other of this.engine.entityManager.getActorsAt(newX, newY)) {
-            if (other === this || other.hasAttribute('solid')) continue;
-            if (other.hasAttribute('switchable') && !other.hasAttribute('toggled')) {
-                other.toggle();
-            }
-        }
+        // Press any pressure plate at the destination
+        this.engine.entityManager.notifyTileEntered(this, newX, newY);
 
         // Walking onto a `crushable` (non-solid) actor destroys it. `crushable` is the
         // general "trampled when stepped on" attribute; `spore_release` is a separate,
@@ -990,6 +989,7 @@ export const ActorMovement = {
         }
 
         this.applyWalkThroughEffects(dest.x, dest.y);
+        em.notifyTileEntered(this, dest.x, dest.y);
         return true;
     },
 

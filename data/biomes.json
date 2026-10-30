@@ -274,8 +274,8 @@
     "traps": {
       "min_depth": 2,
       "intercept": 0,
-      "slope": 2.5,
-      "max": 30
+      "slope": 1,
+      "max": 8
     },
     "fungus": {
       "min_depth": 2,
@@ -457,8 +457,8 @@
     "traps": {
       "min_depth": 1,
       "intercept": 0,
-      "slope": 1,
-      "max": 10
+      "slope": 0.75,
+      "max": 8
     }
   },
   "caves": {
@@ -717,8 +717,8 @@
     "traps": {
       "min_depth": 2,
       "intercept": 0,
-      "slope": 2.5,
-      "max": 30
+      "slope": 1,
+      "max": 10
     },
     "fungus": {
       "min_depth": 2,
@@ -983,9 +983,9 @@
     },
     "traps": {
       "min_depth": 9,
-      "intercept": 5,
-      "slope": 1.8,
-      "max": 35
+      "intercept": 0,
+      "slope": 0.6,
+      "max": 12
     },
     "fungus": {
       "min_depth": 9,
@@ -1155,9 +1155,9 @@
     },
     "traps": {
       "min_depth": 20,
-      "intercept": 10,
-      "slope": 1.2,
-      "max": 40
+      "intercept": 0,
+      "slope": 0.5,
+      "max": 14
     },
     "decorations": [
       {

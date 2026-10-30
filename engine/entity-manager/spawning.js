@@ -453,18 +453,34 @@ export const EntityManagerSpawning = {
         }
     },
 
+    /**
+     * Place `traps` as linked pairs: a hidden pressure plate and a hidden vent in the
+     * same room, sharing a `machine_id`. Stepping on the plate fires the vent through
+     * the ordinary switch machinery (Actor.press -> _propagateSwitchEffects ->
+     * Actor.activate), so the gas or fire comes out somewhere other than underfoot.
+     *
+     * `traps` counts pairs. `traps.plate` names the trigger actor (default
+     * `trigger_plate`); the payload is any actor whose resolved attributes include
+     * `vent`, picked at random per pair.
+     */
     spawnRandomTraps(getAvailableTiles, floorConfig, tilesIn = null) {
         const trapsConfig = floorConfig?.traps;
         if (!trapsConfig) return;
 
         const prototype = this.engine.currentPrototype;
-        // Resolve before filtering: `trap` lives on the trap type, so the raw
-        // definitions no longer carry it.
-        const trapTypes = Object.keys(prototype.actors)
-            .filter(id => prototype.getActorData(id)?.attributes?.trap);
+        // Resolve before filtering: `vent` lives on the vent type, so the raw
+        // definitions don't carry it.
+        const ventTypes = Object.keys(prototype.actors)
+            .filter(id => prototype.getActorData(id)?.attributes?.vent);
+        const plateType = trapsConfig.plate || 'trigger_plate';
+        const plateData = prototype.getActorData(plateType);
 
-        if (trapTypes.length === 0) {
-            console.warn('traps: No actor types with trap attribute found');
+        if (ventTypes.length === 0) {
+            console.warn('traps: No actor types with vent attribute found');
+            return;
+        }
+        if (!plateData) {
+            console.warn(`traps: plate actor "${plateType}" not found`);
             return;
         }
 
@@ -476,20 +492,75 @@ export const EntityManagerSpawning = {
         const tiles = tilesIn ? tilesIn(trapsConfig.region) : getAvailableTiles;
 
         for (let i = 0; i < count; i++) {
-            const availableTiles = tiles();
-            if (availableTiles.length === 0) {
-                console.warn('traps: No tiles available');
+            const pair = this._findTrapPairTiles(tiles());
+            if (!pair) {
+                console.warn('traps: No room with space for a plate and vent');
                 break;
             }
 
-            const trapType = trapTypes[Math.floor(ROT.RNG.getUniform() * trapTypes.length)];
-            const trapData = prototype.getActorData(trapType);
-            const tile = availableTiles[Math.floor(ROT.RNG.getUniform() * availableTiles.length)];
+            const machineId = `trap_${i}`;
+            const ventType = ventTypes[Math.floor(ROT.RNG.getUniform() * ventTypes.length)];
 
-            const actor = new Actor(tile.x, tile.y, trapType, trapData, this.engine);
-            this.addEntity(actor);
-            console.log(`traps: Spawned "${trapType}" at (${tile.x}, ${tile.y}) (${i + 1}/${count})`);
+            const plate = new Actor(pair.plate.x, pair.plate.y, plateType, plateData, this.engine);
+            plate.setAttribute('machine_id', machineId);
+            this.addEntity(plate);
+
+            const vent = new Actor(pair.vent.x, pair.vent.y, ventType, prototype.getActorData(ventType), this.engine);
+            vent.setAttribute('machine_id', machineId);
+            this.addEntity(vent);
+
+            console.log(`traps: "${plateType}" at (${pair.plate.x}, ${pair.plate.y}) fires "${ventType}" at (${pair.vent.x}, ${pair.vent.y}) (${i + 1}/${count})`);
         }
+    },
+
+    /**
+     * Pick a plate tile and a vent tile in the same room. Maps carry no reliable
+     * room metadata (Tiled maps and caves have no diggerRooms), so "the same room"
+     * is found geometrically: flood out from the plate over walkable tiles, stopping at
+     * entryways (doors and corridor pinches — see isEntrywayTile) and at
+     * `ROOM_REACH` tiles out. The vent goes 2-5 tiles from the plate, far enough that
+     * the gas isn't simply underfoot, close enough to catch whoever stepped there.
+     *
+     * @param {Array<{x:number,y:number}>} available - Unoccupied candidate tiles
+     * @returns {{plate:{x,y}, vent:{x,y}}|null}
+     */
+    _findTrapPairTiles(available) {
+        const ROOM_REACH = 6;
+        const VENT_MIN = 2;
+        const VENT_MAX = 5;
+        const ATTEMPTS = 12;
+
+        const free = new Set(available.map(t => `${t.x},${t.y}`));
+        const plates = available.filter(t => !this.isEntrywayTile(t.x, t.y));
+        const walkable = new Set((this.engine.mapManager.walkableTiles || []).map(t => `${t.x},${t.y}`));
+
+        for (let attempt = 0; attempt < ATTEMPTS && plates.length > 0; attempt++) {
+            const plate = plates.splice(Math.floor(ROT.RNG.getUniform() * plates.length), 1)[0];
+
+            const seen = new Set([`${plate.x},${plate.y}`]);
+            const queue = [plate];
+            const vents = [];
+            while (queue.length > 0) {
+                const { x, y } = queue.shift();
+                for (const dir of CARDINAL_DIRS) {
+                    const nx = x + dir.dx;
+                    const ny = y + dir.dy;
+                    const key = `${nx},${ny}`;
+                    if (seen.has(key)) continue;
+                    seen.add(key);
+                    const reach = Math.max(Math.abs(nx - plate.x), Math.abs(ny - plate.y));
+                    if (reach > ROOM_REACH) continue;
+                    if (!walkable.has(key) || this.isEntrywayTile(nx, ny)) continue;
+                    queue.push({ x: nx, y: ny });
+                    if (reach >= VENT_MIN && reach <= VENT_MAX && free.has(key)) vents.push({ x: nx, y: ny });
+                }
+            }
+
+            if (vents.length > 0) {
+                return { plate, vent: vents[Math.floor(ROT.RNG.getUniform() * vents.length)] };
+            }
+        }
+        return null;
     },
 
     /**

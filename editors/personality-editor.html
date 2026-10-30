@@ -136,7 +136,7 @@ const BEHAVIOR_CATEGORIES = [
     ]},
     { name: 'Special', behaviors: [
         'summon_actor', 'heal_ally', 'seek_item', 'mine_nearby_wall',
-        'trap_check_trigger', 'apply_aura', 'horizontal_bounce', 'vertical_bounce',
+        'apply_aura', 'horizontal_bounce', 'vertical_bounce',
         'countdown', 'countdown_display', 'clock_tick', 'toggle_and_propagate'
     ]}
 ];
@@ -193,7 +193,6 @@ const BEHAVIOR_HINTS = {
     heal_ally: 'Heal a nearby wounded ally',
     seek_item: 'Move toward nearest ground item',
     mine_nearby_wall: 'Break an adjacent wall tile',
-    trap_check_trigger: 'Check if an actor stepped on the trap',
     apply_aura: 'Chance to apply a state to adjacent actors',
     horizontal_bounce: 'Move left/right, reverse at walls',
     vertical_bounce: 'Move up/down, reverse at walls',
@@ -236,7 +235,6 @@ const BEHAVIOR_PARAMS = {
     fire_spread: ['spawn_type', 'spread_chance', 'fire_lifetime'],
     fire_burn_out: ['damage_per_turn', 'burn_state'],
     fire_smoke: ['smoke_type', 'smoke_threshold', 'smoke_chance', 'smoke_cap', 'smoke_lifetime', 'check_cardinal'],
-    trap_check_trigger: ['trap_sound', 'trap_cloud_lifetime'],
     pickpocket_adjacent: ['loot_search_radius'],
     countdown: ['interval', 'countdown_event', 'countdown_sound'],
     countdown_display: ['countdown_display'],
@@ -310,8 +308,6 @@ const PARAM_DEFS = [
     { key: 'damage_per_turn', type: 'number', label: 'Damage Per Turn', hint: 'HP damage dealt each turn by fire. Default: 10' },
     { key: 'burn_state', type: 'text', ref: 'state', label: 'Burn State', hint: 'State applied to victims (default: burning)' },
     { key: 'cloud_lifetime', type: 'number', label: 'Cloud Lifetime', hint: 'Turns before emitted/spread cloud expires' },
-    { key: 'trap_sound', type: 'text', ref: 'sound', label: 'Trap Sound', hint: 'Sound sprite key when trap triggers (default: tap2)' },
-    { key: 'trap_cloud_lifetime', type: 'number', label: 'Trap Cloud Lifetime', hint: 'Turns trap-spawned clouds persist. Default: 8' },
     { key: 'hit_sound', type: 'text', ref: 'sound', label: 'Hit Sound', hint: 'Sound on ranged hit (default: arrow_hit)' },
     { key: 'miss_sound', type: 'text', ref: 'sound', label: 'Miss Sound', hint: 'Sound on ranged miss (default: arrow_miss)' },
     { key: 'interval', type: 'number', label: 'Interval', hint: 'Turns between countdown events. Default: 5' },

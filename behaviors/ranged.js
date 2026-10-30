@@ -1,84 +1,12 @@
 /**
- * Behaviors: traps springing, and shooting/ranged attacks with their
- * projectile animation.
+ * Behaviors: shooting/ranged attacks with their projectile animation.
  */
 
-import { BehaviorLibrary, springTrapPayload } from './behaviors.js';
+import { BehaviorLibrary } from './behaviors.js';
 import { getLinePath, hasLineOfSight } from '../core/pathfinding.js';
 import { ALL_DIRS, shuffleArray } from '../core/util.js';
 
 export const BehaviorsRanged = {
-    /**
-     * Trap check trigger behavior - checks if an actor or item has stepped on the trap
-     * Traps start invisible and become visible when triggered (Brogue-style)
-     * Traps are re-triggerable but won't trigger again while same entity remains on tile
-     */
-    trap_check_trigger: (actor, data) => {
-        const entityManager = actor.engine.entityManager;
-
-        // Initialize tracking set for entities that have triggered while on this tile
-        if (!actor._triggeredBy) actor._triggeredBy = new Set();
-
-        // Check if anything is currently on the trap
-        const itemOnTrap = entityManager.items.find(
-            i => i.x === actor.x && i.y === actor.y && !i.isDead
-        );
-        const solidActorOnTrap = entityManager.getActorsAt(actor.x, actor.y)
-            .find(a => a !== actor && !a.hasAttribute('trap') && a.hasAttribute('solid') && !a.hasStateProperty('flying'));
-
-        // If trap needs reset (was triggered by item), check if tile is now empty
-        if (actor._needsReset) {
-            if (!itemOnTrap && !solidActorOnTrap) {
-                // Tile is empty, trap resets
-                actor._needsReset = false;
-                actor._triggeredBy.clear();
-            }
-            // Still needs reset, don't trigger
-            return false;
-        }
-
-        // Clean up: remove entities no longer on this tile
-        for (const entity of actor._triggeredBy) {
-            if (entity.isDead || entity.x !== actor.x || entity.y !== actor.y) {
-                actor._triggeredBy.delete(entity);
-            }
-        }
-
-        // Find any actor standing on this trap that hasn't triggered it yet
-        // Skip non-solid actors (fire, clouds, etc.) - only solid actors trigger traps
-        const actorVictim = solidActorOnTrap && !actor._triggeredBy.has(solidActorOnTrap)
-            ? solidActorOnTrap : null;
-
-        if (!actorVictim) return false;
-
-        // Mark this entity as having triggered
-        actor._triggeredBy.add(actorVictim);
-
-        // Springing a trap discovers it, permanently. reveal() handles the hidden
-        // case (building the sprites a concealed trap never had); the fallback
-        // covers a trap authored as plain `visible: false` with no hidden state.
-        if (actor.hasAttribute('hidden')) {
-            actor.reveal({ silent: true });
-        } else if (!actor.hasAttribute('visible')) {
-            actor.setAttribute('visible', true);
-            actor.engine.renderer?.createActorSprites(actor);
-        }
-
-        springTrapPayload(actor, actorVictim, data || {});
-
-        // A shoved block springs the trap but then sits on it, smothering the vent
-        if (actorVictim.hasAttribute('pushable')) {
-            actor.engine.inputManager?.showMessage(
-                `${actorVictim.getNameWithArticle(true)} covers ${actor.getNameWithArticle()}.`,
-                { x: actor.x, y: actor.y }
-            );
-        }
-
-        // Trap remains on tile (Brogue-style) - no die() call
-
-        return true;
-    },
-
     /**
      * Shoot a projectile at a visible target within range
      * Used by stationary ranged attackers like turrets

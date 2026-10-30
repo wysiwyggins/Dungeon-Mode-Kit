@@ -82,7 +82,7 @@ By default an actor object inherits everything from its type definition in `data
 | `machine_id` | string | Link this actor to switches/targets sharing the same id (see [PROTOTYPE.md](PROTOTYPE.md) switches). |
 | `switch_effects` | string (JSON) | Override the attributes a switch sets on activation, e.g. `{"locked": false, "open": true}`. |
 | `switch_radius` | number | Override the proximity radius a switch activates within (when not using `machine_id`). |
-| `one_shot` | bool | Mark a switch/trap as single-use. |
+| `one_shot` | bool | Mark a switch as single-use. |
 | `default_items` | string | Override the actor type's starting inventory **for this placement only**. |
 | `unlock_conditions` | string | Lock this door or chest until the conditions hold, e.g. `killed:linked` (every other actor sharing its `machine_id` is dead). Comma-separated, or a JSON array for `{actor, stat, op, value}` conditions. Same vocabulary as `win_conditions`. |
 

@@ -89,7 +89,7 @@ from where it stands:
 | Data | `tileIndexBase_hidden` / `tileIndexTop_hidden` | no `_hidden` tiles |
 | Stands on | a tile that would otherwise be wall | open floor |
 | Renders as | ordinary wall (untinted, so machine color can't betray it) | nothing; the floor shows through |
-| Examples | `hidden_door`, `barred_hidden_door`, `hidden_lever` | `hidden_pressure_plate`, gas/fire traps |
+| Examples | `hidden_door`, `barred_hidden_door`, `hidden_lever` | `hidden_pressure_plate`, trap plates and vents |
 
 A wall-mounted actor *replaces* the wall actor on its tile, so making it merely
 invisible would leave a hole in the wall. That's the whole reason the disguise exists.
@@ -113,8 +113,8 @@ roll worth repeating. Both are retunable per prototype or per floor via
 | Route | Notes |
 | --- | --- |
 | Magic mapping | reveals every hidden actor on the floor, no LOS or distance test; silent, with a count |
-| Springing a trap | discovering it is part of setting it off |
-| Stepping on a plate | `toggle()` reveals first, so the effect never fires from nowhere |
+| Springing a trap | the plate and its vent are each discovered as it fires, if the player can see that tile |
+| Stepping on a plate | `toggle()` reveals it first if the player can see it, so the effect never fires from nowhere |
 | Digging it out | disguised actors are `breakable`, like the wall they imitate |
 
 ### Searching notes
@@ -143,7 +143,7 @@ named — the name is just a lie about its appearance rather than its nature.
 | Map tile | never drawn, no memory | entering line of sight |
 | Explored tile | drawn dimmed from memory, may be stale | re-entering line of sight |
 | Actor identity | "something" in messages | seeing it (see visibility above) |
-| Trap | `hidden: true`, indistinguishable from floor | searching, or triggering it |
+| Trap (plate + vent) | `hidden: true`, indistinguishable from floor | searching, or triggering it |
 | Secret door / lever | `hidden: true`, drawn as ordinary wall | searching, magic mapping, or digging it out |
 
 ### Item identification

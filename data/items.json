@@ -354,18 +354,19 @@
   "javelin": {
     "name": "javelin",
     "tileIndex": "WHITE_LEFTWARDS_HARPOON_BARB_UPWARDS",
-    "tint": "#A89B88",
+    "flipV": true,
+    "tint": "#232323",
+    "identified": false,
     "attributes": {
       "pickupable": true,
       "visible": true,
       "stackable": true,
-      "flammable": false,
+      "description": "A weighted throwing spear. [damage] damage when thrown.",
       "collision_effect": {
         "health": -9
       },
       "collision_sound": "arrow_hit",
-      "break_chance": 10,
-      "description": "A weighted throwing spear. [damage] damage when thrown."
+      "break_chance": 10
     }
   },
 

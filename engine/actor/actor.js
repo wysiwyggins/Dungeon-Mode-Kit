@@ -596,7 +596,7 @@ export class Actor extends Entity {
         // A hidden pressure plate can be trodden on before it's found; discovering
         // it as it fires beats an effect erupting from an invisible source. Silent
         // because switch_message is about to narrate the same moment.
-        this.reveal({ silent: true });
+        this._revealIfSeen();
 
         const nowToggled = !this.hasAttribute('toggled');
         this.setAttribute('toggled', nowToggled);
@@ -613,6 +613,67 @@ export class Actor extends Entity {
             this._applyToggleFlip(this.spriteTop, this.flipTopV, this.x, this.y - 1);
         }
 
+        this._announceSwitch();
+        this._propagateSwitchEffects(nowToggled);
+    }
+
+    /**
+     * A `rearms` plate (a trap trigger) being pressed. Unlike toggle() it never
+     * latches: it fires each time the tile goes from empty to occupied, so a second
+     * creature joining the first doesn't fire it again, and an item left lying on
+     * it holds it down until the tile clears. Called from notifyTileEntered.
+     * @param {Actor|Item} entrant - What just arrived on the plate
+     */
+    press(entrant) {
+        if (!this.hasAttribute('switchable')) return;
+        const em = this.engine.entityManager;
+
+        if (!this._pressedBy) this._pressedBy = new Set();
+        for (const e of this._pressedBy) {
+            const gone = e.isDead || e.x !== this.x || e.y !== this.y
+                || (!em.actors.includes(e) && !em.items.includes(e));
+            if (gone) this._pressedBy.delete(e);
+        }
+        const alreadyHeld = this._pressedBy.size > 0;
+        this._pressedBy.add(entrant);
+        if (alreadyHeld) return;
+
+        this._revealIfSeen();
+        if (entrant.hasAttribute?.('pushable')) {
+            this.engine.inputManager?.showMessage(
+                `${entrant.getNameWithArticle(true)} presses down ${this.getNameWithArticle()}.`,
+                { x: this.x, y: this.y }
+            );
+        }
+        this._announceSwitch();
+        this._propagateSwitchEffects(true);
+    }
+
+    /**
+     * A machine target being fired by a linked switch (see _propagateSwitchEffects).
+     * The generic hook for targets that *do* something rather than just change
+     * attributes: today that's a vent springing its `trap_spawn` / `trap_effect`
+     * payload. A hidden target is discovered as it fires.
+     * @param {Actor} _source - The switch that fired it
+     */
+    activate(_source) {
+        if (!this.data?.trap_spawn && !this.data?.trap_effect) return;
+        this._revealIfSeen();
+        springTrapPayload(this, null, this.data);
+    }
+
+    /**
+     * Silently discover a hidden actor as it fires, but only if the player can see
+     * its tile. `hidden` is about what the player knows, so a goblin springing a
+     * trap across the map leaves the plate and vent undiscovered.
+     */
+    _revealIfSeen() {
+        if (!this.hasAttribute('hidden')) return;
+        if (this.engine.isTileVisible?.(this.x, this.y) ?? true) this.reveal({ silent: true });
+    }
+
+    /** Switch sound plus `switch_message`, shared by toggle() and press(). */
+    _announceSwitch() {
         const sound = this.data?.switch_sound || this.getAttribute('collision_sound') || 'tap2';
         this.engine.playSound?.(sound);
         // `[name]` in an authored switch_message resolves to the full display name with
@@ -623,8 +684,6 @@ export class Actor extends Entity {
             providers: { name: () => this.getNameWithArticle() }
         });
         this.engine.inputManager?.showMessage(message, { x: this.x, y: this.y });
-
-        this._propagateSwitchEffects(nowToggled);
     }
 
     _applyToggleFlip(sprite, flipV, tileX, tileY) {
@@ -643,10 +702,12 @@ export class Actor extends Entity {
     }
 
     _propagateSwitchEffects(activated) {
-        const effects = this.data?.switch_effects;
+        const machineId = this.getAttribute('machine_id');
+        // A linked switch with no effects still fires its targets' activate() hook —
+        // that's all a trap plate does. Proximity switches need effects to mean anything.
+        const effects = this.data?.switch_effects || (machineId ? {} : null);
         if (!effects) return;
 
-        const machineId = this.getAttribute('machine_id');
         let targets;
 
         if (machineId) {
@@ -704,6 +765,7 @@ export class Actor extends Entity {
                 }
             }
 
+            if (activated) target.activate?.(this);
             target.flash?.();
         }
 

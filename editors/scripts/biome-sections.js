@@ -739,7 +739,7 @@ function hazardRampEditor(biome, key, label) {
         commit(); render();
     }, key === 'fungus'
         ? 'Fungus patches, count ramping with depth.'
-        : 'Hidden traps, count ramping with depth.'));
+        : 'Hidden traps (pressure plate + vent pairs), count ramping with depth.'));
     const h = biome[key];
     if (!h) return wrap;
     wrap.appendChild(fieldGrid(

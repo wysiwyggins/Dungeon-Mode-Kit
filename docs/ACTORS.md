@@ -177,6 +177,7 @@ Actors can be connected together by a `machine_id` attribute (a string like a na
 | `switchable` | boolean | Actor can be toggled (by bumping it or by another machine). |
 | `toggled` | boolean | Current toggle state. Drives the `*_toggled` tile/flip variants. |
 | `one_shot` | boolean | Toggles once and then stays put (pressure plate). |
+| `rearms` | boolean | A floor plate that never latches: it fires every time something steps onto it while it's empty. Trap plates use it. |
 | `pausable` | boolean | Can be paused/resumed by bumping (e.g. a clock countdown). |
 | `gate` | boolean | A barrier that receives propagated switch effects. |
 | `pedestal` | boolean | Holds an item on display; can also receive switch effects. |
@@ -186,9 +187,23 @@ Actors can be connected together by a `machine_id` attribute (a string like a na
 | `switch_message` | string | Message shown when the switch is toggled. `[name]` interpolates the actor's color-aware name (see below). |
 | `switch_sound` | string | Sound played when the switch is toggled. |
 
+A floor plate (a non-solid `switchable` actor) is pressed by anything solid that arrives on its tile: walking, being shoved or knocked back, teleporting, or a thrown item landing there. Flying actors pass over it. When a linked switch activates its targets, each one also gets an activation hook. Today that's what fires a vent; a target with nothing to do ignores it. A switch with a `machine_id` needs no `switch_effects` to fire its targets.
+
 ### Traps
 
-Trap actors are invisible (`visible: false`) until triggered, then fire an effect and reveal themselves. They use the `trap` personality. Check the `actor.json` and `type.json` data files for examples.
+A trap is two hidden actors sharing a `machine_id`: a pressure plate that triggers it and a vent that releases the payload. Both stay hidden until the trap fires or a search turns them up. Random placement puts each pair in the same room (see `traps` in [PROTOTYPE.md](PROTOTYPE.md#traps)). In Tiled, place a plate and a vent and give both the same `machine_id`.
+
+| Attribute | Type | Description |
+| ----------- | ------ | ------------- |
+| `trap` | boolean | Marks the trigger. A revealed one asks before you step on it and can be thrown at. |
+| `vent` | boolean | Marks the payload actor. Random trap placement picks from every actor with it. |
+| `trap_spawn` | string | Actor spawned on the vent when it fires, usually a `cloud`. |
+| `trap_spawn_tint`, `trap_apply_state`, `trap_collision_effect`, `trap_spawn_flammable` | | Applied to the spawned actor. |
+| `trap_cloud_lifetime` | number | Turns the spawned cloud keeps spreading (default 8). |
+| `trap_effect` | object | `{ center, radius, outer }`: spawns actors in a disc around the vent instead, like fire. |
+| `trap_message`, `trap_sound` | string | Shown and played when it fires. |
+
+A trapped container (`trap_chance`) uses the same payload keys and fires them on whoever opens it.
 
 ## Info Panel
 

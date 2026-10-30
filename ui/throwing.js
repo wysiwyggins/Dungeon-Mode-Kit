@@ -652,8 +652,10 @@ export const UIThrowing = {
         // item fall through (may remove the item, so run before the trap check).
         this.checkCollapseTrigger(landingPoint.x, landingPoint.y, item);
 
-        // Check if item landed on a trap and trigger it
-        this.checkTrapTrigger(landingPoint.x, landingPoint.y, item);
+        // A thrown item presses a plate it lands on (unless the floor gave way under it)
+        if (this.engine.entityManager.items.includes(item)) {
+            this.engine.entityManager.notifyTileEntered(item, landingPoint.x, landingPoint.y);
+        }
 
         // This counts as a player action
         this.engine.inputManager?.onPlayerAction();
@@ -701,120 +703,6 @@ export const UIThrowing = {
         item.y = y;
         this.engine.entityManager.addEntity(item);
         return false;
-    },
-
-    /**
-     * Check if there's a trap at the given position and trigger it
-     * Used when items land on traps from throwing
-     * @param {number} x - X coordinate
-     * @param {number} y - Y coordinate
-     * @param {Item} item - The item that landed (to track for re-trigger prevention)
-     */
-    checkTrapTrigger(x, y, item) {
-        const entityManager = this.engine.entityManager;
-        if (!entityManager) return;
-
-        // Find any trap at this position
-        const trap = entityManager.actors.find(
-            a => a.x === x && a.y === y && !a.isDead && a.hasAttribute('trap')
-        );
-
-        if (!trap) return;
-
-        // Initialize tracking set if needed
-        if (!trap._triggeredBy) trap._triggeredBy = new Set();
-
-        // Check if this item has already triggered this trap
-        if (item && trap._triggeredBy.has(item)) return;
-
-        // Mark this item as having triggered and flag trap as needing reset
-        // Trap won't trigger again until the tile is completely empty, then something new steps on it
-        if (item) {
-            trap._triggeredBy.add(item);
-            trap._needsReset = true;
-        }
-
-        // Springing a trap discovers it, permanently. reveal() handles the hidden
-        // case (a concealed trap has no sprites yet); the fallback covers a trap
-        // authored as plain `visible: false`. Silent — trap_message follows.
-        if (trap.hasAttribute('hidden')) {
-            trap.reveal({ silent: true });
-        } else if (!trap.hasAttribute('visible')) {
-            trap.setAttribute('visible', true);
-            this.engine.renderer?.createActorSprites(trap);
-        }
-
-        // Show trap message
-        const trapMessage = trap.data?.trap_message || `A trap is sprung!`;
-        this.engine.inputManager?.showMessage(trapMessage);
-
-        // Play trap sound
-        this.engine.playSound?.('trap1');
-
-        // Spawn the trap effect - supports two formats:
-        // 1. trap_effect: { center, radius, outer } - spell-like area effect (like fireball)
-        // 2. trap_spawn: "actor_type" - simple single actor spawn
-        const trapEffect = trap.data?.trap_effect;
-        if (trapEffect) {
-            // Spell-like area effect
-            const { center, radius = 0, outer } = trapEffect;
-            const tx = trap.x;
-            const ty = trap.y;
-
-            // Spawn center actor
-            if (center) {
-                entityManager.spawnActor(center, tx, ty);
-            }
-
-            // Spawn actors in radius
-            if (radius > 0) {
-                const outerType = outer || center;
-                for (let dx = -radius; dx <= radius; dx++) {
-                    for (let dy = -radius; dy <= radius; dy++) {
-                        if (dx === 0 && dy === 0) continue; // Skip center
-                        const dist = Math.sqrt(dx * dx + dy * dy);
-                        if (dist <= radius) {
-                            entityManager.spawnActor(outerType, tx + dx, ty + dy);
-                        }
-                    }
-                }
-            }
-        } else {
-            // Simple single actor spawn
-            const spawnType = trap.data?.trap_spawn;
-            if (spawnType) {
-                const spawnedActor = entityManager.spawnActor(spawnType, trap.x, trap.y);
-                if (spawnedActor) {
-                    // Apply custom tint if specified
-                    const trapTint = trap.data?.trap_spawn_tint;
-                    if (trapTint) {
-                        spawnedActor.tint = trapTint;
-                        if (spawnedActor.spriteBase) spawnedActor.spriteBase.tint = PIXI.utils.string2hex(trapTint);
-                        if (spawnedActor.spriteTop) spawnedActor.spriteTop.tint = PIXI.utils.string2hex(trapTint);
-                    }
-
-                    // Apply custom collision effect if specified (for clouds)
-                    const trapCollisionEffect = trap.data?.trap_collision_effect;
-                    if (trapCollisionEffect) {
-                        spawnedActor.setAttribute('collision_effect', trapCollisionEffect);
-                    }
-
-                    // Apply state to apply if specified (for paralysis/confusion gas)
-                    const trapApplyState = trap.data?.trap_apply_state;
-                    if (trapApplyState) {
-                        spawnedActor.setAttribute('apply_state', trapApplyState);
-                    }
-
-                    if (trap.data?.trap_spawn_flammable) spawnedActor.setAttribute('flammable', true);
-
-                    // Mark as origin cloud so it spreads
-                    spawnedActor.isCloudOrigin = true;
-                    spawnedActor.cloudOriginX = trap.x;
-                    spawnedActor.cloudOriginY = trap.y;
-                    spawnedActor.cloudLifetime = 8;
-                }
-            }
-        }
     },
 
     /**

@@ -424,9 +424,9 @@ function trapsSwitchesBody(obj, body) {
     // traps
     body.appendChild(toggleLine('traps', !!obj.traps, (on) => {
         if (on) obj.traps = { min: 0, max: 5 }; else delete obj.traps; commit(); render();
-    }, 'Hidden hazard tiles placed on the floor. Count is a random value in the min–max range.'));
+    }, 'Hidden traps: each is a pressure plate and a linked vent in the same room. Count is a random number of pairs in the min–max range.'));
     if (obj.traps) {
-        body.appendChild(dualRangeRow('count', obj.traps, 'min', 'max', { min: 0, max: 20, tip: 'Min–max number of traps placed on this floor.' }));
+        body.appendChild(dualRangeRow('count', obj.traps, 'min', 'max', { min: 0, max: 20, tip: 'Min–max number of plate + vent pairs placed on this floor.' }));
     }
     // fungus
     body.appendChild(toggleLine('fungus', !!obj.fungus, (on) => {
