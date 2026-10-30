@@ -753,7 +753,7 @@ export const EffectPrimitives = {
             // An AnimatedSprite cycles its own frames; assigning one texture would
             // fight the animation, so those keep their art and take only the tint.
             if (!(sprite instanceof PIXI.AnimatedSprite)) {
-                ctx.renderer.updateSpriteTexture(sprite, tile);
+                ctx.renderer.updateSpriteTexture(sprite, tile, { honest: false });
             }
             sprite.tint = tint;
 
@@ -801,8 +801,15 @@ export const EffectPrimitives = {
                     if (actor.isDead) continue;
                     if (skip_player && actor.isPlayerControlled()) continue;
 
-                    if (!originalActorTextures.has(actor)) {
+                    // Keyed by actor but remembering the sprites too, like items below.
+                    // A hidden plate or vent has no sprites until it's revealed, and one
+                    // revealed mid-trip gets new, honest sprites that must be captured
+                    // before they're scrambled, or there's nothing to restore them to.
+                    const captured = originalActorTextures.get(actor);
+                    if (!captured || captured.base !== actor.spriteBase || captured.top !== actor.spriteTop) {
                         originalActorTextures.set(actor, {
+                            base: actor.spriteBase,
+                            top: actor.spriteTop,
                             baseTexture: actor.spriteBase ? actor.spriteBase.texture : null,
                             topTexture: actor.spriteTop ? actor.spriteTop.texture : null,
                             baseTint: actor.spriteBase ? actor.spriteBase.tint : 0xFFFFFF,
@@ -860,12 +867,16 @@ export const EffectPrimitives = {
 
                 if (originalActorTextures) {
                     for (const [actor, originals] of originalActorTextures) {
-                        if (actor.spriteBase && originals.baseTexture) {
-                            actor.spriteBase.texture = originals.baseTexture;
+                        // Prefer the sprite's last honest texture: a door opened or a
+                        // lever pulled mid-trip changed it after the capture was taken.
+                        const baseTexture = actor.spriteBase?._trueTexture ?? originals.baseTexture;
+                        const topTexture = actor.spriteTop?._trueTexture ?? originals.topTexture;
+                        if (actor.spriteBase && actor.spriteBase === originals.base && baseTexture) {
+                            actor.spriteBase.texture = baseTexture;
                             actor.spriteBase.tint = originals.baseTint;
                         }
-                        if (actor.spriteTop && originals.topTexture) {
-                            actor.spriteTop.texture = originals.topTexture;
+                        if (actor.spriteTop && actor.spriteTop === originals.top && topTexture) {
+                            actor.spriteTop.texture = topTexture;
                             actor.spriteTop.tint = originals.topTint;
                         }
                         delete actor._hallucinatedTileNameBase;

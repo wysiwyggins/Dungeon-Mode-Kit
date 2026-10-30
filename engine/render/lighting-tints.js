@@ -494,7 +494,14 @@ export const RenderLighting = {
      * @param {PIXI.Sprite} sprite - The sprite to update
      * @param {Object} tileIndex - The tile index {x, y}
      */
-    updateSpriteTexture(sprite, tileIndex) {
+    /**
+     * Point a sprite at a tile. An honest change (a door opening, a lever pulled, a
+     * disguise dropped) is remembered on the sprite as `_trueTexture`, so a visual
+     * effect that scrambles textures — hallucination — can restore the actor as it
+     * is now rather than as it was when the effect began. The scramble itself
+     * passes `honest: false`.
+     */
+    updateSpriteTexture(sprite, tileIndex, { honest = true } = {}) {
         if (!sprite || !tileIndex) return;
         const tileset = PIXI.Loader.shared.resources.tiles;
         if (!tileset) return;
@@ -505,6 +512,7 @@ export const RenderLighting = {
             TILE_HEIGHT
         );
         sprite.texture = new PIXI.Texture(tileset.texture.baseTexture, rect);
+        if (honest) sprite._trueTexture = sprite.texture;
     },
 
     blendTints(baseTint, lightTint) {

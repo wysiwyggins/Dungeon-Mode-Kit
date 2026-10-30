@@ -634,9 +634,17 @@ export class Actor extends Entity {
                 || (!em.actors.includes(e) && !em.items.includes(e));
             if (gone) this._pressedBy.delete(e);
         }
+        // An arrival means the entrant had stepped off, so its entry from last time is
+        // stale. Pruning can't tell: by the time we're called it's back on the tile.
+        this._pressedBy.delete(entrant);
         const alreadyHeld = this._pressedBy.size > 0;
         this._pressedBy.add(entrant);
-        if (alreadyHeld) return;
+        if (alreadyHeld) {
+            const holders = [...this._pressedBy].filter(e => e !== entrant).map(e => e.name).join(', ');
+            console.log(`${this.name} at (${this.x}, ${this.y}): ${entrant.name} stepped on, already held down by ${holders}`);
+            return;
+        }
+        console.log(`${this.name} at (${this.x}, ${this.y}) fired by ${entrant.name}`);
 
         this._revealIfSeen();
         if (entrant.hasAttribute?.('pushable')) {
@@ -659,6 +667,22 @@ export class Actor extends Entity {
     activate(_source) {
         if (!this.data?.trap_spawn && !this.data?.trap_effect) return;
         this._revealIfSeen();
+
+        // Something solid parked on the vent smothers its spawn (spawnActor refuses gas
+        // under a wall anyway). Say so, so the player knows the plate did its job.
+        const blocker = this.data.trap_spawn
+            ? this.engine.entityManager.blocksGasAt(this.x, this.y)
+            : null;
+        if (blocker) {
+            console.log(`${this.name} at (${this.x}, ${this.y}) fired but is blocked by ${blocker.name}`);
+            this.engine.inputManager?.showMessage(
+                `${blocker.getNameWithArticle(true)} blocks ${this.getNameWithArticle()}.`,
+                { x: this.x, y: this.y }
+            );
+            return;
+        }
+
+        console.log(`${this.name} at (${this.x}, ${this.y}) fired`);
         springTrapPayload(this, null, this.data);
     }
 

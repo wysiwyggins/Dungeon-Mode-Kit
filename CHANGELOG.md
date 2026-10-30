@@ -18,6 +18,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 - **Plate and vent traps.** A trap is now a hidden pressure plate and a hidden floor vent in the same room, linked by `machine_id`. Stepping on the plate reveals both and the gas or fire comes out of the vent, and `traps` counts these pairs.
 - **`rearms` plates.** A floor plate with `rearms` fires each time something steps onto it while it's empty, instead of latching.
+- **Blocked-vent message.** A vent with something solid parked on it says "The [block] blocks the [vent]." when its plate fires, instead of releasing gas.
 - **Pressed-plate message.** A pushed block landing on a trap plate adds "The [block] presses down the pressure plate."
 - **Equip and unequip messages.** Wielding, putting on, putting away or taking off an item now says so in the message log, and swapping names the item being replaced.
 
@@ -30,6 +31,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 ### Fixed
 
+- **Hallucination restores revealed actors.** A hidden actor revealed during a hallucination, like a trap plate or vent, kept its scrambled tile after the trip ended. Its new sprites are now captured too, and every actor comes back as it is now, so a door opened or lever pulled mid-trip no longer reverts.
 - **Editors keep object attributes intact.** The actor, item and entity editors saved any object-valued custom attribute as the text `"[object Object]"`. They now show and save it as JSON, and the broken value on `pushable_wall` is removed.
 - **Placed items aren't randomly cursed.** `enchant_range` now only rolls for items placed at random (random items, chests, drops, treasure rooms, type names), so an item placed by name, like the test prototype's crown, comes in at +0. Set `enchantment` on an item to curse it on purpose.
 - **Curses can't be swapped off.** Equipping a weapon, armor or ring over a cursed one used to quietly remove the cursed item. Now it's refused, and a ring goes to whichever hand isn't cursed.
