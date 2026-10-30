@@ -851,8 +851,6 @@
         "type": "bolt",
         "bolt_damage": -15
       },
-      "projectile_tile": "SOLIDUS",
-      "projectile_tint": "#FFFF44",
       "spell_name": "Lightning",
       "cast_sound": "squarewave"
     }

@@ -436,12 +436,12 @@ const TILE_DATA_PATH = '../data/static-tiles.json';
 // checkboxes, `typed` name TYPED_ATTRS entries. Each id matches a data-group shell
 // in the markup; 'core' is always shown, the rest collapse.
 const ATTR_GROUPS = [
-    { id: 'core', bools: ['solid','visible','opaque','blocks_diagonal','hostile','sentient','controlled','light_source'], typed: [] },
+    { id: 'core', bools: ['solid','visible','blocks_diagonal','hostile','sentient','controlled','light_source'], typed: ['opaque'] },
     { id: 'combat', bools: ['breakable','pushable','splits'],
       typed: ['accuracy','defense','strength','inventory','remains','lode','lode_chance','split_min_health','chain_segment_type'] },
     { id: 'movement', bools: ['flies','aquatic','web_immune','dark_vision','follows_thread','pack','conceals_when_submerged'], typed: [] },
-    { id: 'terrain', bools: ['liquid','deep','hazard','flammable','conductive','ignites','platform','collapsible','consume_on_escape'],
-      typed: ['damage_type','apply_state','entry_sound'] },
+    { id: 'terrain', bools: ['liquid','deep','hazard','flammable','ignites','platform','collapsible','consume_on_escape'],
+      typed: ['conductive','damage_type','apply_state','entry_sound'] },
     { id: 'locks', bools: ['openable','lockable','locked','color_locked','gate'], typed: ['lock_color'] },
     { id: 'mechanisms', bools: ['switchable','pausable','toggled','one_shot','display_inventory','portal'], typed: ['machine_id','stairway'] },
     { id: 'traps', bools: ['trap','vent','hidden'], typed: ['density'] },
@@ -467,9 +467,7 @@ const BOOL_HINTS = {
     flammable: 'Default: false. Can catch fire. Often supplied by a type.',
     hostile: 'Default: false. Attacks player.',
     sentient: 'Default: false. Takes turns / has AI. Also gates mind-states (sleep, confusion, stun).',
-    opaque: 'Blocks line of sight for lighting/FOV.',
 
-    conductive: 'Conducts lightning.',
     blocks_diagonal: 'No moving or melee diagonally past this actor\'s corner. Only counts while solid. Supplied by the terrain and doorway types.',
     breakable: 'Can be destroyed by attacks.',
     pushable: 'Can be pushed by collisions.',
@@ -520,6 +518,9 @@ const TYPED_ATTRS = [
     { key: 'strength', type: 'number', label: 'Strength', hint: 'Melee damage when using "-{strength}" in collision_effect. Typical: 1-18.' },
     { key: 'inventory', type: 'number', label: 'Inventory slots', hint: 'Number of items this actor can carry. 0 = none, player default is 4.' },
     { key: 'lode_chance', type: 'number', label: 'Lode Chance (0-100)', hint: 'Percent chance to drop a lode item when broken. Requires breakable + lode.' },
+    // Three-way: unset, true and false each mean something different, so a checkbox can't hold them.
+    { key: 'opaque', type: 'tribool', label: 'Opaque', hint: 'Blocks line of sight for lighting/FOV. Default: solid actors block sight and others don\'t; true makes a non-solid actor block it (tall fungus), false lets sight through a solid one (a creature, a gate).' },
+    { key: 'conductive', type: 'tribool', label: 'Conductive', hint: 'false: bolts stop at or bounce off it, as off a wall. Terrain and doorways supply false; true undoes that (a hedge). Unset: bolts pass through.' },
     { key: 'density', type: 'number', label: 'Density', hint: 'Gas with a density spreads puff to puff, each new puff one lower, creeping about this many tiles out.' },
     { key: 'remains', type: 'text', ref: 'entity', label: 'Remains', hint: 'Entity (data/entities.json) left on death, e.g. skull, rubble, blood, log.' },
     { key: 'damage_type', type: 'select', label: 'Damage Type', hint: 'Hazard damage category. Grants immunity via {type}_immune attribute.', options: ['', 'fire', 'poison', 'electric'] },
@@ -1201,13 +1202,14 @@ function makeTypedField(ta, container) {
     const lbl = document.createElement('label');
     lbl.textContent = ta.label;
     row.appendChild(lbl);
-    if (ta.type === 'select') {
+    if (ta.type === 'select' || ta.type === 'tribool') {
         const sel = document.createElement('select');
         sel.id = 'attr-' + ta.key;
-        for (const opt of ta.options) {
+        const options = ta.type === 'tribool' ? ['', 'true', 'false'] : ta.options;
+        for (const opt of options) {
             const o = document.createElement('option');
             o.value = opt;
-            o.textContent = opt || '— none —';
+            o.textContent = opt || (ta.type === 'tribool' ? '— default —' : '— none —');
             sel.appendChild(o);
         }
         sel.addEventListener('change', updatePreview);
@@ -1910,7 +1912,7 @@ function populateForm(key, data) {
                 const hex = document.getElementById('attr-' + ta.key + '-hex');
                 if (hex) hex.value = val;
             } else {
-                el.value = val;
+                el.value = ta.type === 'tribool' ? String(!!val) : val;
             }
         }
     }
@@ -2123,6 +2125,9 @@ function readForm() {
         } else if (ta.type === 'number') {
             const v = parseFloat(el.value);
             if (!isNaN(v)) attrs[ta.key] = v;
+        } else if (ta.type === 'tribool') {
+            // An explicit true/false is kept even when false, unless the type already says so.
+            if (el.value !== '' && typeAttrs[ta.key] !== (el.value === 'true')) attrs[ta.key] = el.value === 'true';
         } else {
             if (el.value.trim()) attrs[ta.key] = el.value.trim();
         }

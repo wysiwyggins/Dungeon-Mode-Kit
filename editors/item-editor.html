@@ -369,6 +369,7 @@
                         </div>
                         <div id="spell-effect-list" class="dynamic-list"></div>
                         <button class="add-btn" id="btn-add-spell-effect">+ Add Spell Effect Property</button>
+                        <div id="projectile-fields">
                         <div style="margin: 8px 0 4px; font-size:11px; color:var(--accent)">Projectile</div>
                         <div class="field-row"><label>Projectile Tile</label>
                             <div class="tile-slot" data-target="projectile_tile"><canvas width="40" height="30"></canvas><span class="tile-name">—</span><button class="clear-btn" title="Clear">x</button></div>
@@ -377,6 +378,10 @@
                             <label>Projectile Tint</label>
                             <input type="color" id="f-projectile_tint" value="#ffffff">
                             <input type="text" id="f-projectile_tint_hex" value="" placeholder="#rrggbb" style="width:80px">
+                        </div>
+                        </div>
+                        <div id="bolt-note" style="display:none; font-size:10px; color:var(--text-dim); margin-top:8px">
+                            Bolt spells (spell_effect type: bolt) draw the lightning_bolt effect along the path, so they have no projectile tile or tint.
                         </div>
                     </div>
                 </div>
@@ -874,9 +879,32 @@ function updatePreview() {
     else stopAnimLoop();
 }
 
+// Text fields whose blank state inherits the type's value. The placeholder shows
+// what that value is; the field stays blank so saving doesn't restate it.
+const INHERITABLE_TEXT_FIELDS = ['use_verb', 'use_sound', 'charge_stat', 'spell_name', 'cast_sound'];
+
 function updateConditionalSections() {
-    const effectStr = document.getElementById('f-use_effect_string').value;
+    const typeAttrs = state.types?.[document.getElementById('f-type').value]?.attributes || {};
+    const sel = document.getElementById('f-use_effect_string');
+    // A blank use effect inherits the type's (staffs and wands get targeted_spell
+    // from types.json), so name it rather than claim there is none.
+    const inheritedEffect = typeof typeAttrs.use_effect === 'string' ? typeAttrs.use_effect : null;
+    sel.options[0].textContent = inheritedEffect
+        ? `— inherit from type: ${inheritedEffect} —`
+        : '— none (use object below) —';
+    const effectStr = sel.value || (readKVList('use-effect-list') ? '' : inheritedEffect);
     document.getElementById('targeted-spell-section').classList.toggle('visible', effectStr === 'targeted_spell');
+    // Bolts draw the lightning_bolt effect (ui/spells.js) and never read the projectile fields.
+    const isBolt = readKVList('spell-effect-list')?.type === 'bolt';
+    document.getElementById('projectile-fields').style.display = isBolt ? 'none' : '';
+    document.getElementById('bolt-note').style.display = isBolt ? '' : 'none';
+
+    for (const key of INHERITABLE_TEXT_FIELDS) {
+        const el = document.getElementById('f-' + key);
+        if (!el) continue;
+        el.dataset.placeholder ??= el.placeholder;
+        el.placeholder = typeAttrs[key] !== undefined ? `inherits: ${typeAttrs[key]}` : el.dataset.placeholder;
+    }
 }
 
 // ---- Tile slots ----
@@ -1700,11 +1728,13 @@ function readForm() {
     if (!isNaN(sr)) attrs.spell_range = sr;
     const se = readKVList('spell-effect-list');
     if (se) attrs.spell_effect = se;
-    const projTile = state.currentTiles.projectile_tile;
-    if (projTile) attrs.projectile_tile = projTile;
-    const projTintHex = document.getElementById('f-projectile_tint_hex').value.trim();
-    const projTint = projTintHex || document.getElementById('f-projectile_tint').value;
-    if (projTint && projTint !== '#ffffff') attrs.projectile_tint = projTint;
+    if (se?.type !== 'bolt') {
+        const projTile = state.currentTiles.projectile_tile;
+        if (projTile) attrs.projectile_tile = projTile;
+        const projTintHex = document.getElementById('f-projectile_tint_hex').value.trim();
+        const projTint = projTintHex || document.getElementById('f-projectile_tint').value;
+        if (projTint && projTint !== '#ffffff') attrs.projectile_tint = projTint;
+    }
     const sn = document.getElementById('f-spell_name').value.trim();
     if (sn) attrs.spell_name = sn;
     const cSound = document.getElementById('f-cast_sound').value.trim();
