@@ -8,7 +8,7 @@
 // ============================================================================
 
 // Asset root: the kit folder this module was served from, with no trailing slash
-// ('' at a site root, '/dungeonkit' on the Jekyll site). Read off this file's own
+// ('' at a site root, '/dungeonkit' on my demo Jekyll site). Read off this file's own
 // URL, so it's right whatever page loads the engine: a game page, a blog post or
 // an editor.
 export const BASE_PATH = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
