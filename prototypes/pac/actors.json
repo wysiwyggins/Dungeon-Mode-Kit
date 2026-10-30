@@ -13,8 +13,6 @@
     "collision_sound": "hit",
     "death_sound": "ouch",
     "attributes": {
-      "sentient": true,
-      "controlled": true,
       "flammable": null,
       "melee_harmless": true
     }

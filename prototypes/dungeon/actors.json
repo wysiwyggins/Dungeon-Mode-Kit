@@ -11,8 +11,6 @@
     "defaultFacing": "left",
     "death_sound": "ouch",
     "attributes": {
-      "flammable": true,
-      "controlled": true,
       "inventory": 14,
       "strength": 5,
       "remains": "skull",
@@ -121,6 +119,7 @@
   },
   "gate_lever": {
     "name": "lever",
+    "type": "switch",
     "tileIndexBase": "LEVER_BASE",
     "tileIndexTop": "LEVER_HANDLE",
     "tileIndexBase_toggled": "LEVER_HANDLE",
@@ -128,37 +127,15 @@
     "flipBaseV_toggled": true,
     "flipTopV_toggled": true,
     "collision_sound": "push1",
-    "attributes": {
-      "solid": true,
-      "switchable": true,
-      "toggled": false
-    },
     "switch_message": "You pull [name]. A gate grinds open.",
     "switch_effects": {
       "locked": false,
       "open": true
     }
   },
-  "trap_plate": {
-    "name": "pressure plate",
-    "tileIndexBase": "BUTTON_UP",
-    "tileIndexBase_toggled": "BULLET",
-    "tileIndexTop": "NULL",
-    "collision_sound": "push1",
-    "attributes": {
-      "solid": false,
-      "switchable": true,
-      "toggled": false,
-      "one_shot": true
-    },
-    "switch_message": "A stone depresses as you step on it. A gate slams shut behind you.",
-    "switch_effects": {
-      "locked": true,
-      "open": false
-    }
-  },
   "church_lever": {
     "name": "lever",
+    "type": "switch",
     "tileIndexBase": "LEVER_BASE",
     "tileIndexTop": "LEVER_HANDLE",
     "tileIndexBase_toggled": "LEVER_HANDLE",
@@ -166,33 +143,10 @@
     "flipBaseV_toggled": true,
     "flipTopV_toggled": true,
     "collision_sound": "push1",
-    "attributes": {
-      "solid": true,
-      "switchable": true,
-      "toggled": false
-    },
     "switch_message": "You pull [name].",
     "switch_effects": {
       "locked": false,
       "open": true
-    }
-  },
-  "church_pressure_plate": {
-    "name": "pressure plate",
-    "tileIndexBase": "INVERSE_BULLET",
-    "tileIndexTop": "NULL",
-    "collision_sound": "push1",
-    "attributes": {
-      "solid": false,
-      "switchable": true,
-      "toggled": false,
-      "one_shot": true,
-      "visible": false
-    },
-    "switch_message": "A stone depresses as you step on it.",
-    "switch_effects": {
-      "locked": true,
-      "open": false
     }
   },
 

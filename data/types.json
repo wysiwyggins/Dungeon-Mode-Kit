@@ -4,12 +4,10 @@
     "domain": "actor",
     "description": "Animals and vermin. A mind, but no hands and no possessions. Hunts or is hostile.",
     "attributes": {
-      "solid": true,
       "sentient": true,
       "flammable": true,
       "hostile": true,
       "opaque": false,
-      "inventory": 0,
       "remains": "blood"
     }
   },
@@ -19,12 +17,9 @@
     "domain": "actor",
     "description": "non-hostile animals.",
     "attributes": {
-      "solid": true,
       "sentient": true,
       "flammable": true,
       "opaque": false,
-      "hostile": false,
-      "inventory": 0,
       "remains": "blood"
     },
     "default_items": [
@@ -37,12 +32,10 @@
     "domain": "actor",
     "description": "Lurker in the depths, helpless on land.",
     "attributes": {
-      "solid": true,
       "sentient": true,
       "flammable": true,
       "hostile": true,
       "opaque": false,
-      "inventory": 0,
       "aquatic": true,
       "conceals_when_submerged": true,
       "gas_immune": true
@@ -54,7 +47,6 @@
     "domain": "actor",
     "description": "The animate dead in various states of decay.",
     "attributes": {
-      "solid": true,
       "sentient": true,
       "flammable": true,
       "hostile": true,
@@ -70,7 +62,6 @@
     "domain": "actor",
     "description": "Upright folk who carry things.",
     "attributes": {
-      "solid": true,
       "sentient": true,
       "flammable": true,
       "opaque": false,
@@ -84,7 +75,7 @@
     "domain": "actor",
     "description": "Upright folk who carry things.",
     "attributes": {
-      "solid": true,
+      "hostile": true,
       "sentient": true,
       "flammable": true,
       "opaque": false,
@@ -112,7 +103,6 @@
     "collision_description": "The [actor_name] slimes you!",
     "split_sound": "step_mud",
     "attributes": {
-      "solid": true,
       "sentient": true,
       "flammable": true,
       "hostile": true,
@@ -127,8 +117,7 @@
     "domain": "actor",
     "description": "Built and grown scenery — walls, columns, statues. Mindless, so it can burn or be stuck but never confused or put to sleep.",
     "attributes": {
-      "solid": true,
-      "flammable": false,
+      "breakable": true,
       "pushable": false,
       "conductive": false,
       "blocks_diagonal": true,
@@ -143,8 +132,7 @@
     "attributes": {
       "solid": false,
       "flies": true,
-      "mass_noun": true,
-      "flammable": false
+      "mass_noun": true
     }
   },
 
@@ -156,7 +144,6 @@
       "solid": false,
       "liquid": true,
       "mass_noun": true,
-      "flammable": false,
       "entry_sound": "step_mud"
     }
   },
@@ -169,9 +156,7 @@
     "reveal_message": "You spot a vent in the floor!",
     "attributes": {
       "solid": false,
-      "visible": true,
       "hidden": true,
-      "flammable": false,
       "vent": true,
       "render_layer": "bottom"
     }
@@ -182,12 +167,10 @@
     "domain": "actor",
     "description": "Doors and gates. Open, close and lock; never burn or conduct.",
     "attributes": {
-      "flammable": false,
       "conductive": false,
       "blocks_diagonal": true,
       "openable": true,
-      "lockable": true,
-      "open": false
+      "lockable": true
     }
   },
 
@@ -196,10 +179,8 @@
     "domain": "actor",
     "description": "Chests. Open to roll their drops, or smash them for a share of it.",
     "attributes": {
-      "solid": true,
       "openable": true,
       "container": true,
-      "open": false,
       "flammable": true,
       "breakable": true,
       "death_sound": "plunk3"
@@ -211,8 +192,7 @@
     "domain": "actor",
     "description": "Levers and pressure plates that work a machine.",
     "attributes": {
-      "switchable": true,
-      "toggled": false
+      "switchable": true
     }
   },
 

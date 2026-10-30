@@ -287,8 +287,19 @@
                  "height":30,
                  "id":39,
                  "name":"pressure plate",
+                 "properties":[
+                        {
+                         "name":"hidden",
+                         "type":"bool",
+                         "value":true
+                        }, 
+                        {
+                         "name":"switch_effects",
+                         "type":"string",
+                         "value":"{\"locked\": true, \"open\": false}"
+                        }],
                  "rotation":0,
-                 "type":"church_pressure_plate",
+                 "type":"pressure_plate",
                  "visible":true,
                  "width":40,
                  "x":720,

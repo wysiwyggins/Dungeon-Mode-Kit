@@ -1608,9 +1608,9 @@ export class InputManager {
 
                 // Check if this is a newly visible hostile actor
                 if (STOP_ON_HOSTILE_COMES_INTO_VIEW && !this.previouslyVisibleActors.has(actor)) {
-                    // Check if actor is hostile (has personality that targets player, or has collision_effect)
+                    // Check if actor is hostile (an attacker, or marked hostile)
                     const isHostile = actor.hasAttribute('collision_effect') ||
-                                     (actor.personality && !actor.hasAttribute('friendly'));
+                                     (actor.personality && actor.hasAttribute('hostile'));
                     if (isHostile) {
                         this.previouslyVisibleActors = currentlyVisibleActors;
                         this.previouslyVisibleItems = currentlyVisibleItems;
@@ -1624,7 +1624,7 @@ export class InputManager {
                     const isCloser = getChebyshevDistance(actor.x, actor.y, player.x, player.y);
                     if (isCloser < wasCloser && isCloser <= 6) {
                         const isHostile = actor.hasAttribute('collision_effect') ||
-                                         (actor.personality && !actor.hasAttribute('friendly'));
+                                         (actor.personality && actor.hasAttribute('hostile'));
                         if (isHostile) {
                             this.previouslyVisibleActors = currentlyVisibleActors;
                             this.previouslyVisibleItems = currentlyVisibleItems;

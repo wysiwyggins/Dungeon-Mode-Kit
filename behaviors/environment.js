@@ -40,6 +40,84 @@ function openFloorUnder(gas) {
     }
 }
 
+/**
+ * Spawn one puff of a spreading cloud at (x, y), copying the origin's tint,
+ * collision_effect, apply_state, ward, flammability and remaining lifetime, and
+ * applying its state to whoever is already standing there. Shared by the ray and
+ * flood spreads in cloud_spread.
+ */
+function spawnSpreadPuff(actor, spawnType, x, y) {
+    const entityManager = actor.engine.entityManager;
+    const newCloud = entityManager.spawnActor(spawnType, x, y);
+    if (!newCloud) return null;
+
+    newCloud.tint = actor.tint;
+    newCloud.setAttribute('collision_effect', actor.getAttribute('collision_effect'));
+    // Copy apply_state for state-applying clouds (paralysis, confusion)
+    const applyState = actor.getAttribute('apply_state');
+    if (applyState) newCloud.setAttribute('apply_state', applyState);
+    const ward = actor.getAttribute('ward');
+    if (ward) newCloud.setAttribute('ward', ward);
+    newCloud.setAttribute('flammable', !!actor.hasAttribute('flammable'));
+    // Give spawned clouds the same remaining lifetime as the origin
+    newCloud.cloudLifetime = actor.cloudLifetime;
+    if (newCloud.spriteBase) newCloud.spriteBase.tint = actor.tint;
+    if (newCloud.spriteTop) newCloud.spriteTop.tint = actor.tint;
+
+    // Apply state to any actors at this position (since applySpawnDamage ran before apply_state was set)
+    const stateDef = applyState && actor.engine.globalStates?.[applyState];
+    if (stateDef) {
+        for (const other of entityManager.getActorsAt(x, y)) {
+            if (other === newCloud) continue;
+            if (entityManager._gasDensity(other) > 0) continue;
+            other.applyState?.(applyState, stateDef);
+        }
+    }
+    return newCloud;
+}
+
+/**
+ * Density spread for gas with a `density` attribute (authored on the gas actor,
+ * or set from a vent's `trap_spawn_density` in springTrapPayload). Every puff above density 1 pushes outward on its own
+ * turn: each open, gas-free neighbour catches a puff of density - 1 with
+ * `flood_spread_chance` (cloud personality, default 0.7), and the puff keeps
+ * trying until its neighbours are all filled. So the front creeps out a tile or
+ * so a turn, raggedly, rounds corners and runs down corridors, reaching about
+ * `density` tiles from the vent. Puffs hold together until their last few turns
+ * (see cloud_disperse), then thin from the edges.
+ */
+function densitySpread(actor, data) {
+    const em = actor.engine.entityManager;
+    const floorMap = actor.engine.mapManager?.floorMap;
+    const open = (x, y) => {
+        const floor = floorMap?.[y]?.[x];
+        return !!floor && floor.tileId > 0 && !em.blocksGasAt(x, y);
+    };
+    if (actor.cloudLifetime === undefined) {
+        actor.cloudLifetime = actor.lifetime || data.cloud_lifetime || 10;
+    }
+    actor._floodPuff = true;
+
+    const chance = data.flood_spread_chance ?? 0.7;
+    const spawnType = data.spawn_type || actor.type;
+    let pending = false;
+    for (const { dx, dy } of ALL_DIRS) {
+        const nx = actor.x + dx, ny = actor.y + dy;
+        // No slipping diagonally between two wall corners.
+        if (dx && dy && !open(actor.x + dx, actor.y) && !open(actor.x, actor.y + dy)) continue;
+        if (!open(nx, ny)) continue;
+        if (em.getActorsAt(nx, ny).some(a => !a.isDead && em._gasDensity(a) > 0)) continue;
+        if (ROT.RNG.getUniform() >= chance) { pending = true; continue; }
+        const puff = spawnSpreadPuff(actor, spawnType, nx, ny);
+        if (!puff) continue;
+        puff.setAttribute('density', actor.getAttribute('density') - 1);
+        puff._floodPuff = true;
+    }
+    // Spent once nothing around is left to fill.
+    if (!pending) actor.setAttribute('density', 1);
+    return true;
+}
+
 export const BehaviorsEnvironment = {
     /**
      * Incinerate any entities (actors or items) sharing this actor's tile
@@ -180,6 +258,13 @@ export const BehaviorsEnvironment = {
      * Uses actor's spreadTurnsRemaining and origin position
      */
     cloud_spread: (actor, data) => {
+        // Gas given a density (a trap vent's) spreads puff to puff instead of
+        // casting rays from the origin. See densitySpread.
+        const density = actor.getAttribute('density');
+        if (density !== undefined) {
+            return density > 1 ? densitySpread(actor, data) : false;
+        }
+
         // Only the origin cloud spreads
         if (!actor.isCloudOrigin) return false;
 
@@ -233,40 +318,7 @@ export const BehaviorsEnvironment = {
                 .find(a => !a.isDead && entityManager._gasDensity(a) > 0);
             if (existingGas) continue;
 
-            // Spawn a new cloud at this position
-            const newCloud = entityManager.spawnActor(cloudSpawnType, targetX, targetY);
-            if (newCloud) {
-                // Copy properties from origin cloud
-                newCloud.tint = actor.tint;
-                newCloud.setAttribute('collision_effect', actor.getAttribute('collision_effect'));
-                // Copy apply_state for state-applying clouds (paralysis, confusion)
-                const applyState = actor.getAttribute('apply_state');
-                if (applyState) {
-                    newCloud.setAttribute('apply_state', applyState);
-                }
-                const ward = actor.getAttribute('ward');
-                if (ward) newCloud.setAttribute('ward', ward);
-                newCloud.setAttribute('flammable', !!actor.hasAttribute('flammable'));
-                // Give spawned clouds the same remaining lifetime as the origin
-                newCloud.cloudLifetime = actor.cloudLifetime;
-                // Update sprites with new tint
-                if (newCloud.spriteBase) newCloud.spriteBase.tint = actor.tint;
-                if (newCloud.spriteTop) newCloud.spriteTop.tint = actor.tint;
-
-                // Apply state to any actors at this position (since applySpawnDamage ran before apply_state was set)
-                if (applyState) {
-                    const statesData = actor.engine.globalStates;
-                    if (statesData && statesData[applyState]) {
-                        for (const other of entityManager.getActorsAt(targetX, targetY)) {
-                            if (other === newCloud) continue;
-                            if (entityManager._gasDensity(other) > 0) continue;
-                            if (other.applyState) {
-                                other.applyState(applyState, statesData[applyState]);
-                            }
-                        }
-                    }
-                }
-            }
+            spawnSpreadPuff(actor, cloudSpawnType, targetX, targetY);
         }
 
         return true;
@@ -507,8 +559,13 @@ export const BehaviorsEnvironment = {
             }
         }
 
+        // Flood puffs (a vent's gas) don't erode at the edge until their last few
+        // turns; otherwise each thinned rim exposes the next and the whole cloud
+        // unravels in a couple of turns.
+        const lingering = actor._floodPuff && actor.cloudLifetime > (data.flood_thin_at ?? 3);
+
         // Clouds at the edge (fewer dense cloud neighbors) disperse into mist
-        if (cloudNeighbors <= disperseThreshold && ROT.RNG.getUniform() < disperseChance) {
+        if (!lingering && cloudNeighbors <= disperseThreshold && ROT.RNG.getUniform() < disperseChance) {
             const x = actor.x;
             const y = actor.y;
             const tint = actor.tint;

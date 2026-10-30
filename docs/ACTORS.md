@@ -176,21 +176,24 @@ Actors can be connected together by a `machine_id` attribute (a string like a na
 | ----------- | ------ | ------------- |
 | `switchable` | boolean | Actor can be toggled (by bumping it or by another machine). |
 | `toggled` | boolean | Current toggle state. Drives the `*_toggled` tile/flip variants. |
-| `one_shot` | boolean | Toggles once and then stays put (pressure plate). |
-| `rearms` | boolean | A floor plate that never latches: it fires every time something steps onto it while it's empty. Trap plates use it. |
+| `one_shot` | boolean | Toggles once and then stays put. Without it a pressure plate re-arms: it fires each time something steps onto it while it's empty, and its `*_toggled` tiles show only while something is on it. |
 | `pausable` | boolean | Can be paused/resumed by bumping (e.g. a clock countdown). |
 | `gate` | boolean | A barrier that receives propagated switch effects. |
-| `pedestal` | boolean | Holds an item on display; can also receive switch effects. |
-| `lockable` | boolean | Can be locked/unlocked (doors, gates). |
+| `lockable` | boolean | Any key unlocks it when locked (doors). A gate sets it false, since only its switch moves it. |
 | `display_inventory` | boolean | Renders the actor's first held item as a sprite on top (pedestals). |
 | `switch_effects` | object | Attribute to value map applied to linked actors on toggle (e.g. `{ "solid": false, "open": true }`). |
 | `switch_message` | string | Message shown when the switch is toggled. `[name]` interpolates the actor's color-aware name (see below). |
 | `switch_sound` | string | Sound played when the switch is toggled. |
-| `trap` | boolean | Marks the trigger. A revealed one asks before you step on it and can be thrown at. |
+| `trap` | boolean | Marks the trigger. A revealed one asks before you step on it and can be thrown at. It fires only its linked vents: it ignores its type's `switch_effects` and gets no machine tint. Random trap placement sets it on an ordinary `pressure_plate`. |
 | `vent` | boolean | Marks the payload actor. Random trap placement picks from every actor with it. |
 | `trap_spawn` | string | Actor spawned on the vent when it fires, usually a `cloud`. |
+| `density` | number | Gas with a density spreads puff to puff: each puff above 1 pushes into open neighbouring tiles with a density one lower, so it creeps a tile or so a turn to about this many tiles out. It flows around corners and stops at walls and closed doors. Gas without it uses the small default spread. |
+| `trap_spawn_density` | number | A vent's: the `density` given to the gas it releases, so about how many tiles out it creeps. |
+| `trap_cloud_lifetime` | number | Turns the spawned cloud lasts (default 8). New puffs inherit their parent's remaining time, and the gas holds together until its last few turns, then thins from the edges. |
+| `trap_effect` | object | Area payload in place of `trap_spawn`: `center` on the vent, `outer` around it. Give `radius` to fill a circle, or `blob_start` and `blob_decrement` (percent) for a ragged patch that stops at walls: each ring spreads to the next tiles at the start chance, which drops by the decrement each ring. |
+| `trap_sound` | string | Sound played when the vent fires. |
 
-A floor plate (a non-solid `switchable` actor) is pressed by anything solid that arrives on its tile: walking, being shoved or knocked back, teleporting, or a thrown item landing there. Flying actors pass over it. When a linked switch activates its targets, each one also gets an activation hook. Today that's what fires a vent; a target with nothing to do ignores it. A switch with a `machine_id` needs no `switch_effects` to fire its targets.
+A floor plate (a non-solid `switchable` actor) is pressed by anything solid that arrives on its tile: walking, being shoved or knocked back, teleporting, or a thrown item landing there. Flying actors pass over it. It re-arms unless it's `one_shot`. When a linked switch activates its targets, each one also gets an activation hook. Today that's what fires a vent; a target with nothing to do ignores it. A switch with a `machine_id` needs no `switch_effects` to fire its targets.
 
 ## Info Panel
 

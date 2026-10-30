@@ -1426,15 +1426,15 @@ export const ActorCombat = {
                 }
                 else if (currentValue !== undefined) {
                     // Any key opens any GENERIC locked door (lockable, no color_locked),
-                    // but never a stairway (owned by the win-condition system), a gate
-                    // (switch/machine-driven), or an unlock_conditions lock. Color-locked doors took the branch above.
+                    // but never a stairway (owned by the win-condition system) or an
+                    // unlock_conditions lock. A gate is switch-driven, so it sets
+                    // lockable: false over its doorway type. Color-locked doors took the branch above.
                     // All other boolean effects set freely.
                     const isKeyUnlock = isUnlock && source.item?.hasAttribute('key');
                     if (isKeyUnlock) {
                         const isGenericLockableDoor = target.hasAttribute('lockable') &&
                             !target.hasAttribute('color_locked') &&
                             !target.hasAttribute('stairway') &&
-                            !target.hasAttribute('gate') &&
                             !target.getAttribute('unlock_conditions');
                         if (isGenericLockableDoor) {
                             console.log(`${source.name} unlocks ${target.name} (generic lock)`);

@@ -124,15 +124,14 @@ export const ActorMovement = {
 
     /**
      * Would stepping onto (x, y) hurt this actor? A hazard is any live actor with
-     * a `damage_type` (lava, fire). Flying actors pass over it and `hazard_immune`
-     * ones shrug it off. Fire spares `fireproof` actors, the attribute burning and
+     * a `damage_type` (lava, fire). Flying actors pass over it. Fire spares `fireproof` actors, the attribute burning and
      * lava already check; any other type is resisted by `<type>_immune`.
      *
      * Movement doesn't consult this, only route choice, so a pushed, pulled or
      * confused actor can still end up in the lava.
      */
     isHazardAt(x, y) {
-        if (this.hasStateProperty('flying') || this.hasAttribute('hazard_immune')) return false;
+        if (this.hasStateProperty('flying')) return false;
         return this.engine.entityManager.getActorsAt(x, y).some(a => {
             if (a === this || a.isDead) return false;
             const type = a.getAttribute('damage_type');

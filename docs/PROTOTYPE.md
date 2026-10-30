@@ -245,10 +245,10 @@ You can also use an item type like `potion`, `weapon` or `scroll` instead of a s
 
 ### Traps
 
-`traps` hides trap pairs: a pressure plate and a vent, linked by `machine_id` and placed 2 to 5 tiles apart in the same room. The count is the number of pairs. Each vent is picked from every actor with the `vent` attribute, and `plate` names the trigger actor (default `trigger_plate`).
+`traps` hides trap pairs: a pressure plate and a vent, linked by `machine_id` and placed 2 to 5 tiles apart in the same room. The count is the number of pairs. Each vent is picked from every actor with the `vent` attribute, and `plate` names the trigger actor (default `pressure_plate`). The plate is placed hidden, re-arming and marked `trap`; a `trap` switch ignores its own `switch_effects`, so it only fires its vent.
 
 ```json
-"traps": { "min": 1, "max": 10, "plate": "trigger_plate" }
+"traps": { "min": 1, "max": 10, "plate": "pressure_plate" }
 ```
 
 ### Switch Puzzles
@@ -271,7 +271,7 @@ You can also use an item type like `potion`, `weapon` or `scroll` instead of a s
 }
 ```
 
-Each pattern names the actor used as the switch, the actor it controls, and the attributes to change on the target when the switch is used. `weight` sets how often a pattern is picked when there are several. In `switch_message`, `[name]` is replaced with the switch's name, including its color if it has one. See [Machines](ACTORS.md#machines).
+Each pattern names the actor used as the switch, the actor it controls, and the attributes to change on the target when the switch is used. `weight` sets how often a pattern is picked when there are several. A `gated_corridor` pattern defaults to a `pressure_plate` that slams its gate shut and locks it. In `switch_message`, `[name]` is replaced with the switch's name, including its color if it has one. See [Machines](ACTORS.md#machines).
 
 ### Item Catalog
 

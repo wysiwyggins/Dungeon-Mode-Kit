@@ -7,7 +7,6 @@
     "collision_effect": { "health": "-{strength}"},
     "collision_sound": "hit",
     "attributes": {
-      "controlled": true,
       "proper_named": true,
       "inventory": 5,
       "strength": 10,
@@ -31,7 +30,6 @@
     },
     "collision_sound": "hit",
     "attributes": {
-      "solid": true,
       "flammable": true,
       "hostile": true,
       "sentient": true,

@@ -293,6 +293,7 @@ export const RenderSprites = {
             }
 
             if (actor.facingEnabled) actor.applyFacing();
+            this._applySavedToggle(actor);
 
             actorsRendered++;
         }
@@ -402,8 +403,21 @@ export const RenderSprites = {
         }
 
         if (actor.facingEnabled) actor.applyFacing();
+        this._applySavedToggle(actor);
 
         this._hideIfSpawnedOutOfSight(actor);
+    },
+
+    /**
+     * A switch that's already toggled when its sprites are built (a pulled lever or
+     * spent one-shot plate on a reloaded floor, or a found plate) shows its
+     * `_toggled` tiles. toggle() only swaps them at the moment it flips. A disguised
+     * actor keeps its disguise.
+     */
+    _applySavedToggle(actor) {
+        if (!actor.hasAttribute('toggled') || !actor.tileIndexBase_toggled) return;
+        if (actor.isDisguised?.()) return;
+        actor._showToggledTile(true);
     },
 
     /**

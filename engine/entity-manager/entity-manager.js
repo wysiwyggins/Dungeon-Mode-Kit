@@ -143,7 +143,8 @@ export class EntityManager {
                 if (!machineId) continue;
                 targets = this.actors.filter(a => a !== actor && !a.isDead
                     && a.hasAttribute('teleporter') && a.getAttribute('machine_id') === machineId);
-            } else if (!actor.data?.switch_effects) {
+            } else if (!actor.data?.switch_effects || actor.hasAttribute('trap')) {
+                // A trap plate only fires its vent; tinting the pair would give it away.
                 continue;
             } else if (machineId) {
                 targets = this.actors.filter(
@@ -768,9 +769,8 @@ export class EntityManager {
      * Every way onto a tile funnels through here so a pressure plate can't miss one.
      *
      * Only solid things and items press a plate; flying actors hover over it. A
-     * `rearms` plate (a trap trigger) fires each time it goes from empty to occupied
-     * (see Actor.press); any other plate keeps the old rule and toggles once while
-     * untoggled, so a `one_shot` gate plate still latches.
+     * plate re-arms: it fires each time it goes from empty to occupied (see
+     * Actor.press). A `one_shot` plate instead toggles once and stays down.
      *
      * @param {Actor|Item} entity - What arrived
      * @param {number} x - Tile X
@@ -784,11 +784,22 @@ export class EntityManager {
         for (const plate of [...this.getActorsAt(x, y)]) {
             if (plate === entity || plate.isDead || plate.hasAttribute('solid')) continue;
             if (!plate.hasAttribute('switchable')) continue;
-            if (plate.hasAttribute('rearms')) {
+            if (!plate.hasAttribute('one_shot')) {
                 plate.press(entity);
             } else if (!plate.hasAttribute('toggled')) {
                 plate.toggle();
             }
+        }
+    }
+
+    /**
+     * Once-per-round sweep that pops pressed (re-arming) plates back up when whatever
+     * was on them has left. There's no single "stepped off" path to hook (walking,
+     * shoves, knockback, pickup, death), so checking the held plates is simpler.
+     */
+    releasePressurePlates() {
+        for (const actor of this.actors) {
+            if (actor._pressedBy?.size) actor.releaseIfClear();
         }
     }
 
@@ -868,8 +879,7 @@ export class EntityManager {
         for (const other of this.getActorsAt(hazard.x, hazard.y)) {
             if (other === hazard) continue;
 
-            if (!other.hasAttribute('flammable') ||
-                other.hasAttribute('hazard_immune')) continue;
+            if (!other.hasAttribute('flammable')) continue;
 
             // Skip flying actors (hovering above ground hazards)
             if (other.hasStateProperty?.('flying')) continue;

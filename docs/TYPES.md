@@ -157,21 +157,23 @@ so leaving it out drops the defaults rather than keeping them:
 
 ## Built-in actor types
 
+Actors are `solid` and `visible`, and not `flammable`, `hostile` or `sentient`, unless something says otherwise; attributes read as on/off (`open`, `toggled`, `locked`, `inventory`) are off when left out. So none of these need setting to their default.
+
 | Type | Grants | Notes |
 | ---- | ------ | ----- |
-| `beast` | `sentient`, `flammable`, `hostile`, `opaque: false`, `inventory: 0`, `remains: blood` | Animals and vermin — a mind, but no hands |
+| `beast` | `sentient`, `flammable`, `hostile`, `opaque: false`, `remains: blood` | Animals and vermin — a mind, but no hands |
 | `prey` | as `beast` but `hostile: false`, plus `default_items: [meat]` | Non-hostile animals |
 | `undead` | `sentient`, `flammable`, `hostile`, `dark_vision`, `poison_immune`, `gas_immune`, `remains: skull` | Nothing left to poison and no breath to hold, but fire still finds them |
 | `humanoid` | `sentient`, `flammable`, `opaque: false`, `inventory: 1`, `remains: skull` | Upright folk who carry things. No `hostile` — a guard may be friendly |
-| `arcane` | as `humanoid` but `remains: blood`, plus `default_items: [potion, scroll]` | Spellcasters, who start with something to read and something to quaff |
-| `jelly` | `solid`, `sentient`, `flammable`, `hostile`, `accuracy: 50`, `splits`, `split_min_health: 4`, plus the `jelly` personality, a full-block pink sprite, a `health: -2` slime attack and `step_mud` split sound | Splitting slimes. Members override `name` and `tint`; `collision_effect` merges, so a member's own attack keeps the `health: -2` unless it sets `health: null` |
-| `terrain` | `solid`, `flammable: false`, `pushable: false`, `conductive: false`, `blocks_diagonal`, `remains: rubble` | Mindless, so it can burn or be stuck but never confused |
-| `gas` | `solid: false`, `flies`, `mass_noun`, `flammable: false` | Clouds, mist, smoke |
-| `liquid` | `solid: false`, `liquid`, `mass_noun`, `flammable: false`, `entry_sound: step_mud` | Water, sewage, quicksand. `paint_tile` stays per-liquid (the Tiled wildcard reads raw defs) |
-| `vent` | `solid: false`, `visible`, `hidden`, `vent`, `flammable: false`, `render_layer: bottom`, its tile and `reveal_message` | Trap payloads. Random trap placement resolves through the type |
-| `doorway` | `openable`, `lockable`, `open: false`, `flammable: false`, `conductive: false`, `blocks_diagonal` | Doors and the gate; `locked`/`swings_shut` are per-door |
-| `container` | `solid`, `openable`, `container`, `open: false`, `flammable`, `breakable`, `death_sound: plunk3` | Chests; `drops` and `smash_loss` are per-chest |
-| `switch` | `switchable`, `toggled: false` | Levers and pressure plates |
+| `arcane` | as `humanoid` but `hostile` and `remains: blood`, plus `default_items: [potion, scroll]` | Spellcasters, who start with something to read and something to quaff |
+| `jelly` | `sentient`, `flammable`, `hostile`, `accuracy: 50`, `splits`, `split_min_health: 4`, plus the `jelly` personality, a full-block pink sprite, a `health: -2` slime attack and `step_mud` split sound | Splitting slimes. Members override `name` and `tint`; `collision_effect` merges, so a member's own attack keeps the `health: -2` unless it sets `health: null` |
+| `terrain` | `breakable`, `pushable: false`, `conductive: false`, `blocks_diagonal`, `remains: rubble` | Mindless, so it can burn or be stuck but never confused. Unbreakable members (metal wall, crystal, hedge) set `breakable: false` |
+| `gas` | `solid: false`, `flies`, `mass_noun` | Clouds, mist, smoke |
+| `liquid` | `solid: false`, `liquid`, `mass_noun`, `entry_sound: step_mud` | Water, sewage, quicksand. `paint_tile` stays per-liquid (the Tiled wildcard reads raw defs) |
+| `vent` | `solid: false`, `hidden`, `vent`, `render_layer: bottom`, its tile and `reveal_message` | Trap payloads. Random trap placement resolves through the type |
+| `doorway` | `openable`, `lockable`, `conductive: false`, `blocks_diagonal` | Doors and the gate (which sets `lockable: false`, being switch-driven); `locked`/`swings_shut` are per-door |
+| `container` | `openable`, `container`, `flammable`, `breakable`, `death_sound: plunk3` | Chests; `drops` and `smash_loss` are per-chest |
+| `switch` | `switchable` | Levers and pressure plates |
 
 ## Built-in item types
 

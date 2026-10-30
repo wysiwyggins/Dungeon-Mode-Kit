@@ -601,7 +601,19 @@ export class Actor extends Entity {
         const nowToggled = !this.hasAttribute('toggled');
         this.setAttribute('toggled', nowToggled);
 
-        if (nowToggled && this.tileIndexBase_toggled) {
+        this._showToggledTile(nowToggled);
+
+        this._announceSwitch();
+        this._propagateSwitchEffects(nowToggled);
+    }
+
+    /**
+     * Swap the sprites to the `_toggled` tiles (a pulled lever, a sunken plate), or
+     * back to the resting tiles. No-op toward the toggled look if none is authored.
+     * @param {boolean} on
+     */
+    _showToggledTile(on) {
+        if (on && this.tileIndexBase_toggled) {
             this.engine.renderer?.updateSpriteTexture(this.spriteBase, this.tileIndexBase_toggled);
             this.engine.renderer?.updateSpriteTexture(this.spriteTop, this.tileIndexTop_toggled);
             this._applyToggleFlip(this.spriteBase, this.flipBaseV_toggled, this.x, this.y);
@@ -612,28 +624,19 @@ export class Actor extends Entity {
             this._applyToggleFlip(this.spriteBase, this.flipBaseV, this.x, this.y);
             this._applyToggleFlip(this.spriteTop, this.flipTopV, this.x, this.y - 1);
         }
-
-        this._announceSwitch();
-        this._propagateSwitchEffects(nowToggled);
     }
 
     /**
-     * A `rearms` plate (a trap trigger) being pressed. Unlike toggle() it never
-     * latches: it fires each time the tile goes from empty to occupied, so a second
+     * A floor plate (non-solid switch without `one_shot`) being pressed. Unlike
+     * toggle() it never latches: it fires each time the tile goes from empty to occupied, so a second
      * creature joining the first doesn't fire it again, and an item left lying on
      * it holds it down until the tile clears. Called from notifyTileEntered.
      * @param {Actor|Item} entrant - What just arrived on the plate
      */
     press(entrant) {
         if (!this.hasAttribute('switchable')) return;
-        const em = this.engine.entityManager;
 
-        if (!this._pressedBy) this._pressedBy = new Set();
-        for (const e of this._pressedBy) {
-            const gone = e.isDead || e.x !== this.x || e.y !== this.y
-                || (!em.actors.includes(e) && !em.items.includes(e));
-            if (gone) this._pressedBy.delete(e);
-        }
+        this._prunePressedBy();
         // An arrival means the entrant had stepped off, so its entry from last time is
         // stale. Pruning can't tell: by the time we're called it's back on the tile.
         this._pressedBy.delete(entrant);
@@ -646,6 +649,7 @@ export class Actor extends Entity {
         }
         console.log(`${this.name} at (${this.x}, ${this.y}) fired by ${entrant.name}`);
 
+        this._showToggledTile(true);
         this._revealIfSeen();
         if (entrant.hasAttribute?.('pushable')) {
             this.engine.inputManager?.showMessage(
@@ -655,6 +659,27 @@ export class Actor extends Entity {
         }
         this._announceSwitch();
         this._propagateSwitchEffects(true);
+    }
+
+    /** Drop anything that's no longer holding this plate down: dead, moved off, or gone. */
+    _prunePressedBy() {
+        if (!this._pressedBy) this._pressedBy = new Set();
+        const em = this.engine.entityManager;
+        for (const e of this._pressedBy) {
+            const gone = e.isDead || e.x !== this.x || e.y !== this.y
+                || (!em.actors.includes(e) && !em.items.includes(e));
+            if (gone) this._pressedBy.delete(e);
+        }
+    }
+
+    /**
+     * Let a pressed plate spring back up once its tile has cleared, so its
+     * sunken `_toggled` tile shows only while something is actually on it.
+     */
+    releaseIfClear() {
+        if (!this._pressedBy?.size) return;
+        this._prunePressedBy();
+        if (this._pressedBy.size === 0) this._showToggledTile(false);
     }
 
     /**
@@ -728,8 +753,10 @@ export class Actor extends Entity {
     _propagateSwitchEffects(activated) {
         const machineId = this.getAttribute('machine_id');
         // A linked switch with no effects still fires its targets' activate() hook —
-        // that's all a trap plate does. Proximity switches need effects to mean anything.
-        const effects = this.data?.switch_effects || (machineId ? {} : null);
+        // that's all a trap plate does, so a `trap` switch ignores any switch_effects
+        // its actor type carries. Proximity switches need effects to mean anything.
+        const effects = (!this.hasAttribute('trap') && this.data?.switch_effects)
+            || (machineId ? {} : null);
         if (!effects) return;
 
         let targets;
@@ -910,6 +937,7 @@ export class Actor extends Entity {
             // Same once-per-round sweep for burning items on the floor (a dropped
             // lit torch or incense), which have no owner to tick them.
             this.engine.entityManager.processGroundItems();
+            this.engine.entityManager.releasePressurePlates();
         }
 
         // Check if incapacitated by a state (stunned, sleeping, etc.)
@@ -1694,8 +1722,24 @@ export class Actor extends Entity {
                     Object.entries(this.states || {}).map(([k, v]) => [k, { duration: v.duration, data: v.data }])
                 )
             )),
+            switchOverrides: this._switchOverrides(),
             isActor: true
         };
+    }
+
+    /**
+     * Switch settings this placement changed from its actor definition (a Tiled
+     * `switch_effects` property, a generated gated corridor's slam-shut effects).
+     * `data` is rebuilt from the definition on reload, so these have to be saved.
+     * @returns {Object|undefined}
+     */
+    _switchOverrides() {
+        const def = this.engine.currentPrototype?.getActorData(this.type) || {};
+        const out = {};
+        for (const key of ['switch_effects', 'switch_message', 'switch_radius']) {
+            if (JSON.stringify(this.data?.[key]) !== JSON.stringify(def[key])) out[key] = this.data?.[key];
+        }
+        return Object.keys(out).length ? out : undefined;
     }
 
     deserialize(data) {
@@ -1705,6 +1749,7 @@ export class Actor extends Entity {
         if (data.isDead !== undefined) this.isDead = data.isDead;
         if (data.facing !== undefined) this.facing = data.facing;
         if (data.states) this.states = JSON.parse(JSON.stringify(data.states));
+        if (data.switchOverrides) this.data = { ...this.data, ...data.switchOverrides };
         // Reconstruct inventory items
         if (data.inventory) {
             this.inventory = data.inventory.map(itemData => {

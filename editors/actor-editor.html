@@ -242,6 +242,15 @@
                                 <label>Outer (actor type)</label>
                                 <input type="text" id="f-trap_effect_outer" placeholder="fire">
                             </div>
+                            <div class="field-row">
+                                <label>Blob Start %</label>
+                                <input type="number" id="f-trap_effect_blob_start" min="0" max="100" value="" placeholder="100">
+                            </div>
+                            <div class="field-row">
+                                <label>Blob Decrement %</label>
+                                <input type="number" id="f-trap_effect_blob_decrement" min="1" max="100" value="" placeholder="37">
+                            </div>
+                            <div class="hint" style="margin:4px 0 8px 0">With a blob start, the outer actor spreads as a ragged patch: each ring reaches the next tiles at the start chance, minus the decrement per ring, and stops at walls. Leave it blank to fill the radius instead.</div>
                             <div class="sub-section-title" style="margin-top:8px">Simple Spawn</div>
                             <div class="field-row">
                                 <label>Trap Spawn (actor type)</label>
@@ -257,8 +266,21 @@
                                 <input type="text" id="f-trap_apply_state" placeholder="poisoned">
                             </div>
                             <div class="field-row">
+                                <label>Spawn Density</label>
+                                <input type="number" id="f-trap_spawn_density" min="0" value="" placeholder="">
+                            </div>
+                            <div class="field-row">
+                                <label>Cloud Lifetime</label>
+                                <input type="number" id="f-trap_cloud_lifetime" min="1" value="" placeholder="8">
+                            </div>
+                            <div class="hint" style="margin:4px 0 8px 0">Spawn density becomes the gas's density: about how many tiles out it creeps from the vent. Leave it blank for the small default spread. Cloud lifetime is how many turns the gas lasts.</div>
+                            <div class="field-row">
                                 <label>Trap Message</label>
                                 <input type="text" id="f-trap_message" placeholder="">
+                            </div>
+                            <div class="field-row">
+                                <label>Trap Sound</label>
+                                <input type="text" id="f-trap_sound" placeholder="tap2">
                             </div>
                         </div>
                     </div>
@@ -417,12 +439,12 @@ const ATTR_GROUPS = [
     { id: 'core', bools: ['solid','visible','opaque','blocks_diagonal','hostile','sentient','controlled','light_source'], typed: [] },
     { id: 'combat', bools: ['breakable','pushable','splits'],
       typed: ['accuracy','defense','strength','inventory','remains','lode','lode_chance','split_min_health','chain_segment_type'] },
-    { id: 'movement', bools: ['flies','aquatic','web_immune','hazard_immune','dark_vision','follows_thread','pack','conceals_when_submerged'], typed: [] },
+    { id: 'movement', bools: ['flies','aquatic','web_immune','dark_vision','follows_thread','pack','conceals_when_submerged'], typed: [] },
     { id: 'terrain', bools: ['liquid','deep','hazard','flammable','conductive','ignites','platform','collapsible','consume_on_escape'],
       typed: ['damage_type','apply_state','entry_sound'] },
     { id: 'locks', bools: ['openable','lockable','locked','color_locked','gate'], typed: ['lock_color'] },
-    { id: 'mechanisms', bools: ['switchable','pausable','toggled','one_shot','rearms','pedestal','display_inventory','portal'], typed: ['machine_id','stairway'] },
-    { id: 'traps', bools: ['trap','vent','hidden'], typed: [] },
+    { id: 'mechanisms', bools: ['switchable','pausable','toggled','one_shot','display_inventory','portal'], typed: ['machine_id','stairway'] },
+    { id: 'traps', bools: ['trap','vent','hidden'], typed: ['density'] },
     { id: 'naming', bools: ['mass_noun','proper_named'], typed: ['paint_tile'] },
 ];
 const BOOL_ATTRS = ATTR_GROUPS.flatMap(g => g.bools);
@@ -455,7 +477,6 @@ const BOOL_HINTS = {
     dark_vision: 'AI ignores darkness for targeting.',
     flies: 'Hovers above ground — grants the flying state (skips fall/drown/ground hazards).',
     controlled: 'Player-controlled actor.',
-    hazard_immune: 'Immune to environmental hazards.',
     pack: 'Spawns in clusters via random_actors.',
     follows_thread: 'AI uses thread-following pathfinding.',
     mass_noun: 'No article: "water" not "a water".',
@@ -472,15 +493,13 @@ const BOOL_HINTS = {
     switchable: 'Toggle-able mechanism.',
     toggled: 'Current toggle state.',
     pausable: 'Can be paused/resumed by player bump.',
-    one_shot: 'Triggers once then stops.',
-    pedestal: 'Displays an item on top.',
+    one_shot: 'Triggers once then stops. Without it a pressure plate re-arms each time something steps on it.',
     display_inventory: 'Shows held item visually.',
     platform: 'Walkable surface over void/liquid.',
     collapsible: 'Collapses when stepped on.',
     portal: 'Teleports actors that step on it.',
     trap: 'Trap trigger (a pressure plate). Once revealed, stepping on it asks first and it can be thrown at.',
     vent: 'Fires its payload (Vent Payload section) when a switch sharing its machine_id activates it.',
-    rearms: 'Pressure plate fires each time something steps onto it while empty, instead of latching.',
     splits: 'Splits into a child actor on non-fatal hits (see Split Into / Split Min Health).',
     consume_on_escape: 'Destroyed when a stuck actor on this tile breaks free (e.g. webs tear; quicksand omits this).',
     web_immune: 'Passes freely through webs without getting stuck (spiders); other hazards still apply.',
@@ -501,6 +520,7 @@ const TYPED_ATTRS = [
     { key: 'strength', type: 'number', label: 'Strength', hint: 'Melee damage when using "-{strength}" in collision_effect. Typical: 1-18.' },
     { key: 'inventory', type: 'number', label: 'Inventory slots', hint: 'Number of items this actor can carry. 0 = none, player default is 4.' },
     { key: 'lode_chance', type: 'number', label: 'Lode Chance (0-100)', hint: 'Percent chance to drop a lode item when broken. Requires breakable + lode.' },
+    { key: 'density', type: 'number', label: 'Density', hint: 'Gas with a density spreads puff to puff, each new puff one lower, creeping about this many tiles out.' },
     { key: 'remains', type: 'text', ref: 'entity', label: 'Remains', hint: 'Entity (data/entities.json) left on death, e.g. skull, rubble, blood, log.' },
     { key: 'damage_type', type: 'select', label: 'Damage Type', hint: 'Hazard damage category. Grants immunity via {type}_immune attribute.', options: ['', 'fire', 'poison', 'electric'] },
     { key: 'lode', type: 'text', ref: 'item', label: 'Lode (item type)', hint: 'Item type dropped when broken. e.g. gold_nugget, uranium_nugget.' },
@@ -1321,6 +1341,7 @@ const REF_FIELDS = {
     'f-trap_effect_outer': 'actor',
     'f-trap_spawn': 'actor',
     'f-trap_apply_state': 'state',
+    'f-trap_sound': 'sound',
     'f-switch_sound': 'sound',
     'f-ce-apply_state': 'state',
     'f-collision_sound': 'sound',
@@ -1786,6 +1807,11 @@ function clearForm() {
     document.getElementById('f-trap_effect_center').value = '';
     document.getElementById('f-trap_effect_radius').value = '';
     document.getElementById('f-trap_effect_outer').value = '';
+    document.getElementById('f-trap_effect_blob_start').value = '';
+    document.getElementById('f-trap_effect_blob_decrement').value = '';
+    document.getElementById('f-trap_cloud_lifetime').value = '';
+    document.getElementById('f-trap_spawn_density').value = '';
+    document.getElementById('f-trap_sound').value = '';
     document.getElementById('f-trap_spawn').value = '';
     document.getElementById('f-trap_spawn_tint').value = '#ffffff';
     document.getElementById('f-trap_spawn_tint_hex').value = '';
@@ -1939,6 +1965,8 @@ function populateForm(key, data) {
         document.getElementById('f-trap_effect_center').value = data.trap_effect.center || '';
         document.getElementById('f-trap_effect_radius').value = data.trap_effect.radius || '';
         document.getElementById('f-trap_effect_outer').value = data.trap_effect.outer || '';
+        document.getElementById('f-trap_effect_blob_start').value = data.trap_effect.blob_start ?? '';
+        document.getElementById('f-trap_effect_blob_decrement').value = data.trap_effect.blob_decrement ?? '';
     }
     document.getElementById('f-trap_spawn').value = data.trap_spawn || '';
     if (data.trap_spawn_tint) {
@@ -1947,6 +1975,9 @@ function populateForm(key, data) {
     }
     document.getElementById('f-trap_apply_state').value = data.trap_apply_state || '';
     document.getElementById('f-trap_message').value = data.trap_message || '';
+    document.getElementById('f-trap_cloud_lifetime').value = data.trap_cloud_lifetime ?? '';
+    document.getElementById('f-trap_spawn_density').value = data.trap_spawn_density ?? '';
+    document.getElementById('f-trap_sound').value = data.trap_sound || '';
 
     // Misc
     document.getElementById('f-lifetime').value = data.lifetime || '';
@@ -2159,6 +2190,10 @@ function readForm() {
         if (tc) obj.trap_effect.center = tc;
         if (!isNaN(tr)) obj.trap_effect.radius = tr;
         if (to) obj.trap_effect.outer = to;
+        const bs = parseInt(document.getElementById('f-trap_effect_blob_start').value);
+        const bd = parseInt(document.getElementById('f-trap_effect_blob_decrement').value);
+        if (!isNaN(bs)) obj.trap_effect.blob_start = bs;
+        if (!isNaN(bd)) obj.trap_effect.blob_decrement = bd;
     }
     const ts = document.getElementById('f-trap_spawn').value.trim();
     if (ts) obj.trap_spawn = ts;
@@ -2166,8 +2201,14 @@ function readForm() {
     if (tst) obj.trap_spawn_tint = tst;
     const tas = document.getElementById('f-trap_apply_state').value.trim();
     if (tas) obj.trap_apply_state = tas;
+    const tsdn = parseInt(document.getElementById('f-trap_spawn_density').value);
+    if (!isNaN(tsdn) && tsdn > 0) obj.trap_spawn_density = tsdn;
+    const tcl = parseInt(document.getElementById('f-trap_cloud_lifetime').value);
+    if (!isNaN(tcl) && tcl > 0) obj.trap_cloud_lifetime = tcl;
     const tm = document.getElementById('f-trap_message').value.trim();
     if (tm) obj.trap_message = tm;
+    const tsd = document.getElementById('f-trap_sound').value.trim();
+    if (tsd) obj.trap_sound = tsd;
 
     // Misc
     const lt = parseInt(document.getElementById('f-lifetime').value);

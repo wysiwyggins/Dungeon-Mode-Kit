@@ -513,7 +513,7 @@ export const ArchitectSpawning = {
         const platePos = plateCandidates[Math.floor(ROT.RNG.getUniform() * plateCandidates.length)];
 
         const targetActorType = pattern.target_actor || 'gate';
-        const switchActorType = pattern.switch_actor || 'trap_plate';
+        const switchActorType = pattern.switch_actor || 'pressure_plate';
 
         const targetData = context.getActorData(targetActorType);
         const switchData = context.getActorData(switchActorType);
@@ -528,10 +528,18 @@ export const ArchitectSpawning = {
         };
         context.createActor(gatePos.x, gatePos.y, targetActorType, gateData);
 
+        // The default plate is the generic pressure_plate, whose own effects open a
+        // gate; a gated corridor slams its gate shut instead. A named switch_actor
+        // brings its own effects and message.
+        const ownSwitch = !!pattern.switch_actor;
         const plateData = {
             ...switchData,
-            switch_effects: pattern.switch_effects || switchData.switch_effects || { locked: true, open: false },
-            switch_message: pattern.switch_message || switchData.switch_message || 'A stone depresses.',
+            switch_effects: pattern.switch_effects
+                || (ownSwitch && switchData.switch_effects)
+                || { locked: true, open: false },
+            switch_message: pattern.switch_message
+                || (ownSwitch && switchData.switch_message)
+                || 'A stone depresses as you step on it. A gate slams shut behind you.',
             attributes: {
                 ...(switchData.attributes || {}),
                 machine_id: machineId

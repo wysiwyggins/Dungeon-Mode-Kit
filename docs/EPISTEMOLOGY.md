@@ -89,7 +89,7 @@ from where it stands:
 | Data | `tileIndexBase_hidden` / `tileIndexTop_hidden` | no `_hidden` tiles |
 | Stands on | a tile that would otherwise be wall | open floor |
 | Renders as | ordinary wall (untinted, so machine color can't betray it) | nothing; the floor shows through |
-| Examples | `hidden_door`, `barred_hidden_door`, `hidden_lever` | `hidden_pressure_plate`, trap plates and vents |
+| Examples | `hidden_door`, `barred_hidden_door`, `hidden_lever` | a `pressure_plate` with `hidden`, trap plates and vents |
 
 A wall-mounted actor *replaces* the wall actor on its tile, so making it merely
 invisible would leave a hole in the wall. That's the whole reason the disguise exists.

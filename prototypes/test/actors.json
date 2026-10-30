@@ -13,14 +13,9 @@
     "collision_description": "You punch the [attacked_actor_name]!",
     "death_sound": "ouch",
     "attributes": {
-      "solid": true,
-      "flammable": true,
-      "controlled": true,
-      "sentient": true,
       "inventory": 5,
       "remains": "skull",
       "accuracy": 50,
-      "opaque": true,
       "strength": 7,
       "tactician": true
     },

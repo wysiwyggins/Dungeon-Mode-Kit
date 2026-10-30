@@ -10,12 +10,7 @@
     "collision_description": "You punch the [attacked_actor_name]!",
     "death_sound": "ouch",
     "attributes": {
-      "controlled": true,
-      "solid": true,
-      "visible": true,
-      "flammable": true,
       "inventory": 5,
-      "health": 10,
       "remains": "skull",
       "accuracy": 40
     },
@@ -35,17 +30,6 @@
     "collision_effect": { "health": -3 },
     "collision_sound": "hit",
     "collision_description": "The [actor_name] strikes back at [attacked_actor_name]!",
-    "attributes": {
-      "hostile": false,
-      "solid": true,
-      "visible": true,
-      "flammable": true,
-      "sentient": true,
-      "inventory": 1,
-      "remains": "skull",
-      "accuracy": 35,
-      "defense": 5
-    },
     "stats": {
       "health": 20
     },
@@ -59,7 +43,6 @@
     "tileIndexTop": "OPAQUE_DOTTED_LIGHT_SHADE",
     "tint": "#7a7a7a",
     "attributes": {
-      "breakable": true,
       "lode_chance": 20,
       "lode": "uranium_nugget"
     }

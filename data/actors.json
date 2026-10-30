@@ -6,7 +6,6 @@
     "tileIndexTop": "OPAQUE_DARK_SMILING_FACE",
     "death_sound": "ouch",
     "attributes": {
-      "solid": true,
       "flammable": true,
       "controlled": true,
       "sentient": true,
@@ -54,7 +53,6 @@
     "attributes": {
       "accuracy": 70,
       "defense": 10,
-      "inventory": 0,
       "visible": false
     },
     "stats": {
@@ -76,10 +74,8 @@
     "collision_description": "The [actor_name] [attacks.melee_verbs] the [attacked_actor_name]!",
     "death_sound": "ouch",
     "attributes": {
-      "conductive": true,
-      "flies": true,
-      "lode_chance": 50,
-      "lode": "thaler"
+      "drops": [{"item": "thaler", "weight": 50}, {"weight": 50}],
+      "flies": true
     },
     "stats": {
       "health": 40
@@ -93,9 +89,7 @@
     "tint": "#fffece",
     "personality": "stationed_ranged",
     "attributes": {
-      "solid": true,
       "hostile": true,
-      "flammable": false,
       "breakable": true,
       "inventory": 5,
       "remains": "rubble",
@@ -131,18 +125,15 @@
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
       "no_polymorph": true,
-      "solid": true,
       "flammable": true,
       "hostile": true,
       "sentient": true,
       "accuracy": 60,
       "defense": 10,
       "strength": 15,
-      "inventory": 0,
       "chain_segment_type": "scutigera_body",
       "segment_count": 4,
       "chain_head": true,
-      "chain_base_strength": 5,
       "chain_strength_per_segment": 2.5
     },
     "stats": {
@@ -164,11 +155,9 @@
     "collision_description": "The [actor_name] lashes at the [attacked_actor_name]!",
     "attributes": {
       "no_polymorph": true,
-      "solid": true,
       "flammable": true,
       "hostile": true,
       "sentient": true,
-      "inventory": 0,
       "accuracy": 50,
       "defense": 3,
       "opaque": false
@@ -194,7 +183,6 @@
     "collision_sound": "hit",
     "collision_description": "[actor_name] [attacks.melee_verbs] [attacked_actor_name]!",
     "attributes": {
-      "solid": true,
       "flammable": true,
       "hostile": true,
       "sentient": true,
@@ -386,7 +374,7 @@
     "name": "rat",
     "tileIndexBase": "WHITE_LEFTWARDS_HARPOON_BARB_UPWARDS",
     "tileIndexTop": "BLANK",
-    "tint": "#222233",
+    "tint": "#553d00",
     "personality": "aggressive_melee",
     "collision_effect": {
       "health": -2
@@ -434,7 +422,6 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] bites the [attacked_actor_name]!",
     "attributes": {
-      "solid": true,
       "flammable": true,
       "flies": true,
       "hostile": true,
@@ -629,7 +616,6 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] strikes [attacked_actor_name] with a crackling fist!",
     "attributes": {
-      "hostile": true,
       "accuracy": 55,
       "defense": 4,
       "light_source": 3,
@@ -680,7 +666,6 @@
     "collision_sound": "hit",
     "collision_description": "The [actor_name] strikes [attacked_actor_name] with a gnarled staff!",
     "attributes": {
-      "hostile": true,
       "accuracy": 40,
       "defense": 5
     },
@@ -778,7 +763,6 @@
     "collision_sound": "hit",
     "death_sound": "ouch",
     "attributes": {
-      "hostile": true,
       "accuracy": 55,
       "defense": 8,
       "light_source": 1
@@ -803,7 +787,6 @@
       "hostile": true,
       "sentient": true,
       "accuracy": 0,
-      "defense": 0,
       "opaque": false
     },
     "stats": {
@@ -818,7 +801,6 @@
     "tint": "#004405",
     "attributes": {
       "flammable": true,
-      "breakable": true,
       "paint_tile": "UPWARD_POINTING_TRIANGLE",
       "remains": "log"
     }
@@ -831,6 +813,7 @@
     "tileIndexTop": "OPAQUE_LIGHT_SHADE",
     "tint": "#77bb41",
     "attributes": {
+      "breakable": false,
       "opaque": false,
       "flammable": true,
       "conductive": true,
@@ -880,7 +863,6 @@
     "tileIndexTop": "CANDLE_STICK",
     "flipTopV": true,
     "attributes": {
-      "breakable": true,
       "opaque": false,
       "ornament": true,
       "paint_tile": "CANDLE_STICK"
@@ -892,7 +874,6 @@
     "tileIndexBase": "OPAQUE_DARK_SHADE",
     "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
     "attributes": {
-      "breakable": true,
       "paint_tile": "WALL_TOP"
     }
   },
@@ -902,7 +883,6 @@
     "tileIndexBase": "BRICK_WALL",
     "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
     "attributes": {
-      "breakable": true,
       "paint_tile": "BRICK_WALL"
     }
   },
@@ -916,7 +896,6 @@
       "dy": -1
     },
     "attributes": {
-      "breakable": true,
       "paint_tile": "BONE_WALL"
     }
   },
@@ -926,7 +905,6 @@
     "tileIndexBase": "PRISON_WINDOW",
     "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
     "attributes": {
-      "breakable": true,
       "opaque": false,
       "ornament": true,
       "paint_tile": "BALLOT_BOX"
@@ -969,7 +947,6 @@
     "death_sound": "plunk3",
     "attributes": {
       "solid": false,
-      "visible": true,
       "breakable": true,
       "render_layer": "bottom",
       "break_threshold": 35,
@@ -996,7 +973,6 @@
     "tileIndexTop": "OPAQUE_MEDIUM_LIGHT_SHADE",
     "tint": "#a96800",
     "attributes": {
-      "breakable": true,
       "lode_chance": 20,
       "lode": "gold_nugget",
       "paint_tile": "DARK_SHADE"
@@ -1008,7 +984,6 @@
     "tileIndexBase": "CANDLE_STICK",
     "tileIndexTop": "FULL_MOON",
     "attributes": {
-      "breakable": true,
       "opaque": false
     }
   },
@@ -1020,7 +995,6 @@
     "tint": "#ffb43f",
     "effect": "flicker_tint",
     "attributes": {
-      "breakable": true,
       "light_source": 9,
       "ornament": true,
       "paint_tile": "TORCH_ON_WALL",
@@ -1037,7 +1011,6 @@
       "health": -1
     },
     "attributes": {
-      "breakable": true,
       "pushable": true
     }
   },
@@ -1062,8 +1035,6 @@
     "effect": "flicker_tint",
     "attributes": {
       "solid": false,
-      "visible": true,
-      "flammable": false,
       "teleporter": true,
       "render_layer": "bottom",
       "teleport_sound": "squarewave",
@@ -1079,6 +1050,7 @@
     "tileIndexBase_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
     "flipBaseV": true,
     "attributes": {
+      "lockable": false,
       "gate": true,
       "opaque": false,
       "locked": true
@@ -1171,7 +1143,6 @@
     "tileIndexBase_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
     "attributes": {
       "swings_shut": true,
-      "locked": false,
       "paint_tile": "DOOR_TOP"
     }
   },
@@ -1210,7 +1181,6 @@
     "flipTopV_toggled": true,
     "collision_sound": "push1",
     "attributes": {
-      "solid": true,
       "opaque": false
     },
     "collision_description": "[a-an] [color] lever",
@@ -1223,9 +1193,12 @@
   "pressure_plate": {
     "name": "pressure plate",
     "type": "switch",
+    "description": "A loose flagstone. Somewhere nearby, something is waiting for it to sink.",
     "tileIndexBase": "BUTTON_UP",
+    "tileIndexBase_toggled": "BULLET",
     "tileIndexTop": "BLANK",
     "collision_sound": "push1",
+    "reveal_message": "You spot a pressure plate in the floor!",
     "attributes": {
       "solid": false,
       "one_shot": true,
@@ -1250,8 +1223,6 @@
     "reveal_message": "You discover a hidden door!",
     "attributes": {
       "swings_shut": true,
-      "locked": false,
-      "solid": true,
       "hidden": true,
       "breakable": true
     }
@@ -1270,7 +1241,6 @@
     "attributes": {
       "swings_shut": true,
       "locked": true,
-      "solid": true,
       "hidden": true,
       "breakable": true
     }
@@ -1290,47 +1260,11 @@
     "reveal_message": "You find a concealed lever!",
     "opaque_revealed": false,
     "attributes": {
-      "solid": true,
       "hidden": true,
       "breakable": true
     },
     "collision_description": "[a-an] [color] lever",
     "switch_message": "You pull [name].",
-    "switch_effects": {
-      "solid": false,
-      "open": true
-    }
-  },
-  "trigger_plate": {
-    "name": "pressure plate",
-    "type": "switch",
-    "description": "A loose flagstone. Somewhere nearby, something is waiting for it to sink.",
-    "tileIndexBase": "BUTTON_UP",
-    "collision_sound": "push1",
-    "reveal_message": "You spot a pressure plate in the floor!",
-    "attributes": {
-      "solid": false,
-      "hidden": true,
-      "rearms": true,
-      "trap": true,
-      "render_layer": "bottom"
-    }
-  },
-  "hidden_pressure_plate": {
-    "name": "pressure plate",
-    "type": "switch",
-    "tileIndexBase": "INVERSE_BULLET",
-    "tileIndexTop": "BLANK",
-    "collision_sound": "push1",
-    "reveal_message": "You spot a pressure plate in the floor!",
-    "attributes": {
-      "solid": false,
-      "one_shot": true,
-      "render_layer": "bottom",
-      "hidden": true
-    },
-    "collision_description": "a pressure plate",
-    "switch_message": "A stone depresses as you step on it.",
     "switch_effects": {
       "solid": false,
       "open": true
@@ -1344,7 +1278,6 @@
     "collision_sound": "tap2",
     "collision_description": "a clock",
     "attributes": {
-      "solid": true,
       "pausable": true
     },
     "switch_effects": {
@@ -1358,7 +1291,6 @@
     "description": "A magic plinth that holds a single item steadfast.",
     "attributes": {
       "paint_tile": "WHITE_DOOR_TOP",
-      "solid": true,
       "container": true,
       "display_inventory": true
     },
@@ -1443,7 +1375,6 @@
     "attributes": {
       "solid": false,
       "platform": true,
-      "visible": true,
       "collapsible": true,
       "render_layer": "bottom",
       "paint_tile": "DOWNWARDS_ARROW"
@@ -1459,7 +1390,6 @@
     "attributes": {
       "hazard": true,
       "solid": false,
-      "flammable": false,
       "damage_type": "fire",
       "light_source": 5,
       "paint_tile": "DOUBLE_EXCLAMATION_MARK",
@@ -1492,7 +1422,6 @@
     "attributes": {
       "hazard": true,
       "solid": false,
-      "flammable": false,
       "ignites": true,
       "damage_type": "fire",
       "light_source": true,
@@ -1512,7 +1441,7 @@
     "animationBase": "fire",
     "personality": "fire",
     "attributes": {
-      "flammable": false,
+      "hazard": true,
       "light_source": true,
       "mass_noun": true,
       "ignites": true,
@@ -1530,7 +1459,6 @@
     "effect": "flicker_tint",
     "attributes": {
       "opaque": false,
-      "flammable": false,
       "light_source": 10
     }
   },
@@ -1552,7 +1480,6 @@
     "tint": "#84DCCF",
     "attributes": {
       "solid": false,
-      "flammable": false,
       "stairway": "down",
       "paint_tile": "DOWNWARDS_ARROW_ON_LIGHT_SHADE"
     }
@@ -1567,10 +1494,8 @@
     "tint": "#84DCCF",
     "collision_description": "The stairs are sealed. You must fulfill your quest first.",
     "attributes": {
-      "flammable": false,
       "stairway": "down",
       "openable": true,
-      "open": false,
       "locked": true
     }
   },
@@ -1583,7 +1508,6 @@
     "tint": "#EC7505",
     "attributes": {
       "solid": false,
-      "flammable": false,
       "stairway": "up",
       "paint_tile": "UPWARDS_ARROW_ON_LIGHT_SHADE"
     }
@@ -1599,10 +1523,8 @@
     "tint": "#EC7505",
     "collision_description": "The stairs are sealed. You must fulfill your quest first.",
     "attributes": {
-      "flammable": false,
       "stairway": "up",
       "openable": true,
-      "open": false,
       "locked": true
     }
   },
@@ -1613,9 +1535,6 @@
     "tileIndexTop": "BLANK",
     "animationBase": "smoke",
     "personality": "cloud",
-    "attributes": {
-      "hazard_immune": true
-    },
     "lifetime": 10
   },
   "mist": {
@@ -1625,9 +1544,6 @@
     "tileIndexTop": "BLANK",
     "animationBase": "mist",
     "personality": "mist",
-    "attributes": {
-      "hazard_immune": true
-    },
     "collision_effect": {},
     "lifetime": 4
   },
@@ -1654,8 +1570,7 @@
     "tint": "#555555",
     "personality": "cloud",
     "attributes": {
-      "apply_state": "choked",
-      "hazard_immune": true
+      "apply_state": "choked"
     },
     "collision_effect": {},
     "lifetime": 8
@@ -1670,8 +1585,7 @@
     "personality": "cloud",
     "attributes": {
       "flammable": true,
-      "apply_state": "nauseated",
-      "hazard_immune": true
+      "apply_state": "nauseated"
     },
     "collision_effect": {},
     "lifetime": 6
@@ -1686,8 +1600,7 @@
     "tint": "#9944CC",
     "personality": "cloud",
     "attributes": {
-      "flammable": true,
-      "hazard_immune": true
+      "flammable": true
     },
     "collision_effect": {
       "health": -2
@@ -1704,8 +1617,7 @@
     "tint": "#55CC55",
     "personality": "cloud",
     "attributes": {
-      "apply_state": "poisoned",
-      "hazard_immune": true
+      "apply_state": "poisoned"
     },
     "collision_effect": {},
     "lifetime": 10
@@ -1720,8 +1632,7 @@
     "tint": "#CC88FF",
     "personality": "cloud",
     "attributes": {
-      "apply_state": "confused",
-      "hazard_immune": true
+      "apply_state": "confused"
     },
     "collision_effect": {},
     "lifetime": 10
@@ -1736,8 +1647,7 @@
     "tint": "#FF99CC",
     "personality": "cloud",
     "attributes": {
-      "apply_state": "paralyzed",
-      "hazard_immune": true
+      "apply_state": "paralyzed"
     },
     "collision_effect": {},
     "lifetime": 10
@@ -1752,8 +1662,7 @@
     "tint": "#555566",
     "personality": "cloud",
     "attributes": {
-      "apply_state": "blinded",
-      "hazard_immune": true
+      "apply_state": "blinded"
     },
     "collision_effect": {},
     "lifetime": 10
@@ -1768,8 +1677,7 @@
     "tint": "#6677AA",
     "personality": "cloud",
     "attributes": {
-      "apply_state": "slowed",
-      "hazard_immune": true
+      "apply_state": "slowed"
     },
     "collision_effect": {},
     "lifetime": 10
@@ -1784,8 +1692,7 @@
     "tint": "#FFDD44",
     "personality": "cloud",
     "attributes": {
-      "apply_state": "hasted",
-      "hazard_immune": true
+      "apply_state": "hasted"
     },
     "collision_effect": {},
     "lifetime": 10
@@ -1800,8 +1707,7 @@
     "tint": "#FF6677",
     "personality": "cloud",
     "attributes": {
-      "apply_state": "regenerating",
-      "hazard_immune": true
+      "apply_state": "regenerating"
     },
     "collision_effect": {},
     "lifetime": 10
@@ -1816,8 +1722,7 @@
     "tint": "#AADDFF",
     "personality": "cloud",
     "attributes": {
-      "apply_state": "flying",
-      "hazard_immune": true
+      "apply_state": "flying"
     },
     "collision_effect": {},
     "lifetime": 10
@@ -1834,8 +1739,7 @@
     "attributes": {
       "opens_floor": true,
       "hole_turns": 5,
-      "damage_type": "fall",
-      "hazard_immune": true
+      "damage_type": "fall"
     },
     "collision_effect": {},
     "lifetime": 6
@@ -1848,9 +1752,6 @@
     "animationBase": "mist",
     "tint": "#88DD66",
     "personality": "spore",
-    "attributes": {
-      "hazard_immune": true
-    },
     "collision_effect": {},
     "lifetime": 4
   },
@@ -1863,7 +1764,6 @@
     "tint": "#E4D4EC",
     "personality": "incense_smoke",
     "attributes": {
-      "hazard_immune": true,
       "ward": {
         "types": ["undead"],
         "repel": true,
@@ -1892,6 +1792,8 @@
     "trap_spawn": "cloud",
     "trap_spawn_tint": "#55FF55",
     "trap_apply_state": "poisoned",
+    "trap_spawn_density": 7,
+    "trap_cloud_lifetime": 20,
     "trap_message": "A hidden vent releases poisonous gas!"
   },
   "fire_vent": {
@@ -1899,9 +1801,10 @@
     "type": "vent",
     "tint": "#FF6622",
     "trap_effect": {
-      "center": "fire",
-      "radius": 1,
-      "outer": "fire"
+      "center": "intense_fire",
+      "outer": "fire",
+      "blob_start": 100,
+      "blob_decrement": 37
     },
     "trap_sound": "fireball",
     "trap_message": "Flames erupt from the floor!"
@@ -1913,6 +1816,8 @@
     "trap_spawn": "cloud",
     "trap_spawn_tint": "#AADDFF",
     "trap_apply_state": "paralyzed",
+    "trap_spawn_density": 5,
+    "trap_cloud_lifetime": 12,
     "trap_message": "A numbing gas billows forth!"
   },
   "confusion_gas_vent": {
@@ -1922,6 +1827,8 @@
     "trap_spawn": "cloud",
     "trap_spawn_tint": "#FFAAFF",
     "trap_apply_state": "confused",
+    "trap_spawn_density": 5,
+    "trap_cloud_lifetime": 14,
     "trap_message": "A disorienting mist fills the air!"
   }
 }

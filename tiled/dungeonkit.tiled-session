@@ -64,11 +64,11 @@
             "expandedObjectLayers": [
                 6
             ],
-            "scale": 0.4548,
+            "scale": 1.7894,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": 894.8988566402815,
-                "y": 668.4256816182937
+                "x": 955.6275846652509,
+                "y": 635.1290935509109
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/hunger_game/map.tmj": {
@@ -99,8 +99,8 @@
             "scale": 0.3975,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": 797.4842767295596,
-                "y": 598.74213836478
+                "x": 1041.5094339622642,
+                "y": 579.874213836478
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/mine/map.tmj": {
@@ -143,8 +143,8 @@
             "scale": 0.2669,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": 1176.4705882352941,
-                "y": 1198.9509179467966
+                "x": 1539.9025852379168,
+                "y": 1170.8505058074186
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/2.tmj": {
@@ -160,11 +160,11 @@
                 3,
                 6
             ],
-            "scale": 0.3766,
-            "selectedLayer": 3,
+            "scale": 0.5141,
+            "selectedLayer": 1,
             "viewCenter": {
-                "x": 813.8608603292619,
-                "y": 896.1763143919277
+                "x": 834.4680023341762,
+                "y": 613.6938338844583
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/underworld/map.tmj": {
@@ -215,7 +215,7 @@
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/sewer/map.tmj"
     ],
     "project": "dungeonkit.tiled-project",
-    "property.type": "string",
+    "property.type": "bool",
     "recentFiles": [
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/pac/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/sewer/map.tmj",

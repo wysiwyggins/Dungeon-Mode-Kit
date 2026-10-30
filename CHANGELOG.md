@@ -17,8 +17,12 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 ### Added
 
 - **Plate and vent traps.** A trap is now a hidden pressure plate and a hidden floor vent in the same room, linked by `machine_id`. Stepping on the plate reveals both and the gas or fire comes out of the vent, and `traps` counts these pairs.
-- **`rearms` plates.** A floor plate with `rearms` fires each time something steps onto it while it's empty, instead of latching.
+- **One pressure plate actor.** `trigger_plate` and `hidden_pressure_plate` are folded into `pressure_plate`; trap placement makes it hidden, re-arming and `trap`, and Tiled can set `hidden` on a placed one. A `trap` switch fires only its vents.
+- **Church plates are pressure plates too.** The dungeon's `trap_plate` and `church_pressure_plate` are gone: generated gated corridors place `pressure_plate` with slam-shut effects, and the church map's plate is a hidden `pressure_plate` with a `switch_effects` property.
+- **Re-arming plates.** A pressure plate without `one_shot` now fires each time something steps onto it while it's empty, instead of latching.
 - **Blocked-vent message.** A vent with something solid parked on it says "The [block] blocks the [vent]." when its plate fires, instead of releasing gas.
+- **Sunken pressure plates.** Pressure plates show a sunken `BULLET` tile when pressed. A `one_shot` plate stays sunk, so you can see it's spent, and any other plate pops back up once nothing is on it.
+- **Wider trap gas and fire.** Gas with the new `density` attribute (set on vent gas by the vent's `trap_spawn_density`) creeps outward puff by puff, about a tile a turn, around corners and down corridors, instead of the small star-shaped puff, and lingers until its last few turns before thinning. A fire vent's `trap_effect` can take `blob_start` and `blob_decrement` for a ragged patch that stops at walls.
 - **Pressed-plate message.** A pushed block landing on a trap plate adds "The [block] presses down the pressure plate."
 - **Equip and unequip messages.** Wielding, putting on, putting away or taking off an item now says so in the message log, and swapping names the item being replaced.
 
@@ -27,10 +31,15 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 - **Every way onto a tile presses plates.** Pushed blocks, knockback, teleporting and thrown items now press pressure plates as well as walking, and flying actors no longer do. Linked switch targets also get an activation hook, which is what fires a vent.
 - **Fewer traps per floor.** Each trap is now two actors, so the biome trap ramps are cut to about a third, topping out at 14 pairs in the infernal biome instead of 40 traps.
 - **The `trap` type is gone.** It's replaced by the `vent` type; the trap actors became `poison_gas_vent`, `fire_vent`, `paralysis_gas_vent` and `confusion_gas_vent`, and the `trap` personality and `trap_check_trigger` behavior are removed.
+- **Attribute cleanup.** Dropped about 100 attribute settings that repeated a default, the actor's type or the base actor (e.g. `solid: true`, `flammable: false`, `open: false`, prototype players re-declaring `controlled`). `breakable` moved onto the `terrain` type and `hostile` onto `arcane`, and the dungeon levers use the `switch` type.
+- **Removed dead attributes.** `hazard_immune` (every gas already flies, which does the same) and the unread `pedestal` are gone. Auto-explore now stops for `hostile` actors with a personality, instead of reading a `friendly` attribute nothing set.
+- **Small attribute merges.** The gate sets `lockable: false` instead of the key-unlock code special-casing `gate`, the vampire's coin drop is a `drops` table instead of `lode`, and `intense_fire` is marked `hazard` like plain fire, so map generation keeps spawns off it.
 - **Fewer redundant actor attributes.** `light_source` now takes a radius number in place of a separate `lightRadius`, setting `defaultFacing` turns facing on without `facingEnabled`, and animated actors use `animationBase` instead of `animated` plus `animation_frames`. The old forms still load, and the actor and item editors write the new ones.
 
 ### Fixed
 
+- **Switches remember their look after a reload.** A pulled lever or spent one-shot plate on a saved floor came back showing its resting tile. Sprites built for an already-toggled switch now use its `_toggled` tiles.
+- **Per-placement switch settings survive a reload.** A switch whose effects, message or radius were set by Tiled or a generator went back to its actor definition's on a saved floor. They're now saved with the floor.
 - **Hallucination restores revealed actors.** A hidden actor revealed during a hallucination, like a trap plate or vent, kept its scrambled tile after the trip ended. Its new sprites are now captured too, and every actor comes back as it is now, so a door opened or lever pulled mid-trip no longer reverts.
 - **Editors keep object attributes intact.** The actor, item and entity editors saved any object-valued custom attribute as the text `"[object Object]"`. They now show and save it as JSON, and the broken value on `pushable_wall` is removed.
 - **Placed items aren't randomly cursed.** `enchant_range` now only rolls for items placed at random (random items, chests, drops, treasure rooms, type names), so an item placed by name, like the test prototype's crown, comes in at +0. Set `enchantment` on an item to curse it on purpose.

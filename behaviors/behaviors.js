@@ -9,10 +9,43 @@ import { BehaviorsAI } from './ai.js';
 import { BehaviorsEnvironment } from './environment.js';
 import { BehaviorsRanged } from './ranged.js';
 import { BehaviorsSpecial } from './special.js';
+import { CARDINAL_DIRS } from '../core/util.js';
 
 // ============================================================================
 // PERSONALITY SYSTEM
 // ============================================================================
+
+/**
+ * Brogue-style blob: starting from (x, y), each ring spreads to the cardinal
+ * neighbours of the last with a `start`% chance per tile, the chance dropping by
+ * `decrement` each ring until it hits 0. Only tiles with floor that nothing solid
+ * blocks join (a creature's tile does). Returns the tiles, origin excluded.
+ */
+function growBlob(engine, x, y, start, decrement) {
+    const em = engine.entityManager;
+    const floorMap = engine.mapManager?.floorMap;
+    const seen = new Set([`${x},${y}`]);
+    const tiles = [];
+    let frontier = [{ x, y }];
+    for (let p = start; p > 0 && frontier.length; p -= Math.max(1, decrement)) {
+        const next = [];
+        for (const t of frontier) {
+            for (const { dx, dy } of CARDINAL_DIRS) {
+                const nx = t.x + dx, ny = t.y + dy;
+                const k = `${nx},${ny}`;
+                if (seen.has(k)) continue;
+                seen.add(k);
+                const floor = floorMap?.[ny]?.[nx];
+                if (!floor || floor.tileId <= 0 || em.blocksGasAt(nx, ny)) continue;
+                if (ROT.RNG.getPercentage() > p) continue;
+                next.push({ x: nx, y: ny });
+            }
+        }
+        tiles.push(...next);
+        frontier = next;
+    }
+    return tiles;
+}
 
 /**
  * Spring a trap's payload: message, sound, and the spawned effect.
@@ -23,8 +56,8 @@ import { BehaviorsSpecial } from './special.js';
  * optional and `entityManager` is derived rather than passed.
  *
  * Reads the authored keys `trap_message`, `trap_effect`, `trap_spawn`,
- * `trap_spawn_tint`, `trap_collision_effect`, `trap_apply_state`, `trap_sound`
- * and `trap_cloud_lifetime` off the actor's data.
+ * `trap_spawn_tint`, `trap_collision_effect`, `trap_apply_state`, `trap_sound`,
+ * `trap_cloud_lifetime` and `trap_spawn_density` off the actor's data.
  *
  * @param {Actor} actor - the vent, or the container that was trapped
  * @param {Actor|null} victim - who sprang it; receives `trap_apply_state` if present
@@ -46,7 +79,7 @@ export function springTrapPayload(actor, victim = null, opts = {}) {
     const trapEffect = actor.data?.trap_effect;
     if (trapEffect) {
         // Spell-like area effect
-        const { center, radius = 0, outer } = trapEffect;
+        const { center, radius = 0, outer, blob_start, blob_decrement = 37 } = trapEffect;
         const x = actor.x;
         const y = actor.y;
 
@@ -55,8 +88,14 @@ export function springTrapPayload(actor, victim = null, opts = {}) {
             entityManager.spawnActor(center, x, y);
         }
 
-        // Spawn actors in radius
-        if (radius > 0) {
+        if (blob_start) {
+            // A ragged patch that follows the floor and stops at walls.
+            const outerType = outer || center;
+            for (const tile of growBlob(actor.engine, x, y, blob_start, blob_decrement)) {
+                entityManager.spawnActor(outerType, tile.x, tile.y);
+            }
+        } else if (radius > 0) {
+            // Spawn actors in radius
             const outerType = outer || center;
             for (let dx = -radius; dx <= radius; dx++) {
                 for (let dy = -radius; dy <= radius; dy++) {
@@ -107,6 +146,10 @@ export function springTrapPayload(actor, victim = null, opts = {}) {
                 spawnedActor.cloudOriginX = actor.x;
                 spawnedActor.cloudOriginY = actor.y;
                 spawnedActor.cloudLifetime = opts.trap_cloud_lifetime ?? actor.data?.trap_cloud_lifetime ?? 8;
+                // Becomes the gas's `density`, so it spreads puff to puff across
+                // open floor (densitySpread in environment.js).
+                const density = actor.data?.trap_spawn_density;
+                if (density > 0) spawnedActor.setAttribute('density', density);
             }
         }
     }

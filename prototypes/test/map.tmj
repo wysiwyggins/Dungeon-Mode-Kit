@@ -259,6 +259,11 @@
                          "name":"machine_id",
                          "type":"string",
                          "value":"1"
+                        }, 
+                        {
+                         "name":"one_shot",
+                         "type":"bool",
+                         "value":true
                         }],
                  "rotation":0,
                  "type":"lever",

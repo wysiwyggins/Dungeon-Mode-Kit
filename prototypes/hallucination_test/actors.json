@@ -11,8 +11,6 @@
     "defaultFacing": "left",
     "death_sound": "ouch",
     "attributes": {
-      "flammable": true,
-      "controlled": true,
       "inventory": 10,
       "strength": 5,
       "remains": "skull",

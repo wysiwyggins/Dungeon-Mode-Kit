@@ -602,17 +602,19 @@
   "club": {
     "type": "weapon",
     "name": "club",
-    "tileIndex": "EXCLAMATION_MARK",
+    "tileIndex": "QUARTER_NOTE",
+    "flipV": true,
     "tint": "#AA8855",
+    "identified": false,
     "attributes": {
       "flammable": true,
-      "weapon_proc": "knockback",
-      "knockback_distance": 1,
+      "description": "[damage] damage. Knocks enemies back [knockback] tile.",
       "collision_effect": {
         "health": -10
       },
       "collision_description": "[actor_name] bashes [attacked_actor_name] with [a-an] [weapon_name]!",
-      "description": "[damage] damage. Knocks enemies back [knockback] tile."
+      "weapon_proc": "knockback",
+      "knockback_distance": 1
     }
   },
 

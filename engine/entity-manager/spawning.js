@@ -460,8 +460,11 @@ export const EntityManagerSpawning = {
      * Actor.activate), so the gas or fire comes out somewhere other than underfoot.
      *
      * `traps` counts pairs. `traps.plate` names the trigger actor (default
-     * `trigger_plate`); the payload is any actor whose resolved attributes include
-     * `vent`, picked at random per pair.
+     * `pressure_plate`), which is made into a trap plate here: hidden, re-arming and
+     * marked `trap`. A `trap` switch ignores its type's `switch_effects` and isn't
+     * machine-tinted, so it only fires its vent. These are attributes, so they
+     * survive a save and reload. The payload
+     * is any actor whose resolved attributes include `vent`, picked per pair.
      */
     spawnRandomTraps(getAvailableTiles, floorConfig, tilesIn = null) {
         const trapsConfig = floorConfig?.traps;
@@ -472,7 +475,7 @@ export const EntityManagerSpawning = {
         // definitions don't carry it.
         const ventTypes = Object.keys(prototype.actors)
             .filter(id => prototype.getActorData(id)?.attributes?.vent);
-        const plateType = trapsConfig.plate || 'trigger_plate';
+        const plateType = trapsConfig.plate || 'pressure_plate';
         const plateData = prototype.getActorData(plateType);
 
         if (ventTypes.length === 0) {
@@ -503,6 +506,9 @@ export const EntityManagerSpawning = {
 
             const plate = new Actor(pair.plate.x, pair.plate.y, plateType, plateData, this.engine);
             plate.setAttribute('machine_id', machineId);
+            plate.setAttribute('hidden', true);
+            plate.setAttribute('trap', true);
+            plate.setAttribute('one_shot', false);
             this.addEntity(plate);
 
             const vent = new Actor(pair.vent.x, pair.vent.y, ventType, prototype.getActorData(ventType), this.engine);
@@ -930,6 +936,8 @@ export const EntityManagerSpawning = {
                         actor.setAttribute('machine_id', prop.value);
                     } else if (prop.name === 'one_shot') {
                         actor.setAttribute('one_shot', prop.value);
+                    } else if (prop.name === 'hidden') {
+                        actor.setAttribute('hidden', prop.value);
                     } else if (prop.name === 'switch_effects') {
                         try {
                             actor.data = { ...actor.data, switch_effects: JSON.parse(prop.value) };
