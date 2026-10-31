@@ -1,7 +1,7 @@
 /**
  * Dungeon Mode Kit - Visual Effects System
  * Data-driven visual effects built from composable primitives.
- * Effects are defined in data/effects.json and can be overridden per-prototype.
+ * Effects are defined in data/vfx.json and can be overridden per-prototype (vfx.json).
  */
 
 import { TILE_HEIGHT, TILE_WIDTH, randomElement } from './core/util.js';

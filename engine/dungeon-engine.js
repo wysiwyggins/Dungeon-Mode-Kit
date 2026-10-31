@@ -94,7 +94,7 @@ export class DungeonEngine {
     async loadGlobalData() {
         try {
             // Load global entity definitions
-            const [actorsRes, itemsRes, personalitiesRes, entitiesRes, colorsRes, reagentsRes, substancesRes, statesRes, wordsRes, effectsRes, keybindingsRes, fungiTypesRes, biomesRes, typesRes, attributeInfoRes, animationsRes] = await Promise.all([
+            const [actorsRes, itemsRes, personalitiesRes, entitiesRes, colorsRes, reagentsRes, substancesRes, statesRes, wordsRes, effectsRes, keybindingsRes, fungiTypesRes, biomesRes, typesRes, attributeInfoRes, animationsRes, spellsRes] = await Promise.all([
                 fetch(`${BASE_PATH}/data/actors.json`),
                 fetch(`${BASE_PATH}/data/items.json`),
                 fetch(`${BASE_PATH}/data/personalities.json`),
@@ -104,13 +104,14 @@ export class DungeonEngine {
                 fetch(`${BASE_PATH}/data/substances.json`),
                 fetch(`${BASE_PATH}/data/states.json`),
                 fetch(`${BASE_PATH}/data/words.json`),
-                fetch(`${BASE_PATH}/data/effects.json`),
+                fetch(`${BASE_PATH}/data/vfx.json`),
                 fetch(`${BASE_PATH}/data/keybindings.json`),
                 fetch(`${BASE_PATH}/data/fungi_types.json`),
                 fetch(`${BASE_PATH}/data/biomes.json`),
                 fetch(`${BASE_PATH}/data/types.json`),
                 fetch(`${BASE_PATH}/data/attribute-info.json`),
-                fetch(`${BASE_PATH}/data/animations.json`)
+                fetch(`${BASE_PATH}/data/animations.json`),
+                fetch(`${BASE_PATH}/data/spells.json`)
             ]);
 
             this.globalActors = await actorsRes.json();
@@ -165,6 +166,11 @@ export class DungeonEngine {
             // types.json (see loadAssets).
             this.globalTypes = await typesRes.json();
 
+            // Spells: named targeted-spell records an item points at with its
+            // `spell` attribute. A prototype can add or override entries with its
+            // own spells.json (see loadAssets).
+            this.globalSpells = await spellsRes.json();
+
             // Player-facing phrasing for actor attributes, used by the info panel.
             // Only listed attributes are ever described, so engine plumbing stays
             // invisible and a new attribute leaks nothing until someone words it.
@@ -194,6 +200,7 @@ export class DungeonEngine {
             console.error('Failed to load global data:', error);
             this.globalActors = {};
             this.globalTypes = {};
+            this.globalSpells = {};
             this.globalItems = {};
             this.globalPersonalities = {};
             this.globalEntities = {};

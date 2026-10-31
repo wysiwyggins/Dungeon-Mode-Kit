@@ -70,7 +70,7 @@
       "dy": 0
     },
     "tint": "#ffd9a8",
-    "effect": "flicker_tint",
+    "vfx": "flicker_tint",
     "animationSide": "fire",
     "personality": "stationed_melee",
     "collision_effect": {
@@ -100,7 +100,7 @@
     "tileIndexBase": "OPAQUE_QUADRANT_UPPER_LEFT_AND_LOWER_LEFT_AND_LOWER_RIGHT",
     "tileIndexTop": "RIGHT_ONE_HALF_BLOCK",
     "tint": "#ffe4a8",
-    "effect": "flicker_tint",
+    "vfx": "flicker_tint",
     "defaultFacing": "left",
     "personality": "azhdaya_tail",
     "collision_effect": {

@@ -216,8 +216,8 @@ const BEHAVIOR_PARAMS = {
     apply_aura: ['aura_state', 'aura_chance', 'aura_duration', 'aura_hostile_only'],
     summon_actor: ['summon_type', 'summon_cooldown', 'summon_cap', 'summon_sound'],
     emit_cloud: ['emit_from_type', 'emit_type', 'emit_chance', 'emit_cap', 'cloud_lifetime'],
-    blink_away: ['blink_range', 'blink_cooldown', 'preferred_distance', 'blink_spawn', 'blink_sound', 'blink_effect'],
-    bolt_attack: ['attack_range', 'bolt_cooldown', 'bolt_damage', 'bolt_sound', 'bolt_effect'],
+    blink_away: ['blink_range', 'blink_cooldown', 'preferred_distance', 'blink_spawn', 'blink_sound', 'blink_vfx'],
+    bolt_attack: ['attack_range', 'bolt_cooldown', 'bolt_damage', 'bolt_sound', 'bolt_vfx'],
     spray_web: ['spray_range', 'spray_cooldown', 'spray_arc', 'spray_min_distance', 'web_type', 'spray_sound'],
     ranged_attack: ['attack_range', 'ranged_cooldown', 'hit_sound', 'miss_sound'],
     shoot_at_target: ['attack_range', 'hit_sound', 'miss_sound'],
@@ -300,9 +300,9 @@ const PARAM_DEFS = [
     { key: 'item_drift_chance', type: 'number', label: 'Item Drift Chance', hint: 'Probability (0-1) to drift a ground item', step: 0.05 },
     { key: 'suction_range', type: 'number', label: 'Suction Range', hint: 'Tile radius for drain pull effect' },
     { key: 'bolt_sound', type: 'text', ref: 'sound', label: 'Bolt Sound', hint: 'Sound sprite key for bolt (default: squarewave)' },
-    { key: 'bolt_effect', type: 'text', ref: 'effect', label: 'Bolt Effect', hint: 'Visual effect name for bolt (default: lightning_bolt)' },
+    { key: 'bolt_vfx', type: 'text', ref: 'vfx', label: 'Bolt VFX', hint: 'vfx.json entry for the bolt (default: lightning_bolt)' },
     { key: 'blink_sound', type: 'text', ref: 'sound', label: 'Blink Sound', hint: 'Sound sprite key for blink (default: magic)' },
-    { key: 'blink_effect', type: 'text', ref: 'effect', label: 'Blink Effect', hint: 'Visual effect name for blink (default: blink)' },
+    { key: 'blink_vfx', type: 'text', ref: 'vfx', label: 'Blink VFX', hint: 'vfx.json entry for the blink (default: blink)' },
     { key: 'spread_chance', type: 'number', label: 'Spread Chance', hint: 'Probability (0-1) of fire spreading per turn. Default: 0.3', step: 0.05 },
     { key: 'fire_lifetime', type: 'number', label: 'Fire Lifetime', hint: 'Turns before spawned fire burns out. Default: 5' },
     { key: 'damage_per_turn', type: 'number', label: 'Damage Per Turn', hint: 'HP damage dealt each turn by fire. Default: 10' },
@@ -352,7 +352,7 @@ async function loadBaseData() {
         fetchJSON('../data/actors.json'),
         fetchJSON('../data/items.json'),
         fetchJSON('../data/states.json'),
-        fetchJSON('../data/effects.json'),
+        fetchJSON('../data/vfx.json'),
         fetchJSON('../data/sounds.json'),
     ]);
     state.basePersonalities = personalities;
@@ -374,7 +374,7 @@ async function loadPrototype(name) {
     } else {
         if (!state.prototypeCache[name]) {
             const [personalities, actors, items, states, effects] = await Promise.all(
-                ['personalities', 'actors', 'items', 'states', 'effects']
+                ['personalities', 'actors', 'items', 'states', 'vfx']
                     .map(f => fetchJSON(`../prototypes/${name}/${f}.json`)));
             state.prototypeCache[name] = { personalities, actors, items, states, effects };
         }
@@ -967,7 +967,7 @@ function initRefFields() {
         label: (k) => state.mergedItems[k]?.name });
     RefFields.define('state', { file: 'states.json', names: () => keysOf(state.mergedStates),
         label: (k) => state.mergedStates[k]?.name });
-    RefFields.define('effect', { file: 'effects.json', names: () => keysOf(state.mergedEffects) });
+    RefFields.define('vfx', { file: 'vfx.json', names: () => keysOf(state.mergedEffects) });
     RefFields.define('sound', { file: 'sounds.json', names: () => state.soundNames || [] });
     // Any BehaviorLibrary entry works and the palette doesn't list them all, so
     // these are suggestions rather than a closed set.

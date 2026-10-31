@@ -25,6 +25,10 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 - **Wider trap gas and fire.** Gas with the new `density` attribute (set on vent gas by the vent's `trap_spawn_density`) creeps outward puff by puff, about a tile a turn, around corners and down corridors, instead of the small star-shaped puff, and lingers until its last few turns before thinning. A fire vent's `trap_effect` can take `blob_start` and `blob_decrement` for a ragged patch that stops at walls.
 - **Pressed-plate message.** A pushed block landing on a trap plate adds "The [block] presses down the pressure plate."
 - **Equip and unequip messages.** Wielding, putting on, putting away or taking off an item now says so in the message log, and swapping names the item being replaced.
+- **Spells library.** Targeted spells now live in `data/spells.json` (delivery, range, targeting, projectile, cast sound and what it does where it lands), and staffs and wands name one with a `spell` attribute instead of spelling out seven fields each. A prototype can add its own `spells.json`, and a bolt spell's `vfx` picks the visual effect drawn along its path.
+- **Spell editor.** `editors/spell-editor.html` edits spells with a field for each kind of effect (spawn an actor, apply a state, tunnel, teleport...) and lists the items that use each one. The item editor's spell section is now a spell picker plus the item's charges, with the old fields under a collapsed Overrides.
+- **Item editor capability sections.** Sections are grouped by what an item does (Collision / Melee, Launcher, Thrown & Breaking, Equipment, Use, Light Source) and only the ones its type or attributes use are shown. The rest sit behind "+ Add" chips.
+- **Visual effects are now `vfx`.** `data/effects.json` is `data/vfx.json`, actors, items and states name theirs with `vfx`, and `bolt_vfx`, `blink_vfx`, `build_vfx` and `release_vfx` replace the `*_effect` names, so `effect` in data always means gameplay. The effects editor is now the VFX editor, and the old keys still load (bare `effect` with a one-time warning).
 
 ### Changed
 

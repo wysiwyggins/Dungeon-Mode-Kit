@@ -4,7 +4,7 @@
 //   - engine: browser ES modules (main.js and its imports), with the lib/
 //     vendor scripts (ROT, PIXI, createjs, Howler) loaded as globals first
 //   - editors/scripts: classic <script src> files sharing one global scope
-//   - tools: Node CommonJS scripts
+//   - tools: Node CommonJS scripts, plus .mjs ones that import engine modules
 
 import js from '@eslint/js';
 import globals from 'globals';
@@ -60,6 +60,16 @@ export default [
         files: ['tools/**/*.js'],
         languageOptions: {
             sourceType: 'commonjs',
+            globals: { ...globals.node },
+        },
+    },
+
+    // Tools that import engine ES modules (item-golden.mjs)
+    {
+        files: ['tools/**/*.mjs'],
+        languageOptions: {
+            ecmaVersion: 'latest',
+            sourceType: 'module',
             globals: { ...globals.node },
         },
     },

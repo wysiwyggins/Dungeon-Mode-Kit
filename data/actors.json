@@ -43,7 +43,7 @@
     "tileIndexBase": "OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE",
     "tileIndexTop": "HAUNTED_FACE",
     "tint": "#bbccff",
-    "effect": "flicker_tint",
+    "vfx": "flicker_tint",
     "personality": "stationed_melee",
     "collision_effect": {
       "health": -5
@@ -475,7 +475,7 @@
     "tileIndexBase": "OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE",
     "tileIndexTop": "SKULL",
     "tint": "#d4e3fe",
-    "effect": "flicker_tint",
+    "vfx": "flicker_tint",
     "personality": "aggressive_melee",
     "collision_effect": {
       "health": -8
@@ -704,7 +704,7 @@
     "tileIndexTop": "WHITE_HUNTING_ANIMAL_FACE",
     "flipTopH": true,
     "tint": "#AADDFF",
-    "effect": "flicker_tint",
+    "vfx": "flicker_tint",
     "personality": "blink_stalker",
     "collision_effect": {
       "health": -6
@@ -728,7 +728,7 @@
     "tileIndexTop": "WHITE_HUNTING_ANIMAL_FACE",
     "flipTopH": true,
     "tint": "#e32400",
-    "effect": "flicker_tint",
+    "vfx": "flicker_tint",
     "animationSide": "fire",
     "sideOffset": { "dx": 0, "dy": 0 },
     "personality": "hell_hound",
@@ -755,7 +755,7 @@
     "tileIndexTop": "OPAQUE_DARK_SHADE_BOTTOM_LEFT_TRIANGLE",
     "flipTopH": true,
     "tint": "#CC77FF",
-    "effect": "flicker_tint",
+    "vfx": "flicker_tint",
     "personality": "illusionist",
     "collision_effect": {
       "health": -4
@@ -993,7 +993,7 @@
     "tileIndexBase": "TORCH_ON_WALL",
     "tileIndexTop": "OPAQUE_LIGHT_SHADE",
     "tint": "#ffb43f",
-    "effect": "flicker_tint",
+    "vfx": "flicker_tint",
     "attributes": {
       "light_source": 9,
       "ornament": true,
@@ -1019,7 +1019,7 @@
     "tileIndexBase": "FLOATING_LEGS_ON_WHITE_UPPER_GRADIENT",
     "tileIndexTop": "OPAQUE_DOOR_TOP",
     "tint": "#d4e3fe",
-    "effect": "flicker_tint",
+    "vfx": "flicker_tint",
     "attributes": {
       "solid": false,
       "visible": false,
@@ -1032,7 +1032,7 @@
     "tileIndexBase": "TWO_WHITE_DIAMONDS",
     "tileIndexTop": "BLANK",
     "tint": "#FF38EC",
-    "effect": "flicker_tint",
+    "vfx": "flicker_tint",
     "attributes": {
       "solid": false,
       "teleporter": true,
@@ -1319,7 +1319,7 @@
     "tileIndexTop": "BLANK",
     "animationBase": "fluid",
     "tint": "#00464b",
-    "effect": "ripple_tint",
+    "vfx": "ripple_tint",
     "personality": "deep_water",
     "attributes": {
       "hazard": true,
@@ -1346,7 +1346,7 @@
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
     "tint": "#7d9332",
-    "effect": "ripple_tint",
+    "vfx": "ripple_tint",
     "animationBase": "fluid",
     "personality": "deep_water",
     "attributes": {
@@ -1417,7 +1417,7 @@
     "tileIndexTop": "BLANK",
     "animationBase": "fire",
     "tint": "#EC7505",
-    "effect": "flicker_tint",
+    "vfx": "flicker_tint",
     "personality": "fire",
     "attributes": {
       "hazard": true,
@@ -1437,7 +1437,7 @@
     "tileIndexBase": "BLANK",
     "tileIndexTop": "BLANK",
     "tint": "#fecb3e",
-    "effect": "flicker_tint",
+    "vfx": "flicker_tint",
     "animationBase": "fire",
     "personality": "fire",
     "attributes": {
@@ -1456,7 +1456,7 @@
     "tileIndexBase": "OPAQUE_DOOR_BOTTOM",
     "animationTop": "fire",
     "tint": "#EC7505",
-    "effect": "flicker_tint",
+    "vfx": "flicker_tint",
     "attributes": {
       "opaque": false,
       "light_source": 10

@@ -423,7 +423,7 @@ export const BehaviorsSpecial = {
         actor.updateSpritePosition();
         actor.engine.lightingManager?.computeLighting();
         actor.engine.playSound?.(data.blink_sound ?? 'magic');
-        actor.engine.renderer?.effectRunner?.apply(data.blink_effect ?? 'blink');
+        actor.engine.renderer?.effectRunner?.apply(data.blink_vfx ?? data.blink_effect ?? 'blink');
 
         if (data.blink_spawn) {
             entityManager.spawnActor(data.blink_spawn, prevX, prevY);
@@ -478,7 +478,7 @@ export const BehaviorsSpecial = {
         if (boltPath.length === 0) return false;
 
         actor.engine.playSound?.(data.bolt_sound ?? 'squarewave');
-        actor.engine.renderer?.effectRunner.apply(data.bolt_effect ?? 'lightning_bolt', actor, { path: boltPath });
+        actor.engine.renderer?.effectRunner.apply(data.bolt_vfx ?? data.bolt_effect ?? 'lightning_bolt', actor, { path: boltPath });
 
         const fillDuration = boltPath.length * 25 + 100;
         setTimeout(() => {

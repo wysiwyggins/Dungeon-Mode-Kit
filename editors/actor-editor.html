@@ -94,8 +94,8 @@
                     <input type="text" id="f-tint-hex" value="" placeholder="#rrggbb" style="width:80px">
                 </div>
                 <div class="field-row">
-                    <label>Tint Effect</label>
-                    <!-- Options are built from data/effects.json (target: "sprite"). -->
+                    <label>Tint VFX</label>
+                    <!-- Options are built from data/vfx.json (target: "sprite"). -->
                     <select id="f-tint_effect"></select>
                     <label style="min-width:unset"><input type="checkbox" id="f-random_color"> Random color</label>
                 </div>
@@ -642,7 +642,7 @@ async function loadBaseData() {
         fetchJSON('../data/personalities.json'),
         fetchJSON('../data/states.json'),
         fetchJSON('../data/types.json'),
-        fetchJSON('../data/effects.json'),
+        fetchJSON('../data/vfx.json'),
         fetchJSON('../data/items.json'),
         fetchJSON('../data/sounds.json'),
         fetchJSON('../data/entities.json'),
@@ -688,7 +688,7 @@ async function loadPrototype(name) {
                 fetchJSON(`../prototypes/${name}/actors.json`),
                 fetchJSON(`../prototypes/${name}/personalities.json`),
                 fetchJSON(`../prototypes/${name}/animations.json`),
-                fetchJSON(`../prototypes/${name}/effects.json`),
+                fetchJSON(`../prototypes/${name}/vfx.json`),
                 fetchJSON(`../prototypes/${name}/items.json`),
                 fetchJSON(`../prototypes/${name}/states.json`),
             ]);
@@ -701,7 +701,7 @@ async function loadPrototype(name) {
             state.prototypeCache[name] = { actors: a, personalities: p, animations: anim, effects: eff, items: it, states: st };
         }
     }
-    // A prototype's own effects.json merges over the base library, the way the
+    // A prototype's own vfx.json merges over the base library, the way the
     // engine merges it (Prototype.loadAssets in engine/prototype.js), so its effects are offered here too.
     state.mergedEffects = { ...state.effects, ...protoEffects };
     state.mergedActors = { ...state.baseActors, ...state.protoActors };
@@ -870,14 +870,14 @@ function applyTintToOffscreen(offscreen, tint, srcImg, sx, sy, fh, fv) {
 
 /**
  * An approximate tint animation for the 2D preview, read from the effect's real
- * definition in effects.json rather than from a hardcoded table. It is still an
+ * definition in vfx.json rather than from a hardcoded table. It is still an
  * approximation — the engine runs these on the GPU via PIXI and this editor draws
  * to a 2D canvas — but the params are now the engine's, so it can't disagree about
  * speed or colour the way the old table did (it modelled flicker as a stepped sine
  * when the engine uses a random hold/transition state machine). The effects editor
  * runs the real primitives; use it when exactness matters.
  * @param {string} baseTint - '#rrggbb'
- * @param {string} effectName - Key in effects.json
+ * @param {string} effectName - Key in vfx.json
  * @param {number} time - performance.now()
  * @returns {string} '#rrggbb'
  */
@@ -1088,7 +1088,7 @@ function randomizeAppearance() {
     document.getElementById('f-tint-hex').value = hex;
 
     // Four blanks weight the roll toward "no effect"; the rest is whatever
-    // effects.json currently offers, so a new sprite effect joins for free.
+    // vfx.json currently offers, so a new sprite effect joins for free.
     const effectOpts = ['', '', '', '', ...spriteEffectNames(state.mergedEffects)];
     document.getElementById('f-tint_effect').value = effectOpts[Math.floor(Math.random() * effectOpts.length)];
     document.getElementById('f-random_color').checked = Math.random() < 0.05;
@@ -1859,7 +1859,7 @@ function populateForm(key, data) {
         document.getElementById('f-tint').value = data.tint;
         document.getElementById('f-tint-hex').value = data.tint;
     }
-    let tintEffect = data.effect || '';
+    let tintEffect = data.vfx || data.effect || '';
     if (!tintEffect && data.flickerTint) tintEffect = 'flicker_tint';
     if (!tintEffect && data.rippleTint) tintEffect = 'ripple_tint';
     document.getElementById('f-tint_effect').value = tintEffect;
@@ -2048,7 +2048,7 @@ function readForm() {
     const tint = getActiveTint();
     if (tint) obj.tint = tint;
     const tintEffectVal = document.getElementById('f-tint_effect').value;
-    if (tintEffectVal) obj.effect = tintEffectVal;
+    if (tintEffectVal) obj.vfx = tintEffectVal;
     if (document.getElementById('f-random_color').checked) obj.random_color = true;
 
     // Animations

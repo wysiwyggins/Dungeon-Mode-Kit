@@ -137,7 +137,7 @@ states what it changes and inherits the rest — including the base's `type`:
 
 `attributes` and `stats` merge one level deep here too, and `null` unsets.
 
-For `items.json`, `personalities.json`, `effects.json`, `biomes.json` and `types.json`
+For `items.json`, `personalities.json`, `vfx.json`, `biomes.json` and `types.json`
 itself, a prototype entry replaces the base definition outright — anything it leaves out is
 gone, so each definition has to be self-contained.
 

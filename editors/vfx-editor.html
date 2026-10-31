@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Effects Editor — Dungeon Mode Kit</title>
+<title>VFX Editor — Dungeon Mode Kit</title>
 <link rel="stylesheet" href="../assets/main.css">
 <!-- The preview runs the ENGINE's effects, not a copy of them: pixi, rot and
      effects.js (with the modules it imports) are the same files the game loads,
@@ -14,14 +14,14 @@
 <script src="scripts/tile-picker.js"></script>
 <script src="scripts/effect-params.js"></script>
 </head>
-<body class="editor effects-editor">
+<body class="editor vfx-editor">
 
 <header>
-    <h1>Effects Editor</h1>
-    <label>Effect:
+    <h1>VFX Editor</h1>
+    <label>VFX:
         <select id="effect-select" style="min-width:200px"></select>
     </label>
-    <button id="btn-new">New Effect</button>
+    <button id="btn-new">New VFX</button>
     <button id="btn-export" class="btn-accent">Export JSON</button>
     <button id="btn-copy" class="btn-accent">Copy to Clipboard</button>
 </header>
@@ -55,7 +55,7 @@
     <div id="form-panel" class="form-panel">
         <!-- Effect Definition -->
         <details class="section" open>
-            <summary>Effect Definition</summary>
+            <summary>VFX Definition</summary>
             <div class="section-body">
                 <div class="field-row">
                     <label>Key</label>
@@ -118,7 +118,7 @@ window.EffectPrimitives = EffectPrimitives;
 let TILE_W = 40, TILE_H = 30, SS_COLS = 23, SS_ROWS = 17;
 const SPRITESHEET_PATH = '../assets/sprites/static-tiles.png';
 const TILE_DATA_PATH = '../data/static-tiles.json';
-const EFFECTS_DATA_PATH = '../data/effects.json';
+const EFFECTS_DATA_PATH = '../data/vfx.json';
 
 let state = {
     tileMap: {},

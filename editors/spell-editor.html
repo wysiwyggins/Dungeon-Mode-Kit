@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spell Editor — Dungeon Mode Kit</title>
+<link rel="stylesheet" href="../assets/main.css">
+</head>
+<body class="editor spell-editor">
+
+<!-- Spells (data/spells.json) are the gameplay half of a targeted spell: how it
+     travels, what it may target, and what it does where it lands. An item points
+     at one with its `spell` attribute (engine/prototype.js applyItemSpell). The
+     visual half lives in vfx.json and is named here by `vfx`, never copied. -->
+<header>
+    <h1>Spell Editor</h1>
+    <label>Prototype:
+        <select id="prototype-select">
+            <option value="" selected>— base only —</option>
+        </select>
+    </label>
+    <label>Spell:
+        <select id="spell-select" style="min-width:200px"></select>
+    </label>
+    <button id="btn-duplicate">Duplicate</button>
+    <button id="btn-new">New Spell</button>
+    <button id="btn-copy" class="btn-accent">Copy to Clipboard</button>
+</header>
+
+<div id="workspace" class="workspace">
+    <aside id="preview-panel" class="preview-panel">
+        <h3>Projectile</h3>
+        <canvas id="preview-tile" class="preview-tile" width="120" height="90"></canvas>
+        <div class="preview-label" id="preview-note"></div>
+        <h3 style="margin-top:12px">Used by</h3>
+        <div id="used-by" class="hint"></div>
+    </aside>
+
+    <div id="form-panel" class="form-panel">
+        <details class="section" open>
+            <summary>Identity</summary>
+            <div class="section-body">
+                <div class="field-row">
+                    <label>Spell Key</label>
+                    <input type="text" id="spell-key" placeholder="e.g. fireball">
+                </div>
+                <div class="field-row">
+                    <label>Name</label>
+                    <input type="text" id="f-name" placeholder="Fireball" title="Shown in cast messages (&quot;You cast Fireball!&quot;).">
+                </div>
+            </div>
+        </details>
+
+        <details class="section" open>
+            <summary>Delivery</summary>
+            <div class="section-body">
+                <div class="field-row">
+                    <label>Delivery</label>
+                    <select id="f-delivery">
+                        <option value="projectile">projectile — flies to the target, then its effect happens</option>
+                        <option value="bolt">bolt — strikes every creature along the line</option>
+                    </select>
+                </div>
+                <div class="field-row">
+                    <label>Range</label>
+                    <input type="number" id="f-range" min="1" placeholder="inherit from the item's type" title="Max targeting distance in tiles.">
+                </div>
+                <div class="field-row">
+                    <label>Target Filter</label>
+                    <span id="target-filter" class="checkbox-row"></span>
+                </div>
+                <div class="hint" style="margin:-4px 0 8px 0">What aiming cycles through. None checked: the default (hostile creatures).</div>
+                <div class="field-row">
+                    <label>Cast Sound</label>
+                    <input type="text" id="f-cast_sound">
+                </div>
+                <div id="projectile-fields">
+                    <div class="sub-section-title" style="margin-top:8px">Projectile</div>
+                    <div class="field-row"><label>Tile</label>
+                        <div class="tile-slot" data-target="projectile_tile"><canvas width="40" height="30"></canvas><span class="tile-name">—</span><button class="clear-btn" title="Clear">x</button></div>
+                    </div>
+                    <div class="field-row">
+                        <label>Tint</label>
+                        <input type="color" id="f-tint" value="#ffffff">
+                        <input type="text" id="f-tint-hex" value="" placeholder="item tint" style="width:80px">
+                    </div>
+                </div>
+                <div id="bolt-fields">
+                    <div class="field-row">
+                        <label>Bolt VFX</label>
+                        <input type="text" id="f-vfx" title="vfx.json entry drawn along the bolt's path.">
+                    </div>
+                    <div class="hint" id="vfx-hint" style="margin:-4px 0 8px 0"></div>
+                </div>
+            </div>
+        </details>
+
+        <details class="section" open>
+            <summary>Effect</summary>
+            <div class="section-body">
+                <div class="hint" style="margin-bottom:8px">What happens where the spell lands. Fill in any combination; blank fields are left out.</div>
+
+                <div id="bolt-payload">
+                    <div class="field-row">
+                        <label>Bolt Damage</label>
+                        <input type="number" id="p-bolt_damage" placeholder="-10" title="Health change for each creature the bolt strikes. Negative hurts.">
+                    </div>
+                </div>
+
+                <div id="projectile-payload">
+                    <div class="sub-section-title">Spawn</div>
+                    <div class="field-row">
+                        <label>Center</label>
+                        <input type="text" id="p-center" title="Actor spawned on the landing tile.">
+                    </div>
+                    <div class="field-row">
+                        <label>Radius</label>
+                        <input type="number" id="p-radius" min="0" title="Spawn the outer actor on every tile within this radius.">
+                    </div>
+                    <div class="field-row">
+                        <label>Outer</label>
+                        <input type="text" id="p-outer" title="Actor spawned in the radius. Blank: same as center.">
+                    </div>
+                    <div class="field-row">
+                        <label>Fill</label>
+                        <input type="text" id="p-fill" title="Actor flooded over open ground where the projectile stopped (walls contain it).">
+                    </div>
+                    <div class="field-row">
+                        <label>Fill Radius</label>
+                        <input type="number" id="p-fill_radius" min="0" step="0.5" placeholder="1">
+                    </div>
+                    <div class="field-row">
+                        <label>Tunnel</label>
+                        <input type="number" id="p-tunnel" min="1" title="Bore through up to this many breakable wall tiles.">
+                    </div>
+
+                    <div class="sub-section-title" style="margin-top:8px">Struck creature</div>
+                    <div class="field-row">
+                        <label>Apply State</label>
+                        <input type="text" id="p-apply_state">
+                    </div>
+                    <div style="margin: 6px 0 4px; font-size:11px; color:var(--accent)">Stat changes (target_effect)</div>
+                    <div id="target-effect-list" class="dynamic-list"></div>
+                    <button class="add-btn" id="btn-add-target-effect">+ Add Stat Change</button>
+                    <div class="checkbox-grid" id="payload-flags" style="margin-top:8px"></div>
+                    <div class="field-row">
+                        <label>Polymorph Pool</label>
+                        <input type="text" id="p-polymorph_pool" placeholder="any creature" title="Only with Polymorph: an actor id or type, a JSON list of them, or {&quot;floors&quot;: &quot;current&quot;}.">
+                    </div>
+                </div>
+
+                <div style="margin: 10px 0 4px; font-size:11px; color:var(--accent)">Other effect keys</div>
+                <div id="other-payload-list" class="dynamic-list"></div>
+                <button class="add-btn" id="btn-add-other">+ Add Key</button>
+            </div>
+        </details>
+    </div>
+</div>
+
+<div id="json-output-panel" class="json-output-panel">
+    <div class="output-header">
+        <h3>JSON Output</h3>
+        <span id="spell-key-field" class="item-key-field"></span>
+    </div>
+    <textarea id="json-output" class="json-output" readonly rows="8"></textarea>
+</div>
+
+<script src="scripts/tile-picker.js"></script>
+<script src="scripts/ref-fields.js"></script>
+
+<script>
+// target_filter tokens the aim code knows (AIM_TARGET_PREDICATES and
+// AIM_TILE_TOKENS in input.js).
+const TARGET_TOKENS = ['hostile', 'ally', 'trap', 'tile'];
+
+// Boolean effect keys read by completeSpell in ui/spells.js.
+const PAYLOAD_FLAGS = {
+    remove_states: 'Negate (strip states)',
+    teleport_target: 'Teleport target away',
+    beckon_target: 'Beckon (pull closer)',
+    blink_self: 'Blink caster to landing',
+    clone_target: 'Clone target',
+    polymorph_target: 'Polymorph'
+};
+
+// Effect keys that have their own field; anything else round-trips through
+// "Other effect keys" so nothing the engine learns later is dropped here.
+const TYPED_PAYLOAD = ['bolt_damage', 'center', 'radius', 'outer', 'fill', 'fill_radius',
+    'tunnel', 'apply_state', 'target_effect', ...Object.keys(PAYLOAD_FLAGS)];
+
+const state = {
+    spells: {}, protoSpells: {}, mergedSpells: {},
+    items: {}, protoItems: {}, mergedItems: {},
+    types: {}, actors: {}, states: {}, effects: {}, soundNames: [],
+    tileMap: {}, spritesheetImg: null, projectileTile: null,
+    prototypeCache: {}
+};
+
+let TILE_W = 40, TILE_H = 30;
+
+async function fetchJSON(url) {
+    try {
+        const r = await fetch(url);
+        if (!r.ok) return {};
+        const text = await r.text();
+        return text.trim() ? JSON.parse(text) : {};
+    } catch { return {}; }
+}
+
+// ---- Loading ----
+
+async function loadBaseData() {
+    const [tiles, spells, items, types, actors, states, effects, sounds] = await Promise.all([
+        fetchJSON('../data/static-tiles.json'),
+        fetchJSON('../data/spells.json'),
+        fetchJSON('../data/items.json'),
+        fetchJSON('../data/types.json'),
+        fetchJSON('../data/actors.json'),
+        fetchJSON('../data/states.json'),
+        fetchJSON('../data/vfx.json'),
+        fetchJSON('../data/sounds.json'),
+    ]);
+    TILE_W = tiles.tilePixelWidth || TILE_W;
+    TILE_H = tiles.tilePixelHeight || TILE_H;
+    state.tileMap = tiles.tiles || {};
+    state.spells = spells;
+    state.items = items;
+    state.types = types;
+    state.actors = actors;
+    state.states = states;
+    state.effects = effects;
+    state.soundNames = Object.keys(sounds?.sprite || {});
+    await new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => { state.spritesheetImg = img; resolve(); };
+        img.onerror = () => resolve();
+        img.src = '../assets/sprites/static-tiles.png';
+    });
+}
+
+async function loadPrototype(name) {
+    if (!name) {
+        state.protoSpells = {};
+        state.protoItems = {};
+    } else {
+        state.prototypeCache[name] ??= await Promise.all([
+            fetchJSON(`../prototypes/${name}/spells.json`),
+            fetchJSON(`../prototypes/${name}/items.json`),
+        ]);
+        [state.protoSpells, state.protoItems] = state.prototypeCache[name];
+    }
+    state.mergedSpells = { ...state.spells, ...state.protoSpells };
+    state.mergedItems = { ...state.items, ...state.protoItems };
+    populateSpellDropdown();
+    RefFields.refresh();
+    const key = document.getElementById('spell-select').value;
+    if (key) populateForm(key, state.mergedSpells[key]);
+}
+
+async function populatePrototypeSelect() {
+    const idx = await fetchJSON('../data/prototypes.json');
+    const sel = document.getElementById('prototype-select');
+    for (const name of Array.isArray(idx.prototypes) ? idx.prototypes : []) {
+        const o = document.createElement('option');
+        o.value = name; o.textContent = name;
+        sel.appendChild(o);
+    }
+}
+
+function populateSpellDropdown(selectKey) {
+    const sel = document.getElementById('spell-select');
+    const prev = selectKey || sel.value || new URLSearchParams(location.search).get('spell');
+    sel.innerHTML = '';
+    for (const key of Object.keys(state.mergedSpells).sort()) {
+        const opt = document.createElement('option');
+        opt.value = key;
+        const proto = key in state.protoSpells ? '◆ ' : '';
+        opt.textContent = `${proto}${key} (${state.mergedSpells[key].name || '—'})`;
+        sel.appendChild(opt);
+    }
+    if (prev && state.mergedSpells[prev]) sel.value = prev;
+}
+
+// ---- Rows ----
+
+function addKVRow(containerId, key, val) {
+    const row = document.createElement('div');
+    row.className = 'list-item';
+    row.innerHTML = '<input type="text" placeholder="key"><input type="text" placeholder="value"><button class="remove-btn">x</button>';
+    const [k, v] = row.querySelectorAll('input');
+    k.value = key ?? '';
+    v.value = typeof val === 'object' ? JSON.stringify(val) : (val ?? '');
+    row.querySelector('button').addEventListener('click', () => { row.remove(); update(); });
+    for (const inp of [k, v]) inp.addEventListener('input', update);
+    document.getElementById(containerId).appendChild(row);
+}
+
+function parseValue(str) {
+    if (str === 'true') return true;
+    if (str === 'false') return false;
+    if (str !== '' && !isNaN(Number(str))) return Number(str);
+    try { if (/^[[{"]/.test(str)) return JSON.parse(str); } catch { /* plain string */ }
+    return str;
+}
+
+function readKVList(containerId) {
+    const out = {};
+    for (const row of document.querySelectorAll(`#${containerId} .list-item`)) {
+        const [k, v] = row.querySelectorAll('input');
+        if (k.value.trim()) out[k.value.trim()] = parseValue(v.value.trim());
+    }
+    return Object.keys(out).length ? out : null;
+}
+
+// ---- Form ----
+
+const val = id => document.getElementById(id).value.trim();
+const num = id => { const n = parseFloat(val(id)); return isNaN(n) ? undefined : n; };
+const setVal = (id, v) => { document.getElementById(id).value = v ?? ''; };
+
+function populateForm(key, spell = {}) {
+    setVal('spell-key', key);
+    setVal('f-name', spell.name);
+    setVal('f-delivery', spell.delivery || 'projectile');
+    setVal('f-range', spell.range);
+    setVal('f-cast_sound', spell.cast_sound);
+    setVal('f-vfx', spell.vfx);
+    for (const cb of document.querySelectorAll('#target-filter input')) {
+        cb.checked = (spell.target_filter || []).includes(cb.value);
+    }
+    state.projectileTile = spell.projectile?.tile ?? null;
+    setVal('f-tint-hex', spell.projectile?.tint);
+    setVal('f-tint', spell.projectile?.tint || '#ffffff');
+
+    const p = spell.effect || {};
+    for (const k of ['bolt_damage', 'center', 'radius', 'outer', 'fill', 'fill_radius', 'tunnel', 'apply_state']) {
+        setVal('p-' + k, p[k]);
+    }
+    document.getElementById('target-effect-list').innerHTML = '';
+    for (const [k, v] of Object.entries(p.target_effect || {})) addKVRow('target-effect-list', k, v);
+    for (const cb of document.querySelectorAll('#payload-flags input')) cb.checked = !!p[cb.value];
+    // A pool is an actor id or type, a list of them, or { floors } (docs/ITEMS.md).
+    const pool = p.polymorph_target;
+    setVal('p-polymorph_pool', pool === true || pool === undefined ? '' : typeof pool === 'string' ? pool : JSON.stringify(pool));
+    document.getElementById('other-payload-list').innerHTML = '';
+    for (const [k, v] of Object.entries(p)) {
+        if (!TYPED_PAYLOAD.includes(k)) addKVRow('other-payload-list', k, v);
+    }
+    RefFields.update();
+    update();
+}
+
+function readForm() {
+    const delivery = val('f-delivery');
+    const spell = {};
+    if (val('f-name')) spell.name = val('f-name');
+    spell.delivery = delivery;
+    if (num('f-range') !== undefined) spell.range = num('f-range');
+    const filter = [...document.querySelectorAll('#target-filter input:checked')].map(cb => cb.value);
+    if (filter.length) spell.target_filter = filter;
+    if (delivery === 'projectile') {
+        const projectile = {};
+        if (state.projectileTile) projectile.tile = state.projectileTile;
+        if (val('f-tint-hex')) projectile.tint = val('f-tint-hex');
+        if (Object.keys(projectile).length) spell.projectile = projectile;
+    } else if (val('f-vfx')) {
+        spell.vfx = val('f-vfx');
+    }
+    if (val('f-cast_sound')) spell.cast_sound = val('f-cast_sound');
+
+    // Only the fields for the chosen delivery are read: a bolt ignores the
+    // projectile effect (ui/spells.js completeBoltSpell) and vice versa.
+    const effect = {};
+    if (delivery === 'bolt') {
+        if (num('p-bolt_damage') !== undefined) effect.bolt_damage = num('p-bolt_damage');
+    } else {
+        for (const k of ['center', 'outer', 'fill', 'apply_state']) if (val('p-' + k)) effect[k] = val('p-' + k);
+        for (const k of ['radius', 'fill_radius', 'tunnel']) if (num('p-' + k) !== undefined) effect[k] = num('p-' + k);
+        const te = readKVList('target-effect-list');
+        if (te) effect.target_effect = te;
+        for (const cb of document.querySelectorAll('#payload-flags input:checked')) effect[cb.value] = true;
+        if (effect.polymorph_target && val('p-polymorph_pool')) effect.polymorph_target = parseValue(val('p-polymorph_pool'));
+    }
+    Object.assign(effect, readKVList('other-payload-list') || {});
+    spell.effect = effect;
+    return spell;
+}
+
+// ---- Derived views ----
+
+// Only the line_tile_fill primitive reads the bolt's path (effects.js); any
+// other effect plays once, centred on the caster.
+const drawsAlongPath = key => (state.effects[key]?.layers || []).some(l => l.primitive === 'line_tile_fill');
+
+/** Explain what the chosen bolt vfx will look like, or that none is set. */
+function updateVfxHint() {
+    const fx = val('f-vfx');
+    const hint = document.getElementById('vfx-hint');
+    if (!fx) hint.textContent = 'Blank: the engine falls back to lightning_bolt. Name it to make the spell say so.';
+    else if (!state.effects[fx]) hint.textContent = '';   // the ref field already flags unknown names
+    else if (!drawsAlongPath(fx)) hint.textContent = `${fx} has no line_tile_fill layer, so it plays at the caster instead of along the bolt.`;
+    else hint.textContent = '';
+}
+
+/** Spritesheet cell for a stored tile ref: a tile name, or {x, y} from the picker. */
+function tileCoords(ref) {
+    if (ref && typeof ref === 'object') return [ref.x, ref.y];
+    return state.tileMap[ref] || null;
+}
+
+const tileLabel = ref => ref && typeof ref === 'object' ? `${ref.x},${ref.y}` : ref;
+
+function drawProjectile() {
+    const canvas = document.getElementById('preview-tile');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const note = document.getElementById('preview-note');
+    if (val('f-delivery') === 'bolt') {
+        note.textContent = val('f-vfx') ? `Bolt: plays ${val('f-vfx')}.` : 'Bolt: no vfx set.';
+        return;
+    }
+    const coords = tileCoords(state.projectileTile);
+    note.textContent = state.projectileTile ? tileLabel(state.projectileTile) : 'No tile: inherits the item type\'s projectile_tile, else the item\'s own tile.';
+    if (!coords || !state.spritesheetImg) return;
+    const off = document.createElement('canvas');
+    off.width = TILE_W; off.height = TILE_H;
+    const octx = off.getContext('2d');
+    const src = [state.spritesheetImg, coords[0] * TILE_W, coords[1] * TILE_H, TILE_W, TILE_H, 0, 0, TILE_W, TILE_H];
+    octx.drawImage(...src);
+    const tint = val('f-tint-hex');
+    if (tint) {
+        octx.globalCompositeOperation = 'multiply';
+        octx.fillStyle = tint;
+        octx.fillRect(0, 0, TILE_W, TILE_H);
+        octx.globalCompositeOperation = 'destination-in';
+        octx.drawImage(...src);
+    }
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(off, 0, 0, canvas.width, canvas.height);
+}
+
+/** Items whose own attributes or type name this spell. */
+function renderUsedBy() {
+    const key = val('spell-key');
+    const users = Object.entries(state.mergedItems)
+        .filter(([, def]) => (def.attributes?.spell ?? state.types[def.type]?.attributes?.spell) === key)
+        .map(([id]) => id);
+    const el = document.getElementById('used-by');
+    el.innerHTML = '';
+    if (!users.length) { el.textContent = 'No items reference this spell.'; return; }
+    for (const id of users.sort()) {
+        const a = document.createElement('a');
+        a.href = `item-editor.html?item=${encodeURIComponent(id)}`;
+        a.textContent = id;
+        el.appendChild(a);
+        el.appendChild(document.createElement('br'));
+    }
+}
+
+function updateTileSlot() {
+    const slot = document.querySelector('.tile-slot[data-target="projectile_tile"]');
+    const canvas = slot.querySelector('canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    slot.querySelector('.tile-name').textContent = tileLabel(state.projectileTile) || '—';
+    const coords = tileCoords(state.projectileTile);
+    if (coords && state.spritesheetImg) {
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(state.spritesheetImg, coords[0] * TILE_W, coords[1] * TILE_H, TILE_W, TILE_H, 0, 0, canvas.width, canvas.height);
+    }
+}
+
+function update() {
+    const bolt = val('f-delivery') === 'bolt';
+    document.getElementById('projectile-fields').style.display = bolt ? 'none' : '';
+    document.getElementById('projectile-payload').style.display = bolt ? 'none' : '';
+    document.getElementById('bolt-fields').style.display = bolt ? '' : 'none';
+    document.getElementById('bolt-payload').style.display = bolt ? '' : 'none';
+    updateTileSlot();
+    drawProjectile();
+    updateVfxHint();
+    renderUsedBy();
+    const key = val('spell-key') || 'new_spell';
+    document.getElementById('spell-key-field').textContent = `"${key}"`;
+    document.getElementById('json-output').value = JSON.stringify(readForm(), null, 2);
+}
+
+// ---- Init ----
+
+function initStaticControls() {
+    const filter = document.getElementById('target-filter');
+    for (const token of TARGET_TOKENS) {
+        const label = document.createElement('label');
+        label.style.minWidth = 'unset';
+        label.innerHTML = `<input type="checkbox" value="${token}"> ${token}`;
+        filter.appendChild(label);
+    }
+    const flags = document.getElementById('payload-flags');
+    for (const [key, text] of Object.entries(PAYLOAD_FLAGS)) {
+        const label = document.createElement('label');
+        label.title = key;
+        label.innerHTML = `<input type="checkbox" value="${key}"> ${text}`;
+        flags.appendChild(label);
+    }
+}
+
+function initRefFields() {
+    const { keysOf } = RefFields;
+    RefFields.define('actor', { file: 'actors.json', names: () => keysOf(state.actors),
+        label: k => state.actors[k]?.name });
+    RefFields.define('state', { file: 'states.json', names: () => keysOf(state.states),
+        label: k => state.states[k]?.name });
+    RefFields.define('sound', { file: 'sounds.json', names: () => state.soundNames });
+    // Path-drawing effects are labelled so they stand out in the dropdown.
+    RefFields.define('vfx', { file: 'vfx.json', names: () => keysOf(state.effects),
+        label: k => drawsAlongPath(k) ? `${k} (draws along path)` : k });
+    const refs = { 'p-center': 'actor', 'p-outer': 'actor', 'p-fill': 'actor',
+        'p-apply_state': 'state', 'f-cast_sound': 'sound', 'f-vfx': 'vfx' };
+    for (const [id, src] of Object.entries(refs)) RefFields.attach(document.getElementById(id), src);
+}
+
+function initEventListeners() {
+    const form = document.getElementById('form-panel');
+    form.addEventListener('input', update);
+    form.addEventListener('change', update);
+
+    document.getElementById('spell-select').addEventListener('change', e => {
+        populateForm(e.target.value, state.mergedSpells[e.target.value]);
+    });
+    document.getElementById('prototype-select').addEventListener('change', e => loadPrototype(e.target.value));
+    document.getElementById('btn-new').addEventListener('click', () => populateForm('new_spell', { delivery: 'projectile' }));
+    document.getElementById('btn-duplicate').addEventListener('click', () => {
+        populateForm((val('spell-key') || 'spell') + '_copy', readForm());
+    });
+    document.getElementById('btn-add-target-effect').addEventListener('click', () => addKVRow('target-effect-list', '', ''));
+    document.getElementById('btn-add-other').addEventListener('click', () => addKVRow('other-payload-list', '', ''));
+
+    // Tint: the hex box is the stored value (blank = use the item's tint); the
+    // swatch is a convenience for picking one.
+    document.getElementById('f-tint').addEventListener('input', e => setVal('f-tint-hex', e.target.value));
+
+    const slot = document.querySelector('.tile-slot[data-target="projectile_tile"]');
+    slot.querySelector('canvas').addEventListener('click', () => TilePicker.open({
+        current: state.projectileTile, label: 'projectile tile',
+        onPick: tile => { state.projectileTile = tile; update(); }
+    }));
+    slot.querySelector('.clear-btn').addEventListener('click', () => { state.projectileTile = null; update(); });
+
+    document.getElementById('btn-copy').addEventListener('click', () => {
+        const key = val('spell-key') || 'new_spell';
+        navigator.clipboard.writeText(`"${key}": ${JSON.stringify(readForm(), null, 2)}`).then(() => {
+            const btn = document.getElementById('btn-copy');
+            btn.textContent = 'Copied!';
+            setTimeout(() => btn.textContent = 'Copy to Clipboard', 1500);
+        });
+    });
+}
+
+async function init() {
+    await populatePrototypeSelect();
+    initStaticControls();
+    await Promise.all([loadBaseData(), TilePicker.load()]);
+    initRefFields();
+    initEventListeners();
+    await loadPrototype('');
+}
+
+init();
+</script>
+</body>
+</html>

@@ -3,6 +3,7 @@
  */
 
 import { BASE_PATH, mergeEntityDef, mergeEntityLibrary, randomElement } from '../core/util.js';
+import { spellAttributes } from '../core/spells.js';
 
 // ============================================================================
 // PROTOTYPE CLASS  (levels)
@@ -45,12 +46,16 @@ export class Prototype {
         const prototypeActors = await this.loadJSON('actors.json', {});
         const prototypeItems = await this.loadJSON('items.json', {});
         const prototypePersonalities = await this.loadJSON('personalities.json', {});
-        const prototypeEffects = await this.loadJSON('effects.json', {});
+        const prototypeEffects = await this.loadJSON('vfx.json', {});
         const prototypeKeybindings = await this.loadJSON('keybindings.json', {});
         const prototypeBiomes = await this.loadJSON('biomes.json', {});
         const prototypeAnimations = await this.loadJSON('animations.json', {});
         const prototypeTypes = await this.loadJSON('types.json', {});
         this.types = { ...this.engine.globalTypes, ...prototypeTypes };
+        // Spells are read only by item resolution (getItemData), so a prototype's
+        // spells.json simply replaces same-named base entries.
+        const prototypeSpells = await this.loadJSON('spells.json', {});
+        this.spells = { ...this.engine.globalSpells, ...prototypeSpells };
         // States are read straight off engine.globalStates from a dozen call sites
         // (innate states, applyAuthoredState, apply_state_radius, ...), so a
         // prototype's states are merged INTO that library rather than kept beside
@@ -521,25 +526,46 @@ export class Prototype {
             return { ...resolved, id: rolled };
         }
 
-        if (!def.type) return def;
-
         if (!this._resolvedItems) this._resolvedItems = {};
         if (this._resolvedItems[itemType]) return this._resolvedItems[itemType];
 
-        const typeDef = this.types?.[def.type];
-        if (!typeDef || typeDef.domain !== 'item') {
+        let resolved = def;
+        const typeDef = def.type ? this.types?.[def.type] : null;
+        if (def.type && (!typeDef || typeDef.domain !== 'item')) {
             console.warn(`Item '${itemType}' declares unknown item type '${def.type}'`);
-            this._resolvedItems[itemType] = def;
-            return def;
+        } else if (typeDef) {
+            // `name` IS inherited here, unlike actors: for an item it's the
+            // unidentified display noun ("you see a scroll"), a genuine property of
+            // the category rather than bookkeeping about the type.
+            const { description, domain, pool, ...inheritable } = typeDef;
+            resolved = mergeEntityDef(inheritable, def);
         }
 
-        // `name` IS inherited here, unlike actors: for an item it's the
-        // unidentified display noun ("you see a scroll"), a genuine property of
-        // the category rather than bookkeeping about the type.
-        const { description, domain, pool, ...inheritable } = typeDef;
-        const resolved = mergeEntityDef(inheritable, def);
+        resolved = this.applyItemSpell(itemType, resolved, def);
         this._resolvedItems[itemType] = resolved;
         return resolved;
+    }
+
+    /**
+     * Expand an item's `spell` attribute (a spells.json id) into the targeted
+     * spell attributes the casting code reads. Layered type < spell < item, so
+     * the item's own attributes are re-applied on top of the spell's.
+     *
+     * @param {string} itemType - Item id, for the unknown-spell warning
+     * @param {Object} resolved - The type-merged definition
+     * @param {Object} def - The item's own definition
+     * @returns {Object} The definition with the spell expanded, or `resolved` as is
+     */
+    applyItemSpell(itemType, resolved, def) {
+        const spellId = resolved.attributes?.spell;
+        if (!spellId) return resolved;
+        const spell = this.spells?.[spellId];
+        if (!spell) {
+            console.warn(`Item '${itemType}' names unknown spell '${spellId}'`);
+            return resolved;
+        }
+        const withSpell = mergeEntityDef(resolved, { attributes: spellAttributes(spell) });
+        return def.attributes ? mergeEntityDef(withSpell, { attributes: def.attributes }) : withSpell;
     }
 
 

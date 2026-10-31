@@ -3,7 +3,7 @@
  * state-derived checks (confused, incapacitated, escape chance).
  */
 
-import { TILE_HEIGHT, TILE_WIDTH, parseTint } from '../../core/util.js';
+import { TILE_HEIGHT, TILE_WIDTH, parseTint, resolveEntityEffect } from '../../core/util.js';
 import { Actor } from './actor.js';
 
 export const ActorStates = {
@@ -200,7 +200,7 @@ export const ActorStates = {
         }
 
         if (stateData.tint) this._repaintStateTint();
-        if (stateData.effect) this._refreshStateEffect();
+        if (resolveEntityEffect(stateData)) this._refreshStateEffect();
 
         return true;
     },
@@ -228,7 +228,7 @@ export const ActorStates = {
     /**
      * The visual effect this actor's sprites should be running right now.
      *
-     * A state's `effect` outranks the actor's own, so a burning torch reads as
+     * A state's `vfx` outranks the actor's own, so a burning torch reads as
      * burning rather than flickering, and the actor's effect returns when the
      * state lapses. Latest applied state wins if several declare one — same
      * "most recent thing that happened to you" rule the messages follow.
@@ -237,7 +237,8 @@ export const ActorStates = {
     getActiveEffect() {
         const states = Object.values(this.states);
         for (let i = states.length - 1; i >= 0; i--) {
-            if (states[i].data?.effect) return states[i].data.effect;
+            const vfx = states[i].data && resolveEntityEffect(states[i].data);
+            if (vfx) return vfx;
         }
         return this.effect ?? null;
     },
@@ -387,7 +388,7 @@ export const ActorStates = {
 
         // Also after the delete: getActiveEffect() must no longer see this state,
         // or the actor keeps running the effect that just ended.
-        if (state.data.effect) this._refreshStateEffect();
+        if (resolveEntityEffect(state.data)) this._refreshStateEffect();
 
         // Telepathy ending: refresh the view so enemies revealed through walls/
         // darkness (and ghosted invisible ones) are re-hidden now that the sense is

@@ -104,8 +104,8 @@
                     <label style="min-width:unset"><input type="checkbox" id="f-random_glyph_name"> Greeked name</label>
                 </div>
                 <div class="field-row">
-                    <label>Tint Effect</label>
-                    <!-- Options are built from data/effects.json (target: "sprite"). -->
+                    <label>Tint VFX</label>
+                    <!-- Options are built from data/vfx.json (target: "sprite"). -->
                     <select id="f-tint_effect"></select>
                     <label style="min-width:unset"><input type="checkbox" id="f-ignore_darkness"> Ignore darkness</label>
                 </div>
@@ -125,9 +125,12 @@
             </div>
         </details>
 
-        <!-- Combat / Weapon -->
-        <details class="section">
-            <summary>Combat / Weapon</summary>
+        <!-- Capability sections this item doesn't use yet (refreshCapabilities) -->
+        <div id="capability-bar" class="capability-bar hidden"></div>
+
+        <!-- Collision / Melee -->
+        <details class="section" data-capability="melee">
+            <summary>Collision / Melee</summary>
             <div class="section-body">
                 <div style="font-size:10px; color:var(--text-dim); margin-bottom:8px; line-height:1.4">
                     Collision effect fires when the wielder attacks with this weapon, or when a non-weapon item hits something (e.g. a key unlocking a door sets locked: false).
@@ -198,8 +201,13 @@
                     <label>Critical Chance (%)</label>
                     <input type="number" id="f-critical_chance" min="0" max="100" value="">
                 </div>
+            </div>
+        </details>
 
-                <div class="sub-section-title" style="margin-top:8px">Launcher</div>
+        <!-- Launcher -->
+        <details class="section" data-capability="launcher">
+            <summary>Launcher</summary>
+            <div class="section-body">
                 <div style="font-size:10px; color:var(--text-dim); margin-bottom:6px; line-height:1.4">
                     A wielded launcher fires the ammo it names (by id or type): thrown or fired with the Fire key, that ammo does (its damage + this weapon's enchantment) × multiplier, at the launch range.
                 </div>
@@ -223,8 +231,16 @@
                     <label>Launch Sound</label>
                     <input type="text" id="f-launch_sound" placeholder="bow">
                 </div>
+            </div>
+        </details>
 
-                <div class="sub-section-title" style="margin-top:8px">Ammo</div>
+        <!-- Thrown & Breaking -->
+        <details class="section" data-capability="thrown">
+            <summary>Thrown &amp; Breaking</summary>
+            <div class="section-body">
+                <div style="font-size:10px; color:var(--text-dim); margin-bottom:8px; line-height:1.4">
+                    What happens when the item is thrown, fired or shattered: ammo breaking on a hit, a potion bursting into gas, an explosive going off.
+                </div>
                 <div class="field-row">
                     <label>Break Chance (%)</label>
                     <input type="number" id="f-break_chance" min="0" max="100" value="" placeholder="chance to break on a hit">
@@ -237,11 +253,27 @@
                     <label>Burst Message</label>
                     <input type="text" id="f-burst_description" placeholder="The [item_name] bursts into flame!">
                 </div>
+                <div class="field-row">
+                    <label>Break Sound</label>
+                    <input type="text" id="f-break_sound" placeholder="glass, shatter...">
+                </div>
+                <div class="field-row">
+                    <label>Breaks Into</label>
+                    <input type="text" id="f-breaks_into" placeholder="item type key">
+                </div>
+                <div class="field-row">
+                    <label>Explode Sound</label>
+                    <input type="text" id="f-explode_sound" placeholder="gas, fireball...">
+                </div>
+                <div class="field-row">
+                    <label>Explosion Radius</label>
+                    <input type="number" id="f-explosion_radius" min="0" value="">
+                </div>
             </div>
         </details>
 
         <!-- Equipment -->
-        <details class="section">
+        <details class="section" data-capability="equipment">
             <summary>Equipment</summary>
             <div class="section-body">
                 <div style="font-size:10px; color:var(--text-dim); margin-bottom:8px; line-height:1.4">
@@ -277,8 +309,9 @@
             </div>
         </details>
 
+
         <!-- Use Effect -->
-        <details class="section">
+        <details class="section" data-capability="use">
             <summary>Use Effect</summary>
             <div class="section-body">
                 <div style="font-size:10px; color:var(--text-dim); margin-bottom:8px; line-height:1.4">
@@ -336,13 +369,17 @@
                 <!-- Targeted spell sub-section -->
                 <div class="conditional-section" id="targeted-spell-section">
                     <div class="sub-section" style="margin-top:10px">
-                        <div class="sub-section-title">Targeted Spell Settings</div>
+                        <div class="sub-section-title">Targeted Spell</div>
                         <div style="font-size:10px; color:var(--text-dim); margin-bottom:6px">
-                            Used by staffs, wands, and any item with use_effect "targeted_spell".
-                            The player aims, a projectile fires, and the spell_effect triggers on hit.
-                            Charges are tracked via the Stats section below (add a "pow" stat).
-                            Staffs recharge over time (per_turn &gt; 0). Wands do not recharge (per_turn: 0) but can gain charges via enchantment.
+                            The player aims, the item spends a charge, and the named spell from spells.json fires.
+                            What the spell does is edited in the <a href="spell-editor.html" id="spell-editor-link">spell editor</a>; this item only owns its charges.
+                            Staffs recharge over time (pow per_turn &gt; 0). Wands do not (per_turn: 0) but can gain charges via enchantment.
                         </div>
+                        <div class="field-row">
+                            <label>Spell</label>
+                            <input type="text" id="f-spell">
+                        </div>
+                        <div class="hint" id="spell-summary" style="margin:-4px 0 8px 0"></div>
                         <div class="field-row">
                             <label>Charge Stat</label>
                             <input type="text" id="f-charge_stat" placeholder="pow" title="Name of the stat that tracks charges. Usually 'pow'. Must match a stat in the Stats section.">
@@ -351,39 +388,63 @@
                             <label>Uses per Charge</label>
                             <input type="number" id="f-uses" min="1" value="" title="How many times the item can be used per full charge. The charge cost is max/uses.">
                         </div>
-                        <div class="field-row">
-                            <label>Spell Range</label>
-                            <input type="number" id="f-spell_range" min="1" value="" title="Max targeting distance in tiles. Leave blank for unlimited.">
-                        </div>
-                        <div class="field-row">
-                            <label>Spell Name</label>
-                            <input type="text" id="f-spell_name" placeholder="Fireball" title="Display name for the spell in UI messages.">
-                        </div>
-                        <div class="field-row">
-                            <label>Cast Sound</label>
-                            <input type="text" id="f-cast_sound" placeholder="fireball, magic, squarewave...">
-                        </div>
-                        <div style="margin: 6px 0 4px; font-size:11px; color:var(--accent)">Spell Effect (what happens on hit)</div>
-                        <div style="font-size:10px; color:var(--text-dim); margin-bottom:4px">
-                            e.g. center: intense_fire, radius: 1, outer: fire (area), or apply_state: poisoned (single target), or blink_self: true
-                        </div>
-                        <div id="spell-effect-list" class="dynamic-list"></div>
-                        <button class="add-btn" id="btn-add-spell-effect">+ Add Spell Effect Property</button>
-                        <div id="projectile-fields">
-                        <div style="margin: 8px 0 4px; font-size:11px; color:var(--accent)">Projectile</div>
-                        <div class="field-row"><label>Projectile Tile</label>
-                            <div class="tile-slot" data-target="projectile_tile"><canvas width="40" height="30"></canvas><span class="tile-name">—</span><button class="clear-btn" title="Clear">x</button></div>
-                        </div>
-                        <div class="field-row">
-                            <label>Projectile Tint</label>
-                            <input type="color" id="f-projectile_tint" value="#ffffff">
-                            <input type="text" id="f-projectile_tint_hex" value="" placeholder="#rrggbb" style="width:80px">
-                        </div>
-                        </div>
-                        <div id="bolt-note" style="display:none; font-size:10px; color:var(--text-dim); margin-top:8px">
-                            Bolt spells (spell_effect type: bolt) draw the lightning_bolt effect along the path, so they have no projectile tile or tint.
-                        </div>
+
+                        <!-- Per-item overrides of what the spell supplies (type < spell < item),
+                             and the inline form an item without a `spell` still uses. -->
+                        <details class="sub-collapsible" id="spell-overrides">
+                            <summary>Overrides / inline spell</summary>
+                            <div style="font-size:10px; color:var(--text-dim); margin:4px 0 6px">
+                                Anything set here wins over the spell. Leave blank to use the spell's values.
+                            </div>
+                            <div class="field-row">
+                                <label>Spell Range</label>
+                                <input type="number" id="f-spell_range" min="1" value="" title="Max targeting distance in tiles. Leave blank for unlimited.">
+                            </div>
+                            <div class="field-row">
+                                <label>Spell Name</label>
+                                <input type="text" id="f-spell_name" title="Display name for the spell in UI messages.">
+                            </div>
+                            <div class="field-row">
+                                <label>Cast Sound</label>
+                                <input type="text" id="f-cast_sound">
+                            </div>
+                            <div style="margin: 6px 0 4px; font-size:11px; color:var(--accent)">Spell Effect (replaces the spell's payload entirely)</div>
+                            <div id="spell-effect-list" class="dynamic-list"></div>
+                            <button class="add-btn" id="btn-add-spell-effect">+ Add Spell Effect Property</button>
+                            <div id="projectile-fields">
+                            <div style="margin: 8px 0 4px; font-size:11px; color:var(--accent)">Projectile</div>
+                            <div class="field-row"><label>Projectile Tile</label>
+                                <div class="tile-slot" data-target="projectile_tile"><canvas width="40" height="30"></canvas><span class="tile-name">—</span><button class="clear-btn" title="Clear">x</button></div>
+                            </div>
+                            <div class="field-row">
+                                <label>Projectile Tint</label>
+                                <input type="color" id="f-projectile_tint" value="#ffffff">
+                                <input type="text" id="f-projectile_tint_hex" value="" placeholder="#rrggbb" style="width:80px">
+                            </div>
+                            </div>
+                            <div id="bolt-note" style="display:none; font-size:10px; color:var(--text-dim); margin-top:8px">
+                                Bolt spells draw their vfx along the path, so they have no projectile tile or tint.
+                            </div>
+                        </details>
                     </div>
+                </div>
+            </div>
+        </details>
+
+        <!-- Light Source -->
+        <details class="section" data-capability="light">
+            <summary>Light Source</summary>
+            <div class="section-body">
+                <div style="font-size:10px; color:var(--text-dim); margin-bottom:8px; line-height:1.4">
+                    Set <b>light_source</b> (or Light Radius) in Attributes to make the item a light.
+                </div>
+                <div class="field-row">
+                    <label>Burns Out Item</label>
+                    <input type="text" id="f-burns_out_item" placeholder="torch_spent">
+                </div>
+                <div class="field-row">
+                    <label>Burnout Message</label>
+                    <input type="text" id="f-burnout_message" placeholder="Your torch burns out.">
                 </div>
             </div>
         </details>
@@ -401,30 +462,6 @@
         <details class="section">
             <summary>Special Properties</summary>
             <div class="section-body">
-                <div class="field-row">
-                    <label>Burns Out Item</label>
-                    <input type="text" id="f-burns_out_item" placeholder="torch_spent">
-                </div>
-                <div class="field-row">
-                    <label>Burnout Message</label>
-                    <input type="text" id="f-burnout_message" placeholder="Your torch burns out.">
-                </div>
-                <div class="field-row">
-                    <label>Break Sound</label>
-                    <input type="text" id="f-break_sound" placeholder="glass, shatter...">
-                </div>
-                <div class="field-row">
-                    <label>Breaks Into</label>
-                    <input type="text" id="f-breaks_into" placeholder="item type key">
-                </div>
-                <div class="field-row">
-                    <label>Explode Sound</label>
-                    <input type="text" id="f-explode_sound" placeholder="gas, fireball...">
-                </div>
-                <div class="field-row">
-                    <label>Explosion Radius</label>
-                    <input type="number" id="f-explosion_radius" min="0" value="">
-                </div>
                 <div class="field-row">
                     <label>Pickup Sound</label>
                     <input type="text" id="f-pickup_sound" placeholder="pickup">
@@ -449,7 +486,7 @@
         </details>
 
         <!-- Random Type -->
-        <details class="section">
+        <details class="section" data-capability="pool">
             <summary>Random Type Pool</summary>
             <div class="section-body">
                 <div style="font-size:11px; color:var(--text-dim); margin-bottom:6px">If this item is a random category (e.g. "potion", "weapon"), list the possible item types here. All other fields will be ignored.</div>
@@ -518,6 +555,39 @@ const TYPED_ATTRS = [
 
 const TILE_FIELDS = ['tileIndex', 'projectile_tile'];
 
+// ---- Capability panels ----
+// The sections only some items need. One is shown when the item's type lists it
+// (TYPE_CAPABILITIES), when the item or its type already sets an attribute the
+// section owns, or when you add it from the chip bar. Ownership is what keeps
+// untyped and hybrid items whole: a spike is both a door jam (use) and a melee
+// weapon. An editor grouping only; the engine never reads it.
+const CAPABILITIES = {
+    melee: { label: 'Collision / Melee', keys: ['collision_effect', 'collision_sound', 'collision_description',
+        'attack_sound', 'attack_style', 'lunge_range', 'sweep_depth', 'penetrate_depth',
+        'weapon_proc', 'knockback_distance', 'critical_chance', 'weapon'] },
+    launcher: { label: 'Launcher', keys: ['launches', 'launch_multiplier', 'launch_range', 'launch_accuracy', 'launch_sound'] },
+    thrown: { label: 'Thrown & Breaking', keys: ['break_chance', 'burst_into', 'burst_description', 'break_sound',
+        'breaks_into', 'explode_sound', 'explosion_radius', 'breakable', 'explosive'] },
+    equipment: { label: 'Equipment', keys: ['wearable', 'wear_effect', 'requires_stat', 'enchantable', 'enchant_range', 'weapon'] },
+    use: { label: 'Use Effect', keys: ['use_verb', 'use_effect', 'use_sound', 'use_ceremony', 'deferred',
+        'spell', 'charge_stat', 'uses'], topKeys: ['use_description'] },
+    light: { label: 'Light Source', keys: ['light_source', 'burns_out_item', 'burnout_message'] },
+    pool: { label: 'Random Type Pool', topKeys: ['random_type'] },
+};
+
+// Item type -> the capabilities its members always show, whatever they set.
+const TYPE_CAPABILITIES = {
+    potion: ['use', 'thrown'],
+    scroll: ['use'],
+    food: ['use'],
+    staff: ['use'],
+    wand: ['use'],
+    weapon: ['melee', 'equipment'],
+    armor: ['equipment'],
+    ring: ['equipment'],
+    illuminator: ['use', 'light'],
+};
+
 let state = {
     tileMap: {},
     tileNames: [],
@@ -528,7 +598,8 @@ let state = {
     mergedItems: {},
     protoItemKeys: new Set(),
     prototypeCache: {},
-    currentTiles: {}
+    currentTiles: {},
+    addedCapabilities: new Set()   // chip-bar additions for the item being edited
 };
 
 // ---- Data loading ----
@@ -558,16 +629,18 @@ function loadSpritesheet() {
 }
 
 async function loadBaseData() {
-    const [tilesData, items, types, effects, actors, states, sounds] = await Promise.all([
+    const [tilesData, items, types, effects, actors, states, sounds, spells] = await Promise.all([
         fetchJSON(TILE_DATA_PATH),
         fetchJSON('../data/items.json'),
         fetchJSON('../data/types.json'),
-        fetchJSON('../data/effects.json'),
+        fetchJSON('../data/vfx.json'),
         fetchJSON('../data/actors.json'),
         fetchJSON('../data/states.json'),
         fetchJSON('../data/sounds.json'),
+        fetchJSON('../data/spells.json'),
     ]);
     state.effects = effects || {};
+    state.baseSpells = spells || {};
     // Only read to suggest names for the reference fields (scripts/ref-fields.js).
     state.baseActors = actors || {};
     state.baseStates = states || {};
@@ -590,34 +663,45 @@ async function loadPrototype(name) {
         state.protoItems = {};
         state.protoActors = {};
         state.protoStates = {};
+        state.protoSpells = {};
     } else {
         if (state.prototypeCache[name]) {
-            ({ items: state.protoItems, actors: state.protoActors, states: state.protoStates } = state.prototypeCache[name]);
+            ({ items: state.protoItems, actors: state.protoActors, states: state.protoStates,
+                spells: state.protoSpells } = state.prototypeCache[name]);
             protoEffects = state.prototypeCache[name].effects;
         } else {
-            const [items, effects, actors, states] = await Promise.all([
+            const [items, effects, actors, states, spells] = await Promise.all([
                 fetchJSON(`../prototypes/${name}/items.json`),
-                fetchJSON(`../prototypes/${name}/effects.json`),
+                fetchJSON(`../prototypes/${name}/vfx.json`),
                 fetchJSON(`../prototypes/${name}/actors.json`),
                 fetchJSON(`../prototypes/${name}/states.json`),
+                fetchJSON(`../prototypes/${name}/spells.json`),
             ]);
             state.protoItems = items;
             state.protoActors = actors;
             state.protoStates = states;
+            state.protoSpells = spells;
             protoEffects = effects;
-            state.prototypeCache[name] = { items, effects, actors, states };
+            state.prototypeCache[name] = { items, effects, actors, states, spells };
         }
     }
     state.mergedActors = { ...state.baseActors, ...state.protoActors };
     state.mergedStates = { ...state.baseStates, ...state.protoStates };
+    state.mergedSpells = { ...state.baseSpells, ...state.protoSpells };
     state.mergedItems = { ...state.items, ...state.protoItems };
-    // A prototype's own effects.json merges over the base library, the way the
+    // A prototype's own vfx.json merges over the base library, the way the
     // engine merges it (Prototype.loadAssets in engine/prototype.js), so its effects are offered here too.
     state.mergedEffects = { ...state.effects, ...protoEffects };
     state.protoItemKeys = new Set(Object.keys(state.protoItems));
     populateItemDropdown();
     populateSpriteEffectSelect(document.getElementById('f-tint_effect'), state.mergedEffects);
     RefFields.refresh();
+    // ?item=<id> opens on that item (the spell editor's "Used by" links).
+    const linked = new URLSearchParams(location.search).get('item');
+    if (linked && state.mergedItems[linked] && !state.openedLinkedItem) {
+        state.openedLinkedItem = true;
+        document.getElementById('item-select').value = linked;
+    }
     const firstKey = document.getElementById('item-select').value;
     if (firstKey && state.mergedItems[firstKey]) {
         populateForm(firstKey, state.mergedItems[firstKey]);
@@ -716,12 +800,12 @@ function drawTileOnCanvas(canvas, tileRef, tintColor, flipH, flipV, scale) {
 
 /**
  * An approximate tint animation for the 2D preview, read from the effect's real
- * definition in effects.json rather than from a hardcoded table. Still an
+ * definition in vfx.json rather than from a hardcoded table. Still an
  * approximation — the engine runs these on the GPU via PIXI — but the params are
  * the engine's now, so the two can't disagree about speed or colour. The effects
  * editor runs the real primitives; use it when exactness matters.
  * @param {string} baseTint - '#rrggbb'
- * @param {string} effectName - Key in effects.json
+ * @param {string} effectName - Key in vfx.json
  * @param {number} time - performance.now()
  * @returns {string} '#rrggbb'
  */
@@ -881,7 +965,11 @@ function updatePreview() {
 
 // Text fields whose blank state inherits the type's value. The placeholder shows
 // what that value is; the field stays blank so saving doesn't restate it.
-const INHERITABLE_TEXT_FIELDS = ['use_verb', 'use_sound', 'charge_stat', 'spell_name', 'cast_sound'];
+const INHERITABLE_TEXT_FIELDS = ['use_verb', 'use_sound', 'charge_stat', 'spell_name', 'cast_sound', 'spell_range'];
+
+// Item attributes a spells.json entry supplies (core/spells.js spellAttributes),
+// so a blank override can say what it falls back to.
+const SPELL_FIELD_SOURCES = { spell_name: s => s.name, cast_sound: s => s.cast_sound, spell_range: s => s.range };
 
 function updateConditionalSections() {
     const typeAttrs = state.types?.[document.getElementById('f-type').value]?.attributes || {};
@@ -894,8 +982,12 @@ function updateConditionalSections() {
         : '— none (use object below) —';
     const effectStr = sel.value || (readKVList('use-effect-list') ? '' : inheritedEffect);
     document.getElementById('targeted-spell-section').classList.toggle('visible', effectStr === 'targeted_spell');
-    // Bolts draw the lightning_bolt effect (ui/spells.js) and never read the projectile fields.
-    const isBolt = readKVList('spell-effect-list')?.type === 'bolt';
+    // Bolts draw their vfx along the path (ui/spells.js) and never read the projectile fields.
+    const spellId = document.getElementById('f-spell').value.trim();
+    const spell = state.mergedSpells?.[spellId];
+    const inlineEffect = readKVList('spell-effect-list');
+    const isBolt = inlineEffect ? inlineEffect.type === 'bolt' : spell?.delivery === 'bolt';
+    updateSpellSummary(spellId, spell);
     document.getElementById('projectile-fields').style.display = isBolt ? 'none' : '';
     document.getElementById('bolt-note').style.display = isBolt ? '' : 'none';
 
@@ -903,8 +995,57 @@ function updateConditionalSections() {
         const el = document.getElementById('f-' + key);
         if (!el) continue;
         el.dataset.placeholder ??= el.placeholder;
-        el.placeholder = typeAttrs[key] !== undefined ? `inherits: ${typeAttrs[key]}` : el.dataset.placeholder;
+        const fromSpell = spell && SPELL_FIELD_SOURCES[key]?.(spell);
+        el.placeholder = fromSpell !== undefined && fromSpell !== null ? `from spell: ${fromSpell}`
+            : typeAttrs[key] !== undefined ? `inherits: ${typeAttrs[key]}` : el.dataset.placeholder;
     }
+}
+
+/** One line saying what the chosen spell does, so the item form needn't repeat it. */
+function updateSpellSummary(spellId, spell) {
+    const el = document.getElementById('spell-summary');
+    const link = document.getElementById('spell-editor-link');
+    link.href = spellId ? `spell-editor.html?spell=${encodeURIComponent(spellId)}` : 'spell-editor.html';
+    if (!spell) { el.textContent = ''; return; }
+    const payload = Object.entries(spell.effect || {})
+        .map(([k, v]) => v === true ? k : `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`).join(', ');
+    el.textContent = `${spell.name || spellId} — ${spell.delivery || 'projectile'}`
+        + (spell.range ? `, range ${spell.range}` : '') + (payload ? ` — ${payload}` : '');
+}
+
+/**
+ * Show the capability sections the current item uses, and offer the rest as
+ * chips. Runs when an item is loaded or its type changes, not on every edit, so
+ * clearing a field never makes its section vanish under the cursor.
+ */
+function refreshCapabilities() {
+    const data = readForm();
+    const type = document.getElementById('f-type').value;
+    const typeAttrs = state.types?.[type]?.attributes || {};
+    const attrs = { ...typeAttrs, ...(data.attributes || {}) };
+    const bar = document.getElementById('capability-bar');
+    bar.innerHTML = '';
+    for (const section of document.querySelectorAll('#form-panel details.section[data-capability]')) {
+        const cap = section.dataset.capability;
+        const def = CAPABILITIES[cap];
+        const shown = TYPE_CAPABILITIES[type]?.includes(cap)
+            || (def.keys || []).some(k => attrs[k] !== undefined)
+            || (def.topKeys || []).some(k => data[k] !== undefined)
+            || state.addedCapabilities.has(cap);
+        section.classList.toggle('hidden', !shown);
+        if (shown) continue;
+        const chip = document.createElement('button');
+        chip.className = 'capability-chip';
+        chip.textContent = '+ ' + def.label;
+        chip.addEventListener('click', () => {
+            state.addedCapabilities.add(cap);
+            refreshCapabilities();
+            section.open = true;
+            section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+        bar.appendChild(chip);
+    }
+    bar.classList.toggle('hidden', !bar.children.length);
 }
 
 // ---- Tile slots ----
@@ -1333,6 +1474,7 @@ function clearForm() {
     document.getElementById('f-use_ceremony').checked = false;
     document.getElementById('f-deferred').checked = false;
 
+    document.getElementById('f-spell').value = '';
     document.getElementById('f-charge_stat').value = '';
     document.getElementById('f-uses').value = '';
     document.getElementById('f-spell_range').value = '';
@@ -1353,6 +1495,8 @@ function clearForm() {
     document.getElementById('f-random_value_min').value = '';
     document.getElementById('f-random_value_max').value = '';
 
+    state.addedCapabilities.clear();
+    refreshCapabilities();
     updatePreview();
 }
 
@@ -1363,6 +1507,7 @@ function populateForm(key, data) {
     // Random type pool — just populate that and return
     if (data.random_type) {
         for (const t of data.random_type) addStringRow('random-type-list', t);
+        refreshCapabilities();
         updatePreview();
         return;
     }
@@ -1384,7 +1529,7 @@ function populateForm(key, data) {
     document.getElementById('f-flipV').checked = !!data.flipV;
     document.getElementById('f-random_color').checked = !!data.random_color;
     document.getElementById('f-random_glyph_name').checked = !!data.random_glyph_name;
-    let tintEffect = data.effect || '';
+    let tintEffect = data.vfx || data.effect || '';
     if (!tintEffect && data.flickerTint) tintEffect = 'flicker_tint';
     if (!tintEffect && data.rippleTint) tintEffect = 'ripple_tint';
     document.getElementById('f-tint_effect').value = tintEffect;
@@ -1498,6 +1643,7 @@ function populateForm(key, data) {
     document.getElementById('f-deferred').checked = !!attrs.deferred;
 
     // Spell
+    if (attrs.spell) document.getElementById('f-spell').value = attrs.spell;
     if (attrs.charge_stat) document.getElementById('f-charge_stat').value = attrs.charge_stat;
     if (attrs.uses) document.getElementById('f-uses').value = attrs.uses;
     if (attrs.spell_range) document.getElementById('f-spell_range').value = attrs.spell_range;
@@ -1516,6 +1662,9 @@ function populateForm(key, data) {
         document.getElementById('f-projectile_tint').value = attrs.projectile_tint;
         document.getElementById('f-projectile_tint_hex').value = attrs.projectile_tint;
     }
+    // Overrides start open only when the item actually sets one.
+    document.getElementById('spell-overrides').open = ['spell_range', 'spell_name', 'cast_sound',
+        'spell_effect', 'projectile_tile', 'projectile_tint'].some(k => attrs[k] !== undefined);
 
     // Special
     if (attrs.burns_out_item) document.getElementById('f-burns_out_item').value = attrs.burns_out_item;
@@ -1541,7 +1690,7 @@ function populateForm(key, data) {
         'burst_into', 'burst_description',
         'wearable', 'wear_effect', 'requires_stat', 'enchantable', 'enchant_range',
         'use_verb', 'use_effect', 'use_sound', 'use_ceremony',
-        'charge_stat', 'uses', 'spell_range', 'spell_name', 'cast_sound',
+        'spell', 'charge_stat', 'uses', 'spell_range', 'spell_name', 'cast_sound',
         'spell_effect', 'projectile_tile', 'projectile_tint',
         'burns_out_item', 'burnout_message', 'break_sound', 'breaks_into',
         'explode_sound', 'explosion_radius', 'pickup_sound', 'mining_power',
@@ -1560,6 +1709,7 @@ function populateForm(key, data) {
         }
     }
 
+    refreshCapabilities();
     updatePreview();
 }
 
@@ -1599,7 +1749,7 @@ function readForm() {
     if (document.getElementById('f-random_color').checked) obj.random_color = true;
     if (document.getElementById('f-random_glyph_name').checked) obj.random_glyph_name = true;
     const tintEffectVal = document.getElementById('f-tint_effect').value;
-    if (tintEffectVal) obj.effect = tintEffectVal;
+    if (tintEffectVal) obj.vfx = tintEffectVal;
     if (document.getElementById('f-ignore_darkness').checked) obj.ignore_darkness = true;
 
     // Identity
@@ -1720,6 +1870,8 @@ function readForm() {
     if (document.getElementById('f-deferred').checked) attrs.deferred = true;
 
     // Spell
+    const spellId = document.getElementById('f-spell').value.trim();
+    if (spellId) attrs.spell = spellId;
     const chStat = document.getElementById('f-charge_stat').value.trim();
     if (chStat) attrs.charge_stat = chStat;
     const uses = parseInt(document.getElementById('f-uses').value);
@@ -1728,7 +1880,7 @@ function readForm() {
     if (!isNaN(sr)) attrs.spell_range = sr;
     const se = readKVList('spell-effect-list');
     if (se) attrs.spell_effect = se;
-    if (se?.type !== 'bolt') {
+    if ((se ? se.type : state.mergedSpells?.[spellId]?.delivery) !== 'bolt') {
         const projTile = state.currentTiles.projectile_tile;
         if (projTile) attrs.projectile_tile = projTile;
         const projTintHex = document.getElementById('f-projectile_tint_hex').value.trim();
@@ -1874,21 +2026,14 @@ const ITEM_STARTERS = {
         },
         attributes: {
             uses: 1,
-            spell_effect: { center: 'fire', radius: 1 },
-            projectile_tile: 'OPAQUE_WHITE_DIAMOND_SUITE',
-            projectile_tint: '#FF6600',
-            spell_name: 'Fireball',
-            cast_sound: 'fireball'
+            spell: 'fireball'
         }
     },
     wand: {
         name: 'Wand of ...',
         identified_template: 'Wand of ...',
         attributes: {
-            spell_range: 8,
-            spell_effect: { apply_state: 'slowed' },
-            projectile_tint: '#8888FF',
-            spell_name: 'Slowness'
+            spell: 'slowness'
         }
     },
     armor: {
@@ -2020,7 +2165,7 @@ function getItemCategory(data) {
     if (a.weapon) return 'weapon';
     if (a.wearable === 'ring') return 'ring';
     if (a.wearable) return 'armor';
-    if (a.use_effect === 'targeted_spell' || a.charge_stat) {
+    if (a.use_effect === 'targeted_spell' || a.charge_stat || a.spell) {
         const statDef = data.stats?.[a.charge_stat || 'pow'];
         if (statDef && statDef.per_turn > 0) return 'staff';
         return 'wand';
@@ -2142,7 +2287,10 @@ function initEventListeners() {
     document.getElementById('btn-add-pickup-effect').addEventListener('click', () => addKVRow('pickup-effect-list', '', ''));
     document.getElementById('btn-add-random-type').addEventListener('click', () => addStringRow('random-type-list', ''));
 
-    document.getElementById('f-type').addEventListener('change', updateTypeHint);
+    document.getElementById('f-type').addEventListener('change', () => {
+        updateTypeHint();
+        refreshCapabilities();
+    });
 
     document.getElementById('f-name').addEventListener('input', (e) => {
         const key = e.target.value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
@@ -2189,6 +2337,7 @@ const REF_FIELDS = {
     'f-burst_into': 'actor',
     'f-use_verb': 'use_verb',
     'f-use_sound': 'sound',
+    'f-spell': 'spell',
     'f-charge_stat': 'stat',
     'f-cast_sound': 'sound',
     'f-burns_out_item': 'item',
@@ -2208,6 +2357,8 @@ function initRefFields() {
     RefFields.define('sound', { file: 'sounds.json', names: () => state.soundNames || [] });
     RefFields.define('item', { file: 'items.json', names: () => keysOf(state.mergedItems),
         label: (k) => state.mergedItems[k]?.name });
+    RefFields.define('spell', { file: 'spells.json', names: () => keysOf(state.mergedSpells),
+        label: (k) => state.mergedSpells[k]?.name });
     RefFields.define('use_verb', { kind: 'label', names: () => valuesInUse(state.mergedItems, 'use_verb') });
     // charge_stat must name a stat this item declares, so the Stats rows are the source.
     RefFields.define('stat', { file: 'the Stats section', names: () =>

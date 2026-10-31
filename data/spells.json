@@ -1,0 +1,207 @@
+{
+  "fireball": {
+    "name": "Fireball",
+    "delivery": "projectile",
+    "projectile": {
+      "tile": "WHITE_FLORETTE",
+      "tint": "#FF6600"
+    },
+    "cast_sound": "fireball",
+    "effect": {
+      "center": "intense_fire",
+      "outer": "fire",
+      "radius": 1
+    }
+  },
+
+  "lightning": {
+    "name": "Lightning",
+    "delivery": "bolt",
+    "vfx": "lightning_bolt",
+    "cast_sound": "squarewave",
+    "effect": {
+      "bolt_damage": -15
+    }
+  },
+
+  "poison": {
+    "name": "Poison",
+    "delivery": "projectile",
+    "projectile": {
+      "tile": "OPAQUE_DOTTED_LIGHT_SHADE",
+      "tint": "#44CC44"
+    },
+    "cast_sound": "magic",
+    "effect": {
+      "apply_state": "poisoned"
+    }
+  },
+
+  "haste_other": {
+    "name": "Haste Other",
+    "delivery": "projectile",
+    "projectile": {
+      "tile": "OPAQUE_WHITE_DIAMOND_SUITE",
+      "tint": "#FFDD44"
+    },
+    "cast_sound": "magic",
+    "effect": {
+      "apply_state": "hasted"
+    }
+  },
+
+  "discord": {
+    "name": "Discord",
+    "delivery": "projectile",
+    "projectile": {
+      "tile": "OPAQUE_WHITE_DIAMOND_SUITE",
+      "tint": "#CC44AA"
+    },
+    "cast_sound": "magic",
+    "effect": {
+      "apply_state": "discordant"
+    }
+  },
+
+  "healing": {
+    "name": "Healing",
+    "delivery": "projectile",
+    "projectile": {
+      "tile": "OPAQUE_WHITE_DIAMOND_SUITE",
+      "tint": "#FF8899"
+    },
+    "cast_sound": "magic",
+    "effect": {
+      "target_effect": {
+        "health": 15
+      }
+    }
+  },
+
+  "obstruction": {
+    "name": "Obstruction",
+    "delivery": "projectile",
+    "projectile": {
+      "tile": "WHITE_BULLET",
+      "tint": "#44DD66"
+    },
+    "cast_sound": "magic",
+    "effect": {
+      "fill": "crystal",
+      "fill_radius": 1.5
+    }
+  },
+
+  "tunneling": {
+    "name": "Tunneling",
+    "delivery": "projectile",
+    "target_filter": [
+      "tile"
+    ],
+    "projectile": {
+      "tile": "WHITE_ASTERISK",
+      "tint": "#ffb43f"
+    },
+    "cast_sound": "magic",
+    "effect": {
+      "tunnel": 5
+    }
+  },
+
+  "blinking": {
+    "name": "Blinking",
+    "delivery": "projectile",
+    "range": 8,
+    "target_filter": [
+      "tile"
+    ],
+    "projectile": {
+      "tile": "WHITE_KOPPA",
+      "tint": "#AADDFF"
+    },
+    "cast_sound": "magic",
+    "effect": {
+      "blink_self": true
+    }
+  },
+
+  "slowness": {
+    "name": "Slowness",
+    "delivery": "projectile",
+    "projectile": {
+      "tile": "IMPERFECT_DOTTED_WHITE_SHADE",
+      "tint": "#8888FF"
+    },
+    "cast_sound": "magic",
+    "effect": {
+      "apply_state": "slowed"
+    }
+  },
+
+  "negation": {
+    "name": "Negation",
+    "delivery": "projectile",
+    "projectile": {
+      "tint": "#CCCCCC"
+    },
+    "effect": {
+      "remove_states": true
+    }
+  },
+
+  "teleportation": {
+    "name": "Teleportation",
+    "delivery": "projectile",
+    "projectile": {
+      "tint": "#FF44FF"
+    },
+    "effect": {
+      "teleport_target": true
+    }
+  },
+
+  "beckoning": {
+    "name": "Beckoning",
+    "delivery": "projectile",
+    "projectile": {
+      "tint": "#FFAA00"
+    },
+    "effect": {
+      "beckon_target": true
+    }
+  },
+
+  "invisibility": {
+    "name": "Invisibility",
+    "delivery": "projectile",
+    "projectile": {
+      "tint": "#AAAAAA"
+    },
+    "effect": {
+      "apply_state": "invisible"
+    }
+  },
+
+  "plenty": {
+    "name": "Plenty",
+    "delivery": "projectile",
+    "projectile": {
+      "tile": "TWO_WHITE_DIAMONDS",
+      "tint": "#f9d3e0"
+    },
+    "effect": {
+      "clone_target": true
+    }
+  },
+
+  "polymorph": {
+    "name": "Polymorph",
+    "delivery": "projectile",
+    "projectile": {
+      "tint": "#DD66DD"
+    },
+    "effect": {
+      "polymorph_target": true
+    }
+  }
+}

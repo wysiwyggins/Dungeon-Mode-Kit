@@ -10,11 +10,11 @@ The main difficulty is that the editors are separate HTML pages. A change made i
 
 ## How the Editors Work Today
 
-Each editor page has its own copy of a `fetchJSON(url)` helper that returns `{}` on any failure. The copies live in `actor-editor.html`, `item-editor.html`, `entity-editor.html`, `effects-editor.html`, `personality-editor.html`, `scripts/proto-state.js` and `scripts/biome-state.js`. Shared data comes from `../data/`, and prototype files come from `../prototypes/<name>/`.
+Each editor page has its own copy of a `fetchJSON(url)` helper that returns `{}` on any failure. The copies live in `actor-editor.html`, `item-editor.html`, `entity-editor.html`, `vfx-editor.html`, `personality-editor.html`, `scripts/proto-state.js` and `scripts/biome-state.js`. Shared data comes from `../data/`, and prototype files come from `../prototypes/<name>/`.
 
 The actor, item, personality and prototype editors choose a prototype with a dropdown filled from `data/prototypes.json`, because a static web server can't list a folder. That file has to be kept up to date by hand, and it has already drifted (it lists `infrastructure`, which doesn't exist, and is missing `chase_test`).
 
-Output is clipboard only. The actor, item, personality and entity editors copy a single `"key": {...}` entry to paste into a file. The effects editor copies a wrapped object. The biome editor copies either all of `data/biomes.json` or one biome. The prototype editor copies the whole `prototype.json`. No editor ever writes a prototype's `actors.json`, `items.json`, `personalities.json`, `effects.json` or `states.json` as a whole, and none touch `map.tmj` or animation sheets.
+Output is clipboard only. The actor, item, personality and entity editors copy a single `"key": {...}` entry to paste into a file. The VFX editor copies a wrapped object. The biome editor copies either all of `data/biomes.json` or one biome. The prototype editor copies the whole `prototype.json`. No editor ever writes a prototype's `actors.json`, `items.json`, `personalities.json`, `vfx.json` or `states.json` as a whole, and none touch `map.tmj` or animation sheets.
 
 The pages share no state. `localStorage` only holds UI preferences such as whether the JSON panel is hidden, and the one link between editors (the prototype editor's "Edit biomes" link) passes nothing along.
 
@@ -40,7 +40,7 @@ Each editor's prototype loading swaps its `fetchJSON('../prototypes/<name>/...')
 
 ## What Each Editor Writes
 
-The prototype editor writes `prototype.json`. In the actor, item and personality editors, "Copy" becomes "Save to workspace", which calls `putEntry` on the matching file. Actor overrides already merge with the base entry, so saving a full actor is still correct. The biome editor gets a workspace target and writes the workspace's `biomes.json`. The effects editor gets a prototype selector and writes `effects.json`.
+The prototype editor writes `prototype.json`. In the actor, item and personality editors, "Copy" becomes "Save to workspace", which calls `putEntry` on the matching file. Actor overrides already merge with the base entry, so saving a full actor is still correct. The biome editor gets a workspace target and writes the workspace's `biomes.json`. The VFX editor gets a prototype selector and writes `vfx.json`.
 
 The entity editor stays library-only, because the engine has no per-prototype `entities.json` (see Open Questions). Copy buttons stay as a fallback for editing the shared library in the repo.
 
@@ -72,7 +72,7 @@ Each phase is usable on its own.
 
 1. `workspace.js` plus the prototype editor: new, copy from server, open, export zip, import zip.
 2. The actor, item and personality editors save to the workspace.
-3. The biome and effects editors save to the workspace.
+3. The biome and VFX editors save to the workspace.
 4. Service worker playtesting.
 5. Hosted polish, such as a workspace picker on `index.html` and a storage meter.
 

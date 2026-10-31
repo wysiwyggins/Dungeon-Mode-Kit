@@ -577,6 +577,32 @@ body.editor {
         .field-row label { min-width: 150px; }
         .typed-attrs .field-row label { min-width: 0; }
         @include section-wrap;
+
+        // Capability sections the item doesn't use yet, offered as "+ Launcher"
+        // chips (refreshCapabilities in item-editor.html).
+        .capability-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: $sp-2;
+            margin-bottom: $sp-4;
+        }
+        .capability-chip {
+            @include outline-btn(var(--text-dim), var(--bg));
+            font-size: $fs-md;
+            padding: $sp-1 $sp-4;
+        }
+        #spell-overrides { margin-top: $sp-4; }
+    }
+
+    // ================================================================
+    // Spell editor specifics
+    // ================================================================
+
+    &.spell-editor {
+        .field-row label { min-width: 120px; }
+        @include section-wrap;
+        .checkbox-row { display: flex; flex-wrap: wrap; gap: $sp-4; }
+        #used-by a { color: var(--accent); }
     }
 
     &.entity-editor {
@@ -701,7 +727,7 @@ body.editor {
     // Effects editor specifics
     // ================================================================
 
-    &.effects-editor {
+    &.vfx-editor {
         $effects-label-w: 140px;
         .field-row label { min-width: $effects-label-w; }
         @include section-wrap;
@@ -766,19 +792,10 @@ body.editor {
         }
     }
 
-    // ---- Prototype editor (prototype.json) + biome editor (data/biomes.json) ----
-    // Visual editors for level/prototype configs. Add widgets the other
-    // editors don't use: floor tabs with inheritance, percentage sliders,
-    // dual-handle min/max ranges, weighted-pool bars, and spawn rows.
-    //
-    // Both pages are covered by one block because they share the same shell
-    // (.workspace / .editor-body / .proto-main / .form-panel + JSON panel) and
-    // the same widget set — the biome editor reuses proto-widgets.js and
-    // biome-sections.js verbatim. Scoping these to .prototype-editor alone would
-    // leave the biome editor's cards, depth catalogs and dual-ranges unstyled.
+
     &.prototype-editor,
     &.biome-editor {
-        $compact-label-w: 92px;     // labels inside grid cells and slider rows
+        $compact-label-w: 92px; 
 
         .workspace {
             display: block;
@@ -805,7 +822,7 @@ body.editor {
         .form-sections {
             column-width: 460px;
             column-gap: $sp-4;
-        }
+        } 
         details.section { @include column-section(520px); }
 
         // ---- Responsive field grid (still used by JS-built sections) ----

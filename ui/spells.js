@@ -399,8 +399,11 @@ export const UISpells = {
         this.engine.playSound(castSound);
 
         if (isBolt) {
-            // Bolt spells use tile fill effect instead of projectile animation
-            this.engine.renderer?.effectRunner.apply('lightning_bolt', caster, { path });
+            // Bolt spells use tile fill effect instead of projectile animation.
+            // A spell's `vfx` (expanded to spell_vfx) names the vfx.json entry;
+            // the fallback only serves items that still declare a bolt inline.
+            const boltFx = item.getAttribute('spell_vfx') || 'lightning_bolt';
+            this.engine.renderer?.effectRunner.apply(boltFx, caster, { path });
             for (const bounce of pathResult.bounces || []) {
                 this.engine.inputManager?.showMessage(
                     `The bolt bounces off ${bounce.actor.getNameWithArticle()}!`,

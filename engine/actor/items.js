@@ -815,9 +815,10 @@ export const ActorItems = {
             this.engine.turnEngine?.lock();
 
             const buildSound = ceremony.build_sound || 'levelout';
-            const buildEffect = ceremony.build_effect || 'scroll_ceremony';
+            // *_effect are the pre-vfx names, still read.
+            const buildEffect = ceremony.build_vfx || ceremony.build_effect || 'scroll_ceremony';
             const releaseSound = ceremony.release_sound || 'magic';
-            const releaseEffect = ceremony.release_effect || 'scroll_ceremony_flash';
+            const releaseEffect = ceremony.release_vfx || ceremony.release_effect || 'scroll_ceremony_flash';
             const duration = ceremony.duration || 1000;
 
             const soundId = this.engine.playSound(buildSound);

@@ -4,7 +4,7 @@
     "type": "treasure",
     "tileIndex": "WHITE_ASTERISK",
     "tint": "#cce8b5",
-    "effect": "flicker_tint",
+    "vfx": "flicker_tint",
     "identified": false,
     "random_value": [5, 10],
     "attributes": {

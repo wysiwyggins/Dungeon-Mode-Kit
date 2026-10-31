@@ -123,11 +123,11 @@ const PRIMITIVE_PARAMS = {
 
 /**
  * The effects an actor or item may name in its `effect` field: those declared
- * `"target": "sprite"` in effects.json. The other targets act on the stage or the
+ * `"target": "sprite"` in vfx.json. The other targets act on the stage or the
  * whole scene and do nothing useful attached to one sprite, so offering them would
  * only invite bug reports. Data-driven for the same reason the animation dropdowns
  * are — a new sprite effect should join the list without an editor edit.
- * @param {Object} effects - Parsed data/effects.json
+ * @param {Object} effects - Parsed data/vfx.json
  * @returns {string[]} Sorted effect names
  */
 function spriteEffectNames(effects) {
@@ -142,7 +142,7 @@ function spriteEffectNames(effects) {
  * still offered — an actor may name an effect a prototype defines but the base
  * library does not, and reloading the form shouldn't silently clear it.
  * @param {HTMLSelectElement} sel
- * @param {Object} effects - Parsed data/effects.json
+ * @param {Object} effects - Parsed data/vfx.json
  * @param {string} [current] - Value to preserve/select
  */
 function populateSpriteEffectSelect(sel, effects, current) {
@@ -169,7 +169,7 @@ function populateSpriteEffectSelect(sel, effects, current) {
     if (keep && !names.includes(keep)) {
         const opt = document.createElement('option');
         opt.value = keep;
-        opt.textContent = `${keep} (not in effects.json)`;
+        opt.textContent = `${keep} (not in vfx.json)`;
         sel.appendChild(opt);
     }
     sel.value = keep || '';

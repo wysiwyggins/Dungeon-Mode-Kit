@@ -11,7 +11,7 @@
 - pull the random spawned locked doors and chests out of test prototype
 - ~~There should be description messages for equipping and unequipping weapons and wearables~~ — done
 - There are a lot of items and actors in default data. Always be looking for opportunities to create types in data and move specific data to prototypes so that designers aren't overwhelmed by default actors and items.
-- **`flicker_tint` (the effect) vs `tint_flicker` (the primitive)** — the words are reversed between the two layers, which is genuinely confusing when reading `effects.json`. Renaming either breaks data or code, so left alone for now.
+- **`flicker_tint` (the effect) vs `tint_flicker` (the primitive)** — the words are reversed between the two layers, which is genuinely confusing when reading `vfx.json`. Renaming either breaks data or code, so left alone for now.
 - Tiled.app tile layers have a tint color property, it would be cool if we could use it for picking floor tile tints in Tiled too. Currently we do this in the prototype editor.
 
 ---
@@ -19,6 +19,8 @@
 ## Feature ideas
 
 ## `effect` means three different things
+
+Partly done: visual effects are now `vfx` in data (`vfx.json`, the `vfx` key on actors/items/states, `bolt_vfx`, `build_vfx`), so `effect` in data means gameplay. The engine code still says effect (`effects.js`, `EffectRunner`).
 
 — the visual effect id on actors/items, the stat-change object in `collision_effect`/`use_effect`, and the `on_apply_effect`/. There's also both an effects.js where effect methods live and effects.json data files that define named effects using those methods. It would be a non-trivial refactor but it might be desirable to disambiguate a little.
 

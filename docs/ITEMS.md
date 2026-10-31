@@ -39,7 +39,7 @@ Item JSON has two layers, and knowing which layer a property belongs to matters.
 | `flipH` | boolean | Flip sprite horizontally |
 | `flipV` | boolean | Flip sprite vertically |
 | `ignore_darkness` | boolean | Render even in unlit tiles |
-| `effect` | string | Named visual effect from [`data/effects.json`](../data/effects.json), e.g. `"flicker_tint"` (torches, phials) or `"ripple_tint"`. Deprecated aliases: `flickerTint: true`, `rippleTint: true` |
+| `vfx` | string | Named visual effect from [`data/vfx.json`](../data/vfx.json), e.g. `"flicker_tint"` (torches, phials) or `"ripple_tint"`. Actors and states take it too. Deprecated aliases: `"effect": "<name>"`, `flickerTint: true`, `rippleTint: true` |
 | `identified` | boolean | `false` = starts unidentified |
 | `unidentified_template` | string | Display name before identification |
 | `identified_template` | string | Display name after identification |
@@ -233,7 +233,7 @@ Items with `use_verb` appear with an action button in the inventory UI.
 | `use_effect` | string or object | What happens on use |
 | `use_sound` | string | Sound played on use |
 | `use_description` | string | Message shown after use (supports `[item_name]`, `[effect_description]`, `[adjectives.yucky]` etc.) |
-| `use_ceremony` | boolean or object | Play a dramatic build-up effect before activation. `true` uses defaults (build sound, darken, flash). Object overrides: `build_sound`, `build_effect`, `release_sound`, `release_effect`, `duration`. |
+| `use_ceremony` | boolean or object | Play a dramatic build-up effect before activation. `true` uses defaults (build sound, darken, flash). Object overrides: `build_sound`, `build_vfx`, `release_sound`, `release_vfx`, `duration` (the old `build_effect`/`release_effect` still work). |
 | `deferred` | boolean | Item effect requires a follow-up UI interaction (picker, aiming); consumption handled after completion |
 
 ### Object format — stat and state effects
@@ -482,37 +482,61 @@ aiming; carry two and it asks which first. Picking one hands off to its `use_eff
 | ----------- | ------------- |
 | `charge_stat` | Name of the stat that tracks charge |
 | `uses` | Number of casts per full charge (determines `ready_at` if not set explicitly) |
-| `spell_effect` | Object describing the AoE: `{ "center": "actor_type", "radius": N, "outer": "actor_type" }` |
-| `projectile_tile` | Tile name for the projectile animation |
-| `projectile_tint` | Hex tint for the projectile |
-| `cast_sound` | Sound played on cast |
+| `spell` | Id of a spell in `spells.json` (see [Spells](#spells-spellsjson)) — what the zap does |
+
+The item owns its charges; the spell owns what happens when it fires. The `staff` type
+supplies the verb, `use_effect`, `charge_stat` and the unidentified naming, so a staff is
+mostly its spell and its charge stat:
 
 ```json
 "staff_of_fireball": {
-  "name": "Staff of Fireball",
-  "tileIndex": "SOLIDUS",
-  "identified": false,
-  "unidentified_template": "[substances.substances] staff",
+  "type": "staff",
+  "name": "staff of fireball",
   "identified_template": "Staff of Fireball",
-  "attributes": {
-    "pickupable": true,
-    "use_verb": "Zap",
-    "use_effect": "targeted_spell",
-    "charge_stat": "pow",
-    "uses": 1,
-    "spell_effect": { "center": "intense_fire", "radius": 1, "outer": "fire" },
-    "projectile_tile": "OPAQUE_INVERSE_DIAMOND_SUITE",
-    "projectile_tint": "#FF6600"
-  },
   "stats": {
-    "pow": {
-      "max": 800,
-      "per_turn": 1,
-      "ready_message": "Your [item_name] is fully charged!"
-    }
+    "pow": { "max": 800, "start": 800, "per_turn": 1, "ready_message": "Your [item_name] is fully charged!" }
+  },
+  "attributes": {
+    "uses": 1,
+    "spell": "fireball"
   }
 }
 ```
+
+### Spells (`spells.json`)
+
+A spell is the gameplay half of a targeted spell: how it travels, what it may target, and
+what it does where it lands. `data/spells.json` holds the shared library and a prototype can
+add or replace entries with its own `spells.json`. They're edited in the spell editor
+(`editors/spell-editor.html`). The *look* of a spell stays in `vfx.json`; a spell only
+names an entry there.
+
+| Property | Description |
+| ---------- | ------------- |
+| `name` | Shown in cast messages ("You cast Fireball!") |
+| `delivery` | `projectile` (flies to the target, then its effect happens) or `bolt` (strikes every creature along the line, bouncing off reflective ones) |
+| `range` | Max targeting distance in tiles. Omit to use the item type's `spell_range` |
+| `target_filter` | What aiming cycles through (see [Aim targeting](#aim-targeting-target_filter)) |
+| `projectile` | `{ "tile": "...", "tint": "#rrggbb" }`. Either part can be left out: the tile falls back to the item type's `projectile_tile`, the tint to the item's tint |
+| `cast_sound` | Sound played on cast |
+| `vfx` | Bolts only: the `vfx.json` entry played for the bolt. Only effects with a `line_tile_fill` layer draw along the path; others play once at the caster. Left out, the engine falls back to `lightning_bolt` |
+| `effect` | What the spell does where it lands. Projectile spells take the area properties (`center`, `radius`, `outer`) and the [single-target properties](#spell-effect-properties-single-target); bolts take `bolt_damage` |
+
+```json
+"fireball": {
+  "name": "Fireball",
+  "delivery": "projectile",
+  "projectile": { "tile": "OPAQUE_WHITE_DIAMOND_SUITE", "tint": "#FF6600" },
+  "cast_sound": "fireball",
+  "effect": { "center": "intense_fire", "radius": 1, "outer": "fire" }
+}
+```
+
+When an item is resolved, its spell is expanded into the flat attributes the casting code
+reads (`spell_name`, `spell_effect`, `spell_range`, `target_filter`, `projectile_tile`,
+`projectile_tint`, `cast_sound`, `spell_vfx`), layered type < spell < item. So an item can
+still override any one of them, and an item with no `spell` can declare them inline as
+before.
 
 ### Aim targeting (`target_filter`)
 
@@ -739,34 +763,25 @@ Rings can also use `light_source: true` to emit light while carried (no fuel sta
 
 ## Wands (Targeted Charged Items)
 
-Wands are single-target charged items that apply effects at range. Like staves, they use the `targeted_spell` system with `charge_stat` for charge management. Wands recharge over time and use `random_color` for the identification system.
+Wands are single-target charged items that apply effects at range. Like staves, they use the `targeted_spell` system with `charge_stat` for charge management. Wands do not recharge (the `wand` type sets `per_turn: 0`), though enchanting one adds charges, and they use `random_color` for the identification system.
 
 ```json
 "wand_of_slowness": {
-  "name": "Wand of Slowness",
-  "tileIndex": "EXCLAMATION_MARK",
-  "random_color": true,
-  "identified": false,
-  "unidentified_template": "[color_name] wand",
+  "type": "wand",
+  "tint": "#8888FF",
   "identified_template": "Wand of Slowness",
   "attributes": {
-    "use_verb": "Zap",
-    "use_effect": "targeted_spell",
-    "deferred": true,
-    "charge_stat": "pow",
-    "uses": 3,
-    "spell_range": 8,
-    "spell_effect": {
-      "apply_state": "slowed"
-    }
-  },
-  "stats": {
-    "pow": { "max": 300, "start": 300, "per_turn": 1 }
+    "spell": "slowness"
   }
 }
 ```
 
+A wand's `random_color` replaces its tint while unidentified, so wand spells set
+`projectile.tint` rather than falling back to the item's tint.
+
 ### Spell Effect Properties (Single-Target)
+
+These go in a spell's `effect` (or an item's inline `spell_effect`).
 
 | Property | Type | Effect |
 | ---------- | ------ | -------- |

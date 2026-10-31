@@ -4,7 +4,7 @@
     "name": "Amulet of Yendor",
     "tileIndex": "WHITE_FEMALE_SYMBOL",
     "tint": "#ffaa00",
-    "effect": "flicker_tint",
+    "vfx": "flicker_tint",
     "identified": false,
     "description": "A shining sigil of starmetal, forged by Marduk.",
     "attributes": {
@@ -18,7 +18,7 @@
     "name": "The Grail",
     "tileIndex": "WHITE_GLAGOLITIC_CAPITAL_LETTER_IZHE",
     "tint": "#ffee00",
-    "effect": "flicker_tint",
+    "vfx": "flicker_tint",
     "ignore_darkness": true,
     "identified": false,
     "description": "A golden cup, everfilled",
@@ -53,7 +53,7 @@
     "type": "illuminator",
     "tileIndex": "BOX_VERTICAL_WHITE_TOP",
     "tint": "#EC7505",
-    "effect": "flicker_tint",
+    "vfx": "flicker_tint",
     "attributes": {
       "flammable": true,
       "ignites": true,
@@ -126,7 +126,7 @@
     "type": "illuminator",
     "tileIndex": "LATIN_CAPITAL_LETTER_I",
     "tint": "#D8B4E2",
-    "effect": "flicker_tint",
+    "vfx": "flicker_tint",
     "attributes": {
       "light_source": 2,
       "description": "A smouldering stick of resin. Its pale smoke is sweet to you and unbearable to the dead.",
@@ -186,7 +186,7 @@
     "type": "illuminator",
     "tileIndex": "WHITE_FEMALE_SYMBOL",
     "tint": "#BBECEC",
-    "effect": "flicker_tint",
+    "vfx": "flicker_tint",
     "attributes": {
       "flammable": false,
       "light_source": 8,
@@ -820,15 +820,7 @@
     },
     "attributes": {
       "uses": 1,
-      "spell_effect": {
-        "center": "intense_fire",
-        "radius": 1,
-        "outer": "fire"
-      },
-      "projectile_tile": "OPAQUE_WHITE_DIAMOND_SUITE",
-      "projectile_tint": "#FF6600",
-      "spell_name": "Fireball",
-      "cast_sound": "fireball"
+      "spell": "fireball"
     }
   },
 
@@ -847,12 +839,7 @@
     },
     "attributes": {
       "uses": 1,
-      "spell_effect": {
-        "type": "bolt",
-        "bolt_damage": -15
-      },
-      "spell_name": "Lightning",
-      "cast_sound": "squarewave"
+      "spell": "lightning"
     }
   },
 
@@ -871,13 +858,7 @@
     },
     "attributes": {
       "uses": 2,
-      "spell_effect": {
-        "apply_state": "poisoned"
-      },
-      "projectile_tile": "OPAQUE_WHITE_DIAMOND_SUITE",
-      "projectile_tint": "#44CC44",
-      "spell_name": "Poison",
-      "cast_sound": "magic"
+      "spell": "poison"
     }
   },
 
@@ -897,13 +878,7 @@
     "attributes": {
       "magic_polarity": "bad",
       "uses": 2,
-      "spell_effect": {
-        "apply_state": "hasted"
-      },
-      "projectile_tile": "OPAQUE_WHITE_DIAMOND_SUITE",
-      "projectile_tint": "#FFDD44",
-      "spell_name": "Haste Other",
-      "cast_sound": "magic",
+      "spell": "haste_other",
       "description": "Speeds up whatever it strikes. Best aimed at an ally."
     }
   },
@@ -923,13 +898,7 @@
     },
     "attributes": {
       "uses": 2,
-      "spell_effect": {
-        "apply_state": "discordant"
-      },
-      "projectile_tile": "OPAQUE_WHITE_DIAMOND_SUITE",
-      "projectile_tint": "#CC44AA",
-      "spell_name": "Discord",
-      "cast_sound": "magic",
+      "spell": "discord",
       "description": "The struck creature lashes out at anything near it, and its allies turn on it."
     }
   },
@@ -950,15 +919,7 @@
     "attributes": {
       "magic_polarity": "bad",
       "uses": 2,
-      "spell_effect": {
-        "target_effect": {
-          "health": 15
-        }
-      },
-      "projectile_tile": "OPAQUE_WHITE_DIAMOND_SUITE",
-      "projectile_tint": "#FF8899",
-      "spell_name": "Healing",
-      "cast_sound": "magic",
+      "spell": "healing",
       "description": "Heals whatever it strikes, friend or foe."
     }
   },
@@ -978,14 +939,7 @@
     },
     "attributes": {
       "uses": 2,
-      "spell_effect": {
-        "fill": "crystal",
-        "fill_radius": 1.5
-      },
-      "projectile_tile": "OPAQUE_WHITE_DIAMOND_SUITE",
-      "projectile_tint": "#44DD66",
-      "spell_name": "Obstruction",
-      "cast_sound": "magic",
+      "spell": "obstruction",
       "description": "Conjures a mass of green crystal where the bolt stops. Nothing passes through it until it melts."
     }
   },
@@ -1005,14 +959,7 @@
     },
     "attributes": {
       "uses": 2,
-      "spell_effect": {
-        "tunnel": 5
-      },
-      "target_filter": ["tile"],
-      "projectile_tile": "OPAQUE_WHITE_DIAMOND_SUITE",
-      "projectile_tint": "#BB9966",
-      "spell_name": "Tunneling",
-      "cast_sound": "magic",
+      "spell": "tunneling",
       "description": "Bores through up to 5 tiles of breakable wall, passing harmlessly through creatures."
     }
   },
@@ -1032,15 +979,7 @@
     },
     "attributes": {
       "uses": 2,
-      "spell_range": 8,
-      "spell_effect": {
-        "blink_self": true
-      },
-      "target_filter": ["tile"],
-      "projectile_tile": "OPAQUE_WHITE_DIAMOND_SUITE",
-      "projectile_tint": "#AADDFF",
-      "spell_name": "Blinking",
-      "cast_sound": "magic"
+      "spell": "blinking"
     }
   },
 
@@ -1596,11 +1535,7 @@
     "identified_template": "Wand of Slowness",
     "effect_description": "A beam of lethargy strikes the target.",
     "attributes": {
-      "spell_effect": {
-        "apply_state": "slowed"
-      },
-      "projectile_tint": "#8888FF",
-      "spell_name": "Slowness"
+      "spell": "slowness"
     }
   },
 
@@ -1610,11 +1545,7 @@
     "identified_template": "Wand of Negation",
     "effect_description": "A pulse of null energy strips away enchantments.",
     "attributes": {
-      "spell_effect": {
-        "remove_states": true
-      },
-      "projectile_tint": "#CCCCCC",
-      "spell_name": "Negation"
+      "spell": "negation"
     }
   },
 
@@ -1624,11 +1555,7 @@
     "identified_template": "Wand of Teleportation",
     "effect_description": "The target vanishes in a flash.",
     "attributes": {
-      "spell_effect": {
-        "teleport_target": true
-      },
-      "projectile_tint": "#FF44FF",
-      "spell_name": "Teleportation"
+      "spell": "teleportation"
     }
   },
 
@@ -1638,11 +1565,7 @@
     "identified_template": "Wand of Beckoning",
     "effect_description": "An invisible force drags the target closer.",
     "attributes": {
-      "spell_effect": {
-        "beckon_target": true
-      },
-      "projectile_tint": "#FFAA00",
-      "spell_name": "Beckoning"
+      "spell": "beckoning"
     }
   },
 
@@ -1653,11 +1576,7 @@
     "effect_description": "The target fades from sight.",
     "attributes": {
       "magic_polarity": "bad",
-      "spell_effect": {
-        "apply_state": "invisible"
-      },
-      "projectile_tint": "#AAAAAA",
-      "spell_name": "Invisibility"
+      "spell": "invisibility"
     }
   },
 
@@ -1668,11 +1587,7 @@
     "effect_description": "The target is beside itself — literally.",
     "attributes": {
       "magic_polarity": "bad",
-      "spell_effect": {
-        "clone_target": true
-      },
-      "projectile_tint": "#66DD88",
-      "spell_name": "Plenty"
+      "spell": "plenty"
     }
   },
 
@@ -1682,11 +1597,7 @@
     "identified_template": "Wand of Polymorph",
     "effect_description": "The target twists into another creature entirely.",
     "attributes": {
-      "spell_effect": {
-        "polymorph_target": true
-      },
-      "projectile_tint": "#DD66DD",
-      "spell_name": "Polymorph"
+      "spell": "polymorph"
     }
   },
 

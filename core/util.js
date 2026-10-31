@@ -137,14 +137,24 @@ const LEGACY_TINT_EFFECTS = { flickerTint: 'flicker_tint', rippleTint: 'ripple_t
 const _warnedLegacyTintKeys = new Set();
 
 /**
- * Resolve an entity's visual effect id, honouring the deprecated boolean aliases.
- * Shared by Item and Actor so the two cannot drift — they did, and an item with
- * `rippleTint` silently rendered flat because only Actor handled that key.
- * @param {Object} data - Raw actor/item data
+ * Resolve an entity's visual effect id (its `vfx`, a vfx.json key), honouring the
+ * deprecated aliases. Shared by Item, Actor and states so they cannot drift — they
+ * did, and an item with `rippleTint` silently rendered flat because only Actor
+ * handled that key.
+ * @param {Object} data - Raw actor/item/state data
  * @returns {string|null} Effect name, or null for none
  */
 export function resolveEntityEffect(data) {
-    if (data.effect) return data.effect;
+    if (data.vfx) return data.vfx;
+    // `effect` was the key before visual effects became `vfx`, freeing "effect"
+    // for gameplay (use_effect, a spell's effect, ...). Only a string is a vfx id.
+    if (typeof data.effect === 'string') {
+        if (!_warnedLegacyTintKeys.has('effect')) {
+            _warnedLegacyTintKeys.add('effect');
+            console.warn(`"effect": "${data.effect}" is deprecated; use "vfx" instead.`);
+        }
+        return data.effect;
+    }
 
     for (const [legacyKey, effectName] of Object.entries(LEGACY_TINT_EFFECTS)) {
         if (!data[legacyKey]) continue;
@@ -153,7 +163,7 @@ export function resolveEntityEffect(data) {
         if (!_warnedLegacyTintKeys.has(legacyKey)) {
             _warnedLegacyTintKeys.add(legacyKey);
             console.warn(
-                `'${legacyKey}: true' is deprecated; use "effect": "${effectName}" instead.`
+                `'${legacyKey}: true' is deprecated; use "vfx": "${effectName}" instead.`
             );
         }
         return effectName;

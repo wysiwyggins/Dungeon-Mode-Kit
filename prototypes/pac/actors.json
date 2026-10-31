@@ -23,7 +23,7 @@
     "description": "A phantasm casts a baleful, cold light on its surroundings.",
     "tileIndexBase": "OPAQUE_LIGHT_SHADE_UPPER_RIGHT_TRIANGLE",
     "tileIndexTop": "HAUNTED_FACE",
-    "effect": "flicker_tint",
+    "vfx": "flicker_tint",
     "random_color": true,
     "personality": "aggressive_melee",
     "stats": {
