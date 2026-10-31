@@ -968,8 +968,8 @@ export const ActorItems = {
                     let affected = 0;
                     for (const actor of this.engine.entityManager?.actors || []) {
                         if (actor.isDead || actor === this) continue;
-                        if (filter === 'hostile' && !actor.hasAttribute('hostile')) continue;
-                        if (filter === 'friendly' && actor.hasAttribute('hostile')) continue;
+                        if (filter === 'hostile' && !actor.isHostile()) continue;
+                        if (filter === 'friendly' && actor.isHostile()) continue;
                         const dist = getChebyshevDistance(this.x, this.y, actor.x, actor.y);
                         if (dist <= radius) {
                             // Creature-only: this sweeps every actor in range and
@@ -995,8 +995,8 @@ export const ActorItems = {
                     let affected = 0;
                     for (const actor of this.engine.entityManager?.actors || []) {
                         if (actor.isDead || actor === this) continue;
-                        if (filter === 'hostile' && !actor.hasAttribute('hostile')) continue;
-                        if (filter === 'friendly' && actor.hasAttribute('hostile')) continue;
+                        if (filter === 'hostile' && !actor.isHostile()) continue;
+                        if (filter === 'friendly' && actor.isHostile()) continue;
                         const dist = getChebyshevDistance(this.x, this.y, actor.x, actor.y);
                         if (dist <= radius) {
                             const stateNames = Object.keys(actor.states);
@@ -1049,7 +1049,9 @@ export const ActorItems = {
             return anyModified;
         }
 
-        // Handle string format: method name for complex effects
+        // Handle string format: method name for complex effects. Every case here
+        // is listed in core/use-actions.js, which the item editor offers
+        // (tools/check-use-actions.mjs checks the two agree).
         switch (effect) {
             case 'identify_item':
                 // Handled by interface — opens item picker
@@ -1196,7 +1198,7 @@ export const ActorItems = {
                 const player = this.engine.entityManager?.player;
                 for (const actor of this.engine.entityManager?.actors || []) {
                     if (actor.isDead || actor === this) continue;
-                    if (actor.hasAttribute('hostile')) {
+                    if (actor.isHostile()) {
                         actor._alertTarget = player;
                         actor._alerted = true;
                     }
@@ -1211,9 +1213,10 @@ export const ActorItems = {
                 const radius = item?.getAttribute('effect_radius') ?? 5;
                 const statesData = this.engine.globalStates;
                 let affected = 0;
+                // Every creature in range, allies included: discord is indiscriminate.
                 for (const actor of this.engine.entityManager?.actors || []) {
                     if (actor.isDead || actor === this) continue;
-                    if (!actor.hasAttribute('hostile')) continue;
+                    if (!actor.hasAttribute('sentient')) continue;
                     const dist = getChebyshevDistance(this.x, this.y, actor.x, actor.y);
                     if (dist <= radius && statesData?.confused) {
                         actor.applyState('confused', statesData.confused);

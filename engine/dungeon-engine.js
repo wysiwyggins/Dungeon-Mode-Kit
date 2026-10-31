@@ -11,6 +11,7 @@ import { BASE_PATH, SPRITESHEET_PATH, TILE_HEIGHT, TILE_WIDTH, buildWordRegistry
 import { DungeonEngineFloors } from './dungeon-engine/floors.js';
 import { DungeonEnginePersistence } from './dungeon-engine/persistence.js';
 import { DungeonEngineProgression } from './dungeon-engine/progression.js';
+import { DungeonEngineSpellcasting } from './dungeon-engine/spellcasting.js';
 import { DungeonEngineStairways } from './dungeon-engine/stairways.js';
 import { RenderSystem } from './render/render-system.js';
 import { SpriteLibrary } from './sprite-library.js';
@@ -733,4 +734,5 @@ export class DungeonEngine {
     }
 }
 
-installMethods(DungeonEngine, DungeonEngineFloors, DungeonEngineProgression, DungeonEngineStairways, DungeonEnginePersistence);
+installMethods(DungeonEngine, DungeonEngineFloors, DungeonEngineProgression, DungeonEngineStairways, DungeonEnginePersistence,
+    DungeonEngineSpellcasting);

@@ -315,7 +315,7 @@
             <summary>Use Effect</summary>
             <div class="section-body">
                 <div style="font-size:10px; color:var(--text-dim); margin-bottom:8px; line-height:1.4">
-                    Items with a <b>use_verb</b> appear in the Use menu. The effect can be a <b>string</b> (built-in action) or an <b>object</b> (stat/state changes).
+                    Items with a <b>use_verb</b> appear in the Use menu. Pick a named action, or describe what happens to the user and the creatures nearby.
                     Set <b>consumable</b> in Attributes to destroy the item after use. Set <b>deferred</b> when the player must pick a target before the effect fires.
                 </div>
                 <div class="field-row">
@@ -323,32 +323,81 @@
                     <input type="text" id="f-use_verb" placeholder="Quaff, Read, Eat, Zap, Jam...">
                 </div>
 
-                <div style="margin: 8px 0 4px; font-size:11px; color:var(--accent)">Use Effect — pick one</div>
+                <!-- An item's use_effect is EITHER a named action (a string) OR an object of
+                     stat changes and states. The action list is built from core/use-actions.js,
+                     the engine's own registry, so it can't fall behind executeItemEffect. -->
                 <div class="field-row">
-                    <label>String effect</label>
+                    <label>Action</label>
                     <select id="f-use_effect_string">
-                        <option value="">— none (use object below) —</option>
-                        <option value="targeted_spell">targeted_spell (aim + fire projectile)</option>
-                        <option value="toggle_torch">toggle_torch (light/extinguish)</option>
-                        <option value="teleport">teleport (random location)</option>
-                        <option value="identify_item">identify_item (pick item to ID)</option>
-                        <option value="enchant_item">enchant_item (pick item to enchant)</option>
-                        <option value="remove_curse">remove_curse (uncurse equipment)</option>
-                        <option value="reveal_map">reveal_map (show full map)</option>
-                        <option value="aggravate_monsters">aggravate_monsters</option>
-                        <option value="summon_monsters">summon_monsters</option>
-                        <option value="recharge_items">recharge_items (refill charges)</option>
-                        <option value="shatter_walls">shatter_walls (break nearby walls)</option>
-                        <option value="remove_all_states">remove_all_states (cure all)</option>
-                        <option value="spike_door">spike_door (jam a door shut)</option>
+                        <option value="">— none: use the fields below —</option>
                     </select>
                 </div>
-                <div style="margin: 6px 0 4px; font-size:11px; color:var(--accent)">— or Object effect (stat/state modifiers) —</div>
-                <div style="font-size:10px; color:var(--text-dim); margin-bottom:4px">
-                    e.g. health: 20, apply_state: confused, strength: 2, nutrition: 500
+                <div class="hint" id="use-action-hint" style="margin:-4px 0 8px 0"></div>
+
+                <div id="use-object-fields">
+                    <div class="sub-section-title" style="margin-top:6px">On the user</div>
+                    <div style="font-size:10px; color:var(--text-dim); margin-bottom:4px; line-height:1.4">
+                        A number adds to a stat or numeric attribute (negative subtracts); <b>max</b> fills it; <b>health_max</b> raises the maximum.
+                        Thrown without <b>burst_into</b>, these and the state become the gas's effect.
+                    </div>
+                    <div id="use-stat-list" class="dynamic-list"></div>
+                    <button class="add-btn" id="btn-add-use-stat">+ Add Stat Change</button>
+                    <div class="field-row" style="margin-top:8px">
+                        <label>Apply State</label>
+                        <input type="text" id="f-ue-apply_state">
+                    </div>
+                    <div class="field-row">
+                        <label>State Duration</label>
+                        <input type="number" id="f-ue-apply_duration" min="1" placeholder="the state's own">
+                    </div>
+                    <div class="field-row">
+                        <label style="min-width:unset"><input type="checkbox" id="f-ue-remove_all_states"> Cure all states</label>
+                    </div>
+
+                    <div class="sub-section-title" style="margin-top:8px">Creatures nearby</div>
+                    <div class="field-row">
+                        <label>Area Effect</label>
+                        <select id="f-ue-area">
+                            <option value="">— none —</option>
+                            <option value="apply_state_radius">apply a state</option>
+                            <option value="remove_states_radius">strip all states</option>
+                        </select>
+                    </div>
+                    <div id="use-area-fields">
+                        <div class="field-row" id="use-area-state-row">
+                            <label>State</label>
+                            <input type="text" id="f-ue-area-state">
+                        </div>
+                        <div class="field-row" id="use-area-duration-row">
+                            <label>Duration</label>
+                            <input type="number" id="f-ue-area-duration" min="1" placeholder="the state's own">
+                        </div>
+                        <div class="field-row">
+                            <label>Radius</label>
+                            <input type="number" id="f-ue-area-radius" min="1" placeholder="5">
+                        </div>
+                        <div class="field-row">
+                            <label>Affects</label>
+                            <select id="f-ue-area-filter">
+                                <option value="">every creature</option>
+                                <option value="hostile">hostile creatures</option>
+                                <option value="friendly">non-hostile creatures</option>
+                            </select>
+                        </div>
+                        <div class="field-row">
+                            <label>Message</label>
+                            <input type="text" id="f-ue-area-message" placeholder="[N] creatures are affected!">
+                        </div>
+                        <div class="field-row">
+                            <label>Nothing Message</label>
+                            <input type="text" id="f-ue-area-empty_message" placeholder="Nothing happens.">
+                        </div>
+                    </div>
+
+                    <div style="margin: 8px 0 4px; font-size:11px; color:var(--accent)">Other keys</div>
+                    <div id="use-effect-list" class="dynamic-list"></div>
+                    <button class="add-btn" id="btn-add-use-effect">+ Add Key</button>
                 </div>
-                <div id="use-effect-list" class="dynamic-list"></div>
-                <button class="add-btn" id="btn-add-use-effect">+ Add Use Effect Property</button>
 
                 <div style="margin: 10px 0 4px; font-size:11px; color:var(--accent)">Use Options</div>
                 <div class="field-row">
@@ -980,7 +1029,15 @@ function updateConditionalSections() {
     sel.options[0].textContent = inheritedEffect
         ? `— inherit from type: ${inheritedEffect} —`
         : '— none (use object below) —';
-    const effectStr = sel.value || (readKVList('use-effect-list') ? '' : inheritedEffect);
+    const effectStr = sel.value || (readUseObject() ? '' : inheritedEffect);
+    // The fields below are the object form, so they mean nothing once an action is chosen.
+    document.getElementById('use-object-fields').style.display = effectStr ? 'none' : '';
+    updateUseActionHint(effectStr);
+    const area = document.getElementById('f-ue-area').value;
+    document.getElementById('use-area-fields').style.display = area ? '' : 'none';
+    for (const id of ['use-area-state-row', 'use-area-duration-row']) {
+        document.getElementById(id).style.display = area === 'apply_state_radius' ? '' : 'none';
+    }
     document.getElementById('targeted-spell-section').classList.toggle('visible', effectStr === 'targeted_spell');
     // Bolts draw their vfx along the path (ui/spells.js) and never read the projectile fields.
     const spellId = document.getElementById('f-spell').value.trim();
@@ -998,6 +1055,100 @@ function updateConditionalSections() {
         const fromSpell = spell && SPELL_FIELD_SOURCES[key]?.(spell);
         el.placeholder = fromSpell !== undefined && fromSpell !== null ? `from spell: ${fromSpell}`
             : typeAttrs[key] !== undefined ? `inherits: ${typeAttrs[key]}` : el.dataset.placeholder;
+    }
+}
+
+// ---- Use effect (object form) ----
+// The object form of use_effect, as Actor.executeItemEffect reads it: stat and
+// attribute changes, apply_state, remove_all_states, and one area key. Keys
+// without a field round-trip through "Other keys".
+
+const USE_OBJECT_TEXT_FIELDS = ['f-ue-apply_state', 'f-ue-apply_duration', 'f-ue-area', 'f-ue-area-state',
+    'f-ue-area-duration', 'f-ue-area-radius', 'f-ue-area-filter', 'f-ue-area-message', 'f-ue-area-empty_message'];
+const USE_AREA_KEYS = ['apply_state_radius', 'remove_states_radius'];
+
+/** Fill the action dropdown from the engine's registry (core/use-actions.js). */
+function populateUseActions() {
+    const sel = document.getElementById('f-use_effect_string');
+    for (const name of Object.keys(state.useActions || {}).sort()) {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        sel.appendChild(opt);
+    }
+}
+
+/** Say what the chosen (or inherited) action does and which attributes tune it. */
+function updateUseActionHint(actionName) {
+    const hint = document.getElementById('use-action-hint');
+    const action = state.useActions?.[actionName];
+    if (!action) { hint.textContent = ''; return; }
+    const reads = Object.entries(action.reads || {})
+        .map(([k, v]) => `${k} (default ${v})`).join(', ');
+    hint.textContent = action.description + (reads ? ` Settings, as custom attributes: ${reads}.` : '');
+}
+
+function populateUseObject(effect) {
+    const val = (id, v) => { document.getElementById(id).value = v ?? ''; };
+    let areaTaken = false;
+    for (const [key, value] of Object.entries(effect)) {
+        if (key === 'apply_state' && typeof value === 'string') {
+            val('f-ue-apply_state', value);
+        } else if (key === 'apply_state' && value && typeof value === 'object' && !Array.isArray(value)) {
+            val('f-ue-apply_state', value.state);
+            val('f-ue-apply_duration', value.duration);
+        } else if (key === 'remove_all_states' && typeof value === 'boolean') {
+            document.getElementById('f-ue-remove_all_states').checked = value;
+        } else if (USE_AREA_KEYS.includes(key) && !areaTaken && value && typeof value === 'object') {
+            areaTaken = true;
+            val('f-ue-area', key);
+            val('f-ue-area-state', value.state);
+            val('f-ue-area-duration', value.duration);
+            val('f-ue-area-radius', value.radius);
+            val('f-ue-area-filter', value.filter);
+            val('f-ue-area-message', value.message);
+            val('f-ue-area-empty_message', value.empty_message);
+        } else if (typeof value === 'number' || typeof value === 'string') {
+            addKVRow('use-stat-list', key, value);
+        } else {
+            addKVRow('use-effect-list', key, value);
+        }
+    }
+    attachUseStatRefs();
+}
+
+/** The object form as the fields describe it, or undefined if they're all blank. */
+function readUseObject() {
+    const val = id => document.getElementById(id).value.trim();
+    const num = id => { const n = parseFloat(val(id)); return isNaN(n) ? undefined : n; };
+    const effect = { ...(readKVList('use-stat-list') || {}) };
+    if (val('f-ue-apply_state')) {
+        const duration = num('f-ue-apply_duration');
+        effect.apply_state = duration === undefined ? val('f-ue-apply_state')
+            : { state: val('f-ue-apply_state'), duration };
+    }
+    if (document.getElementById('f-ue-remove_all_states').checked) effect.remove_all_states = true;
+    const area = val('f-ue-area');
+    if (area) {
+        const spec = {};
+        if (area === 'apply_state_radius') {
+            if (val('f-ue-area-state')) spec.state = val('f-ue-area-state');
+            if (num('f-ue-area-duration') !== undefined) spec.duration = num('f-ue-area-duration');
+        }
+        if (num('f-ue-area-radius') !== undefined) spec.radius = num('f-ue-area-radius');
+        if (val('f-ue-area-filter')) spec.filter = val('f-ue-area-filter');
+        if (val('f-ue-area-message')) spec.message = val('f-ue-area-message');
+        if (val('f-ue-area-empty_message')) spec.empty_message = val('f-ue-area-empty_message');
+        effect[area] = spec;
+    }
+    Object.assign(effect, readKVList('use-effect-list') || {});
+    return Object.keys(effect).length ? effect : undefined;
+}
+
+/** Stat-change keys suggest the stats and numeric attributes items already change. */
+function attachUseStatRefs() {
+    for (const inp of document.querySelectorAll('#use-stat-list .list-item input:first-child')) {
+        RefFields.attach(inp, 'use_stat');
     }
 }
 
@@ -1441,6 +1592,9 @@ function clearForm() {
     document.getElementById('wear-effects-list').innerHTML = '';
     document.getElementById('requires-stat-list').innerHTML = '';
     document.getElementById('use-effect-list').innerHTML = '';
+    document.getElementById('use-stat-list').innerHTML = '';
+    for (const id of USE_OBJECT_TEXT_FIELDS) document.getElementById(id).value = '';
+    document.getElementById('f-ue-remove_all_states').checked = false;
     document.getElementById('spell-effect-list').innerHTML = '';
     document.getElementById('pickup-effect-list').innerHTML = '';
     document.getElementById('random-type-list').innerHTML = '';
@@ -1624,18 +1778,17 @@ function populateForm(key, data) {
     if (attrs.use_effect) {
         if (typeof attrs.use_effect === 'string') {
             const sel = document.getElementById('f-use_effect_string');
-            // If the value isn't in the dropdown, add it dynamically
+            // An action the engine doesn't list still shows, flagged, rather than
+            // silently reading as "none" and being dropped on save.
             if (!Array.from(sel.options).some(o => o.value === attrs.use_effect)) {
                 const opt = document.createElement('option');
                 opt.value = attrs.use_effect;
-                opt.textContent = attrs.use_effect;
+                opt.textContent = `${attrs.use_effect} (not a known action)`;
                 sel.appendChild(opt);
             }
             sel.value = attrs.use_effect;
         } else {
-            for (const [k, v] of Object.entries(attrs.use_effect)) {
-                addKVRow('use-effect-list', k, typeof v === 'object' ? JSON.stringify(v) : v);
-            }
+            populateUseObject(attrs.use_effect);
         }
     }
     if (attrs.use_sound) document.getElementById('f-use_sound').value = attrs.use_sound;
@@ -1861,7 +2014,7 @@ function readForm() {
     const uv = document.getElementById('f-use_verb').value.trim();
     if (uv) attrs.use_verb = uv;
     const ues = document.getElementById('f-use_effect_string').value.trim();
-    const ueo = readKVList('use-effect-list');
+    const ueo = readUseObject();
     if (ues) attrs.use_effect = ues;
     else if (ueo) attrs.use_effect = ueo;
     const usound = document.getElementById('f-use_sound').value.trim();
@@ -2283,6 +2436,10 @@ function initEventListeners() {
     document.getElementById('btn-add-wear-effect').addEventListener('click', () => addKVRow('wear-effects-list', '', ''));
     document.getElementById('btn-add-requires-stat').addEventListener('click', () => addKVRow('requires-stat-list', '', ''));
     document.getElementById('btn-add-use-effect').addEventListener('click', () => addKVRow('use-effect-list', '', ''));
+    document.getElementById('btn-add-use-stat').addEventListener('click', () => {
+        addKVRow('use-stat-list', '', '');
+        attachUseStatRefs();
+    });
     document.getElementById('btn-add-spell-effect').addEventListener('click', () => addKVRow('spell-effect-list', '', ''));
     document.getElementById('btn-add-pickup-effect').addEventListener('click', () => addKVRow('pickup-effect-list', '', ''));
     document.getElementById('btn-add-random-type').addEventListener('click', () => addStringRow('random-type-list', ''));
@@ -2337,6 +2494,8 @@ const REF_FIELDS = {
     'f-burst_into': 'actor',
     'f-use_verb': 'use_verb',
     'f-use_sound': 'sound',
+    'f-ue-apply_state': 'state',
+    'f-ue-area-state': 'state',
     'f-spell': 'spell',
     'f-charge_stat': 'stat',
     'f-cast_sound': 'sound',
@@ -2359,6 +2518,24 @@ function initRefFields() {
         label: (k) => state.mergedItems[k]?.name });
     RefFields.define('spell', { file: 'spells.json', names: () => keysOf(state.mergedSpells),
         label: (k) => state.mergedSpells[k]?.name });
+    // Suggestions only: any stat or numeric attribute works, so a new name isn't flagged.
+    RefFields.define('use_stat', { kind: 'label', names: () => {
+        const names = new Set(['health_max']);
+        for (const def of Object.values(state.mergedActors || {})) {
+            for (const k of Object.keys(def?.stats || {})) names.add(k);
+        }
+        for (const def of Object.values(state.mergedItems || {})) {
+            for (const key of ['use_effect', 'wear_effect']) {
+                const obj = def?.attributes?.[key];
+                if (!obj || typeof obj !== 'object') continue;
+                for (const [k, v] of Object.entries(obj)) {
+                    if (typeof v === 'number' || typeof v === 'string') names.add(k);
+                }
+            }
+        }
+        for (const k of ['apply_state']) names.delete(k);
+        return [...names];
+    } });
     RefFields.define('use_verb', { kind: 'label', names: () => valuesInUse(state.mergedItems, 'use_verb') });
     // charge_stat must name a stat this item declares, so the Stats rows are the source.
     RefFields.define('stat', { file: 'the Stats section', names: () =>
@@ -2369,6 +2546,10 @@ function initRefFields() {
 }
 
 async function init() {
+    // The engine's action registry. A dynamic import, since this page's script
+    // is classic and core/use-actions.js is an ES module.
+    ({ USE_ACTIONS: state.useActions } = await import('../core/use-actions.js'));
+    populateUseActions();
     await populatePrototypeSelect();
     initBoolAttrs();
     initTypedAttrs();

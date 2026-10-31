@@ -1569,6 +1569,15 @@ export class Actor extends Entity {
     isWardedBy(ward) {
         if (this.matchesActorType(ward.types)) return true;
         if (!ward.hostile || this.isPlayerControlled()) return false;
+        return this.isHostile();
+    }
+
+    /**
+     * True for a hostile creature: a hostile personality (goblins) or the
+     * `hostile` attribute (most monsters, via their type). Checking only the
+     * attribute misses the personality-hostile ones.
+     */
+    isHostile() {
         return !!this.personality?.hostile || this.hasAttribute('hostile');
     }
 

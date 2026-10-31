@@ -12,6 +12,76 @@ import {
 } from '../core/pathfinding.js';
 import { ALL_DIRS, CARDINAL_DIRS, randomElement, shuffleArray } from '../core/util.js';
 
+const _warned = new Set();
+function warnOnce(key, message) {
+    if (_warned.has(key)) return;
+    _warned.add(key);
+    console.warn(message);
+}
+
+/**
+ * The spells.json entry a bolt_attack personality names with `spell`, or null.
+ * Only bolt-delivery spells fit: bolt_attack's own keys are all about bolts (use
+ * cast_spell for anything else).
+ * @param {Actor} actor
+ * @param {Object} data - Personality data
+ * @returns {Object|null}
+ */
+function boltSpellFor(actor, data) {
+    const id = data?.spell;
+    if (!id) return null;
+    const spell = actor.engine.currentPrototype?.spells?.[id];
+    if (!spell) {
+        warnOnce(`bolt:${id}`, `bolt_attack names unknown spell '${id}'; using its own bolt_* values`);
+        return null;
+    }
+    if (spell.delivery !== 'bolt') {
+        warnOnce(`bolt:${id}`, `bolt_attack names '${id}', which isn't a bolt spell (use cast_spell); using its own bolt_* values`);
+        return null;
+    }
+    return spell;
+}
+
+/**
+ * Cast `spell` at the nearest enemy `actor` can see within `range`, once its
+ * cooldown has run. The cooldown counts this actor's turns under `counterKey`
+ * and resets only when a cast goes off, so a caster with no target fires as
+ * soon as one appears. Enemies are creatures isEnemyOf names: the player for an
+ * unfactioned monster, rival factions, anyone at all while discordant.
+ * @param {Actor} actor
+ * @param {Object} spell - A spells.json-shaped spell
+ * @param {{range: number, cooldown: number, counterKey: string}} options
+ * @returns {boolean} True if a spell was cast
+ */
+function castAtNearestEnemy(actor, spell, { range, cooldown, counterKey }) {
+    actor[counterKey] = (actor[counterKey] || 0) + 1;
+    if (actor[counterKey] < cooldown) return false;
+
+    const entityManager = actor.engine.entityManager;
+    let target = null;
+    let nearestDist = Infinity;
+    for (const other of entityManager.actors) {
+        if (other === actor || other.isDead || !actor.isEnemyOf(other)) continue;
+        // Creatures only: to a factioned caster, walls and doors aren't in its faction either.
+        if (!other.isPlayerControlled() && !other.hasAttribute('sentient')) continue;
+        const dist = Math.hypot(other.x - actor.x, other.y - actor.y);
+        if (dist > range || dist >= nearestDist) continue;
+        const isBlocked = (x, y) => {
+            const actorAt = entityManager.getSolidActorAt(x, y);
+            return actorAt && actorAt !== actor && actorAt !== other;
+        };
+        if (hasLineOfSight(actor.x, actor.y, other.x, other.y, isBlocked)) {
+            target = other;
+            nearestDist = dist;
+        }
+    }
+    if (!target) return false;
+
+    if (!actor.engine.castSpell({ caster: actor, spell, target: { x: target.x, y: target.y } })) return false;
+    actor[counterKey] = 0;
+    return true;
+}
+
 export const BehaviorsSpecial = {
     // ========================================================================
     // CHAIN CREATURE BEHAVIORS
@@ -432,72 +502,53 @@ export const BehaviorsSpecial = {
         return true;
     },
 
+    /**
+     * Fire a bolt at the nearest enemy in range and in sight (the lightning mage,
+     * the dynamo). A personality `spell` names a bolt spell in spells.json for the
+     * damage, range, sound and vfx; any bolt_* key on the personality overrides
+     * it, as an item's own attributes override its spell. Without one it's a
+     * plain lightning bolt. Personality data: spell, attack_range, bolt_cooldown,
+     * bolt_damage, bolt_sound, bolt_vfx.
+     */
     bolt_attack: (actor, data) => {
-        const entityManager = actor.engine.entityManager;
-
-        const attackRange = data?.attack_range || actor.getAttribute('attack_range') || 8;
-        const cooldown = data?.bolt_cooldown || actor.getAttribute('bolt_cooldown') || 4;
-        const boltDamage = data?.bolt_damage || actor.getAttribute('bolt_damage') || -15;
-
-        if (!actor._boltCooldownCounter) actor._boltCooldownCounter = 0;
-        actor._boltCooldownCounter++;
-
-        if (actor._boltCooldownCounter < cooldown) return false;
-
-        let target = null;
-        let nearestDist = Infinity;
-
-        for (const other of entityManager.actors) {
-            if (other === actor) continue;
-            if (other.isDead) continue;
-            if (!other.hasAttribute('controlled')) continue;
-
-            const dx = other.x - actor.x;
-            const dy = other.y - actor.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-
-            if (dist <= attackRange && dist < nearestDist) {
-                const isBlocked = (x, y) => {
-                    const actorAt = entityManager.getSolidActorAt(x, y);
-                    return actorAt && actorAt !== actor && actorAt !== other;
-                };
-                if (hasLineOfSight(actor.x, actor.y, other.x, other.y, isBlocked)) {
-                    target = other;
-                    nearestDist = dist;
-                }
+        const base = boltSpellFor(actor, data);
+        const spell = {
+            name: 'Lightning',
+            ...base,
+            delivery: 'bolt',
+            cast_sound: data?.bolt_sound ?? base?.cast_sound ?? 'squarewave',
+            vfx: data?.bolt_vfx ?? data?.bolt_effect ?? base?.vfx ?? 'lightning_bolt',
+            effect: {
+                ...base?.effect,
+                bolt_damage: data?.bolt_damage || actor.getAttribute('bolt_damage') || base?.effect?.bolt_damage || -15
             }
+        };
+        return castAtNearestEnemy(actor, spell, {
+            range: data?.attack_range || actor.getAttribute('attack_range') || base?.range || 8,
+            cooldown: data?.bolt_cooldown || actor.getAttribute('bolt_cooldown') || 4,
+            counterKey: '_boltCooldownCounter'
+        });
+    },
+
+    /**
+     * Cast any spell from spells.json at the nearest enemy in range and in sight:
+     * a projectile lands its effect on them (fireball, poison, slowness...), a
+     * bolt strikes along the line. Spells that act on the caster still aim at the
+     * enemy, so blinking blinks toward them. Personality data: spell (required),
+     * spell_range (default: the spell's range, else attack_range, else 8),
+     * spell_cooldown (turns between casts, default 4).
+     */
+    cast_spell: (actor, data) => {
+        const spell = actor.engine.currentPrototype?.spells?.[data?.spell];
+        if (!spell) {
+            warnOnce(`cast_spell:${data?.spell}`, `cast_spell: unknown or missing spell '${data?.spell}'`);
+            return false;
         }
-
-        if (!target) return false;
-
-        actor._boltCooldownCounter = 0;
-
-        const path = getLinePath(actor.x, actor.y, target.x, target.y);
-        const boltPath = path.slice(1);
-
-        if (boltPath.length === 0) return false;
-
-        actor.engine.playSound?.(data.bolt_sound ?? 'squarewave');
-        actor.engine.renderer?.effectRunner.apply(data.bolt_vfx ?? data.bolt_effect ?? 'lightning_bolt', actor, { path: boltPath });
-
-        const fillDuration = boltPath.length * 25 + 100;
-        setTimeout(() => {
-            for (const point of boltPath) {
-                const victim = entityManager.getSolidActorAt(point.x, point.y);
-                if (victim && victim !== actor && !victim.isDead && victim.stats?.health) {
-                    victim.modifyStat('health', boltDamage, { source: actor });
-                    const victimName = victim.getNameWithArticle ? victim.getNameWithArticle() : `the ${victim.name}`;
-                    const actorName = actor.getNameWithArticle ? actor.getNameWithArticle() : `The ${actor.name}`;
-                    const pos = victim.hasAttribute('controlled') ? null : { x: victim.x, y: victim.y };
-                    actor.engine.inputManager?.showMessage(`${actorName}'s lightning bolt strikes ${victimName}!`, pos);
-                    victim.flash?.();
-                    if (victim.getStat?.('health') <= 0) victim.die();
-                }
-            }
-            actor.engine.interfaceManager?.updateSidebar();
-        }, fillDuration);
-
-        return true;
+        return castAtNearestEnemy(actor, spell, {
+            range: data.spell_range ?? spell.range ?? data.attack_range ?? 8,
+            cooldown: data.spell_cooldown ?? 4,
+            counterKey: '_spellCooldownCounter'
+        });
     },
 
     /**

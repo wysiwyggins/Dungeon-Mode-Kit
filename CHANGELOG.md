@@ -29,6 +29,9 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 - **Spell editor.** `editors/spell-editor.html` edits spells with a field for each kind of effect (spawn an actor, apply a state, tunnel, teleport...) and lists the items that use each one. The item editor's spell section is now a spell picker plus the item's charges, with the old fields under a collapsed Overrides.
 - **Item editor capability sections.** Sections are grouped by what an item does (Collision / Melee, Launcher, Thrown & Breaking, Equipment, Use, Light Source) and only the ones its type or attributes use are shown. The rest sit behind "+ Add" chips.
 - **Visual effects are now `vfx`.** `data/effects.json` is `data/vfx.json`, actors, items and states name theirs with `vfx`, and `bolt_vfx`, `blink_vfx`, `build_vfx` and `release_vfx` replace the `*_effect` names, so `effect` in data always means gameplay. The effects editor is now the VFX editor, and the old keys still load (bare `effect` with a one-time warning).
+- **Item editor Use section.** The action list now comes from the engine (`core/use-actions.js`), so all 20 named actions can be picked, each with a description and its settings, and `tools/check-use-actions.mjs` catches the list drifting. Stat changes, the applied state, curing and area effects have their own fields instead of free key/value rows.
+- **Monsters cast spells.** A new `cast_spell` behavior lets any personality cast a spell from `spells.json` at the nearest enemy it can see, with `spell_range` and `spell_cooldown`. Player and monster casts now share one engine path (`DungeonEngine.castSpell`), so a spell behaves the same whoever casts it, and messages name the caster ("pulled toward the dynamo").
+- **Monster bolts use spells.** `bolt_attack` (the lightning mage and dynamo) can name a bolt spell with `spell`, and its own `bolt_*` keys still override it. Its bolts now follow the staff's rules, bouncing off reflective actors, and a discordant caster bolts its allies.
 
 ### Changed
 
@@ -42,6 +45,8 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 ### Fixed
 
+- **Scroll of discord skipped goblins.** Area effects that target hostile creatures only checked the `hostile` attribute, which goblins get from their personality instead. A new `Actor.isHostile()` checks both.
+- **Discord no longer spares allies.** The scroll of discord and the `discord` action now affect every creature in range, not just hostile ones, so reading one near your allies turns them too.
 - **Switches remember their look after a reload.** A pulled lever or spent one-shot plate on a saved floor came back showing its resting tile. Sprites built for an already-toggled switch now use its `_toggled` tiles.
 - **Per-placement switch settings survive a reload.** A switch whose effects, message or radius were set by Tiled or a generator went back to its actor definition's on a saved floor. They're now saved with the floor.
 - **Hallucination restores revealed actors.** A hidden actor revealed during a hallucination, like a trap plate or vent, kept its scrambled tile after the trip ended. Its new sprites are now captured too, and every actor comes back as it is now, so a door opened or lever pulled mid-trip no longer reverts.

@@ -248,19 +248,29 @@ Pass an object to modify stats, attributes, or apply states directly:
 
 ### String format — named effects
 
+The editor builds its action list from `core/use-actions.js`, which must name exactly the
+cases `executeItemEffect` handles; `node tools/check-use-actions.mjs` checks that, and that
+every string `use_effect` in the data is a known action.
+
 | Effect string | Description |
 | --------------- | ------------- |
 | `"targeted_spell"` | Enters aiming mode; fires `spell_effect` at target tile (staffs) |
 | `"identify_item"` | Opens item picker; player selects one unidentified item to reveal |
 | `"teleport"` | Moves player to a random walkable tile |
 | `"reveal_map"` | Marks all tiles on the floor explored, and reveals the machine-link overlay (lines connecting each switch to the gates/doors it drives). A lasting per-level reveal: it persists when you leave the floor and return. See [Magic Mapping](#magic-mapping) |
-| `"aggravate_monsters"` | *non-working stub* - All hostile actors on the level become aware of the player |
+| `"aggravate_monsters"` | Alerts every hostile actor on the level to the player. Only creatures with the `pursue_intruders` behavior act on it, so for most monsters it does nothing yet |
 | `"summon_monsters"` | Spawns 2–4 random monsters adjacent to the player |
 | `"recharge_items"` | Restores all `charge_stat` items in inventory to full |
 | `"sanctuary"` | Spawns a `glyph_actor` (default `sacred_glyph`) on every floor tile within `effect_radius` steps (default 2), flooding outward so it doesn't pass through walls. The glyph's hostile `ward` keeps hostile creatures out. `effect_message` and `fail_message` replace the built-in result text. |
-| `"shatter_walls"` | Destroys breakable solid actors within radius 3; triggers a screen shake, amber flash, and radiating tile fill effect |
+| `"shatter_walls"` | Destroys breakable solid actors within `effect_radius` (default 3); triggers a screen shake, amber flash, and radiating tile fill effect |
 | `"targeted_spell"` (bolt) | Bolt spells display a white-blue tile fill along the bolt path with screen shake, instead of a projectile sprite |
-| `"darkness_field"` | Extinguishes all light-source items within radius 5 |
+| `"darkness_field"` | Extinguishes all light-source items within `effect_radius` (default 5) |
+| `"discord"` | Confuses every creature within `effect_radius` (default 5), allies included. The scroll of discord uses an `apply_state_radius` object instead |
+| `"negate_nearby"` | Strips every state from creatures within `effect_radius` (default 5) |
+| `"remove_all_states"` | Cures every state on the user |
+| `"protect_item"` | Opens item picker; see [Scroll of Protection](#scroll-of-protection) |
+| `"toggle_torch"` | Swaps the item for its `toggle_to` form (default `torch` / `torch_unlit`), lighting or putting it out |
+| `"spike_door"` | Prompts for an adjacent door and jams it shut |
 | `"enchant_item"` | Opens item picker; player selects an `enchantable` item to increase its enchantment by +1 |
 | `"remove_curse"` | Clears `cursed` attribute from all currently equipped items |
 | `"detect_magic"` | Senses the polarity of every item on the level (on the floor or carried by a creature) and in the pack. See [Detect Magic](#detect-magic) |
@@ -310,7 +320,6 @@ Use an object `use_effect` with `apply_state_radius` or `remove_states_radius` f
   "apply_state_radius": {
     "state": "discordant",
     "radius": 5,
-    "filter": "hostile",
     "message": "A wave of discord washes over nearby creatures!",
     "empty_message": "The scroll crumbles, but nothing happens."
   }
@@ -331,7 +340,7 @@ Use an object `use_effect` with `apply_state_radius` or `remove_states_radius` f
 | ---------- | ------ | ------------- |
 | `state` | string | State to apply (for `apply_state_radius`) |
 | `radius` | number | Effect radius in tiles |
-| `filter` | string | `"hostile"`, `"friendly"`, or omit for all actors |
+| `filter` | string | `"hostile"`, `"friendly"`, or omit for every creature but the user (the scroll of discord omits it, so allies turn too) |
 | `message` | string | Shown when at least one actor is affected |
 | `empty_message` | string | Shown when no actors are in range |
 
@@ -537,6 +546,23 @@ reads (`spell_name`, `spell_effect`, `spell_range`, `target_filter`, `projectile
 `projectile_tint`, `cast_sound`, `spell_vfx`), layered type < spell < item. So an item can
 still override any one of them, and an item with no `spell` can declare them inline as
 before.
+
+Monsters cast spells too, through two behaviors. Both aim at the nearest enemy the caster
+can see within range: the player for an ordinary monster, rival factions, or anyone at all
+while it's discordant.
+
+- `cast_spell` casts any spell, named by the personality's `spell`. A projectile lands its
+  effect on the target (fireball, poison, slowness...) and a bolt strikes along the line.
+  Spells that act on the caster still aim at the enemy, so blinking blinks toward them.
+  `spell_range` defaults to the spell's `range`, then `attack_range`, then 8, and
+  `spell_cooldown` (turns between casts) defaults to 4.
+- `bolt_attack` is the bolt-only version the lightning mage and the dynamo use
+  (`"spell": "lightning"`). The spell supplies damage, range, cast sound and `vfx`, and the
+  personality's `bolt_damage`, `attack_range`, `bolt_sound` and `bolt_vfx` override them;
+  `bolt_cooldown` stays on the personality. Without a spell it's a plain lightning bolt.
+
+Player and monster casts share one engine path (`DungeonEngine.castSpell` in
+`engine/dungeon-engine/spellcasting.js`), so a spell behaves the same whoever casts it.
 
 ### Aim targeting (`target_filter`)
 

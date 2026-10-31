@@ -191,6 +191,7 @@ const TYPED_PAYLOAD = ['bolt_damage', 'center', 'radius', 'outer', 'fill', 'fill
 const state = {
     spells: {}, protoSpells: {}, mergedSpells: {},
     items: {}, protoItems: {}, mergedItems: {},
+    personalities: {}, protoPersonalities: {}, mergedPersonalities: {},
     types: {}, actors: {}, states: {}, effects: {}, soundNames: [],
     tileMap: {}, spritesheetImg: null, projectileTile: null,
     prototypeCache: {}
@@ -210,7 +211,7 @@ async function fetchJSON(url) {
 // ---- Loading ----
 
 async function loadBaseData() {
-    const [tiles, spells, items, types, actors, states, effects, sounds] = await Promise.all([
+    const [tiles, spells, items, types, actors, states, effects, sounds, personalities] = await Promise.all([
         fetchJSON('../data/static-tiles.json'),
         fetchJSON('../data/spells.json'),
         fetchJSON('../data/items.json'),
@@ -219,7 +220,9 @@ async function loadBaseData() {
         fetchJSON('../data/states.json'),
         fetchJSON('../data/vfx.json'),
         fetchJSON('../data/sounds.json'),
+        fetchJSON('../data/personalities.json'),
     ]);
+    state.personalities = personalities;
     TILE_W = tiles.tilePixelWidth || TILE_W;
     TILE_H = tiles.tilePixelHeight || TILE_H;
     state.tileMap = tiles.tiles || {};
@@ -242,13 +245,16 @@ async function loadPrototype(name) {
     if (!name) {
         state.protoSpells = {};
         state.protoItems = {};
+        state.protoPersonalities = {};
     } else {
         state.prototypeCache[name] ??= await Promise.all([
             fetchJSON(`../prototypes/${name}/spells.json`),
             fetchJSON(`../prototypes/${name}/items.json`),
+            fetchJSON(`../prototypes/${name}/personalities.json`),
         ]);
-        [state.protoSpells, state.protoItems] = state.prototypeCache[name];
+        [state.protoSpells, state.protoItems, state.protoPersonalities] = state.prototypeCache[name];
     }
+    state.mergedPersonalities = { ...state.personalities, ...state.protoPersonalities };
     state.mergedSpells = { ...state.spells, ...state.protoSpells };
     state.mergedItems = { ...state.items, ...state.protoItems };
     populateSpellDropdown();
@@ -439,20 +445,27 @@ function drawProjectile() {
     ctx.drawImage(off, 0, 0, canvas.width, canvas.height);
 }
 
-/** Items whose own attributes or type name this spell. */
+/** Items (via their own attributes or type) and personalities (bolt_attack) that name this spell. */
 function renderUsedBy() {
     const key = val('spell-key');
-    const users = Object.entries(state.mergedItems)
+    const items = Object.entries(state.mergedItems)
         .filter(([, def]) => (def.attributes?.spell ?? state.types[def.type]?.attributes?.spell) === key)
-        .map(([id]) => id);
+        .map(([id]) => id).sort();
+    const personalities = Object.entries(state.mergedPersonalities)
+        .filter(([, def]) => def?.spell === key)
+        .map(([id]) => id).sort();
     const el = document.getElementById('used-by');
     el.innerHTML = '';
-    if (!users.length) { el.textContent = 'No items reference this spell.'; return; }
-    for (const id of users.sort()) {
+    if (!items.length && !personalities.length) { el.textContent = 'Nothing references this spell.'; return; }
+    for (const id of items) {
         const a = document.createElement('a');
         a.href = `item-editor.html?item=${encodeURIComponent(id)}`;
         a.textContent = id;
         el.appendChild(a);
+        el.appendChild(document.createElement('br'));
+    }
+    for (const id of personalities) {
+        el.appendChild(document.createTextNode(`${id} (personality)`));
         el.appendChild(document.createElement('br'));
     }
 }

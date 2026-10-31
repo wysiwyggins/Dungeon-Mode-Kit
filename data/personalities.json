@@ -358,8 +358,8 @@
       "explore",
       "wander_to_wall",
       "mine_nearby_wall",
-      "defend_self",
-      "flee_from_danger"
+      "flee_from_danger",
+      "defend_self"
     ]
   },
 
@@ -426,6 +426,7 @@
     "hostile": true,
     "preferred_distance": 5,
     "attack_range": 8,
+    "spell": "lightning",
     "bolt_cooldown": 4,
     "bolt_damage": -12,
     "behaviors": [
@@ -472,15 +473,16 @@
   },
 
   "scavenger": {
-    "name": "Scavenger",
-    "preferred_distance": 6,
-    "search_radius": 10,
-    "behaviors": [
-      "random_walk",
-      "maintain_distance",
-      "seek_item"
-    ]
-  },
+  "name": "Scavenger",
+  "preferred_distance": 6,
+  "search_radius": 10,
+  "behaviors": [
+    "random_walk",
+    "maintain_distance",
+    "seek_item",
+    "defend_self"
+  ]
+},
 
   "blink_stalker": {
     "name": "Blink Stalker",

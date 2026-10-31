@@ -123,7 +123,7 @@
 // ---- Behavior definitions ----
 
 const BEHAVIOR_CATEGORIES = [
-    { name: 'Combat', behaviors: ['attack_adjacent', 'ranged_attack', 'shoot_at_target', 'bolt_attack', 'spray_web', 'pickpocket_adjacent', 'defend_self'] },
+    { name: 'Combat', behaviors: ['attack_adjacent', 'ranged_attack', 'shoot_at_target', 'bolt_attack', 'cast_spell', 'spray_web', 'pickpocket_adjacent', 'defend_self'] },
     { name: 'Movement', behaviors: ['random_walk', 'pursue_target', 'maintain_distance', 'blink_away', 'flee_from_danger', 'flee_with_loot', 'wander_to_wall', 'requires_liquid', 'explore', 'avoid_crowding'] },
     { name: 'Patrol / Guard', behaviors: ['patrol', 'guard_area', 'pursue_intruders', 'follow_thread', 'ambush', 'hunt'] },
     { name: 'Chain Creatures', behaviors: ['chain_head_ai', 'chain_body_follow', 'chain_scatter'] },
@@ -148,6 +148,7 @@ const BEHAVIOR_HINTS = {
     ranged_attack: 'Fire a projectile at a visible target',
     shoot_at_target: 'Stationary ranged attack (turret-style)',
     bolt_attack: 'Fire a lightning bolt at a target',
+    cast_spell: 'Cast a spell from spells.json at the nearest enemy',
     spray_web: 'Spray a cone of sticky webs at a target',
     pickpocket_adjacent: 'Steal an item from an adjacent target',
     defend_self: 'Attack adjacent threat when cornered',
@@ -217,7 +218,8 @@ const BEHAVIOR_PARAMS = {
     summon_actor: ['summon_type', 'summon_cooldown', 'summon_cap', 'summon_sound'],
     emit_cloud: ['emit_from_type', 'emit_type', 'emit_chance', 'emit_cap', 'cloud_lifetime'],
     blink_away: ['blink_range', 'blink_cooldown', 'preferred_distance', 'blink_spawn', 'blink_sound', 'blink_vfx'],
-    bolt_attack: ['attack_range', 'bolt_cooldown', 'bolt_damage', 'bolt_sound', 'bolt_vfx'],
+    bolt_attack: ['spell', 'attack_range', 'bolt_cooldown', 'bolt_damage', 'bolt_sound', 'bolt_vfx'],
+    cast_spell: ['spell', 'spell_range', 'spell_cooldown'],
     spray_web: ['spray_range', 'spray_cooldown', 'spray_arc', 'spray_min_distance', 'web_type', 'spray_sound'],
     ranged_attack: ['attack_range', 'ranged_cooldown', 'hit_sound', 'miss_sound'],
     shoot_at_target: ['attack_range', 'hit_sound', 'miss_sound'],
@@ -248,7 +250,10 @@ const PARAM_DEFS = [
     { key: 'attack_range', type: 'number', label: 'Attack Range', hint: 'Max distance for ranged attacks' },
     { key: 'ranged_cooldown', type: 'number', label: 'Ranged Cooldown', hint: 'Turns between ranged attacks' },
     { key: 'bolt_cooldown', type: 'number', label: 'Bolt Cooldown', hint: 'Turns between bolt attacks' },
-    { key: 'bolt_damage', type: 'number', label: 'Bolt Damage', hint: 'Damage dealt by bolt (negative = harm)' },
+    { key: 'spell', type: 'text', ref: 'spell', label: 'Spell', hint: 'A spell from spells.json. bolt_attack takes bolt spells only, and its bolt fields override the spell.' },
+    { key: 'spell_range', type: 'number', label: 'Spell Range', hint: 'cast_spell: max distance to a target. Default: the spell\'s range, else attack_range, else 8' },
+    { key: 'spell_cooldown', type: 'number', label: 'Spell Cooldown', hint: 'cast_spell: turns between casts. Default: 4' },
+    { key: 'bolt_damage', type: 'number', label: 'Bolt Damage', hint: 'Damage dealt by bolt (negative = harm). Overrides the spell\'s.' },
     { key: 'blink_range', type: 'number', label: 'Blink Range', hint: 'Max teleport distance' },
     { key: 'blink_cooldown', type: 'number', label: 'Blink Cooldown', hint: 'Turns between blinks' },
     { key: 'blink_spawn', type: 'actor-select', label: 'Blink Spawn', hint: 'Actor type spawned at blink origin (e.g. fire)' },
@@ -347,15 +352,17 @@ async function fetchJSON(url) {
 }
 
 async function loadBaseData() {
-    const [personalities, actors, items, states, effects, sounds] = await Promise.all([
+    const [personalities, actors, items, states, effects, sounds, spells] = await Promise.all([
         fetchJSON('../data/personalities.json'),
         fetchJSON('../data/actors.json'),
         fetchJSON('../data/items.json'),
         fetchJSON('../data/states.json'),
         fetchJSON('../data/vfx.json'),
         fetchJSON('../data/sounds.json'),
+        fetchJSON('../data/spells.json'),
     ]);
     state.basePersonalities = personalities;
+    state.baseSpells = spells;
     state.baseActors = actors;
     // Only read to suggest names for the reference fields (scripts/ref-fields.js).
     state.baseItems = items;
@@ -371,19 +378,21 @@ async function loadPrototype(name) {
         state.protoItems = {};
         state.protoStates = {};
         state.protoEffects = {};
+        state.protoSpells = {};
     } else {
         if (!state.prototypeCache[name]) {
-            const [personalities, actors, items, states, effects] = await Promise.all(
-                ['personalities', 'actors', 'items', 'states', 'vfx']
+            const [personalities, actors, items, states, effects, spells] = await Promise.all(
+                ['personalities', 'actors', 'items', 'states', 'vfx', 'spells']
                     .map(f => fetchJSON(`../prototypes/${name}/${f}.json`)));
-            state.prototypeCache[name] = { personalities, actors, items, states, effects };
+            state.prototypeCache[name] = { personalities, actors, items, states, effects, spells };
         }
         ({ personalities: state.protoPersonalities, actors: state.protoActors, items: state.protoItems,
-           states: state.protoStates, effects: state.protoEffects } = state.prototypeCache[name]);
+           states: state.protoStates, effects: state.protoEffects, spells: state.protoSpells } = state.prototypeCache[name]);
     }
     state.mergedItems = { ...state.baseItems, ...state.protoItems };
     state.mergedStates = { ...state.baseStates, ...state.protoStates };
     state.mergedEffects = { ...state.baseEffects, ...state.protoEffects };
+    state.mergedSpells = { ...state.baseSpells, ...state.protoSpells };
     state.mergedPersonalities = { ...state.basePersonalities, ...state.protoPersonalities };
     state.mergedActorKeys = Object.keys({ ...state.baseActors, ...state.protoActors }).sort();
     populateDropdown();
@@ -969,6 +978,9 @@ function initRefFields() {
         label: (k) => state.mergedStates[k]?.name });
     RefFields.define('vfx', { file: 'vfx.json', names: () => keysOf(state.mergedEffects) });
     RefFields.define('sound', { file: 'sounds.json', names: () => state.soundNames || [] });
+    // Labelled with the delivery: bolt_attack takes bolt spells only (behaviors/special.js boltSpellFor).
+    RefFields.define('spell', { file: 'spells.json', names: () => keysOf(state.mergedSpells),
+        label: (k) => `${state.mergedSpells[k]?.name || k} (${state.mergedSpells[k]?.delivery || 'projectile'})` });
     // Any BehaviorLibrary entry works and the palette doesn't list them all, so
     // these are suggestions rather than a closed set.
     RefFields.define('behavior', { kind: 'label', names: () => BEHAVIOR_CATEGORIES.flatMap(c => c.behaviors) });

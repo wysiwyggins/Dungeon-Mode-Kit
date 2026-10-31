@@ -188,6 +188,47 @@ export function traceBoltPath(x0, y0, x1, y1, getSolidActorAt, options = {}) {
 }
 
 /**
+ * Trace where a spell travels from (x0, y0) toward (x1, y1). A bolt (`passThrough`)
+ * follows traceBoltPath; anything else flies the straight line and stops at the
+ * first solid actor, which is included as the last point.
+ *
+ * The one path calculation for spells, shared by the player's aiming line
+ * (RenderOverlays.showLinePath) and every cast (DungeonEngine.castSpell), so what
+ * the player is shown is where the spell goes.
+ *
+ * @param {number} x0
+ * @param {number} y0
+ * @param {number} x1
+ * @param {number} y1
+ * @param {function(number, number): Actor|null} getSolidActorAt
+ * @param {object} [options]
+ * @param {boolean} [options.passThrough] - Trace as a bolt
+ * @param {number|null} [options.maxRange] - Tiles before the path is out of range
+ * @returns {{path: Array, blockedAt: {x,y}|null, outOfRange: boolean, bounces: Array<{x, y, actor}>}}
+ *     path excludes the start tile
+ */
+export function traceSpellPath(x0, y0, x1, y1, getSolidActorAt, options = {}) {
+    const maxRange = options.maxRange ?? null;
+    if (options.passThrough) return traceBoltPath(x0, y0, x1, y1, getSolidActorAt, { maxRange });
+
+    const result = { path: [], blockedAt: null, outOfRange: false, bounces: [] };
+    const line = getLinePath(x0, y0, x1, y1);
+    for (let i = 1; i < line.length; i++) {
+        const point = line[i];
+        if (maxRange !== null && i > maxRange) {
+            result.outOfRange = true;
+            break;
+        }
+        result.path.push(point);
+        if (getSolidActorAt(point.x, point.y)) {
+            result.blockedAt = point;
+            break;
+        }
+    }
+    return result;
+}
+
+/**
  * Normalize an item-matching setting (`hunts`, `seeks`, a personality's
  * `item_type`, a launcher's `launches`) to a list, and expand it to the item ids
  * it covers: an id stands for itself, a type for every item declaring it. Goes through the prototype so a type with a

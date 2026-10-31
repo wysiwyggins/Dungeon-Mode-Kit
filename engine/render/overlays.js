@@ -5,9 +5,8 @@
 
 import {
     findPathAStar,
-    getLinePath,
     isOpenableDoorTile,
-    traceBoltPath
+    traceSpellPath
 } from '../../core/pathfinding.js';
 import { TILE_HEIGHT, TILE_WIDTH } from '../../core/util.js';
 
@@ -34,45 +33,11 @@ export const RenderOverlays = {
         const tileWidth = this.engine.config.tileWidth;
         const tileHeight = this.engine.config.tileHeight;
 
-        // Get the line path using Bresenham's algorithm
-        const fullPath = getLinePath(startX, startY, endX, endY);
-
-        // Track where path is blocked (skip start position)
-        let blockedAt = null;
-        let outOfRange = false;
-        let bounces = [];
-        let displayPath = [];
-
-        if (options.passThrough) {
-            // Bolts pass through conductive actors and bounce off reflective ones
-            const trace = traceBoltPath(
-                startX, startY, endX, endY,
-                (x, y) => this.engine.entityManager?.getSolidActorAt(x, y),
-                { maxRange }
-            );
-            ({ blockedAt, outOfRange, bounces } = trace);
-            displayPath = trace.path;
-        }
-
-        for (let i = 1; i < fullPath.length && !options.passThrough; i++) {
-            const point = fullPath[i];
-
-            // Check if we've exceeded max range
-            if (maxRange !== null && i > maxRange) {
-                outOfRange = true;
-                break;
-            }
-
-            // Check for solid actors that would block the path
-            const actor = this.engine.entityManager?.getSolidActorAt(point.x, point.y);
-            if (actor) {
-                blockedAt = point;
-                displayPath.push(point); // Include the blocked tile
-                break;
-            }
-
-            displayPath.push(point);
-        }
+        const { path: displayPath, blockedAt, outOfRange, bounces } = traceSpellPath(
+            startX, startY, endX, endY,
+            (x, y) => this.engine.entityManager?.getSolidActorAt(x, y),
+            { passThrough: options.passThrough, maxRange }
+        );
 
         // Create path overlay sprites
         this.linePathSprites = [];

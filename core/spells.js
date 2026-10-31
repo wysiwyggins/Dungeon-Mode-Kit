@@ -27,3 +27,26 @@ export function spellAttributes(spell) {
     if (spell.projectile?.tint !== undefined) attrs.projectile_tint = spell.projectile.tint;
     return attrs;
 }
+
+/**
+ * The spell an item casts, read back off its resolved attributes: the inverse of
+ * spellAttributes, so per-item overrides and inline (spell-less) staffs come out
+ * in the same shape a spells.json entry has, for DungeonEngine.castSpell.
+ * @param {Item} item
+ * @returns {Object} A spell: { name, delivery, range, target_filter, cast_sound, vfx, projectile, effect }
+ */
+export function spellFromItem(item) {
+    const attr = key => item.getAttribute(key);
+    // An item with no spell_effect at all has always cast a plain fire burst.
+    const { type, ...effect } = attr('spell_effect') || { center: 'fire', radius: 0 };
+    return {
+        name: attr('spell_name') || item.getDisplayName?.() || item.name,
+        delivery: type === 'bolt' ? 'bolt' : 'projectile',
+        range: attr('spell_range'),
+        target_filter: attr('target_filter'),
+        cast_sound: attr('cast_sound'),
+        vfx: attr('spell_vfx'),
+        projectile: { tile: attr('projectile_tile'), tint: attr('projectile_tint') },
+        effect
+    };
+}

@@ -1323,7 +1323,6 @@
           "state": "discordant",
           "duration": 30,
           "radius": 5,
-          "filter": "hostile",
           "message": "A wave of discord washes over nearby creatures!",
           "empty_message": "The scroll crumbles, but nothing happens."
         }
