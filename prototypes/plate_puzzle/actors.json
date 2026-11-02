@@ -1,0 +1,69 @@
+{
+  "player": {
+    "name": "Player",
+    "description": "It's you!",
+    "tileIndexBase": "LEG",
+    "tileIndexTop": "OPAQUE_DARK_SMILING_FACE",
+    "death_sound": "ouch",
+    "attributes": {
+      "flammable": true,
+      "controlled": true,
+      "sentient": true,
+      "inventory": 5,
+      "strength": 5
+    },
+    "stats": {
+      "health": {
+        "max": 20
+      }
+    }
+  },
+  "keyed_pressure_plate": {
+    "name": "pressure plate",
+    "type": "switch",
+    "description": "A broad, heavy flagstone. Your weight alone won't move it; it seems cut to fit one particular stone.",
+    "tileIndexBase": "BUTTON_UP",
+    "tileIndexBase_toggled": "BULLET",
+    "tileIndexTop": "BLANK",
+    "collision_sound": "push1",
+    "attributes": {
+      "solid": false,
+      "one_shot": true,
+      "keyed": true,
+      "render_layer": "bottom"
+    },
+    "collision_description": "a pressure plate",
+    "switch_message": "The stone settles into [name] with a deep click.",
+    "switch_effects": {
+      "solid": false,
+      "open": true
+    }
+  },
+  "pushable_wall": {
+    "type": "terrain",
+    "name": "wall",
+    "tileIndexBase": "OPAQUE_MEDIUM_SHADE",
+    "tileIndexTop": "OPAQUE_LIGHT_SHADE",
+    "collision_effect": {
+      "health": -1
+    },
+    "attributes": {
+      "pushable": true
+    }
+  },
+  "gate": {
+    "name": "gate",
+    "type": "doorway",
+    "tileIndexBase": "GATE",
+    "tileIndexTop": "GATE",
+    "tileIndexTop_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
+    "tileIndexBase_open": "OPAQUE_MEDIUM_LIGHT_SHADE_RIGHT_ONE_FIFTH_BLOCK",
+    "flipBaseV": true,
+    "attributes": {
+      "lockable": false,
+      "gate": true,
+      "opaque": false,
+      "locked": true
+    }
+  }
+}

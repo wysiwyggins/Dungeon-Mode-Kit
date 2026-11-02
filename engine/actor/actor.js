@@ -775,6 +775,10 @@ export class Actor extends Entity {
             });
         }
 
+        // Nothing sitting on the switch is its target — in particular the keyed wall
+        // that just pressed a keyed plate shares its machine_id but must stay solid.
+        targets = targets.filter(a => a.x !== this.x || a.y !== this.y);
+
         for (const target of targets) {
             // A condition lock may share a machine_id with its guardian (for
             // `killed:linked`); a switch on the same id must not bypass it.

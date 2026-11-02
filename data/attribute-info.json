@@ -18,6 +18,7 @@
 
   "breakable": "can be broken apart",
   "container": "holds something inside",
+  "keyed": "sinks only under the stone made for it",
   "pushable": "can be pushed",
   "crushable": "can be crushed",
 

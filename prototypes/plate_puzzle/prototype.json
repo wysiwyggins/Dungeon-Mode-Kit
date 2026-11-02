@@ -1,0 +1,11 @@
+{
+  "name": "Plate Puzzle",
+  "loaded_sound": "tone3",
+  "description": "Two gates, two plates, two stones. Each stone fits only one plate; match their colors.",
+  "turn_speed": 50,
+  "mechanics": {
+    "fog_of_war": false,
+    "darkness": false
+  },
+  "floors": 1
+}

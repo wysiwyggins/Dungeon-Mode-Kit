@@ -16,6 +16,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 ### Added
 
+- **Keyed pressure plates.** A plate with the new `keyed` attribute is pressed only by something sharing its `machine_id`, so a plate, a pushable wall and a gate on one id make a match-the-stone puzzle. The `plate_puzzle` prototype defines a `keyed_pressure_plate` in its own `actors.json` and tests two sets.
 - **Plate and vent traps.** A trap is now a hidden pressure plate and a hidden floor vent in the same room, linked by `machine_id`. Stepping on the plate reveals both and the gas or fire comes out of the vent, and `traps` counts these pairs.
 - **One pressure plate actor.** `trigger_plate` and `hidden_pressure_plate` are folded into `pressure_plate`; trap placement makes it hidden, re-arming and `trap`, and Tiled can set `hidden` on a placed one. A `trap` switch fires only its vents.
 - **Church plates are pressure plates too.** The dungeon's `trap_plate` and `church_pressure_plate` are gone: generated gated corridors place `pressure_plate` with slam-shut effects, and the church map's plate is a hidden `pressure_plate` with a `switch_effects` property.

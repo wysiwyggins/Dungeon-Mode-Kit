@@ -784,6 +784,18 @@ export class EntityManager {
         for (const plate of [...this.getActorsAt(x, y)]) {
             if (plate === entity || plate.isDead || plate.hasAttribute('solid')) continue;
             if (!plate.hasAttribute('switchable')) continue;
+            // A keyed plate only answers to an entrant sharing its machine_id (the one
+            // pushable wall built for it). Anything else rests on it without effect.
+            if (plate.hasAttribute('keyed')
+                && entity.getAttribute?.('machine_id') !== plate.getAttribute('machine_id')) {
+                if (entity.hasAttribute?.('pushable')) {
+                    this.engine.inputManager?.showMessage(
+                        `${entity.getNameWithArticle(true)} rests on ${plate.getNameWithArticle()}, but it doesn't sink.`,
+                        { x, y }
+                    );
+                }
+                continue;
+            }
             if (!plate.hasAttribute('one_shot')) {
                 plate.press(entity);
             } else if (!plate.hasAttribute('toggled')) {

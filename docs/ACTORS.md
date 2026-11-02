@@ -177,6 +177,7 @@ Actors can be connected together by a `machine_id` attribute (a string like a na
 | `switchable` | boolean | Actor can be toggled (by bumping it or by another machine). |
 | `toggled` | boolean | Current toggle state. Drives the `*_toggled` tile/flip variants. |
 | `one_shot` | boolean | Toggles once and then stays put. Without it a pressure plate re-arms: it fires each time something steps onto it while it's empty, and its `*_toggled` tiles show only while something is on it. |
+| `keyed` | boolean | A floor plate that only something sharing its `machine_id` can press, such as the one pushable wall made for it. Other walls rest on it with a message; creatures and items do nothing. |
 | `pausable` | boolean | Can be paused/resumed by bumping (e.g. a clock countdown). |
 | `gate` | boolean | A barrier that receives propagated switch effects. |
 | `lockable` | boolean | Any key unlocks it when locked (doors). A gate sets it false, since only its switch moves it. |
@@ -193,7 +194,7 @@ Actors can be connected together by a `machine_id` attribute (a string like a na
 | `trap_effect` | object | Area payload in place of `trap_spawn`: `center` on the vent, `outer` around it. Give `radius` to fill a circle, or `blob_start` and `blob_decrement` (percent) for a ragged patch that stops at walls: each ring spreads to the next tiles at the start chance, which drops by the decrement each ring. |
 | `trap_sound` | string | Sound played when the vent fires. |
 
-A floor plate (a non-solid `switchable` actor) is pressed by anything solid that arrives on its tile: walking, being shoved or knocked back, teleporting, or a thrown item landing there. Flying actors pass over it. It re-arms unless it's `one_shot`. When a linked switch activates its targets, each one also gets an activation hook. Today that's what fires a vent; a target with nothing to do ignores it. A switch with a `machine_id` needs no `switch_effects` to fire its targets.
+A floor plate (a non-solid `switchable` actor) is pressed by anything solid that arrives on its tile: walking, being shoved or knocked back, teleporting, or a thrown item landing there. Flying actors pass over it. It re-arms unless it's `one_shot`. When a linked switch activates its targets, each one also gets an activation hook. Today that's what fires a vent; a target with nothing to do ignores it. A switch with a `machine_id` needs no `switch_effects` to fire its targets, and whatever is standing on the switch is never one of them.
 
 ## Info Panel
 
