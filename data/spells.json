@@ -194,6 +194,27 @@
     }
   },
 
+  "discord_wave": {
+    "name": "Discord",
+    "delivery": "burst",
+    "radius": 5,
+    "effect": {
+      "apply_state": {
+        "state": "discordant",
+        "duration": 30
+      }
+    }
+  },
+
+  "negation_wave": {
+    "name": "Negation",
+    "delivery": "burst",
+    "radius": 5,
+    "effect": {
+      "remove_states": true
+    }
+  },
+
   "polymorph": {
     "name": "Polymorph",
     "delivery": "projectile",

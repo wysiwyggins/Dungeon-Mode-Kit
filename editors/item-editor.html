@@ -354,46 +354,6 @@
                         <label style="min-width:unset"><input type="checkbox" id="f-ue-remove_all_states"> Cure all states</label>
                     </div>
 
-                    <div class="sub-section-title" style="margin-top:8px">Creatures nearby</div>
-                    <div class="field-row">
-                        <label>Area Effect</label>
-                        <select id="f-ue-area">
-                            <option value="">— none —</option>
-                            <option value="apply_state_radius">apply a state</option>
-                            <option value="remove_states_radius">strip all states</option>
-                        </select>
-                    </div>
-                    <div id="use-area-fields">
-                        <div class="field-row" id="use-area-state-row">
-                            <label>State</label>
-                            <input type="text" id="f-ue-area-state">
-                        </div>
-                        <div class="field-row" id="use-area-duration-row">
-                            <label>Duration</label>
-                            <input type="number" id="f-ue-area-duration" min="1" placeholder="the state's own">
-                        </div>
-                        <div class="field-row">
-                            <label>Radius</label>
-                            <input type="number" id="f-ue-area-radius" min="1" placeholder="5">
-                        </div>
-                        <div class="field-row">
-                            <label>Affects</label>
-                            <select id="f-ue-area-filter">
-                                <option value="">every creature</option>
-                                <option value="hostile">hostile creatures</option>
-                                <option value="friendly">non-hostile creatures</option>
-                            </select>
-                        </div>
-                        <div class="field-row">
-                            <label>Message</label>
-                            <input type="text" id="f-ue-area-message" placeholder="[N] creatures are affected!">
-                        </div>
-                        <div class="field-row">
-                            <label>Nothing Message</label>
-                            <input type="text" id="f-ue-area-empty_message" placeholder="Nothing happens.">
-                        </div>
-                    </div>
-
                     <div style="margin: 8px 0 4px; font-size:11px; color:var(--accent)">Other keys</div>
                     <div id="use-effect-list" class="dynamic-list"></div>
                     <button class="add-btn" id="btn-add-use-effect">+ Add Key</button>
@@ -418,8 +378,12 @@
                 <!-- Targeted spell sub-section -->
                 <div class="conditional-section" id="targeted-spell-section">
                     <div class="sub-section" style="margin-top:10px">
-                        <div class="sub-section-title">Targeted Spell</div>
-                        <div style="font-size:10px; color:var(--text-dim); margin-bottom:6px">
+                        <div class="sub-section-title" id="spell-section-title">Targeted Spell</div>
+                        <div style="font-size:10px; color:var(--text-dim); margin-bottom:6px; display:none" id="area-spell-intro">
+                            Using the item casts the named spell from spells.json at once, with no aiming. It needs a burst or sight spell.
+                            What the spell does is edited in the spell editor.
+                        </div>
+                        <div style="font-size:10px; color:var(--text-dim); margin-bottom:6px" id="targeted-spell-intro">
                             The player aims, the item spends a charge, and the named spell from spells.json fires.
                             What the spell does is edited in the <a href="spell-editor.html" id="spell-editor-link">spell editor</a>; this item only owns its charges.
                             Staffs recharge over time (pow per_turn &gt; 0). Wands do not (per_turn: 0) but can gain charges via enchantment.
@@ -1033,12 +997,12 @@ function updateConditionalSections() {
     // The fields below are the object form, so they mean nothing once an action is chosen.
     document.getElementById('use-object-fields').style.display = effectStr ? 'none' : '';
     updateUseActionHint(effectStr);
-    const area = document.getElementById('f-ue-area').value;
-    document.getElementById('use-area-fields').style.display = area ? '' : 'none';
-    for (const id of ['use-area-state-row', 'use-area-duration-row']) {
-        document.getElementById(id).style.display = area === 'apply_state_radius' ? '' : 'none';
-    }
-    document.getElementById('targeted-spell-section').classList.toggle('visible', effectStr === 'targeted_spell');
+    // cast_spell (scrolls) names a spell too, but has no charges or aiming.
+    const castsSpell = effectStr === 'targeted_spell' || effectStr === 'cast_spell';
+    document.getElementById('targeted-spell-section').classList.toggle('visible', castsSpell);
+    document.getElementById('spell-section-title').textContent = effectStr === 'cast_spell' ? 'Area Spell' : 'Targeted Spell';
+    document.getElementById('targeted-spell-intro').style.display = effectStr === 'cast_spell' ? 'none' : '';
+    document.getElementById('area-spell-intro').style.display = effectStr === 'cast_spell' ? '' : 'none';
     // Bolts draw their vfx along the path (ui/spells.js) and never read the projectile fields.
     const spellId = document.getElementById('f-spell').value.trim();
     const spell = state.mergedSpells?.[spellId];
@@ -1060,12 +1024,10 @@ function updateConditionalSections() {
 
 // ---- Use effect (object form) ----
 // The object form of use_effect, as Actor.executeItemEffect reads it: stat and
-// attribute changes, apply_state, remove_all_states, and one area key. Keys
-// without a field round-trip through "Other keys".
+// attribute changes, apply_state and remove_all_states. Keys without a field
+// round-trip through "Other keys". Area effects are spells (cast_spell).
 
-const USE_OBJECT_TEXT_FIELDS = ['f-ue-apply_state', 'f-ue-apply_duration', 'f-ue-area', 'f-ue-area-state',
-    'f-ue-area-duration', 'f-ue-area-radius', 'f-ue-area-filter', 'f-ue-area-message', 'f-ue-area-empty_message'];
-const USE_AREA_KEYS = ['apply_state_radius', 'remove_states_radius'];
+const USE_OBJECT_TEXT_FIELDS = ['f-ue-apply_state', 'f-ue-apply_duration'];
 
 /** Fill the action dropdown from the engine's registry (core/use-actions.js). */
 function populateUseActions() {
@@ -1090,7 +1052,6 @@ function updateUseActionHint(actionName) {
 
 function populateUseObject(effect) {
     const val = (id, v) => { document.getElementById(id).value = v ?? ''; };
-    let areaTaken = false;
     for (const [key, value] of Object.entries(effect)) {
         if (key === 'apply_state' && typeof value === 'string') {
             val('f-ue-apply_state', value);
@@ -1099,15 +1060,6 @@ function populateUseObject(effect) {
             val('f-ue-apply_duration', value.duration);
         } else if (key === 'remove_all_states' && typeof value === 'boolean') {
             document.getElementById('f-ue-remove_all_states').checked = value;
-        } else if (USE_AREA_KEYS.includes(key) && !areaTaken && value && typeof value === 'object') {
-            areaTaken = true;
-            val('f-ue-area', key);
-            val('f-ue-area-state', value.state);
-            val('f-ue-area-duration', value.duration);
-            val('f-ue-area-radius', value.radius);
-            val('f-ue-area-filter', value.filter);
-            val('f-ue-area-message', value.message);
-            val('f-ue-area-empty_message', value.empty_message);
         } else if (typeof value === 'number' || typeof value === 'string') {
             addKVRow('use-stat-list', key, value);
         } else {
@@ -1128,19 +1080,6 @@ function readUseObject() {
             : { state: val('f-ue-apply_state'), duration };
     }
     if (document.getElementById('f-ue-remove_all_states').checked) effect.remove_all_states = true;
-    const area = val('f-ue-area');
-    if (area) {
-        const spec = {};
-        if (area === 'apply_state_radius') {
-            if (val('f-ue-area-state')) spec.state = val('f-ue-area-state');
-            if (num('f-ue-area-duration') !== undefined) spec.duration = num('f-ue-area-duration');
-        }
-        if (num('f-ue-area-radius') !== undefined) spec.radius = num('f-ue-area-radius');
-        if (val('f-ue-area-filter')) spec.filter = val('f-ue-area-filter');
-        if (val('f-ue-area-message')) spec.message = val('f-ue-area-message');
-        if (val('f-ue-area-empty_message')) spec.empty_message = val('f-ue-area-empty_message');
-        effect[area] = spec;
-    }
     Object.assign(effect, readKVList('use-effect-list') || {});
     return Object.keys(effect).length ? effect : undefined;
 }
@@ -2318,7 +2257,7 @@ function getItemCategory(data) {
     if (a.weapon) return 'weapon';
     if (a.wearable === 'ring') return 'ring';
     if (a.wearable) return 'armor';
-    if (a.use_effect === 'targeted_spell' || a.charge_stat || a.spell) {
+    if (a.use_effect === 'targeted_spell' || a.charge_stat || (a.spell && a.use_effect !== 'cast_spell')) {
         const statDef = data.stats?.[a.charge_stat || 'pow'];
         if (statDef && statDef.per_turn > 0) return 'staff';
         return 'wand';
@@ -2495,7 +2434,6 @@ const REF_FIELDS = {
     'f-use_verb': 'use_verb',
     'f-use_sound': 'sound',
     'f-ue-apply_state': 'state',
-    'f-ue-area-state': 'state',
     'f-spell': 'spell',
     'f-charge_stat': 'stat',
     'f-cast_sound': 'sound',

@@ -3,17 +3,24 @@
  *
  * castSpell takes a caster, a spell (a spells.json entry, or an item's spell via
  * spellFromItem in core/spells.js) and a target tile, then plays the sound, flies
- * the projectile or draws the bolt, and applies the spell's effect. Nothing here
+ * the projectile or draws the bolt, and applies the spell's effect. Area spells
+ * (`burst`, `sight`) need no target tile: they apply the effect to every
+ * creature getSpellAreaTargets picks. Nothing here
  * assumes the caster is the player or that an item is involved: the player's
  * aiming and charges live in ui/spells.js, a monster's targeting and cooldown in
  * its behavior (behaviors/special.js cast_spell), and both end up here.
  */
 
-import { getChebyshevDistance, getLinePath, traceSpellPath } from '../../core/pathfinding.js';
+import { getChebyshevDistance, getLinePath, hasLineOfSight, traceSpellPath } from '../../core/pathfinding.js';
+import { isAreaSpell } from '../../core/spells.js';
 import { ALL_DIRS } from '../../core/util.js';
 
 // Drawn when neither the spell nor an item names a projectile tile.
 const DEFAULT_PROJECTILE_TILE = 'OPAQUE_WHITE_DIAMOND_SUITE';
+
+// Reach of a `burst` spell with no radius, and of a monster's `sight` spell with no range.
+const DEFAULT_BURST_RADIUS = 5;
+const DEFAULT_SIGHT_RANGE = 10;
 
 export const DungeonEngineSpellcasting = {
     /**
@@ -21,12 +28,14 @@ export const DungeonEngineSpellcasting = {
      * @param {Object} options
      * @param {Actor} options.caster
      * @param {Object} options.spell - { name, delivery, cast_sound, vfx, projectile, effect, ... }
-     * @param {{x: number, y: number}} options.target - Aimed tile (range is the caller's job)
+     * @param {{x: number, y: number}} [options.target] - Aimed tile (range is the caller's job); unused by area spells
      * @param {Item} [options.item] - The item cast with, if any: damage source, messages, projectile fallback
      * @param {Function} [options.onComplete] - Called once the effect has landed
-     * @returns {Object|null} The traced path ({ path, blockedAt, bounces }), or null if there was nowhere to go
+     * @returns {Object|null} The traced path ({ path, blockedAt, bounces }), or for an
+     *   area spell { targets, affected }; null if there was nowhere to go
      */
     castSpell({ caster, spell, target, item = null, onComplete }) {
+        if (isAreaSpell(spell)) return this.castAreaSpell({ caster, spell, item, onComplete });
         const bolt = spell.delivery === 'bolt';
         const trace = traceSpellPath(caster.x, caster.y, target.x, target.y,
             (x, y) => this.entityManager?.getSolidActorAt(x, y), { passThrough: bolt });
@@ -61,6 +70,78 @@ export const DungeonEngineSpellcasting = {
             });
         }
         return trace;
+    },
+
+    /**
+     * Cast a `burst` or `sight` spell: apply its effect to every creature in the
+     * area at once, with one summary message instead of one per creature.
+     * @param {Object} options - As castSpell, minus target
+     * @returns {{targets: Actor[], affected: number}}
+     */
+    castAreaSpell({ caster, spell, item = null, onComplete }) {
+        const targets = this.getSpellAreaTargets(caster, spell);
+        // No default sound: a scroll's reading ceremony has already played one.
+        if (spell.cast_sound) this.playSound(spell.cast_sound);
+        if (spell.vfx) this.renderer?.effectRunner.apply(spell.vfx, caster);
+
+        const effect = spell.effect || {};
+        let affected = 0;
+        for (const target of targets) {
+            if (this.applyEffectToTarget(caster, effect, target, item, { quiet: true })) affected++;
+        }
+
+        // The player hears how it went; a monster's cast is only news if it's seen.
+        if (caster.isPlayerControlled?.()) {
+            const plural = affected === 1 ? 'creature is' : 'creatures are';
+            this.inputManager?.showMessage(affected > 0
+                ? this._spellMessage(item, 'effect_message', spell.message || `${affected} ${plural} affected!`)
+                : this._spellMessage(item, 'fail_message', spell.empty_message || 'Nothing seems to happen.'));
+        } else if (this.isTileVisible?.(caster.x, caster.y)) {
+            this.inputManager?.showMessage(`${caster.getNameWithArticle(true)} casts ${spell.name || 'a spell'}!`,
+                { x: caster.x, y: caster.y });
+        }
+
+        onComplete?.({ targets, affected });
+        this.interfaceManager?.updateSidebar();
+        return { targets, affected };
+    },
+
+    /**
+     * The creatures an area spell reaches, never the caster.
+     * `burst`: within `radius` tiles (Chebyshev, through walls, as the old radius
+     * scrolls worked). `sight`: what the player can see right now (lit and in
+     * view), or for anyone else a clear line within `range`. `affects` narrows it
+     * to "hostile" (the caster's enemies) or "allies" (everyone else); default "all".
+     * @param {Actor} caster
+     * @param {Object} spell
+     * @returns {Actor[]}
+     */
+    getSpellAreaTargets(caster, spell) {
+        const entityManager = this.entityManager;
+        if (!entityManager) return [];
+        const radius = spell.radius ?? DEFAULT_BURST_RADIUS;
+        const playerSight = caster.isPlayerControlled?.();
+        const range = spell.range ?? (playerSight ? Infinity : DEFAULT_SIGHT_RANGE);
+
+        const inArea = other => {
+            if (spell.delivery === 'burst') {
+                return getChebyshevDistance(caster.x, caster.y, other.x, other.y) <= radius;
+            }
+            if (Math.hypot(other.x - caster.x, other.y - caster.y) > range) return false;
+            if (playerSight) return this.isTileVisible(other.x, other.y);
+            return hasLineOfSight(caster.x, caster.y, other.x, other.y, (x, y) => {
+                const blocker = entityManager.getSolidActorAt(x, y);
+                return blocker && blocker !== caster && blocker !== other;
+            });
+        };
+
+        return entityManager.actors.filter(other => {
+            if (other === caster || other.isDead) return false;
+            if (!other.hasAttribute('sentient') && !other.hasAttribute('controlled')) return false;
+            if (spell.affects === 'hostile' && !caster.isEnemyOf(other)) return false;
+            if (spell.affects === 'allies' && caster.isEnemyOf(other)) return false;
+            return inArea(other);
+        });
     },
 
     /**
@@ -166,7 +247,6 @@ export const DungeonEngineSpellcasting = {
 
         const { center, radius = 0, outer } = effect;
         const { x, y } = landingPoint;
-        const at = { x, y };
 
         if (center) entityManager.spawnActor(center, x, y);
         if (radius > 0) {
@@ -186,92 +266,9 @@ export const DungeonEngineSpellcasting = {
         // The creature on the landing tile, for the single-target effects.
         const struck = entityManager.getSolidActorAt(x, y);
         const target = struck && struck !== caster && !struck.isDead ? struck : null;
-
-        if (effect.clone_target && target) {
-            const name = target.getNameWithArticle(true);
-            const providers = { target_name: () => name };
-            this.inputManager?.showMessage(target.cloneSelf()
-                ? this._spellMessage(item, 'effect_message', `${name} is beside itself!`, providers)
-                : this._spellMessage(item, 'fail_message', `${name} shudders, but stays single.`, providers), at);
-        }
-
-        // { "polymorph_target": true }, or an actor id/type (or list of them) to
-        // draw the new form from, or { "floors": "current" } for a floor's spawn pool.
-        if (effect.polymorph_target && target) {
-            const name = target.getNameWithArticle(true);
-            const pool = effect.polymorph_target === true ? undefined : effect.polymorph_target;
-            const creature = target.polymorph(pool);
-            const newName = creature?.getNameWithArticle(false);
-            const providers = { target_name: () => name, new_form_name: () => newName };
-            this.inputManager?.showMessage(creature
-                ? this._spellMessage(item, 'effect_message', `${name} turns into ${newName}!`, providers)
-                : this._spellMessage(item, 'fail_message', `${name} resists the change.`, providers), at);
-        }
+        if (target) this.applyEffectToTarget(caster, effect, target, item);
 
         if (effect.tunnel) this.tunnelAlong(caster, landingPoint, effect.tunnel, item);
-
-        // Change the target's stats: { "target_effect": { "health": 20 } }. Friend or foe alike.
-        if (effect.target_effect && target?.stats) {
-            const before = target.stats.health?.current;
-            for (const [key, value] of Object.entries(effect.target_effect)) target.modifyStat(key, value);
-            const after = target.stats.health?.current;
-            if (before !== undefined && after !== before) {
-                const name = this._spellName(target, true);
-                this.inputManager?.showMessage(after > before ? `${name} looks healthier.` : `${name} is hurt.`, at);
-                if (after <= 0) target.die();
-            }
-        }
-
-        if (effect.apply_state && target) {
-            const stateData = this.globalStates?.[effect.apply_state];
-            if (stateData) {
-                target.applyState(effect.apply_state, stateData);
-                this.inputManager?.showMessage(`${this._spellName(target, true)} ${target.isPlayerControlled?.() ? 'are' : 'is'} affected!`, at);
-            }
-        }
-
-        if (effect.remove_states && target) {
-            const stateNames = Object.keys(target.states || {});
-            for (const name of stateNames) target.removeState(name, true);
-            if (stateNames.length > 0) {
-                const owner = target.isPlayerControlled?.() ? 'Your' : `${target.getNameWithArticle(true)}'s`;
-                this.inputManager?.showMessage(`${owner} enchantments are stripped away!`, at);
-            }
-        }
-
-        if (effect.teleport_target && target) {
-            const candidates = (this.mapManager?.walkableTiles || [])
-                .filter(t => !entityManager.getSolidActorAt(t.x, t.y));
-            if (candidates.length > 0) {
-                const dest = candidates[Math.floor(ROT.RNG.getUniform() * candidates.length)];
-                target.x = dest.x;
-                target.y = dest.y;
-                target.updateSpritePosition();
-                this.lightingManager?.computeLighting();
-                this.inputManager?.showMessage(`${this._spellName(target, true)} ${target.isPlayerControlled?.() ? 'vanish' : 'vanishes'}!`);
-            }
-        }
-
-        // Pull the target toward the caster, tile by tile.
-        if (effect.beckon_target && target) {
-            const dx = Math.sign(caster.x - target.x);
-            const dy = Math.sign(caster.y - target.y);
-            let moved = false;
-            for (let i = 0; i < 20; i++) {
-                const nx = target.x + dx;
-                const ny = target.y + dy;
-                if ((nx === caster.x && ny === caster.y) || !target.isPassableAt(nx, ny)) break;
-                target.x = nx;
-                target.y = ny;
-                moved = true;
-            }
-            if (moved) {
-                target.updateSpritePosition();
-                this.playSound?.('push1');
-                const pulled = target.isPlayerControlled?.() ? 'You are' : `${target.getNameWithArticle(true)} is`;
-                this.inputManager?.showMessage(`${pulled} pulled toward ${this._spellName(caster)}!`);
-            }
-        }
 
         // Blink the caster to the landing tile, or the last open tile before it.
         if (effect.blink_self) {
@@ -295,6 +292,120 @@ export const DungeonEngineSpellcasting = {
                 this.inputManager?.showMessage('You cannot blink there.');
             }
         }
+    },
+
+    /**
+     * Apply a spell's per-creature effects to one target: the creature a
+     * projectile hit, or each creature an area spell reaches.
+     * @param {Actor} caster
+     * @param {Object} effect - clone_target, polymorph_target, target_effect, apply_state,
+     *   remove_states, teleport_target, beckon_target
+     * @param {Actor} target
+     * @param {Item|null} item
+     * @param {{quiet?: boolean}} [options] - quiet: no per-creature messages (area casts summarize instead)
+     * @returns {boolean} True if anything happened to the target
+     */
+    applyEffectToTarget(caster, effect, target, item, { quiet = false } = {}) {
+        const entityManager = this.entityManager;
+        const at = { x: target.x, y: target.y };
+        const say = (message, pos) => { if (!quiet) this.inputManager?.showMessage(message, pos); };
+        let affected = false;
+
+        if (effect.clone_target) {
+            const name = target.getNameWithArticle(true);
+            const providers = { target_name: () => name };
+            const cloned = target.cloneSelf();
+            affected ||= !!cloned;
+            say(cloned
+                ? this._spellMessage(item, 'effect_message', `${name} is beside itself!`, providers)
+                : this._spellMessage(item, 'fail_message', `${name} shudders, but stays single.`, providers), at);
+        }
+
+        // { "polymorph_target": true }, or an actor id/type (or list of them) to
+        // draw the new form from, or { "floors": "current" } for a floor's spawn pool.
+        if (effect.polymorph_target) {
+            const name = target.getNameWithArticle(true);
+            const pool = effect.polymorph_target === true ? undefined : effect.polymorph_target;
+            const creature = target.polymorph(pool);
+            affected ||= !!creature;
+            const newName = creature?.getNameWithArticle(false);
+            const providers = { target_name: () => name, new_form_name: () => newName };
+            say(creature
+                ? this._spellMessage(item, 'effect_message', `${name} turns into ${newName}!`, providers)
+                : this._spellMessage(item, 'fail_message', `${name} resists the change.`, providers), at);
+            // The old body is gone; nothing below should act on it.
+            if (creature) return true;
+        }
+
+        // Change the target's stats: { "target_effect": { "health": 20 } }. Friend or foe alike.
+        if (effect.target_effect && target.stats) {
+            const before = target.stats.health?.current;
+            for (const [key, value] of Object.entries(effect.target_effect)) {
+                if (target.modifyStat(key, value) !== null) affected = true;
+            }
+            const after = target.stats.health?.current;
+            if (before !== undefined && after !== before) {
+                const name = this._spellName(target, true);
+                say(after > before ? `${name} looks healthier.` : `${name} is hurt.`, at);
+                if (after <= 0) target.die();
+            }
+        }
+
+        // A state name, or { "state": "discordant", "duration": 30 }.
+        if (effect.apply_state && !target.isDead) {
+            if (target.applyAuthoredState(effect.apply_state, { source: caster })) {
+                affected = true;
+                say(`${this._spellName(target, true)} ${target.isPlayerControlled?.() ? 'are' : 'is'} affected!`, at);
+            }
+        }
+
+        if (effect.remove_states) {
+            const stateNames = Object.keys(target.states || {});
+            for (const name of stateNames) target.removeState(name, true);
+            if (stateNames.length > 0) {
+                affected = true;
+                const owner = target.isPlayerControlled?.() ? 'Your' : `${target.getNameWithArticle(true)}'s`;
+                say(`${owner} enchantments are stripped away!`, at);
+            }
+        }
+
+        if (effect.teleport_target && !target.isDead) {
+            const candidates = (this.mapManager?.walkableTiles || [])
+                .filter(t => !entityManager.getSolidActorAt(t.x, t.y));
+            if (candidates.length > 0) {
+                const dest = candidates[Math.floor(ROT.RNG.getUniform() * candidates.length)];
+                target.x = dest.x;
+                target.y = dest.y;
+                target.updateSpritePosition();
+                this.lightingManager?.computeLighting();
+                affected = true;
+                say(`${this._spellName(target, true)} ${target.isPlayerControlled?.() ? 'vanish' : 'vanishes'}!`);
+            }
+        }
+
+        // Pull the target toward the caster, tile by tile.
+        if (effect.beckon_target && !target.isDead) {
+            const dx = Math.sign(caster.x - target.x);
+            const dy = Math.sign(caster.y - target.y);
+            let moved = false;
+            for (let i = 0; i < 20; i++) {
+                const nx = target.x + dx;
+                const ny = target.y + dy;
+                if ((nx === caster.x && ny === caster.y) || !target.isPassableAt(nx, ny)) break;
+                target.x = nx;
+                target.y = ny;
+                moved = true;
+            }
+            if (moved) {
+                target.updateSpritePosition();
+                this.playSound?.('push1');
+                affected = true;
+                const pulled = target.isPlayerControlled?.() ? 'You are' : `${target.getNameWithArticle(true)} is`;
+                say(`${pulled} pulled toward ${this._spellName(caster)}!`);
+            }
+        }
+
+        return affected;
     },
 
     /**

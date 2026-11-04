@@ -17,8 +17,6 @@ export const USE_ACTIONS = {
     detect_magic: { description: 'Sense whether every item on this floor and in the pack is good or bad magic.' },
     reveal_map: { description: 'Map this floor for good, and show its hidden machinery.' },
     aggravate_monsters: { description: 'Alert every hostile creature on the floor to the player. Only creatures with the pursue_intruders behavior act on it.' },
-    discord: { description: 'Confuse every creature within the radius, allies included.', reads: { effect_radius: 5 } },
-    negate_nearby: { description: 'Strip every state from creatures within the radius.', reads: { effect_radius: 5 } },
     sanctuary: { description: 'Lay glyphs monsters will not cross on the floor around the user.', reads: { effect_radius: 2, glyph_actor: 'sacred_glyph' } },
     summon_monsters: { description: 'Summon creatures from the floor\'s random_actors around the user.', reads: { summon_min: 2, summon_max: 4 } },
     recharge_items: { description: 'Fully recharge every rechargeable item in the pack (staffs, not wands).' },
@@ -28,5 +26,6 @@ export const USE_ACTIONS = {
     toggle_torch: { description: 'Light or put out the item by swapping it for its other form.', reads: { toggle_to: 'torch / torch_unlit' } },
     spike_door: { description: 'Pick an adjacent door to jam shut.' },
     dig: { description: 'Pick a direction to dig through a wall.' },
+    cast_spell: { description: 'Cast the item\'s area spell (burst or sight delivery) on the spot, with no aiming (scrolls).' },
     targeted_spell: { description: 'Aim, spend a charge and fire the item\'s spell (staffs and wands).' },
 };

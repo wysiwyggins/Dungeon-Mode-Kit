@@ -1318,16 +1318,9 @@
     "identified_template": "Scroll of Discord",
     "effect_description": "A wave of discord washes over nearby creatures.",
     "attributes": {
-      "use_effect": {
-        "apply_state_radius": {
-          "state": "discordant",
-          "duration": 30,
-          "radius": 5,
-          "message": "A wave of discord washes over nearby creatures!",
-          "empty_message": "The scroll crumbles, but nothing happens."
-        }
-      },
-      "effect_radius": 5
+      "use_effect": "cast_spell",
+      "spell": "discord_wave",
+      "fail_message": "The scroll crumbles, but nothing happens."
     }
   },
 
@@ -1336,14 +1329,9 @@
     "identified_template": "Scroll of Negation",
     "effect_description": "A nullifying wave strips away all magical effects.",
     "attributes": {
-      "use_effect": {
-        "remove_states_radius": {
-          "radius": 5,
-          "message": "A nullifying wave strips away all magical effects!",
-          "empty_message": "The scroll crumbles, but nothing happens."
-        }
-      },
-      "effect_radius": 5
+      "use_effect": "cast_spell",
+      "spell": "negation_wave",
+      "fail_message": "The scroll crumbles, but nothing happens."
     }
   },
 

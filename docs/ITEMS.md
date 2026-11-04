@@ -254,7 +254,8 @@ every string `use_effect` in the data is a known action.
 
 | Effect string | Description |
 | --------------- | ------------- |
-| `"targeted_spell"` | Enters aiming mode; fires `spell_effect` at target tile (staffs) |
+| `"targeted_spell"` | Enters aiming mode; fires `spell_effect` at target tile (staffs). An area spell (`burst` or `sight`) casts at once with no aiming |
+| `"cast_spell"` | Casts the item's `spell` at once, with no aiming or charges (scrolls of discord and negation). The spell must be `burst` or `sight`; see [Spells](#spells-spellsjson) |
 | `"identify_item"` | Opens item picker; player selects one unidentified item to reveal |
 | `"teleport"` | Moves player to a random walkable tile |
 | `"reveal_map"` | Marks all tiles on the floor explored, and reveals the machine-link overlay (lines connecting each switch to the gates/doors it drives). A lasting per-level reveal: it persists when you leave the floor and return. See [Magic Mapping](#magic-mapping) |
@@ -265,8 +266,6 @@ every string `use_effect` in the data is a known action.
 | `"shatter_walls"` | Destroys breakable solid actors within `effect_radius` (default 3); triggers a screen shake, amber flash, and radiating tile fill effect |
 | `"targeted_spell"` (bolt) | Bolt spells display a white-blue tile fill along the bolt path with screen shake, instead of a projectile sprite |
 | `"darkness_field"` | Extinguishes all light-source items within `effect_radius` (default 5) |
-| `"discord"` | Confuses every creature within `effect_radius` (default 5), allies included. The scroll of discord uses an `apply_state_radius` object instead |
-| `"negate_nearby"` | Strips every state from creatures within `effect_radius` (default 5) |
 | `"remove_all_states"` | Cures every state on the user |
 | `"protect_item"` | Opens item picker; see [Scroll of Protection](#scroll-of-protection) |
 | `"toggle_torch"` | Swaps the item for its `toggle_to` form (default `torch` / `torch_unlit`), lighting or putting it out |
@@ -311,38 +310,9 @@ renderer flag, independent of whether the floor has been mapped.
 "use_effect": { "health_max": 10, "health": "max", "remove_all_states": true }
 ```
 
-### Object format — area effects
+### Area effects
 
-Use an object `use_effect` with `apply_state_radius` or `remove_states_radius` for data-driven radius-based effects:
-
-```json
-"use_effect": {
-  "apply_state_radius": {
-    "state": "discordant",
-    "radius": 5,
-    "message": "A wave of discord washes over nearby creatures!",
-    "empty_message": "The scroll crumbles, but nothing happens."
-  }
-}
-```
-
-```json
-"use_effect": {
-  "remove_states_radius": {
-    "radius": 5,
-    "message": "A nullifying wave strips away all magical effects!",
-    "empty_message": "The scroll crumbles, but nothing happens."
-  }
-}
-```
-
-| Property | Type | Description |
-| ---------- | ------ | ------------- |
-| `state` | string | State to apply (for `apply_state_radius`) |
-| `radius` | number | Effect radius in tiles |
-| `filter` | string | `"hostile"`, `"friendly"`, or omit for every creature but the user (the scroll of discord omits it, so allies turn too) |
-| `message` | string | Shown when at least one actor is affected |
-| `empty_message` | string | Shown when no actors are in range |
+Effects on every creature nearby or in view are spells with `burst` or `sight` delivery. Give the item `"use_effect": "cast_spell"` and a `spell`. See [Spells](#spells-spellsjson).
 
 ---
 
@@ -514,7 +484,7 @@ mostly its spell and its charge stat:
 
 ### Spells (`spells.json`)
 
-A spell is the gameplay half of a targeted spell: how it travels, what it may target, and
+A spell is the gameplay half of a cast: how it travels, what it may target, and
 what it does where it lands. `data/spells.json` holds the shared library and a prototype can
 add or replace entries with its own `spells.json`. They're edited in the spell editor
 (`editors/spell-editor.html`). The *look* of a spell stays in `vfx.json`; a spell only
@@ -523,13 +493,16 @@ names an entry there.
 | Property | Description |
 | ---------- | ------------- |
 | `name` | Shown in cast messages ("You cast Fireball!") |
-| `delivery` | `projectile` (flies to the target, then its effect happens) or `bolt` (strikes every creature along the line, bouncing off reflective ones) |
-| `range` | Max targeting distance in tiles. Omit to use the item type's `spell_range` |
+| `delivery` | `projectile` (flies to the target, then its effect happens), `bolt` (strikes every creature along the line, bouncing off reflective ones), `burst` (every creature within `radius` of the caster) or `sight` (every creature the caster can see). `burst` and `sight` need no aim |
+| `range` | Max targeting distance in tiles. Omit to use the item type's `spell_range`. For `sight`, how far the caster sees: the player sees whatever is lit and in view, a monster 10 tiles |
+| `radius` | `burst` only: reach in tiles from the caster, diagonals counting as one (default 5). It reaches through walls |
+| `affects` | Area spells only: `"hostile"` (the caster's enemies), `"allies"` (everyone else), or omit for every creature. The caster is never included |
+| `message` / `empty_message` | Area spells only: shown to the player when their cast affects someone / no one. Defaults: "N creatures are affected!" and "Nothing seems to happen." An item's `effect_message` / `fail_message` override them |
 | `target_filter` | What aiming cycles through (see [Aim targeting](#aim-targeting-target_filter)) |
 | `projectile` | `{ "tile": "...", "tint": "#rrggbb" }`. Either part can be left out: the tile falls back to the item type's `projectile_tile`, the tint to the item's tint |
-| `cast_sound` | Sound played on cast |
-| `vfx` | Bolts only: the `vfx.json` entry played for the bolt. Only effects with a `line_tile_fill` layer draw along the path; others play once at the caster. Left out, the engine falls back to `lightning_bolt` |
-| `effect` | What the spell does where it lands. Projectile spells take the area properties (`center`, `radius`, `outer`) and the [single-target properties](#spell-effect-properties-single-target); bolts take `bolt_damage` |
+| `cast_sound` | Sound played on cast. Area spells play none unless it's set, since a scroll's reading already makes a sound |
+| `vfx` | Bolts and area spells. An area spell plays it once on the caster. For a bolt it's the `vfx.json` entry played for the bolt. Only effects with a `line_tile_fill` layer draw along the path; others play once at the caster. Left out, the engine falls back to `lightning_bolt` |
+| `effect` | What the spell does where it lands. Projectile spells take the area properties (`center`, `radius`, `outer`) and the [single-target properties](#spell-effect-properties-single-target); area spells apply the single-target properties to each creature they reach (but not `tunnel`, `fill` or `blink_self`); bolts take `bolt_damage` |
 
 ```json
 "fireball": {
@@ -541,9 +514,19 @@ names an entry there.
 }
 ```
 
+```json
+"discord_wave": {
+  "name": "Discord",
+  "delivery": "burst",
+  "radius": 5,
+  "effect": { "apply_state": { "state": "discordant", "duration": 30 } }
+}
+```
+
 When an item is resolved, its spell is expanded into the flat attributes the casting code
 reads (`spell_name`, `spell_effect`, `spell_range`, `target_filter`, `projectile_tile`,
-`projectile_tint`, `cast_sound`, `spell_vfx`), layered type < spell < item. So an item can
+`projectile_tint`, `cast_sound`, `spell_vfx`, and for area spells `spell_delivery`,
+`spell_radius`, `spell_affects`, `spell_message`, `spell_empty_message`), layered type < spell < item. So an item can
 still override any one of them, and an item with no `spell` can declare them inline as
 before.
 
@@ -554,6 +537,8 @@ while it's discordant.
 - `cast_spell` casts any spell, named by the personality's `spell`. A projectile lands its
   effect on the target (fireball, poison, slowness...) and a bolt strikes along the line.
   Spells that act on the caster still aim at the enemy, so blinking blinks toward them.
+  An area spell goes off when an enemy is among the creatures it would reach. An
+  `"affects": "allies"` spell goes off when an ally is in reach and an enemy is in sight.
   `spell_range` defaults to the spell's `range`, then `attack_range`, then 8, and
   `spell_cooldown` (turns between casts) defaults to 4.
 - `bolt_attack` is the bolt-only version the lightning mage and the dynamo use
@@ -811,7 +796,7 @@ These go in a spell's `effect` (or an item's inline `spell_effect`).
 
 | Property | Type | Effect |
 | ---------- | ------ | -------- |
-| `apply_state` | string | Apply named state to target actor |
+| `apply_state` | string or object | Apply named state to target actor. `{ "state": "discordant", "duration": 30 }` overrides the state's duration |
 | `remove_states` | boolean | Strip all states from target actor |
 | `teleport_target` | boolean | Teleport target to a random walkable tile |
 | `beckon_target` | boolean | Pull target toward the caster |

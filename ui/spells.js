@@ -5,7 +5,7 @@
  */
 
 import { getLinePath } from '../core/pathfinding.js';
-import { spellFromItem } from '../core/spells.js';
+import { isAreaSpell, spellFromItem } from '../core/spells.js';
 import { TILE_HEIGHT, TILE_WIDTH } from '../core/util.js';
 import { MODIFIER_KEYS, SPELL_DEFAULT_TARGETS } from './interface-manager.js';
 
@@ -20,6 +20,13 @@ export const UISpells = {
      * @param {Actor} caster - The actor using the item
      */
     enterSpellAimingMode(item, caster) {
+        // Area spells (burst, sight) have nothing to aim at: cast on the spot.
+        if (isAreaSpell(spellFromItem(item))) {
+            this.closeItemActionMenu();
+            this.castItemSpell(item, caster, null);
+            return;
+        }
+
         this.spellAimingMode = true;
         this.spellItem = item;
         this.spellCaster = caster;
@@ -362,13 +369,23 @@ export const UISpells = {
         const item = this.spellItem;
         const caster = this.spellCaster;
         this.exitSpellAimingMode();
+        this.castItemSpell(item, caster, { x: castX, y: castY });
+    },
 
+    /**
+     * Cast an item's spell for the player and do what only an item does around
+     * it: identify the item, take the turn, spend a charge.
+     * @param {Item} item
+     * @param {Actor} caster
+     * @param {{x: number, y: number}|null} target - Aimed tile; null for area spells
+     */
+    castItemSpell(item, caster, target) {
         // The cast itself is the engine's (engine/dungeon-engine/spellcasting.js),
         // shared with monsters; what's left here is what only an item does.
         const cast = this.engine.castSpell({
             caster,
             spell: spellFromItem(item),
-            target: { x: castX, y: castY },
+            target,
             item,
             onComplete: () => {
                 if (!item.identified) {

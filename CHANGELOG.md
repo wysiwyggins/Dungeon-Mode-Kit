@@ -33,9 +33,11 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 - **Item editor Use section.** The action list now comes from the engine (`core/use-actions.js`), so all 20 named actions can be picked, each with a description and its settings, and `tools/check-use-actions.mjs` catches the list drifting. Stat changes, the applied state, curing and area effects have their own fields instead of free key/value rows.
 - **Monsters cast spells.** A new `cast_spell` behavior lets any personality cast a spell from `spells.json` at the nearest enemy it can see, with `spell_range` and `spell_cooldown`. Player and monster casts now share one engine path (`DungeonEngine.castSpell`), so a spell behaves the same whoever casts it, and messages name the caster ("pulled toward the dynamo").
 - **Monster bolts use spells.** `bolt_attack` (the lightning mage and dynamo) can name a bolt spell with `spell`, and its own `bolt_*` keys still override it. Its bolts now follow the staff's rules, bouncing off reflective actors, and a discordant caster bolts its allies.
+- **Area spells.** Spells can now use `burst` delivery (every creature within `radius` of the caster) or `sight` (every creature the caster can see), with `affects` to limit them to enemies or allies. Scrolls cast them with the new `cast_spell` use action, a staff or wand with one casts without aiming, and monsters with the `cast_spell` behavior use them when an enemy is in reach.
 
 ### Changed
 
+- **Scrolls of discord and negation are spells.** They cast the new `discord_wave` and `negation_wave` burst spells. The `apply_state_radius` and `remove_states_radius` use effects and the `discord` and `negate_nearby` actions are removed, along with the item editor's "Creatures nearby" fields. Negation now only strips states from creatures, not scenery.
 - **Every way onto a tile presses plates.** Pushed blocks, knockback, teleporting and thrown items now press pressure plates as well as walking, and flying actors no longer do. Linked switch targets also get an activation hook, which is what fires a vent.
 - **Fewer traps per floor.** Each trap is now two actors, so the biome trap ramps are cut to about a third, topping out at 14 pairs in the infernal biome instead of 40 traps.
 - **The `trap` type is gone.** It's replaced by the `vent` type; the trap actors became `poison_gas_vent`, `fire_vent`, `paralysis_gas_vent` and `confusion_gas_vent`, and the `trap` personality and `trap_check_trigger` behavior are removed.
@@ -46,6 +48,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 ### Fixed
 
+- Reading a scroll of discord or negation with no creatures in range didn't use it up or identify it.
 - **Scroll of discord skipped goblins.** Area effects that target hostile creatures only checked the `hostile` attribute, which goblins get from their personality instead. A new `Actor.isHostile()` checks both.
 - **Discord no longer spares allies.** The scroll of discord and the `discord` action now affect every creature in range, not just hostile ones, so reading one near your allies turns them too.
 - **Switches remember their look after a reload.** A pulled lever or spent one-shot plate on a saved floor came back showing its resting tile. Sprites built for an already-toggled switch now use its `_toggled` tiles.

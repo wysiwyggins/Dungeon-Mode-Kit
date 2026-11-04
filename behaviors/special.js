@@ -11,6 +11,7 @@ import {
     hasLineOfSight
 } from '../core/pathfinding.js';
 import { ALL_DIRS, CARDINAL_DIRS, randomElement, shuffleArray } from '../core/util.js';
+import { isAreaSpell } from '../core/spells.js';
 
 const _warned = new Set();
 function warnOnce(key, message) {
@@ -78,6 +79,36 @@ function castAtNearestEnemy(actor, spell, { range, cooldown, counterKey }) {
     if (!target) return false;
 
     if (!actor.engine.castSpell({ caster: actor, spell, target: { x: target.x, y: target.y } })) return false;
+    actor[counterKey] = 0;
+    return true;
+}
+
+/**
+ * Cast an area spell (burst or sight) once its cooldown has run and casting
+ * would do something: an enemy is among the creatures it reaches, or for an
+ * `affects: "allies"` spell, an ally is in reach and an enemy is in sight
+ * within `range`. A sight spell reaches `range` too. Cooldown counts as in
+ * castAtNearestEnemy.
+ * @param {Actor} actor
+ * @param {Object} spell - A spells.json-shaped area spell
+ * @param {{range: number, cooldown: number, counterKey: string}} options
+ * @returns {boolean} True if a spell was cast
+ */
+function castAreaWhenUseful(actor, spell, { range, cooldown, counterKey }) {
+    actor[counterKey] = (actor[counterKey] || 0) + 1;
+    if (actor[counterKey] < cooldown) return false;
+
+    const engine = actor.engine;
+    // A monster's sight reaches as far as its spell range.
+    if (spell.delivery === 'sight') spell = { ...spell, range };
+    const targets = engine.getSpellAreaTargets(actor, spell);
+    const useful = spell.affects === 'allies'
+        ? targets.length > 0 && engine.getSpellAreaTargets(actor, { delivery: 'sight', range })
+            .some(other => actor.isEnemyOf(other))
+        : targets.some(other => actor.isEnemyOf(other));
+    if (!useful) return false;
+
+    engine.castSpell({ caster: actor, spell });
     actor[counterKey] = 0;
     return true;
 }
@@ -534,7 +565,9 @@ export const BehaviorsSpecial = {
      * Cast any spell from spells.json at the nearest enemy in range and in sight:
      * a projectile lands its effect on them (fireball, poison, slowness...), a
      * bolt strikes along the line. Spells that act on the caster still aim at the
-     * enemy, so blinking blinks toward them. Personality data: spell (required),
+     * enemy, so blinking blinks toward them. Area spells (burst, sight) go off
+     * around the caster when an enemy is in reach (see castAreaWhenUseful).
+     * Personality data: spell (required),
      * spell_range (default: the spell's range, else attack_range, else 8),
      * spell_cooldown (turns between casts, default 4).
      */
@@ -544,11 +577,13 @@ export const BehaviorsSpecial = {
             warnOnce(`cast_spell:${data?.spell}`, `cast_spell: unknown or missing spell '${data?.spell}'`);
             return false;
         }
-        return castAtNearestEnemy(actor, spell, {
+        const options = {
             range: data.spell_range ?? spell.range ?? data.attack_range ?? 8,
             cooldown: data.spell_cooldown ?? 4,
             counterKey: '_spellCooldownCounter'
-        });
+        };
+        if (isAreaSpell(spell)) return castAreaWhenUseful(actor, spell, options);
+        return castAtNearestEnemy(actor, spell, options);
     },
 
     /**

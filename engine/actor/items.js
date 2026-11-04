@@ -3,7 +3,7 @@
  * equipping/unequipping, degrading, and using items (executeItemEffect).
  */
 
-import { getChebyshevDistance } from '../../core/pathfinding.js';
+import { isAreaSpell, spellFromItem } from '../../core/spells.js';
 import { ALL_DIRS, shuffleArray } from '../../core/util.js';
 import { Actor } from './actor.js';
 import { Item } from '../item.js';
@@ -958,63 +958,6 @@ export const ActorItems = {
                     continue;
                 }
 
-                // Apply state to actors in radius: { "apply_state_radius": { "state": "confused", "radius": 5, "filter": "hostile" } }
-                // An optional `duration` overrides the state's default for this source.
-                if (key === 'apply_state_radius') {
-                    const { state: stateName, radius = 5, filter, message, empty_message, duration } = amount;
-                    const statesData = this.engine.globalStates;
-                    if (!statesData?.[stateName]) continue;
-                    const stateOpts = typeof duration === 'number' ? { duration } : {};
-                    let affected = 0;
-                    for (const actor of this.engine.entityManager?.actors || []) {
-                        if (actor.isDead || actor === this) continue;
-                        if (filter === 'hostile' && !actor.isHostile()) continue;
-                        if (filter === 'friendly' && actor.isHostile()) continue;
-                        const dist = getChebyshevDistance(this.x, this.y, actor.x, actor.y);
-                        if (dist <= radius) {
-                            // Creature-only: this sweeps every actor in range and
-                            // reports a count of "creatures affected", so scenery
-                            // must not be swept up in it.
-                            if (actor.applyCreatureState(stateName, statesData[stateName], stateOpts)) {
-                                affected++;
-                            }
-                        }
-                    }
-                    if (this.isPlayerControlled() && this.engine.inputManager) {
-                        this.engine.inputManager.showMessage(affected > 0
-                            ? (message || `${affected} creatures are affected!`)
-                            : (empty_message || 'Nothing happens.'));
-                    }
-                    anyModified = affected > 0;
-                    continue;
-                }
-
-                // Remove all states from actors in radius: { "remove_states_radius": { "radius": 5, "filter": "hostile", ... } }
-                if (key === 'remove_states_radius') {
-                    const { radius = 5, filter, message, empty_message } = amount;
-                    let affected = 0;
-                    for (const actor of this.engine.entityManager?.actors || []) {
-                        if (actor.isDead || actor === this) continue;
-                        if (filter === 'hostile' && !actor.isHostile()) continue;
-                        if (filter === 'friendly' && actor.isHostile()) continue;
-                        const dist = getChebyshevDistance(this.x, this.y, actor.x, actor.y);
-                        if (dist <= radius) {
-                            const stateNames = Object.keys(actor.states);
-                            for (const sn of stateNames) {
-                                actor.removeState(sn, true);
-                                affected++;
-                            }
-                        }
-                    }
-                    if (this.isPlayerControlled() && this.engine.inputManager) {
-                        this.engine.inputManager.showMessage(affected > 0
-                            ? (message || 'Magical effects are stripped away!')
-                            : (empty_message || 'Nothing happens.'));
-                    }
-                    anyModified = affected > 0;
-                    continue;
-                }
-
                 // Try stat modification first (for health, nutrition, etc.)
                 const statResult = this.modifyStat(key, amount, { source: item });
                 if (statResult !== null) {
@@ -1209,47 +1152,15 @@ export const ActorItems = {
                 return true;
             }
 
-            case 'discord': {
-                const radius = item?.getAttribute('effect_radius') ?? 5;
-                const statesData = this.engine.globalStates;
-                let affected = 0;
-                // Every creature in range, allies included: discord is indiscriminate.
-                for (const actor of this.engine.entityManager?.actors || []) {
-                    if (actor.isDead || actor === this) continue;
-                    if (!actor.hasAttribute('sentient')) continue;
-                    const dist = getChebyshevDistance(this.x, this.y, actor.x, actor.y);
-                    if (dist <= radius && statesData?.confused) {
-                        actor.applyState('confused', statesData.confused);
-                        affected++;
-                    }
+            case 'cast_spell': {
+                // Cast the item's area spell (burst or sight) on the spot: scrolls
+                // of discord and negation. Read, so it's spent, whoever it reached.
+                const spell = spellFromItem(item);
+                if (!isAreaSpell(spell)) {
+                    console.warn(`cast_spell: '${item.name}' needs a burst or sight spell (got '${spell.delivery}'); aimed spells use targeted_spell`);
+                    return false;
                 }
-                if (this.isPlayerControlled()) {
-                    this.engine.inputManager?.showMessage(affected > 0
-                        ? 'A wave of discord washes over nearby creatures!'
-                        : 'The scroll crumbles, but nothing happens.');
-                }
-                return true;
-            }
-
-            case 'negate_nearby': {
-                const radius = item?.getAttribute('effect_radius') ?? 5;
-                let affected = 0;
-                for (const actor of this.engine.entityManager?.actors || []) {
-                    if (actor.isDead || actor === this) continue;
-                    const dist = getChebyshevDistance(this.x, this.y, actor.x, actor.y);
-                    if (dist <= radius) {
-                        const stateNames = Object.keys(actor.states);
-                        for (const stateName of stateNames) {
-                            actor.removeState(stateName, true);
-                            affected++;
-                        }
-                    }
-                }
-                if (this.isPlayerControlled()) {
-                    this.engine.inputManager?.showMessage(affected > 0
-                        ? 'A nullifying wave strips away all magical effects!'
-                        : 'The scroll crumbles, but nothing happens.');
-                }
+                this.engine.castSpell({ caster: this, spell, item });
                 return true;
             }
 
