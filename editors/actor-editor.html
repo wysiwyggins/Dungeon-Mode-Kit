@@ -762,13 +762,35 @@ function populateTypeDropdown() {
     const sel = document.getElementById('f-type');
     const prev = sel.value;
     sel.innerHTML = '<option value="">— none —</option>';
+    // Only actor types belong here. Like the engine (prototype.js), anything not
+    // marked domain "item" counts as an actor type.
     for (const k of Object.keys(state.types || {}).sort()) {
+        if (state.types[k].domain === 'item') continue;
         const opt = document.createElement('option');
         opt.value = k;
         opt.textContent = `${k} (${state.types[k].name || k})`;
         sel.appendChild(opt);
     }
     if (prev) sel.value = prev;
+}
+
+/**
+ * Select an actor's type. A type that isn't in the list (an item type, or one
+ * that doesn't exist) gets a flagged option so the value isn't silently dropped.
+ */
+function setTypeValue(value) {
+    const sel = document.getElementById('f-type');
+    sel.querySelectorAll('option[data-mismatch]').forEach(o => o.remove());
+    if (value && ![...sel.options].some(o => o.value === value)) {
+        const opt = document.createElement('option');
+        opt.value = value;
+        opt.dataset.mismatch = '1';
+        opt.textContent = state.types?.[value]
+            ? `${value} (not an actor type)`
+            : `${value} (unknown type)`;
+        sel.appendChild(opt);
+    }
+    sel.value = value || '';
 }
 
 /** The attributes a type supplies, or {} for no/unknown type. */
@@ -1805,7 +1827,7 @@ function clearForm() {
     document.getElementById('f-split_into').value = '';
     document.getElementById('f-split_sound').value = '';
     document.getElementById('f-personality').value = '';
-    document.getElementById('f-type').value = '';
+    setTypeValue('');
     updateTypeHint();
     document.getElementById('f-vision_range').value = '';
     document.getElementById('f-switch_message').value = '';
@@ -1836,7 +1858,7 @@ function populateForm(key, data) {
     clearForm();
     document.getElementById('actor-key').value = key || '';
     document.getElementById('f-name').value = data.name || '';
-    document.getElementById('f-type').value = data.type || '';
+    setTypeValue(data.type);
     updateTypeHint();
     document.getElementById('f-description').value = data.description || '';
 

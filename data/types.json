@@ -73,7 +73,7 @@
   "arcane": {
     "name": "arcane",
     "domain": "actor",
-    "description": "Upright folk who carry things.",
+    "description": "Upright folk who carry magic things.",
     "attributes": {
       "hostile": true,
       "sentient": true,
