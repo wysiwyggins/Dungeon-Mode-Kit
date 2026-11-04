@@ -194,6 +194,18 @@
     }
   },
 
+  "dominate": {
+    "name": "Domination",
+    "delivery": "projectile",
+    "projectile": {
+      "tile": "WHITE_BULLET",
+      "tint": "#C080FF"
+    },
+    "effect": {
+      "dominate_target": true
+    }
+  },
+
   "discord_wave": {
     "name": "Discord",
     "delivery": "burst",

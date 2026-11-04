@@ -36,6 +36,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 - **Area spells.** Spells can now use `burst` delivery (every creature within `radius` of the caster) or `sight` (every creature the caster can see), with `affects` to limit them to enemies or allies. Scrolls cast them with the new `cast_spell` use action, a staff or wand with one casts without aiming, and monsters with the `cast_spell` behavior use them when an enemy is in reach.
 - **Scroll of swarming.** It casts the new `swarm` spell, which summons 4–6 insects within 3 tiles that fight for the reader and vanish after five turns. The new `summon_allied` and `summon_radius` effects and `serve_summoner` behavior make this work for any summon, and the player trades places with their own summons instead of attacking them.
 - **Expire messages.** An actor's `expire_message` shows in the sidebar when its `lifetime` runs out, so the scroll of swarming's insects now say "The insects disperse." It works for any timed actor, including gas and fire, and is editable in the actor editor's Misc section.
+- **Wand of domination.** Its `dominate` spell (`dominate_target`) makes a creature your ally, with better odds the more hurt it is, and `no_dominate` protects bosses. Allies fight your enemies, follow you down stairs if they're within 5 tiles and can see you, and are still yours when you return to a floor.
 
 ### Changed
 

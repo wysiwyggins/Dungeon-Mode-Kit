@@ -181,6 +181,16 @@ export class Personality {
         // not. Falls through to the normal chain when nobody is in sight.
         if (actor.isDiscordant() && BehaviorLibrary.discord_attack(actor)) return;
 
+        // An ally (wand of domination) fights for its leader instead of running
+        // its own behaviors, which would mostly hunt the player. Summons built
+        // as allies (the swarm personality) list serve_summoner themselves.
+        if (actor._summoner || actor._leaderTag) {
+            if (!this.behaviors.includes('serve_summoner')) {
+                if (BehaviorLibrary.serve_summoner(actor)) return;
+                if (actor._summoner || actor._leaderTag) return; // still an ally, nothing to do
+            }
+        }
+
         // Execute behaviors in order
         for (const behaviorName of this.behaviors) {
             const behavior = BehaviorLibrary[behaviorName];

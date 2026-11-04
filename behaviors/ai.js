@@ -156,17 +156,23 @@ export const BehaviorsAI = {
     },
 
     /**
-     * A summoned ally's AI (scroll of swarming): bite an adjacent enemy, else
-     * close on the nearest visible one, else keep near the summoner. Enemies
-     * are whoever its summoner is at odds with (isEnemyOf follows getLeader).
-     * The summoner link isn't saved, so a summon left without a living one
-     * (after a reload, or its caster died) just vanishes.
+     * An ally's AI (scroll of swarming, wand of domination): bite an adjacent
+     * enemy, else close on the nearest visible one, else keep near its leader.
+     * Enemies are whoever the leader is at odds with (isEnemyOf follows
+     * getLeader). Personality.execute runs this in place of a dominated
+     * creature's own behaviors. If the leader is gone, a summon with a
+     * `lifetime` vanishes; anyone else goes back to its own behaviors.
      */
     serve_summoner: (actor) => {
-        const summoner = actor._summoner;
-        if (!summoner || summoner.isDead) {
-            actor.die();
-            return true;
+        const summoner = actor.getLeader();
+        if (summoner === actor || summoner.isDead) {
+            actor._summoner = null;
+            actor._leaderTag = null;
+            if (actor.lifetime) {
+                actor.die();
+                return true;
+            }
+            return false;
         }
         if (BehaviorLibrary.attack_adjacent(actor)) return true;
 

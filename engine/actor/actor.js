@@ -1755,6 +1755,9 @@ export class Actor extends Entity {
                 )
             )),
             switchOverrides: this._switchOverrides(),
+            // Only the player's side survives a save: a monster leader has no
+            // id to point back to (getLeader reconnects the tag).
+            leader: this.isPlayerAlly() ? 'player' : undefined,
             isActor: true
         };
     }
@@ -1782,6 +1785,7 @@ export class Actor extends Entity {
         if (data.facing !== undefined) this.facing = data.facing;
         if (data.states) this.states = JSON.parse(JSON.stringify(data.states));
         if (data.switchOverrides) this.data = { ...this.data, ...data.switchOverrides };
+        if (data.leader === 'player') this._leaderTag = 'player';
         // Reconstruct inventory items
         if (data.inventory) {
             this.inventory = data.inventory.map(itemData => {

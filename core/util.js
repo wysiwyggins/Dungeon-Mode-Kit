@@ -110,6 +110,8 @@ export const STAIRWAY_MIN_SEPARATION = 8;
 // with no room to retreat, so an uncapped pack is an unfair death rather than a tense
 // escape — two is enough to feel pursued.
 export const MAX_STAIR_FOLLOWERS = 2;
+// How close (and in sight) the player's allies must be to follow them through a stairway.
+export const ALLY_FOLLOW_RANGE = 5;
 
 // ── Array / direction helpers ──────────────────────────────────────────
 

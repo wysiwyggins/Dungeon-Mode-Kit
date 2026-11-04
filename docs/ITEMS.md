@@ -1,425 +1,61 @@
-# Item System
+# Items
 
-Items are defined in `data/items.json` or prototype-specific `items.json` files.
-Level-specific files are merged with global data at load — only define what's new or different.
+An item is anything an actor can carry, or that lies on the floor waiting to be carried. Items live in `data/items.json`, and a prototype's own `items.json` adds new ones or changes existing ones. It only needs to say what's different.
 
-## Basic Item Structure
+This page explains how items are put together and the main ways they act in the game. It doesn't list every attribute. Most are named for what they do, and the item editor (`editors/item-editor.html`) and the existing items in `data/items.json` show them in use. Like Actors, Items can be given new, arbitrary attributes in their data files without causing any issues.
+
+## The big ideas
+
+**An item is mostly its type.** Nearly every item names a `type`, such as `potion`, `scroll`, `weapon` or `wand`. The [type](TYPES.md) offloads item data that gets reused across multiple items in order to keep an items file tidier. For example, a wand of slowness is the `wand` type plus a name and a spell. Types are also loot pools: naming a type where an item is expected (`"ring"` in `random_items`) picks a random member. See [TYPES.md](TYPES.md).
+
+**Values are layered.** An item's final values are built up as type, then spell, then the item's own data, and the later layer wins. So an item can change one detail it inherited and leave the rest alone.
+
+**Three kinds of data.** Root-level fields say how an item looks and how it's identified. `attributes` say what it does. `stats` are meters that change over time, like fuel and charges.
+
+**Items act at certain moments.** Most attributes hook into one of these:
+
+| Moment | What triggers it | Examples |
+| --- | --- | --- |
+| Carried | Being in an actor's pack | Light, gas, ring bonuses |
+| Worn or wielded | Being equipped | Armor, weapons, launchers, mining tools |
+| Used | The player picks its verb (Quaff, Read, Zap) | Potions, scrolls, staffs, wands |
+| Thrown or struck | Hitting something | Weapon damage, bursting potions, explosives |
+| Picked up | Being picked up | Treasure |
+| Every turn | Time passing | Burning fuel, recharging |
+
+**What the player knows is part of the item.** Many items start unidentified under a random name, carry a hidden enchantment, or turn out to be cursed. Finding out what they are is part of the game.
+
+## Anatomy
 
 ```json
-"item_id": {
-  "name": "Display Name",
-  "tileIndex": "TILE_NAME",
-  "tint": "#FFFFFF",
+"wand_of_slowness": {
+  "type": "wand",
+  "tint": "#8888FF",
+  "identified_template": "Wand of Slowness",
+  "effect_description": "The target slows to a crawl.",
   "attributes": {
-    "pickupable": true,
-    "visible": true
+    "spell": "slowness"
   }
 }
 ```
 
----
+### Root-level fields
 
-## Root-Level Properties vs Attributes
+The `Item` constructor reads a fixed set of root-level fields and ignores any others. When in doubt, put a field in `attributes`.
 
-Item JSON has two layers, and knowing which layer a property belongs to matters.
+- **Look:** `name`, `tileIndex`, `tint`, `flipH`, `flipV`, `ignore_darkness`, `vfx` (a looping visual from `data/vfx.json`, like `flicker_tint` on a torch).
+- **Identity:** `identified`, `unidentified_template`, `identified_template`, `random_color`, `random_glyph_name`, `template_vars`.
+- **Rolled on spawn:** `random_value` (`[min, max]`, for treasure) and `random_effect` (a potion that rolls its effect).
+- **Meters:** `stats`.
+- **Text:** the description fields below can sit at root level or in attributes.
 
-**Root-level properties** are a fixed set extracted by name in the `Item` constructor. They control rendering, identification, and stats. You cannot add new root-level properties without modifying engine code — unknown root-level keys are silently ignored.
+### Attributes
 
-**Attributes** (inside `"attributes": {}`) are an open-ended key-value store. The engine iterates all of them generically via `setAttribute()`. Designers can add any new gameplay attribute here without engine changes — the rest of the codebase reads them with `getAttribute()` and `hasAttribute()`.
+Attributes are an open set. The engine reads the ones it knows about, and you can add your own for new mechanics without changing the constructor. A few that almost every item has come from its type: `pickupable`, `visible` and `stackable`.
 
-**Rule of thumb:** if the property affects how the item *looks* or *identifies*, it's root-level. If it affects what the item *does*, it's an attribute.
+### Stats
 
-### All root-level properties
-
-| Property | Type | Purpose |
-| ---------- | ------ | --------- |
-| `name` | string | Display name |
-| `tileIndex` | string | Sprite tile name from the tileset |
-| `tint` | string | Hex color tint (`"#FF0000"`) |
-| `flipH` | boolean | Flip sprite horizontally |
-| `flipV` | boolean | Flip sprite vertically |
-| `ignore_darkness` | boolean | Render even in unlit tiles |
-| `vfx` | string | Named visual effect from [`data/vfx.json`](../data/vfx.json), e.g. `"flicker_tint"` (torches, phials) or `"ripple_tint"`. Actors and states take it too. Deprecated aliases: `"effect": "<name>"`, `flickerTint: true`, `rippleTint: true` |
-| `identified` | boolean | `false` = starts unidentified |
-| `unidentified_template` | string | Display name before identification |
-| `identified_template` | string | Display name after identification |
-| `use_description` | string | Message template shown when item is used (see [Description fields](#description-fields)) |
-| `effect_description` | string | What the effect does, stated abstractly (see [Description fields](#description-fields)) |
-| `template_vars` | object | Additional template substitution variables |
-| `random_color` | boolean | Assign a random color per item type |
-| `random_glyph_name` | boolean | Assign a random runic name per item type |
-| `random_effect` | boolean | Generate a random potion effect |
-| `random_value` | `[min, max]` | Random numeric value on spawn (e.g. gold nuggets) |
-| `stats` | object | Item stat definitions (charges, fuel, etc.) |
-
-Everything else goes in `attributes`. If you're not sure, put it in `attributes` — that's always safe.
-
-### Description fields
-
-Four fields describe an item to the player. They answer different questions and are
-deliberately not merged — a UI picks the one that fits the moment it is describing.
-All four resolve templates against the item, and all four are read from attributes
-(root-level authoring is bridged in, see the note below).
-
-| Field | Answers | Read by | Behaviour |
-| --- | --- | --- | --- |
-| `description` | What is it? | `getDescription()` | Memoized — the panel is re-read while browsing, so words must not change between renders. Callers hide it for unidentified items. |
-| `use_description` | What happened when I used it? | `getUseDescription()` | Re-rolls random words on every call — read once per use, so variety is the point. Supports `[item_name]` and `[effect_description]`. |
-| `effect_description` | What does the effect do? | `getEffectDescription()` | Memoized. Independent of using the item, so a UI can name an effect without implying the player just triggered it. An item with `random_effect` gets this from `templateVars` instead. |
-| `collision_description` | What happens when I hit something with it? | combat message templates | Resolved at hit time; a weapon's value overrides the attacker's. |
-
-Actors have their own `description`, read by `Actor.getDescription()` with the same
-memoization. It says nothing about whether the player has seen or identified the actor —
-that gating belongs to the caller.
-
-> **Note for actors:** The `Actor` constructor has a bridge that copies `collision_sound`, `collision_effect`, `collision_description`, `death_sound`, `death_description`, `expire_message` and `description` from root-level into attributes.
->
-> **Description fields bridge on items too.** `description`, `use_description`, `effect_description` and `collision_description` (`Item.DESCRIPTION_FIELDS`) may be authored at either level — the `Item` constructor copies root-level ones into attributes, and an explicit attribute wins over a root-level value of the same name. Every *other* root-level key on an item is still dropped unless it is in the extraction list above, so when in doubt use `attributes`.
-
----
-
-## Core Attributes
-
-| Attribute | Type | Description |
-| ----------- | ------ | ------------- |
-| `pickupable` | boolean | Item can be picked up by actors |
-| `visible` | boolean | Item is rendered on the map |
-| `stackable` | boolean | Multiple instances combine in inventory |
-| `consumable` | boolean | Removed from inventory after successful use |
-| `flammable` | boolean | Can be destroyed by fire |
-| `pickup_sound` | string | Sound on pickup (default `"tone3"`) |
-| `use_sound` | string | Sound on use (default `"tone1"`) |
-| `description` | string | Shown in inventory action menu |
-
----
-
-## Equipment (Wearable Items)
-
-'worn' items actually appear on the actor as tiles. Since most actors are two tiles high this doesn't usually conform to traditional helmet/body/legs, but is more like hat/face/legs. I am actually not in love with how this works during play and I've considered turning this off!
-
-### Wearable Slots
-
-| Slot | Position | Use Case |
-| ------ | ---------- | ---------- |
-| `"top"` | Above actor's head | Crowns, horns |
-| `"middle"` | Actor's top tile | Helmets, masks |
-| `"lower"` | Actor's base tile | Armor, pants |
-
-### Wear Effects
-
-`wear_effect` modifies the wearer's attributes while the item is equipped.
-
-```json
-"attributes": {
-  "wearable": "lower",
-  "wear_effect": { "defense": 3, "strength": 1 }
-}
-```
-
-| Value type | On equip | On unequip |
-| ------------ | ---------- | ------------ |
-| Number | Add to attribute | Subtract from attribute |
-| Boolean | Set attribute (stores original) | Restore original |
-| `"toggle"` | Toggle attribute | Toggle back |
-
-Effects only apply if the actor already has the target attribute.
-
----
-
-## Collision Effects
-
-`collision_effect` applies to actors the holder bumps into (melee weapons, keys, etc.).
-
-```json
-"attributes": {
-  "collision_effect": { "health": -10 }
-}
-```
-
-| Value type | Effect |
-| ------------ | -------- |
-| Number | Add to target's stat/attribute (negative = damage) |
-| Boolean | Set target's attribute |
-| `"toggle"` | Toggle target's attribute |
-
-If `health` drops to 0 or below, the target dies. See [COMBAT.md](COMBAT.md). Effects only apply if the target has the attribute.
-
-### Weapon Attributes
-
-| Attribute | Effect |
-| ----------- | -------- |
-| `weapon: true` | Marks item as a weapon (affects combat calculations) |
-| `attack_style` | Targeting pattern: `"lunge"`, `"sweep"`, or `"penetrate"`. See [COMBAT.md](COMBAT.md) |
-| `lunge_range` | Distance to lunge target in tiles (default `2`). Only with `attack_style: "lunge"` |
-| `penetrate_depth` | Extra enemies hit behind the primary target (default `1`). Only with `attack_style: "penetrate"` |
-| `weapon_proc` | Post-hit proc: `"knockback"`, `"lifesteal"`, or `"critical"` |
-| `knockback_distance` | Tiles to push target on knockback hit (default `1`) |
-| `lifesteal_percent` | Percent of damage healed on lifesteal hit (default `25`) |
-| `critical_chance` | Percent chance for double damage on critical (default `15`) |
-| `attack_sound` | Sound played on every swing (hit or miss). Typically `"bow"` (swish). |
-| `collision_sound` | Sound played on successful hit. Typically `"hit"`. |
-| `enchantable` | Item can receive enchantment bonuses (from scrolls or on spawn) |
-| `enchant_range` | `[min, max]` — random enchantment rolled when the item is placed at random. E.g. `[-1, 3]`. |
-| `id_blows` | Blows struck (weapons) or taken while worn (armor) before the item auto-identifies. Set on the `weapon` and `armor` types; defaults to 20. |
-| `nameable` | Once identified, the item's action menu offers **Name**, letting the player give it a name that replaces its own in the pack and in messages (the enchantment still shows). Set on the `weapon` type. |
-| `id_turns` | Turns a ring must be worn before it auto-identifies. Set on the `ring` type; defaults to 1500. |
-
-### Launchers and Ammo
-
-A launcher is a weapon that fires other items, modeled on Moria's bows. There's no separate
-projectile system: firing is throwing while you wield a launcher that takes the item. You can
-throw the ammo with **t**, or press **f** (Fire) to aim the first ammo in your pack that the
-wielded launcher takes. The item menu and aiming prompt say "Fire" whenever a throw counts as a shot.
-
-A shot differs from a plain throw in three ways:
-
-- **Range:** the launcher's `launch_range` instead of 10 + strength.
-- **Accuracy:** `launch_accuracy` is added to the thrower's accuracy for the hit roll.
-- **Damage:** (the ammo's `collision_effect` health + the launcher's enchantment) × `launch_multiplier`.
-  Enchantment goes in before the multiplier, as in Moria, which is what makes an enchanted bow strong.
-
-Ammo the launcher doesn't name gets a plain throw, even while it's wielded. Shots that hit count
-toward identifying the launcher, like melee blows. The launcher sits in the weapon slot, so wielding
-a bow means giving up your melee weapon. It hits for 1 up close.
-
-| Attribute | On | Effect |
-| ----------- | ---- | -------- |
-| `launches` | launcher | Ammo it fires: an item id or type, or a list (`["arrow", "spike"]`). |
-| `launch_multiplier` | launcher | Damage multiplier for shots (Moria: 2 for a short bow, 3 for a long bow, 4 for a composite bow). |
-| `launch_range` | launcher | Range of a shot, in tiles. Default `20`. |
-| `launch_accuracy` | launcher | Accuracy bonus for shots only; doesn't help melee. |
-| `launch_sound` | launcher | Sound when a shot is loosed. Default `"bow"`. |
-| `break_chance` | ammo | Percent chance the item breaks when it hits, thrown or fired. Otherwise it drops by the target. Misses always land nearby. Items without it keep `breakable_on_throw` (default: they break on a hit). |
-
-#### Bursting on landing
-
-| Attribute | Effect |
-| ----------- | -------- |
-| `burst_into` | Actor id spawned where the thrown item lands; the item is used up. There's no accuracy roll and no weapon damage. It bursts on a creature or a flammable obstruction (a tree), but other walls stop it a tile short. Over a void it falls like any thrown item. Gas is started as a spreading cloud and fire burns as usual; any other actor just appears. On a breakable explosive (a potion) it names what the explosion releases instead — see [Explosive Items](#explosive-items). |
-| `burst_description` | Message shown when it bursts. `[item_name]` is filled in. Default "The [item_name] bursts!" |
-
-### Mining Tools
-
-| Attribute | Effect |
-| ----------- | -------- |
-| `mining: true` | Lets the item damage `breakable` actors. Without it, walking into a mineable wall just bumps. |
-| `mining_power` | Progress added per successful swing (default `25`). The target breaks once accumulated progress reaches its `break_threshold`, default `100`. |
-| `dig_chance` | Chance a swing bites, `0`–`1` (default `1` = always). A glancing swing costs the turn but causes no progress and no wear. A target may override this — soft ground yields to a crude tool that would skitter off rock. |
-| `dig_fail_message` | Shown on a glancing swing. A target may override this — see `dig_fail_message` in [ACTORS.md](ACTORS.md#physics), since only the target knows if it's stone or soil. |
-| `degrade_per_use` | `condition` spent per *productive* swing. Needs a `condition` stat, or the tool never wears out. |
-
-A mining tool digs walls by being **equipped** and walking into them. Give it
-`use_verb: "Dig"` and `use_effect: "dig"` as well, and it also offers a Dig action in
-the inventory — the only way to reach a walkable `breakable` such as a grave, and usable
-without equipping the tool at all. Equipping is still what lets you bump walls as you
-walk and swing the tool at enemies; the Dig verb is the deliberate one-target use.
-
-The verb also has a key: `dig` in the `actions` block of `keybindings.json` (`d` by
-default). Carrying exactly one item with `use_verb: "Dig"` — the normal case — goes
-straight to the direction picker, so the key is one press plus a direction. Carry two and
-it asks which tool first; carry none and it says so without costing a turn. Nothing about
-the key is specific to mining: it filters the pack by verb, so any item declaring
-`use_verb: "Dig"` is offered.
-
----
-
-## Use Effects (UI-Triggered)
-
-Items with `use_verb` appear with an action button in the inventory UI.
-
-| Attribute | Type | Description |
-| ----------- | ------ | ------------- |
-| `use_verb` | string | Inventory button label (`"Quaff"`, `"Read"`, `"Zap"`) |
-| `use_effect` | string or object | What happens on use |
-| `use_sound` | string | Sound played on use |
-| `use_description` | string | Message shown after use (supports `[item_name]`, `[effect_description]`, `[adjectives.yucky]` etc.) |
-| `use_ceremony` | boolean or object | Play a dramatic build-up effect before activation. `true` uses defaults (build sound, darken, flash). Object overrides: `build_sound`, `build_vfx`, `release_sound`, `release_vfx`, `duration` (the old `build_effect`/`release_effect` still work). |
-| `deferred` | boolean | Item effect requires a follow-up UI interaction (picker, aiming); consumption handled after completion |
-
-### Object format — stat and state effects
-
-Pass an object to modify stats, attributes, or apply states directly:
-
-```json
-"use_effect": { "health": 20 }
-"use_effect": { "apply_state": "poisoned" }
-"use_effect": { "health": 15, "apply_state": "regenerating" }
-```
-
-### String format — named effects
-
-The editor builds its action list from `core/use-actions.js`, which must name exactly the
-cases `executeItemEffect` handles; `node tools/check-use-actions.mjs` checks that, and that
-every string `use_effect` in the data is a known action.
-
-| Effect string | Description |
-| --------------- | ------------- |
-| `"targeted_spell"` | Enters aiming mode; fires `spell_effect` at target tile (staffs). An area spell (`burst`, `sight` or `level`) casts at once with no aiming |
-| `"cast_spell"` | Casts the item's `spell` at once, with no aiming or charges (scrolls of discord, negation, sanctuary, shattering, aggravate monsters and summon monsters). The spell must be `burst`, `sight` or `level`; see [Spells](#spells-spellsjson) |
-| `"identify_item"` | Opens item picker; player selects one unidentified item to reveal |
-| `"teleport"` | Moves player to a random walkable tile |
-| `"reveal_map"` | Marks all tiles on the floor explored, and reveals the machine-link overlay (lines connecting each switch to the gates/doors it drives). A lasting per-level reveal: it persists when you leave the floor and return. See [Magic Mapping](#magic-mapping) |
-| `"recharge_items"` | Restores all `charge_stat` items in inventory to full |
-| `"targeted_spell"` (bolt) | Bolt spells display a white-blue tile fill along the bolt path with screen shake, instead of a projectile sprite |
-| `"darkness_field"` | Extinguishes all light-source items within `effect_radius` (default 5) |
-| `"remove_all_states"` | Cures every state on the user |
-| `"protect_item"` | Opens item picker; see [Scroll of Protection](#scroll-of-protection) |
-| `"toggle_torch"` | Swaps the item for its `toggle_to` form (default `torch` / `torch_unlit`), lighting or putting it out |
-| `"spike_door"` | Prompts for an adjacent door and jams it shut |
-| `"enchant_item"` | Opens item picker; player selects an `enchantable` item to increase its enchantment by +1 |
-| `"remove_curse"` | Clears `cursed` attribute from all currently equipped items |
-| `"detect_magic"` | Senses the polarity of every item on the level (on the floor or carried by a creature) and in the pack. See [Detect Magic](#detect-magic) |
-| `"dig"` | Prompts for a tile within one step (including your own) and digs any `breakable` actor there — a grave underfoot, or a wall beside you. Works with the tool **in the pack**: the item you dug with supplies the `mining_power`, `dig_chance` and `condition`, so it needn't be equipped. Digging a wall this way is the same single swing as bumping it while equipped. Requires `mining: true` on the same item. |
-
-### Magic Mapping
-
-`reveal_map` (the Scroll of Magic Mapping) does two things to the current floor:
-
-1. Marks every tile explored, so the layout is remembered under fog of war/darkness.
-2. Reveals the **machine-link overlay** — diagrammatic lines connecting each switch
-   (lever, pressure plate) to the gates, doors, and pedestals sharing its `machine_id`,
-   drawn in that machine's paired color. Only `machine_id` groups are drawn;
-   proximity-linked machines are out of scope.
-
-Step 1 is skipped on a fully-lit floor (`darkness: false`) — there's no fog to clear — but
-step 2 still applies, so the scroll is useful on bright levels. The message names whatever
-actually happened, and reports no effect only on a lit floor with no machines to reveal.
-
-Unlike a timed sense, this is a **lasting reveal of one level**. The floor is recorded in
-`engine.mappedFloors`, and its exploration is saved with the rest of the floor state — so
-leaving and coming back preserves both the layout and the overlay. The reveal is per-floor:
-mapping floor 3 tells you nothing about floor 4. Everything resets on a new game or a
-prototype switch.
-
-Authors can also force the overlay on for any floor with the `infrastructureDebugForced`
-renderer flag, independent of whether the floor has been mapped.
-
-### Object format — maximums and cures
-
-| Key | Effect |
-| ----- | -------- |
-| `<stat>_max` | Raises (or lowers) a stat's maximum, moving its current value by the same amount: `"health_max": 10`. Applied before the other keys. |
-| `"max"` as a value | Fills the stat to its maximum: `"health": "max"`. |
-| `remove_all_states` | `true` clears every state on the user, good and bad alike. |
-
-```json
-"use_effect": { "health_max": 10, "health": "max", "remove_all_states": true }
-```
-
-### Area effects
-
-Effects on every creature nearby or in view are spells with `burst` or `sight` delivery. Give the item `"use_effect": "cast_spell"` and a `spell`. See [Spells](#spells-spellsjson).
-
----
-
-## Light Sources
-
-An item with `light_source` emits light when carried in an actor's inventory, or when lying on the ground.
-
-| Attribute | Type | Description |
-| ----------- | ------ | ------------- |
-| `light_source` | boolean or number | Emits light; uses item `tint` as light color. `true` gives a radius of 5, and a number sets the radius in tiles |
-| `lightIntensity` | number | Light strength 0–1 (default `1.0`) |
-| `burns_out_item` | string | Item type to replace this one when its `burns` stat hits 0 |
-| `burnout_message` | string | Message shown to player when the item burns out |
-| `toggle_to` | string | Item type this becomes when toggled by the `toggle_torch` use effect (lit ↔ unlit) |
-
-```json
-"torch": {
-  "name": "Torch",
-  "tileIndex": "BOX_VERTICAL_INVERSE_TOP",
-  "tint": "#EC7505",
-  "attributes": {
-    "pickupable": true,
-    "light_source": 6,
-    "burns_out_item": "torch_unlit",
-    "burnout_message": "Your torch burns out."
-  },
-  "stats": {
-    "burns": {
-      "max": 500,
-      "per_turn": -1,
-      "display_label": "Fuel",
-      "warnings": [{ "threshold": 0.1, "message": "Your torch is almost out!" }]
-    }
-  }
-}
-```
-
-### Lighting, Extinguishing, and Fuel
-
-A lit/unlit pair is defined entirely in data. Each type points at the other with
-`toggle_to`, and **each declares its own `burns` block** — the engine holds no fuel
-constants. The lit torch burns (`per_turn: -1`); the unlit one holds its reserve
-without consuming it (`per_turn: 0`):
-
-```json
-"torch_unlit": {
-  "attributes": {
-    "use_verb": "Light",
-    "use_effect": "toggle_torch",
-    "toggle_to": "torch"
-  },
-  "stats": {
-    "burns": { "max": 500, "per_turn": 0, "display_label": "Fuel" }
-  }
-}
-```
-
-When an item toggles (via the use verb, or automatically when submerged in deep
-liquid), the engine copies only the **current** value across; `max`, `per_turn`,
-`display_label`, and `warnings` all come from the destination type's own JSON. So
-burn rate, fuel capacity, and warning text are per-item authoring decisions.
-
-Notes:
-
-- An item with **no** `burns` stat is treated as never running out — omit the stat for a permanent lamp.
-- Only an item actively consuming fuel (`per_turn` negative) can *burn out*. An unlit torch at 0 fuel is simply empty: it won't trigger `burns_out_item` and can't be relit.
-- `burns_out_item` fires when a burning item's fuel reaches 0, replacing it (e.g. a torch becomes `torch_spent`).
-- A burning item keeps burning when dropped: floor items with a negative `burns.per_turn` tick once per round, spend fuel, and burn out in place.
-
-### Emitting Gas (Incense)
-
-A burning item with `emits` releases a spreading puff of that gas actor every `emit_interval` turns (default `3`), both when carried and when dropped. `incense` emits `incense_smoke`, whose `ward` attribute repels and harms the undead (see [Ward Gas](ACTORS.md#ward-gas)).
-
-| Attribute | Type | Description |
-| ----------- | ------ | ------------- |
-| `emits` | string | Gas actor type released while the item is burning |
-| `emit_interval` | number | Turns between puffs (default `3`); waits while dense gas still covers the tile |
-
----
-
-## Treasure
-
-Items of the `treasure` type are banked, not carried. Picking one up adds its `value` (rolled from `random_value`, or 1 if it has none) to a running total and uses up the item, so it never takes an inventory slot. Only the player banks treasure; a creature that grabs some carries it like anything else.
-
-Each total is named by the item's `tally_as` attribute, or its own name if it has none. The sidebar lists every total the player has, such as "Gold nugget: 34". Where there are totals, the plain Wealth counter isn't shown. Items can share a total: give a thaler `tally_as: "gold"` and it adds to the same line as other gold.
-
-```json
-"ruby": {
-  "name": "ruby",
-  "type": "treasure",
-  "tileIndex": "OPAQUE_WHITE_DIAMOND_SUITE",
-  "tint": "#E0115F",
-  "random_value": [5, 20]
-}
-```
-
-Win conditions can check totals with `{ "treasure": "ruby", "op": ">=", "value": 100 }`. The treasure pool is local to each prototype (see [Types and item pools](TYPES.md#types-and-item-pools)).
-
----
-
-## Item Stats
-
-Items support the same stat format as actors. Stats are defined at the top level alongside `attributes`.
-
-Simple form (expands to `{ max: N, current: N }`):
-
-```json
-"stats": { "charges": 3 }
-```
-
-Extended form:
+Items use the same stat format as actors. A plain number means a full meter (`"charges": 3`). The long form adds behavior:
 
 ```json
 "stats": {
@@ -432,422 +68,146 @@ Extended form:
 }
 ```
 
-| Stat field | Description |
-| ------------ | ------------- |
-| `max` | Maximum value |
-| `per_turn` | Change each turn (negative depletes, positive recharges) |
-| `display_label` | Shows `"Label: current/max"` with a progress bar in the inventory UI |
-| `warnings` | Array of `{ threshold, message }` — message fires when stat drops below `threshold × max` |
-| `ready_at` | Used with `charge_stat` — minimum value needed to fire |
-| `ready_message` | Message shown when a recharging item reaches `ready_at` (supports `[item_name]`) |
+`per_turn` drains or refills the meter each turn. `display_label` shows it as a bar in the pack. `warnings` print a message when it drops below a fraction of `max`. Charged items add `ready_at` and `ready_message` (see [Charged items](#charged-items-staffs)).
 
-A stat with `display_label` is shown automatically in inventory. Items without `charge_stat` or `display_label` show no stat bar.
+### Description fields
 
-### Charged Items (Staffs)
+Four text fields describe an item, each for a different moment. All of them fill in `[bracket]` templates.
 
-Items that recharge and fire spells use `charge_stat` and `uses`:
+| Field | Answers | Notes |
+| --- | --- | --- |
+| `description` | What is it? | Shown in the info panel. Hidden while the item is unidentified |
+| `use_description` | What happened when I used it? | Picks new random words each use. Takes `[item_name]` and `[effect_description]` |
+| `effect_description` | What does its effect do? | Shown when the item is identified by use |
+| `collision_description` | What happens when I hit something with it? | A weapon's version replaces the wielder's |
 
-Both the `staff` and `wand` types declare `use_verb: "Zap"`, which is bound to the `zap`
-action (`z` by default). Like `dig`, the key filters the pack by verb rather than by type,
-so any item declaring `use_verb: "Zap"` is offered. Carrying exactly one goes straight to
-aiming; carry two and it asks which first. Picking one hands off to its `use_effect` —
-`targeted_spell` for both, which enters aiming mode.
+Many uses also take `effect_message` and `fail_message` attributes, which replace the built-in result text.
 
-| Attribute | Description |
-| ----------- | ------------- |
-| `charge_stat` | Name of the stat that tracks charge |
-| `uses` | Number of casts per full charge (determines `ready_at` if not set explicitly) |
-| `spell` | Id of a spell in `spells.json` (see [Spells](#spells-spellsjson)) — what the zap does |
+Sounds work the same way. `pickup_sound`, `use_sound`, `attack_sound`, `collision_sound` and `break_sound` each name an entry in `data/sounds.json`.
 
-The item owns its charges; the spell owns what happens when it fires. The `staff` type
-supplies the verb, `use_effect`, `charge_stat` and the unidentified naming, so a staff is
-mostly its spell and its charge stat:
+## Carried
+
+Some items work just by being in the pack:
+
+- **Light.** `light_source` makes an item glow in its own `tint`, on the floor or carried. `true` gives a radius of 5, and a number sets the radius.
+- **Gas.** A burning item with `emits` releases a puff of that gas actor every `emit_interval` turns. Incense uses this to keep the undead away.
+- **Passive bonuses.** `passive_effect` adds to the carrier's numbers, such as `defense`, `strength` or `health_per_turn`. Rings use this.
+
+### Fuel and toggling
+
+A torch is two items that point at each other with `toggle_to`. The lit one burns its `burns` stat (`per_turn: -1`) and the unlit one holds its fuel (`per_turn: 0`). The `toggle_torch` use action swaps one for the other and carries the current fuel across. Everything else comes from the new item's own data, so each form sets its own burn rate and warnings. When a burning item runs dry it becomes its `burns_out_item`. An item with no `burns` stat never runs out.
+
+## Worn and wielded
+
+`wearable` names a slot: `"top"` (above the head), `"middle"` (the actor's upper tile) or `"lower"` (the base tile). Worn items are drawn on the actor. `wear_effect` changes the wearer while the item is on: numbers add to an attribute, `true`/`false` set it, and `"toggle"` flips it.
+
+```json
+"attributes": {
+  "wearable": "lower",
+  "wear_effect": { "defense": 3 }
+}
+```
+
+### Weapons
+
+A weapon (`weapon: true`) deals its `collision_effect` to whatever its wielder walks into. Negative `health` is damage. See [COMBAT.md](COMBAT.md) for hit chances and strength.
+
+- `attack_style` changes who a swing reaches: `lunge` (strike from two tiles away), `sweep` (hit everything around) or `penetrate` (hit the creature behind as well).
+- `weapon_proc` adds something extra on a hit: `knockback`, `lifesteal` or `critical`.
+
+### Launchers and ammo
+
+A launcher is a weapon that fires other items. Firing is throwing while you wield a launcher that takes the item. `launches` names the ammo it takes. A shot uses the launcher's `launch_range` and `launch_accuracy`, and its damage is the ammo's damage plus the launcher's enchantment, times `launch_multiplier`. Ammo can have a `break_chance` on hitting. Otherwise it lands by the target.
+
+### Mining tools
+
+An equipped tool with `mining: true` digs `breakable` walls when you walk into them. Each swing adds `mining_power` toward the wall's `break_threshold`, and `dig_chance` lets a tool glance off hard rock. Give the tool `use_verb: "Dig"` and `use_effect: "dig"` and it can also dig from the pack, including a grave underfoot.
+
+## Used
+
+An item with a `use_verb` gets a button in the pack. What happens is its `use_effect`, which takes one of three forms.
+
+**Change the user directly** with an object of stats and states:
+
+```json
+"use_effect": { "health": 20, "apply_state": "regenerating" }
+```
+
+- A number changes that stat, and `"max"` fills it (`"health": "max"`).
+- A `<stat>_max` key raises the stat's maximum.
+- `apply_state` names a state from `data/states.json`.
+- `remove_all_states: true` cures everything.
+
+**Run a named action** such as `identify_item`, `teleport` or `enchant_item`. The list of actions lives in `core/use-actions.js`, with a one-line description of each, and the item editor offers them in a dropdown. `node tools/check-use-actions.mjs` checks that the data only uses actions the engine knows.
+
+**Cast a spell.** `targeted_spell` aims the item's `spell` (staffs and wands), and `cast_spell` casts an area spell on the spot (several scrolls). See [SPELLS.md](SPELLS.md).
+
+Some use options shape the moment itself:
+
+- `consumable` uses the item up.
+- `deferred` waits for a follow-up choice, like a picker or aiming, before the item counts as used.
+- `use_ceremony` plays a short build-up before a scroll takes effect.
+
+### Charged items (staffs)
+
+Staffs and wands cast spells from a charge meter. `charge_stat` names the meter and `uses` says how many casts a full meter holds. A staff's meter refills over time. A wand's doesn't, though enchanting one adds charges. The item owns its charges and its spell owns what happens, so most staffs are just a spell and a meter:
 
 ```json
 "staff_of_fireball": {
   "type": "staff",
-  "name": "staff of fireball",
   "identified_template": "Staff of Fireball",
   "stats": {
     "pow": { "max": 800, "start": 800, "per_turn": 1, "ready_message": "Your [item_name] is fully charged!" }
   },
-  "attributes": {
-    "uses": 1,
-    "spell": "fireball"
-  }
+  "attributes": { "uses": 1, "spell": "fireball" }
 }
 ```
 
-### Spells (`spells.json`)
+## Thrown and struck
 
-A spell is the gameplay half of a cast: how it travels, what it may target, and
-what it does where it lands. `data/spells.json` holds the shared library and a prototype can
-add or replace entries with its own `spells.json`. They're edited in the spell editor
-(`editors/spell-editor.html`). The *look* of a spell stays in `vfx.json`; a spell only
-names an entry there.
+Any item can be thrown. A thrown item applies its `collision_effect` to what it hits, and then either drops or breaks.
 
-| Property | Description |
-| ---------- | ------------- |
-| `name` | Shown in cast messages ("You cast Fireball!") |
-| `delivery` | `projectile` (flies to the target, then its effect happens), `bolt` (strikes every creature along the line, bouncing off reflective ones), `burst` (every creature within `radius` of the caster), `sight` (every creature the caster can see) or `level` (every creature on the level). `burst`, `sight` and `level` need no aim |
-| `range` | Max targeting distance in tiles. Omit to use the item type's `spell_range`. For `sight`, how far the caster sees: the player sees whatever is lit and in view, a monster 10 tiles |
-| `radius` | `burst` only: reach in tiles from the caster, diagonals counting as one (default 5). It reaches through walls |
-| `affects` | Area spells only: `"hostile"` (the caster's enemies), `"allies"` (everyone else), or omit for every creature. A creature counts as an enemy if either side would attack the other, so a goblin hunting the player is the player's enemy. The caster is never included |
-| `message` / `empty_message` | Area spells only: shown to the player when their cast affects someone / no one. Defaults: "N creatures are affected!" and "Nothing seems to happen." An item's `effect_message` / `fail_message` override them |
-| `target_filter` | What aiming cycles through (see [Aim targeting](#aim-targeting-target_filter)) |
-| `projectile` | `{ "tile": "...", "tint": "#rrggbb" }`. Either part can be left out: the tile falls back to the item type's `projectile_tile`, the tint to the item's tint |
-| `cast_sound` | Sound played on cast. Area spells play none unless it's set, since a scroll's reading already makes a sound |
-| `vfx` | Bolts and area spells. An area spell plays it once on the caster. For a bolt it's the `vfx.json` entry played for the bolt. Only effects with a `line_tile_fill` layer draw along the path; others play once at the caster. Left out, the engine falls back to `lightning_bolt` |
-| `effect` | What the spell does where it lands. Projectile spells take the area properties (`center`, `radius`, `outer`) and the [single-target properties](#spell-effect-properties-single-target); area spells apply the single-target properties to each creature they reach and take the [area spell properties](#area-spell-properties) (but not `tunnel` or `blink_self`); bolts take `bolt_damage` |
+- `burst_into` names an actor released where the item lands, like a gas cloud from a thrown flask.
+- `explosive` items go off. With `breakable` they explode when thrown and when they catch fire, which is how potions work. Without it they only explode in fire, like a powder keg. `fire_explosion` makes a fireball instead of gas.
 
-```json
-"fireball": {
-  "name": "Fireball",
-  "delivery": "projectile",
-  "projectile": { "tile": "OPAQUE_WHITE_DIAMOND_SUITE", "tint": "#FF6600" },
-  "cast_sound": "fireball",
-  "effect": { "center": "intense_fire", "radius": 1, "outer": "fire" }
-}
-```
+An exploding potion with neither `burst_into` nor `fire_explosion` bursts into a cloud that applies its own `use_effect` to anyone standing in it.
 
-```json
-"discord_wave": {
-  "name": "Discord",
-  "delivery": "burst",
-  "radius": 5,
-  "effect": { "apply_state": { "state": "discordant", "duration": 30 } }
-}
-```
+## Picked up: treasure
 
-When an item is resolved, its spell is expanded into the flat attributes the casting code
-reads (`spell_name`, `spell_effect`, `spell_range`, `target_filter`, `projectile_tile`,
-`projectile_tint`, `cast_sound`, `spell_vfx`, and for area spells `spell_delivery`,
-`spell_radius`, `spell_affects`, `spell_message`, `spell_empty_message`), layered type < spell < item. So an item can
-still override any one of them, and an item with no `spell` can declare them inline as
-before.
+Items of the `treasure` type are banked, not carried. Picking one up adds its value to a running total, named by `tally_as` or by the item's own name, and the sidebar shows each total. Win conditions can check them: `{ "treasure": "ruby", "op": ">=", "value": 100 }`.
 
-Monsters cast spells too, through two behaviors. Both aim at the nearest enemy the caster
-can see within range: the player for an ordinary monster, rival factions, or anyone at all
-while it's discordant.
+## What the player knows
 
-- `cast_spell` casts any spell, named by the personality's `spell`. A projectile lands its
-  effect on the target (fireball, poison, slowness...) and a bolt strikes along the line.
-  Spells that act on the caster still aim at the enemy, so blinking blinks toward them.
-  An area spell goes off when an enemy is among the creatures it would reach. An
-  `"affects": "allies"` spell goes off when an ally is in reach and an enemy is in sight.
-  A spell that summons, fills or shatters goes off whenever an enemy is in sight.
-  `spell_range` defaults to the spell's `range`, then `attack_range`, then 8, and
-  `spell_cooldown` (turns between casts) defaults to 4.
-- `bolt_attack` is the bolt-only version the lightning mage and the dynamo use
-  (`"spell": "lightning"`). The spell supplies damage, range, cast sound and `vfx`, and the
-  personality's `bolt_damage`, `attack_range`, `bolt_sound` and `bolt_vfx` override them;
-  `bolt_cooldown` stays on the personality. Without a spell it's a plain lightning bolt.
+### Identification
 
-Player and monster casts share one engine path (`DungeonEngine.castSpell` in
-`engine/dungeon-engine/spellcasting.js`), so a spell behaves the same whoever casts it.
+An item with `"identified": false` shows its `unidentified_template` until the player learns what it is, then its `identified_template`. Every item of the same kind shares one random name within a run, so learning one teaches them all. Templates fill in `[brackets]`:
 
-### Aim targeting (`target_filter`)
+- `[color]` is a random color per item kind (needs `random_color`).
+- `[glyph_name]` is a random runic name per item kind (needs `random_glyph_name`).
+- `[item_name]` is the current display name.
+- `[adjectives.yucky]` and similar draw from the word lists in `data/words.json`.
 
-While aiming a throw or a zap, the target-cycling key (`Tab` by default, bound to the
-`cycle_target` action) steps through valid targets nearest-first, and the nearest one is
-selected automatically when aiming begins. The mouse still overrides the keyboard pick.
+Using an item usually identifies it. Weapons, armor and rings also identify themselves with use: after `id_blows` blows struck or taken, or after `id_turns` turns worn.
 
-`target_filter` is an optional array on an item that says what it may cycle to. Omit it and
-the item gets a sensible default — thrown items offer `["hostile", "trap"]`, zapped items
-offer `["hostile"]` — so most items need no entry at all.
+### Enchantment and curses
+
+An `enchantable` weapon or armor carries an `enchantment` bonus, shown as a suffix like **Sword +2**. Each point adds a point of damage to a weapon or of defense to armor. `enchant_range` rolls a random enchantment for items placed at random. An item placed by name comes in at +0 unless it sets `enchantment` itself.
+
+A negative enchantment makes the item `cursed`. Cursed equipment can't be taken off once worn.
+
+### Good and bad magic
+
+Detect magic shows each item's polarity, following Brogue. Curses and negative enchantments are bad. Otherwise `magic_polarity` decides, set to `"good"` or `"bad"`. The magic item types default to good, and harmful items override it.
+
+## Aiming
+
+While aiming a throw or a zap, Tab cycles through targets, nearest first. `target_filter` limits what it cycles to:
 
 | Token | Cycles to |
 | --- | --- |
-| `hostile` | Enemies (hostile personality, `hostile` attribute, or `collision_effect`) |
-| `ally` | Non-hostile creatures with a health stat — for beneficial effects |
-| `trap` | Revealed trap plates, so a thrown object can spring one from a safe distance |
-| `tile` | Open floor the caster could stand on — for self-teleport effects |
-
-Tokens combine as a union, so `["hostile", "trap"]` cycles both.
-
-```json
-"target_filter": ["tile"]
-```
-
-**Unidentified items ignore `target_filter` entirely** and offer the same
-`["hostile", "ally"]` list as every other unidentified item. This is deliberate: if an
-unknown staff skipped your allies, its target list would tell you it was offensive before
-you had identified it. Every unknown item cycling the same list means comparing two of them
-against each other leaks nothing either. Once identified, the item's real filter applies.
-
----
-
-## Identification System
-
-Items with `"identified": false` have two display names — an unidentified placeholder and a revealed true name. All instances of the same item type share the same placeholder within a run.
-
-| Field | Description |
-| ------- | ------------- |
-| `identified` | `false` = item starts unidentified |
-| `unidentified_template` | Display name before identification |
-| `identified_template` | Display name after identification |
-| `random_color` | Assigns a random consistent color per item type; use `[color]` in templates |
-| `random_glyph_name` | Assigns a random runic two-word name per item type; use `[glyph_name]` in templates |
-
-Templates support substitution tokens in `[brackets]`:
-
-| Token | Resolves to |
-| ------- | ------------- |
-| `[color]` | Random color name assigned to this item type (requires `random_color: true`) |
-| `[glyph_name]` | Random runic name assigned to this item type (requires `random_glyph_name: true`) |
-| `[reagents.reagents]` | Random entry from `data/reagents.json` |
-| `[substances.substances]` | Random entry from `data/substances.json` |
-| `[adjectives.yucky]` | Random entry from the `adjectives.yucky` list in `data/words.json` |
-| `[item_name]` | The item's current display name (identified or not) |
-
-Weapons, armor and rings also identify themselves through use: a weapon after `id_blows` (20) blows struck with it, armor after `id_blows` blows taken while wearing it, and a ring after `id_turns` (1500) turns worn. Both are type attributes, so a prototype can tune them per type or override them on a single item. The counts are kept per item (`combatUseCount`, `wornTurns`) and the info panel shows how many blows or turns remain.
-
-### Potions
-
-```json
-"health_potion": {
-  "name": "Potion",
-  "tileIndex": "FEMALE_SYMBOL",
-  "random_color": true,
-  "identified": false,
-  "unidentified_template": "[color] potion",
-  "identified_template": "Potion of Healing",
-  "use_description": "The [item_name] tastes [adjectives.wine_descriptions].",
-  "attributes": {
-    "pickupable": true,
-    "stackable": true,
-    "consumable": true,
-    "use_verb": "Quaff",
-    "use_effect": { "health": 20 }
-  }
-}
-```
-
-### Scrolls
-
-```json
-"scroll_of_identify": {
-  "name": "Scroll",
-  "tileIndex": "LATIN_SMALL_LETTER_S",
-  "random_glyph_name": true,
-  "identified": false,
-  "unidentified_template": "[glyph_name] scroll",
-  "identified_template": "Scroll of Identify",
-  "attributes": {
-    "pickupable": true,
-    "stackable": true,
-    "consumable": true,
-    "use_verb": "Read",
-    "use_effect": "identify_item"
-  }
-}
-```
-
----
-
-## Enchantment
-
-Weapons and armor with `enchantable: true` can have an `enchantment` bonus (positive or negative) that modifies their effectiveness.
-
-### Display
-
-Enchanted items show their bonus as a suffix: **Sword +2**, **Chainmail -1**. Items with enchantment 0 show no suffix.
-
-### Effects
-
-- **Weapons**: Each point of enchantment adds 1 extra damage (applied after strength scaling)
-- **Armor**: Each point of enchantment adds 1 defense (added to `wear_effect.defense`)
-
-### Spawning with Enchantment
-
-Add `enchant_range` to an item's attributes to roll a random enchantment when it's placed at random:
-
-```json
-"sword": {
-  "attributes": {
-    "enchantable": true,
-    "enchant_range": [-1, 3]
-  }
-}
-```
-
-The roll is inclusive: `[-1, 3]` can produce -1, 0, 1, 2, or 3. Items with an explicit `enchantment` value in their data skip the roll.
-
-Only randomly placed items roll: `random_items`, the item budget, chest contents, `drops`, treasure rooms, and any Tiled object or `default_items` entry that names a type (`"weapon"`) instead of a specific item. An item placed by name, like a quest crown in Tiled, comes in at +0. To place a deliberately enchanted or cursed item, give it an explicit `enchantment`.
-
-### Scroll of Enchantment
-
-The `"enchant_item"` use effect opens a picker showing all `enchantable` items in inventory. Selecting one increases its enchantment by +1 and recalculates combat bonuses if the item is equipped.
-
-### Scroll of Protection
-
-The `"protect_item"` use effect (with `deferred: true`) opens the same picker, listing every weapon and wearable in the inventory that isn't already `protected`. The chosen item gains `protected: true`, which makes it immune to `acidic` corrosion (see Acid in ACTORS.md), and its info panel then reads "It is protected from acid." The scroll is defined only in the dungeon prototype, where acid monsters live, so it stays out of other prototypes' scroll pools.
-
-### Detect Magic
-
-`detect_magic` (the Potion of Detect Magic) marks items as detected. A detected item shows an `EVIL_EYE` beside it in the pack: blue for good magic, red for bad. A detected item you can't currently see also gets an eye on the map, and so does an unseen creature carrying one. Plain weapons and armor (enchantment 0) are identified outright, since there's nothing left to learn.
-
-An item's polarity follows Brogue:
-
-1. `cursed` or negative enchantment → bad.
-2. Otherwise the `magic_polarity` attribute, `"good"` or `"bad"`. The potion, scroll, staff and wand types default to `"good"`, and harmful items override it with `"bad"`.
-3. Otherwise an `enchantable` item with positive enchantment → good.
-4. Anything else has no magic and shows nothing.
-
-A `random_effect` potion takes its polarity from its roll: a stat drain is bad, a stat boost good, and a state is bad if it declares `"magic_polarity": "bad"` in `states.json`.
-
-### Cursed Items
-
-Items with negative enchantment, rolled or authored, are automatically marked `cursed: true` on spawn. Cursed equipment cannot be unequipped — the player sees "The [item] is cursed! You can't remove it." when they try.
-
-The curse is revealed when the item is equipped: "You feel a malevolent force bind the [item] to you!"
-
-**Removing curses**: The `"remove_curse"` use effect (Scroll of Remove Curse) clears the `cursed` attribute from all currently equipped items.
-
-Cursed items can also be defined directly in data:
-
-```json
-"cursed_ring": {
-  "attributes": {
-    "cursed": true,
-    "enchantable": true
-  },
-  "enchantment": -2
-}
-```
-
----
-
-## States (apply_state)
-
-Use effects can apply states from `data/states.json` to the user:
-
-```json
-"use_effect": { "apply_state": "hasted" }
-"use_effect": { "health": 20, "apply_state": "confused" }
-```
-
-A state lasts for its `duration` in turns and carries its own effects, messages and
-visuals. The named state must exist in `data/states.json`; see
-[ACTORS.md](ACTORS.md#state-properties) for the properties a state can declare.
-
----
-
-## Rings (Passive Items)
-
-Rings provide bonuses while carried in inventory — they don't need to be equipped.
-
-```json
-"ring_of_protection": {
-  "name": "Ring",
-  "tileIndex": "WHITE_RING",
-  "random_color": true,
-  "identified": false,
-  "unidentified_template": "[color] ring",
-  "identified_template": "Ring of Protection",
-  "attributes": {
-    "pickupable": true,
-    "passive_effect": { "type": "stat_bonus", "defense": 3 }
-  }
-}
-```
-
-### Passive Effect Types
-
-| Passive key | Effect |
-| ------------- | -------- |
-| `defense` | Adds to effective defense |
-| `strength` | Adds to effective strength |
-| `visionRange` | Extends AI detection/vision range |
-| `health_per_turn` | Adds to health regeneration rate |
-| `nutrition_per_turn` | Modifies nutrition drain rate (positive = slower drain) |
-| `recharge_multiplier` | `wear_effect` only, so the ring must be worn: carried staffs recharge this many times faster, raised to the power of (1 + enchantment), and several worn items multiply together. Brogue's ring of wisdom is `1.3`. A cursed ring slows them. Wands don't recharge, so it doesn't touch them. |
-
-Rings can also use `light_source: true` to emit light while carried (no fuel stat needed — glows permanently).
-
-`ring` is an item type: naming it spawns a random ring. Add `"ring"` to `item_catalog` or `random_items` to include rings in a prototype.
-
----
-
-## Wands (Targeted Charged Items)
-
-Wands are single-target charged items that apply effects at range. Like staves, they use the `targeted_spell` system with `charge_stat` for charge management. Wands do not recharge (the `wand` type sets `per_turn: 0`), though enchanting one adds charges, and they use `random_color` for the identification system.
-
-```json
-"wand_of_slowness": {
-  "type": "wand",
-  "tint": "#8888FF",
-  "identified_template": "Wand of Slowness",
-  "attributes": {
-    "spell": "slowness"
-  }
-}
-```
-
-A wand's `random_color` replaces its tint while unidentified, so wand spells set
-`projectile.tint` rather than falling back to the item's tint.
-
-### Spell Effect Properties (Single-Target)
-
-These go in a spell's `effect` (or an item's inline `spell_effect`).
-
-| Property | Type | Effect |
-| ---------- | ------ | -------- |
-| `apply_state` | string or object | Apply named state to target actor. `{ "state": "discordant", "duration": 30 }` overrides the state's duration |
-| `remove_states` | boolean | Strip all states from target actor |
-| `teleport_target` | boolean | Teleport target to a random walkable tile |
-| `beckon_target` | boolean | Pull target toward the caster |
-| `alert_target` | boolean | A hostile target starts hunting the caster. Peaceful creatures ignore it. Only creatures with the `pursue_intruders` behavior act on it, so for most monsters it does nothing yet |
-| `target_effect` | object | Stat changes on the target, friend or foe: `{ "health": 15 }` heals |
-| `clone_target` | boolean | A copy of the target appears beside it and they split its current health; the copy carries nothing. Not the player or chain creatures |
-| `polymorph_target` | boolean, string, string[] or object | The target becomes a random other creature (see `no_polymorph` in [ACTORS.md](ACTORS.md)), keeping its health fraction and what it carries. `true` draws from any creature; an actor id or actor type (or a list of them, e.g. `"beast"`) limits the draw. `{ "floors": "current" }` draws from what can randomly spawn on this floor (biome catalog rows and `random_actors`); give a range instead (`"3-6"` or `[3, 6]`) for those floors |
-| `tunnel` | number | Bore this many tiles from the caster toward the aim point, turning breakable obstructions to rubble. Passes through creatures, stops at the first unbreakable solid. Pair with `target_filter: ["tile"]` to aim at walls |
-| `fill` | string | Actor spawned over the open ground where the bolt stopped, flooding out from the last open tile before whatever stopped it. Walls contain it, and tiles a solid actor holds are skipped. In an area spell it floods out from the caster instead. A non-solid actor (like `sacred_glyph`) also goes under creatures, the caster included, and the scroll of sanctuary works this way |
-| `fill_radius` | number | Reach of `fill` from its center (default `1`). In an area spell it counts steps from the caster, and the default is the burst `radius` |
-
-`clone_target`, `polymorph_target` and `tunnel` print built-in result messages. Set `effect_message` and `fail_message` on the item's attributes to replace them; both take `[item_name]` and `[target_name]` (capitalized, for the start of a sentence), and polymorph adds `[new_form_name]`. Tunneling only has a `fail_message`.
-
-These can be combined with the area-effect properties (`center`, `radius`, `outer`) used by staves. A spell with only single-target properties fires a projectile but spawns no area actors.
-
-### Area Spell Properties
-
-Area spells (`burst`, `sight`, `level`) can also change the ground around the caster. The player's success message shows when any of these did something.
-
-| Property | Type | Effect |
-| ---------- | ------ | -------- |
-| `fill` / `fill_radius` | string / number | Lay an actor on the floor around the caster (see the `fill` row above) |
-| `shatter` | boolean | Break every breakable solid thing in the area that isn't a creature, then ring the cleared ground with new walls. A `burst` digs out its whole square, while `sight` and `level` only clear what broke. Plays the `shatter` vfx when something breaks |
-| `summon` | boolean, string or string[] | Call up creatures on open tiles around the caster. `true` draws from the floor's `random_actors`, and an actor id or list of ids limits the draw |
-| `summon_min` / `summon_max` | number | How many creatures `summon` calls up (default 2 to 4) |
-| `summon_radius` | number | How many steps from the caster summons can appear. Walls contain it. Defaults to the burst `radius`, or 1 for other deliveries |
-| `summon_allied` | boolean | Summons fight for the caster. They attack the caster's enemies, the caster's enemies attack them, and the player walks through their own summons by trading places. Give the summoned actor the `serve_summoner` behavior so it hunts those enemies. Pair it with `expire` and a `lifetime` for summons that last a few turns, like the scroll of swarming's insects |
-
-`wand` is an item type: naming it spawns a random wand. Add `"wand"` to `item_catalog` or `random_items` to include wands in a prototype.
-
----
-
-## Explosive Items
-
-| Attribute | Type | Description |
-| ----------- | ------ | ------------- |
-| `explosive` | boolean | Item can explode |
-| `breakable` | boolean | Item shatters on impact when thrown |
-| `fire_explosion` | boolean | Explosion spawns fire instead of a gas cloud |
-| `burst_into` | string | Actor the explosion releases, usually a gas actor like `caustic_gas` (see [Bursting on landing](#bursting-on-landing)) |
-| `explosion_radius` | number | Radius of fire burst (default `2`) |
-| `cloud_lifetime` | number | Lifetime of a gas cloud in turns (default: the gas actor's own `lifetime`, else `10`) |
-
-### Detonation rules
-
-- `explosive` + `breakable` → detonates on throw **and** when ignited by fire (potions)
-- `explosive` without `breakable` → detonates **only** when ignited by fire (powder kegs)
-
-**Fire burst** (`fire_explosion: true`): spawns `intense_fire` at center and adjacent tiles, `fire` at the outer radius. Breakable solid actors in range have a 60% chance to be destroyed.
-
-**Burst actor** (`burst_into`): spawns that actor. A gas actor (one with the `cloud` or `mist`
-personality) starts as a spreading cloud and keeps its own tint, effects and flammability, so the
-gas is defined once in `actors.json` and any trap, vent or item can release it.
-
-**Gas cloud** (neither): spawns a generic `cloud` tinted like the item that applies the item's
-`use_effect` to actors standing in it, flammable only with `cloud_flammable: true`. Random-effect
-potions use this, since their effect isn't known until rolled.
+| `hostile` | Enemies |
+| `ally` | Friendly creatures, for helpful effects |
+| `trap` | Revealed traps, to spring them from a distance |
+| `tile` | Open floor, for effects that move the caster |
+
+Most items need no filter. Thrown items default to `["hostile", "trap"]` and zapped items to `["hostile"]`. Unidentified items always cycle `["hostile", "ally"]`, so the target list can't give away what an unknown wand does.

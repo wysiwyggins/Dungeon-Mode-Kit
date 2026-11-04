@@ -63,6 +63,7 @@ While attributes can be arbitrarily invented by designers, here are a few alread
 | `inventory` | number | Max items this actor can carry |
 | `remains` | string | Entity (from `entities.json`) spawned at this actor's position on death |
 | `expire_message` | string | Shown in the sidebar when the actor's `lifetime` runs out, if the player can see it: `"The insects disperse."`. Works for anything that times out through the `expire`, `cloud_lifetime` or `fire_burn_out` behaviors. Like `death_description` it can sit at root level beside `lifetime`. Several in one turn collapse into one line |
+| `no_dominate` | boolean | The wand of domination (`dominate_target`) can't make this creature an ally. Use for bosses |
 | `mass_noun` | boolean | Suppress "the" article — use for clouds, water, etc. |
 | `proper_named` | boolean | Suppress "the" article — use for named characters |
 | `pack` | boolean | Spawn clustered together (within Manhattan distance 2) instead of scattered |

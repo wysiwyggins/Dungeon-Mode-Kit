@@ -109,8 +109,8 @@ Partly done: visual effects are now `vfx` in data (`vfx.json`, the `vfx` key on 
 
 - [ ] Charms — new item category: single charge, periodic recharge, area/self effects [B]
 - [ ] Item polarity — items classified as positive/negative, revealed before full ID [B]
-- [ ] Wand of domination — tame a wounded enemy [B]
-- [ ] Wand of plenty — clone a creature [B]
+- [x] Wand of domination — tame a wounded enemy [B]
+- [x] Wand of plenty — clone a creature [B]
 - [ ] Containers — chests, bags that hold multiple items
 
 ### Lighting & Vision

@@ -331,9 +331,20 @@ export const ActorIdentity = {
      * @returns {Actor}
      */
     getLeader() {
+        // A saved ally comes back with only `_leaderTag: 'player'`; reconnect it
+        // to whoever the player is now (the player is rebuilt on every floor).
+        if (!this._summoner && this._leaderTag === 'player') {
+            this._summoner = this.engine?.entityManager?.player || null;
+        }
         let leader = this;
         for (let i = 0; i < 8 && leader._summoner; i++) leader = leader._summoner;
         return leader;
+    },
+
+    /** True if this creature is on the player's side without being the player. */
+    isPlayerAlly() {
+        const leader = this.getLeader();
+        return leader !== this && !!leader.isPlayerControlled?.();
     },
 
     /**

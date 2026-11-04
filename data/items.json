@@ -1590,6 +1590,17 @@
     }
   },
 
+  "wand_of_domination": {
+    "type": "wand",
+    "tint": "#B070F0",
+    "identified_template": "Wand of Domination",
+    "effect_description": "The wand bends a creature's will to yours. The weaker it is, the surer the hold.",
+    "attributes": {
+      "spell": "dominate",
+      "uses": 2
+    }
+  },
+
   "wand_of_polymorph": {
     "type": "wand",
     "tint": "#DD66DD",

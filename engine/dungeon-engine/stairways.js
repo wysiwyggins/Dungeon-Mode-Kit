@@ -5,6 +5,7 @@
 
 import { getChebyshevDistance, hasLineOfSight } from '../../core/pathfinding.js';
 import {
+    ALLY_FOLLOW_RANGE,
     MAX_STAIR_FOLLOWERS,
     STAIRWAY_MIN_SEPARATION,
     parseTint,
@@ -47,6 +48,10 @@ export const DungeonEngineStairways = {
      * A separate attribute would only restate what the situation already proves, and
      * would leave every newly-added hostile silently unable to follow.
      *
+     * The player's allies within ALLY_FOLLOW_RANGE that can see the player come
+     * along too, outside the cap; spawnPendingStairFollowers places them without
+     * the hunt.
+     *
      * @param {number} targetFloor - 1-indexed floor the player is heading to
      * @returns {number} How many followers were queued
      */
@@ -58,6 +63,7 @@ export const DungeonEngineStairways = {
             actor !== player &&
             !actor.isDead &&
             actor.personality?.hostile &&
+            !actor.isPlayerAlly() &&
             !actor.hasAttribute('controlled') &&
             // Segmented creatures (the scutigera) can't cross a floor. Their parts are
             // joined by live object references (_chainPrev/_chainNext/_chainHead) that
@@ -75,7 +81,16 @@ export const DungeonEngineStairways = {
             (actor._alerted || actor.canSeeTarget(player))
         );
 
-        if (candidates.length === 0) return 0;
+        // The player's allies come along too, uncapped: any within
+        // ALLY_FOLLOW_RANGE that can see the player (wand of domination).
+        const allies = this.entityManager.actors.filter(actor =>
+            actor !== player && !actor.isDead && !actor._chainHead &&
+            actor.isPlayerAlly() &&
+            getChebyshevDistance(actor.x, actor.y, player.x, player.y) <= ALLY_FOLLOW_RANGE &&
+            actor.canSeeTarget(player)
+        );
+
+        if (candidates.length === 0 && allies.length === 0) return 0;
 
         // Nearest first, capped: arriving beside a whole pack with no room to retreat is
         // an unfair death, not a tense one.
@@ -90,7 +105,7 @@ export const DungeonEngineStairways = {
             this.pendingStairFollowers.set(targetFloor, []);
         }
 
-        for (const actor of followers) {
+        for (const actor of [...followers, ...allies]) {
             // serialize() drops the AI's memory fields, so a deserialized follower would
             // arrive with a blank slate and idle beside the player. The hunt intent is
             // reapplied on arrival instead — see spawnPendingStairFollowers().
@@ -99,7 +114,7 @@ export const DungeonEngineStairways = {
             console.log(`${actor.name} follows the player to floor ${targetFloor}`);
         }
 
-        return followers.length;
+        return followers.length + allies.length;
     },
 
     /**

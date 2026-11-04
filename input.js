@@ -29,6 +29,8 @@ const PASSIVE_SEARCH_STRENGTH = 30;
  */
 function isHostileActor(actor) {
     if (!actor?.hasAttribute) return false;
+    // The player's own allies (wand of domination, summoned swarms) aren't foes.
+    if (actor.isPlayerAlly?.()) return false;
     return !!(actor.hasAttribute('collision_effect') ||
               actor.personality?.hostile ||
               actor.hasAttribute('hostile'));

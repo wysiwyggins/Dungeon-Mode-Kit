@@ -217,6 +217,7 @@ export const DungeonEnginePersistence = {
         const player = this.entityManager.player;
         const walkableTiles = this.mapManager.walkableTiles;
         const placed = [];
+        const alliesPlaced = [];
 
         for (const data of pending) {
             const actorData = this.currentPrototype.getActorData(data.type);
@@ -257,6 +258,13 @@ export const DungeonEnginePersistence = {
             // Restore the hunt. serialize() carries no AI memory, so without this the
             // follower would arrive and idle — and in darkness canSeeTarget clamps its
             // range to 1.5, so it can't always re-acquire on its own.
+            // The player's allies (data.leader, see Actor.serialize) arrive at
+            // their side instead.
+            if (actor.isPlayerAlly()) {
+                alliesPlaced.push(actor);
+                console.log(`${actor.name} came with the player to floor ${this.currentFloor} at (${tile.x}, ${tile.y})`);
+                continue;
+            }
             if (player) {
                 actor._alerted = true;
                 actor._alertTarget = player;
@@ -275,6 +283,11 @@ export const DungeonEnginePersistence = {
             );
         } else if (placed.length > 1) {
             this.inputManager?.showMessage('You are followed!', { style: 'warning' });
+        }
+        if (alliesPlaced.length === 1) {
+            this.inputManager?.showMessage(`Your ${alliesPlaced[0].name} follows you.`);
+        } else if (alliesPlaced.length > 1) {
+            this.inputManager?.showMessage('Your allies follow you.');
         }
 
         this.pendingStairFollowers.delete(this.currentFloor);

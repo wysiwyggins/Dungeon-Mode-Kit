@@ -31,7 +31,8 @@ Dungeon Mode Kit has a default /data/ folder that contains actors, items, and re
 - [TILES.pdf](docs/TILES.pdf) — Visual index of all tile names
 - [TILED_KEY.md](docs/TILED_KEY.md) — Complete reference special tiles that spawn actors when used in a map layer called "wildcards"
 - [ACTORS.md](docs/ACTORS.md) — Actor attributes, stats, personalities, behaviors
-- [ITEMS.md](docs/ITEMS.md) — Full item attribute reference, use effects, equipment
+- [ITEMS.md](docs/ITEMS.md) — What an item is and the ways items act: carried, worn, used, thrown, identified
+- [SPELLS.md](docs/SPELLS.md) — Spells cast by staffs, wands, scrolls and monsters: deliveries, effects, allies
 - [TYPES.md](docs/TYPES.md) — Reusable actor and item defaults inherited via the `type` attribute
 - [ENTITIES.md](docs/ENTITIES.md) — Entities are a base class that other entities inherit from, they can be used on their own for simple decorations
 - [BIOMES.md](docs/BIOMES.md) — Depth-ranged bundles of monsters, items, hazards and generators

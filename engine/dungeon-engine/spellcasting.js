@@ -454,7 +454,7 @@ export const DungeonEngineSpellcasting = {
      * projectile hit, or each creature an area spell reaches.
      * @param {Actor} caster
      * @param {Object} effect - clone_target, polymorph_target, target_effect, apply_state,
-     *   remove_states, teleport_target, alert_target, beckon_target
+     *   remove_states, teleport_target, dominate_target, alert_target, beckon_target
      * @param {Actor} target
      * @param {Item|null} item
      * @param {{quiet?: boolean}} [options] - quiet: no per-creature messages (area casts summarize instead)
@@ -535,6 +535,36 @@ export const DungeonEngineSpellcasting = {
                 this.lightingManager?.computeLighting();
                 affected = true;
                 say(`${this._spellName(target, true)} ${target.isPlayerControlled?.() ? 'vanish' : 'vanishes'}!`);
+            }
+        }
+
+        // Bring the target over to the caster's side (wand of domination). Brogue's
+        // odds: the share of health it has lost, sure below a fifth of its health.
+        if (effect.dominate_target && !target.isDead) {
+            const name = target.getNameWithArticle(true);
+            const providers = { target_name: () => name };
+            const health = target.stats?.health;
+            const immune = target.isPlayerControlled?.() || target._chainHead
+                || target.hasAttribute('no_dominate') || !target.hasAttribute('sentient')
+                || !health || typeof health.current !== 'number' || !health.max
+                || target.getLeader() === caster.getLeader();
+            if (immune) {
+                say(this._spellMessage(item, 'fail_message', `${name} is unaffected.`, providers), at);
+            } else {
+                const fraction = health.current / health.max;
+                const chance = fraction < 0.2 ? 1 : 1 - fraction;
+                if (ROT.RNG.getUniform() < chance) {
+                    target._summoner = caster;
+                    target._leaderTag = null;
+                    target._alerted = false;
+                    target._alertTarget = null;
+                    target.flash?.();
+                    affected = true;
+                    const side = caster.isPlayerControlled?.() ? 'your' : `${caster.getNameWithArticle(false)}'s`;
+                    say(this._spellMessage(item, 'effect_message', `${name} is now ${side} ally.`, providers), at);
+                } else {
+                    say(this._spellMessage(item, 'fail_message', `${name} resists your will.`, providers), at);
+                }
             }
         }
 
