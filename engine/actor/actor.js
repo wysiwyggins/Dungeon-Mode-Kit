@@ -167,6 +167,11 @@ export class Actor extends Entity {
         if (data.death_description) {
             this.setAttribute('death_description', data.death_description);
         }
+        // Said when the actor's lifetime runs out (see expire), so it can sit
+        // beside `lifetime` at root level or in attributes.
+        if (data.expire_message) {
+            this.setAttribute('expire_message', data.expire_message);
+        }
 
         // Copy lifetime for actors that expire (clouds, fire, etc.)
         this.lifetime = data.lifetime || null;
@@ -1232,6 +1237,20 @@ export class Actor extends Entity {
      * Kill the actor
      * @param {boolean} spawnRemains - Whether to spawn remains entity (default: true)
      */
+    /**
+     * Die because the actor's `lifetime` ran out (the expire, cloud_lifetime
+     * and fire_burn_out behaviors). Shows `expire_message` first if it has one
+     * and the player can see the tile; repeats in one turn collapse in the
+     * sidebar, so a whole swarm fading at once reads as one line.
+     */
+    expire() {
+        const message = this.getAttribute('expire_message');
+        if (message && typeof message === 'string' && this.hasAttribute('visible')) {
+            this.engine.inputManager?.showMessage(message, { x: this.x, y: this.y });
+        }
+        this.die();
+    }
+
     die(spawnRemains = true) {
         // Capture whether this actor affected lighting BEFORE clearing `solid` below —
         // a solid actor casts shadows and blocks light, so its death must trigger a

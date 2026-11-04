@@ -61,6 +61,7 @@
                         <option value="bolt">bolt — strikes every creature along the line</option>
                         <option value="burst">burst — every creature within a radius of the caster, no aiming</option>
                         <option value="sight">sight — every creature the caster can see, no aiming</option>
+                        <option value="level">level — every creature on the level, no aiming</option>
                     </select>
                 </div>
                 <div class="field-row">
@@ -137,15 +138,15 @@
                 <div id="projectile-payload">
                     <div id="spawn-payload">
                     <div class="sub-section-title">Spawn</div>
-                    <div class="field-row">
+                    <div class="field-row landing-only">
                         <label>Center</label>
                         <input type="text" id="p-center" title="Actor spawned on the landing tile.">
                     </div>
-                    <div class="field-row">
+                    <div class="field-row landing-only">
                         <label>Radius</label>
                         <input type="number" id="p-radius" min="0" title="Spawn the outer actor on every tile within this radius.">
                     </div>
-                    <div class="field-row">
+                    <div class="field-row landing-only">
                         <label>Outer</label>
                         <input type="text" id="p-outer" title="Actor spawned in the radius. Blank: same as center.">
                     </div>
@@ -157,7 +158,22 @@
                         <label>Fill Radius</label>
                         <input type="number" id="p-fill_radius" min="0" step="0.5" placeholder="1">
                     </div>
-                    <div class="field-row">
+                    <div class="hint" id="fill-hint" style="margin:-4px 0 8px 0"></div>
+                    <div class="field-row area-only">
+                        <label>Summon</label>
+                        <input type="text" id="p-summon" placeholder="none" title="Creatures called up next to the caster: true for the floor's random actors, an actor id, or a JSON list of ids.">
+                    </div>
+                    <div class="field-row area-only">
+                        <label>Summon Count</label>
+                        <input type="number" id="p-summon_min" min="1" placeholder="2" title="Fewest creatures summoned." style="width:60px">
+                        <input type="number" id="p-summon_max" min="1" placeholder="4" title="Most creatures summoned." style="width:60px">
+                    </div>
+                    <div class="field-row area-only">
+                        <label>Summon Radius</label>
+                        <input type="number" id="p-summon_radius" min="1" placeholder="burst radius, else 1" title="Steps from the caster the summons can appear. Walls contain it.">
+                    </div>
+                    <div class="checkbox-grid area-only" id="area-flags" style="margin-bottom:8px"></div>
+                    <div class="field-row landing-only">
                         <label>Tunnel</label>
                         <input type="number" id="p-tunnel" min="1" title="Bore through up to this many breakable wall tiles.">
                     </div>
@@ -211,19 +227,27 @@ const TARGET_TOKENS = ['hostile', 'ally', 'trap', 'tile'];
 const PAYLOAD_FLAGS = {
     remove_states: 'Negate (strip states)',
     teleport_target: 'Teleport target away',
+    alert_target: 'Alert (hunt the caster)',
     beckon_target: 'Beckon (pull closer)',
     blink_self: 'Blink caster to landing',
     clone_target: 'Clone target',
     polymorph_target: 'Polymorph'
 };
 
+// Area-only boolean effect keys (castAreaSpell in engine/dungeon-engine/spellcasting.js).
+const AREA_FLAGS = {
+    shatter: 'Shatter breakable walls',
+    summon_allied: 'Summons side with the caster'
+};
+
 // Deliveries with no aim (core/spells.js AREA_DELIVERIES).
-const isArea = delivery => delivery === 'burst' || delivery === 'sight';
+const isArea = delivery => delivery === 'burst' || delivery === 'sight' || delivery === 'level';
 
 // Effect keys that have their own field; anything else round-trips through
 // "Other effect keys" so nothing the engine learns later is dropped here.
 const TYPED_PAYLOAD = ['bolt_damage', 'center', 'radius', 'outer', 'fill', 'fill_radius',
-    'tunnel', 'apply_state', 'target_effect', ...Object.keys(PAYLOAD_FLAGS)];
+    'tunnel', 'apply_state', 'target_effect', 'summon', 'summon_min', 'summon_max', 'summon_radius',
+    ...Object.keys(PAYLOAD_FLAGS), ...Object.keys(AREA_FLAGS)];
 
 const state = {
     spells: {}, protoSpells: {}, mergedSpells: {},
@@ -389,7 +413,11 @@ function populateForm(key, spell = {}) {
     setVal('p-apply_duration', typeof applied === 'object' && applied ? applied.duration : undefined);
     document.getElementById('target-effect-list').innerHTML = '';
     for (const [k, v] of Object.entries(p.target_effect || {})) addKVRow('target-effect-list', k, v);
-    for (const cb of document.querySelectorAll('#payload-flags input')) cb.checked = !!p[cb.value];
+    for (const cb of document.querySelectorAll('#payload-flags input, #area-flags input')) cb.checked = !!p[cb.value];
+    setVal('p-summon', p.summon === undefined ? '' : typeof p.summon === 'string' ? p.summon : JSON.stringify(p.summon));
+    setVal('p-summon_min', p.summon_min ?? '');
+    setVal('p-summon_max', p.summon_max ?? '');
+    setVal('p-summon_radius', p.summon_radius ?? '');
     // A pool is an actor id or type, a list of them, or { floors } (docs/ITEMS.md).
     const pool = p.polymorph_target;
     setVal('p-polymorph_pool', pool === true || pool === undefined ? '' : typeof pool === 'string' ? pool : JSON.stringify(pool));
@@ -429,12 +457,20 @@ function readForm() {
 
     // Only the fields for the chosen delivery are read: a bolt ignores the
     // projectile effect (strikeAlongBolt) and vice versa, and an area spell
-    // only applies the per-creature effects (applyEffectToTarget).
+    // only reads fill and the per-creature effects (applyEffectToTarget).
     const effect = {};
     if (delivery === 'bolt') {
         if (num('p-bolt_damage') !== undefined) effect.bolt_damage = num('p-bolt_damage');
     } else {
-        if (!area) {
+        if (area) {
+            if (val('p-fill')) effect.fill = val('p-fill');
+            if (num('p-fill_radius') !== undefined) effect.fill_radius = num('p-fill_radius');
+            for (const cb of document.querySelectorAll('#area-flags input:checked')) effect[cb.value] = true;
+            if (val('p-summon')) {
+                effect.summon = parseValue(val('p-summon'));
+                for (const k of ['summon_min', 'summon_max', 'summon_radius']) if (num('p-' + k) !== undefined) effect[k] = num('p-' + k);
+            }
+        } else {
             for (const k of ['center', 'outer', 'fill']) if (val('p-' + k)) effect[k] = val('p-' + k);
             for (const k of ['radius', 'fill_radius', 'tunnel']) if (num('p-' + k) !== undefined) effect[k] = num('p-' + k);
         }
@@ -558,7 +594,13 @@ function update() {
     const show = (id, on) => { document.getElementById(id).style.display = on ? '' : 'none'; };
     show('projectile-fields', delivery === 'projectile');
     show('projectile-payload', !bolt);
-    show('spawn-payload', !area);
+    document.querySelectorAll('.landing-only').forEach(el => { el.style.display = area ? 'none' : ''; });
+    document.querySelectorAll('.area-only').forEach(el => { el.style.display = area ? '' : 'none'; });
+    document.getElementById('p-fill').title = area
+        ? 'Actor laid on the floor around the caster (walls contain it). Non-solid actors also go under creatures.'
+        : 'Actor flooded over open ground where the projectile stopped (walls contain it).';
+    document.getElementById('p-fill_radius').placeholder = area ? (delivery === 'burst' ? 'radius' : '5') : '1';
+    document.getElementById('fill-hint').textContent = area ? 'Steps from the caster. Blank: the burst radius.' : '';
     show('bolt-fields', bolt || area);
     show('bolt-payload', bolt);
     show('aim-fields', !area);
@@ -569,6 +611,7 @@ function update() {
     document.getElementById('range-hint').textContent =
         delivery === 'burst' ? 'Unused: a burst reaches Radius tiles.'
         : delivery === 'sight' ? 'How far the caster sees. Blank: the player sees whatever is lit and in view; a monster sees 10 tiles.'
+        : delivery === 'level' ? 'Unused: a level spell reaches the whole level.'
         : '';
     updateTileSlot();
     drawProjectile();
@@ -589,12 +632,14 @@ function initStaticControls() {
         label.innerHTML = `<input type="checkbox" value="${token}"> ${token}`;
         filter.appendChild(label);
     }
-    const flags = document.getElementById('payload-flags');
-    for (const [key, text] of Object.entries(PAYLOAD_FLAGS)) {
-        const label = document.createElement('label');
-        label.title = key;
-        label.innerHTML = `<input type="checkbox" value="${key}"> ${text}`;
-        flags.appendChild(label);
+    for (const [gridId, flagMap] of [['payload-flags', PAYLOAD_FLAGS], ['area-flags', AREA_FLAGS]]) {
+        const grid = document.getElementById(gridId);
+        for (const [key, text] of Object.entries(flagMap)) {
+            const label = document.createElement('label');
+            label.title = key;
+            label.innerHTML = `<input type="checkbox" value="${key}"> ${text}`;
+            grid.appendChild(label);
+        }
     }
 }
 

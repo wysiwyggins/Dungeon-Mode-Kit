@@ -10,7 +10,7 @@
  * Deliveries that need no aim: `burst` hits every creature within `radius` of the
  * caster, `sight` every creature the caster can see.
  */
-export const AREA_DELIVERIES = ['burst', 'sight'];
+export const AREA_DELIVERIES = ['burst', 'sight', 'level'];
 
 /** Does this spell act on an area around the caster rather than a target tile? */
 export function isAreaSpell(spell) {

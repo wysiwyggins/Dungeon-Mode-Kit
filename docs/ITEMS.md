@@ -72,7 +72,7 @@ Actors have their own `description`, read by `Actor.getDescription()` with the s
 memoization. It says nothing about whether the player has seen or identified the actor —
 that gating belongs to the caller.
 
-> **Note for actors:** The `Actor` constructor has a bridge that copies `collision_sound`, `collision_effect`, `collision_description`, `death_sound`, `death_description` and `description` from root-level into attributes.
+> **Note for actors:** The `Actor` constructor has a bridge that copies `collision_sound`, `collision_effect`, `collision_description`, `death_sound`, `death_description`, `expire_message` and `description` from root-level into attributes.
 >
 > **Description fields bridge on items too.** `description`, `use_description`, `effect_description` and `collision_description` (`Item.DESCRIPTION_FIELDS`) may be authored at either level — the `Item` constructor copies root-level ones into attributes, and an explicit attribute wins over a root-level value of the same name. Every *other* root-level key on an item is still dropped unless it is in the extraction list above, so when in doubt use `attributes`.
 
@@ -254,16 +254,12 @@ every string `use_effect` in the data is a known action.
 
 | Effect string | Description |
 | --------------- | ------------- |
-| `"targeted_spell"` | Enters aiming mode; fires `spell_effect` at target tile (staffs). An area spell (`burst` or `sight`) casts at once with no aiming |
-| `"cast_spell"` | Casts the item's `spell` at once, with no aiming or charges (scrolls of discord and negation). The spell must be `burst` or `sight`; see [Spells](#spells-spellsjson) |
+| `"targeted_spell"` | Enters aiming mode; fires `spell_effect` at target tile (staffs). An area spell (`burst`, `sight` or `level`) casts at once with no aiming |
+| `"cast_spell"` | Casts the item's `spell` at once, with no aiming or charges (scrolls of discord, negation, sanctuary, shattering, aggravate monsters and summon monsters). The spell must be `burst`, `sight` or `level`; see [Spells](#spells-spellsjson) |
 | `"identify_item"` | Opens item picker; player selects one unidentified item to reveal |
 | `"teleport"` | Moves player to a random walkable tile |
 | `"reveal_map"` | Marks all tiles on the floor explored, and reveals the machine-link overlay (lines connecting each switch to the gates/doors it drives). A lasting per-level reveal: it persists when you leave the floor and return. See [Magic Mapping](#magic-mapping) |
-| `"aggravate_monsters"` | Alerts every hostile actor on the level to the player. Only creatures with the `pursue_intruders` behavior act on it, so for most monsters it does nothing yet |
-| `"summon_monsters"` | Spawns 2–4 random monsters adjacent to the player |
 | `"recharge_items"` | Restores all `charge_stat` items in inventory to full |
-| `"sanctuary"` | Spawns a `glyph_actor` (default `sacred_glyph`) on every floor tile within `effect_radius` steps (default 2), flooding outward so it doesn't pass through walls. The glyph's hostile `ward` keeps hostile creatures out. `effect_message` and `fail_message` replace the built-in result text. |
-| `"shatter_walls"` | Destroys breakable solid actors within `effect_radius` (default 3); triggers a screen shake, amber flash, and radiating tile fill effect |
 | `"targeted_spell"` (bolt) | Bolt spells display a white-blue tile fill along the bolt path with screen shake, instead of a projectile sprite |
 | `"darkness_field"` | Extinguishes all light-source items within `effect_radius` (default 5) |
 | `"remove_all_states"` | Cures every state on the user |
@@ -493,16 +489,16 @@ names an entry there.
 | Property | Description |
 | ---------- | ------------- |
 | `name` | Shown in cast messages ("You cast Fireball!") |
-| `delivery` | `projectile` (flies to the target, then its effect happens), `bolt` (strikes every creature along the line, bouncing off reflective ones), `burst` (every creature within `radius` of the caster) or `sight` (every creature the caster can see). `burst` and `sight` need no aim |
+| `delivery` | `projectile` (flies to the target, then its effect happens), `bolt` (strikes every creature along the line, bouncing off reflective ones), `burst` (every creature within `radius` of the caster), `sight` (every creature the caster can see) or `level` (every creature on the level). `burst`, `sight` and `level` need no aim |
 | `range` | Max targeting distance in tiles. Omit to use the item type's `spell_range`. For `sight`, how far the caster sees: the player sees whatever is lit and in view, a monster 10 tiles |
 | `radius` | `burst` only: reach in tiles from the caster, diagonals counting as one (default 5). It reaches through walls |
-| `affects` | Area spells only: `"hostile"` (the caster's enemies), `"allies"` (everyone else), or omit for every creature. The caster is never included |
+| `affects` | Area spells only: `"hostile"` (the caster's enemies), `"allies"` (everyone else), or omit for every creature. A creature counts as an enemy if either side would attack the other, so a goblin hunting the player is the player's enemy. The caster is never included |
 | `message` / `empty_message` | Area spells only: shown to the player when their cast affects someone / no one. Defaults: "N creatures are affected!" and "Nothing seems to happen." An item's `effect_message` / `fail_message` override them |
 | `target_filter` | What aiming cycles through (see [Aim targeting](#aim-targeting-target_filter)) |
 | `projectile` | `{ "tile": "...", "tint": "#rrggbb" }`. Either part can be left out: the tile falls back to the item type's `projectile_tile`, the tint to the item's tint |
 | `cast_sound` | Sound played on cast. Area spells play none unless it's set, since a scroll's reading already makes a sound |
 | `vfx` | Bolts and area spells. An area spell plays it once on the caster. For a bolt it's the `vfx.json` entry played for the bolt. Only effects with a `line_tile_fill` layer draw along the path; others play once at the caster. Left out, the engine falls back to `lightning_bolt` |
-| `effect` | What the spell does where it lands. Projectile spells take the area properties (`center`, `radius`, `outer`) and the [single-target properties](#spell-effect-properties-single-target); area spells apply the single-target properties to each creature they reach (but not `tunnel`, `fill` or `blink_self`); bolts take `bolt_damage` |
+| `effect` | What the spell does where it lands. Projectile spells take the area properties (`center`, `radius`, `outer`) and the [single-target properties](#spell-effect-properties-single-target); area spells apply the single-target properties to each creature they reach and take the [area spell properties](#area-spell-properties) (but not `tunnel` or `blink_self`); bolts take `bolt_damage` |
 
 ```json
 "fireball": {
@@ -539,6 +535,7 @@ while it's discordant.
   Spells that act on the caster still aim at the enemy, so blinking blinks toward them.
   An area spell goes off when an enemy is among the creatures it would reach. An
   `"affects": "allies"` spell goes off when an ally is in reach and an enemy is in sight.
+  A spell that summons, fills or shatters goes off whenever an enemy is in sight.
   `spell_range` defaults to the spell's `range`, then `attack_range`, then 8, and
   `spell_cooldown` (turns between casts) defaults to 4.
 - `bolt_attack` is the bolt-only version the lightning mage and the dynamo use
@@ -800,16 +797,30 @@ These go in a spell's `effect` (or an item's inline `spell_effect`).
 | `remove_states` | boolean | Strip all states from target actor |
 | `teleport_target` | boolean | Teleport target to a random walkable tile |
 | `beckon_target` | boolean | Pull target toward the caster |
+| `alert_target` | boolean | A hostile target starts hunting the caster. Peaceful creatures ignore it. Only creatures with the `pursue_intruders` behavior act on it, so for most monsters it does nothing yet |
 | `target_effect` | object | Stat changes on the target, friend or foe: `{ "health": 15 }` heals |
 | `clone_target` | boolean | A copy of the target appears beside it and they split its current health; the copy carries nothing. Not the player or chain creatures |
 | `polymorph_target` | boolean, string, string[] or object | The target becomes a random other creature (see `no_polymorph` in [ACTORS.md](ACTORS.md)), keeping its health fraction and what it carries. `true` draws from any creature; an actor id or actor type (or a list of them, e.g. `"beast"`) limits the draw. `{ "floors": "current" }` draws from what can randomly spawn on this floor (biome catalog rows and `random_actors`); give a range instead (`"3-6"` or `[3, 6]`) for those floors |
 | `tunnel` | number | Bore this many tiles from the caster toward the aim point, turning breakable obstructions to rubble. Passes through creatures, stops at the first unbreakable solid. Pair with `target_filter: ["tile"]` to aim at walls |
-| `fill` | string | Actor spawned over the open ground where the bolt stopped, flooding out from the last open tile before whatever stopped it. Walls contain it, and tiles a solid actor holds are skipped |
-| `fill_radius` | number | Reach of `fill` from its center (default `1`) |
+| `fill` | string | Actor spawned over the open ground where the bolt stopped, flooding out from the last open tile before whatever stopped it. Walls contain it, and tiles a solid actor holds are skipped. In an area spell it floods out from the caster instead. A non-solid actor (like `sacred_glyph`) also goes under creatures, the caster included, and the scroll of sanctuary works this way |
+| `fill_radius` | number | Reach of `fill` from its center (default `1`). In an area spell it counts steps from the caster, and the default is the burst `radius` |
 
 `clone_target`, `polymorph_target` and `tunnel` print built-in result messages. Set `effect_message` and `fail_message` on the item's attributes to replace them; both take `[item_name]` and `[target_name]` (capitalized, for the start of a sentence), and polymorph adds `[new_form_name]`. Tunneling only has a `fail_message`.
 
 These can be combined with the area-effect properties (`center`, `radius`, `outer`) used by staves. A spell with only single-target properties fires a projectile but spawns no area actors.
+
+### Area Spell Properties
+
+Area spells (`burst`, `sight`, `level`) can also change the ground around the caster. The player's success message shows when any of these did something.
+
+| Property | Type | Effect |
+| ---------- | ------ | -------- |
+| `fill` / `fill_radius` | string / number | Lay an actor on the floor around the caster (see the `fill` row above) |
+| `shatter` | boolean | Break every breakable solid thing in the area that isn't a creature, then ring the cleared ground with new walls. A `burst` digs out its whole square, while `sight` and `level` only clear what broke. Plays the `shatter` vfx when something breaks |
+| `summon` | boolean, string or string[] | Call up creatures on open tiles around the caster. `true` draws from the floor's `random_actors`, and an actor id or list of ids limits the draw |
+| `summon_min` / `summon_max` | number | How many creatures `summon` calls up (default 2 to 4) |
+| `summon_radius` | number | How many steps from the caster summons can appear. Walls contain it. Defaults to the burst `radius`, or 1 for other deliveries |
+| `summon_allied` | boolean | Summons fight for the caster. They attack the caster's enemies, the caster's enemies attack them, and the player walks through their own summons by trading places. Give the summoned actor the `serve_summoner` behavior so it hunts those enemies. Pair it with `expire` and a `lifetime` for summons that last a few turns, like the scroll of swarming's insects |
 
 `wand` is an item type: naming it spawns a random wand. Add `"wand"` to `item_catalog` or `random_items` to include wands in a prototype.
 

@@ -62,6 +62,7 @@ While attributes can be arbitrarily invented by designers, here are a few alread
 | `opaque` | boolean | Whether this actor blocks line of sight. Independent of `solid`: unset, a solid actor blocks sight and a non-solid one doesn't, so set `opaque: false` for see-through solids (columns, statues, creatures — most types supply it) and `opaque: true` for walkable cover that still hides what's behind it (tall mushrooms). |
 | `inventory` | number | Max items this actor can carry |
 | `remains` | string | Entity (from `entities.json`) spawned at this actor's position on death |
+| `expire_message` | string | Shown in the sidebar when the actor's `lifetime` runs out, if the player can see it: `"The insects disperse."`. Works for anything that times out through the `expire`, `cloud_lifetime` or `fire_burn_out` behaviors. Like `death_description` it can sit at root level beside `lifetime`. Several in one turn collapse into one line |
 | `mass_noun` | boolean | Suppress "the" article — use for clouds, water, etc. |
 | `proper_named` | boolean | Suppress "the" article — use for named characters |
 | `pack` | boolean | Spawn clustered together (within Manhattan distance 2) instead of scattered |

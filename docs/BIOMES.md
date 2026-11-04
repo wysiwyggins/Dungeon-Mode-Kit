@@ -147,7 +147,7 @@ Actor ids work the same way. An id that only exists in one prototype's `actors.j
 
 The biome code is in `engine/dungeon-engine/floors.js`. `getFloorConfig` builds a floor's settings, and `resolveBiome` turns the floor's biome into spawn lists. The merged library is stored on `config.biomes` by `Prototype.loadAssets()` before the first floor loads. It's read by `resolveBiome`, `getFloorActorPool` and `warnUnsatisfiedBiomeCategories` in `engine/prototype.js`.
 
-`resolveBiome` uses the random number generator for its budget rolls and weighted picks, so every call gives a different result. `getFloorConfig` runs several times while a floor loads and again during play, for things like stairs, mechanics lookups and `summon_monsters`. Don't cache a resolved biome and expect it to match what spawned.
+`resolveBiome` uses the random number generator for its budget rolls and weighted picks, so every call gives a different result. `getFloorConfig` runs several times while a floor loads and again during play, for things like stairs, mechanics lookups and summoning spells. Don't cache a resolved biome and expect it to match what spawned.
 
 Apart from the biome name and item type warnings at load, nothing checks `prototype.json`. A misspelled key is ignored, and a range the engine can't read means that floor has no biome. The editors do the checking.
 

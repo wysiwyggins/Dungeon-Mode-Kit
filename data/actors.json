@@ -409,6 +409,33 @@
       "health": 25
     }
   },
+  "swarming_insects": {
+    "name": "insects",
+    "description": "A buzzing cloud of summoned insects. They fight for whoever called them, then scatter.",
+    "tileIndexBase": "BOX_DRAWING_LIGHT_HORIZONTAL",
+    "tileIndexTop": "FLY",
+    "tint": "#B8D040",
+    "defaultFacing": "left",
+    "personality": "swarm",
+    "lifetime": 5,
+    "expire_message": "The insects disperse.",
+    "collision_effect": {
+      "health": -2
+    },
+    "collision_sound": "hit",
+    "collision_description": "The insects sting [attacked_actor_name]!",
+    "attributes": {
+      "mass_noun": true,
+      "flammable": true,
+      "flies": true,
+      "sentient": true,
+      "dark_vision": true,
+      "accuracy": 50
+    },
+    "stats": {
+      "health": 4
+    }
+  },
   "giant_fly": {
     "name": "giant fly",
     "tileIndexBase": "BOX_DRAWING_LIGHT_HORIZONTAL",

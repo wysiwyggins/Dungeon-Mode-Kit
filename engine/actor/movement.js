@@ -400,6 +400,29 @@ export const ActorMovement = {
             if (this._chainHead && actorAtTarget._chainHead === this._chainHead) {
                 return { moved: false, actionTaken: false };
             }
+            // The player trades places with their own summoned allies instead
+            // of swatting them (scroll of swarming).
+            if (this.isPlayerControlled() && !actorAtTarget.isDead && actorAtTarget !== this
+                && actorAtTarget.getLeader?.() === this) {
+                const fromX = this.x;
+                const fromY = this.y;
+                const swapDx = newX - fromX;
+                if (swapDx > 0) this.setFacing('right');
+                else if (swapDx < 0) this.setFacing('left');
+                actorAtTarget.x = fromX;
+                actorAtTarget.y = fromY;
+                actorAtTarget.updateSpritePosition();
+                this.x = newX;
+                this.y = newY;
+                this.updateSpritePosition();
+                this.engine.entityManager.notifyTileEntered(actorAtTarget, fromX, fromY);
+                this.engine.entityManager.notifyTileEntered(this, newX, newY);
+                if (this.isViewpoint() && this.engine.viewportEnabled) {
+                    if (this.engine.snapViewportToTile(this.x, this.y)) this.engine.onSectionChange();
+                }
+                this.engine.updateLighting();
+                return { moved: true, actionTaken: true };
+            }
             // Check if actor can be pushed (requires pusher to have strength > 0)
             const pusherStrength = this.getAttribute('strength');
             if (actorAtTarget.hasAttribute('pushable') && pusherStrength && pusherStrength > 0) {

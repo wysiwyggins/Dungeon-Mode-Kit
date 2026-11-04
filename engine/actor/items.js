@@ -4,7 +4,6 @@
  */
 
 import { isAreaSpell, spellFromItem } from '../../core/spells.js';
-import { ALL_DIRS, shuffleArray } from '../../core/util.js';
 import { Actor } from './actor.js';
 import { Item } from '../item.js';
 
@@ -1137,27 +1136,12 @@ export const ActorItems = {
                 return true;
             }
 
-            case 'aggravate_monsters': {
-                const player = this.engine.entityManager?.player;
-                for (const actor of this.engine.entityManager?.actors || []) {
-                    if (actor.isDead || actor === this) continue;
-                    if (actor.isHostile()) {
-                        actor._alertTarget = player;
-                        actor._alerted = true;
-                    }
-                }
-                if (this.isPlayerControlled()) {
-                    this.engine.inputManager?.showMessage('Every creature stirs with sudden rage.');
-                }
-                return true;
-            }
-
             case 'cast_spell': {
-                // Cast the item's area spell (burst or sight) on the spot: scrolls
-                // of discord and negation. Read, so it's spent, whoever it reached.
+                // Cast the item's area spell (burst, sight or level) on the spot:
+                // scrolls of discord, negation, sanctuary, shattering and so on. Read, so it's spent, whoever it reached.
                 const spell = spellFromItem(item);
                 if (!isAreaSpell(spell)) {
-                    console.warn(`cast_spell: '${item.name}' needs a burst or sight spell (got '${spell.delivery}'); aimed spells use targeted_spell`);
+                    console.warn(`cast_spell: '${item.name}' needs a burst, sight or level spell (got '${spell.delivery}'); aimed spells use targeted_spell`);
                     return false;
                 }
                 this.engine.castSpell({ caster: this, spell, item });
@@ -1216,80 +1200,6 @@ export const ActorItems = {
                 return true;
             }
 
-            case 'sanctuary': {
-                // Lay a glyph actor on every floor tile within effect_radius steps,
-                // flooding outward so the glyphs don't leak through walls.
-                const radius = item?.getAttribute('effect_radius') ?? 2;
-                const glyphType = item?.getAttribute('glyph_actor') ?? 'sacred_glyph';
-                const em = this.engine.entityManager;
-                const seen = new Set([this.x * 10000 + this.y]);
-                let frontier = [{ x: this.x, y: this.y }];
-                let placed = 0;
-                for (let step = 0; step <= radius && frontier.length; step++) {
-                    const next = [];
-                    for (const p of frontier) {
-                        if (!this.hasFloorAt(p.x, p.y)) continue;
-                        const solid = em.getSolidActorAt(p.x, p.y);
-                        if (solid && !solid.hasAttribute('sentient')) continue;
-                        if (!em.getActorsAt(p.x, p.y).some(a => a.type === glyphType && !a.isDead)) {
-                            if (em.spawnActor(glyphType, p.x, p.y)) placed++;
-                        }
-                        for (const d of ALL_DIRS) {
-                            const key = (p.x + d.dx) * 10000 + (p.y + d.dy);
-                            if (seen.has(key)) continue;
-                            seen.add(key);
-                            next.push({ x: p.x + d.dx, y: p.y + d.dy });
-                        }
-                    }
-                    frontier = next;
-                }
-                if (placed > 0) this.flash();
-                if (this.isPlayerControlled()) {
-                    const success = 'Sacred glyphs spread across the floor around you.';
-                    const failure = 'The words fade, but nothing happens.';
-                    this.engine.inputManager?.showMessage(placed > 0
-                        ? (item?.getEffectMessage('effect_message', success) ?? success)
-                        : (item?.getEffectMessage('fail_message', failure) ?? failure));
-                }
-                return placed > 0;
-            }
-
-            case 'summon_monsters': {
-                const floorConfig = this.engine.getFloorConfig(this.engine.currentFloor);
-                const randomActors = floorConfig?.random_actors || this.engine.currentPrototype?.config?.random_actors;
-                if (!randomActors || Object.keys(randomActors).length === 0) {
-                    if (this.isPlayerControlled()) {
-                        this.engine.inputManager?.showMessage('Nothing answers the call.');
-                    }
-                    return true;
-                }
-                const actorTypes = Object.keys(randomActors);
-                const summonMin = item?.getAttribute('summon_min') ?? 2;
-                const summonMax = item?.getAttribute('summon_max') ?? 4;
-                const count = summonMin + Math.floor(ROT.RNG.getUniform() * (summonMax - summonMin + 1));
-                let spawned = 0;
-                for (const dir of shuffleArray([...ALL_DIRS])) {
-                    if (spawned >= count) break;
-                    const tx = this.x + dir.dx, ty = this.y + dir.dy;
-                    if (!this.engine.mapManager?.floorMap[ty]?.[tx]?.tileId) continue;
-                    if (this.engine.entityManager?.getSolidActorAt(tx, ty)) continue;
-                    const actorType = actorTypes[Math.floor(ROT.RNG.getUniform() * actorTypes.length)];
-                    const actor = this.engine.entityManager.spawnActor(actorType, tx, ty);
-                    if (!actor) continue;
-                    actor.flash();
-                    spawned++;
-                }
-                if (spawned > 0) {
-                    this.flash();
-                    if (this.isPlayerControlled()) {
-                        this.engine.inputManager?.showMessage('Something answers the call.');
-                    }
-                } else if (this.isPlayerControlled()) {
-                    this.engine.inputManager?.showMessage('Nothing answers the call.');
-                }
-                return true;
-            }
-
             case 'recharge_items': {
                 let recharged = false;
                 for (const invItem of this.inventory || []) {
@@ -1326,40 +1236,6 @@ export const ActorItems = {
                     this.engine.inputManager?.showMessage('A warm light floods through you, purging all conditions.');
                 }
                 return true;
-            }
-
-            case 'shatter_walls': {
-                const radius = item?.getAttribute('effect_radius') ?? 3;
-                let shattered = false;
-                const toRemove = [];
-                for (const actor of this.engine.entityManager?.actors || []) {
-                    if (actor.isDead) continue;
-                    if (!actor.hasAttribute('solid') || !actor.hasAttribute('breakable')) continue;
-                    const dist = Math.abs(actor.x - this.x) + Math.abs(actor.y - this.y);
-                    if (dist <= radius) toRemove.push(actor);
-                }
-                for (const actor of toRemove) {
-                    actor.die?.();
-                    shattered = true;
-                }
-                if (shattered) {
-                    const clearedPositions = [];
-                    for (let dy = -radius; dy <= radius; dy++) {
-                        for (let dx = -radius; dx <= radius; dx++) {
-                            if (Math.abs(dx) + Math.abs(dy) <= radius) {
-                                clearedPositions.push({ x: this.x + dx, y: this.y + dy });
-                            }
-                        }
-                    }
-                    this.engine.entityManager.revealDugArea(clearedPositions);
-                    this.engine.renderer?.effectRunner.apply('shatter', this);
-                }
-                if (this.isPlayerControlled()) {
-                    this.engine.inputManager?.showMessage(shattered
-                        ? 'The walls crack and crumble.'
-                        : 'Nothing breaks.');
-                }
-                return shattered;
             }
 
             case 'spike_door': {

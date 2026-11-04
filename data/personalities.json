@@ -229,6 +229,12 @@
   },
   "cloud_behavior": { "$alias": "cloud" },
 
+  "swarm": {
+    "name": "Swarm",
+    "hostile": false,
+    "behaviors": ["expire", "serve_summoner"]
+  },
+
   "dissolving": {
     "name": "Dissolving",
     "hostile": false,

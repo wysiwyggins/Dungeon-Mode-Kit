@@ -1279,7 +1279,8 @@
     "effect_description": "Every creature stirs with sudden rage.",
     "attributes": {
       "magic_polarity": "bad",
-      "use_effect": "aggravate_monsters"
+      "use_effect": "cast_spell",
+      "spell": "aggravation"
     }
   },
 
@@ -1289,7 +1290,8 @@
     "effect_description": "Something answers the call.",
     "attributes": {
       "magic_polarity": "bad",
-      "use_effect": "summon_monsters"
+      "use_effect": "cast_spell",
+      "spell": "summoning"
     }
   },
 
@@ -1307,9 +1309,9 @@
     "identified_template": "Scroll of Shattering",
     "effect_description": "The walls crack and crumble.",
     "attributes": {
-      "use_effect": "shatter_walls",
-      "use_sound": "fireball",
-      "effect_radius": 5
+      "use_effect": "cast_spell",
+      "spell": "shattering",
+      "use_sound": "fireball"
     }
   },
 
@@ -1359,8 +1361,18 @@
     "identified_template": "Scroll of Sanctuary",
     "effect_description": "Sacred glyphs spread across the floor around you. Hostile creatures cannot enter them.",
     "attributes": {
-      "use_effect": "sanctuary",
-      "effect_radius": 2
+      "use_effect": "cast_spell",
+      "spell": "sanctuary"
+    }
+  },
+
+  "scroll_of_swarming": {
+    "type": "scroll",
+    "identified_template": "Scroll of Swarming",
+    "effect_description": "Insects pour from the page and swarm your foes.",
+    "attributes": {
+      "use_effect": "cast_spell",
+      "spell": "swarm"
     }
   },
 

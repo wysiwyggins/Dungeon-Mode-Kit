@@ -399,6 +399,10 @@
                     <input type="number" id="f-lifetime" min="0" value="">
                 </div>
                 <div class="field-row">
+                    <label>Expire Message</label>
+                    <input type="text" id="f-expire_message" value="" placeholder="none" title="Shown in the sidebar when the lifetime runs out, if the player can see the actor.">
+                </div>
+                <div class="field-row">
                     <label>Damage Per Turn</label>
                     <input type="number" id="f-damage_per_turn" value="">
                 </div>
@@ -1820,6 +1824,7 @@ function clearForm() {
     document.getElementById('f-trap_apply_state').value = '';
     document.getElementById('f-trap_message').value = '';
     document.getElementById('f-lifetime').value = '';
+    document.getElementById('f-expire_message').value = '';
     document.getElementById('f-damage_per_turn').value = '';
     document.getElementById('f-spread_chance').value = '';
 
@@ -1983,6 +1988,7 @@ function populateForm(key, data) {
 
     // Misc
     document.getElementById('f-lifetime').value = data.lifetime || '';
+    document.getElementById('f-expire_message').value = data.expire_message || '';
     document.getElementById('f-damage_per_turn').value = data.damage_per_turn || '';
     document.getElementById('f-spread_chance').value = data.spread_chance || '';
 
@@ -2218,6 +2224,8 @@ function readForm() {
     // Misc
     const lt = parseInt(document.getElementById('f-lifetime').value);
     if (!isNaN(lt) && lt > 0) obj.lifetime = lt;
+    const em = document.getElementById('f-expire_message').value.trim();
+    if (em) obj.expire_message = em;
     const dpt = parseInt(document.getElementById('f-damage_per_turn').value);
     if (!isNaN(dpt) && dpt !== 0) obj.damage_per_turn = dpt;
     const sc = parseFloat(document.getElementById('f-spread_chance').value);

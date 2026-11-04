@@ -215,6 +215,66 @@
     }
   },
 
+  "sanctuary": {
+    "name": "Sanctuary",
+    "delivery": "burst",
+    "radius": 1,
+    "message": "Sacred glyphs spread across the floor around you.",
+    "empty_message": "The words fade, but nothing happens.",
+    "effect": {
+      "fill": "sacred_glyph"
+    }
+  },
+
+  "shattering": {
+    "name": "Shattering",
+    "delivery": "burst",
+    "radius": 4,
+    "message": "The walls crack and crumble.",
+    "empty_message": "Nothing breaks.",
+    "effect": {
+      "shatter": true
+    }
+  },
+
+  "aggravation": {
+    "name": "Aggravation",
+    "delivery": "level",
+    "affects": "hostile",
+    "message": "Every creature stirs with sudden rage.",
+    "empty_message": "Every creature stirs with sudden rage.",
+    "effect": {
+      "alert_target": true
+    }
+  },
+
+  "summoning": {
+    "name": "Summoning",
+    "delivery": "burst",
+    "radius": 1,
+    "message": "Something answers the call.",
+    "empty_message": "Nothing answers the call.",
+    "effect": {
+      "summon": true,
+      "summon_min": 2,
+      "summon_max": 4
+    }
+  },
+
+  "swarm": {
+    "name": "Swarm",
+    "delivery": "burst",
+    "radius": 3,
+    "message": "Insects boil up from the page!",
+    "empty_message": "A few insects buzz out and scatter.",
+    "effect": {
+      "summon": "swarming_insects",
+      "summon_min": 4,
+      "summon_max": 6,
+      "summon_allied": true
+    }
+  },
+
   "polymorph": {
     "name": "Polymorph",
     "delivery": "projectile",

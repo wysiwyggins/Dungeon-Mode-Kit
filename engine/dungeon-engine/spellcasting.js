@@ -4,8 +4,9 @@
  * castSpell takes a caster, a spell (a spells.json entry, or an item's spell via
  * spellFromItem in core/spells.js) and a target tile, then plays the sound, flies
  * the projectile or draws the bolt, and applies the spell's effect. Area spells
- * (`burst`, `sight`) need no target tile: they apply the effect to every
- * creature getSpellAreaTargets picks. Nothing here
+ * (`burst`, `sight`, `level`) need no target tile: they apply the effect to
+ * every creature getSpellAreaTargets picks, and can also lay an actor on the
+ * floor (`fill`), break walls (`shatter`) or call up creatures (`summon`). Nothing here
  * assumes the caster is the player or that an item is involved: the player's
  * aiming and charges live in ui/spells.js, a monster's targeting and cooldown in
  * its behavior (behaviors/special.js cast_spell), and both end up here.
@@ -13,7 +14,7 @@
 
 import { getChebyshevDistance, getLinePath, hasLineOfSight, traceSpellPath } from '../../core/pathfinding.js';
 import { isAreaSpell } from '../../core/spells.js';
-import { ALL_DIRS } from '../../core/util.js';
+import { ALL_DIRS, shuffleArray } from '../../core/util.js';
 
 // Drawn when neither the spell nor an item names a projectile tile.
 const DEFAULT_PROJECTILE_TILE = 'OPAQUE_WHITE_DIAMOND_SUITE';
@@ -73,10 +74,11 @@ export const DungeonEngineSpellcasting = {
     },
 
     /**
-     * Cast a `burst` or `sight` spell: apply its effect to every creature in the
-     * area at once, with one summary message instead of one per creature.
+     * Cast a `burst`, `sight` or `level` spell: apply its effect to every
+     * creature in the area at once, with one summary message instead of one
+     * per creature.
      * @param {Object} options - As castSpell, minus target
-     * @returns {{targets: Actor[], affected: number}}
+     * @returns {{targets: Actor[], affected: number, filled: number, shattered: number, summoned: number}}
      */
     castAreaSpell({ caster, spell, item = null, onComplete }) {
         const targets = this.getSpellAreaTargets(caster, spell);
@@ -85,33 +87,176 @@ export const DungeonEngineSpellcasting = {
         if (spell.vfx) this.renderer?.effectRunner.apply(spell.vfx, caster);
 
         const effect = spell.effect || {};
+        // { "fill": "sacred_glyph" } lays an actor on the floor around the caster
+        // (scroll of sanctuary). It reaches `fill_radius` steps, else the burst radius.
+        const filled = effect.fill
+            ? this.fillAroundCaster(effect.fill, effect.fill_radius ?? spell.radius ?? DEFAULT_BURST_RADIUS, caster)
+            : 0;
+        // { "shatter": true } breaks every breakable wall in the area (scroll of shattering).
+        const shattered = effect.shatter ? this.shatterInArea(caster, spell) : 0;
+        if (filled > 0) caster.flash?.();
         let affected = 0;
         for (const target of targets) {
             if (this.applyEffectToTarget(caster, effect, target, item, { quiet: true })) affected++;
         }
+        // Summoned after the effect, so the newcomers aren't caught in it.
+        const summoned = effect.summon ? this.summonAroundCaster(caster, effect, spell) : 0;
 
         // The player hears how it went; a monster's cast is only news if it's seen.
         if (caster.isPlayerControlled?.()) {
             const plural = affected === 1 ? 'creature is' : 'creatures are';
-            this.inputManager?.showMessage(affected > 0
-                ? this._spellMessage(item, 'effect_message', spell.message || `${affected} ${plural} affected!`)
+            const fallback = affected > 0 ? `${affected} ${plural} affected!`
+                : shattered > 0 ? 'The walls crack and crumble.'
+                : summoned > 0 ? 'Something answers the call.'
+                : 'Something spreads across the floor.';
+            this.inputManager?.showMessage(affected + filled + shattered + summoned > 0
+                ? this._spellMessage(item, 'effect_message', spell.message || fallback)
                 : this._spellMessage(item, 'fail_message', spell.empty_message || 'Nothing seems to happen.'));
         } else if (this.isTileVisible?.(caster.x, caster.y)) {
             this.inputManager?.showMessage(`${caster.getNameWithArticle(true)} casts ${spell.name || 'a spell'}!`,
                 { x: caster.x, y: caster.y });
         }
 
-        onComplete?.({ targets, affected });
+        const result = { targets, affected, filled, shattered, summoned };
+        onComplete?.(result);
         this.interfaceManager?.updateSidebar();
-        return { targets, affected };
+        return result;
     },
 
     /**
-     * The creatures an area spell reaches, never the caster.
-     * `burst`: within `radius` tiles (Chebyshev, through walls, as the old radius
-     * scrolls worked). `sight`: what the player can see right now (lit and in
-     * view), or for anyone else a clear line within `range`. `affects` narrows it
-     * to "hostile" (the caster's enemies) or "allies" (everyone else); default "all".
+     * Break every breakable solid thing in an area spell's reach that isn't a
+     * creature. A burst then digs out its whole square, as the old scroll of
+     * shattering dug its diamond; `sight` and `level` only clear what broke.
+     * New walls ring the cleared ground (revealDugArea).
+     * @param {Actor} caster
+     * @param {Object} spell
+     * @returns {number} How many things broke
+     */
+    shatterInArea(caster, spell) {
+        const entityManager = this.entityManager;
+        if (!entityManager) return 0;
+        const broken = entityManager.actors.filter(actor =>
+            !actor.isDead && actor.hasAttribute('solid') && actor.hasAttribute('breakable')
+            && !actor.hasAttribute('sentient') && !actor.hasAttribute('controlled')
+            && this.isInSpellArea(caster, spell, actor.x, actor.y, actor));
+        if (broken.length === 0) return 0;
+        const cleared = broken.map(actor => ({ x: actor.x, y: actor.y }));
+        for (const actor of broken) actor.die?.();
+        if (spell.delivery === 'burst') {
+            const radius = spell.radius ?? DEFAULT_BURST_RADIUS;
+            for (let dy = -radius; dy <= radius; dy++) {
+                for (let dx = -radius; dx <= radius; dx++) cleared.push({ x: caster.x + dx, y: caster.y + dy });
+            }
+        }
+        entityManager.revealDugArea(cleared);
+        this.renderer?.effectRunner?.apply('shatter', caster);
+        return broken.length;
+    },
+
+    /**
+     * Call up creatures on open tiles around the caster.
+     * `effect.summon`: true for the floor's random_actors, or an actor id or
+     * list of ids. `summon_min` / `summon_max` set how many (default 2-4).
+     * `summon_radius` is how many steps out they can appear (default: the
+     * burst radius, else 1). `summon_allied` makes them fight for the caster
+     * (getLeader in engine/actor/identity.js).
+     * @param {Actor} caster
+     * @param {Object} effect
+     * @param {Object} spell
+     * @returns {number} How many appeared
+     */
+    summonAroundCaster(caster, effect, spell) {
+        const entityManager = this.entityManager;
+        let pool;
+        if (effect.summon === true) {
+            const floorConfig = this.getFloorConfig(this.currentFloor);
+            const randomActors = floorConfig?.random_actors || this.currentPrototype?.config?.random_actors;
+            pool = Object.keys(randomActors || {});
+        } else {
+            pool = [].concat(effect.summon);
+        }
+        if (!entityManager || pool.length === 0) return 0;
+
+        const min = effect.summon_min ?? 2;
+        const max = Math.max(min, effect.summon_max ?? 4);
+        const count = min + Math.floor(ROT.RNG.getUniform() * (max - min + 1));
+        const radius = effect.summon_radius ?? (spell.delivery === 'burst' ? spell.radius ?? DEFAULT_BURST_RADIUS : 1);
+        const open = this.floodAroundCaster(caster, radius)
+            .filter(({ x, y }) => !entityManager.getSolidActorAt(x, y));
+        let spawned = 0;
+        for (const { x, y } of shuffleArray(open)) {
+            if (spawned >= count) break;
+            const actor = entityManager.spawnActor(pool[Math.floor(ROT.RNG.getUniform() * pool.length)], x, y);
+            if (!actor) continue;
+            if (effect.summon_allied) actor._summoner = caster;
+            actor.flash?.();
+            spawned++;
+        }
+        if (spawned > 0) caster.flash?.();
+        return spawned;
+    },
+
+    /**
+     * Lay `actorId` on every floor tile within `radius` steps of the caster
+     * (floodAroundCaster). A non-solid actor (glyphs) also goes under
+     * creatures, the caster included; a solid one only fills empty tiles.
+     * Tiles that already hold a live `actorId` are skipped.
+     * @param {string} actorId
+     * @param {number} radius - Steps from the caster, diagonals included
+     * @param {Actor} caster
+     * @returns {number} How many actors were placed
+     */
+    fillAroundCaster(actorId, radius, caster) {
+        const entityManager = this.entityManager;
+        const actorData = this.currentPrototype?.getActorData(actorId);
+        if (!entityManager || !actorData) return 0;
+        const underCreatures = actorData.attributes?.solid === false;
+        let placed = 0;
+        for (const { x, y } of this.floodAroundCaster(caster, radius)) {
+            if (entityManager.getSolidActorAt(x, y) && !underCreatures) continue;
+            if (entityManager.getActorsAt(x, y).some(a => a.type === actorId && !a.isDead)) continue;
+            if (entityManager.spawnActor(actorId, x, y)) placed++;
+        }
+        return placed;
+    },
+
+    /**
+     * The floor tiles within `radius` steps of the caster, diagonals included,
+     * flooding outward so the reach doesn't pass through walls. Solid things
+     * that aren't creatures stop the flood; creatures (the caster too) don't.
+     * @param {Actor} caster
+     * @param {number} radius
+     * @returns {Array<{x: number, y: number}>} Nearest first, the caster's tile included
+     */
+    floodAroundCaster(caster, radius) {
+        const entityManager = this.entityManager;
+        const key = (x, y) => x * 10000 + y;
+        const seen = new Set([key(caster.x, caster.y)]);
+        let frontier = [{ x: caster.x, y: caster.y }];
+        const tiles = [];
+        for (let step = 0; step <= radius && frontier.length; step++) {
+            const next = [];
+            for (const p of frontier) {
+                if (!caster.hasFloorAt(p.x, p.y)) continue;
+                const solid = entityManager.getSolidActorAt(p.x, p.y);
+                if (solid && !solid.hasAttribute('sentient') && !solid.hasAttribute('controlled')) continue;
+                tiles.push(p);
+                for (const d of ALL_DIRS) {
+                    const k = key(p.x + d.dx, p.y + d.dy);
+                    if (seen.has(k)) continue;
+                    seen.add(k);
+                    next.push({ x: p.x + d.dx, y: p.y + d.dy });
+                }
+            }
+            frontier = next;
+        }
+        return tiles;
+    },
+
+    /**
+     * The creatures an area spell reaches, never the caster. `affects` narrows
+     * them to "hostile" (enmity either way round, isAtOddsWith) or "allies"
+     * (everyone else); default "all". See isInSpellArea for each delivery's reach.
      * @param {Actor} caster
      * @param {Object} spell
      * @returns {Actor[]}
@@ -119,28 +264,38 @@ export const DungeonEngineSpellcasting = {
     getSpellAreaTargets(caster, spell) {
         const entityManager = this.entityManager;
         if (!entityManager) return [];
-        const radius = spell.radius ?? DEFAULT_BURST_RADIUS;
-        const playerSight = caster.isPlayerControlled?.();
-        const range = spell.range ?? (playerSight ? Infinity : DEFAULT_SIGHT_RANGE);
-
-        const inArea = other => {
-            if (spell.delivery === 'burst') {
-                return getChebyshevDistance(caster.x, caster.y, other.x, other.y) <= radius;
-            }
-            if (Math.hypot(other.x - caster.x, other.y - caster.y) > range) return false;
-            if (playerSight) return this.isTileVisible(other.x, other.y);
-            return hasLineOfSight(caster.x, caster.y, other.x, other.y, (x, y) => {
-                const blocker = entityManager.getSolidActorAt(x, y);
-                return blocker && blocker !== caster && blocker !== other;
-            });
-        };
-
         return entityManager.actors.filter(other => {
             if (other === caster || other.isDead) return false;
             if (!other.hasAttribute('sentient') && !other.hasAttribute('controlled')) return false;
-            if (spell.affects === 'hostile' && !caster.isEnemyOf(other)) return false;
-            if (spell.affects === 'allies' && caster.isEnemyOf(other)) return false;
-            return inArea(other);
+            if (spell.affects === 'hostile' && !caster.isAtOddsWith(other)) return false;
+            if (spell.affects === 'allies' && caster.isAtOddsWith(other)) return false;
+            return this.isInSpellArea(caster, spell, other.x, other.y, other);
+        });
+    },
+
+    /**
+     * Does an area spell reach tile (x, y)?
+     * `burst`: within `radius` tiles (Chebyshev, through walls, as the old radius
+     * scrolls worked). `sight`: what the player can see right now (lit and in
+     * view), or for anyone else a clear line within `range`. `level`: anywhere.
+     * @param {Actor} caster
+     * @param {Object} spell
+     * @param {number} x
+     * @param {number} y
+     * @param {Actor} [occupant] - What's being reached there; it doesn't block its own line of sight
+     */
+    isInSpellArea(caster, spell, x, y, occupant = null) {
+        if (spell.delivery === 'level') return true;
+        if (spell.delivery === 'burst') {
+            return getChebyshevDistance(caster.x, caster.y, x, y) <= (spell.radius ?? DEFAULT_BURST_RADIUS);
+        }
+        const playerSight = caster.isPlayerControlled?.();
+        const range = spell.range ?? (playerSight ? Infinity : DEFAULT_SIGHT_RANGE);
+        if (Math.hypot(x - caster.x, y - caster.y) > range) return false;
+        if (playerSight) return this.isTileVisible(x, y);
+        return hasLineOfSight(caster.x, caster.y, x, y, (bx, by) => {
+            const blocker = this.entityManager.getSolidActorAt(bx, by);
+            return blocker && blocker !== caster && blocker !== occupant;
         });
     },
 
@@ -299,7 +454,7 @@ export const DungeonEngineSpellcasting = {
      * projectile hit, or each creature an area spell reaches.
      * @param {Actor} caster
      * @param {Object} effect - clone_target, polymorph_target, target_effect, apply_state,
-     *   remove_states, teleport_target, beckon_target
+     *   remove_states, teleport_target, alert_target, beckon_target
      * @param {Actor} target
      * @param {Item|null} item
      * @param {{quiet?: boolean}} [options] - quiet: no per-creature messages (area casts summarize instead)
@@ -381,6 +536,14 @@ export const DungeonEngineSpellcasting = {
                 affected = true;
                 say(`${this._spellName(target, true)} ${target.isPlayerControlled?.() ? 'vanish' : 'vanishes'}!`);
             }
+        }
+
+        // Make a hostile target hunt the caster (scroll of aggravate monsters).
+        // Peaceful creatures ignore it, as they did when this was a scroll effect.
+        if (effect.alert_target && !target.isDead && !target.isPlayerControlled?.() && target.isHostile?.()) {
+            target._alertTarget = caster;
+            target._alerted = true;
+            affected = true;
         }
 
         // Pull the target toward the caster, tile by tile.

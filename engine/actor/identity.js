@@ -281,6 +281,7 @@ export const ActorIdentity = {
      *  - Discord overrides both: if either side is discordant (Brogue's
      *    STATUS_DISCORDANT), they are enemies regardless of faction, so the
      *    victim turns on its allies and they turn on it.
+     *  - A summoned ally (see getLeader) sides with its summoner.
      *
      * @param {Actor} other - The candidate target
      * @returns {boolean}
@@ -290,6 +291,16 @@ export const ActorIdentity = {
 
         if (this.isDiscordant() || other.isDiscordant?.()) return true;
 
+        // A summoned ally (scroll of swarming) takes its summoner's side: two
+        // creatures with the same leader are allies, and otherwise their
+        // leaders decide. Leaders have no summoner, so this can't loop.
+        const myLeader = this.getLeader();
+        const theirLeader = other.getLeader?.() ?? other;
+        if (myLeader !== this || theirLeader !== other) {
+            if (myLeader === theirLeader) return false;
+            return myLeader.isAtOddsWith(theirLeader);
+        }
+
         const myFaction = this.getFaction();
         if (myFaction) {
             // Enemy = anyone not in my faction.
@@ -298,6 +309,31 @@ export const ActorIdentity = {
 
         // No faction: only the player is an enemy (legacy behavior).
         return other.isPlayerControlled();
+    },
+
+    /**
+     * Enmity either way round. isEnemyOf only says whom this actor would
+     * attack, and the player has no faction, so player.isEnemyOf(goblin) is
+     * false even though the goblin is after the player. Spells use this to
+     * sort the caster's enemies from its allies.
+     * @param {Actor} other
+     * @returns {boolean}
+     */
+    isAtOddsWith(other) {
+        if (!other || other === this) return false;
+        return this.isEnemyOf(other) || !!other.isEnemyOf?.(this);
+    },
+
+    /**
+     * The creature this one fights for: whoever summoned it with an allied
+     * summon (`_summoner`), followed up to the original caster. Itself if it
+     * was never summoned.
+     * @returns {Actor}
+     */
+    getLeader() {
+        let leader = this;
+        for (let i = 0; i < 8 && leader._summoner; i++) leader = leader._summoner;
+        return leader;
     },
 
     /**

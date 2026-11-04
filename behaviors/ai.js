@@ -155,6 +155,39 @@ export const BehaviorsAI = {
         return actor.moveToward(nearest.x, nearest.y);
     },
 
+    /**
+     * A summoned ally's AI (scroll of swarming): bite an adjacent enemy, else
+     * close on the nearest visible one, else keep near the summoner. Enemies
+     * are whoever its summoner is at odds with (isEnemyOf follows getLeader).
+     * The summoner link isn't saved, so a summon left without a living one
+     * (after a reload, or its caster died) just vanishes.
+     */
+    serve_summoner: (actor) => {
+        const summoner = actor._summoner;
+        if (!summoner || summoner.isDead) {
+            actor.die();
+            return true;
+        }
+        if (BehaviorLibrary.attack_adjacent(actor)) return true;
+
+        let nearest = null;
+        let nearestDist = Infinity;
+        for (const other of actor.engine.entityManager.actors) {
+            if (other === actor || other.isDead || other.stats?.health === undefined) continue;
+            if (!actor.isEnemyOf(other) || !actor.canSeeTarget(other)) continue;
+            const dist = getChebyshevDistance(actor.x, actor.y, other.x, other.y);
+            if (dist < nearestDist) {
+                nearest = other;
+                nearestDist = dist;
+            }
+        }
+        if (nearest) return actor.moveToward(nearest.x, nearest.y);
+        if (getChebyshevDistance(actor.x, actor.y, summoner.x, summoner.y) > 2) {
+            return actor.moveToward(summoner.x, summoner.y);
+        }
+        return false;
+    },
+
     patrol: (actor, data) => {
         if (actor._homeX === undefined) {
             actor._homeX = actor.x;

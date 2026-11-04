@@ -102,10 +102,14 @@ function castAreaWhenUseful(actor, spell, { range, cooldown, counterKey }) {
     // A monster's sight reaches as far as its spell range.
     if (spell.delivery === 'sight') spell = { ...spell, range };
     const targets = engine.getSpellAreaTargets(actor, spell);
+    const enemyInSight = () => engine.getSpellAreaTargets(actor, { delivery: 'sight', range })
+        .some(other => actor.isAtOddsWith(other));
+    // Summoning, filling or shattering changes the ground, not who's in reach:
+    // worth casting whenever an enemy is in sight.
+    const worksOnGround = ['summon', 'fill', 'shatter'].some(key => spell.effect?.[key]);
     const useful = spell.affects === 'allies'
-        ? targets.length > 0 && engine.getSpellAreaTargets(actor, { delivery: 'sight', range })
-            .some(other => actor.isEnemyOf(other))
-        : targets.some(other => actor.isEnemyOf(other));
+        ? targets.length > 0 && enemyInSight()
+        : targets.some(other => actor.isAtOddsWith(other)) || (worksOnGround && enemyInSight());
     if (!useful) return false;
 
     engine.castSpell({ caster: actor, spell });
@@ -565,8 +569,9 @@ export const BehaviorsSpecial = {
      * Cast any spell from spells.json at the nearest enemy in range and in sight:
      * a projectile lands its effect on them (fireball, poison, slowness...), a
      * bolt strikes along the line. Spells that act on the caster still aim at the
-     * enemy, so blinking blinks toward them. Area spells (burst, sight) go off
-     * around the caster when an enemy is in reach (see castAreaWhenUseful).
+     * enemy, so blinking blinks toward them. Area spells (burst, sight, level) go off
+     * when an enemy is in reach, or in sight if they summon, fill or shatter
+     * (see castAreaWhenUseful).
      * Personality data: spell (required),
      * spell_range (default: the spell's range, else attack_range, else 8),
      * spell_cooldown (turns between casts, default 4).

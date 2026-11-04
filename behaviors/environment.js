@@ -485,7 +485,7 @@ export const BehaviorsEnvironment = {
     expire: (actor) => {
         if (actor._turnsLeft === undefined) actor._turnsLeft = actor.lifetime ?? 10;
         if (--actor._turnsLeft > 0) return false;
-        actor.die();
+        actor.expire();
         return true;
     },
 
@@ -500,7 +500,7 @@ export const BehaviorsEnvironment = {
         if (actor.cloudLifetime <= 0) {
             // Counter decrement now lives in Actor.die() (the common death path),
             // so it fires for every way a counted cloud can die, not just here.
-            actor.die();
+            actor.expire();
             return true;
         }
 
@@ -1195,7 +1195,7 @@ export const BehaviorsEnvironment = {
         actor.fireLifetime--;
 
         if (actor.fireLifetime <= 0) {
-            actor.die();
+            actor.expire();
             return true;
         }
 

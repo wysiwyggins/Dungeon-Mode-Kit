@@ -123,7 +123,7 @@
 // ---- Behavior definitions ----
 
 const BEHAVIOR_CATEGORIES = [
-    { name: 'Combat', behaviors: ['attack_adjacent', 'ranged_attack', 'shoot_at_target', 'bolt_attack', 'cast_spell', 'spray_web', 'pickpocket_adjacent', 'defend_self'] },
+    { name: 'Combat', behaviors: ['attack_adjacent', 'ranged_attack', 'shoot_at_target', 'bolt_attack', 'cast_spell', 'spray_web', 'pickpocket_adjacent', 'defend_self', 'serve_summoner'] },
     { name: 'Movement', behaviors: ['random_walk', 'pursue_target', 'maintain_distance', 'blink_away', 'flee_from_danger', 'flee_with_loot', 'wander_to_wall', 'requires_liquid', 'explore', 'avoid_crowding'] },
     { name: 'Patrol / Guard', behaviors: ['patrol', 'guard_area', 'pursue_intruders', 'follow_thread', 'ambush', 'hunt'] },
     { name: 'Chain Creatures', behaviors: ['chain_head_ai', 'chain_body_follow', 'chain_scatter'] },
@@ -137,7 +137,7 @@ const BEHAVIOR_CATEGORIES = [
     { name: 'Special', behaviors: [
         'summon_actor', 'heal_ally', 'seek_item', 'mine_nearby_wall',
         'apply_aura', 'horizontal_bounce', 'vertical_bounce',
-        'countdown', 'countdown_display', 'clock_tick', 'toggle_and_propagate'
+        'countdown', 'countdown_display', 'clock_tick', 'toggle_and_propagate', 'expire'
     ]}
 ];
 
@@ -145,6 +145,8 @@ const ALL_BEHAVIORS = BEHAVIOR_CATEGORIES.flatMap(c => c.behaviors);
 
 const BEHAVIOR_HINTS = {
     attack_adjacent: 'Attack an adjacent hostile target',
+    serve_summoner: 'Summoned ally: fight the summoner\'s enemies, else stay near them; vanish without a summoner',
+    expire: 'Remove the actor once its lifetime (turns, default 10) runs out',
     ranged_attack: 'Fire a projectile at a visible target',
     shoot_at_target: 'Stationary ranged attack (turret-style)',
     bolt_attack: 'Fire a lightning bolt at a target',
