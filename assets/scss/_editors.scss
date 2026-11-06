@@ -793,6 +793,16 @@ body.editor {
     }
 
 
+    // Workspace controls (scripts/proto-workspace.js). The wrapper span exists
+    // for JS; display: contents keeps its children in the header's flex gap.
+    &.prototype-editor header {
+        .workspace-controls { display: contents; }
+        button:disabled, select:disabled {
+            opacity: 0.4;
+            pointer-events: none; // no hover highlight on a dead control
+        }
+    }
+
     &.prototype-editor,
     &.biome-editor {
         $compact-label-w: 92px; 

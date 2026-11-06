@@ -7,12 +7,12 @@
     "cutscene_test",
     "default",
     "dungeon",
-    "infrastructure",
+    "hallucination_test",
     "labyrinth",
     "mine",
     "morass",
     "pac",
-    "hallucination_test",
+    "plate_puzzle",
     "sewer",
     "test"
   ]

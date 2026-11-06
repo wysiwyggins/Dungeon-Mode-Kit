@@ -3,8 +3,8 @@
    -------------------------------------------------------------------------
    Extracted from prototype-editor.html. These files are plain <script> src
    includes (no bundler) and share one global scope; load order matters:
-   proto-state -> proto-widgets -> biome-sections -> proto-sections ->
-   proto-render. The final file calls init(). Do not wrap in IIFEs — cross-file
+   workspace -> proto-state -> proto-widgets -> biome-sections ->
+   proto-sections -> proto-workspace -> proto-render. The final file calls init(). Do not wrap in IIFEs — cross-file
    references rely on the shared top-level scope.
    ========================================================================= */
 "use strict";
@@ -42,8 +42,9 @@ function updateJSONOutput() {
         + (isFloor() ? ' — editing Floor ' + state.activeFloor : ' — editing prototype defaults');
 }
 
-// Called on every model mutation. Keeps JSON output live without a full re-render.
-function commit() { updateJSONOutput(); }
+// Called on every model mutation. Keeps JSON output live without a full re-render,
+// and autosaves prototype.json to the open workspace (proto-workspace.js).
+function commit() { updateJSONOutput(); scheduleSave(); }
 
 /* Copy the serialized prototype to the clipboard.
    The execCommand fallback (used outside a secure context, where
@@ -91,26 +92,7 @@ async function init() {
     // TilePicker.load() pulls the spritesheet for the default_floor tile picker.
     await Promise.all([loadBaseData(), TilePicker.load()]);
     initRefFields();
-    populatePrototypeSelect();
-    document.getElementById('prototype-select').addEventListener('change', async (e) => {
-        const name = e.target.value;
-        document.getElementById('load-status').textContent = name ? 'loading ' + name + '…' : '';
-        await loadPrototype(name);
-        document.getElementById('load-status').textContent = name ? 'loaded ' + name : '';
-    });
-    document.getElementById('btn-blank').addEventListener('click', async () => {
-        document.getElementById('prototype-select').value = '';
-        await loadPrototype('');
-        document.getElementById('load-status').textContent = 'new blank prototype';
-    });
-    // "Export" used to just select the JSON textarea so you could hit Cmd-C, but the
-    // JSON panel is display:none now — selecting inside a hidden element does
-    // nothing. Both buttons therefore copy; Export keeps its name for muscle memory.
-    document.getElementById('btn-export').addEventListener('click', () => {
-        if (!state.proto) return;
-        updateJSONOutput();
-        copyProtoJSON('exported to clipboard');
-    });
+    // Clipboard copy stays as a fallback for pasting into a repo prototype by hand.
     document.getElementById('btn-copy').addEventListener('click', () => {
         if (!state.proto) return;
         copyProtoJSON('copied to clipboard');
@@ -133,6 +115,8 @@ async function init() {
             localStorage.setItem('protoEditorJsonHidden', hidden ? '1' : '0');
         });
     }
+
+    await initWorkspaceUI();
 }
 
 init();

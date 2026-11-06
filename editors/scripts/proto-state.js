@@ -3,8 +3,8 @@
    -------------------------------------------------------------------------
    Extracted from prototype-editor.html. These files are plain <script> src
    includes (no bundler) and share one global scope; load order matters:
-   editor-constants -> proto-state -> proto-widgets -> biome-sections ->
-   proto-sections -> proto-render. The final file calls init(). Do not wrap in
+   editor-constants -> workspace -> proto-state -> proto-widgets ->
+   biome-sections -> proto-sections -> proto-workspace -> proto-render. The final file calls init(). Do not wrap in
    IIFEs — cross-file references rely on the shared top-level scope.
 
    Shared engine vocabulary (CATEGORY_KEYS, GEN_TYPES, DECORATION_PATTERNS)
@@ -28,12 +28,12 @@ const state = {
     mergedEntityIds: [],  // sorted ids for the decorations dropdown
     baseBiomes: {},       // data/biomes.json — the default library
     protoBiomes: {},      // prototypes/<name>/biomes.json — this prototype's own
-    protoName: '',        // directory name of the loaded prototype ('' when blank)
-    prototypeNames: [],   // from data/prototypes.json (no directory listing over http)
+    protoName: '',        // name of the open workspace = the prototype's folder name ('' when none)
+    savedText: '',        // serialized prototype.json as last read/written (dirty check)
+    prototypeNames: [],   // server prototypes, from data/prototypes.json (no directory listing over http)
     soundIds: [],
     poolItemIds: new Set(),// item ids that have random_type (category pools)
     activeFloor: 'proto', // 'proto' or a 1-based floor number (see currentTarget)
-    prototypeCache: {},
 };
 
 /* =========================================================================
@@ -74,33 +74,66 @@ async function loadBaseData() {
     state.tileNames = Object.keys(state.tileMap).sort();
 }
 
-async function loadPrototype(name) {
-    let cfg, protoActors, protoItems, protoBiomes;
-    if (name && state.prototypeCache[name]) {
-        ({ cfg, protoActors, protoItems, protoBiomes } = state.prototypeCache[name]);
-    } else if (name) {
-        [cfg, protoActors, protoItems, protoBiomes] = await Promise.all([
-            fetchJSON(`../prototypes/${name}/prototype.json`),
-            fetchJSON(`../prototypes/${name}/actors.json`),
-            fetchJSON(`../prototypes/${name}/items.json`),
-            fetchJSON(`../prototypes/${name}/biomes.json`),
-        ]);
-        state.prototypeCache[name] = { cfg, protoActors, protoItems, protoBiomes };
-    } else {
-        cfg = blankPrototype();
-        protoActors = {}; protoItems = {}; protoBiomes = {};
+/* Open workspace `name` (see scripts/workspace.js) and load its prototype into
+   the editor. prototype.json is this editor's to write; actors/items/biomes are
+   read for the dropdowns. An empty name closes the workspace and shows the
+   empty hint. */
+async function loadWorkspace(name) {
+    if (!name) {
+        Workspace.close();
+        Workspace.setCurrent('');
+        state.proto = null;
+        state.protoName = '';
+        state.savedText = '';
+        state.protoActors = {}; state.protoItems = {}; state.protoBiomes = {};
+        rebuildMergedIds();
+        showEmptyHint(true);
+        return;
     }
-    // deep-clone cfg so editing never mutates the cache
-    state.proto = JSON.parse(JSON.stringify(cfg));
+    await Workspace.open(name);
+    const [cfg, protoActors, protoItems, protoBiomes] = await Promise.all([
+        Workspace.readJSON('prototype.json', null),
+        Workspace.readJSON('actors.json'),
+        Workspace.readJSON('items.json'),
+        Workspace.readJSON('biomes.json'),
+    ]);
+    state.proto = cfg || blankPrototype();
     state.protoActors = protoActors;
     state.protoItems = protoItems;
-    state.protoBiomes = protoBiomes || {};
-    state.protoName = name || '';
+    state.protoBiomes = protoBiomes;
+    state.protoName = name;
     rebuildMergedIds();
     state.activeFloor = 'proto';
-    document.getElementById('empty-hint').classList.add('hidden');
-    document.getElementById('form-sections').classList.remove('hidden');
+    showEmptyHint(false);
     render();
+    // Opening must not write: only a later edit (serialized text differs) saves.
+    // Taken after render() in case a section normalizes the model while building.
+    state.savedText = cfg ? JSON.stringify(serialize(), null, 2) : '';
+}
+
+/* Re-read the shared files another editor may have changed, keeping the form
+   where it is. */
+async function reloadWorkspaceData() {
+    if (!state.protoName) return;
+    const [protoActors, protoItems, protoBiomes] = await Promise.all([
+        Workspace.readJSON('actors.json'),
+        Workspace.readJSON('items.json'),
+        Workspace.readJSON('biomes.json'),
+    ]);
+    Object.assign(state, { protoActors, protoItems, protoBiomes });
+    rebuildMergedIds();
+    render();
+}
+
+function showEmptyHint(show) {
+    document.getElementById('empty-hint').classList.toggle('hidden', !show);
+    document.getElementById('form-sections').classList.toggle('hidden', show);
+    if (show) {
+        document.getElementById('form-sections').replaceChildren();
+        document.getElementById('floor-tabs').replaceChildren();
+        document.getElementById('json-output').value = '';
+        document.getElementById('output-key').textContent = '';
+    }
 }
 
 function rebuildMergedIds() {
@@ -122,7 +155,7 @@ function rebuildMergedIds() {
     state.mergedEntityIds = Object.keys(state.baseEntities || {}).sort();
 }
 
-/* Fill a <select> with the prototype names from data/prototypes.json, preserving
+/* Fill a <select> with the server prototype names from data/prototypes.json, preserving
    whatever placeholder option the markup already has. Static HTTP can't list a
    directory, so that file is the index — the alternative was a hardcoded <option>
    list per editor, which had already drifted out of sync in all four of them. */

@@ -12,15 +12,24 @@
 
 <header>
     <h1>Prototype Editor</h1>
-    <!-- Options are filled from data/prototypes.json at init; see populatePrototypeSelect(). -->
-    <label>Prototype:
-        <select id="prototype-select">
-            <option value="" selected>— choose —</option>
+    <!-- Workspaces live in browser storage (OPFS); see scripts/workspace.js and
+         docs/EDITOR_WORKSPACE.md. Server prototypes come from data/prototypes.json. -->
+    <span id="workspace-controls" class="workspace-controls">
+        <label>Workspace:
+            <select id="workspace-select">
+                <option value="" selected>— none —</option>
+            </select>
+        </label>
+        <button id="btn-new-ws" title="Start a new blank prototype">New</button>
+        <select id="server-select" title="Copy a prototype from the server's prototypes/ folder into a new workspace">
+            <option value="" selected>Copy from server…</option>
         </select>
-    </label>
-    <button id="btn-blank">New Blank</button>
-    <button id="btn-export" class="btn-accent">Export JSON</button>
-    <button id="btn-copy" class="btn-accent">Copy to Clipboard</button>
+        <button id="btn-import-zip" title="Open a zip downloaded earlier">Import zip…</button>
+        <input type="file" id="zip-input" accept=".zip,application/zip" hidden>
+        <button id="btn-export-zip" class="btn-accent" title="Download this workspace as a zip that unzips into prototypes/" disabled>Download zip</button>
+        <button id="btn-delete-ws" title="Delete this workspace from browser storage" disabled>Delete</button>
+    </span>
+    <button id="btn-copy" title="Copy prototype.json to the clipboard" disabled>Copy JSON</button>
     <!-- <button id="btn-toggle-json" title="Show or hide the live JSON output panel">Hide JSON</button> -->
     <span id="load-status" class="status-text"></span>
 </header>
@@ -30,7 +39,7 @@
     <div class="floor-tabs" id="floor-tabs"></div>
     <div id="proto-main" class="proto-main">
       <div id="form-panel" class="form-panel">
-        <div class="empty-hint" id="empty-hint">Choose a prototype above (or “New Blank”) to begin editing.</div>
+        <div class="empty-hint" id="empty-hint">Pick a workspace above, or start one: New, Copy from server, or Import zip. Workspaces are saved in this browser; Download zip is your real save.</div>
         <div id="form-sections" class="hidden form-sections"></div>
       </div>
     </div>
@@ -135,10 +144,13 @@
 <script src="scripts/tile-picker.js"></script>
 <script src="scripts/ref-fields.js"></script>
 <script src="scripts/editor-constants.js"></script>
+<script src="../lib/fflate.min.js"></script>
+<script src="scripts/workspace.js"></script>
 <script src="scripts/proto-state.js"></script>
 <script src="scripts/proto-widgets.js"></script>
 <script src="scripts/biome-sections.js"></script>
 <script src="scripts/proto-sections.js"></script>
+<script src="scripts/proto-workspace.js"></script>
 <script src="scripts/proto-render.js"></script>
 </body>
 </html>
