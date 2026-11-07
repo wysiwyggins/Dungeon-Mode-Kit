@@ -15,6 +15,10 @@ import { writeSavedGame, removeSavedGame } from '../../core/saved-games.js';
 
 const SNAPSHOT_VERSION = 1;
 
+// How long after the player's last turn to save. Saving at a pause, not every
+// turn, keeps a held-down move key from writing the whole run over and over.
+const TURN_SAVE_DELAY_MS = 1000;
+
 export const DungeonEngineSavedGames = {
     /** Whether the game is in a state worth saving: mid-play, player alive. */
     canSave() {
@@ -46,27 +50,58 @@ export const DungeonEngineSavedGames = {
     },
 
     /**
-     * Write the saved game, if there's a game to save. Called on floor and
-     * prototype changes and when the page is hidden. The snapshot is taken now;
-     * only the write happens later.
+     * Save shortly after the player's turn (Actor.act). Each turn pushes the
+     * save back, so it lands once the player pauses. Closing a tab can't be
+     * relied on to finish a write, so this is what keeps the save current.
      */
-    autosave() {
-        if (!this.canSave()) return Promise.resolve(false);
+    scheduleAutosave() {
+        clearTimeout(this._autosaveTimer);
+        this._autosaveTimer = setTimeout(() => this.autosave(), TURN_SAVE_DELAY_MS);
+    },
+
+    /**
+     * Write the saved game now, if there's a game to save. Called on floor and
+     * prototype changes, after the player's turns, and when the page is hidden.
+     * Writes are queued: two at once on the same file would fail, so a save
+     * asked for during a write runs after it, with the state as it is then.
+     */
+    async autosave() {
+        clearTimeout(this._autosaveTimer);
+        if (this._saveInFlight) {
+            this._saveQueued = true;
+            return this._saveInFlight;
+        }
+        if (!this.canSave()) return false;
         let snapshot;
         try {
             snapshot = this.buildSnapshot();
         } catch (e) {
             console.warn('Saved game: snapshot failed', e);
-            return Promise.resolve(false);
+            return false;
         }
-        return writeSavedGame(this.saveKey, snapshot);
+        this._saveInFlight = writeSavedGame(this.saveKey, snapshot);
+        const written = await this._saveInFlight;
+        this._saveInFlight = null;
+        if (written && !this._loggedFirstSave) {
+            this._loggedFirstSave = true;
+            console.log(`Saved game "${this.saveKey}" written (floor ${snapshot.currentFloor}); it updates as you play.`);
+        }
+        if (this._saveQueued) {
+            this._saveQueued = false;
+            return this.autosave();
+        }
+        return written;
     },
 
     /** Death or a win: the run is over, so its save goes. */
     endRun() {
         if (this.runEnded) return;
         this.runEnded = true;
-        if (this.saveKey) removeSavedGame(this.saveKey);
+        clearTimeout(this._autosaveTimer);
+        if (this.saveKey) {
+            console.log(`Run over: saved game "${this.saveKey}" deleted.`);
+            removeSavedGame(this.saveKey);
+        }
     },
 
     /**

@@ -910,6 +910,8 @@ export class Actor extends Entity {
         this._turnCount = (this._turnCount || 0) + 1;
 
         if (this.isPlayerControlled()) this.engine.closePendingConditionLocks();
+        // Keep the saved game current (engine/dungeon-engine/saved-games.js).
+        if (this === this.engine.entityManager?.player) this.engine.scheduleAutosave?.();
 
         // Viewport AI margin: skip entire turn for off-screen actors
         if (this.engine.viewportEnabled && !this.isPlayerControlled()) {

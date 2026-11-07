@@ -482,6 +482,11 @@ export const DungeonEngineFloors = {
 
         // Viewport setup — use floor-specific mechanics (includes ambient_light, etc.)
         const mechanics = floorConfig.mechanics || prototypeConfig.mechanics || {};
+        // updateLighting reads these. loadFloor sets them too; set them here as well,
+        // or a revisited floor (and a resumed game, which has no earlier floor) lights
+        // with the wrong floor's darkness and fog of war.
+        this._floorMechanics = mechanics;
+        this.inputManager?.searchedTiles?.clear();
         const vpW = mechanics.viewport_width || null;
         const vpH = mechanics.viewport_height || null;
 

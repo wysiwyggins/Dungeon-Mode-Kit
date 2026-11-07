@@ -8,7 +8,7 @@ import { DungeonEngine } from './engine/dungeon-engine.js';
 import { Item } from './engine/item.js';
 import { Prototype } from './engine/prototype.js';
 import { isWorkspacePrototype, ensureWorkspaceServer } from './core/workspace-playtest.js';
-import { readSavedGame, removeSavedGame } from './core/saved-games.js';
+import { readSavedGame, removeSavedGame, savedGamesSupported } from './core/saved-games.js';
 
 // ============================================================================
 // INITIALIZATION
@@ -68,6 +68,12 @@ async function initializeGame() {
         engine.saveKey = firstPrototype;
         const startNew = urlParams.has('new') || !!urlSeed;
         const saved = startNew ? null : await readSavedGame(firstPrototype);
+        // Saves belong to the origin, so localhost and 127.0.0.1 (or another port) don't share them.
+        console.log(startNew
+            ? `Saved game "${firstPrototype}": starting a new run (?new or ?seed=), which replaces any save.`
+            : saved
+                ? `Saved game "${firstPrototype}" found at ${location.origin}: floor ${saved.currentFloor}, saved ${saved.savedAt}.`
+                : `No saved game "${firstPrototype}" at ${location.origin}${savedGamesSupported() ? '' : ' (this page can\'t use browser storage)'}.`);
         let resumed = false;
         if (saved && await askToContinue(gameContainer, saved)) {
             try {
