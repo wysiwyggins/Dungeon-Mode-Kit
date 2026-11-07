@@ -45,6 +45,7 @@ export class InterfaceManager {
         this.defaultBorderTint = 0x000000;
         this.defaultTextTint = 0x000000;
         this.warningFillColor = 0xEB8A90;
+        this.primaryOptionFillColor = 0x9CCFC4; // Behind a dialog's primary (default) choice
         this.inactiveTintColor = 0x999999;
         this.inactiveTintAlpha = 0.35;
         this.listStripeColor = 0xF0F0F0; // Subtle light gray for zebra-striping list rows
@@ -57,7 +58,7 @@ export class InterfaceManager {
         this.selectedItemIndex = null; // Currently selected item index (for action menu)
 
         // Confirmation dialog state
-        this.confirmDialog = null; // { message, onConfirm, onCancel }
+        this.confirmDialog = null; // { message, onConfirm, onCancel, primary }
 
         // Throw aiming mode state
         this.throwAimingMode = false;

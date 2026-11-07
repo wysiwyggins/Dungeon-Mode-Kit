@@ -95,16 +95,20 @@ export const DungeonEngineSavedGames = {
 
     /**
      * After resuming, ask (in the game's own dialog, over the resumed floor)
-     * whether to start over instead. The dialog takes any key but Y as No, so
-     * it asks about starting over: a stray keypress keeps the saved game.
+     * whether to continue. Continue is the primary choice: C or Enter keeps the
+     * saved game, and only N or Escape starts a new one.
      * @param {string} prototypeName - the prototype to start a new run of
+     * @param {string} [savedAt] - ISO time the save was written
      */
-    offerNewRun(prototypeName) {
+    offerNewRun(prototypeName, savedAt) {
+        const when = new Date(savedAt);
+        const date = isNaN(when) ? '' : when.toLocaleString(undefined,
+            { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + ' ';
         this.interfaceManager?.showConfirmDialog(
-            'Start a new game instead of continuing this one?',
-            () => this.startNewRun(prototypeName),
+            `Continue ${date}save or New game?`,
             null,
-            { fillColor: this.interfaceManager.warningFillColor }
+            () => this.startNewRun(prototypeName),
+            { primary: 'yes', labels: { yes: '(C)ontinue', no: '(N)ew' } }
         );
     },
 

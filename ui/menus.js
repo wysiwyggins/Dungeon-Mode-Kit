@@ -493,6 +493,16 @@ export const UIMenus = {
      * @param {string} message - The question to display
      * @param {function} onConfirm - Callback when user confirms (Y)
      * @param {function} onCancel - Callback when user cancels (N/Escape)
+     * @param {Object} [options]
+     * @param {number} [options.fillColor] - Box background
+     * @param {'yes'|'no'} [options.primary] - The default choice: drawn on a
+     *   contrasting background and chosen by Enter. Without one, any key but the
+     *   yes key is No (the safe answer to a hazard warning). With one, only the
+     *   two choice keys, Escape and Enter answer, so a stray key can't pick the
+     *   other choice.
+     * @param {{yes: string, no: string}} [options.labels] - The two choices as
+     *   shown, each with its key letter in parentheses (default '(Y)es' and
+     *   '(N)o'). That letter is the key that picks it.
      */
     showConfirmDialog(message, onConfirm, onCancel, options = {}) {
         // Remove any existing confirm dialog
@@ -501,7 +511,14 @@ export const UIMenus = {
         this.clearTargetingHighlights();
 
         // Store callbacks
-        this.confirmDialog = { message, onConfirm, onCancel };
+        const labels = { yes: '(Y)es', no: '(N)o', ...options.labels };
+        const keyOf = label => (/\((\w)\)/.exec(label)?.[1] || '').toLowerCase();
+        this.confirmDialog = {
+            message, onConfirm, onCancel,
+            primary: options.primary ?? null,
+            yesKey: keyOf(labels.yes),
+            noKey: keyOf(labels.no),
+        };
 
         // Build dialog lines
         const lines = [];
@@ -512,7 +529,8 @@ export const UIMenus = {
             lines.push(line);
         }
         lines.push('');
-        lines.push('  (Y)es  /  (N)o');
+        const choiceLine = `  ${labels.yes}  /  ${labels.no}`;
+        lines.push(choiceLine);
 
         // Calculate dimensions
         const padding = 1;
@@ -539,10 +557,27 @@ export const UIMenus = {
         // Store click metadata
         boxContainer._padding = padding;
         boxContainer._confirmYNLine = lines.length - 1;
+        boxContainer._confirmSplitCol = choiceLine.indexOf('/');   // left of it is yes, right is no
 
         // Add text sprites
         const textStartX = (padding + 1) * TILE_WIDTH;
         const textStartY = (padding + 1) * TILE_HEIGHT;
+
+        // The primary choice sits on its own background, under its text.
+        if (options.primary) {
+            const label = labels[options.primary];
+            const col = options.primary === 'yes' ? choiceLine.indexOf(label) : choiceLine.lastIndexOf(label);
+            const highlight = new PIXI.Graphics();
+            highlight.beginFill(this.primaryOptionFillColor);
+            highlight.drawRect(
+                textStartX + (col - 1) * TILE_WIDTH,
+                textStartY + (lines.length - 1) * TILE_HEIGHT,
+                (label.length + 2) * TILE_WIDTH,
+                TILE_HEIGHT
+            );
+            highlight.endFill();
+            boxContainer.addChild(highlight);
+        }
 
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
             const charY = textStartY + (lineIndex * TILE_HEIGHT);
@@ -569,10 +604,18 @@ export const UIMenus = {
     handleConfirmKey(key) {
         if (!this.confirmDialog) return false;
 
-        if (key === 'y' || key === 'Y') {
+        const { primary, yesKey, noKey } = this.confirmDialog;
+        const pressed = key.toLowerCase();
+        if (pressed === yesKey || (key === 'Enter' && primary === 'yes')) {
             const onConfirm = this.confirmDialog.onConfirm;
             this.closeConfirmDialog();
             if (onConfirm) onConfirm();
+            return true;
+        }
+
+        // With a primary choice, No has to be asked for: its key, Escape, or Enter
+        // when No is the primary. Anything else is swallowed.
+        if (primary && pressed !== noKey && key !== 'Escape' && !(key === 'Enter' && primary === 'no')) {
             return true;
         }
 
@@ -774,10 +817,9 @@ export const UIMenus = {
     _handleConfirmClick(box, contentLine, contentCol) {
         if (!this.confirmDialog) return;
 
-        // The Y/N line: "  (Y)es  /  (N)o"
-        // "/" separator is at column 9; left = Yes, right = No
+        // The choice line, e.g. "  (Y)es  /  (N)o": left of the "/" is yes, right is no.
         if (contentLine === box._confirmYNLine) {
-            if (contentCol <= 8) {
+            if (contentCol < box._confirmSplitCol) {
                 const onConfirm = this.confirmDialog.onConfirm;
                 this.closeConfirmDialog();
                 if (onConfirm) onConfirm();

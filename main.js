@@ -79,7 +79,7 @@ async function initializeGame() {
             try {
                 await engine.resumeGame(saved);
                 resumed = true;
-                engine.offerNewRun(firstPrototype);
+                engine.offerNewRun(firstPrototype, saved.savedAt);
             } catch (e) {
                 // A save from an older version of the prototype's data, say. It
                 // can't be fixed, so drop it and say so rather than failing every load.
