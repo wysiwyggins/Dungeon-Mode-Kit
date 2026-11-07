@@ -306,6 +306,7 @@ export const DungeonEngineFloors = {
             }
 
             this.updateInfoDisplay();
+            this.autosave();
         };
 
         console.log(`Floor ${floor} loaded successfully`);
@@ -584,7 +585,7 @@ export const DungeonEngineFloors = {
         this.initializeTurnEngine();
 
         this.inputManager?.clearMessageStack();
-        this.inputManager?.showMessage(`Floor ${floor}`);
+        this.inputManager?.showMessage(entryDirection === 'resume' ? 'You continue where you left off.' : `Floor ${floor}`);
 
         this.updateInfoDisplay();
         console.log(`Floor ${floor} restored from saved state`);
@@ -607,7 +608,8 @@ export const DungeonEngineFloors = {
     /**
      * Restore the player on a floor at the appropriate stairway position
      * @param {Object} playerState - Serialized player data
-     * @param {string} entryDirection - 'from_above' or 'from_below'
+     * @param {string} entryDirection - 'from_above', 'from_below', 'from_fall', or
+     *   'resume' (a saved game: the player goes back where they stood)
      */
     restorePlayerOnFloor(playerState, entryDirection) {
         const playerData = this.currentPrototype.getActorData('player');
@@ -623,7 +625,10 @@ export const DungeonEngineFloors = {
 
         let spawnX, spawnY;
 
-        if (entryDirection === 'from_fall') {
+        if (entryDirection === 'resume') {
+            spawnX = playerState.x;
+            spawnY = playerState.y;
+        } else if (entryDirection === 'from_fall') {
             const walkableTiles = this.mapManager.walkableTiles;
             const available = walkableTiles.filter(t => !this.entityManager.getActorAt(t.x, t.y));
             const tile = available.length > 0

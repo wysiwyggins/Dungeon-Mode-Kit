@@ -150,8 +150,31 @@ All three are cleared on a full prototype change, prototype transition, or engin
 | `overlayMap` | Tiles drawn above the rest |
 | `walkableTiles` | Array of walkable tile positions |
 
+## Saved Games
+
+Each prototype has one saved game, kept in the browser's file storage (OPFS) at `dmk/saves/<prototype>.json` by `core/saved-games.js`. The key is the prototype the page launched, so an editor workspace playtest (`ws~<name>`) has its own save. Saves need https or localhost; without storage the game plays as before, with no save.
+
+These are permadeath games, so there are no slots and no manual saving:
+
+- The game saves when gameplay starts on a floor (including after the splash), after every floor change and fall, after returning to a previous prototype, and when the page is hidden or closed.
+- When the player dies or the game is won, the save is deleted (`endRun()`), and nothing more is saved.
+- On load, if there's a save, the page asks whether to Continue (Enter or C) or start a New game (N). `?new` or `?seed=` in the URL skips the question and starts a new run, which replaces the save. The editors' Playtest link uses `?new`.
+- A save that can't be resumed, for example because its prototype is gone, is deleted, and the player is told before a new game starts.
+
+`buildSnapshot()` (in `engine/dungeon-engine/saved-games.js`) holds:
+
+| Field | Contents |
+|-------|----------|
+| `prototype`, `currentFloor`, `seed` | Where the run is |
+| `player` | `Actor.serialize()` of the player, including position |
+| `floors` | Every visited floor's `snapshotFloor()`, the current one included (entities, map, exploration, RNG state) |
+| `pendingFallenActors`, `pendingFallenItems`, `pendingStairFollowers` | Entities in transit between floors |
+| `sealedDownFloors`, `mappedFloors` | Per-floor run flags |
+| `prototypeStack` | The prototypes to return to, as `saveGameState()` snapshots |
+| `prototypeRun` | `Prototype.serializeRunState()`: identified types, the random colors, materials and glyph names of unidentified types, lock colors, and the item catalog |
+
+`resumeGame(snapshot)` loads the prototype's data, puts all of that back, and restores the current floor with `restoreFloor(floor, player, 'resume')`, which places the player where they stood instead of at a stairway. AI memory (who was hunting whom) isn't saved, the same as on a floor change.
+
 ## Not Yet Implemented
 
 - State compression and URL export (`?state=` parameter)
-- localStorage save slots
-- Save/load UI and hotkeys

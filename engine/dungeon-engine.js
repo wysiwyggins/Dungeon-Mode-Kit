@@ -11,6 +11,7 @@ import { BASE_PATH, SPRITESHEET_PATH, TILE_HEIGHT, TILE_WIDTH, buildWordRegistry
 import { DungeonEngineFloors } from './dungeon-engine/floors.js';
 import { DungeonEnginePersistence } from './dungeon-engine/persistence.js';
 import { DungeonEngineProgression } from './dungeon-engine/progression.js';
+import { DungeonEngineSavedGames } from './dungeon-engine/saved-games.js';
 import { DungeonEngineSpellcasting } from './dungeon-engine/spellcasting.js';
 import { DungeonEngineStairways } from './dungeon-engine/stairways.js';
 import { RenderSystem } from './render/render-system.js';
@@ -42,6 +43,8 @@ export class DungeonEngine {
         this.prototypeStack = []; // For multi-level navigation
         this.gameOver = false;
         this.gameWon = false;            // terminal game-win latch; prevents the win screen from firing twice
+        this.saveKey = null;             // the saved game this run writes (the prototype the page launched), or null for none
+        this.runEnded = false;           // death or a win: the save is deleted and nothing more is saved
 
         // Multi-floor state
         this.currentFloor = 1;           // 1-indexed
@@ -735,4 +738,4 @@ export class DungeonEngine {
 }
 
 installMethods(DungeonEngine, DungeonEngineFloors, DungeonEngineProgression, DungeonEngineStairways, DungeonEnginePersistence,
-    DungeonEngineSpellcasting);
+    DungeonEngineSpellcasting, DungeonEngineSavedGames);

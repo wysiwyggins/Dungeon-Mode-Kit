@@ -16,6 +16,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 ### Added
 
+- **Saved games.** Each prototype keeps one saved game in browser storage, written as you play and deleted when you die or win. Opening the prototype again offers to continue, while `?new`, `?seed=` and the editors' Playtest link start a new run.
 - **Biome and VFX editors save to a workspace.** Both have the same Prototype dropdown and Save to Workspace button. The biome editor saves every biome you changed at once, including renames and removals, and saves before Playtest.
 - **Save entries to a workspace.** The actor, item, spell and personality editors can open one of your workspaces from their Prototype dropdown and Save to Workspace (or Ctrl/Cmd+S) writes the entry into its file. Server prototypes stay read only, and a save in one tab refreshes the lists in the others.
 - **Playtest a workspace.** The editors' nav bar has a Playtest link that runs the open workspace in the game, in one reusable tab, after saving pending edits. A service worker (`workspace-sw.js`) serves `?prototype=ws~<name>` from browser storage, so it needs https or localhost.

@@ -171,6 +171,41 @@ export class Prototype {
     }
 
     /**
+     * The per-run choices this prototype has made: what's identified, the random
+     * looks given to unidentified item types, lock colors and the item catalog.
+     * Part of a saved game (engine/dungeon-engine/saved-games.js). Colors are
+     * saved by name and resolved back to the shared color objects on restore.
+     */
+    serializeRunState() {
+        const colorName = c => c?.color ?? null;
+        return {
+            identifiedTypes: [...this.identifiedTypes],
+            itemColors: [...this.itemColorAssignments].map(([type, c]) => [type, colorName(c)]),
+            itemMaterials: [...this.itemMaterialAssignments],
+            glyphNames: [...this.glyphNameAssignments],
+            lockColors: this.lockColors.map(colorName),
+            usedLockColors: [...this.usedLockColors],
+            unpairedLockColors: this.unpairedLockColors.map(colorName),
+            activeCatalog: [...this.activeCatalog],
+        };
+    }
+
+    restoreRunState(run) {
+        if (!run) return;
+        const colors = this.engine.globalColors || [];
+        const color = name => colors.find(c => c.color === name) || null;
+        this.identifiedTypes = new Set(run.identifiedTypes || []);
+        this.itemColorAssignments = new Map((run.itemColors || [])
+            .map(([type, name]) => [type, color(name)]).filter(([, c]) => c));
+        this.itemMaterialAssignments = new Map(run.itemMaterials || []);
+        this.glyphNameAssignments = new Map(run.glyphNames || []);
+        this.lockColors = (run.lockColors || []).map(color).filter(Boolean);
+        this.usedLockColors = new Set(run.usedLockColors || []);
+        this.unpairedLockColors = (run.unpairedLockColors || []).map(color).filter(Boolean);
+        if (run.activeCatalog) this.activeCatalog = new Map(run.activeCatalog);
+    }
+
+    /**
      * Check if an item type has been identified in this prototype session
      */
     isTypeIdentified(itemType) {

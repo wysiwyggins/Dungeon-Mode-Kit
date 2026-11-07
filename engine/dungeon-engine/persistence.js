@@ -27,6 +27,11 @@ export const DungeonEnginePersistence = {
      * Excludes the player entity since player carries across floors
      */
     saveFloorState() {
+        this.floorStates.set(this.currentFloor, this.snapshotFloor());
+    },
+
+    /** The current floor as restoreFloor() takes it back: entities, map, exploration, RNG. */
+    snapshotFloor() {
         const entities = this.entityManager.serializeEntities();
         const map = this.mapManager.serializeMap();
         // Exclude player from saved entities (player carries across floors)
@@ -36,12 +41,12 @@ export const DungeonEnginePersistence = {
         // revisited floor re-fogs entirely, discarding both walked-over ground and a
         // magic-mapped reveal. Copy the rows; the live arrays get reused/cleared.
         const explored = this.lightingManager?.exploredMap;
-        this.floorStates.set(this.currentFloor, {
+        return {
             entities: nonPlayerEntities,
             map,
             explored: explored ? explored.map(row => row.slice()) : null,
             rngState: typeof ROT !== 'undefined' ? ROT.RNG.getState() : null
-        });
+        };
     },
 
     /**
@@ -73,6 +78,7 @@ export const DungeonEnginePersistence = {
             // Load fresh floor
             await this.loadFloor(targetFloor, entryDirection, playerState);
         }
+        this.autosave();
     },
 
     /** Whether there's a floor below this one to fall to. */
@@ -97,6 +103,8 @@ export const DungeonEnginePersistence = {
                 player.die();
             }
         }
+        // The landing already saved; save again with the fall damage taken.
+        this.autosave();
     },
 
     spawnPendingFallenActors() {

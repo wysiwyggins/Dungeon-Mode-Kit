@@ -16,6 +16,14 @@ body {
   height: auto !important;
 }
 
+// Saved-game prompt (askToContinue in main.js), shown in #game before the canvas.
+.continue-prompt {
+  padding: 16px;
+  line-height: 1.5;
+  p + p { margin-top: 8px; }
+  .continue-prompt-date { opacity: 0.7; }
+}
+
 .game-container {
  //justify-content: center;
  min-height: 280px;

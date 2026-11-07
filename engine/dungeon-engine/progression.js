@@ -34,6 +34,7 @@ export const DungeonEngineProgression = {
         this.cleanup();
         await this.loadPrototype(previous.name);
         this.restoreGameState(previous.state);
+        this.autosave();
     },
 
     /**
@@ -101,6 +102,7 @@ export const DungeonEngineProgression = {
         if (this.gameWon) return;
         this.gameWon = true;
         this.gameOver = true;
+        this.endRun();
         this.turnEngine?.lock();
         this.inputManager?.disable();
 

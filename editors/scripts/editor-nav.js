@@ -56,7 +56,8 @@ const EditorNav = (() => {
         }
         if (playtest) {
             playtest.hidden = !name;
-            playtest.href = name ? `../index.html?prototype=ws~${encodeURIComponent(name)}` : '';
+            // &new: a playtest always starts a new run, replacing any saved game.
+            playtest.href = name ? `../index.html?prototype=ws~${encodeURIComponent(name)}&new` : '';
         }
     }
 

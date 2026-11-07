@@ -1,6 +1,6 @@
 # Editor Workspaces (Plan)
 
-This is a planning document. Phases 1 to 5 (`workspace.js`, the prototype editor, editor navigation, the New dialog, playtesting, and saving from the actor, item, spell, personality, biome and VFX editors) are built; the rest is not.
+This is a planning document. Phases 1 to 6 (`workspace.js`, the prototype editor, editor navigation, the New dialog, playtesting, saving from the actor, item, spell, personality, biome and VFX editors, and saved games) are built; the rest is not.
 
 ## Goal
 
@@ -102,7 +102,7 @@ These are permadeath games, so there's one save per prototype and no save manage
 - On load, the game resumes the save if there is one.
 - On death or a win, the save is deleted.
 
-A save is a snapshot of a particular version of a prototype's data. After editing, it may refer to actors that are gone or a map that has changed. So the Playtest link starts a fresh run by default, and the game offers to continue only when you open it directly. Because this is engine code, not editor code, it's written as a small module in `core/` or `engine/` that the game page uses directly, not through `workspace.js`. Both use the same `dmk/` root. Storing a save works for any prototype, including server ones and a hosted game, not just workspaces.
+A save is a snapshot of a particular version of a prototype's data. After editing, it may refer to actors that are gone or a map that has changed. So the Playtest link adds `&new` and starts a fresh run, and the game offers to continue only when you open it directly. Because this is engine code, not editor code, it lives in `core/saved-games.js` (storage) and `engine/dungeon-engine/saved-games.js` (snapshot and resume), which the game page uses directly, not through `workspace.js`. Both use the same `dmk/` root. Storing a save works for any prototype, including server ones and a hosted game, not just workspaces. A save that can't be resumed is deleted, and the player is told before a new game starts. `docs/SAVING.md` describes what the snapshot holds.
 
 ## Zip Files
 
@@ -125,12 +125,12 @@ Each phase is usable on its own. Playtesting has moved up, because it's what mak
 3. **Done.** Service worker playtesting and the Playtest link.
 4. **Done.** The actor, item, spell and personality editors save to the workspace.
 5. **Done.** The biome and VFX editors save to the workspace.
-6. Saved games in OPFS, one per prototype, with a full engine snapshot.
+6. **Done.** Saved games in OPFS, one per prototype, with a full engine snapshot.
 7. Hosted polish, such as a workspace picker on `index.html` and a storage meter.
 
 ## Open Questions
 
-Should other data that's only in the shared library today become per-prototype? When the editors run locally, should they still be able to edit `data/`, for example as a "library" workspace written through the File System Access API in Chrome? Should a workspace name have to match the folder name it will unpack to? How should a hosted user make or replace `map.tmj`? Upload only, at first? `next_level`, `previous_level` and `intro_cutscene` name other prototypes; when playtesting `ws~<name>`, should they resolve to other workspaces or to the server's prototypes? Should Playtest use `index.html` or a dedicated `play.html`? When a saved game fails to load, for example because the prototype changed under it, should it be dropped silently or should the player be told?
+Should other data that's only in the shared library today become per-prototype? When the editors run locally, should they still be able to edit `data/`, for example as a "library" workspace written through the File System Access API in Chrome? Should a workspace name have to match the folder name it will unpack to? How should a hosted user make or replace `map.tmj`? Upload only, at first? `next_level`, `previous_level` and `intro_cutscene` name other prototypes; when playtesting `ws~<name>`, should they resolve to other workspaces or to the server's prototypes? Should Playtest use `index.html` or a dedicated `play.html`?
 
 /data/ will always be read-only by designers working on their own prototypes. I should try to reduce the amount of actors and items in /data/ and make more types instead where possible.
 A workspace name will match its folder.

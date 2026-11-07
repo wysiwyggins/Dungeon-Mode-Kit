@@ -8,6 +8,7 @@ import { DungeonEngine } from './engine/dungeon-engine.js';
 import { Item } from './engine/item.js';
 import { Prototype } from './engine/prototype.js';
 import { isWorkspacePrototype, ensureWorkspaceServer } from './core/workspace-playtest.js';
+import { readSavedGame, removeSavedGame } from './core/saved-games.js';
 
 // ============================================================================
 // INITIALIZATION
@@ -62,7 +63,32 @@ async function initializeGame() {
         // service worker, which has to control the page before anything loads.
         if (isWorkspacePrototype(firstPrototype)) await ensureWorkspaceServer();
 
-        await engine.loadPrototype(firstPrototype);
+        // One saved game per launched prototype (core/saved-games.js). ?new (the
+        // editors' Playtest link) and ?seed= start a new run, which replaces it.
+        engine.saveKey = firstPrototype;
+        const startNew = urlParams.has('new') || !!urlSeed;
+        const saved = startNew ? null : await readSavedGame(firstPrototype);
+        let resumed = false;
+        if (saved && await askToContinue(gameContainer, saved)) {
+            try {
+                await engine.resumeGame(saved);
+                resumed = true;
+            } catch (e) {
+                // A save from an older version of the prototype's data, say. It
+                // can't be fixed, so drop it and say so rather than failing every load.
+                console.error('Saved game could not be resumed:', e);
+                await removeSavedGame(firstPrototype);
+                engine.cleanup();
+                window.alert(`Your saved game couldn't be loaded (${e.message}), so a new game will start.`);
+            }
+        }
+        if (!resumed) await engine.loadPrototype(firstPrototype);
+
+        // Save when the player leaves: hiding the tab is the last reliable moment.
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') engine.autosave();
+        });
+        window.addEventListener('pagehide', () => engine.autosave());
         
         console.log('Game initialized successfully');
     } catch (error) {
@@ -78,6 +104,43 @@ async function initializeGame() {
             </div>
         `;
     }
+}
+
+/**
+ * Offer to continue a saved game. Resolves true for Continue, false for New
+ * game. Enter or C continues, N starts over.
+ */
+function askToContinue(container, saved) {
+    return new Promise(resolve => {
+        const when = new Date(saved.savedAt);
+        const floor = saved.floors?.length > 1 || saved.currentFloor > 1 ? `, floor ${saved.currentFloor}` : '';
+        const prompt = document.createElement('div');
+        prompt.className = 'continue-prompt';
+        prompt.innerHTML = `
+            <p>You have a game in progress in <strong></strong>${floor}.</p>
+            <p class="continue-prompt-date"></p>
+            <p><button data-choice="continue">Continue</button> <button data-choice="new">New game</button></p>`;
+        prompt.querySelector('strong').textContent = saved.prototypeName || saved.prototype;
+        prompt.querySelector('.continue-prompt-date').textContent =
+            isNaN(when) ? '' : `Saved ${when.toLocaleString()}`;
+        const choose = (resume) => {
+            document.removeEventListener('keydown', onKey);
+            prompt.remove();
+            resolve(resume);
+        };
+        const onKey = (e) => {
+            const key = e.key.toLowerCase();
+            if (key === 'enter' || key === 'c') { e.preventDefault(); choose(true); }
+            else if (key === 'n') { e.preventDefault(); choose(false); }
+        };
+        prompt.addEventListener('click', (e) => {
+            const choice = e.target.closest('button')?.dataset.choice;
+            if (choice) choose(choice === 'continue');
+        });
+        document.addEventListener('keydown', onKey);
+        container.appendChild(prompt);
+        prompt.querySelector('button').focus();
+    });
 }
 
 // Manual initialization - uncomment to enable auto-start

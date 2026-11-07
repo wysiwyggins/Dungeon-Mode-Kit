@@ -1258,6 +1258,8 @@ export class Actor extends Entity {
         const affectedLighting = this.hasAttribute('solid') || this.hasAttribute('light_source');
 
         this.isDead = true;
+        // Permadeath: the player's death ends the run and deletes its saved game.
+        if (this === this.engine.entityManager?.player) this.engine.endRun?.();
         this.setAttribute('solid', false);
         // Dead actors linger in entityManager.actors; drop this one from the
         // position map now so getActorsAt stops returning it.
