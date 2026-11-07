@@ -159,7 +159,7 @@ These are permadeath games, so there are no slots and no manual saving:
 - The game saves about a second after the player's last turn (so it lands whenever the player pauses), when gameplay starts on a floor, after every floor change and fall, after returning to a previous prototype, and when the page is hidden. A write started while the tab is closing usually doesn't finish, so the save made at the last pause is what keeps a closed game current. Writes are queued, since two at once on the same file would fail.
 - The console says at startup whether a save was found, and logs the first save of a session. Saves belong to the origin, so `localhost` and `127.0.0.1`, or two ports, don't share them.
 - When the player dies or the game is won, the save is deleted (`endRun()`), and nothing more is saved.
-- On load, if there's a save, the page asks whether to Continue (Enter or C) or start a New game (N). `?new` or `?seed=` in the URL skips the question and starts a new run, which replaces the save. The editors' Playtest link uses `?new`.
+- On load, if there's a save, the game resumes it and asks in its own dialog whether to start a new game instead. Only Y starts over; any other key (or No) keeps playing the saved game, so a stray keypress can't throw it away. `?new` or `?seed=` in the URL skips the question and starts a new run, which replaces the save. The editors' Playtest link uses `?new`.
 - A save that can't be resumed, for example because its prototype is gone, is deleted, and the player is told before a new game starts.
 
 `buildSnapshot()` (in `engine/dungeon-engine/saved-games.js`) holds:

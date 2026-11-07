@@ -93,6 +93,28 @@ export const DungeonEngineSavedGames = {
         return written;
     },
 
+    /**
+     * After resuming, ask (in the game's own dialog, over the resumed floor)
+     * whether to start over instead. The dialog takes any key but Y as No, so
+     * it asks about starting over: a stray keypress keeps the saved game.
+     * @param {string} prototypeName - the prototype to start a new run of
+     */
+    offerNewRun(prototypeName) {
+        this.interfaceManager?.showConfirmDialog(
+            'Start a new game instead of continuing this one?',
+            () => this.startNewRun(prototypeName),
+            null,
+            { fillColor: this.interfaceManager.warningFillColor }
+        );
+    },
+
+    /** Drop the current run and start the prototype afresh; its first save replaces the old one. */
+    async startNewRun(prototypeName) {
+        clearTimeout(this._autosaveTimer);
+        this.cleanup();
+        await this.loadPrototype(prototypeName);
+    },
+
     /** Death or a win: the run is over, so its save goes. */
     endRun() {
         if (this.runEnded) return;
