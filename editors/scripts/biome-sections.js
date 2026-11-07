@@ -635,7 +635,7 @@ function depthCatalogEditor(rows, keyField, choices) {
 
         // add row
         const used = new Set(rows.map(r => r[keyField]));
-        const addSel = el('select', { class: 'wlabel-sel' });
+        const addSel = el('select', { class: 'weight-label-select' });
         addSel.appendChild(el('option', { value: '' }, '+ add ' + (keyField === 'id' ? 'actor…' : 'category…')));
         for (const c of choices) if (!used.has(c)) addSel.appendChild(el('option', { value: c }, c));
         addSel.addEventListener('change', () => {
@@ -657,7 +657,7 @@ function depthCatalogRow(rows, i, keyField, choices, redraw) {
     const line = el('div', { class: 'depth-row' });
 
     // id/type selector (preserve an out-of-list value)
-    const sel = el('select', { class: 'wlabel-sel' });
+    const sel = el('select', { class: 'weight-label-select' });
     for (const c of choices) sel.appendChild(el('option', { value: c }, c));
     if (!choices.includes(row[keyField])) sel.appendChild(el('option', { value: row[keyField] }, row[keyField] + ' (?)'));
     sel.value = row[keyField];
@@ -722,9 +722,9 @@ function depthPreview(rows, keyField, redraw) {
     const total = eligible.reduce((a, r) => a + (r.freq ?? 1), 0) || 1;
     for (const r of eligible) {
         const pct = Math.round(((r.freq ?? 1) / total) * 100);
-        const bar = el('div', { class: 'wbar-fill', style: `width:${pct}%` });
-        const barWrap = el('div', { class: 'wbar-wrap' }, bar, el('span', { class: 'wbar-pct' }, pct + '%'));
-        wrap.appendChild(el('div', { class: 'weight-row' }, el('span', { class: 'wlabel' }, r[keyField]), barWrap));
+        const bar = el('div', { class: 'weight-bar-fill', style: `width:${pct}%` });
+        const barWrap = el('div', { class: 'weight-bar' }, bar, el('span', { class: 'weight-bar-percent' }, pct + '%'));
+        wrap.appendChild(el('div', { class: 'weight-row' }, el('span', { class: 'weight-label' }, r[keyField]), barWrap));
     }
     return wrap;
 }
@@ -783,7 +783,7 @@ function decorationsEditor(rows) {
         // is valid — so nothing is filtered out of the dropdown.
         // Option values carry the row key ("entity:moss", "actor:grave") so one
         // dropdown can add either kind of row.
-        const addSel = el('select', { class: 'wlabel-sel' });
+        const addSel = el('select', { class: 'weight-label-select' });
         addSel.appendChild(el('option', { value: '' }, '+ add decoration…'));
         addSel.appendChild(decorationOptgroup('entities', 'entity', state.mergedEntityIds || []));
         addSel.appendChild(decorationOptgroup('actors (non-solid)', 'actor', decorActorIds()));
@@ -813,7 +813,7 @@ function decorationRow(rows, i, redraw) {
     // is one kind or the other; `actor` wins, matching the engine.
     const key = row.actor != null ? 'actor' : 'entity';
     const choices = key === 'actor' ? decorActorIds() : (state.mergedEntityIds || []);
-    const sel = el('select', { class: 'wlabel-sel', title: key === 'actor' ? 'actor (non-solid)' : 'entity' });
+    const sel = el('select', { class: 'weight-label-select', title: key === 'actor' ? 'actor (non-solid)' : 'entity' });
     for (const c of choices) sel.appendChild(el('option', { value: c }, c));
     if (!choices.includes(row[key])) {
         sel.appendChild(el('option', { value: row[key] }, row[key] + ' (?)'));
@@ -826,7 +826,7 @@ function decorationRow(rows, i, redraw) {
     });
 
     // placement pattern
-    const patSel = el('select', { class: 'wlabel-sel',
+    const patSel = el('select', { class: 'weight-label-select',
         title: 'Where this decoration may land. scatter = anywhere walkable; clusters = the same but in patches; wall_hugging = touching a wall; near_liquid = beside water, sewage or lava; room_floor = open room interiors only, never corridors.' });
     for (const p of DECORATION_PATTERNS) patSel.appendChild(el('option', { value: p }, p));
     if (!DECORATION_PATTERNS.includes(row.pattern)) {

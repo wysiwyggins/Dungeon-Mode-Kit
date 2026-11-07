@@ -94,7 +94,7 @@
                 <div class="field-row">
                     <label>Tint</label>
                     <input type="color" id="f-tint" value="#ffffff">
-                    <input class="w-md" type="text" id="f-tint-hex" value="" placeholder="#rrggbb">
+                    <input class="width-medium" type="text" id="f-tint-hex" value="" placeholder="#rrggbb">
                 </div>
                 <div class="field-row">
                     <label class="label-auto"><input type="checkbox" id="f-flipH"> Flip H</label>
@@ -162,7 +162,7 @@
                     <input type="text" id="f-attack_sound" placeholder="bow">
                 </div>
 
-                <div class="sub-section-title mt-4">Attack Style</div>
+                <div class="sub-section-title space-above">Attack Style</div>
                 <div class="field-row">
                     <label>Style</label>
                     <select id="f-attack_style">
@@ -185,7 +185,7 @@
                     <input type="number" id="f-penetrate_depth" min="1" value="">
                 </div>
 
-                <div class="sub-section-title mt-4">Weapon Proc</div>
+                <div class="sub-section-title space-above">Weapon Proc</div>
                 <div class="field-row">
                     <label>Proc Type</label>
                     <select id="f-weapon_proc">
@@ -299,13 +299,13 @@
                 <div id="requires-stat-list" class="dynamic-list"></div>
                 <button class="add-btn" id="btn-add-requires-stat">+ Add Requirement</button>
 
-                <div class="field-row mt-4">
+                <div class="field-row space-above">
                     <label class="label-auto"><input type="checkbox" id="f-enchantable"> Enchantable</label>
                 </div>
                 <div class="field-row">
                     <label>Enchant Range</label>
-                    <input class="w-sm" type="number" id="f-enchant_min" placeholder="min"> to
-                    <input class="w-sm" type="number" id="f-enchant_max" placeholder="max">
+                    <input class="width-small" type="number" id="f-enchant_min" placeholder="min"> to
+                    <input class="width-small" type="number" id="f-enchant_max" placeholder="max">
                 </div>
             </div>
         </details>
@@ -336,14 +336,14 @@
                 <div class="hint" id="use-action-hint"></div>
 
                 <div id="use-object-fields">
-                    <div class="sub-section-title mt-3">On the user</div>
+                    <div class="sub-section-title space-above">On the user</div>
                     <div class="hint">
                         A number adds to a stat or numeric attribute (negative subtracts); <b>max</b> fills it; <b>health_max</b> raises the maximum.
                         Thrown without <b>burst_into</b>, these and the state become the gas's effect.
                     </div>
                     <div id="use-stat-list" class="dynamic-list"></div>
                     <button class="add-btn" id="btn-add-use-stat">+ Add Stat Change</button>
-                    <div class="field-row mt-4">
+                    <div class="field-row space-above">
                         <label>Apply State</label>
                         <input type="text" id="f-ue-apply_state">
                     </div>
@@ -378,7 +378,7 @@
 
                 <!-- Targeted spell sub-section -->
                 <div class="conditional-section" id="targeted-spell-section">
-                    <div class="sub-section mt-4">
+                    <div class="sub-section space-above">
                         <div class="sub-section-title" id="spell-section-title">Targeted Spell</div>
                         <div class="hint" style="display:none" id="area-spell-intro">
                             Using the item casts the named spell from spells.json at once, with no aiming. It needs a burst or sight spell.
@@ -433,10 +433,10 @@
                             <div class="field-row">
                                 <label>Projectile Tint</label>
                                 <input type="color" id="f-projectile_tint" value="#ffffff">
-                                <input class="w-md" type="text" id="f-projectile_tint_hex" value="" placeholder="#rrggbb">
+                                <input class="width-medium" type="text" id="f-projectile_tint_hex" value="" placeholder="#rrggbb">
                             </div>
                             </div>
-                            <div class="hint mt-4" id="bolt-note" style="display:none">
+                            <div class="hint space-above" id="bolt-note" style="display:none">
                                 Bolt spells draw their vfx along the path, so they have no projectile tile or tint.
                             </div>
                         </details>
@@ -490,8 +490,8 @@
                 </div>
                 <div class="field-row">
                     <label>Random Value</label>
-                    <input class="w-sm" type="number" id="f-random_value_min" placeholder="min"> to
-                    <input class="w-sm" type="number" id="f-random_value_max" placeholder="max">
+                    <input class="width-small" type="number" id="f-random_value_min" placeholder="min"> to
+                    <input class="width-small" type="number" id="f-random_value_max" placeholder="max">
                 </div>
                 <div class="group-title">Pickup Effect</div>
                 <div id="pickup-effect-list" class="dynamic-list"></div>
@@ -1215,13 +1215,13 @@ function initBoolAttrs() {
     const toggle = document.createElement('button');
     toggle.className = 'add-btn';
     toggle.textContent = '+ More attributes...';
-    toggle.classList.add('mt-2');
+    toggle.classList.add('space-above');
     wrapper.appendChild(toggle);
 
     const secondaryGrid = document.createElement('div');
     secondaryGrid.className = 'checkbox-grid';
     secondaryGrid.style.display = 'none';
-    secondaryGrid.classList.add('mt-3');
+    secondaryGrid.classList.add('space-above');
     for (const attr of SECONDARY_BOOL_ATTRS) makeBoolCheckbox(attr, secondaryGrid);
     wrapper.appendChild(secondaryGrid);
 
@@ -1245,7 +1245,7 @@ function initTypedAttrs() {
         inp.type = ta.type;
         inp.id = 'attr-' + ta.key;
         inp.addEventListener('input', updatePreview);
-        if (ta.type === 'number') inp.classList.add('w-lg');
+        if (ta.type === 'number') inp.classList.add('width-large');
         row.appendChild(inp);
         container.appendChild(row);
     }
@@ -1327,7 +1327,7 @@ function addStatRow(name, data) {
 
     const nameInp = document.createElement('input');
     nameInp.type = 'text'; nameInp.placeholder = 'stat name';
-    nameInp.value = name || 'pow'; nameInp.classList.add('w-lg');
+    nameInp.value = name || 'pow'; nameInp.classList.add('width-large');
     nameInp.addEventListener('input', updatePreview);
 
     const isSimple = typeof data === 'number' || data === undefined;
@@ -1335,7 +1335,7 @@ function addStatRow(name, data) {
 
     const simpleInp = document.createElement('input');
     simpleInp.type = 'number'; simpleInp.placeholder = 'max';
-    simpleInp.value = simpleVal; simpleInp.classList.add('w-lg');
+    simpleInp.value = simpleVal; simpleInp.classList.add('width-large');
     simpleInp.addEventListener('input', updatePreview);
 
     const advToggle = document.createElement('button');
@@ -1350,7 +1350,7 @@ function addStatRow(name, data) {
     advDiv.className = 'stat-advanced';
     advDiv.style.width = '100%';
     advDiv.style.paddingLeft = '108px';
-    advDiv.classList.add('mt-2');
+    advDiv.classList.add('space-above');
 
     const advData = isSimple ? {} : (data || {});
     const advFields = [
@@ -1372,7 +1372,7 @@ function addStatRow(name, data) {
         inp.type = af.type; inp.dataset.statField = af.key;
         inp.value = advData[af.key] !== undefined ? advData[af.key] : '';
         inp.addEventListener('input', updatePreview);
-        if (af.type === 'number') { inp.classList.add('w-lg'); }
+        if (af.type === 'number') { inp.classList.add('width-large'); }
         fr.appendChild(inp);
         advDiv.appendChild(fr);
     }
@@ -1380,7 +1380,7 @@ function addStatRow(name, data) {
     // Warnings sub-list
     const warnTitle = document.createElement('div');
     warnTitle.className = 'sub-section-title';
-    warnTitle.classList.add('mt-3');
+    warnTitle.classList.add('space-above');
     warnTitle.textContent = 'Warnings';
     advDiv.appendChild(warnTitle);
 
@@ -1425,7 +1425,7 @@ function addWarningRow(container, threshold, message) {
     const ti = document.createElement('input');
     ti.type = 'number'; ti.placeholder = 'threshold (0-1)';
     ti.value = threshold !== undefined ? threshold : '';
-    ti.classList.add('w-md');
+    ti.classList.add('width-medium');
     ti.step = '0.1'; ti.min = '0'; ti.max = '1';
     ti.addEventListener('input', updatePreview);
     const mi = document.createElement('input');
@@ -2296,7 +2296,7 @@ function initItemFilter() {
                 const prefix = state.protoItemKeys.has(k) ? '◆ ' : '';
                 const div = document.createElement('div');
                 div.className = 'filter-item';
-                div.innerHTML = `<span>${prefix}${k} <span style="color:var(--text-dim)">(${name || '—'})</span></span><span class="filter-cat">${cat}</span>`;
+                div.innerHTML = `<span>${prefix}${k} <span class="muted">(${name || '—'})</span></span><span class="filter-cat">${cat}</span>`;
                 div.addEventListener('click', () => {
                     document.getElementById('item-select').value = k;
                     populateForm(k, item);

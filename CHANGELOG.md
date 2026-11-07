@@ -16,6 +16,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 ### Added
 
+- **Playtest a workspace.** The editors' nav bar has a Playtest link that runs the open workspace in the game, in one reusable tab, after saving pending edits. A service worker (`workspace-sw.js`) serves `?prototype=ws~<name>` from browser storage, so it needs https or localhost.
 - **Editor nav bar.** Every editor page has a nav bar linking to the others, which carries the open workspace along and shows its name on workspace-aware pages.
 - **New prototype dialog.** The prototype editor's New… starts a workspace from blank, from any server prototype, or as a duplicate of another workspace, and a copy under a new folder name gets a matching title.
 - **Prototype editor workspaces.** The prototype editor now edits a prototype folder stored in the browser (OPFS) and saves `prototype.json` as you go. You can start a workspace blank, copy it from the server, or import it from a zip, and Download zip gives a folder that unzips straight into `prototypes/`. The other editors join in later phases (see `docs/EDITOR_WORKSPACE.md`).
@@ -43,7 +44,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 ### Changed
 
-- **Editor stylesheet cleanup.** Editor SCSS is split into `assets/scss/editors/` partials (tokens, base, widgets, pages), with shared control, button, note, heading and card styles in place of per-spot copies. The repeated inline styles in the editor pages became a few utility classes.
+- **Editor stylesheet cleanup.** Editor SCSS is split into `assets/scss/editors/` partials (tokens, base, widgets, pages), with shared control, button, note, heading and card styles in place of per-spot copies. The editors now use three text sizes, three spacing steps and nine named colors, and the repeated inline styles became a few utility classes.
 - **Scrolls of discord and negation are spells.** They cast the new `discord_wave` and `negation_wave` burst spells. The `apply_state_radius` and `remove_states_radius` use effects and the `discord` and `negate_nearby` actions are removed, along with the item editor's "Creatures nearby" fields. Negation now only strips states from creatures, not scenery.
 - **Scroll of sanctuary is a spell.** It casts the new `sanctuary` burst spell, whose `fill` lays sacred glyphs on the floor around the caster. Area spells can now use `fill` this way, and the `sanctuary` use action is removed.
 - **Scrolls of shattering, aggravate monsters and summon monsters are spells.** They cast the new `shattering`, `aggravation` and `summoning` spells, using the new `shatter`, `alert_target` and `summon` effects and a `level` delivery that reaches the whole floor. Their old use actions are removed, and shattering now digs a square of radius 4 instead of a diamond of radius 5.

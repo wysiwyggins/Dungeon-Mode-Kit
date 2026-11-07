@@ -33,7 +33,7 @@
         <h3>Projectile</h3>
         <canvas id="preview-tile" class="preview-tile" width="120" height="90"></canvas>
         <div class="preview-label" id="preview-note"></div>
-        <h3 class="mt-4">Used by</h3>
+        <h3 class="space-above">Used by</h3>
         <div id="used-by" class="hint"></div>
     </aside>
 
@@ -104,14 +104,14 @@
                     <input type="text" id="f-cast_sound">
                 </div>
                 <div id="projectile-fields">
-                    <div class="sub-section-title mt-4">Projectile</div>
+                    <div class="sub-section-title space-above">Projectile</div>
                     <div class="field-row"><label>Tile</label>
                         <div class="tile-slot" data-target="projectile_tile"><canvas width="40" height="30"></canvas><span class="tile-name">—</span><button class="clear-btn" title="Clear">x</button></div>
                     </div>
                     <div class="field-row">
                         <label>Tint</label>
                         <input type="color" id="f-tint" value="#ffffff">
-                        <input class="w-md" type="text" id="f-tint-hex" value="" placeholder="item tint">
+                        <input class="width-medium" type="text" id="f-tint-hex" value="" placeholder="item tint">
                     </div>
                 </div>
                 <div id="bolt-fields">
@@ -166,14 +166,14 @@
                     </div>
                     <div class="field-row area-only">
                         <label>Summon Count</label>
-                        <input class="w-sm" type="number" id="p-summon_min" min="1" placeholder="2" title="Fewest creatures summoned.">
-                        <input class="w-sm" type="number" id="p-summon_max" min="1" placeholder="4" title="Most creatures summoned.">
+                        <input class="width-small" type="number" id="p-summon_min" min="1" placeholder="2" title="Fewest creatures summoned.">
+                        <input class="width-small" type="number" id="p-summon_max" min="1" placeholder="4" title="Most creatures summoned.">
                     </div>
                     <div class="field-row area-only">
                         <label>Summon Radius</label>
                         <input type="number" id="p-summon_radius" min="1" placeholder="burst radius, else 1" title="Steps from the caster the summons can appear. Walls contain it.">
                     </div>
-                    <div class="checkbox-grid area-only mb-4" id="area-flags"></div>
+                    <div class="checkbox-grid area-only space-below" id="area-flags"></div>
                     <div class="field-row landing-only">
                         <label>Tunnel</label>
                         <input type="number" id="p-tunnel" min="1" title="Bore through up to this many breakable wall tiles.">
@@ -181,7 +181,7 @@
 
                     </div>
 
-                    <div class="sub-section-title mt-4" id="creature-payload-title">Struck creature</div>
+                    <div class="sub-section-title space-above" id="creature-payload-title">Struck creature</div>
                     <div class="field-row">
                         <label>Apply State</label>
                         <input type="text" id="p-apply_state">
@@ -193,7 +193,7 @@
                     <div class="group-title">Stat changes (target_effect)</div>
                     <div id="target-effect-list" class="dynamic-list"></div>
                     <button class="add-btn" id="btn-add-target-effect">+ Add Stat Change</button>
-                    <div class="checkbox-grid mt-4" id="payload-flags"></div>
+                    <div class="checkbox-grid space-above" id="payload-flags"></div>
                     <div class="field-row">
                         <label>Polymorph Pool</label>
                         <input type="text" id="p-polymorph_pool" placeholder="any creature" title="Only with Polymorph: an actor id or type, a JSON list of them, or {&quot;floors&quot;: &quot;current&quot;}.">

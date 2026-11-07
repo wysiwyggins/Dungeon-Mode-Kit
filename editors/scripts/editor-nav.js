@@ -11,8 +11,11 @@
    look otherwise. Those pages own the label: they call
    EditorNav.setWorkspace(name) whenever their open workspace changes.
 
-   The Playtest link waits for phase 3 (the service worker that serves
-   workspaces to the game); see docs/EDITOR_WORKSPACE.md.
+   Workspace pages also get a Playtest link, which runs the workspace in the
+   game as ?prototype=ws~<name> (served by workspace-sw.js). It opens in one
+   named tab, so clicking it again reloads that tab instead of piling up new
+   ones. Pages register a save hook with EditorNav.onBeforePlaytest(fn); it
+   runs before the game loads, so pending edits are in the files it reads.
    ========================================================================= */
 const EditorNav = (() => {
     'use strict';
@@ -29,9 +32,13 @@ const EditorNav = (() => {
         ['sound-player.html', 'Sounds'],
     ];
 
+    const PLAYTEST_TAB = 'dmk-playtest';
+
     const here = location.pathname.split('/').pop() || '';
     const links = [];
+    const beforePlaytest = [];
     let label = null;
+    let playtest = null;
 
     // Same rule as Workspace.current(), readable without workspace.js loaded.
     function currentWorkspace() {
@@ -47,6 +54,44 @@ const EditorNav = (() => {
             label.textContent = name || 'none';
             label.classList.toggle('none', !name);
         }
+        if (playtest) {
+            playtest.hidden = !name;
+            playtest.href = name ? `../index.html?prototype=ws~${encodeURIComponent(name)}` : '';
+        }
+    }
+
+    function onBeforePlaytest(fn) {
+        beforePlaytest.push(fn);
+    }
+
+    // The service worker only runs over https or localhost.
+    function canPlaytest() {
+        return 'serviceWorker' in navigator && window.isSecureContext;
+    }
+
+    /* Open the playtest tab right away (a popup blocker only allows it inside
+       the click), then save, then point the tab at the game. Opening '' in an
+       existing named tab leaves it alone until its location is set. */
+    async function startPlaytest(e) {
+        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        e.preventDefault();
+        const url = playtest.href;
+        const win = window.open('', PLAYTEST_TAB);
+        for (const fn of beforePlaytest) {
+            try { await fn(); } catch (err) { console.error('Save before playtest failed:', err); }
+        }
+        if (win) win.location.href = url;
+        else window.open(url, PLAYTEST_TAB);
+    }
+
+    function buildPlaytest(nav) {
+        playtest = document.createElement('a');
+        playtest.className = 'editor-nav-playtest';
+        playtest.textContent = 'Playtest ▸';
+        playtest.target = PLAYTEST_TAB;
+        playtest.title = 'Run this workspace in the game (in its own tab)';
+        playtest.addEventListener('click', startPlaytest);
+        nav.appendChild(playtest);
     }
 
     function build() {
@@ -87,6 +132,7 @@ const EditorNav = (() => {
             label = document.createElement('strong');
             ws.appendChild(label);
             nav.appendChild(ws);
+            if (canPlaytest()) buildPlaytest(nav);
             setWorkspace(currentWorkspace());
         });
     }
@@ -94,5 +140,5 @@ const EditorNav = (() => {
     if (document.body) build();
     else document.addEventListener('DOMContentLoaded', build, { once: true });
 
-    return { setWorkspace };
+    return { setWorkspace, onBeforePlaytest };
 })();

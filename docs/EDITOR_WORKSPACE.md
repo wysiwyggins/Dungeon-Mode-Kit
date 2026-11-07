@@ -1,6 +1,6 @@
 # Editor Workspaces (Plan)
 
-This is a planning document. Phases 1 and 2 (`workspace.js`, the prototype editor, editor navigation and the New dialog) are built; the rest is not.
+This is a planning document. Phases 1 to 3 (`workspace.js`, the prototype editor, editor navigation, the New dialog and playtesting) are built; the rest is not.
 
 ## Goal
 
@@ -61,7 +61,7 @@ Every editor page has the same small nav bar from `editors/scripts/editor-nav.js
 
 - It links to each editor page, with the current page marked and `?workspace=<name>` added to each link.
 - It shows the active workspace's name, so you can always see which prototype you're editing. Only pages that load `workspace.js` show it, and they set it with `EditorNav.setWorkspace(name)`.
-- It has a Playtest link (next section).
+- On workspace pages, it has a Playtest link (see Playtesting).
 
 Because the active workspace is also in `localStorage`, a page opened without the parameter still lands on the same workspace. The nav carries it anyway, so a link opened in another tab doesn't depend on that. The bar is the way around the editors, although `index.html` keeps its links. The vfx editor, which `index.html` doesn't link to, is included. Editors that don't use workspaces yet (entity, sound player) get the nav without a workspace name.
 
@@ -71,11 +71,13 @@ It's normal to have the actor editor open in one tab and the prototype editor in
 
 ## Playtesting
 
-The recommended approach is a service worker that answers requests for `prototypes/ws~<name>/...` from the workspace in OPFS. A workspace then runs as `?prototype=ws~<name>` with no engine changes, and it covers `loadJSON`, the maps and the PIXI loads alike. It has to answer `HEAD` as well as `GET`, because that's how the engine checks for a map, and return 404 for missing files so the engine's fallbacks still work. The service worker should only answer that one path prefix and cache nothing, so it can't cause another stale-cache problem like the one on iPad.
+A service worker, `workspace-sw.js` at the kit root, answers requests for `prototypes/ws~<name>/...` from the workspace in OPFS. A workspace then runs as `?prototype=ws~<name>` with no engine changes, and that covers `loadJSON`, the maps and the PIXI loads alike. It answers `HEAD` as well as `GET`, because that's how the engine checks for a map, and returns 404 for missing files so the engine's fallbacks still work. Every other request goes to the network untouched. It caches nothing, so it can't cause another stale-cache problem like the one on iPad. It has to sit at the kit root because a service worker only controls pages at or below its own folder.
 
-The fallback, if the service worker doesn't work out, is a small `PrototypeSource` object passed to the engine and used at the three places that read prototype files.
+The worker is only registered when a page asks for a `ws~` prototype: `main.js` calls `ensureWorkspaceServer()` from `core/workspace-playtest.js` before loading it. That function registers the worker and waits until it controls the page. A hard reload skips an active worker, so in that case it asks the worker to claim the page. Normal play never installs the worker.
 
-The editors get a Playtest link in the nav bar. It opens `../index.html?prototype=ws~<name>` in a new tab, and before opening it writes any pending autosave so the game sees the latest files. Reopening the link after more edits reloads the game in that same tab (`target="dmk-playtest"`), so a playtest tab doesn't pile up per click. Until the service worker exists, the link is hidden. It might be worth a dedicated `play.html` without `index.html`'s prototype and editor lists; that's an open question.
+Workspace pages have a Playtest link in the nav bar. It opens `../index.html?prototype=ws~<name>` in a tab named `dmk-playtest`, so clicking it again reloads that same tab rather than opening a new one per click. Before the game loads, it runs the hooks pages register with `EditorNav.onBeforePlaytest(fn)`; the prototype editor registers its `saveNow`, so a pending autosave lands first. The link is hidden when there's no workspace or the page isn't on https or localhost.
+
+`next_level`, `previous_level` and `intro_cutscene` in a workspace still name server prototypes, since that's what a plain name means to the engine. A chain of workspaces would need those names to say `ws~<name>`, which is fine while playtesting but wrong in the exported zip (see Open Questions).
 
 ## Saved Games
 
@@ -116,7 +118,7 @@ Each phase is usable on its own. Playtesting has moved up, because it's what mak
 
 1. **Done.** `workspace.js` plus the prototype editor: new, copy from server, open, export zip, import zip.
 2. **Done.** Editor navigation (`editor-nav.js`) and the unified New dialog (start from blank, a server prototype or a workspace).
-3. Service worker playtesting and the Playtest link.
+3. **Done.** Service worker playtesting and the Playtest link.
 4. The actor, item, spell and personality editors save to the workspace.
 5. The biome and VFX editors save to the workspace.
 6. Saved games in OPFS, one per prototype, with a full engine snapshot.

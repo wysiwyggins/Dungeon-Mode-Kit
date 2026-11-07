@@ -9,10 +9,10 @@ body.editor {
     height: 100vh;
     display: flex;
     flex-direction: column;
-    background: var(--bg);
+    background: var(--background);
     color: var(--text);
     font-family: 'courier_prime_coderegular', monospace;
-    font-size: $fs-lg;
+    font-size: $font-size;
     overflow-x: hidden;
 
     * { margin: 0; padding: 0; }
@@ -20,12 +20,12 @@ body.editor {
 
     // ---- Controls and buttons ----
     // :where() keeps these at zero specificity, so any class or context below
-    // overrides them without !important.
+    // overrides them without !important. Controls take the surrounding text
+    // size, so a compact widget only has to set its own font-size.
 
-    :where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"]), select, textarea) {
+    :where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"]), select, textarea, button) {
         @include control;
-        padding: $control-pad;
-        font-size: $fs-lg;
+        padding: $space-small;
     }
     :where(input[type="color"]) {
         @include control;
@@ -35,75 +35,65 @@ body.editor {
     }
     :where(input[type="checkbox"], input[type="radio"], input[type="range"]) { accent-color: var(--accent); }
     :where(textarea) { resize: vertical; min-height: 40px; }
-
     :where(button) {
-        @include control;
-        padding: $sp-2 $sp-4;
-        font-size: $fs-base;
+        padding: $space-small $space;
         cursor: pointer;
-        &:hover { background: var(--bg3); }
+        &:hover { background: var(--panel); }
     }
     :disabled { opacity: 0.4; pointer-events: none; }  // no hover on a dead control
 
     .btn-accent {
-        background: var(--bg3);
         border-color: var(--accent);
         color: var(--accent);
-        &:hover { background: var(--accent); color: var(--bg); }
+        &:hover { background: var(--accent); color: var(--background); }
     }
-    .add-btn {
-        @include outline-btn(var(--accent));
-        padding: $sp-1 $sp-4;
-        margin-top: $sp-2;
-    }
-    .remove-btn { @include outline-btn(var(--accent2), #fff); padding: $sp-2; }
+    .add-btn { @include outline-button(var(--accent)); margin-top: $space-small; }
+    .remove-btn { @include outline-button(var(--danger)); }
     .move-btn {
-        @include outline-btn(var(--accent));
-        font-size: $fs-sm;
-        padding: 1px $sp-2;
-        line-height: 1;
+        @include outline-button(var(--accent));
+        font-size: $font-size-small;
+        padding: 0 $space-small;
     }
 
     // ---- Nav bar (scripts/editor-nav.js) ----
 
     .editor-nav {
-        @include row($sp-2);
+        @include row($space-small);
         flex: none;
-        padding: $sp-1 $sp-8;
-        border-bottom: $hairline;
-        font-size: $fs-base;
+        padding: $space-small $space-large;
+        border-bottom: $border;
         white-space: nowrap;
         overflow-x: auto;
 
         a {
-            color: var(--text-dim);
+            color: var(--text-muted);
             text-decoration: none;
-            padding: $sp-1 $sp-3;
+            padding: 0 $space-small;
             &:hover { color: var(--accent); }
             &[aria-current="page"] { color: var(--accent); border-bottom: 1px solid var(--accent); }
         }
-        .editor-nav-home { color: var(--accent); font-weight: bold; margin-right: $sp-4; }
+        .editor-nav-home { color: var(--accent); font-weight: bold; margin-right: $space; }
         .editor-nav-workspace {
             margin-left: auto;
-            color: var(--text-dim);
+            color: var(--text-muted);
             strong { color: var(--accent); font-weight: normal; }
-            strong.none { color: var(--text-dim); font-style: italic; }
+            strong.none { color: var(--text-muted); font-style: italic; }
         }
+        .editor-nav-playtest { color: var(--accent); font-weight: bold; }
     }
 
     // ---- Header bar ----
 
     header {
-        @include row($sp-5);
+        @include row;
         flex: none;
         flex-wrap: wrap;
-        background: var(--bg2);
-        padding: $sp-5 $sp-8;
-        border-bottom: $hairline;
+        background: var(--panel);
+        padding: $space $space-large;
+        border-bottom: $border;
 
-        h1 { font-size: $fs-xl; color: var(--accent); margin-right: $sp-6; }
-        label { color: var(--text-dim); }
-        select, button { font-size: $fs-lg; }
+        h1 { font-size: $font-size-title; color: var(--accent); margin-right: $space; }
+        label { color: var(--text-muted); }
         .header-select { min-width: 200px; }   // the page's main "pick what to edit" list
     }
 
@@ -114,7 +104,7 @@ body.editor {
     .form-panel {
         flex: 1;
         overflow-y: auto;
-        padding: $sp-6 $sp-8;
+        padding: $space $space-large;
     }
 
     // ---- Collapsible sections ----
@@ -122,14 +112,14 @@ body.editor {
     details.section {
         @include disclosure;
         @include card(0);
-        margin-bottom: $sp-4;
+        margin-bottom: $space;
 
         > summary {
-            @include heading($fs-base, $bold: true);
-            padding: $sp-4 $sp-6;
-            background: var(--bg2);
+            @include heading($font-size, $bold: true);
+            padding: $space;
+            background: var(--panel);
         }
-        > .section-body { padding: $sp-5 $sp-6; }
+        > .section-body { padding: $space; }
     }
 
     // Collapsible sub-section (long depth-ranged catalogs): the same '+ '/'- '
@@ -137,19 +127,19 @@ body.editor {
     details.sub-collapsible {
         @include disclosure;
         > summary:hover { color: var(--text); }
-        .sub-count { @include note(null); font-weight: normal; margin-left: $sp-3; }
+        .sub-count { @include note; font-weight: normal; margin-left: $space; }
     }
 
-    .sub-section { @include indent-rule; margin: $sp-3 0; }
-    .sub-section-title { @include heading; margin-bottom: $sp-2; }
+    .sub-section { @include indent-rule; margin: $space 0; }
+    .sub-section-title { @include heading; margin-bottom: $space-small; }
 
     // ---- Form fields ----
 
     .field-row {
         @include row;
-        margin-bottom: $sp-3;
+        margin-bottom: $space;
 
-        label { min-width: var(--label-w); color: var(--text-dim); }
+        label { min-width: var(--label-width); color: var(--text-muted); }
         input[type="text"],
         input[type="number"],
         textarea,
@@ -160,14 +150,14 @@ body.editor {
     .checkbox-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
-        gap: $sp-2 $sp-4;
-        margin-bottom: $sp-5;
-        label { @include check-label; }
+        gap: $space-small $space;
+        margin-bottom: $space;
+        label { @include checkbox-label; }
     }
 
     .dynamic-list .list-item {
-        @include row($sp-3);
-        margin-bottom: $sp-2;
+        @include row;
+        margin-bottom: $space-small;
         input, select { flex: 1; }
     }
 
@@ -177,12 +167,12 @@ body.editor {
     .typed-attrs {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: $sp-2 $sp-8;
+        gap: $space-small $space-large;
 
         .field-row {
             flex-wrap: wrap;    // an extra (e.g. an unknown-name warning) takes its own line
             min-width: 0;
-            label { flex: 1 1 0; min-width: 0; font-size: $fs-md; }
+            label { flex: 1 1 0; min-width: 0; font-size: $font-size-small; }
             input[type="text"],
             input[type="number"],
             select { flex: 0 0 50%; width: auto; min-width: 0; }
@@ -197,7 +187,7 @@ body.editor {
 
     .actor-key-field,
     .item-key-field,
-    .personality-key-field { @include heading($fs-base); }
+    .personality-key-field { @include heading($font-size); }
 
     // ---- JSON output panel (hidden: the editors copy and save instead) ----
 
@@ -206,18 +196,20 @@ body.editor {
     // ---- Text ----
 
     .hint {
-        @include note($fs-md);
+        @include note;
         display: block;
         line-height: 1.45;
-        margin-bottom: $sp-4;
-        code { font-size: $fs-sm; color: var(--accent); }
+        margin-bottom: $space;
+        code { color: var(--accent); }
         &:empty { display: none; }
     }
-    .field-row + .hint { margin-top: -$sp-2; }   // tuck a hint up under the row it explains
-    .hint-inline { @include note($fs-sm, $italic: true); margin: $sp-1 0 $sp-3; }
-    .empty-hint { @include note($fs-base, $italic: true); padding: $sp-4 0; }
-    .status-text { @include note($fs-md); }
-    .group-title { @include heading; margin: $sp-4 0 $sp-2; }   // a titled group inside a section
+    .field-row + .hint { margin-top: -$space-small; }   // tuck a hint up under the row it explains
+    .hint-inline { @include note($italic: true); margin: $space-small 0 $space; }
+    .empty-hint { @include note($font-size, $italic: true); padding: $space 0; }
+    .status-text { @include note; }
+    .group-title { @include heading; margin: $space 0 $space-small; }   // a titled group inside a section
+    .warning { color: var(--danger); }
+    .muted { color: var(--text-muted); }
 
     // ---- Visibility ----
 
@@ -228,13 +220,11 @@ body.editor {
     // ---- Utilities (replace repeated inline styles) ----
 
     .label-auto, .field-row .label-auto { min-width: unset; }
-    .mt-2 { margin-top: $sp-2; }
-    .mt-3 { margin-top: $sp-3; }
-    .mt-4 { margin-top: $sp-4; }
-    .mb-4 { margin-bottom: $sp-4; }
+    .space-above { margin-top: $space; }
+    .space-below { margin-bottom: $space; }
     // Fixed input widths (short numbers, hex colors); without one a field-row
     // input stretches. The input-qualified selector outranks .field-row's rule.
-    @each $name, $w in (sm: 60px, md: 80px, lg: 100px) {
-        .w-#{$name}, .field-row input.w-#{$name} { width: $w; min-width: $w; flex: none; }
+    @each $name, $width in (small: 60px, medium: 80px, large: 100px) {
+        .width-#{$name}, .field-row input.width-#{$name} { width: $width; min-width: $width; flex: none; }
     }
 }

@@ -42,6 +42,15 @@ export default [
         },
     },
 
+    // The workspace service worker (a classic worker script)
+    {
+        files: ['workspace-sw.js'],
+        languageOptions: {
+            sourceType: 'script',
+            globals: { ...globals.serviceworker },
+        },
+    },
+
     // Editors: classic scripts sharing one global scope, so top-level
     // declarations are used from other files and can't be resolved per-file.
     {

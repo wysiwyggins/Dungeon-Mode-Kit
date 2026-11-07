@@ -277,6 +277,8 @@ async function initWorkspaceUI() {
 
     document.getElementById('workspace-select')
         .addEventListener('change', e => switchWorkspace(e.target.value));
+    // The game reads the files, so a pending autosave has to land first.
+    EditorNav.onBeforePlaytest(saveNow);
 
     document.getElementById('btn-new-ws').addEventListener('click', openNewDialog);
     const dialog = document.getElementById('new-ws-dialog');

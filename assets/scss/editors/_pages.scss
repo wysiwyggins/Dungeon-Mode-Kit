@@ -1,6 +1,6 @@
 // ================================================================
 // Per-page editor styles: only what one page needs. Label widths are
-// set through --label-w (see :root in _tokens.scss).
+// set through --label-width (see :root in _tokens.scss).
 // ================================================================
 
 body.editor {
@@ -11,45 +11,45 @@ body.editor {
         @include section-wrap;
 
         // Attributes: an always-open core grid, then themed groups.
-        .attr-group-core { margin-bottom: $sp-2; }
+        .attr-group-core { margin-bottom: $space-small; }
         details.attr-group {
-            border-top: $hairline;
-            padding: $sp-2 0;
+            border-top: $border;
+            padding: $space-small 0;
             > summary { @include heading; }
-            &:last-of-type { border-bottom: $hairline; margin-bottom: $sp-2; }
+            &:last-of-type { border-bottom: $border; margin-bottom: $space-small; }
         }
-        .attr-group-body { padding: $sp-3 0 $sp-1 $sp-5; }
-        .attr-group-extra { @include indent-rule; margin: $sp-3 0; }
+        .attr-group-body { padding: $space 0 0 $space; }
+        .attr-group-extra { @include indent-rule; margin: $space 0; }
         // Fields waiting on a parent attribute (ATTR_DEPENDS), indented under it.
         .attr-dependent {
-            @include indent-rule($sp-3);
+            @include indent-rule;
             &:not(.visible) { display: none; }
         }
 
         .flip-grid {
             display: grid;
             grid-template-columns: repeat(3, auto);
-            gap: $sp-1 $sp-6;
-            margin-bottom: $sp-3;
-            label { @include check-label($fs-sm); }
+            gap: $space-small $space;
+            margin-bottom: $space;
+            label { @include checkbox-label; }
         }
     }
 
     // ---- Item editor ----
 
     &.item-editor {
-        --label-w: 150px;
+        --label-width: 150px;
         @include section-wrap;
 
         // Capability sections the item doesn't use yet, offered as "+ Launcher"
         // chips (refreshCapabilities in item-editor.html).
-        .capability-bar { @include row($sp-2); flex-wrap: wrap; margin-bottom: $sp-4; }
-        .capability-chip { @include outline-btn(var(--text-dim)); font-size: $fs-md; padding: $sp-1 $sp-4; }
-        #spell-overrides { margin-top: $sp-4; }
+        .capability-bar { @include row($space-small); flex-wrap: wrap; margin-bottom: $space; }
+        .capability-chip { @include outline-button(var(--text-muted)); font-size: $font-size-small; }
+        #spell-overrides { margin-top: $space; }
 
         // Item search box with a results dropdown.
         .item-filter-wrap { position: relative; display: inline-block; }
-        .item-filter { width: 180px; font-size: $fs-base; }
+        .item-filter { width: 180px; }
         .item-filter-results {
             display: none;
             position: absolute;
@@ -59,17 +59,17 @@ body.editor {
             width: 320px;
             max-height: 300px;
             overflow-y: auto;
-            font-size: $fs-md;
-            background: var(--surface);
-            border: $hairline;
+            font-size: $font-size-small;
+            background: var(--background);
+            border: $border;
             &.active { display: block; }
 
             .filter-item {
                 display: flex;
                 justify-content: space-between;
-                padding: $sp-2 $sp-4;
+                padding: $space-small $space;
                 cursor: pointer;
-                &:hover { background: var(--bg3); }
+                &:hover { background: var(--panel); }
                 .filter-cat { @include note; }
             }
         }
@@ -78,88 +78,81 @@ body.editor {
     // ---- Spell & entity editors ----
 
     &.spell-editor {
-        --label-w: 120px;
+        --label-width: 120px;
         @include section-wrap;
         .checkbox-row { @include row; flex-wrap: wrap; }
     }
 
     &.entity-editor {
         @include section-wrap;
-        #used-by { margin-top: $sp-3; }
+        #used-by { margin-top: $space; }
     }
 
     // ---- Personality editor ----
 
     &.personality-editor {
-        --label-w: 160px;
+        --label-width: 160px;
         @include section-wrap;
 
         // Behavior palette (left) and the ordered behavior list.
         .behavior-panel {
             @include side-panel;
-            h3 { @include heading($fs-base); margin-bottom: $sp-4; }
+            h3 { @include heading($font-size); margin-bottom: $space; }
         }
-        .behavior-search { width: 100%; font-size: $fs-base; margin-bottom: $sp-4; }
+        .behavior-search { width: 100%; margin-bottom: $space; }
         .behavior-category {
-            @include heading($fs-sm, $bold: true);
-            margin: $sp-4 0 $sp-2;
+            @include heading($bold: true);
+            margin: $space 0 $space-small;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
         .behavior-palette-item {
-            font-size: $fs-md;
-            padding: $sp-1 $sp-3;
+            padding: 2px $space-small;
             cursor: pointer;
             border: 1px solid transparent;
-            &:hover { background: var(--bg3); border-color: var(--accent); }
-            &.in-use { @include note(null, $italic: true); &::after { content: ' *'; color: var(--accent); } }
+            &:hover { background: var(--background); border-color: var(--accent); }
+            &.in-use { @include note($font-size, $italic: true); &::after { content: ' *'; color: var(--accent); } }
         }
 
-        .behavior-list-container { min-height: 30px; margin-bottom: $sp-4; }
+        .behavior-list-container { min-height: 30px; margin-bottom: $space; }
         .behavior-list-item {
-            @include row($sp-3);
-            margin-bottom: $sp-2;
-            padding: $sp-2 $sp-3;
-            background: var(--input-bg);
-            border: $hairline;
+            @include row;
+            margin-bottom: $space-small;
+            padding: $space-small $space;
+            background: var(--field);
+            border: $border;
             user-select: none;
 
-            .drag-handle { color: var(--text-dim); padding: 0 $sp-1; cursor: grab; &:active { cursor: grabbing; } }
+            .drag-handle { color: var(--text-muted); cursor: grab; &:active { cursor: grabbing; } }
             .behavior-index { @include note; min-width: 18px; text-align: right; }
-            .behavior-name { flex: 1; font-size: $fs-base; font-weight: bold; }
-            .behavior-hint { @include ellipsis; @include note($fs-xs); max-width: 200px; }
+            .behavior-name { flex: 1; font-weight: bold; }
+            .behavior-hint { @include ellipsis; @include note; max-width: 200px; }
             &.dragging { opacity: 0.3; }
             &.drag-over { border-top: 2px solid var(--accent); margin-top: -2px; }
         }
         .behavior-add-row {
-            @include row($sp-3);
-            select { flex: 1; font-size: $fs-base; }
+            @include row;
+            select { flex: 1; }
         }
 
         // Contextual parameters, hinted under the inputs (label width + row gap).
         .param-row.inactive { display: none; }
-        .param-hint { @include note($fs-xs); margin: (-$sp-2) 0 $sp-3 calc(var(--label-w) + #{$sp-4}); }
+        .param-hint { @include note; margin: (-$space-small) 0 $space calc(var(--label-width) + #{$space}); }
     }
 
     // ---- VFX editor ----
 
     &.vfx-editor {
-        --label-w: 140px;
+        --label-width: 140px;
         @include section-wrap;
 
-        .waveform-canvas {
-            display: block;
-            width: 100%;
-            height: 120px;
-            margin-bottom: $sp-4;
-            background: var(--code-bg);
-            border: $hairline;
-        }
+        // vfx-editor.html paints the waveform's dark background itself.
+        .waveform-canvas { display: block; width: 100%; height: 120px; margin-bottom: $space; border: $border; }
+        // The legend colors match the threshold lines drawn on the waveform.
         .timing-readout {
-            @include note($fs-md);
+            @include note;
             display: flex;
-            gap: $sp-6;
-            margin-bottom: $sp-4;
+            gap: $space;
+            margin-bottom: $space;
             .timing-lighter { color: #cc9933; }
             .timing-base { color: var(--text); }
             .timing-darker { color: #6688bb; }
@@ -174,18 +167,18 @@ body.editor {
         .cv-breakdown {
             display: none;
             &.visible { display: block; }
-            padding-left: calc(var(--label-w) + #{$sp-4});
-            margin-bottom: $sp-3;
-            .field-row { margin-bottom: $sp-1; }
-            label { min-width: 20px; font-size: $fs-sm; }
+            padding-left: calc(var(--label-width) + #{$space});
+            margin-bottom: $space;
+            .field-row { margin-bottom: $space-small; }
+            label { min-width: 20px; font-size: $font-size-small; }
         }
-        .layer-item { @include card($sp-4 $sp-5); margin-bottom: $sp-4; }
+        .layer-item { @include card; margin-bottom: $space; }
         .layer-header {
             @include row;
-            margin-bottom: $sp-4;
+            margin-bottom: $space;
             select { flex: 1; }
         }
-        .layer-params { border-top: $hairline; padding-top: $sp-4; }
+        .layer-params { border-top: $border; padding-top: $space; }
     }
 
     // ---- Prototype & biome editors ----
@@ -208,10 +201,10 @@ body.editor {
             &::before { flex: none; }
         }
         // Switched off, or inherited from the prototype on a floor tab.
-        details.section.section-disabled > summary { color: var(--text-dim); }
+        details.section.section-disabled > summary { color: var(--text-muted); }
         details.section.inherited {
             > .section-body { opacity: 0.5; pointer-events: none; }
-            > summary { color: var(--text-dim); }
+            > summary { color: var(--text-muted); }
         }
     }
 
@@ -220,31 +213,30 @@ body.editor {
         // JS; display: contents keeps its children in the header's flex gap.
         .workspace-controls { display: contents; }
         .new-ws-hint {
-            @include note($fs-base);
+            @include note($font-size);
             min-height: 1.4em;
-            &.error { color: var(--warn); }
+            &.error { color: var(--danger); }
         }
-        .new-ws-buttons { @include row; justify-content: flex-end; margin-top: $sp-6; }
+        .new-ws-buttons { @include row; justify-content: flex-end; margin-top: $space-large; }
     }
 
     // ---- Sound player ----
 
     &.sound-player {
         .workspace { overflow-y: auto; }
-        .sound-body { padding: $sp-6 $sp-8; max-width: 1100px; }
+        .sound-body { padding: $space $space-large; max-width: 1100px; }
         .sound-intro {
-            @include note($fs-base);
+            @include note($font-size);
             max-width: 640px;
-            margin-bottom: $sp-6;
+            margin-bottom: $space-large;
             line-height: 1.5;
 
-            code { font-size: $fs-md; color: var(--accent); }
+            code { color: var(--accent); }
             kbd {
-                padding: 0 $sp-1;
+                padding: 0 $space-small;
                 font: inherit;
-                font-size: $fs-sm;
-                background: var(--input-bg);
-                border: $hairline;
+                background: var(--field);
+                border: $border;
                 border-radius: 2px;
             }
         }
@@ -252,26 +244,26 @@ body.editor {
         .sound-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: $sp-3;
+            gap: $space;
         }
         .sound-chip {
-            @include card($sp-4 $sp-5);
+            @include card;
             display: flex;
             align-items: baseline;
             justify-content: space-between;
-            gap: $sp-4;
+            gap: $space;
             text-align: left;
-            &:hover { background: var(--bg3); }
+            &:hover { background: var(--panel); }
             &.selected { outline: 1px solid var(--accent); }
             // Flat fill, no fade: the cue has to read within a 200ms sound.
             &.playing {
                 background: var(--accent);
                 border-color: var(--accent);
-                .sound-name, .sound-duration { color: var(--bg); }
+                .sound-name, .sound-duration { color: var(--background); }
             }
         }
         .sound-name { @include ellipsis; }
         .sound-duration { @include note; flex: none; }
-        .status-error { color: var(--accent2); }
+        .status-error { color: var(--danger); }
     }
 }

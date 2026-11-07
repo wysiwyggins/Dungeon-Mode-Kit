@@ -318,8 +318,8 @@ function catalogEditor(cat) {
         for (const name of Object.keys(cat)) {
             const c = cat[name];
             const pct = Math.round(((c.weight || 0) / total) * 100);
-            const bar = el('div', { class: 'wbar-fill', style: `width:${pct}%` });
-            const barWrap = el('div', { class: 'wbar-wrap' }, bar, el('span', { class: 'wbar-pct' }, pct + '%'));
+            const bar = el('div', { class: 'weight-bar-fill', style: `width:${pct}%` });
+            const barWrap = el('div', { class: 'weight-bar' }, bar, el('span', { class: 'weight-bar-percent' }, pct + '%'));
             const wInput = el('input', { type: 'number', min: 0, value: c.weight ?? 0, style: 'width:56px;',
                 title: 'Relative spawn weight for this category (share of the budget bar shown).' });
             wInput.addEventListener('input', () => { c.weight = Number(wInput.value); commit(); redraw(); });
@@ -329,11 +329,11 @@ function catalogEditor(cat) {
             const rm = el('button', { class: 'remove-btn' }, '×');
             rm.addEventListener('click', () => { delete cat[name]; commit(); redraw(); });
             wrap.appendChild(el('div', { class: 'weight-row' },
-                el('span', { class: 'wlabel' }, name), barWrap,
+                el('span', { class: 'weight-label' }, name), barWrap,
                 el('span', { class: 'mini-label', title: 'weight' }, 'w'), wInput,
                 el('span', { class: 'mini-label', title: 'count' }, 'cnt'), cntInput, rm));
         }
-        const addSel = el('select', { class: 'wlabel-sel' });
+        const addSel = el('select', { class: 'weight-label-select' });
         addSel.appendChild(el('option', { value: '' }, '+ category…'));
         for (const k of CATEGORY_KEYS) if (!cat[k]) addSel.appendChild(el('option', { value: k }, k));
         addSel.addEventListener('change', () => { if (!addSel.value) return; cat[addSel.value] = { weight: 10 }; commit(); redraw(); });
@@ -471,7 +471,7 @@ function patternsEditor(sp) {
 function patternBox(pat, i, sp, redraw) {
     const box = el('div', { class: 'pattern-box' });
     const head = el('div', { style: 'display:flex;align-items:center;gap:8px;margin-bottom:4px;' },
-        el('strong', { style: 'font-size:11px;color:var(--accent);' }, 'Pattern ' + (i + 1)));
+        el('strong', { class: 'sub-section-title' }, 'Pattern ' + (i + 1)));
     const rm = el('button', { class: 'remove-btn' }, 'remove');
     rm.addEventListener('click', () => { sp.patterns.splice(i, 1); commit(); redraw(); });
     head.appendChild(rm);
@@ -700,13 +700,13 @@ function sectionBiomePlan() {
 
     // validation
     const warn = validateFloorPlan(p.floor_plan, p.floors);
-    if (warn) body.appendChild(el('div', { class: 'hint-inline', style: 'color:var(--accent2);' }, warn));
+    if (warn) body.appendChild(el('div', { class: 'hint-inline warning' }, warn));
 
     // A biome's `items` rows name item_catalog CATEGORIES, but item_catalog lives
     // only at the prototype root. The engine silently skips a category that isn't
     // there, so those items just never spawn — catch it where the mistake is made.
     const catWarn = validateBiomeCategories(p);
-    if (catWarn) body.appendChild(el('div', { class: 'hint-inline', style: 'color:var(--accent2);' }, catWarn));
+    if (catWarn) body.appendChild(el('div', { class: 'hint-inline warning' }, catWarn));
     return { det };
 }
 

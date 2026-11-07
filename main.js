@@ -7,6 +7,7 @@
 import { DungeonEngine } from './engine/dungeon-engine.js';
 import { Item } from './engine/item.js';
 import { Prototype } from './engine/prototype.js';
+import { isWorkspacePrototype, ensureWorkspaceServer } from './core/workspace-playtest.js';
 
 // ============================================================================
 // INITIALIZATION
@@ -56,6 +57,10 @@ async function initializeGame() {
         const rawPrototype = urlPrototype || dataPrototype || configPrototype || 'default';
         const firstPrototype = normalizePrototypeName(rawPrototype);
         console.log(`Loading prototype: ${firstPrototype} (source: ${urlPrototype ? 'URL' : dataPrototype ? 'data-attribute' : configPrototype ? 'config' : 'default'})`);
+
+        // An editor workspace (ws~<name>) is served from browser storage by a
+        // service worker, which has to control the page before anything loads.
+        if (isWorkspacePrototype(firstPrototype)) await ensureWorkspaceServer();
 
         await engine.loadPrototype(firstPrototype);
         

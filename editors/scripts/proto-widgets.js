@@ -149,7 +149,7 @@ function selectRow(label, obj, key, options, opts = {}) {
 function sliderRow(label, obj, key, opts = {}) {
     const min = opts.min ?? 0, max = opts.max ?? 100, step = opts.step ?? 1;
     const range = el('input', { type: 'range', min, max, step });
-    const val = el('span', { class: 'slider-val' });
+    const val = el('span', { class: 'slider-value' });
     const cur = obj[key] != null ? obj[key] : (opts.def ?? min);
     range.value = cur;
     const fmt = () => {
@@ -182,7 +182,7 @@ function dualRange(obj, minKey, maxKey, opts = {}) {
     const fill = el('div', { class: 'track-fill' });
     const rmin = el('input', { type: 'range', min: lo, max: hi, step });
     const rmax = el('input', { type: 'range', min: lo, max: hi, step });
-    const out = el('span', { class: 'range-vals' });
+    const out = el('span', { class: 'range-values' });
     let vmin = obj[minKey] != null ? obj[minKey] : (opts.defMin ?? lo);
     let vmax = obj[maxKey] != null ? obj[maxKey] : (opts.defMax ?? hi);
     // allow values beyond the visual max (e.g. gol_cell 200-400): widen track
@@ -258,9 +258,9 @@ function weightEditor(obj, key, opts = {}) {
         };
 
         for (const name of Object.keys(w)) {
-            const bar = el('div', { class: 'wbar-fill' });
-            const pctLabel = el('span', { class: 'wbar-pct' });
-            const barWrap = el('div', { class: 'wbar-wrap' }, bar, pctLabel);
+            const bar = el('div', { class: 'weight-bar-fill' });
+            const pctLabel = el('span', { class: 'weight-bar-percent' });
+            const barWrap = el('div', { class: 'weight-bar' }, bar, pctLabel);
             bars.push({ name, fill: bar, label: pctLabel });
             const num = el('input', { type: 'number', min: 0, step: opts.step || 1, value: w[name] });
             num.addEventListener('input', () => {
@@ -278,7 +278,7 @@ function weightEditor(obj, key, opts = {}) {
 
             let labelNode;
             if (opts.choices) {
-                labelNode = el('select', { class: 'wlabel-sel' });
+                labelNode = el('select', { class: 'weight-label-select' });
                 for (const c of opts.choices) labelNode.appendChild(el('option', { value: c }, c));
                 labelNode.value = name;
                 labelNode.addEventListener('change', () => {
@@ -286,7 +286,7 @@ function weightEditor(obj, key, opts = {}) {
                     writeWeights(c); redraw();
                 });
             } else {
-                labelNode = el('span', { class: 'wlabel' }, name);
+                labelNode = el('span', { class: 'weight-label' }, name);
             }
             wrap.appendChild(el('div', { class: 'weight-row' }, labelNode, barWrap, num, rm));
         }
@@ -307,7 +307,7 @@ function weightEditor(obj, key, opts = {}) {
             // (once every choice is added there's nothing to pick, so hide it).
             const remaining = opts.choices.filter((c) => !existing.has(c));
             if (remaining.length) {
-                const addSel = el('select', { class: 'wlabel-sel' });
+                const addSel = el('select', { class: 'weight-label-select' });
                 addSel.appendChild(el('option', { value: '' }, '+ add…'));
                 for (const c of remaining) addSel.appendChild(el('option', { value: c }, c));
                 addSel.addEventListener('change', () => {
@@ -437,12 +437,12 @@ function typeWeightEditor(obj, key, opts) {
         };
 
         for (const entry of list) {
-            const bar = el('div', { class: 'wbar-fill' });
-            const pctLabel = el('span', { class: 'wbar-pct' });
-            const barWrap = el('div', { class: 'wbar-wrap' }, bar, pctLabel);
+            const bar = el('div', { class: 'weight-bar-fill' });
+            const pctLabel = el('span', { class: 'weight-bar-percent' });
+            const barWrap = el('div', { class: 'weight-bar' }, bar, pctLabel);
             bars.push({ entry, fill: bar, label: pctLabel });
 
-            const sel = el('select', { class: 'wlabel-sel' });
+            const sel = el('select', { class: 'weight-label-select' });
             for (const id of ids) sel.appendChild(el('option', { value: id }, id));
             // A hand-authored list may name an actor the filter doesn't offer.
             // Keep it selectable rather than silently rewriting the designer's
@@ -475,7 +475,7 @@ function typeWeightEditor(obj, key, opts) {
 
         const remaining = ids.filter(id => !list.some(e => e.type === id));
         if (remaining.length) {
-            const addSel = el('select', { class: 'wlabel-sel' });
+            const addSel = el('select', { class: 'weight-label-select' });
             addSel.appendChild(el('option', { value: '' }, `+ add ${opts.noun}…`));
             for (const id of remaining) addSel.appendChild(el('option', { value: id }, id));
             addSel.addEventListener('change', () => {
@@ -566,7 +566,7 @@ function spawnEditor(obj, key, kind) {
             obj[key][addSel.value] = { chance: 100 };
             commit(); redraw();
         });
-        container.appendChild(el('div', { class: 'mt-2' }, addSel));
+        container.appendChild(el('div', { class: 'space-above' }, addSel));
     }
     redraw();
     return container;

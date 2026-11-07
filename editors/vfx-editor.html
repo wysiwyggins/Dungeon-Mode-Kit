@@ -31,7 +31,7 @@
     <aside id="preview-panel" class="preview-panel">
         <h3>Preview</h3>
         <div id="preview-mount" class="preview-canvas"></div>
-        <div class="field-row mt-3">
+        <div class="field-row space-above">
             <button id="btn-replay">Replay</button>
             <button id="btn-tick">Tick</button>
         </div>
@@ -45,12 +45,12 @@
             <canvas width="80" height="60"></canvas>
             <span class="tile-name">—</span>
         </div>
-        <div class="field-row mt-4">
+        <div class="field-row space-above">
             <label class="label-auto">Tint</label>
             <input type="color" id="f-preview-tint" value="#ffffff">
-            <input class="w-md" type="text" id="f-preview-tint-hex" value="#ffffff" placeholder="#rrggbb">
+            <input class="width-medium" type="text" id="f-preview-tint-hex" value="#ffffff" placeholder="#rrggbb">
         </div>
-        <div class="hint mt-2">Tint is for preview only. At runtime, each actor/item provides its own.</div>
+        <div class="hint space-above">Tint is for preview only. At runtime, each actor/item provides its own.</div>
     </aside>
 
     <div id="form-panel" class="form-panel">
@@ -750,7 +750,7 @@ function buildParamFields(container, primitiveName, existingParams) {
             const hexInput = document.createElement('input');
             hexInput.type = 'text';
             hexInput.value = val;
-            hexInput.classList.add('w-lg');
+            hexInput.classList.add('width-large');
             hexInput.style.flex = '0';
             hexInput.dataset.paramKey = def.key;
             hexInput.addEventListener('input', () => {
@@ -815,7 +815,7 @@ function buildParamFields(container, primitiveName, existingParams) {
                     chNum.min = 0;
                     chNum.max = 255;
                     chNum.value = chRange.value;
-                    chNum.classList.add('w-sm');
+                    chNum.classList.add('width-small');
 
                     chRange.addEventListener('input', () => {
                         chNum.value = chRange.value;
