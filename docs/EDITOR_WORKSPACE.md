@@ -1,6 +1,6 @@
 # Editor Workspaces (Plan)
 
-This is a planning document. Phases 1 to 6 (`workspace.js`, the prototype editor, editor navigation, the New dialog, playtesting, saving from the actor, item, spell, personality, biome and VFX editors, and saved games) are built; the rest is not.
+This is a planning document. All seven phases are built: `workspace.js`, the prototype editor, editor navigation, the New dialog, playtesting, saving from the actor, item, spell, personality, biome and VFX editors, saved games, and the workspace list and storage meter. The Open Questions remain.
 
 ## Goal
 
@@ -114,7 +114,7 @@ OPFS works in Chrome, Firefox and Safari, but Safari was late to support `create
 
 Service workers need https or localhost. That covers both the local server and a hosted site, but not opening the files directly from disk.
 
-The browser can clear OPFS when storage runs low. The editors should call `navigator.storage.persist()` and make it clear that the downloaded zip is the real save. Private browsing windows have small storage limits and throw everything away when closed.
+The browser can clear OPFS when storage runs low. Creating a workspace calls `navigator.storage.persist()`. The prototype editor's header shows how much storage the site uses and whether the browser has agreed to keep it; if it hasn't, a Keep storage button asks again, and the meter's tooltip says the downloaded zip is the real save. Private browsing windows have small storage limits and throw everything away when closed.
 
 ## Phases
 
@@ -126,7 +126,7 @@ Each phase is usable on its own. Playtesting has moved up, because it's what mak
 4. **Done.** The actor, item, spell and personality editors save to the workspace.
 5. **Done.** The biome and VFX editors save to the workspace.
 6. **Done.** Saved games in OPFS, one per prototype, with a full engine snapshot.
-7. Hosted polish, such as a workspace picker on `index.html` and a storage meter.
+7. **Done.** Hosted polish: `index.html` lists your workspaces (`ui/workspace-links.js`) with links to play and edit each and a note when one has a game in progress, and the prototype editor has a storage meter.
 
 ## Open Questions
 

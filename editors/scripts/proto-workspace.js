@@ -53,6 +53,41 @@ async function saveNow() {
 }
 
 /* ---------------------------------------------------------------------
+   Storage meter
+   --------------------------------------------------------------------- */
+function formatBytes(bytes) {
+    const units = ['bytes', 'KB', 'MB', 'GB', 'TB'];
+    let i = 0;
+    while (bytes >= 1024 && i < units.length - 1) { bytes /= 1024; i++; }
+    return `${i ? bytes.toFixed(1) : bytes} ${units[i]}`;
+}
+
+/* How much browser storage this site uses (workspaces and saved games), and
+   whether the browser has agreed to keep it. Unless it has, it may clear
+   everything when space runs low, so the downloaded zip is the real copy. */
+async function updateStorageMeter() {
+    const meter = document.getElementById('storage-meter');
+    const keep = document.getElementById('btn-keep-storage');
+    if (!navigator.storage?.estimate) return;
+    const [{ usage = 0, quota = 0 }, persisted] = await Promise.all([
+        navigator.storage.estimate(),
+        navigator.storage.persisted ? navigator.storage.persisted() : false,
+    ]);
+    meter.textContent = `storage: ${formatBytes(usage)} of ${formatBytes(quota)}, `
+        + (persisted ? 'kept' : 'may be cleared');
+    meter.title = persisted
+        ? 'The browser has agreed to keep this storage until you clear it. A downloaded zip is still the safest copy.'
+        : 'The browser may clear this storage when space runs low. Download a zip to keep your work.';
+    keep.hidden = persisted || !navigator.storage.persist;
+}
+
+async function keepStorage() {
+    const granted = await navigator.storage.persist().catch(() => false);
+    if (!granted) setStatus('the browser declined to keep storage — download a zip to keep your work');
+    await updateStorageMeter();
+}
+
+/* ---------------------------------------------------------------------
    Picker
    --------------------------------------------------------------------- */
 async function refreshWorkspaceSelect() {
@@ -63,6 +98,7 @@ async function refreshWorkspaceSelect() {
     sel.value = state.protoName && names.includes(state.protoName) ? state.protoName : '';
     updateWorkspaceButtons();
     EditorNav.setWorkspace(state.protoName);
+    updateStorageMeter();
     return names;
 }
 
@@ -305,6 +341,7 @@ async function initWorkspaceUI() {
     });
     document.getElementById('btn-export-zip').addEventListener('click', exportWorkspaceZip);
     document.getElementById('btn-delete-ws').addEventListener('click', deleteWorkspace);
+    document.getElementById('btn-keep-storage').addEventListener('click', keepStorage);
 
     Workspace.onChange(onWorkspaceChange);
     // Flush the debounce when the tab is hidden or closed.

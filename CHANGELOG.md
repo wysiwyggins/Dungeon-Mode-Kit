@@ -16,6 +16,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 ### Added
 
+- **Workspaces on the home page.** `index.html` lists the workspaces in browser storage, with links to play or edit each, and the prototype editor shows how much storage they use and whether the browser has agreed to keep it.
 - **Saved games.** Each prototype keeps one saved game in browser storage, written as you play and deleted when you die or win. Opening the prototype again asks whether to continue it, while `?new`, `?seed=` and the editors' Playtest link start a new run.
 - **Biome and VFX editors save to a workspace.** Both have the same Prototype dropdown and Save to Workspace button. The biome editor saves every biome you changed at once, including renames and removals, and saves before Playtest.
 - **Save entries to a workspace.** The actor, item, spell and personality editors can open one of your workspaces from their Prototype dropdown and Save to Workspace (or Ctrl/Cmd+S) writes the entry into its file. Server prototypes stay read only, and a save in one tab refreshes the lists in the others.
