@@ -92,6 +92,7 @@
     <label {{#if tip}}title="{{tip}}"{{/if}}>{{label}}</label>
     <select data-bind="{{bind}}" data-type="select"
             {{#if scope}}data-scope="{{scope}}"{{/if}} data-empty="delete"
+            {{#if sound}}data-sound-preview{{/if}}
             {{#if tip}}title="{{tip}}"{{/if}}>
       <option value="">{{#if blankLabel}}{{blankLabel}}{{else}}— none —{{/if}}</option>
       {{#each options}}<option value="{{this}}">{{this}}</option>{{/each}}
@@ -104,7 +105,7 @@
   {{> fieldRow label="Name" bind="name" tip="Display name of this prototype/level, shown to the player on load."}}
   {{> textareaRow label="Description" bind="description" tip="Intro text shown when the level loads. Use \n for line breaks."}}
   <div class="hint-inline">Use \n in description for line breaks (newlines are preserved).</div>
-  {{> selectRow label="Loaded sound" bind="loaded_sound" options=soundIds tip="Sound effect played once when the level finishes loading."}}
+  {{> selectRow label="Loaded sound" bind="loaded_sound" sound=true options=soundIds tip="Sound effect played once when the level finishes loading."}}
   {{> fieldRow label="Turn speed (ms)" bind="turn_speed" type="number" tip="Milliseconds per turn tick. Lower = faster animation/AI cadence. Default 50."}}
   {{> fieldRow label="Next prototype" bind="next_level" ref="prototype" tip="Prototype loaded when the player exits downward from the final floor."}}
   {{> fieldRow label="Last prototype" bind="previous_level" ref="prototype" tip="Prototype reachable by going back up the entrance stairway."}}
@@ -143,6 +144,7 @@
      calls init() last. See those files to edit behavior. -->
 <script src="scripts/tile-picker.js"></script>
 <script src="scripts/ref-fields.js"></script>
+<script src="scripts/sound-preview.js"></script>
 <script src="scripts/editor-constants.js"></script>
 <script src="../lib/fflate.min.js"></script>
 <script src="scripts/workspace.js"></script>
