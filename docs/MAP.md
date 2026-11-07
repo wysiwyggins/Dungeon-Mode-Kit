@@ -70,6 +70,7 @@ Prefer the **opaque** variant on levels that use `ambient_light`: a transparent 
 | `name` | Optional display name |
 | `walk_description` (custom property) | Message shown when the player steps on it |
 | `tint` (custom property) | Hex color string (e.g. `#FF8800`) |
+| `fillColor` (custom property) | Hex color string that fills the cell behind the tile, like a pool of blood |
 
 [What are Tiled Objects?](https://doc.mapeditor.org/en/stable/manual/objects/) — Objects are regions drawn with a shape tool, with attributes like `class`. The `wildcards` tile layer supplements this by letting you paint tiles that spawn common actors and mark off procedurally generated areas.
 

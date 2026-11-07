@@ -26,10 +26,18 @@
    State
    ========================================================================= */
 const state = {
-    library: {},          // the whole data/biomes.json: { name: biomeDef }
+    baseLibrary: {},      // data/biomes.json
+    protoBiomes: {},      // the prototype's own biomes.json, as last read or saved
+    library: {},          // what's being edited: both merged, as the engine merges them
     activeBiome: null,    // name of the biome being edited, or null
+    // Biomes edited since the last load or save (commit() adds the active one).
+    // Only these count as changed: rendering a form can fill in a missing
+    // default, which shouldn't make an untouched library biome look edited.
+    touched: new Set(),
     baseActors: {},
     baseItems: {},
+    protoActors: {},      // the prototype's actors.json and items.json, so its own
+    protoItems: {},       // actors and items are offered in the dropdowns
     mergedActorIds: [],   // sorted ids for the depth-catalog dropdown
     mergedActors: {},
     mergedItemIds: [],
@@ -48,17 +56,9 @@ const DESIGN_FLOORS_KEY = 'biomeEditorDesignFloors';
 /* =========================================================================
    Data loading
    ========================================================================= */
-// Same shape as proto-state.js's fetchJSON: never throws, returns {} on any
-// failure, so a missing data/biomes.json just yields an empty library.
-async function fetchJSON(url) {
-    try {
-        const r = await fetch(url);
-        if (!r.ok) return {};
-        const text = await r.text();
-        if (!text.trim()) return {};
-        return JSON.parse(text);
-    } catch { return {}; }
-}
+// Never throws; {} on any failure, so a missing data/biomes.json just yields
+// an empty library.
+const fetchJSON = PrototypeSource.fetchJSON;
 
 async function loadBaseData() {
     const [actors, items, library, types, entities] = await Promise.all([
@@ -72,21 +72,58 @@ async function loadBaseData() {
     state.baseItems = items;
     state.baseTypes = types;
     state.baseEntities = entities;
-    state.library = library || {};
+    state.baseLibrary = library || {};
     state.poolItemIds = collectPoolItemIds(items, types);
+}
+
+/* Read the prototype's biomes, actors and items (base only, a server
+   prototype or a workspace: scripts/prototype-source.js). keepEdits keeps the
+   in-memory edits to any biome that has unsaved changes, for when another
+   tab writes one of the files. */
+async function loadPrototype({ keepEdits = false } = {}) {
+    const changed = keepEdits ? changedBiomeNames() : [];
+    const edited = Object.fromEntries(changed.map(n => [n, state.library[n]]));
+    state.touched = new Set(changed);
+    [state.protoBiomes, state.protoActors, state.protoItems] =
+        await Promise.all(['biomes.json', 'actors.json', 'items.json'].map(PrototypeSource.readJSON));
+    state.library = { ...structuredClone({ ...state.baseLibrary, ...state.protoBiomes }), ...edited };
+    if (state.activeBiome && !state.library[state.activeBiome]) state.activeBiome = null;
     rebuildMergedIds();
 }
 
-// No prototype-level actor overrides here: a library biome is prototype-agnostic,
-// so only the base data/actors.json ids are offerable. (A biome naming an actor
-// that only exists in one prototype's actors.json is a portability hazard, the
-// same class as the item_catalog one.)
+/* What `name` is in the files: the prototype's biome, else the library's. */
+function savedBiome(name) {
+    return state.protoBiomes[name] ?? state.baseLibrary[name];
+}
+
+/* Biomes with unsaved edits, including new and renamed ones. */
+function changedBiomeNames() {
+    return Object.keys(state.library).filter(n => {
+        const saved = savedBiome(n);
+        if (saved === undefined) return true;
+        return state.touched.has(n) && JSON.stringify(state.library[n]) !== JSON.stringify(saved);
+    });
+}
+
+/* The prototype's own biomes that were renamed or removed here. */
+function removedBiomeNames() {
+    return Object.keys(state.protoBiomes).filter(n => !(n in state.library));
+}
+
+function isDirty() {
+    return changedBiomeNames().length > 0 || removedBiomeNames().length > 0;
+}
+
+// A prototype's own actors and items are offered alongside the library's. A
+// library biome naming one of them only works in that prototype, which is fine
+// for a biome saved into it and a portability hazard for one copied to data/.
 function rebuildMergedIds() {
-    state.mergedActors = { ...state.baseActors };
-    state.mergedActorIds = Object.keys(state.baseActors).sort();
+    state.mergedActors = { ...state.baseActors, ...state.protoActors };
+    state.mergedActorIds = Object.keys(state.mergedActors).sort();
     // Item types are spawnable names too — "potion" means "roll a potion".
     state.mergedItemIds = [...new Set([
         ...Object.keys(state.baseItems),
+        ...Object.keys(state.protoItems),
         ...state.poolItemIds,
     ])].sort();
     // Entities are global: there is no per-prototype entities.json to merge in.

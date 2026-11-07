@@ -12,9 +12,7 @@
 <header>
     <h1>Item Editor</h1>
     <label>Prototype:
-        <select id="prototype-select">
-            <option value="" selected>— base only —</option>
-        </select>
+        <select id="prototype-select"></select>
     </label>
     <label>Item:
         <select id="item-select" class="header-select"></select>
@@ -34,6 +32,7 @@
     <button id="btn-new">New Blank</button>
     <button id="btn-export" class="btn-accent">Export JSON</button>
     <button id="btn-copy" class="btn-accent">Copy to Clipboard</button>
+    <button id="btn-save" class="btn-accent">Save to Workspace</button>
 </header>
 
 <div id="workspace" class="workspace">
@@ -521,6 +520,8 @@
 
 <!-- Tile picker modal -->
 <!-- The tile-picker overlay is injected by scripts/tile-picker.js on first use. -->
+<script src="scripts/workspace.js"></script>
+<script src="scripts/prototype-source.js"></script>
 <script src="scripts/tile-picker.js"></script>
 <script src="scripts/effect-params.js"></script>
 <script src="scripts/ref-fields.js"></script>
@@ -612,22 +613,13 @@ let state = {
     protoItems: {},
     mergedItems: {},
     protoItemKeys: new Set(),
-    prototypeCache: {},
     currentTiles: {},
     addedCapabilities: new Set()   // chip-bar additions for the item being edited
 };
 
 // ---- Data loading ----
 
-async function fetchJSON(url) {
-    try {
-        const r = await fetch(url);
-        if (!r.ok) return {};
-        const text = await r.text();
-        if (!text.trim()) return {};
-        return JSON.parse(text);
-    } catch { return {}; }
-}
+const fetchJSON = PrototypeSource.fetchJSON;
 
 function loadSpritesheet() {
     return new Promise((resolve) => {
@@ -672,34 +664,16 @@ async function loadBaseData() {
     state.tileNames = Object.keys(state.tileMap).sort();
 }
 
-async function loadPrototype(name) {
-    let protoEffects = {};
-    if (!name) {
-        state.protoItems = {};
-        state.protoActors = {};
-        state.protoStates = {};
-        state.protoSpells = {};
-    } else {
-        if (state.prototypeCache[name]) {
-            ({ items: state.protoItems, actors: state.protoActors, states: state.protoStates,
-                spells: state.protoSpells } = state.prototypeCache[name]);
-            protoEffects = state.prototypeCache[name].effects;
-        } else {
-            const [items, effects, actors, states, spells] = await Promise.all([
-                fetchJSON(`../prototypes/${name}/items.json`),
-                fetchJSON(`../prototypes/${name}/vfx.json`),
-                fetchJSON(`../prototypes/${name}/actors.json`),
-                fetchJSON(`../prototypes/${name}/states.json`),
-                fetchJSON(`../prototypes/${name}/spells.json`),
-            ]);
-            state.protoItems = items;
-            state.protoActors = actors;
-            state.protoStates = states;
-            state.protoSpells = spells;
-            protoEffects = effects;
-            state.prototypeCache[name] = { items, effects, actors, states, spells };
-        }
-    }
+// The files this page reads from the prototype (base only, a server
+// prototype or a workspace: scripts/prototype-source.js).
+const PROTOTYPE_FILES = ['items.json', 'vfx.json', 'actors.json', 'states.json', 'spells.json'];
+
+/* Read the prototype's files and refresh the lists. keepForm leaves the form
+   as it is (a save, or another tab's write), instead of showing the selected item. */
+async function loadPrototype({ keepForm = false } = {}) {
+    let protoEffects;
+    [state.protoItems, protoEffects, state.protoActors, state.protoStates, state.protoSpells] =
+        await Promise.all(PROTOTYPE_FILES.map(PrototypeSource.readJSON));
     state.mergedActors = { ...state.baseActors, ...state.protoActors };
     state.mergedStates = { ...state.baseStates, ...state.protoStates };
     state.mergedSpells = { ...state.baseSpells, ...state.protoSpells };
@@ -717,6 +691,7 @@ async function loadPrototype(name) {
         state.openedLinkedItem = true;
         document.getElementById('item-select').value = linked;
     }
+    if (keepForm) return;
     const firstKey = document.getElementById('item-select').value;
     if (firstKey && state.mergedItems[firstKey]) {
         populateForm(firstKey, state.mergedItems[firstKey]);
@@ -2344,7 +2319,8 @@ function initEventListeners() {
     });
 
     document.getElementById('prototype-select').addEventListener('change', async (e) => {
-        await loadPrototype(e.target.value);
+        await PrototypeSource.choose(e.target.value);
+        await loadPrototype();
     });
 
     document.getElementById('btn-new').addEventListener('click', () => {
@@ -2371,6 +2347,16 @@ function initEventListeners() {
             setTimeout(() => btn.textContent = 'Copy to Clipboard', 1500);
         });
     });
+
+    PrototypeSource.bindSave(document.getElementById('btn-save'), 'items.json',
+        () => [document.getElementById('item-key').value.trim(), readForm()],
+        async (key) => {
+            await loadPrototype({ keepForm: true });
+            document.getElementById('item-select').value = key;
+        });
+    // Another tab saved into a file this page reads: refresh the lists, but
+    // leave the form alone so unsaved edits survive.
+    PrototypeSource.onExternalChange(PROTOTYPE_FILES, () => loadPrototype({ keepForm: true }));
 
     document.getElementById('btn-add-custom-attr').addEventListener('click', () => addCustomAttrRow('', ''));
     document.getElementById('btn-add-stat').addEventListener('click', () => addStatRow('', 0));
@@ -2406,23 +2392,6 @@ function initEventListeners() {
 }
 
 // ---- Init ----
-
-// Fill the prototype dropdown from data/prototypes.json. Static HTTP can't list a
-// directory, so that file is the index; keeping the list there instead of hardcoded
-// <option>s stops the editors drifting out of sync with prototypes/.
-async function populatePrototypeSelect() {
-    const sel = document.getElementById('prototype-select');
-    if (!sel) return;
-    const idx = await fetchJSON('../data/prototypes.json');
-    const names = Array.isArray(idx.prototypes) ? idx.prototypes : [];
-    if (!names.length) return;   // keep the markup's fallback options
-    for (const opt of [...sel.options]) if (opt.value !== '') opt.remove();
-    for (const name of names) {
-        const o = document.createElement('option');
-        o.value = name; o.textContent = name;
-        sel.appendChild(o);
-    }
-}
 
 // ---- Reference fields (scripts/ref-fields.js) ----
 
@@ -2490,7 +2459,7 @@ async function init() {
     // is classic and core/use-actions.js is an ES module.
     ({ USE_ACTIONS: state.useActions } = await import('../core/use-actions.js'));
     populateUseActions();
-    await populatePrototypeSelect();
+    await PrototypeSource.populate(document.getElementById('prototype-select'));
     initBoolAttrs();
     initTypedAttrs();
     initTileSlots();
@@ -2501,7 +2470,7 @@ async function init() {
     // because this page draws its own tile previews from state.spritesheetImg.
     await Promise.all([loadBaseData(), loadSpritesheet(), TilePicker.load()]);
     populateTypeDropdown();   // before loadPrototype, which populates the form
-    await loadPrototype('');
+    await loadPrototype();
 
     initItemFilter();
     initEventListeners();

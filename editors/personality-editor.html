@@ -12,9 +12,7 @@
 <header>
     <h1>Personality Editor</h1>
     <label>Prototype:
-        <select id="prototype-select">
-            <option value="" selected>— base only —</option>
-        </select>
+        <select id="prototype-select"></select>
     </label>
     <label>Personality:
         <select id="personality-select" class="header-select"></select>
@@ -22,6 +20,7 @@
     <button id="btn-new">New Personality</button>
     <button id="btn-export" class="btn-accent">Export JSON</button>
     <button id="btn-copy" class="btn-accent">Copy to Clipboard</button>
+    <button id="btn-save" class="btn-accent">Save to Workspace</button>
 </header>
 
 <div id="workspace" class="workspace">
@@ -118,6 +117,8 @@
     <textarea id="json-output" class="json-output" readonly rows="8"></textarea>
 </div>
 
+<script src="scripts/workspace.js"></script>
+<script src="scripts/prototype-source.js"></script>
 <script src="scripts/ref-fields.js"></script>
 <script src="scripts/sound-preview.js"></script>
 <script>
@@ -337,7 +338,6 @@ let state = {
     baseActors: {},
     protoActors: {},
     mergedActorKeys: [],
-    prototypeCache: {},
     currentBehaviors: [],
 };
 
@@ -345,15 +345,7 @@ let dragSourceIndex = null;
 
 // ---- Data loading ----
 
-async function fetchJSON(url) {
-    try {
-        const r = await fetch(url);
-        if (!r.ok) return {};
-        const text = await r.text();
-        if (!text.trim()) return {};
-        return JSON.parse(text);
-    } catch { return {}; }
-}
+const fetchJSON = PrototypeSource.fetchJSON;
 
 async function loadBaseData() {
     const [personalities, actors, items, states, effects, sounds, spells] = await Promise.all([
@@ -375,24 +367,14 @@ async function loadBaseData() {
     state.soundNames = Object.keys(sounds?.sprite || {});
 }
 
-async function loadPrototype(name) {
-    if (!name) {
-        state.protoPersonalities = {};
-        state.protoActors = {};
-        state.protoItems = {};
-        state.protoStates = {};
-        state.protoEffects = {};
-        state.protoSpells = {};
-    } else {
-        if (!state.prototypeCache[name]) {
-            const [personalities, actors, items, states, effects, spells] = await Promise.all(
-                ['personalities', 'actors', 'items', 'states', 'vfx', 'spells']
-                    .map(f => fetchJSON(`../prototypes/${name}/${f}.json`)));
-            state.prototypeCache[name] = { personalities, actors, items, states, effects, spells };
-        }
-        ({ personalities: state.protoPersonalities, actors: state.protoActors, items: state.protoItems,
-           states: state.protoStates, effects: state.protoEffects, spells: state.protoSpells } = state.prototypeCache[name]);
-    }
+// The files this page reads from the prototype (base only, a server
+// prototype or a workspace: scripts/prototype-source.js).
+const PROTOTYPE_FILES = ['personalities.json', 'actors.json', 'items.json', 'states.json', 'vfx.json', 'spells.json'];
+
+async function loadPrototype() {
+    [state.protoPersonalities, state.protoActors, state.protoItems,
+        state.protoStates, state.protoEffects, state.protoSpells] =
+        await Promise.all(PROTOTYPE_FILES.map(PrototypeSource.readJSON));
     state.mergedItems = { ...state.baseItems, ...state.protoItems };
     state.mergedStates = { ...state.baseStates, ...state.protoStates };
     state.mergedEffects = { ...state.baseEffects, ...state.protoEffects };
@@ -888,7 +870,8 @@ function updateJSONOutput() {
 
 function initEventListeners() {
     document.getElementById('prototype-select').addEventListener('change', async (e) => {
-        await loadPrototype(e.target.value);
+        await PrototypeSource.choose(e.target.value);
+        await loadPrototype();
         const firstKey = Object.keys(state.mergedPersonalities).sort()[0];
         if (firstKey) {
             document.getElementById('personality-select').value = firstKey;
@@ -919,6 +902,16 @@ function initEventListeners() {
             setTimeout(() => btn.textContent = 'Copy to Clipboard', 1500);
         });
     });
+
+    PrototypeSource.bindSave(document.getElementById('btn-save'), 'personalities.json',
+        () => [document.getElementById('personality-key').value.trim(), readForm()],
+        async (key) => {
+            await loadPrototype();
+            document.getElementById('personality-select').value = key;
+        });
+    // Another tab saved into a file this page reads: refresh the lists, but
+    // leave the form alone so unsaved edits survive.
+    PrototypeSource.onExternalChange(PROTOTYPE_FILES, () => loadPrototype());
 
     document.getElementById('btn-add-behavior').addEventListener('click', () => {
         const sel = document.getElementById('behavior-add-select');
@@ -954,23 +947,6 @@ function initEventListeners() {
 
 // ---- Init ----
 
-// Fill the prototype dropdown from data/prototypes.json. Static HTTP can't list a
-// directory, so that file is the index; keeping the list there instead of hardcoded
-// <option>s stops the editors drifting out of sync with prototypes/.
-async function populatePrototypeSelect() {
-    const sel = document.getElementById('prototype-select');
-    if (!sel) return;
-    const idx = await fetchJSON('../data/prototypes.json');
-    const names = Array.isArray(idx.prototypes) ? idx.prototypes : [];
-    if (!names.length) return;   // keep the markup's fallback options
-    for (const opt of [...sel.options]) if (opt.value !== '') opt.remove();
-    for (const name of names) {
-        const o = document.createElement('option');
-        o.value = name; o.textContent = name;
-        sel.appendChild(o);
-    }
-}
-
 // ---- Reference fields (scripts/ref-fields.js) ----
 
 /** Define this page's sources; buildParamRows attaches inputs whose def has `ref`. */
@@ -995,8 +971,8 @@ function initRefFields() {
 async function init() {
     initRefFields();
     await loadBaseData();
-    await populatePrototypeSelect();
-    await loadPrototype('');
+    await PrototypeSource.populate(document.getElementById('prototype-select'));
+    await loadPrototype();
     buildParamRows();
     populateActorSelects();
     populateBehaviorAddDropdown();

@@ -16,9 +16,7 @@
 <header>
     <h1>Spell Editor</h1>
     <label>Prototype:
-        <select id="prototype-select">
-            <option value="" selected>— base only —</option>
-        </select>
+        <select id="prototype-select"></select>
     </label>
     <label>Spell:
         <select id="spell-select" class="header-select"></select>
@@ -26,6 +24,7 @@
     <button id="btn-duplicate">Duplicate</button>
     <button id="btn-new">New Spell</button>
     <button id="btn-copy" class="btn-accent">Copy to Clipboard</button>
+    <button id="btn-save" class="btn-accent">Save to Workspace</button>
 </header>
 
 <div id="workspace" class="workspace">
@@ -216,6 +215,8 @@
     <textarea id="json-output" class="json-output" readonly rows="8"></textarea>
 </div>
 
+<script src="scripts/workspace.js"></script>
+<script src="scripts/prototype-source.js"></script>
 <script src="scripts/tile-picker.js"></script>
 <script src="scripts/ref-fields.js"></script>
 <script src="scripts/sound-preview.js"></script>
@@ -258,19 +259,11 @@ const state = {
     personalities: {}, protoPersonalities: {}, mergedPersonalities: {},
     types: {}, actors: {}, states: {}, effects: {}, soundNames: [],
     tileMap: {}, spritesheetImg: null, projectileTile: null,
-    prototypeCache: {}
 };
 
 let TILE_W = 40, TILE_H = 30;
 
-async function fetchJSON(url) {
-    try {
-        const r = await fetch(url);
-        if (!r.ok) return {};
-        const text = await r.text();
-        return text.trim() ? JSON.parse(text) : {};
-    } catch { return {}; }
-}
+const fetchJSON = PrototypeSource.fetchJSON;
 
 // ---- Loading ----
 
@@ -305,36 +298,23 @@ async function loadBaseData() {
     });
 }
 
-async function loadPrototype(name) {
-    if (!name) {
-        state.protoSpells = {};
-        state.protoItems = {};
-        state.protoPersonalities = {};
-    } else {
-        state.prototypeCache[name] ??= await Promise.all([
-            fetchJSON(`../prototypes/${name}/spells.json`),
-            fetchJSON(`../prototypes/${name}/items.json`),
-            fetchJSON(`../prototypes/${name}/personalities.json`),
-        ]);
-        [state.protoSpells, state.protoItems, state.protoPersonalities] = state.prototypeCache[name];
-    }
+// The files this page reads from the prototype (base only, a server
+// prototype or a workspace: scripts/prototype-source.js).
+const PROTOTYPE_FILES = ['spells.json', 'items.json', 'personalities.json'];
+
+/* Read the prototype's files and refresh the lists. keepForm leaves the form
+   as it is (a save, or another tab's write), instead of showing the selected spell. */
+async function loadPrototype({ keepForm = false } = {}) {
+    [state.protoSpells, state.protoItems, state.protoPersonalities] =
+        await Promise.all(PROTOTYPE_FILES.map(PrototypeSource.readJSON));
     state.mergedPersonalities = { ...state.personalities, ...state.protoPersonalities };
     state.mergedSpells = { ...state.spells, ...state.protoSpells };
     state.mergedItems = { ...state.items, ...state.protoItems };
     populateSpellDropdown();
     RefFields.refresh();
+    if (keepForm) return;
     const key = document.getElementById('spell-select').value;
     if (key) populateForm(key, state.mergedSpells[key]);
-}
-
-async function populatePrototypeSelect() {
-    const idx = await fetchJSON('../data/prototypes.json');
-    const sel = document.getElementById('prototype-select');
-    for (const name of Array.isArray(idx.prototypes) ? idx.prototypes : []) {
-        const o = document.createElement('option');
-        o.value = name; o.textContent = name;
-        sel.appendChild(o);
-    }
 }
 
 function populateSpellDropdown(selectKey) {
@@ -669,7 +649,10 @@ function initEventListeners() {
     document.getElementById('spell-select').addEventListener('change', e => {
         populateForm(e.target.value, state.mergedSpells[e.target.value]);
     });
-    document.getElementById('prototype-select').addEventListener('change', e => loadPrototype(e.target.value));
+    document.getElementById('prototype-select').addEventListener('change', async (e) => {
+        await PrototypeSource.choose(e.target.value);
+        await loadPrototype();
+    });
     document.getElementById('btn-new').addEventListener('click', () => populateForm('new_spell', { delivery: 'projectile' }));
     document.getElementById('btn-duplicate').addEventListener('click', () => {
         populateForm((val('spell-key') || 'spell') + '_copy', readForm());
@@ -696,15 +679,25 @@ function initEventListeners() {
             setTimeout(() => btn.textContent = 'Copy to Clipboard', 1500);
         });
     });
+
+    PrototypeSource.bindSave(document.getElementById('btn-save'), 'spells.json',
+        () => [val('spell-key'), readForm()],
+        async (key) => {
+            await loadPrototype({ keepForm: true });
+            document.getElementById('spell-select').value = key;
+        });
+    // Another tab saved into a file this page reads: refresh the lists, but
+    // leave the form alone so unsaved edits survive.
+    PrototypeSource.onExternalChange(PROTOTYPE_FILES, () => loadPrototype({ keepForm: true }));
 }
 
 async function init() {
-    await populatePrototypeSelect();
+    await PrototypeSource.populate(document.getElementById('prototype-select'));
     initStaticControls();
     await Promise.all([loadBaseData(), TilePicker.load()]);
     initRefFields();
     initEventListeners();
-    await loadPrototype('');
+    await loadPrototype();
 }
 
 init();

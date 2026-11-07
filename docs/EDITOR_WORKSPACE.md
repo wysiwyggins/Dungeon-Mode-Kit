@@ -1,6 +1,6 @@
 # Editor Workspaces (Plan)
 
-This is a planning document. Phases 1 to 3 (`workspace.js`, the prototype editor, editor navigation, the New dialog and playtesting) are built; the rest is not.
+This is a planning document. Phases 1 to 5 (`workspace.js`, the prototype editor, editor navigation, the New dialog, playtesting, and saving from the actor, item, spell, personality, biome and VFX editors) are built; the rest is not.
 
 ## Goal
 
@@ -51,9 +51,13 @@ Each editor's prototype loading swaps its `fetchJSON('../prototypes/<name>/...')
 
 ## What Each Editor Writes
 
-The prototype editor writes `prototype.json`. In the actor, item, spell and personality editors, "Copy" becomes "Save to workspace", which calls `putEntry` on the matching file. Actor overrides already merge with the base entry, so saving a full actor is still correct. The biome editor gets a workspace target and writes the workspace's `biomes.json`. The VFX editor gets a prototype selector and writes `vfx.json`.
+The prototype editor writes `prototype.json`.
 
-The entity editor stays library-only, because the engine has no per-prototype `entities.json` (see Open Questions). Copy buttons stay as a fallback for editing the shared library in the repo.
+The actor, item, spell, personality, VFX and biome editors share `scripts/prototype-source.js`. Their Prototype dropdown lists base only, your workspaces, and the server's prototypes, which are read only. Workspace files are read fresh each time, and server files are cached. With a workspace open, Save to Workspace (or Ctrl/Cmd+S) calls `putEntry` on the page's file (`actors.json`, `items.json`, `spells.json`, `personalities.json` or `vfx.json`), and Copy to Clipboard stays. Overrides already merge with the base entry, so saving a full entry is still correct. When another tab saves into a file the page reads, the page refreshes its lists but leaves the form alone, so unsaved edits survive. There's no way yet to remove an entry from a workspace file.
+
+The biome editor works differently, because you can edit, rename and remove several biomes before saving. Save writes every biome you edited or created into the workspace's `biomes.json`, and removes the workspace's biomes you renamed or removed. A library biome removed while a workspace is open stays in `data/biomes.json`, so it comes back. Unsaved biome edits are saved before Playtest, the page warns before you leave it with unsaved edits, and Copy library is only offered while the page shows the library alone. The dropdowns also offer the prototype's own actors and items.
+
+The entity editor stays library-only, because the engine has no per-prototype `entities.json` and doesn't need one: a prototype adds its own entities as objects on a map's `landmarks` layer, each with a tile, a name, a `walk_description`, a `tint` and a `fillColor` (`spawnLandmarksFromLayer` in `engine/entity-manager/spawning.js`; see `docs/MAP.md`). Only entities the engine spawns by name, such as remains and biome decorations, have to be in `data/entities.json`. Copy buttons stay as a fallback for editing the shared library in the repo.
 
 ## Navigating Between Editors
 
@@ -119,14 +123,14 @@ Each phase is usable on its own. Playtesting has moved up, because it's what mak
 1. **Done.** `workspace.js` plus the prototype editor: new, copy from server, open, export zip, import zip.
 2. **Done.** Editor navigation (`editor-nav.js`) and the unified New dialog (start from blank, a server prototype or a workspace).
 3. **Done.** Service worker playtesting and the Playtest link.
-4. The actor, item, spell and personality editors save to the workspace.
-5. The biome and VFX editors save to the workspace.
+4. **Done.** The actor, item, spell and personality editors save to the workspace.
+5. **Done.** The biome and VFX editors save to the workspace.
 6. Saved games in OPFS, one per prototype, with a full engine snapshot.
 7. Hosted polish, such as a workspace picker on `index.html` and a storage meter.
 
 ## Open Questions
 
-Should entities, and other data that's only in the shared library today, become per-prototype? When the editors run locally, should they still be able to edit `data/`, for example as a "library" workspace written through the File System Access API in Chrome? Should a workspace name have to match the folder name it will unpack to? How should a hosted user make or replace `map.tmj`? Upload only, at first? `next_level`, `previous_level` and `intro_cutscene` name other prototypes; when playtesting `ws~<name>`, should they resolve to other workspaces or to the server's prototypes? Should Playtest use `index.html` or a dedicated `play.html`? When a saved game fails to load, for example because the prototype changed under it, should it be dropped silently or should the player be told?
+Should other data that's only in the shared library today become per-prototype? When the editors run locally, should they still be able to edit `data/`, for example as a "library" workspace written through the File System Access API in Chrome? Should a workspace name have to match the folder name it will unpack to? How should a hosted user make or replace `map.tmj`? Upload only, at first? `next_level`, `previous_level` and `intro_cutscene` name other prototypes; when playtesting `ws~<name>`, should they resolve to other workspaces or to the server's prototypes? Should Playtest use `index.html` or a dedicated `play.html`? When a saved game fails to load, for example because the prototype changed under it, should it be dropped silently or should the player be told?
 
 /data/ will always be read-only by designers working on their own prototypes. I should try to reduce the amount of actors and items in /data/ and make more types instead where possible.
 A workspace name will match its folder.

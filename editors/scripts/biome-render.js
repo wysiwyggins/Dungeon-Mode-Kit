@@ -29,8 +29,9 @@ function renderBiomeSelect() {
     if (!sel) return;
     sel.innerHTML = '';
     sel.appendChild(el('option', { value: '' }, '— choose —'));
+    // The prototype's own biomes are marked, as in the item editor.
     for (const name of Object.keys(state.library).sort()) {
-        sel.appendChild(el('option', { value: name }, name));
+        sel.appendChild(el('option', { value: name }, (name in state.protoBiomes ? '◆ ' : '') + name));
     }
     // A rename/remove inside the card can leave activeBiome stale; resync.
     if (state.activeBiome && !state.library[state.activeBiome]) {
@@ -98,7 +99,28 @@ function updateJSONOutput() {
 
 // Called by every widget on every model mutation. Keeps the JSON panel live
 // without a full re-render (which would drop focus/caret).
-function commit() { updateJSONOutput(); }
+function commit() {
+    if (state.activeBiome) state.touched.add(state.activeBiome);
+    updateJSONOutput();
+    if (PrototypeSource.workspace() && isDirty()) setStatus('unsaved changes');
+}
+
+/* Write every changed biome into the workspace's biomes.json, and drop the
+   workspace's biomes that were renamed or removed here. A library biome removed
+   here stays in data/biomes.json, so it comes back on the next load. */
+async function saveToWorkspace() {
+    const changed = changedBiomeNames();
+    const removed = removedBiomeNames();
+    for (const name of changed) await Workspace.putEntry('biomes.json', name, state.library[name]);
+    for (const name of removed) await Workspace.removeEntry('biomes.json', name);
+    for (const name of changed) state.protoBiomes[name] = structuredClone(state.library[name]);
+    for (const name of removed) delete state.protoBiomes[name];
+    state.touched.clear();
+    renderBiomeSelect();
+    if (!changed.length && !removed.length) return 'No changes';
+    setStatus(`saved ${changed.length + removed.length} biome change(s) to ${PrototypeSource.workspace()}`);
+    return 'Saved';
+}
 
 function setStatus(msg) {
     document.getElementById('load-status').textContent = msg || '';
@@ -138,8 +160,42 @@ async function init() {
     // TilePicker.load() pulls the spritesheet tileRow() draws its preview from.
     await Promise.all([loadBaseData(), TilePicker.load()]);
 
+    // Copy library is for pasting over data/biomes.json, so it's only offered
+    // while the page shows the library alone.
+    const protoSelect = document.getElementById('prototype-select');
+    const copyLibrary = document.getElementById('btn-copy-library');
+    await PrototypeSource.populate(protoSelect);
+    await loadPrototype();
+    copyLibrary.hidden = !!protoSelect.value;
+    let shownPrototype = protoSelect.value;
+    protoSelect.addEventListener('change', async () => {
+        if (isDirty() && !confirm('Discard your unsaved biome changes?')) {
+            protoSelect.value = shownPrototype;
+            return;
+        }
+        shownPrototype = protoSelect.value;
+        await PrototypeSource.choose(protoSelect.value);
+        await loadPrototype();
+        copyLibrary.hidden = !!protoSelect.value;
+        render();
+        setStatus('');
+    });
+
+    PrototypeSource.bindSaveButton(document.getElementById('btn-save'),
+        'Write the changed biomes into biomes.json', saveToWorkspace);
+    // The game reads the files, so unsaved biome edits are written first.
+    EditorNav.onBeforePlaytest(() => (PrototypeSource.workspace() && isDirty() ? saveToWorkspace() : null));
+    window.addEventListener('beforeunload', (e) => {
+        if (PrototypeSource.workspace() && isDirty()) e.preventDefault();
+    });
+    // Another tab saved one of the files: reload, keeping unsaved biome edits.
+    PrototypeSource.onExternalChange(['biomes.json', 'actors.json', 'items.json'], async () => {
+        await loadPrototype({ keepEdits: true });
+        render();
+    });
+
     const n = Object.keys(state.library).length;
-    setStatus(n ? `loaded ${n} biome(s) from data/biomes.json` : 'no data/biomes.json yet');
+    setStatus(n ? `loaded ${n} biome(s)` : 'no biomes yet');
 
     // "design for N floors" — editor-only, persisted, never serialized.
     const df = document.getElementById('design-floors');

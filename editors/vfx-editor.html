@@ -13,18 +13,24 @@
 <script src="../lib/pixi.min.js"></script>
 <script src="scripts/tile-picker.js"></script>
 <script src="scripts/effect-params.js"></script>
+<script src="scripts/workspace.js"></script>
+<script src="scripts/prototype-source.js"></script>
 </head>
 <body class="editor vfx-editor">
 <script src="scripts/editor-nav.js"></script>
 
 <header>
     <h1>VFX Editor</h1>
+    <label>Prototype:
+        <select id="prototype-select"></select>
+    </label>
     <label>VFX:
         <select id="effect-select" class="header-select"></select>
     </label>
     <button id="btn-new">New VFX</button>
     <button id="btn-export" class="btn-accent">Export JSON</button>
     <button id="btn-copy" class="btn-accent">Copy to Clipboard</button>
+    <button id="btn-save" class="btn-accent">Save to Workspace</button>
 </header>
 
 <div id="workspace" class="workspace">
@@ -126,7 +132,9 @@ let state = {
     reverseTileMap: {},
     tileNames: [],
     spritesheetImg: null,
-    effects: {},
+    baseEffects: {},   // data/vfx.json
+    protoEffects: {},  // the prototype's own vfx.json
+    effects: {},       // both merged, as the engine merges them
     currentTiles: { tileBase: 'WHITE_LEG', tileTop: 'OPAQUE_WHITE_SMILING_FACE' },
     activeTileTarget: null,
     highlightedTiles: null
@@ -148,15 +156,7 @@ const PRIMITIVE_NAMES = effectPrimitiveNames();
 // Data Loading
 // ============================================================================
 
-async function fetchJSON(url) {
-    try {
-        const r = await fetch(url);
-        if (!r.ok) return {};
-        const text = await r.text();
-        if (!text.trim()) return {};
-        return JSON.parse(text);
-    } catch { return {}; }
-}
+const fetchJSON = PrototypeSource.fetchJSON;
 
 function loadSpritesheet() {
     return new Promise((resolve) => {
@@ -180,7 +180,7 @@ async function loadBaseData() {
     TILE_W = tilesData.tilePixelWidth || TILE_W;
     TILE_H = tilesData.tilePixelHeight || TILE_H;
     state.tileMap = tilesData.tiles || {};
-    state.effects = effects;
+    state.baseEffects = effects;
 
     state.tileNames = Object.keys(state.tileMap).sort();
     state.reverseTileMap = {};
@@ -919,15 +919,32 @@ function updateConditionalFields(container) {
 // Form Population & Reading
 // ============================================================================
 
+/* Read the prototype's vfx.json (base only, a server prototype or a
+   workspace: scripts/prototype-source.js) and refresh the dropdown. */
+async function loadPrototype() {
+    state.protoEffects = await PrototypeSource.readJSON('vfx.json');
+    state.effects = { ...state.baseEffects, ...state.protoEffects };
+    populateEffectDropdown();
+}
+
+// The prototype's own effects are marked, as in the item editor.
 function populateEffectDropdown() {
     const sel = document.getElementById('effect-select');
+    const prev = sel.value;
     sel.innerHTML = '';
     for (const key of Object.keys(state.effects).sort()) {
         const opt = document.createElement('option');
         opt.value = key;
-        opt.textContent = key;
+        opt.textContent = (key in state.protoEffects ? '◆ ' : '') + key;
         sel.appendChild(opt);
     }
+    if (prev in state.effects) sel.value = prev;
+}
+
+function showFirstEffect() {
+    const sel = document.getElementById('effect-select');
+    if (!sel.value) return;
+    loadEffect(sel.value);
 }
 
 // Definition-level keys the form models. Anything else on the effect (on_tick,
@@ -1091,13 +1108,14 @@ function openTilePicker(target) {
 
 async function init() {
     await Promise.all([loadBaseData(), loadSpritesheet(), TilePicker.load()]);
+    await PrototypeSource.populate(document.getElementById('prototype-select'));
 
     // Report any primitive effects.js ships that has no slider schema, so the two
     // lists can't drift apart silently again.
     warnMissingEffectParams();
 
     initPreview();
-    populateEffectDropdown();
+    await loadPrototype();
     updateTileSlot('tileBase');
     updateTileSlot('tileTop');
 
@@ -1107,6 +1125,12 @@ async function init() {
     });
     document.querySelector('.tile-slot[data-target="tileTop"]').addEventListener('click', () => {
         openTilePicker('tileTop');
+    });
+
+    document.getElementById('prototype-select').addEventListener('change', async (e) => {
+        await PrototypeSource.choose(e.target.value);
+        await loadPrototype();
+        showFirstEffect();
     });
 
     // Wire effect select
@@ -1148,6 +1172,15 @@ async function init() {
         });
     });
 
+    PrototypeSource.bindSave(document.getElementById('btn-save'), 'vfx.json',
+        () => [document.getElementById('effect-key').value.trim(), readForm()],
+        async (key) => {
+            await loadPrototype();
+            document.getElementById('effect-select').value = key;
+        });
+    // Another tab saved vfx.json: refresh the dropdown, leave the form alone.
+    PrototypeSource.onExternalChange(['vfx.json'], () => loadPrototype());
+
     // Wire tint color picker sync
     const tintColor = document.getElementById('f-preview-tint');
     const tintHex = document.getElementById('f-preview-tint-hex');
@@ -1161,12 +1194,7 @@ async function init() {
     document.getElementById('effect-key').addEventListener('input', updateJSONOutput);
     document.getElementById('f-target').addEventListener('change', updateAll);
 
-    // Load first effect
-    const keys = Object.keys(state.effects).sort();
-    if (keys.length) {
-        document.getElementById('effect-select').value = keys[0];
-        loadEffect(keys[0]);
-    }
+    showFirstEffect();
 }
 
 init();

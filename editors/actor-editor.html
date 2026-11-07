@@ -12,9 +12,7 @@
 <header>
     <h1>Actor Editor</h1>
     <label>Prototype:
-        <select id="prototype-select">
-            <option value="" selected>— base only —</option>
-        </select>
+        <select id="prototype-select"></select>
     </label>
     <label>Actor:
         <select id="actor-select" class="header-select"></select>
@@ -22,6 +20,7 @@
     <button id="btn-new">New Actor</button>
     <button id="btn-export" class="btn-accent">Export JSON</button>
     <button id="btn-copy" class="btn-accent">Copy to Clipboard</button>
+    <button id="btn-save" class="btn-accent">Save to Workspace</button>
 </header>
 
 <div id="workspace" class="workspace">
@@ -426,6 +425,8 @@
 
 <!-- Tile picker modal -->
 <!-- The tile-picker overlay is injected by scripts/tile-picker.js on first use. -->
+<script src="scripts/workspace.js"></script>
+<script src="scripts/prototype-source.js"></script>
 <script src="scripts/tile-picker.js"></script>
 <script src="scripts/ref-fields.js"></script>
 <script src="scripts/sound-preview.js"></script>
@@ -559,7 +560,6 @@ let state = {
     protoPersonalities: {},
     mergedPersonalities: {},
     currentTiles: {},
-    prototypeCache: {}
 };
 
 let animFrame = 0;
@@ -567,15 +567,7 @@ let animRAF = null;
 
 // ---- Data loading ----
 
-async function fetchJSON(url) {
-    try {
-        const r = await fetch(url);
-        if (!r.ok) return {};
-        const text = await r.text();
-        if (!text.trim()) return {};
-        return JSON.parse(text);
-    } catch { return {}; }
-}
+const fetchJSON = PrototypeSource.fetchJSON;
 
 /**
  * Load the animation sheets named by a manifest.
@@ -585,30 +577,32 @@ async function fetchJSON(url) {
  * animation is a line of JSON and the dropdowns pick it up.
  *
  * @param {Object} manifest - name -> { file, speed?, description? }
- * @param {string} base - Directory the `file` values are relative to
+ * @param {function(string): (string|null|Promise<string|null>)} urlFor - URL of a `file` value
  */
-function loadAnimSheets(manifest, base) {
-    const promises = Object.entries(manifest || {}).map(([name, def]) => new Promise(resolve => {
+function loadAnimSheets(manifest, urlFor) {
+    return Promise.all(Object.entries(manifest || {}).map(async ([name, def]) => {
         const file = typeof def === 'string' ? def : def?.file;
-        if (!file) return resolve();
-        const img = new Image();
-        img.onload = () => {
-            state.animImages[name] = img;
-            // Derived, as in the engine: a sheet is however many frames wide it is.
-            state.animFrameCounts[name] = Math.floor(img.width / TILE_W);
-            resolve();
-        };
-        img.onerror = () => resolve();   // dropdown still lists it; preview stays blank
-        img.src = `${base}${file}`;
+        const src = file && await urlFor(file);
+        if (!src) return;
+        await new Promise(resolve => {
+            const img = new Image();
+            img.onload = () => {
+                state.animImages[name] = img;
+                // Derived, as in the engine: a sheet is however many frames wide it is.
+                state.animFrameCounts[name] = Math.floor(img.width / TILE_W);
+                resolve();
+            };
+            img.onerror = () => resolve();   // dropdown still lists it; preview stays blank
+            img.src = src;
+        });
     }));
-    return Promise.all(promises);
 }
 
 /** Fetch the base manifest and its sheets. Runs once, at startup. */
 async function loadBaseAnimations() {
     state.baseAnimations = await fetchJSON('../data/animations.json');
     state.animations = { ...state.baseAnimations };
-    await loadAnimSheets(state.animations, '../assets/sprites/');
+    await loadAnimSheets(state.animations, file => `../assets/sprites/${file}`);
 }
 
 /** Fill every `data-anim-select` dropdown from the currently known animations. */
@@ -673,40 +667,17 @@ async function loadBaseData() {
     state.tileNames = Object.keys(state.tileMap).sort();
 }
 
-async function loadPrototype(name) {
-    let protoAnimations = {};
-    let protoEffects = {};
-    if (!name) {
-        state.protoActors = {};
-        state.protoPersonalities = {};
-        state.protoItems = {};
-        state.protoStates = {};
-    } else {
-        if (state.prototypeCache[name]) {
-            state.protoActors = state.prototypeCache[name].actors;
-            state.protoPersonalities = state.prototypeCache[name].personalities;
-            state.protoItems = state.prototypeCache[name].items;
-            state.protoStates = state.prototypeCache[name].states;
-            protoAnimations = state.prototypeCache[name].animations;
-            protoEffects = state.prototypeCache[name].effects;
-        } else {
-            const [a, p, anim, eff, it, st] = await Promise.all([
-                fetchJSON(`../prototypes/${name}/actors.json`),
-                fetchJSON(`../prototypes/${name}/personalities.json`),
-                fetchJSON(`../prototypes/${name}/animations.json`),
-                fetchJSON(`../prototypes/${name}/vfx.json`),
-                fetchJSON(`../prototypes/${name}/items.json`),
-                fetchJSON(`../prototypes/${name}/states.json`),
-            ]);
-            state.protoActors = a;
-            state.protoPersonalities = p;
-            state.protoItems = it;
-            state.protoStates = st;
-            protoAnimations = anim;
-            protoEffects = eff;
-            state.prototypeCache[name] = { actors: a, personalities: p, animations: anim, effects: eff, items: it, states: st };
-        }
-    }
+// The files this page reads from the prototype (base only, a server
+// prototype or a workspace: scripts/prototype-source.js).
+const PROTOTYPE_FILES = ['actors.json', 'personalities.json', 'animations.json', 'vfx.json', 'items.json', 'states.json'];
+
+async function loadPrototype() {
+    const [actors, personalities, protoAnimations, protoEffects, items, states] =
+        await Promise.all(PROTOTYPE_FILES.map(PrototypeSource.readJSON));
+    state.protoActors = actors;
+    state.protoPersonalities = personalities;
+    state.protoItems = items;
+    state.protoStates = states;
     // A prototype's own vfx.json merges over the base library, the way the
     // engine merges it (Prototype.loadAssets in engine/prototype.js), so its effects are offered here too.
     state.mergedEffects = { ...state.effects, ...protoEffects };
@@ -717,10 +688,9 @@ async function loadPrototype(name) {
     state.mergedStates = { ...state.baseStates, ...state.protoStates };
 
     // A prototype's own animations join the dropdowns, and their sheets load from the
-    // prototype folder. Sheets already fetched stay cached in state.animImages, so
-    // flipping between prototypes doesn't refetch.
+    // prototype folder.
     state.animations = { ...state.baseAnimations, ...protoAnimations };
-    if (name) await loadAnimSheets(protoAnimations, `../prototypes/${name}/`);
+    await loadAnimSheets(protoAnimations, PrototypeSource.fileURL);
 
     populateActorDropdown();
     populatePersonalityDropdown();
@@ -2303,7 +2273,8 @@ function initTintSync() {
 function initEventListeners() {
     // Prototype change
     document.getElementById('prototype-select').addEventListener('change', async (e) => {
-        await loadPrototype(e.target.value);
+        await PrototypeSource.choose(e.target.value);
+        await loadPrototype();
         const firstKey = Object.keys(state.mergedActors).sort()[0];
         if (firstKey) {
             document.getElementById('actor-select').value = firstKey;
@@ -2346,6 +2317,18 @@ function initEventListeners() {
         });
     });
 
+    // Save into the open workspace's actors.json. A full actor is fine even
+    // for one the base library has: the engine merges it over the base entry.
+    PrototypeSource.bindSave(document.getElementById('btn-save'), 'actors.json',
+        () => [document.getElementById('actor-key').value.trim(), readForm()],
+        async (key) => {
+            await loadPrototype();
+            document.getElementById('actor-select').value = key;
+        });
+    // Another tab saved into a file this page reads: refresh the lists, but
+    // leave the form alone so unsaved edits survive.
+    PrototypeSource.onExternalChange(PROTOTYPE_FILES, () => loadPrototype());
+
     // Add buttons
     document.getElementById('btn-add-custom-attr').addEventListener('click', () => addCustomAttrRow('', ''));
     document.getElementById('btn-add-stat').addEventListener('click', () => addStatRow('', 0));
@@ -2375,23 +2358,6 @@ function initEventListeners() {
 
 // ---- Init ----
 
-// Fill the prototype dropdown from data/prototypes.json. Static HTTP can't list a
-// directory, so that file is the index; keeping the list there instead of hardcoded
-// <option>s stops the editors drifting out of sync with prototypes/.
-async function populatePrototypeSelect() {
-    const sel = document.getElementById('prototype-select');
-    if (!sel) return;
-    const idx = await fetchJSON('../data/prototypes.json');
-    const names = Array.isArray(idx.prototypes) ? idx.prototypes : [];
-    if (!names.length) return;   // keep the markup's fallback options
-    for (const opt of [...sel.options]) if (opt.value !== '') opt.remove();
-    for (const name of names) {
-        const o = document.createElement('option');
-        o.value = name; o.textContent = name;
-        sel.appendChild(o);
-    }
-}
-
 async function init() {
     initAttrGroups();
     initRefFields();
@@ -2405,8 +2371,8 @@ async function init() {
         loadBaseData(), loadSpritesheet(), loadBaseAnimations(), TilePicker.load(), ColorPicker.load(),
     ]);
     populateTypeDropdown();
-    await populatePrototypeSelect();
-    await loadPrototype(document.getElementById('prototype-select').value);
+    await PrototypeSource.populate(document.getElementById('prototype-select'));
+    await loadPrototype();
 
     initEventListeners();
 
