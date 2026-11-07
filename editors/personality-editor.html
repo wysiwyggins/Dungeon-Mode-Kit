@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="../assets/main.css">
 </head>
 <body class="editor personality-editor">
+<script src="scripts/editor-nav.js"></script>
 
 <header>
     <h1>Personality Editor</h1>
@@ -16,7 +17,7 @@
         </select>
     </label>
     <label>Personality:
-        <select id="personality-select" style="min-width:220px"></select>
+        <select id="personality-select" class="header-select"></select>
     </label>
     <button id="btn-new">New Personality</button>
     <button id="btn-export" class="btn-accent">Export JSON</button>
@@ -60,7 +61,7 @@
                     <label title="Health threshold (0-1) below which flee_from_danger activates">flee_threshold</label>
                     <input type="number" id="f-flee_threshold" min="0" max="1" step="0.1" value="" placeholder="e.g. 0.3">
                 </div>
-                <div style="margin: 6px 0 4px; font-size:11px; color:var(--accent)">Preferred Positions</div>
+                <div class="group-title">Preferred Positions</div>
                 <div id="preferred-positions-list" class="dynamic-list"></div>
                 <button class="add-btn" id="btn-add-position">+ Add Position</button>
             </div>
@@ -70,7 +71,7 @@
         <details class="section" open>
             <summary>Behavior List</summary>
             <div class="section-body">
-                <div style="font-size:10px; color:var(--text-dim); margin-bottom:8px">
+                <div class="hint">
                     Behaviors execute in order. The first to succeed stops the chain. Drag to reorder.
                 </div>
                 <div id="behavior-list-container" class="behavior-list-container"></div>
@@ -85,7 +86,7 @@
         <details class="section" open>
             <summary>Parameters</summary>
             <div class="section-body">
-                <div id="params-hint" style="font-size:10px; color:var(--text-dim); margin-bottom:8px">
+                <div class="hint" id="params-hint">
                     Showing parameters used by the current behavior list.
                 </div>
                 <div id="params-container"></div>
@@ -99,7 +100,7 @@
         <details class="section">
             <summary>Custom Parameters</summary>
             <div class="section-body">
-                <div style="font-size:10px; color:var(--text-dim); margin-bottom:8px">
+                <div class="hint">
                     Additional key-value pairs passed to all behaviors.
                 </div>
                 <div id="custom-params" class="dynamic-list"></div>

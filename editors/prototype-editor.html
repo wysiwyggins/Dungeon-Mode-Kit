@@ -9,6 +9,7 @@
 <script src="scripts/editor-template.js"></script>
 </head>
 <body class="editor prototype-editor">
+<script src="scripts/editor-nav.js"></script>
 
 <header>
     <h1>Prototype Editor</h1>
@@ -20,10 +21,7 @@
                 <option value="" selected>— none —</option>
             </select>
         </label>
-        <button id="btn-new-ws" title="Start a new blank prototype">New</button>
-        <select id="server-select" title="Copy a prototype from the server's prototypes/ folder into a new workspace">
-            <option value="" selected>Copy from server…</option>
-        </select>
+        <button id="btn-new-ws" title="Start a new prototype: blank, from a server prototype, or a copy of a workspace">New…</button>
         <button id="btn-import-zip" title="Open a zip downloaded earlier">Import zip…</button>
         <input type="file" id="zip-input" accept=".zip,application/zip" hidden>
         <button id="btn-export-zip" class="btn-accent" title="Download this workspace as a zip that unzips into prototypes/" disabled>Download zip</button>
@@ -34,12 +32,31 @@
     <span id="load-status" class="status-text"></span>
 </header>
 
+<!-- New workspace dialog (scripts/proto-workspace.js). Start from: blank, a
+     server prototype (data/prototypes.json) or an existing workspace. -->
+<dialog id="new-ws-dialog" class="new-ws-dialog">
+  <form id="new-ws-form" method="dialog">
+    <h3>New prototype</h3>
+    <label>Start from
+      <select id="new-ws-source"></select>
+    </label>
+    <label>Folder name
+      <input id="new-ws-name" autocomplete="off" spellcheck="false" placeholder="lowercase letters, digits, _">
+    </label>
+    <p id="new-ws-hint" class="new-ws-hint"></p>
+    <div class="new-ws-buttons">
+      <button type="button" id="new-ws-cancel">Cancel</button>
+      <button type="submit" id="new-ws-create" class="btn-accent">Create</button>
+    </div>
+  </form>
+</dialog>
+
 <div id="workspace" class="workspace">
   <div id="editor-body" class="editor-body">
     <div class="floor-tabs" id="floor-tabs"></div>
     <div id="proto-main" class="proto-main">
       <div id="form-panel" class="form-panel">
-        <div class="empty-hint" id="empty-hint">Pick a workspace above, or start one: New, Copy from server, or Import zip. Workspaces are saved in this browser; Download zip is your real save.</div>
+        <div class="empty-hint" id="empty-hint">Pick a workspace above, or start one with New… (blank, or from an existing prototype) or Import zip. Workspaces are saved in this browser; Download zip is your real save.</div>
         <div id="form-sections" class="hidden form-sections"></div>
       </div>
     </div>

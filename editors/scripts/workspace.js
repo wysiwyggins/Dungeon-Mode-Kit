@@ -65,9 +65,17 @@ const Workspace = (() => {
         return localStorage.getItem(CURRENT_KEY) || '';
     }
 
+    /* Remember `name` as the active workspace. If the page was opened with
+       ?workspace=, rewrite it too, or a reload would jump back to the old one. */
     function setCurrent(name) {
         if (name) localStorage.setItem(CURRENT_KEY, name);
         else localStorage.removeItem(CURRENT_KEY);
+        const url = new URL(location.href);
+        if (url.searchParams.has('workspace')) {
+            if (name) url.searchParams.set('workspace', name);
+            else url.searchParams.delete('workspace');
+            history.replaceState(history.state, '', url);
+        }
     }
 
     /* ---------------------------------------------------------------------
@@ -294,6 +302,17 @@ const Workspace = (() => {
         announce(ws, file);
     }
 
+    /* Copy every file of workspace `src` into a new workspace `name`. */
+    async function duplicate(src, name) {
+        checkName(name);
+        if (await exists(name)) throw new Error(`A workspace named "${name}" already exists.`);
+        const files = {};
+        for (const path of await listFiles(src)) {
+            files[path] = new Uint8Array(await (await readFile(src, path)).arrayBuffer());
+        }
+        return create(name, files);
+    }
+
     /* ---------------------------------------------------------------------
        Copy from server
        --------------------------------------------------------------------- */
@@ -404,7 +423,7 @@ const Workspace = (() => {
     return {
         DATA_FILES,
         supported, isValidName, current, setCurrent,
-        list, exists, open, close, openName, create, remove, copyFromServer,
+        list, exists, open, close, openName, create, remove, duplicate, copyFromServer,
         listFiles, readJSON, writeJSON, putEntry, removeEntry, readBlob, writeBlob,
         exportZip, readZip, importZip, download,
         onChange,

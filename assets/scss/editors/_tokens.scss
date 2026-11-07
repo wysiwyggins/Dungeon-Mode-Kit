@@ -1,0 +1,173 @@
+// ================================================================
+// Editor tokens and mixins. No CSS output: everything here is a
+// variable, a :root custom property, or a mixin the other partials use.
+// ================================================================
+
+// Type scale. Page body and form fields are $fs-lg; compact widgets step down.
+$fs-xs: 9px;     // badges, micro labels
+$fs-sm: 10px;    // secondary labels, notes
+$fs-md: 11px;    // checkboxes, sub-headings, compact controls
+$fs-base: 12px;  // buttons, summaries, list text
+$fs-lg: 14px;    // page body, form fields
+$fs-xl: 16px;    // page title
+
+// Spacing: $sp-N is N × 2px.
+$sp-1: 2px;
+$sp-2: 4px;
+$sp-3: 6px;
+$sp-4: 8px;
+$sp-5: 10px;
+$sp-6: 12px;
+$sp-8: 16px;
+
+// Padding inside controls; the compact one is for dense rows.
+$control-pad-y: 3px;
+$control-pad: $control-pad-y $sp-3;
+$control-pad-sm: $sp-1 $sp-2;
+
+$hairline: 1px solid var(--border);
+$panel-w: 220px;        // left-hand preview / behavior palette
+$mono: 'Courier New', monospace;   // numeric readouts, where digits must align
+
+// Colors live in custom properties so a theme is one block. --label-w is the
+// .field-row label column; pages and compact grids override it (_pages.scss).
+:root {
+    --bg: #fffdf8;
+    --bg2: #c1dcd8;
+    --bg3: #f3ffd9;
+    --surface: #ffffff;
+    --border: rgba(34, 17, 60, 0.135);
+    --text: #161616;
+    --text-dim: rgb(60, 60, 60);
+    --accent: #003a4c;
+    --accent2: #7a0014;
+    --warn: #e94560;
+    --input-bg: #eeeeee;
+    --track: #dddcd4;          // slider tracks and weight-bar backgrounds
+    --tile-bg: #d0cfc8;        // behind tile canvases, so transparent pixels read
+    --code-bg: #111;
+    --code-text: #0f8;
+    --overlay: rgba(0, 0, 0, 0.75);  // behind modal pickers and dialogs
+
+    --label-w: 130px;
+}
+
+// ================================================================
+// Mixins
+// ================================================================
+
+// The shared look of inputs, selects and plain buttons.
+@mixin control { 
+    background: var(--input-bg);
+    color: var(--text);
+    border: $hairline;
+    font-family: inherit;
+    &:focus { outline: 1px solid var(--accent); }
+}
+
+// Transparent button with a colored border that fills on hover.
+@mixin outline-btn($color, $hover-text: var(--bg)) {
+    color: $color;
+    background: none;
+    border: 1px solid $color;
+    &:hover { background: $color; color: $hover-text; }
+}
+
+// Secondary text: hints, counts, badges.
+@mixin note($size: $fs-sm, $italic: false) {
+    @if $size { font-size: $size; }
+    color: var(--text-dim);
+    @if $italic { font-style: italic; }
+}
+
+// Small accent-colored titles inside a section.
+@mixin heading($size: $fs-md, $bold: false) {
+    font-size: $size;
+    color: var(--accent);
+    @if $bold { font-weight: bold; }
+}
+
+// A bordered white box: rows, cards, layers.
+@mixin card($pad: $sp-4) {
+    border: $hairline;
+    background: var(--surface);
+    padding: $pad;
+    min-width: 0;   // in a grid/flex cell, let long content shrink inside the border
+}
+
+// A nested group set off by a rule down its left edge.
+@mixin indent-rule($pad: $sp-5) {
+    border-left: 2px solid var(--border);
+    padding-left: $pad;
+}
+
+@mixin row($gap: $sp-4) {
+    display: flex;
+    align-items: center;
+    gap: $gap;
+}
+
+@mixin ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+// '+ ' / '- ' marker on a <details>' summary, replacing the native triangle.
+@mixin disclosure {
+    > summary {
+        cursor: pointer;
+        user-select: none;
+        list-style: none;
+        &::-webkit-details-marker { display: none; }
+        &::before { content: '+ '; }
+    }
+    &[open] > summary::before { content: '- '; }
+}
+
+// A checkbox and its text on one line.
+@mixin check-label($size: $fs-md) {
+    @include row($sp-2);
+    font-size: $size;
+    color: var(--text);
+    cursor: pointer;
+    min-width: unset;
+}
+
+// A full-height column beside the form.
+@mixin side-panel {
+    width: $panel-w;
+    min-width: $panel-w;
+    padding: $sp-6;
+    border-right: $hairline;
+    overflow-y: auto;
+    background: var(--bg2);
+}
+
+// Lay a page's details.section boxes out side by side. Two flavors:
+// - section-wrap: a flex row that wraps, so sections line up in rows
+//   (the form-panel editors).
+// - section-columns: CSS multi-columns (masonry), so variable-height,
+//   collapsing sections pack top-to-bottom with no ragged gaps
+//   (prototype and biome editors, whose wrap container is .form-sections).
+@mixin section-box($max) {
+    break-inside: avoid;        // multicol: don't split a section across columns
+    display: inline-block;      // makes break-inside:avoid reliable in multicol
+    width: 100%;
+    max-width: $max;
+    margin: 0 0 $sp-4;          // vertical rhythm (multicol has no row gap)
+}
+@mixin section-wrap($max: 500px) {
+    .form-panel { display: flex; flex-flow: row wrap; column-gap: $sp-4; }
+    .form-panel > details.section { @include section-box($max); }
+}
+@mixin section-columns($container, $col: 460px, $max: 520px) {
+    #{$container} { column-width: $col; column-gap: $sp-4; }
+    details.section { @include section-box($max); }
+}
+
+@mixin range-thumb {
+    pointer-events: auto;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 1px solid var(--bg);
+    cursor: pointer;
+}

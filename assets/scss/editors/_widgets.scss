@@ -1,0 +1,367 @@
+// ================================================================
+// Editor widgets: shared pieces used by more than one page, or built
+// by shared scripts (tile-picker.js, color-picker.js, proto-widgets.js…).
+// ================================================================
+
+body.editor {
+
+    // ---- Preview panel and tile slots (actor, item, spell, entity, vfx) ----
+
+    .preview-panel {
+        @include side-panel;
+        h3 { @include heading($fs-lg); margin-bottom: $sp-4; }
+    }
+    .preview-canvas { display: block; background: var(--tile-bg); border: $hairline; margin-bottom: $sp-6; }
+    .preview-label { @include note($fs-base); margin: $sp-4 0 $sp-1; }
+    .preview-tile { display: inline-block; background: var(--tile-bg); border: $hairline; margin-right: $sp-2; }
+
+    .tile-slot {
+        @include row;
+        display: inline-flex;
+        cursor: pointer;
+        padding: $sp-2;
+        border: 1px dashed var(--border);
+        margin-bottom: $sp-3;
+        min-height: 38px;
+        &:hover { border-color: var(--accent); }
+
+        canvas { display: block; background: var(--tile-bg); }
+        .tile-name { @include ellipsis; @include note($fs-base); max-width: 180px; }
+        .clear-btn { @include outline-btn(var(--accent2), #fff); padding: $control-pad-sm; }
+    }
+
+    // Inline tile field (prototype editor's default_floor): a small preview
+    // beside the tile name and the picker button.
+    .tile-preview { display: block; flex: none; background: var(--tile-bg); border: $hairline; }
+    .tile-field-name { @include ellipsis; @include note($fs-base); flex: 1 1 auto; min-width: 0; }
+
+    // ---- Modal pickers (tile-picker.js; color-picker.js reuses the chrome) ----
+
+    .tile-picker-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        justify-content: center;
+        align-items: flex-start;
+        padding-top: $sp-8 * 2;
+        background: var(--overlay);
+        &.active { display: flex; }
+    }
+    .tile-picker {
+        width: fit-content;
+        max-height: 90vh;
+        overflow-y: auto;
+        padding: $sp-6;
+        background: var(--bg2);
+        border: 1px solid var(--accent);
+    }
+    .tile-picker-header {
+        @include row;
+        margin-bottom: $sp-4;
+        input, button { font-size: $fs-base; }
+        input { width: 250px; }
+    }
+    .tile-picker-target { @include heading; }
+    .tile-picker-canvas { display: block; cursor: crosshair; }
+    .tile-picker-tooltip {
+        @include ellipsis;
+        display: none;
+        position: fixed;
+        z-index: 1001;
+        max-width: 400px;
+        padding: $control-pad-y $sp-4;
+        font-size: $fs-md;
+        color: var(--accent);
+        background: var(--bg);
+        border: 1px solid var(--accent);
+        pointer-events: none;
+    }
+
+    .color-picker { width: 640px; }
+    .color-picker-hex-row input[type="color"] { width: 32px; }
+    .color-picker-readout { @include note($fs-md); white-space: nowrap; }
+    .color-picker-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, 16px);
+        gap: $sp-1;
+        max-height: 60vh;
+        overflow-y: auto;
+    }
+    .color-picker-swatch {
+        width: 16px;
+        height: 16px;
+        border: 1px solid rgba(0, 0, 0, 0.4);
+        cursor: pointer;
+        outline-offset: 1px;
+        &:hover { outline: 1px solid var(--text); }
+        &.nearest { outline: 2px solid var(--accent); }
+        &.current { outline: 2px solid var(--warn); }
+    }
+
+    // Inline color-name / tile-name fields: a picker button beside the name
+    // input, and a warning for a name the data file doesn't know (ref-fields.js).
+    .color-name-swatch,
+    .tile-name-thumb { flex: none; border: $hairline; cursor: pointer; }
+    .color-name-swatch {
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        &.empty { background: repeating-linear-gradient(45deg, var(--input-bg) 0 4px, var(--border) 4px 5px); }
+    }
+    .tile-name-thumb {
+        padding: 1px;
+        line-height: 0;
+        background: var(--input-bg);
+        canvas { width: 32px; height: 24px; image-rendering: pixelated; }
+    }
+    .color-name-warning {
+        display: none;
+        font-size: $fs-sm;
+        color: var(--warn);
+        white-space: nowrap;
+        &.visible { display: inline; }
+    }
+
+    // ---- Dialog (prototype editor's New…) ----
+
+    dialog {
+        margin: auto;
+        padding: $sp-8;
+        min-width: 360px;
+        color: var(--text);
+        background: var(--bg2);
+        border: 1px solid var(--accent);
+        &::backdrop { background: var(--overlay); }
+
+        h3 { @include heading($fs-xl); margin-bottom: $sp-6; }
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: $sp-2;
+            margin-bottom: $sp-5;
+            color: var(--text-dim);
+        }
+        button { font-size: $fs-lg; padding: $sp-2 $sp-6; }
+    }
+
+    // ================================================================
+    // Prototype & biome editor widgets (proto-widgets.js, *-sections.js)
+    // ================================================================
+
+    // Compact fields side by side, collapsing to one column when narrow.
+    .field-grid {
+        --label-w: 92px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 0 $sp-8;
+        align-items: start;
+
+        .field-row, .sub, .slider-row { margin-bottom: $sp-3; }
+        .field-row input[type="number"] { width: auto; min-width: 0; flex: 1; }
+    }
+
+    // Long repeating lists: two columns on wide screens. minmax(0, 1fr) lets a
+    // column shrink below its content, so cards keep their contents inside.
+    .spawn-grid,
+    .pattern-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        align-items: start;
+        gap: $sp-3 $sp-6;
+        @media (min-width: 900px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    .spawn-grid { margin-bottom: $sp-3; }
+
+    .toggle-line {
+        @include row($sp-2);
+        @include heading;
+        margin: $sp-3 0 $sp-2;
+        cursor: pointer;
+        min-width: unset;
+    }
+    // Top-of-form cutscene switch: reads as a mode selector, not a field.
+    .cutscene-toggle {
+        @include card($sp-4 $sp-5);
+        margin-bottom: $sp-4;
+        border-radius: 4px;
+        .toggle-line { margin: 0; font-size: $fs-base; }
+    }
+    .mini-label { @include note($fs-xs); cursor: help; }
+
+    // Floor tab strip; the biome editor's "design for N floors" bar reuses it.
+    .floor-tabs {
+        @include row($sp-2);
+        flex-wrap: wrap;
+        padding: $sp-4 $sp-8;
+        background: var(--bg2);
+        border-bottom: $hairline;
+
+        .add-btn { margin-top: 0; }
+        .floor-hint { @include note($italic: true); margin-left: auto; }
+    }
+    .floor-tab {
+        font-size: $fs-md;
+        padding: $control-pad-y $sp-5;
+        &.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+        &.proto-tab { font-weight: bold; margin-right: $sp-4; }
+    }
+    .design-floors-label {
+        @include row($sp-3);
+        display: inline-flex;
+        font-size: $fs-md;
+        color: var(--text);
+        input[type="number"] { width: 60px; font-size: $fs-md; padding: $control-pad-sm; }
+    }
+
+    // Section header toggles: override on a floor, enable/disable a section.
+    .override-toggle,
+    .section-enable-toggle {
+        @include row($sp-2);
+        @include heading($fs-sm);
+        display: inline-flex;
+        margin-left: auto;
+        cursor: pointer;
+    }
+    .section-summary-row {
+        @include row;
+        flex: 1 1 auto;
+        .sec-title { flex: none; }
+    }
+    .inherit-badge { @include note($fs-xs, $italic: true); }
+
+    // Slider (percentages, scalars) and dual-handle min/max range.
+    .slider-row {
+        --label-w: 92px;
+        @include row;
+        margin-bottom: $sp-3;
+
+        > label { min-width: var(--label-w); @include note($fs-md); }
+        input[type="range"] { flex: 1; min-width: 80px; }
+        .slider-val {
+            min-width: 58px;
+            text-align: right;
+            font: #{$fs-md} $mono;
+            &.guaranteed { color: var(--accent); font-weight: bold; }
+        }
+    }
+    .dualrange {
+        position: relative;
+        display: flex;
+        align-items: center;
+        flex: 1;
+        height: 22px;
+        min-width: 110px;
+
+        .track,
+        .track-fill {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 4px;
+        }
+        .track { left: 0; right: 0; background: var(--track); border: $hairline; }
+        .track-fill { background: var(--accent); }
+        input[type="range"] {
+            position: absolute;
+            left: 0;
+            right: 0;
+            width: 100%;
+            appearance: none;
+            -webkit-appearance: none;
+            background: none;
+            pointer-events: none;
+
+            &::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; @include range-thumb; }
+            &::-moz-range-thumb { @include range-thumb; }
+            &::-moz-range-track { background: none; }
+        }
+    }
+    // Without a fixed value column the two thumbs pile up over the text.
+    .range-vals { flex: none; min-width: 64px; white-space: nowrap; font: #{$fs-md} $mono; }
+
+    // Spawn rows (random_actors / random_items). Flex children must be allowed
+    // to shrink (min-width: 0) or long <select> options overflow the card.
+    .spawn-row {
+        @include card($sp-3 $sp-4);
+        margin-bottom: $sp-3;
+        overflow: hidden;
+
+        .spawn-head {
+            @include row($sp-3);
+            flex-wrap: wrap;
+            margin-bottom: $sp-2;
+            select { flex: 1; min-width: 0; font-size: $fs-base; }
+        }
+        .pool-hint { font-size: $fs-xs; color: var(--accent2); white-space: nowrap; }
+        .expected { @include note($italic: true); white-space: nowrap; margin-left: $sp-2; }
+        .slider-row {
+            > label { min-width: 0; flex: none; }
+            input[type="range"] { min-width: 0; }
+        }
+        // "count" label, then the dual-range row fills the rest.
+        .sub {
+            @include row;
+            > label { flex: 0 0 3.4em; min-width: 64px; @include note; }
+            > .slider-row { flex: 1; min-width: 0; margin-bottom: 0; }
+        }
+    }
+    .pattern-box { @include card; margin-bottom: $sp-4; }
+    .spawn-grid .spawn-row,
+    .pattern-grid .pattern-box { margin-bottom: 0; }   // the grid gap spaces them
+
+    // Weighted-pool bars (lakes/abyss types, room weights, item catalog).
+    .weight-table { margin: $sp-2 0; }
+    .weight-row {
+        @include row($sp-3);
+        margin-bottom: $sp-2;
+
+        .wlabel { min-width: 90px; font-size: $fs-md; }
+        select.wlabel-sel,
+        input[type="number"] { font-size: $fs-md; padding: $control-pad-sm; }
+        select.wlabel-sel { min-width: 90px; flex: none; }
+        input[type="number"] { width: 56px; }
+        .wbar-wrap {
+            position: relative;
+            flex: 1;
+            min-width: 60px;
+            height: 14px;
+            background: var(--track);
+            border: $hairline;
+        }
+        .wbar-fill { height: 100%; background: var(--accent); }
+        .wbar-pct {
+            position: absolute;
+            top: 0;
+            right: $sp-1;
+            font-size: $fs-xs;
+            line-height: 14px;
+        }
+    }
+
+    // Biome authoring (multi-level prototypes).
+    .biome-card {
+        @include disclosure;
+        @include card(0);
+        border-color: var(--accent);
+        margin: $sp-3 0;
+        > summary {
+            @include heading($fs-base, $bold: true);
+            padding: $sp-3 $sp-5;
+            background: var(--bg3);
+        }
+        > .section-body { padding: $sp-4 $sp-5; }
+    }
+    .depth-catalog { margin: $sp-2 0 $sp-4; }
+    .depth-row-head { @include row($sp-3); margin-bottom: $sp-2; }
+    .depth-preview {
+        margin-top: $sp-3;
+        .weight-row { margin: $sp-1 0; }
+    }
+    .unknown-keys {
+        font-size: $fs-sm;
+        color: var(--accent2);
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+}

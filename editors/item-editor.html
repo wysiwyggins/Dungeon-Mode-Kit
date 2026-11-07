@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="../assets/main.css">
 </head>
 <body class="editor item-editor">
+<script src="scripts/editor-nav.js"></script>
 
 <header>
     <h1>Item Editor</h1>
@@ -16,7 +17,7 @@
         </select>
     </label>
     <label>Item:
-        <select id="item-select" style="min-width:220px"></select>
+        <select id="item-select" class="header-select"></select>
     </label>
     <div id="item-filter-wrap" class="item-filter-wrap">
         <input id="item-filter" class="item-filter" type="text"  placeholder="Search items...">
@@ -60,13 +61,13 @@
                     <label>Type</label>
                     <select id="f-type"></select>
                 </div>
-                <div class="hint" id="type-hint" style="margin:-4px 0 8px 0"></div>
+                <div class="hint" id="type-hint"></div>
                 <div class="field-row">
                     <label>Description</label>
                     <textarea id="f-description" rows="2" placeholder="Flavor text (in attributes)"></textarea>
                 </div>
                 <div class="field-row">
-                    <label style="min-width:unset"><input type="checkbox" id="f-identified"> Identified by default</label>
+                    <label class="label-auto"><input type="checkbox" id="f-identified"> Identified by default</label>
                 </div>
                 <div class="field-row">
                     <label>Unidentified Template</label>
@@ -93,21 +94,21 @@
                 <div class="field-row">
                     <label>Tint</label>
                     <input type="color" id="f-tint" value="#ffffff">
-                    <input type="text" id="f-tint-hex" value="" placeholder="#rrggbb" style="width:80px">
+                    <input class="w-md" type="text" id="f-tint-hex" value="" placeholder="#rrggbb">
                 </div>
                 <div class="field-row">
-                    <label style="min-width:unset"><input type="checkbox" id="f-flipH"> Flip H</label>
-                    <label style="min-width:unset"><input type="checkbox" id="f-flipV"> Flip V</label>
+                    <label class="label-auto"><input type="checkbox" id="f-flipH"> Flip H</label>
+                    <label class="label-auto"><input type="checkbox" id="f-flipV"> Flip V</label>
                 </div>
                 <div class="field-row">
-                    <label style="min-width:unset"><input type="checkbox" id="f-random_color"> Random color</label>
-                    <label style="min-width:unset"><input type="checkbox" id="f-random_glyph_name"> Greeked name</label>
+                    <label class="label-auto"><input type="checkbox" id="f-random_color"> Random color</label>
+                    <label class="label-auto"><input type="checkbox" id="f-random_glyph_name"> Greeked name</label>
                 </div>
                 <div class="field-row">
                     <label>Tint VFX</label>
                     <!-- Options are built from data/vfx.json (target: "sprite"). -->
                     <select id="f-tint_effect"></select>
-                    <label style="min-width:unset"><input type="checkbox" id="f-ignore_darkness"> Ignore darkness</label>
+                    <label class="label-auto"><input type="checkbox" id="f-ignore_darkness"> Ignore darkness</label>
                 </div>
             </div>
         </details>
@@ -117,9 +118,9 @@
             <summary>Attributes</summary>
             <div class="section-body">
                 <div id="bool-attrs"></div>
-                <div style="margin: 8px 0 4px; font-size:11px; color:var(--accent)">Typed Attributes</div>
+                <div class="group-title">Typed Attributes</div>
                 <div id="typed-attrs" class="typed-attrs"></div>
-                <div style="margin: 8px 0 4px; font-size:11px; color:var(--accent)">Custom Attributes</div>
+                <div class="group-title">Custom Attributes</div>
                 <div id="custom-attrs" class="dynamic-list"></div>
                 <button class="add-btn" id="btn-add-custom-attr">+ Add Custom Attribute</button>
             </div>
@@ -132,7 +133,7 @@
         <details class="section" data-capability="melee">
             <summary>Collision / Melee</summary>
             <div class="section-body">
-                <div style="font-size:10px; color:var(--text-dim); margin-bottom:8px; line-height:1.4">
+                <div class="hint">
                     Collision effect fires when the wielder attacks with this weapon, or when a non-weapon item hits something (e.g. a key unlocking a door sets locked: false).
                 </div>
                 <div class="sub-section-title">Collision Effect</div>
@@ -161,7 +162,7 @@
                     <input type="text" id="f-attack_sound" placeholder="bow">
                 </div>
 
-                <div class="sub-section-title" style="margin-top:8px">Attack Style</div>
+                <div class="sub-section-title mt-4">Attack Style</div>
                 <div class="field-row">
                     <label>Style</label>
                     <select id="f-attack_style">
@@ -184,7 +185,7 @@
                     <input type="number" id="f-penetrate_depth" min="1" value="">
                 </div>
 
-                <div class="sub-section-title" style="margin-top:8px">Weapon Proc</div>
+                <div class="sub-section-title mt-4">Weapon Proc</div>
                 <div class="field-row">
                     <label>Proc Type</label>
                     <select id="f-weapon_proc">
@@ -208,7 +209,7 @@
         <details class="section" data-capability="launcher">
             <summary>Launcher</summary>
             <div class="section-body">
-                <div style="font-size:10px; color:var(--text-dim); margin-bottom:6px; line-height:1.4">
+                <div class="hint">
                     A wielded launcher fires the ammo it names (by id or type): thrown or fired with the Fire key, that ammo does (its damage + this weapon's enchantment) × multiplier, at the launch range.
                 </div>
                 <div class="field-row">
@@ -238,7 +239,7 @@
         <details class="section" data-capability="thrown">
             <summary>Thrown &amp; Breaking</summary>
             <div class="section-body">
-                <div style="font-size:10px; color:var(--text-dim); margin-bottom:8px; line-height:1.4">
+                <div class="hint">
                     What happens when the item is thrown, fired or shattered: ammo breaking on a hit, a potion bursting into gas, an explosive going off.
                 </div>
                 <div class="field-row">
@@ -276,7 +277,7 @@
         <details class="section" data-capability="equipment">
             <summary>Equipment</summary>
             <div class="section-body">
-                <div style="font-size:10px; color:var(--text-dim); margin-bottom:8px; line-height:1.4">
+                <div class="hint">
                     Items with <b>weapon</b> checked equip to the weapon slot. Items with a <b>wearable slot</b> equip to that armor slot.
                     These are mutually exclusive — the engine checks weapon first. Weapons and armor can both have <b>wear_effect</b> stat bonuses and <b>enchantment</b>.
                 </div>
@@ -290,21 +291,21 @@
                         <option value="ring">ring</option>
                     </select>
                 </div>
-                <div style="margin: 6px 0 4px; font-size:11px; color:var(--accent)">Wear Effect (stat bonuses when equipped)</div>
+                <div class="group-title">Wear Effect (stat bonuses when equipped)</div>
                 <div id="wear-effects-list" class="dynamic-list"></div>
                 <button class="add-btn" id="btn-add-wear-effect">+ Add Wear Effect</button>
 
-                <div style="margin: 8px 0 4px; font-size:11px; color:var(--accent)">Requires Stat (minimum to equip)</div>
+                <div class="group-title">Requires Stat (minimum to equip)</div>
                 <div id="requires-stat-list" class="dynamic-list"></div>
                 <button class="add-btn" id="btn-add-requires-stat">+ Add Requirement</button>
 
-                <div class="field-row" style="margin-top:8px">
-                    <label style="min-width:unset"><input type="checkbox" id="f-enchantable"> Enchantable</label>
+                <div class="field-row mt-4">
+                    <label class="label-auto"><input type="checkbox" id="f-enchantable"> Enchantable</label>
                 </div>
                 <div class="field-row">
                     <label>Enchant Range</label>
-                    <input type="number" id="f-enchant_min" placeholder="min" style="width:60px"> to
-                    <input type="number" id="f-enchant_max" placeholder="max" style="width:60px">
+                    <input class="w-sm" type="number" id="f-enchant_min" placeholder="min"> to
+                    <input class="w-sm" type="number" id="f-enchant_max" placeholder="max">
                 </div>
             </div>
         </details>
@@ -314,7 +315,7 @@
         <details class="section" data-capability="use">
             <summary>Use Effect</summary>
             <div class="section-body">
-                <div style="font-size:10px; color:var(--text-dim); margin-bottom:8px; line-height:1.4">
+                <div class="hint">
                     Items with a <b>use_verb</b> appear in the Use menu. Pick a named action, or describe what happens to the user and the creatures nearby.
                     Set <b>consumable</b> in Attributes to destroy the item after use. Set <b>deferred</b> when the player must pick a target before the effect fires.
                 </div>
@@ -332,17 +333,17 @@
                         <option value="">— none: use the fields below —</option>
                     </select>
                 </div>
-                <div class="hint" id="use-action-hint" style="margin:-4px 0 8px 0"></div>
+                <div class="hint" id="use-action-hint"></div>
 
                 <div id="use-object-fields">
-                    <div class="sub-section-title" style="margin-top:6px">On the user</div>
-                    <div style="font-size:10px; color:var(--text-dim); margin-bottom:4px; line-height:1.4">
+                    <div class="sub-section-title mt-3">On the user</div>
+                    <div class="hint">
                         A number adds to a stat or numeric attribute (negative subtracts); <b>max</b> fills it; <b>health_max</b> raises the maximum.
                         Thrown without <b>burst_into</b>, these and the state become the gas's effect.
                     </div>
                     <div id="use-stat-list" class="dynamic-list"></div>
                     <button class="add-btn" id="btn-add-use-stat">+ Add Stat Change</button>
-                    <div class="field-row" style="margin-top:8px">
+                    <div class="field-row mt-4">
                         <label>Apply State</label>
                         <input type="text" id="f-ue-apply_state">
                     </div>
@@ -351,15 +352,15 @@
                         <input type="number" id="f-ue-apply_duration" min="1" placeholder="the state's own">
                     </div>
                     <div class="field-row">
-                        <label style="min-width:unset"><input type="checkbox" id="f-ue-remove_all_states"> Cure all states</label>
+                        <label class="label-auto"><input type="checkbox" id="f-ue-remove_all_states"> Cure all states</label>
                     </div>
 
-                    <div style="margin: 8px 0 4px; font-size:11px; color:var(--accent)">Other keys</div>
+                    <div class="group-title">Other keys</div>
                     <div id="use-effect-list" class="dynamic-list"></div>
                     <button class="add-btn" id="btn-add-use-effect">+ Add Key</button>
                 </div>
 
-                <div style="margin: 10px 0 4px; font-size:11px; color:var(--accent)">Use Options</div>
+                <div class="group-title">Use Options</div>
                 <div class="field-row">
                     <label>Use Sound</label>
                     <input type="text" id="f-use_sound" placeholder="heal, swallow, magic...">
@@ -369,21 +370,21 @@
                     <textarea id="f-use_description" rows="2" placeholder="The [item_name] tastes [adjectives.yucky]."></textarea>
                 </div>
                 <div class="field-row">
-                    <label style="min-width:unset"><input type="checkbox" id="f-use_ceremony"> Ceremony (dramatic scroll reading)</label>
+                    <label class="label-auto"><input type="checkbox" id="f-use_ceremony"> Ceremony (dramatic scroll reading)</label>
                 </div>
                 <div class="field-row">
-                    <label style="min-width:unset"><input type="checkbox" id="f-deferred"> Deferred (player picks target first)</label>
+                    <label class="label-auto"><input type="checkbox" id="f-deferred"> Deferred (player picks target first)</label>
                 </div>
 
                 <!-- Targeted spell sub-section -->
                 <div class="conditional-section" id="targeted-spell-section">
-                    <div class="sub-section" style="margin-top:10px">
+                    <div class="sub-section mt-4">
                         <div class="sub-section-title" id="spell-section-title">Targeted Spell</div>
-                        <div style="font-size:10px; color:var(--text-dim); margin-bottom:6px; display:none" id="area-spell-intro">
+                        <div class="hint" style="display:none" id="area-spell-intro">
                             Using the item casts the named spell from spells.json at once, with no aiming. It needs a burst or sight spell.
                             What the spell does is edited in the spell editor.
                         </div>
-                        <div style="font-size:10px; color:var(--text-dim); margin-bottom:6px" id="targeted-spell-intro">
+                        <div class="hint" id="targeted-spell-intro">
                             The player aims, the item spends a charge, and the named spell from spells.json fires.
                             What the spell does is edited in the <a href="spell-editor.html" id="spell-editor-link">spell editor</a>; this item only owns its charges.
                             Staffs recharge over time (pow per_turn &gt; 0). Wands do not (per_turn: 0) but can gain charges via enchantment.
@@ -392,7 +393,7 @@
                             <label>Spell</label>
                             <input type="text" id="f-spell">
                         </div>
-                        <div class="hint" id="spell-summary" style="margin:-4px 0 8px 0"></div>
+                        <div class="hint" id="spell-summary"></div>
                         <div class="field-row">
                             <label>Charge Stat</label>
                             <input type="text" id="f-charge_stat" placeholder="pow" title="Name of the stat that tracks charges. Usually 'pow'. Must match a stat in the Stats section.">
@@ -406,7 +407,7 @@
                              and the inline form an item without a `spell` still uses. -->
                         <details class="sub-collapsible" id="spell-overrides">
                             <summary>Overrides / inline spell</summary>
-                            <div style="font-size:10px; color:var(--text-dim); margin:4px 0 6px">
+                            <div class="hint">
                                 Anything set here wins over the spell. Leave blank to use the spell's values.
                             </div>
                             <div class="field-row">
@@ -421,21 +422,21 @@
                                 <label>Cast Sound</label>
                                 <input type="text" id="f-cast_sound">
                             </div>
-                            <div style="margin: 6px 0 4px; font-size:11px; color:var(--accent)">Spell Effect (replaces the spell's payload entirely)</div>
+                            <div class="group-title">Spell Effect (replaces the spell's payload entirely)</div>
                             <div id="spell-effect-list" class="dynamic-list"></div>
                             <button class="add-btn" id="btn-add-spell-effect">+ Add Spell Effect Property</button>
                             <div id="projectile-fields">
-                            <div style="margin: 8px 0 4px; font-size:11px; color:var(--accent)">Projectile</div>
+                            <div class="group-title">Projectile</div>
                             <div class="field-row"><label>Projectile Tile</label>
                                 <div class="tile-slot" data-target="projectile_tile"><canvas width="40" height="30"></canvas><span class="tile-name">—</span><button class="clear-btn" title="Clear">x</button></div>
                             </div>
                             <div class="field-row">
                                 <label>Projectile Tint</label>
                                 <input type="color" id="f-projectile_tint" value="#ffffff">
-                                <input type="text" id="f-projectile_tint_hex" value="" placeholder="#rrggbb" style="width:80px">
+                                <input class="w-md" type="text" id="f-projectile_tint_hex" value="" placeholder="#rrggbb">
                             </div>
                             </div>
-                            <div id="bolt-note" style="display:none; font-size:10px; color:var(--text-dim); margin-top:8px">
+                            <div class="hint mt-4" id="bolt-note" style="display:none">
                                 Bolt spells draw their vfx along the path, so they have no projectile tile or tint.
                             </div>
                         </details>
@@ -448,7 +449,7 @@
         <details class="section" data-capability="light">
             <summary>Light Source</summary>
             <div class="section-body">
-                <div style="font-size:10px; color:var(--text-dim); margin-bottom:8px; line-height:1.4">
+                <div class="hint">
                     Set <b>light_source</b> (or Light Radius) in Attributes to make the item a light.
                 </div>
                 <div class="field-row">
@@ -489,10 +490,10 @@
                 </div>
                 <div class="field-row">
                     <label>Random Value</label>
-                    <input type="number" id="f-random_value_min" placeholder="min" style="width:60px"> to
-                    <input type="number" id="f-random_value_max" placeholder="max" style="width:60px">
+                    <input class="w-sm" type="number" id="f-random_value_min" placeholder="min"> to
+                    <input class="w-sm" type="number" id="f-random_value_max" placeholder="max">
                 </div>
-                <div style="margin: 6px 0 4px; font-size:11px; color:var(--accent)">Pickup Effect</div>
+                <div class="group-title">Pickup Effect</div>
                 <div id="pickup-effect-list" class="dynamic-list"></div>
                 <button class="add-btn" id="btn-add-pickup-effect">+ Add Pickup Effect</button>
             </div>
@@ -502,7 +503,7 @@
         <details class="section" data-capability="pool">
             <summary>Random Type Pool</summary>
             <div class="section-body">
-                <div style="font-size:11px; color:var(--text-dim); margin-bottom:6px">If this item is a random category (e.g. "potion", "weapon"), list the possible item types here. All other fields will be ignored.</div>
+                <div class="hint">If this item is a random category (e.g. "potion", "weapon"), list the possible item types here. All other fields will be ignored.</div>
                 <div id="random-type-list" class="dynamic-list"></div>
                 <button class="add-btn" id="btn-add-random-type">+ Add Type</button>
             </div>
@@ -1214,13 +1215,13 @@ function initBoolAttrs() {
     const toggle = document.createElement('button');
     toggle.className = 'add-btn';
     toggle.textContent = '+ More attributes...';
-    toggle.style.marginTop = '4px';
+    toggle.classList.add('mt-2');
     wrapper.appendChild(toggle);
 
     const secondaryGrid = document.createElement('div');
     secondaryGrid.className = 'checkbox-grid';
     secondaryGrid.style.display = 'none';
-    secondaryGrid.style.marginTop = '6px';
+    secondaryGrid.classList.add('mt-3');
     for (const attr of SECONDARY_BOOL_ATTRS) makeBoolCheckbox(attr, secondaryGrid);
     wrapper.appendChild(secondaryGrid);
 
@@ -1244,7 +1245,7 @@ function initTypedAttrs() {
         inp.type = ta.type;
         inp.id = 'attr-' + ta.key;
         inp.addEventListener('input', updatePreview);
-        if (ta.type === 'number') inp.style.width = '100px';
+        if (ta.type === 'number') inp.classList.add('w-lg');
         row.appendChild(inp);
         container.appendChild(row);
     }
@@ -1326,7 +1327,7 @@ function addStatRow(name, data) {
 
     const nameInp = document.createElement('input');
     nameInp.type = 'text'; nameInp.placeholder = 'stat name';
-    nameInp.value = name || 'pow'; nameInp.style.width = '100px'; nameInp.style.flex = '0';
+    nameInp.value = name || 'pow'; nameInp.classList.add('w-lg');
     nameInp.addEventListener('input', updatePreview);
 
     const isSimple = typeof data === 'number' || data === undefined;
@@ -1334,7 +1335,7 @@ function addStatRow(name, data) {
 
     const simpleInp = document.createElement('input');
     simpleInp.type = 'number'; simpleInp.placeholder = 'max';
-    simpleInp.value = simpleVal; simpleInp.style.width = '100px'; simpleInp.style.flex = '0';
+    simpleInp.value = simpleVal; simpleInp.classList.add('w-lg');
     simpleInp.addEventListener('input', updatePreview);
 
     const advToggle = document.createElement('button');
@@ -1349,7 +1350,7 @@ function addStatRow(name, data) {
     advDiv.className = 'stat-advanced';
     advDiv.style.width = '100%';
     advDiv.style.paddingLeft = '108px';
-    advDiv.style.marginTop = '4px';
+    advDiv.classList.add('mt-2');
 
     const advData = isSimple ? {} : (data || {});
     const advFields = [
@@ -1371,7 +1372,7 @@ function addStatRow(name, data) {
         inp.type = af.type; inp.dataset.statField = af.key;
         inp.value = advData[af.key] !== undefined ? advData[af.key] : '';
         inp.addEventListener('input', updatePreview);
-        if (af.type === 'number') { inp.style.width = '100px'; inp.style.flex = '0'; }
+        if (af.type === 'number') { inp.classList.add('w-lg'); }
         fr.appendChild(inp);
         advDiv.appendChild(fr);
     }
@@ -1379,7 +1380,7 @@ function addStatRow(name, data) {
     // Warnings sub-list
     const warnTitle = document.createElement('div');
     warnTitle.className = 'sub-section-title';
-    warnTitle.style.marginTop = '6px';
+    warnTitle.classList.add('mt-3');
     warnTitle.textContent = 'Warnings';
     advDiv.appendChild(warnTitle);
 
@@ -1424,7 +1425,7 @@ function addWarningRow(container, threshold, message) {
     const ti = document.createElement('input');
     ti.type = 'number'; ti.placeholder = 'threshold (0-1)';
     ti.value = threshold !== undefined ? threshold : '';
-    ti.style.width = '80px'; ti.style.flex = '0';
+    ti.classList.add('w-md');
     ti.step = '0.1'; ti.min = '0'; ti.max = '1';
     ti.addEventListener('input', updatePreview);
     const mi = document.createElement('input');

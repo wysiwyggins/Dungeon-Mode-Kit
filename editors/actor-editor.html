@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="../assets/main.css">
 </head>
 <body class="editor actor-editor">
+<script src="scripts/editor-nav.js"></script>
 
 <header>
     <h1>Actor Editor</h1>
@@ -16,7 +17,7 @@
         </select>
     </label>
     <label>Actor:
-        <select id="actor-select" style="min-width:180px"></select>
+        <select id="actor-select" class="header-select"></select>
     </label>
     <button id="btn-new">New Actor</button>
     <button id="btn-export" class="btn-accent">Export JSON</button>
@@ -63,7 +64,7 @@
         <details class="section" open>
             <summary>Appearance</summary>
             <div class="section-body">
-                <button class="add-btn" id="btn-randomize" style="margin-bottom:8px">&#9861; Randomize</button>
+                <button class="add-btn mb-4" id="btn-randomize">&#9861; Randomize</button>
                 <div class="field-row"><label>Top Tile</label>
                     <div class="tile-slot" data-target="tileIndexTop"><canvas width="40" height="30"></canvas><span class="tile-name">—</span><button class="clear-btn" title="Clear">x</button></div>
                 </div>
@@ -74,11 +75,11 @@
                     <div class="tile-slot" data-target="tileIndexSide"><canvas width="40" height="30"></canvas><span class="tile-name">—</span><button class="clear-btn" title="Clear">x</button></div>
                 </div>
                 <div class="field-row"><label>Side Offset</label>
-                    dx <input type="number" id="f-sideOffset-dx" value="0" style="width:100px">
-                    dy <input type="number" id="f-sideOffset-dy" value="0" style="width:100px">
+                    dx <input class="w-lg" type="number" id="f-sideOffset-dx" value="0">
+                    dy <input class="w-lg" type="number" id="f-sideOffset-dy" value="0">
                 </div>
 
-                <div style="margin: 8px 0 4px; font-size:11px; color:var(--accent)">Flip</div>
+                <div class="group-title">Flip</div>
                 <div class="flip-grid">
                     <label><input type="checkbox" id="f-flipBaseH"> Base H</label>
                     <label><input type="checkbox" id="f-flipTopH"> Top H</label>
@@ -91,13 +92,13 @@
                 <div class="field-row">
                     <label>Tint</label>
                     <input type="color" id="f-tint" value="#ffffff">
-                    <input type="text" id="f-tint-hex" value="" placeholder="#rrggbb" style="width:80px">
+                    <input class="w-md" type="text" id="f-tint-hex" value="" placeholder="#rrggbb">
                 </div>
                 <div class="field-row">
                     <label>Tint VFX</label>
                     <!-- Options are built from data/vfx.json (target: "sprite"). -->
                     <select id="f-tint_effect"></select>
-                    <label style="min-width:unset"><input type="checkbox" id="f-random_color"> Random color</label>
+                    <label class="label-auto"><input type="checkbox" id="f-random_color"> Random color</label>
                 </div>
                 <div class="field-row">
                     <label>Animation Base</label>
@@ -196,7 +197,7 @@
                             <div class="sub-section-title" title="Locked until all conditions hold, re-locking if one stops holding. Keys and switches don't open it.&#10;Same forms as win_conditions: killed:ogre, wearing:crown, holding:x, collected:x, a JSON stat compare, or killed:linked (every actor sharing this one's machine_id, set in Tiled, is dead).">Lock Conditions</div>
                             <div id="unlock-conditions-list" class="dynamic-list"></div>
                             <button class="add-btn" id="btn-add-unlock-condition">+ Add Condition</button>
-                            <div class="field-row" style="margin-top:8px">
+                            <div class="field-row mt-4">
                                 <label>Unlock Message</label>
                                 <input type="text" id="f-unlock_message" placeholder="The door unlocks.&quot;/&quot;You hear a distant click.&quot;">
                             </div>
@@ -209,10 +210,10 @@
                         <div class="checkbox-grid"></div>
                         <div class="typed-attrs"></div>
                         <div class="conditional-section attr-group-extra" id="switch-section">
-                            <div style="margin-bottom:6px; font-size:11px; color:var(--accent)">Switch Effects (attribute: value applied to targets)</div>
+                            <div class="group-title">Switch Effects (attribute: value applied to targets)</div>
                             <div id="switch-effects-list" class="dynamic-list"></div>
                             <button class="add-btn" id="btn-add-switch-effect">+ Add Effect</button>
-                            <div class="field-row" style="margin-top:8px">
+                            <div class="field-row mt-4">
                                 <label>Switch Message</label>
                                 <input type="text" id="f-switch_message" placeholder="">
                             </div>
@@ -250,8 +251,8 @@
                                 <label>Blob Decrement %</label>
                                 <input type="number" id="f-trap_effect_blob_decrement" min="1" max="100" value="" placeholder="37">
                             </div>
-                            <div class="hint" style="margin:4px 0 8px 0">With a blob start, the outer actor spreads as a ragged patch: each ring reaches the next tiles at the start chance, minus the decrement per ring, and stops at walls. Leave it blank to fill the radius instead.</div>
-                            <div class="sub-section-title" style="margin-top:8px">Simple Spawn</div>
+                            <div class="hint mt-2">With a blob start, the outer actor spreads as a ragged patch: each ring reaches the next tiles at the start chance, minus the decrement per ring, and stops at walls. Leave it blank to fill the radius instead.</div>
+                            <div class="sub-section-title mt-4">Simple Spawn</div>
                             <div class="field-row">
                                 <label>Trap Spawn (actor type)</label>
                                 <input type="text" id="f-trap_spawn" placeholder="cloud">
@@ -259,7 +260,7 @@
                             <div class="field-row">
                                 <label>Spawn Tint</label>
                                 <input type="color" id="f-trap_spawn_tint" value="#ffffff">
-                                <input type="text" id="f-trap_spawn_tint_hex" placeholder="#rrggbb" style="width:80px">
+                                <input class="w-md" type="text" id="f-trap_spawn_tint_hex" placeholder="#rrggbb">
                             </div>
                             <div class="field-row">
                                 <label>Apply State</label>
@@ -273,7 +274,7 @@
                                 <label>Cloud Lifetime</label>
                                 <input type="number" id="f-trap_cloud_lifetime" min="1" value="" placeholder="8">
                             </div>
-                            <div class="hint" style="margin:4px 0 8px 0">Spawn density becomes the gas's density: about how many tiles out it creeps from the vent. Leave it blank for the small default spread. Cloud lifetime is how many turns the gas lasts.</div>
+                            <div class="hint mt-2">Spawn density becomes the gas's density: about how many tiles out it creeps from the vent. Leave it blank for the small default spread. Cloud lifetime is how many turns the gas lasts.</div>
                             <div class="field-row">
                                 <label>Trap Message</label>
                                 <input type="text" id="f-trap_message" placeholder="">
@@ -292,7 +293,7 @@
                         <div class="typed-attrs"></div>
                     </div>
                 </details>
-                <div style="margin: 8px 0 4px; font-size:11px; color:var(--accent)">Custom Attributes</div>
+                <div class="group-title">Custom Attributes</div>
                 <div id="custom-attrs" class="dynamic-list"></div>
                 <button class="add-btn" id="btn-add-custom-attr">+ Add Custom Attribute</button>
             </div>
@@ -363,19 +364,19 @@
                     <label>Vision Range</label>
                     <input type="number" id="f-vision_range" min="0" value="">
                 </div>
-                <div style="margin: 6px 0 4px; font-size:11px; color:var(--accent)" title="Actors to kill and items to collect, by id or by type. Needs a personality with the hunt behavior.">Hunts</div>
+                <div class="group-title" title="Actors to kill and items to collect, by id or by type. Needs a personality with the hunt behavior.">Hunts</div>
                 <div id="hunts-list" class="dynamic-list"></div>
                 <button class="add-btn" id="btn-add-hunt">+ Add Quarry</button>
-                <div class="hint" id="hunts-hint" style="margin:4px 0 8px 0"></div>
-                <div style="margin: 6px 0 4px; font-size:11px; color:var(--accent)" title="Items to pick up, by id or by type. Overrides the personality's item_type; leave empty to use it. Needs the seek_item behavior.">Seeks</div>
+                <div class="hint mt-2" id="hunts-hint"></div>
+                <div class="group-title" title="Items to pick up, by id or by type. Overrides the personality's item_type; leave empty to use it. Needs the seek_item behavior.">Seeks</div>
                 <div id="seeks-list" class="dynamic-list"></div>
                 <button class="add-btn" id="btn-add-seek">+ Add Item</button>
-                <div class="field-row" style="margin-top:6px">
+                <div class="field-row mt-3">
                     <label>Search Radius</label>
                     <input type="number" id="f-search_radius" min="0" value="" placeholder="personality's, or 10">
                 </div>
-                <div class="hint" id="seeks-hint" style="margin:4px 0 8px 0"></div>
-                <div style="margin: 6px 0 4px; font-size:11px; color:var(--accent)">Innate States</div>
+                <div class="hint mt-2" id="seeks-hint"></div>
+                <div class="group-title">Innate States</div>
                 <div id="innate-states-list" class="dynamic-list"></div>
                 <button class="add-btn" id="btn-add-innate-state">+ Add Innate State</button>
             </div>
@@ -1252,7 +1253,7 @@ function makeTypedField(ta, container) {
         ti.type = 'text';
         ti.id = 'attr-' + ta.key + '-hex';
         ti.placeholder = '#rrggbb';
-        ti.style.width = '80px';
+        ti.classList.add('w-md');
         ti.addEventListener('input', () => {
             if (/^#[0-9a-fA-F]{6}$/.test(ti.value)) ci.value = ti.value;
             updatePreview();
@@ -1328,7 +1329,7 @@ function makeTypedField(ta, container) {
         inp.type = ta.type;
         inp.id = 'attr-' + ta.key;
         inp.addEventListener('input', updatePreview);
-        if (ta.type === 'number') inp.style.width = '100px';
+        if (ta.type === 'number') inp.classList.add('w-lg');
         row.appendChild(inp);
     }
     markDependent(row, ta.key);
@@ -1442,7 +1443,7 @@ function addStatRow(name, data) {
 
     const nameInp = document.createElement('input');
     nameInp.type = 'text'; nameInp.placeholder = 'stat name';
-    nameInp.value = name || 'health'; nameInp.style.width = '100px'; nameInp.style.flex = '0';
+    nameInp.value = name || 'health'; nameInp.classList.add('w-lg');
     nameInp.addEventListener('input', updatePreview);
 
     const isSimple = typeof data === 'number' || data === undefined;
@@ -1450,7 +1451,7 @@ function addStatRow(name, data) {
 
     const simpleInp = document.createElement('input');
     simpleInp.type = 'number'; simpleInp.placeholder = 'max';
-    simpleInp.value = simpleVal; simpleInp.style.width = '100px'; simpleInp.style.flex = '0';
+    simpleInp.value = simpleVal; simpleInp.classList.add('w-lg');
     simpleInp.addEventListener('input', updatePreview);
 
     const advToggle = document.createElement('button');
@@ -1465,7 +1466,7 @@ function addStatRow(name, data) {
     advDiv.className = 'stat-advanced';
     advDiv.style.width = '100%';
     advDiv.style.paddingLeft = '108px';
-    advDiv.style.marginTop = '4px';
+    advDiv.classList.add('mt-2');
 
     const advData = isSimple ? {} : (data || {});
     const advFields = [
@@ -1494,7 +1495,7 @@ function addStatRow(name, data) {
             inp.type = af.type; inp.dataset.statField = af.key;
             inp.value = advData[af.key] !== undefined ? advData[af.key] : '';
             inp.addEventListener('input', updatePreview);
-            if (af.type === 'number') { inp.style.width = '100px'; inp.style.flex = '0'; }
+            if (af.type === 'number') { inp.classList.add('w-lg'); }
             fr.appendChild(inp);
         }
         advDiv.appendChild(fr);

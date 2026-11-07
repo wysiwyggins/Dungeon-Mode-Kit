@@ -16,6 +16,8 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 ### Added
 
+- **Editor nav bar.** Every editor page has a nav bar linking to the others, which carries the open workspace along and shows its name on workspace-aware pages.
+- **New prototype dialog.** The prototype editor's New… starts a workspace from blank, from any server prototype, or as a duplicate of another workspace, and a copy under a new folder name gets a matching title.
 - **Prototype editor workspaces.** The prototype editor now edits a prototype folder stored in the browser (OPFS) and saves `prototype.json` as you go. You can start a workspace blank, copy it from the server, or import it from a zip, and Download zip gives a folder that unzips straight into `prototypes/`. The other editors join in later phases (see `docs/EDITOR_WORKSPACE.md`).
 - **Keyed pressure plates.** A plate with the new `keyed` attribute is pressed only by something sharing its `machine_id`, so a plate, a pushable wall and a gate on one id make a match-the-stone puzzle. The `plate_puzzle` prototype defines a `keyed_pressure_plate` in its own `actors.json` and tests two sets.
 - **Plate and vent traps.** A trap is now a hidden pressure plate and a hidden floor vent in the same room, linked by `machine_id`. Stepping on the plate reveals both and the gas or fire comes out of the vent, and `traps` counts these pairs.
@@ -41,6 +43,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 ### Changed
 
+- **Editor stylesheet cleanup.** Editor SCSS is split into `assets/scss/editors/` partials (tokens, base, widgets, pages), with shared control, button, note, heading and card styles in place of per-spot copies. The repeated inline styles in the editor pages became a few utility classes.
 - **Scrolls of discord and negation are spells.** They cast the new `discord_wave` and `negation_wave` burst spells. The `apply_state_radius` and `remove_states_radius` use effects and the `discord` and `negate_nearby` actions are removed, along with the item editor's "Creatures nearby" fields. Negation now only strips states from creatures, not scenery.
 - **Scroll of sanctuary is a spell.** It casts the new `sanctuary` burst spell, whose `fill` lays sacred glyphs on the floor around the caster. Area spells can now use `fill` this way, and the `sanctuary` use action is removed.
 - **Scrolls of shattering, aggravate monsters and summon monsters are spells.** They cast the new `shattering`, `aggravation` and `summoning` spells, using the new `shatter`, `alert_target` and `summon` effects and a `level` delivery that reaches the whole floor. Their old use actions are removed, and shattering now digs a square of radius 4 instead of a diamond of radius 5.

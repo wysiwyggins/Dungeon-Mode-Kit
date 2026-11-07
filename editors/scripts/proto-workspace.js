@@ -1,8 +1,9 @@
 /* =========================================================================
    proto-workspace.js — the prototype editor's workspace controls
    -------------------------------------------------------------------------
-   Header wiring for workspaces (scripts/workspace.js): pick / new / copy from
-   server / import zip / download zip / delete, plus autosave of prototype.json
+   Header wiring for workspaces (scripts/workspace.js): pick / New… dialog
+   (blank, from a server prototype, or duplicating a workspace) / import zip /
+   download zip / delete, plus autosave of prototype.json
    and reacting to other editor tabs' writes. Classic script in the shared
    global scope; loaded after proto-sections.js, before proto-render.js, whose
    init() calls initWorkspaceUI().
@@ -61,6 +62,7 @@ async function refreshWorkspaceSelect() {
     for (const name of names) sel.appendChild(el('option', { value: name }, name));
     sel.value = state.protoName && names.includes(state.protoName) ? state.protoName : '';
     updateWorkspaceButtons();
+    EditorNav.setWorkspace(state.protoName);
     return names;
 }
 
@@ -111,31 +113,92 @@ function suggestName(text) {
 /* ---------------------------------------------------------------------
    Actions
    --------------------------------------------------------------------- */
-async function newWorkspace() {
-    const name = await askWorkspaceName('Folder name for the new prototype (lowercase letters, digits, _):');
-    if (!name) return;
-    await saveNow();
-    try {
-        await Workspace.create(name, { 'prototype.json': blankPrototype() });
-    } catch (e) { setStatus(e.message); return; }
-    await switchWorkspace(name);
-    setStatus('created ' + name);
+/* "my_pac" -> "My Pac": a display name for prototype.json from a folder name. */
+function titleFromName(name) {
+    return name.split('_').filter(Boolean)
+        .map(w => w[0].toUpperCase() + w.slice(1)).join(' ');
 }
 
-async function copyServerPrototype(proto) {
-    let name = proto;
-    if (!Workspace.isValidName(name) || await Workspace.exists(name)) {
-        name = await askWorkspaceName(
-            `You already have a workspace named "${proto}". Name for the copy:`, suggestName(proto + '_copy'));
-        if (!name) return;
-    }
+/* New… dialog. Source values: 'blank', 'server:<proto>', 'ws:<workspace>'. */
+let newNameEdited = false; // stop following the source once the user types a name
+
+function sourceName(source) {
+    return source === 'blank' ? '' : source.slice(source.indexOf(':') + 1);
+}
+
+async function openNewDialog() {
+    const sel = document.getElementById('new-ws-source');
+    sel.replaceChildren(el('option', { value: 'blank' }, 'Blank prototype'));
+    const group = (label, prefix, names) => {
+        if (!names.length) return;
+        const g = el('optgroup', { label });
+        for (const n of names) g.appendChild(el('option', { value: prefix + n }, n));
+        sel.appendChild(g);
+    };
+    group('Server prototypes', 'server:', state.prototypeNames);
+    group('Your workspaces (duplicate)', 'ws:', await Workspace.list());
+    sel.value = 'blank';
+    newNameEdited = false;
+    document.getElementById('new-ws-name').value = '';
+    await validateNewDialog();
+    document.getElementById('new-ws-dialog').showModal();
+    document.getElementById('new-ws-source').focus();
+}
+
+/* Check the name and say where it will end up; enables Create only when valid.
+   Returns the name, or null. Guarded against out-of-order async checks. */
+let validateSeq = 0;
+async function validateNewDialog() {
+    const seq = ++validateSeq;
+    const name = document.getElementById('new-ws-name').value.trim();
+    const hint = document.getElementById('new-ws-hint');
+    const create = document.getElementById('new-ws-create');
+    let msg, ok = false;
+    if (!name) msg = 'Choose a folder name.';
+    else if (!Workspace.isValidName(name)) msg = 'Use only lowercase letters, digits and _.';
+    else if (await Workspace.exists(name)) msg = `You already have a workspace named "${name}".`;
+    else { ok = true; msg = `Unzips to prototypes/${name}/`; }
+    if (seq !== validateSeq) return null;
+    hint.textContent = msg;
+    hint.classList.toggle('error', !ok && !!name);
+    create.disabled = !ok;
+    return ok ? name : null;
+}
+
+async function createFromDialog() {
+    const name = await validateNewDialog();
+    if (!name) return;
+    const source = document.getElementById('new-ws-source').value;
+    const from = sourceName(source);
+    const create = document.getElementById('new-ws-create');
+    create.disabled = true;
+    document.getElementById('new-ws-hint').textContent = 'creating…';
     await saveNow();
-    setStatus('copying ' + proto + '…');
     try {
-        await Workspace.copyFromServer(proto, name);
-    } catch (e) { console.error(e); setStatus(e.message); return; }
+        if (source === 'blank') {
+            await Workspace.create(name, { 'prototype.json': { ...blankPrototype(), name: titleFromName(name) } });
+        } else if (source.startsWith('server:')) {
+            await Workspace.copyFromServer(from, name);
+        } else {
+            await Workspace.duplicate(from, name);
+        }
+    } catch (e) {
+        console.error(e);
+        document.getElementById('new-ws-hint').textContent = e.message;
+        create.disabled = false;
+        return;
+    }
+    document.getElementById('new-ws-dialog').close();
     await switchWorkspace(name);
-    setStatus('copied ' + proto + (name !== proto ? ' as ' + name : '') + ' from the server');
+    // A copy under a new folder name gets its own title, so two copies don't
+    // show the same name in game. Goes through the normal autosave.
+    if (from && name !== from && state.proto) {
+        state.proto.name = titleFromName(name);
+        render();
+        commit();
+    }
+    setStatus(source === 'blank' ? 'created ' + name
+        : `created ${name} from ${source.startsWith('ws:') ? 'workspace' : 'server prototype'} ${from}`);
 }
 
 async function importZipFile(file) {
@@ -212,15 +275,25 @@ async function initWorkspaceUI() {
         return;
     }
 
-    populatePrototypeSelect('server-select');
     document.getElementById('workspace-select')
         .addEventListener('change', e => switchWorkspace(e.target.value));
-    document.getElementById('btn-new-ws').addEventListener('click', newWorkspace);
-    document.getElementById('server-select').addEventListener('change', async (e) => {
-        const proto = e.target.value;
-        e.target.value = '';
-        if (proto) await copyServerPrototype(proto);
+
+    document.getElementById('btn-new-ws').addEventListener('click', openNewDialog);
+    const dialog = document.getElementById('new-ws-dialog');
+    const nameInput = document.getElementById('new-ws-name');
+    document.getElementById('new-ws-source').addEventListener('change', (e) => {
+        if (!newNameEdited) nameInput.value = sourceName(e.target.value);
+        validateNewDialog();
     });
+    nameInput.addEventListener('input', () => {
+        newNameEdited = nameInput.value.trim() !== '';
+        validateNewDialog();
+    });
+    document.getElementById('new-ws-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        createFromDialog();
+    });
+    document.getElementById('new-ws-cancel').addEventListener('click', () => dialog.close());
     const zipInput = document.getElementById('zip-input');
     document.getElementById('btn-import-zip').addEventListener('click', () => zipInput.click());
     zipInput.addEventListener('change', async () => {

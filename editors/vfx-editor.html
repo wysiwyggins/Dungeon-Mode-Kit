@@ -15,11 +15,12 @@
 <script src="scripts/effect-params.js"></script>
 </head>
 <body class="editor vfx-editor">
+<script src="scripts/editor-nav.js"></script>
 
 <header>
     <h1>VFX Editor</h1>
     <label>VFX:
-        <select id="effect-select" style="min-width:200px"></select>
+        <select id="effect-select" class="header-select"></select>
     </label>
     <button id="btn-new">New VFX</button>
     <button id="btn-export" class="btn-accent">Export JSON</button>
@@ -30,7 +31,7 @@
     <aside id="preview-panel" class="preview-panel">
         <h3>Preview</h3>
         <div id="preview-mount" class="preview-canvas"></div>
-        <div class="field-row" style="margin-top:6px">
+        <div class="field-row mt-3">
             <button id="btn-replay">Replay</button>
             <button id="btn-tick">Tick</button>
         </div>
@@ -44,12 +45,12 @@
             <canvas width="80" height="60"></canvas>
             <span class="tile-name">—</span>
         </div>
-        <div class="field-row" style="margin-top:8px">
-            <label style="min-width:unset">Tint</label>
+        <div class="field-row mt-4">
+            <label class="label-auto">Tint</label>
             <input type="color" id="f-preview-tint" value="#ffffff">
-            <input type="text" id="f-preview-tint-hex" value="#ffffff" placeholder="#rrggbb" style="width:80px">
+            <input class="w-md" type="text" id="f-preview-tint-hex" value="#ffffff" placeholder="#rrggbb">
         </div>
-        <div style="font-size:9px;color:var(--text-dim);margin-top:4px">Tint is for preview only. At runtime, each actor/item provides its own.</div>
+        <div class="hint mt-2">Tint is for preview only. At runtime, each actor/item provides its own.</div>
     </aside>
 
     <div id="form-panel" class="form-panel">
@@ -749,7 +750,7 @@ function buildParamFields(container, primitiveName, existingParams) {
             const hexInput = document.createElement('input');
             hexInput.type = 'text';
             hexInput.value = val;
-            hexInput.style.width = '100px';
+            hexInput.classList.add('w-lg');
             hexInput.style.flex = '0';
             hexInput.dataset.paramKey = def.key;
             hexInput.addEventListener('input', () => {
@@ -814,7 +815,7 @@ function buildParamFields(container, primitiveName, existingParams) {
                     chNum.min = 0;
                     chNum.max = 255;
                     chNum.value = chRange.value;
-                    chNum.style.width = '60px';
+                    chNum.classList.add('w-sm');
 
                     chRange.addEventListener('input', () => {
                         chNum.value = chRange.value;

@@ -26,3 +26,13 @@ body {
   flex-direction: column;
  }
 }
+
+// Arena (combat test page) controls.
+body.arena .controls-panel {
+    display: flex;
+    font-family: 'Courier New', monospace;
+    font-size: x-small;
+    h2, h3 { font-size: smaller; }
+    .stat-row { padding: 2px; }
+    > div { padding: 4px; }
+}

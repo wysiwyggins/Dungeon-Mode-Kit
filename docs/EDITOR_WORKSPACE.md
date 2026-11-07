@@ -1,6 +1,6 @@
 # Editor Workspaces (Plan)
 
-This is a planning document. Phase 1 (`workspace.js` and the prototype editor) is built; the rest is not.
+This is a planning document. Phases 1 and 2 (`workspace.js`, the prototype editor, editor navigation and the New dialog) are built; the rest is not.
 
 ## Goal
 
@@ -36,12 +36,12 @@ There are three ways to start a workspace. New blank starts from the prototype e
 
 ### Starting From a Server Prototype
 
-A designer will often want an existing prototype as the starting point for a new one, under a new name. Phase 1 only offers a new name when the copy's name is already taken, and the copy keeps the original's `name` in `prototype.json`. The plan is to fold New and Copy from server into one New dialog with two fields:
+A designer will often want an existing prototype as the starting point for a new one, under a new name. New and Copy from server are therefore one New dialog with two fields:
 
 - **Start from:** Blank, any server prototype from `data/prototypes.json`, or any existing workspace, which duplicates it.
 - **Name:** the folder name. It defaults to the source's name, or is left empty for Blank.
 
-When the new name differs from the source, the copy's display `name` in `prototype.json` is changed to match, so two copies don't show the same title in game. Every file is still copied byte-for-byte, and only `prototype.json` is rewritten. Duplicating a workspace copies every file in it, which is simpler than probing the server because OPFS can list a folder.
+When the new name differs from the source, the copy's display `name` in `prototype.json` is changed to match (`my_pac` becomes "My Pac"), so two copies don't show the same title in game. Every file is still copied byte-for-byte, and only `prototype.json` is rewritten. Duplicating a workspace copies every file in it, which is simpler than probing the server because OPFS can list a folder.
 
 ## The Workspace Module
 
@@ -57,13 +57,13 @@ The entity editor stays library-only, because the engine has no per-prototype `e
 
 ## Navigating Between Editors
 
-The editor pages don't link to each other today. The only links are the prototype editor's "Edit biomes" and the item editor's spell editor link, and neither carries any state. Every editor page gets the same small nav bar from a new classic script, `editors/scripts/editor-nav.js`. The bar does three things:
+Every editor page has the same small nav bar from `editors/scripts/editor-nav.js`, included as the first thing in `<body>`. The bar does three things:
 
 - It links to each editor page, with the current page marked and `?workspace=<name>` added to each link.
-- It shows the active workspace's name, so you can always see which prototype you're editing.
+- It shows the active workspace's name, so you can always see which prototype you're editing. Only pages that load `workspace.js` show it, and they set it with `EditorNav.setWorkspace(name)`.
 - It has a Playtest link (next section).
 
-Because the active workspace is also in `localStorage`, a page opened without the parameter still lands on the same workspace. The nav carries it anyway, so a link opened in another tab doesn't depend on that. The bar also replaces the editor list on `index.html` as the way around the editors, although `index.html` keeps its links. The vfx editor, which `index.html` doesn't link to, is included. Editors that don't use workspaces yet (entity, sound player) get the nav without a workspace name.
+Because the active workspace is also in `localStorage`, a page opened without the parameter still lands on the same workspace. The nav carries it anyway, so a link opened in another tab doesn't depend on that. The bar is the way around the editors, although `index.html` keeps its links. The vfx editor, which `index.html` doesn't link to, is included. Editors that don't use workspaces yet (entity, sound player) get the nav without a workspace name.
 
 ## Several Tabs at Once
 
@@ -115,7 +115,7 @@ The browser can clear OPFS when storage runs low. The editors should call `navig
 Each phase is usable on its own. Playtesting has moved up, because it's what makes editing in a workspace worth doing.
 
 1. **Done.** `workspace.js` plus the prototype editor: new, copy from server, open, export zip, import zip.
-2. Editor navigation (`editor-nav.js`) and the unified New dialog (start from blank, a server prototype or a workspace).
+2. **Done.** Editor navigation (`editor-nav.js`) and the unified New dialog (start from blank, a server prototype or a workspace).
 3. Service worker playtesting and the Playtest link.
 4. The actor, item, spell and personality editors save to the workspace.
 5. The biome and VFX editors save to the workspace.

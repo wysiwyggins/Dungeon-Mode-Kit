@@ -1,0 +1,277 @@
+// ================================================================
+// Per-page editor styles: only what one page needs. Label widths are
+// set through --label-w (see :root in _tokens.scss).
+// ================================================================
+
+body.editor {
+
+    // ---- Actor editor ----
+
+    &.actor-editor {
+        @include section-wrap;
+
+        // Attributes: an always-open core grid, then themed groups.
+        .attr-group-core { margin-bottom: $sp-2; }
+        details.attr-group {
+            border-top: $hairline;
+            padding: $sp-2 0;
+            > summary { @include heading; }
+            &:last-of-type { border-bottom: $hairline; margin-bottom: $sp-2; }
+        }
+        .attr-group-body { padding: $sp-3 0 $sp-1 $sp-5; }
+        .attr-group-extra { @include indent-rule; margin: $sp-3 0; }
+        // Fields waiting on a parent attribute (ATTR_DEPENDS), indented under it.
+        .attr-dependent {
+            @include indent-rule($sp-3);
+            &:not(.visible) { display: none; }
+        }
+
+        .flip-grid {
+            display: grid;
+            grid-template-columns: repeat(3, auto);
+            gap: $sp-1 $sp-6;
+            margin-bottom: $sp-3;
+            label { @include check-label($fs-sm); }
+        }
+    }
+
+    // ---- Item editor ----
+
+    &.item-editor {
+        --label-w: 150px;
+        @include section-wrap;
+
+        // Capability sections the item doesn't use yet, offered as "+ Launcher"
+        // chips (refreshCapabilities in item-editor.html).
+        .capability-bar { @include row($sp-2); flex-wrap: wrap; margin-bottom: $sp-4; }
+        .capability-chip { @include outline-btn(var(--text-dim)); font-size: $fs-md; padding: $sp-1 $sp-4; }
+        #spell-overrides { margin-top: $sp-4; }
+
+        // Item search box with a results dropdown.
+        .item-filter-wrap { position: relative; display: inline-block; }
+        .item-filter { width: 180px; font-size: $fs-base; }
+        .item-filter-results {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            z-index: 100;
+            width: 320px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: $fs-md;
+            background: var(--surface);
+            border: $hairline;
+            &.active { display: block; }
+
+            .filter-item {
+                display: flex;
+                justify-content: space-between;
+                padding: $sp-2 $sp-4;
+                cursor: pointer;
+                &:hover { background: var(--bg3); }
+                .filter-cat { @include note; }
+            }
+        }
+    }
+
+    // ---- Spell & entity editors ----
+
+    &.spell-editor {
+        --label-w: 120px;
+        @include section-wrap;
+        .checkbox-row { @include row; flex-wrap: wrap; }
+    }
+
+    &.entity-editor {
+        @include section-wrap;
+        #used-by { margin-top: $sp-3; }
+    }
+
+    // ---- Personality editor ----
+
+    &.personality-editor {
+        --label-w: 160px;
+        @include section-wrap;
+
+        // Behavior palette (left) and the ordered behavior list.
+        .behavior-panel {
+            @include side-panel;
+            h3 { @include heading($fs-base); margin-bottom: $sp-4; }
+        }
+        .behavior-search { width: 100%; font-size: $fs-base; margin-bottom: $sp-4; }
+        .behavior-category {
+            @include heading($fs-sm, $bold: true);
+            margin: $sp-4 0 $sp-2;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .behavior-palette-item {
+            font-size: $fs-md;
+            padding: $sp-1 $sp-3;
+            cursor: pointer;
+            border: 1px solid transparent;
+            &:hover { background: var(--bg3); border-color: var(--accent); }
+            &.in-use { @include note(null, $italic: true); &::after { content: ' *'; color: var(--accent); } }
+        }
+
+        .behavior-list-container { min-height: 30px; margin-bottom: $sp-4; }
+        .behavior-list-item {
+            @include row($sp-3);
+            margin-bottom: $sp-2;
+            padding: $sp-2 $sp-3;
+            background: var(--input-bg);
+            border: $hairline;
+            user-select: none;
+
+            .drag-handle { color: var(--text-dim); padding: 0 $sp-1; cursor: grab; &:active { cursor: grabbing; } }
+            .behavior-index { @include note; min-width: 18px; text-align: right; }
+            .behavior-name { flex: 1; font-size: $fs-base; font-weight: bold; }
+            .behavior-hint { @include ellipsis; @include note($fs-xs); max-width: 200px; }
+            &.dragging { opacity: 0.3; }
+            &.drag-over { border-top: 2px solid var(--accent); margin-top: -2px; }
+        }
+        .behavior-add-row {
+            @include row($sp-3);
+            select { flex: 1; font-size: $fs-base; }
+        }
+
+        // Contextual parameters, hinted under the inputs (label width + row gap).
+        .param-row.inactive { display: none; }
+        .param-hint { @include note($fs-xs); margin: (-$sp-2) 0 $sp-3 calc(var(--label-w) + #{$sp-4}); }
+    }
+
+    // ---- VFX editor ----
+
+    &.vfx-editor {
+        --label-w: 140px;
+        @include section-wrap;
+
+        .waveform-canvas {
+            display: block;
+            width: 100%;
+            height: 120px;
+            margin-bottom: $sp-4;
+            background: var(--code-bg);
+            border: $hairline;
+        }
+        .timing-readout {
+            @include note($fs-md);
+            display: flex;
+            gap: $sp-6;
+            margin-bottom: $sp-4;
+            .timing-lighter { color: #cc9933; }
+            .timing-base { color: var(--text); }
+            .timing-darker { color: #6688bb; }
+        }
+        .range-pair {
+            @include row;
+            flex: 1;
+            input[type="range"] { flex: 1; }
+            input[type="number"] { width: 90px; min-width: 90px; }
+        }
+        // Color-variation breakdown, indented under the inputs.
+        .cv-breakdown {
+            display: none;
+            &.visible { display: block; }
+            padding-left: calc(var(--label-w) + #{$sp-4});
+            margin-bottom: $sp-3;
+            .field-row { margin-bottom: $sp-1; }
+            label { min-width: 20px; font-size: $fs-sm; }
+        }
+        .layer-item { @include card($sp-4 $sp-5); margin-bottom: $sp-4; }
+        .layer-header {
+            @include row;
+            margin-bottom: $sp-4;
+            select { flex: 1; }
+        }
+        .layer-params { border-top: $hairline; padding-top: $sp-4; }
+    }
+
+    // ---- Prototype & biome editors ----
+
+    &.prototype-editor,
+    &.biome-editor {
+        // Floor tabs above a scrolling form, the JSON panel below.
+        .workspace { display: block; overflow: hidden; }
+        .editor-body { display: flex; flex-direction: column; height: 100%; }
+        .proto-main { display: flex; flex: 1; overflow: hidden; }
+        @include section-columns('.form-sections');
+
+        // A <summary> is display:list-item, so its ::before marker and the
+        // .section-summary-row inside it would stack; a flex row keeps them inline.
+        details.section > summary,
+        .biome-card > summary,
+        details.sub-collapsible > summary {
+            display: flex;
+            align-items: center;
+            &::before { flex: none; }
+        }
+        // Switched off, or inherited from the prototype on a floor tab.
+        details.section.section-disabled > summary { color: var(--text-dim); }
+        details.section.inherited {
+            > .section-body { opacity: 0.5; pointer-events: none; }
+            > summary { color: var(--text-dim); }
+        }
+    }
+
+    &.prototype-editor {
+        // Workspace controls (proto-workspace.js): the wrapper span exists for
+        // JS; display: contents keeps its children in the header's flex gap.
+        .workspace-controls { display: contents; }
+        .new-ws-hint {
+            @include note($fs-base);
+            min-height: 1.4em;
+            &.error { color: var(--warn); }
+        }
+        .new-ws-buttons { @include row; justify-content: flex-end; margin-top: $sp-6; }
+    }
+
+    // ---- Sound player ----
+
+    &.sound-player {
+        .workspace { overflow-y: auto; }
+        .sound-body { padding: $sp-6 $sp-8; max-width: 1100px; }
+        .sound-intro {
+            @include note($fs-base);
+            max-width: 640px;
+            margin-bottom: $sp-6;
+            line-height: 1.5;
+
+            code { font-size: $fs-md; color: var(--accent); }
+            kbd {
+                padding: 0 $sp-1;
+                font: inherit;
+                font-size: $fs-sm;
+                background: var(--input-bg);
+                border: $hairline;
+                border-radius: 2px;
+            }
+        }
+        // auto-fill keeps chips a readable width when only a few pass the filter.
+        .sound-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: $sp-3;
+        }
+        .sound-chip {
+            @include card($sp-4 $sp-5);
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: $sp-4;
+            text-align: left;
+            &:hover { background: var(--bg3); }
+            &.selected { outline: 1px solid var(--accent); }
+            // Flat fill, no fade: the cue has to read within a 200ms sound.
+            &.playing {
+                background: var(--accent);
+                border-color: var(--accent);
+                .sound-name, .sound-duration { color: var(--bg); }
+            }
+        }
+        .sound-name { @include ellipsis; }
+        .sound-duration { @include note; flex: none; }
+        .status-error { color: var(--accent2); }
+    }
+}

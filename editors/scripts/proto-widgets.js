@@ -566,7 +566,7 @@ function spawnEditor(obj, key, kind) {
             obj[key][addSel.value] = { chance: 100 };
             commit(); redraw();
         });
-        container.appendChild(el('div', { style: 'margin-top:4px;' }, addSel));
+        container.appendChild(el('div', { class: 'mt-2' }, addSel));
     }
     redraw();
     return container;

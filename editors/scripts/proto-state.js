@@ -155,22 +155,6 @@ function rebuildMergedIds() {
     state.mergedEntityIds = Object.keys(state.baseEntities || {}).sort();
 }
 
-/* Fill a <select> with the server prototype names from data/prototypes.json, preserving
-   whatever placeholder option the markup already has. Static HTTP can't list a
-   directory, so that file is the index — the alternative was a hardcoded <option>
-   list per editor, which had already drifted out of sync in all four of them. */
-function populatePrototypeSelect(selectId = 'prototype-select') {
-    const sel = document.getElementById(selectId);
-    if (!sel) return;
-    const keep = sel.value;
-    // Drop everything but the placeholder (value="").
-    for (const opt of [...sel.options]) if (opt.value !== '') opt.remove();
-    for (const name of state.prototypeNames) {
-        sel.appendChild(el('option', { value: name }, name));
-    }
-    if (keep) sel.value = keep;
-}
-
 /* ---- Biome library ----
    Biomes are not authored in prototype.json. They come from data/biomes.json,
    optionally overridden/extended per prototype by prototypes/<name>/biomes.json —

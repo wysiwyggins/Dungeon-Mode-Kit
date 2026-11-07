@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="../assets/main.css">
 </head>
 <body class="editor entity-editor">
+<script src="scripts/editor-nav.js"></script>
 
 <!-- Entities are the inert floor dressing in data/entities.json: blood, rubble,
      skulls, moss. They're global — prototypes can't add their own (the engine
@@ -14,7 +15,7 @@
 <header>
     <h1>Entity Editor</h1>
     <label>Entity:
-        <select id="entity-select" style="min-width:180px"></select>
+        <select id="entity-select" class="header-select"></select>
     </label>
     <button id="btn-duplicate">Duplicate</button>
     <button id="btn-new">New Blank</button>
@@ -62,12 +63,12 @@
                 <div class="field-row" title="Colors the tile sprite.">
                     <label>Tint</label>
                     <input type="color" id="f-tint" value="#ffffff">
-                    <input type="text" id="f-tint-hex" value="" placeholder="#rrggbb" style="width:80px">
+                    <input class="w-md" type="text" id="f-tint-hex" value="" placeholder="#rrggbb">
                 </div>
                 <div class="field-row" title="A whole-tile color multiplied over the floor, drawn under the tile. Blood and slime are fill-only.">
                     <label>Fill Color</label>
                     <input type="color" id="f-fillColor" value="#ffffff">
-                    <input type="text" id="f-fillColor-hex" value="" placeholder="#rrggbb" style="width:80px">
+                    <input class="w-md" type="text" id="f-fillColor-hex" value="" placeholder="#rrggbb">
                 </div>
                 <div class="hint">An entity needs a tile, a fill color, or both. With neither there is nothing to draw.</div>
             </div>
@@ -78,7 +79,7 @@
             <summary>Attributes</summary>
             <div class="section-body">
                 <div id="bool-attrs" class="checkbox-grid"></div>
-                <div style="margin: 8px 0 4px; font-size:11px; color:var(--accent)">Custom Attributes</div>
+                <div class="group-title">Custom Attributes</div>
                 <div id="custom-attrs" class="dynamic-list"></div>
                 <button class="add-btn" id="btn-add-custom-attr">+ Add Custom Attribute</button>
             </div>
