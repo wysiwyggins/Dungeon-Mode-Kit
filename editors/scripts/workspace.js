@@ -391,15 +391,56 @@ const Workspace = (() => {
 
     /* A zip Blob with one top-level <name>/ folder, so it unpacks straight
        into prototypes/. */
+    /* The kit's tileset, which every map uses (tiled/static-tiles.tsj and the
+       sprite sheet it names). Zips carry a copy in <name>/tiled/, so a map
+       opens in Tiled wherever the zip is unzipped, not only inside the kit. */
+    const TILESET_SOURCE = '../tiled/static-tiles.tsj';
+    const TILESET_IMAGE_SOURCE = '../assets/sprites/static-tiles.png';
+    const ZIP_TILESET = 'tiled/static-tiles.tsj';
+    const ZIP_TILESET_IMAGE = 'tiled/static-tiles.png';
+    const ZIP_TILESET_FILES = new Set([ZIP_TILESET, ZIP_TILESET_IMAGE]);
+
+    /* { tsj, png } as bytes for the zip, or null if the server doesn't have them. */
+    async function tilesetForZip() {
+        try {
+            const [tsjResponse, pngResponse] = await Promise.all([fetch(TILESET_SOURCE), fetch(TILESET_IMAGE_SOURCE)]);
+            if (!tsjResponse.ok || !pngResponse.ok) throw new Error('not found');
+            const tileset = await tsjResponse.json();
+            tileset.image = 'static-tiles.png';   // beside it in the zip's tiled/ folder
+            return {
+                tsj: new TextEncoder().encode(JSON.stringify(tileset, null, 1)),
+                png: new Uint8Array(await pngResponse.arrayBuffer()),
+            };
+        } catch (e) {
+            console.warn('The zip will have no tileset: couldn\'t fetch it', e);
+            return null;
+        }
+    }
+
+    /* A map's tileset path, rewritten to the zip's copy. Only the text of the
+       "source" value changes, so Tiled's own formatting is kept. */
+    function pointMapAtZipTileset(bytes) {
+        const text = new TextDecoder().decode(bytes);
+        const rewritten = text.replace(/("source"\s*:\s*")[^"]*static-tiles\.tsj(")/g, `$1${ZIP_TILESET}$2`);
+        return rewritten === text ? bytes : new TextEncoder().encode(rewritten);
+    }
+
     async function exportZip(name = requireActive()) {
         const { zipSync } = requireFflate();
+        const tileset = await tilesetForZip();
         const tree = {};
         for (const path of await listFiles(name)) {
+            if (tileset && ZIP_TILESET_FILES.has(path)) continue;   // replaced by the current copy below
             const f = await readFile(name, path);
-            const bytes = new Uint8Array(await f.arrayBuffer());
+            let bytes = new Uint8Array(await f.arrayBuffer());
+            if (tileset && path.endsWith('.tmj')) bytes = pointMapAtZipTileset(bytes);
             // Images are already compressed; store them rather than deflate again.
             const stored = /\.(png|jpe?g|gif|webp)$/i.test(path);
             tree[`${name}/${path}`] = stored ? [bytes, { level: 0 }] : bytes;
+        }
+        if (tileset) {
+            tree[`${name}/${ZIP_TILESET}`] = tileset.tsj;
+            tree[`${name}/${ZIP_TILESET_IMAGE}`] = [tileset.png, { level: 0 }];
         }
         return new Blob([zipSync(tree, { level: 6 })], { type: 'application/zip' });
     }
@@ -416,7 +457,12 @@ const Workspace = (() => {
         const nested = tops.size === 1 && paths.every(p => p.includes('/'));
         const name = nested ? [...tops][0] : '';
         const files = {};
-        for (const p of paths) files[nested ? p.slice(name.length + 1) : p] = entries[p];
+        for (const p of paths) {
+            const path = nested ? p.slice(name.length + 1) : p;
+            // The tileset copy an export adds isn't part of the prototype; the
+            // next export adds the current one.
+            if (!ZIP_TILESET_FILES.has(path)) files[path] = entries[p];
+        }
         if (!('prototype.json' in files)) throw new Error('The zip has no prototype.json at its top level, so it isn\'t a prototype folder.');
         return { name, files };
     }

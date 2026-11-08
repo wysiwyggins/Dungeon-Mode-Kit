@@ -156,8 +156,8 @@ function sectionMaps() {
     const { det, body } = section('Maps');
     body.appendChild(el('div', { class: 'hint' },
         'A floor with a map uses it, and a floor without one is generated from Map generator. '
-        + 'Make maps in Tiled with this prototype unzipped in the kit’s prototypes/ folder, '
-        + 'so Tiled finds the tileset, then upload the .tmj here. See docs/MAP.md.'));
+        + 'Make maps in Tiled from the downloaded zip, which carries the tileset in its tiled/ folder, '
+        + 'then upload the .tmj here. See docs/MAP.md.'));
 
     const floors = new Set([1]);
     const others = [];

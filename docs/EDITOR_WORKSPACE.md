@@ -26,7 +26,7 @@ Maps aren't named in `prototype.json`. The engine finds them by convention: it s
 
 A workspace is a folder in OPFS at `dmk/workspaces/<name>/`, laid out exactly like a prototype folder. It holds the JSON files and also non-JSON files like `map.tmj` and PNG sheets, which the editors don't edit but have to carry through to the zip.
 
-The prototype editor's Maps section uploads, downloads and removes the workspace's Tiled maps (`scripts/proto-maps.js`). It lists floor 1's `map.tmj`, every other `.tmj` in the workspace, and, for a multi-level prototype, a way to upload a map for any floor. A floor tab shows that floor's map, and the Cutscene section has the flipbook file. An upload is written under the floor's name whatever the file was called. It's refused if it's a `.tmx` (XML) map, an infinite map, or has compressed tile layers, because the engine reads none of those. It's accepted with a warning if it has no `floor` layer (a cutscene: no frame layers) or doesn't use the kit's one tileset, whose tile numbers start at 1. Maps are still made in Tiled, which needs the prototype folder inside the kit's `prototypes/` to find `tiled/static-tiles.tsj`.
+The prototype editor's Maps section uploads, downloads and removes the workspace's Tiled maps (`scripts/proto-maps.js`). It lists floor 1's `map.tmj`, every other `.tmj` in the workspace, and, for a multi-level prototype, a way to upload a map for any floor. A floor tab shows that floor's map, and the Cutscene section has the flipbook file. An upload is written under the floor's name whatever the file was called. It's refused if it's a `.tmx` (XML) map, an infinite map, or has compressed tile layers, because the engine reads none of those. It's accepted with a warning if it has no `floor` layer (a cutscene: no frame layers) or doesn't use the kit's one tileset, whose tile numbers start at 1. Maps are still made in Tiled, from the downloaded zip (see Zip Files).
 
 OPFS belongs to the site (the origin), not to a page, so every editor page on the same site sees the same files. That solves the cross-page problem without any extra machinery: the actor editor saves into the workspace's `actors.json`, and the prototype editor reads the same file when it opens.
 
@@ -109,6 +109,8 @@ A save is a snapshot of a particular version of a prototype's data. After editin
 ## Zip Files
 
 There's no zip library in `lib/`. The options are to vendor `fflate` (small, no dependencies) or write a minimal store-only zip writer (about 100 lines plus CRC32). `fflate` is the better choice because import also needs to decompress. The zip contains one `<name>/` folder, so it unpacks straight into `prototypes/`.
+
+The zip also carries the kit's tileset in `<name>/tiled/`: `static-tiles.tsj`, with its image path pointing at the `static-tiles.png` beside it. The maps in the zip have their tileset path rewritten from `../../tiled/static-tiles.tsj` to `tiled/static-tiles.tsj`, changing only that value so Tiled's formatting is kept. A map then opens in Tiled wherever the zip is unzipped, which matters to someone who has only a browser and not the kit. The workspace's own files aren't changed. Import drops the `tiled/` copy, and the next export adds the current one. Unzipped into the kit's `prototypes/`, the folder keeps its own `tiled/` copy, which the engine ignores. The engine never reads the tileset path, because it reads tile numbers against its own sprite sheet.
 
 ## Browser Support and Risks
 
