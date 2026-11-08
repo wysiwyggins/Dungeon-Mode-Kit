@@ -31,6 +31,8 @@ Steps:
 4. **Save as** `prototypes/your_level/map.tmj`
 5. You also need a `prototype.json` in the same folder — see [PROTOTYPE.md](PROTOTYPE.md) for all fields
 
+If the prototype is a workspace in the editors, upload the saved `.tmj` in the prototype editor's Maps section instead (floor 1 is `map.tmj`, floor N is `N.tmj`). Download a workspace's map there to edit it, and keep it in a folder inside `prototypes/` while you do, so Tiled finds the tileset.
+
 ---
 
 ## The Six Layers

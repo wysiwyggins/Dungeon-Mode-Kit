@@ -16,7 +16,7 @@ Status: planning · Last updated: 2026-10-25
 2. **Dual display.** Dialogue text shows in the **in-canvas UI textbox** (with a
    character limit + truncation) **and** is mirrored in full (no truncation) to the
    **HTML sidebar description area** — a fallback so long strings are never lost.
-3. **Hostile taunts.** Hostile actors say a line from a `taunts` list before their
+3. [x] **Hostile taunts.** Hostile actors say a line from a `taunts` list before their
    first attack and before they die.
 
 ---
@@ -31,7 +31,7 @@ Status: planning · Last updated: 2026-10-25
 ## Where this hooks into the engine (verified)
 
 | Concern | Location | Note |
-|---|---|---|
+| --- | --- | --- |
 | Player bump → attack | `tryMove()` in `engine/actor/movement.js`; attack at `applyCollisionEffects(actorAtTarget)` (`engine/actor/combat.js`) | Insert dialogue check after the solid-actor lookup, before attack resolution. |
 | Hostility flag | `Personality` ctor in `behaviors/behaviors.js` `this.hostile = data.hostile \|\| false`; data in `personalities.json` | Non-hostile = `personality.hostile === false`. An informal `friendly` actor attribute also exists (`input.js`). |
 | Actor death | `die()` in `engine/actor/actor.js`, near its death message | Fire before-death taunt just before the death message, while still "alive." |
@@ -56,7 +56,7 @@ choices pointing to other node ids. No external runtime needed.
   "start": "greet",
   "nodes": {
     "greet": {
-      "text": "Well met, traveler. The deep roads are no place to wander.",
+      "text": "Ahoj, traveler. The deep roads are no place to wander.",
       "choices": [
         { "label": "Who are you?",        "goto": "who" },
         { "label": "What lies below?",     "goto": "below" },

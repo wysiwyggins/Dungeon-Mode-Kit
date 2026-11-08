@@ -153,6 +153,7 @@ function renderForm() {
         root.appendChild(sectionIdentity().det);
         root.appendChild(sectionMechanics(state.proto, 'mechanics', { open: true }).det);
         root.appendChild(sectionWinState().det);
+        root.appendChild(sectionMaps().det);
         // Prototype-level map/items/spawns are the defaults every floor inherits —
         // always shown. The floor plan is the depth-ramping layer: it assigns library
         // biomes (data/biomes.json + this prototype's biomes.json) to floor ranges, so
@@ -169,6 +170,7 @@ function renderForm() {
         root.appendChild(sectionAdvanced().det);
     } else {
         const floor = currentTarget();
+        root.appendChild(sectionFloorMap(state.activeFloor).det);
         root.appendChild(sectionFloorWinConditions(floor).det);
         root.appendChild(sectionMechanics(floor, 'mechanics', { inheritKey: 'mechanics', open: true }).det);
         root.appendChild(sectionMapGenerator(floor, { inheritKey: 'map_generator', placedFeatures: trapsSwitchesBody }).det);
@@ -789,6 +791,13 @@ function sectionCutscene() {
         fieldRow('flipbook', cs, 'flipbook', { placeholder: 'cutscene.tmj', tip: 'Tiled map file (.tmj) whose tile layers are the cutscene frames.' }),
         el('div', { class: 'field-row' }, checkboxRow('skippable', cs, 'skippable', true, 'Allow the player to skip this cutscene.')),
     ));
+    // The file itself (proto-maps.js). With no flipbook named yet, an upload
+    // becomes cutscene.tmj and is named here.
+    const file = cs.flipbook || 'cutscene.tmj';
+    body.appendChild(mapFileRow(file, 'Flipbook file', {
+        kind: 'cutscene',
+        onUploaded: () => { if (!cs.flipbook) { cs.flipbook = file; commit(); } },
+    }));
     body.appendChild(el('div', { class: 'hint-inline' },
         'Frame timing uses the Identity “Turn speed (ms)” value (ms per frame).'));
     return { det };

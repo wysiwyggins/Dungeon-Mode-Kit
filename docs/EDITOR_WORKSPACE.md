@@ -26,6 +26,8 @@ Maps aren't named in `prototype.json`. The engine finds them by convention: it s
 
 A workspace is a folder in OPFS at `dmk/workspaces/<name>/`, laid out exactly like a prototype folder. It holds the JSON files and also non-JSON files like `map.tmj` and PNG sheets, which the editors don't edit but have to carry through to the zip.
 
+The prototype editor's Maps section uploads, downloads and removes the workspace's Tiled maps (`scripts/proto-maps.js`). It lists floor 1's `map.tmj`, every other `.tmj` in the workspace, and, for a multi-level prototype, a way to upload a map for any floor. A floor tab shows that floor's map, and the Cutscene section has the flipbook file. An upload is written under the floor's name whatever the file was called. It's refused if it's a `.tmx` (XML) map, an infinite map, or has compressed tile layers, because the engine reads none of those. It's accepted with a warning if it has no `floor` layer (a cutscene: no frame layers) or doesn't use the kit's one tileset, whose tile numbers start at 1. Maps are still made in Tiled, which needs the prototype folder inside the kit's `prototypes/` to find `tiled/static-tiles.tsj`.
+
 OPFS belongs to the site (the origin), not to a page, so every editor page on the same site sees the same files. That solves the cross-page problem without any extra machinery: the actor editor saves into the workspace's `actors.json`, and the prototype editor reads the same file when it opens.
 
 The active workspace is stored in `localStorage` as `dmk.workspace`, so each editor opens on whatever you were last working on. A `?workspace=<name>` URL parameter overrides it, so links between editors can carry it. Workspaces are listed by reading the OPFS folder, so they don't need an index file like `prototypes.json`.
@@ -130,7 +132,7 @@ Each phase is usable on its own. Playtesting has moved up, because it's what mak
 
 ## Open Questions
 
-Should other data that's only in the shared library today become per-prototype? When the editors run locally, should they still be able to edit `data/`, for example as a "library" workspace written through the File System Access API in Chrome? Should a workspace name have to match the folder name it will unpack to? How should a hosted user make or replace `map.tmj`? Upload only, at first? `next_level`, `previous_level` and `intro_cutscene` name other prototypes; when playtesting `ws~<name>`, should they resolve to other workspaces or to the server's prototypes? Should Playtest use `index.html` or a dedicated `play.html`?
+Should other data that's only in the shared library today become per-prototype? When the editors run locally, should they still be able to edit `data/`, for example as a "library" workspace written through the File System Access API in Chrome? Should a workspace name have to match the folder name it will unpack to? `next_level`, `previous_level` and `intro_cutscene` name other prototypes; when playtesting `ws~<name>`, should they resolve to other workspaces or to the server's prototypes? Should Playtest use `index.html` or a dedicated `play.html`?
 
 /data/ will always be read-only by designers working on their own prototypes. I should try to reduce the amount of actors and items in /data/ and make more types instead where possible.
 A workspace name will match its folder.

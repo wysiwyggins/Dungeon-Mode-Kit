@@ -302,6 +302,24 @@ const Workspace = (() => {
         announce(ws, file);
     }
 
+    /* Delete one file from the open workspace. A missing file is fine. */
+    async function removeFile(file) {
+        const ws = requireActive();
+        const parts = splitPath(file);
+        let removed = false;
+        await withLock(ws, file, async () => {
+            let dir = await workspaceDir(ws);
+            try {
+                for (const part of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(part);
+                await dir.removeEntry(parts[parts.length - 1]);
+                removed = true;
+            } catch (e) {
+                if (e.name !== 'NotFoundError') throw e;
+            }
+        });
+        if (removed) announce(ws, file);
+    }
+
     /* Copy every file of workspace `src` into a new workspace `name`. */
     async function duplicate(src, name) {
         checkName(name);
@@ -424,7 +442,7 @@ const Workspace = (() => {
         DATA_FILES,
         supported, isValidName, current, setCurrent,
         list, exists, open, close, openName, create, remove, duplicate, copyFromServer,
-        listFiles, readJSON, writeJSON, putEntry, removeEntry, readBlob, writeBlob,
+        listFiles, readJSON, writeJSON, putEntry, removeEntry, readBlob, writeBlob, removeFile,
         exportZip, readZip, importZip, download,
         onChange,
     };

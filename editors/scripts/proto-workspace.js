@@ -296,6 +296,9 @@ async function onWorkspaceChange({ workspace, file }) {
     } else if (['actors.json', 'items.json', 'biomes.json'].includes(file)) {
         await reloadWorkspaceData();
         setStatus('reloaded ' + file + ' — changed in another tab');
+    } else if (file?.endsWith('.tmj')) {
+        await refreshMapFiles();
+        render();
     }
 }
 

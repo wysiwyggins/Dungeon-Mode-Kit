@@ -16,6 +16,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 ### Added
 
+- **Upload maps to a workspace.** The prototype editor's Maps section uploads, replaces, downloads and removes a workspace's Tiled maps for any floor, and the Cutscene section does the same for the flipbook. Uploads that the engine can't read (`.tmx`, infinite or compressed maps) are refused with what to change in Tiled.
 - **Workspaces on the home page.** `index.html` lists the workspaces in browser storage, with links to play or edit each, and the prototype editor shows how much storage they use and whether the browser has agreed to keep it.
 - **Saved games.** Each prototype keeps one saved game in browser storage, written as you play and deleted when you die or win. Opening the prototype again asks whether to continue it, while `?new`, `?seed=` and the editors' Playtest link start a new run.
 - **Biome and VFX editors save to a workspace.** Both have the same Prototype dropdown and Save to Workspace button. The biome editor saves every biome you changed at once, including renames and removals, and saves before Playtest.

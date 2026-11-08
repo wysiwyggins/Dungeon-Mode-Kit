@@ -34,6 +34,7 @@ const state = {
     soundIds: [],
     poolItemIds: new Set(),// item ids that have random_type (category pools)
     activeFloor: 'proto', // 'proto' or a 1-based floor number (see currentTarget)
+    mapFiles: new Map(),  // the workspace's .tmj files -> { width, height } (proto-maps.js)
 };
 
 /* =========================================================================
@@ -86,6 +87,7 @@ async function loadWorkspace(name) {
         state.protoName = '';
         state.savedText = '';
         state.protoActors = {}; state.protoItems = {}; state.protoBiomes = {};
+        state.mapFiles = new Map();
         rebuildMergedIds();
         showEmptyHint(true);
         return;
@@ -102,6 +104,7 @@ async function loadWorkspace(name) {
     state.protoItems = protoItems;
     state.protoBiomes = protoBiomes;
     state.protoName = name;
+    await refreshMapFiles();
     rebuildMergedIds();
     state.activeFloor = 'proto';
     showEmptyHint(false);
