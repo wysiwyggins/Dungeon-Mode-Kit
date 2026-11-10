@@ -7,6 +7,8 @@
  * and this list is what the item editor offers, so a new case there needs an
  * entry here too. `reads` names the item attributes the action takes as
  * settings, with the default used when the item leaves one out.
+ * 
+ * This sure feels like data to me!
  */
 export const USE_ACTIONS = {
     identify_item: { description: 'Pick an item in the pack to identify.' },

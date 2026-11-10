@@ -11,14 +11,40 @@ export class DialogueController {
     }
 
     currentLine() {
-        // ...
+        const node = this.tree.nodes?.[this.nodeId];
+        if (!node) return null;
+        const choices = node.choices?.length ? node.choices.map(c => c.label) : ['Leave'];
+        return { text: node.text ?? '', choices };
     }
 
     choose(index) {
-        // ...
+        const node = this.tree.nodes?.[this.nodeId];
+        if (!node) return;
+
+        if (!node.choices?.length) { //Leave
+            this.nodeId = null;
+            return;
+        }
+
+        const choice = node.choices[index];
+        if (!choice) return;
+        
+        const target = choice.goto;
+        if (target == null) {
+            this.nodeId = null;
+            return;
+        }
+
+        if (!this.tree.nodes[target]) {
+            console.warn(`Dialogue goto "${target}" not found`);
+            this.nodeId = null;
+            return;
+        }
+
+        this.nodeId = target;
     }
 
     isFinished() {
-        // ...
+        return this.nodeId === null;
     }
 }

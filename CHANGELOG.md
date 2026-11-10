@@ -7,12 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 These versions are pretty arbitrary, I know. When (if) other folks get involved, I'll formalize it a little.
 
-## [1.22b]
+## [1.23b]
 
-### To do
+## TO-DO
 
-- Editors write to a local prototype folder using [OPFS](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system) folder can be downloaded
-- hosted dmk scripts allow prototype folders to run the game locally
+- working on the DIALOGUE_ROADMAP epic
+
+### Added
+
+- **core/dialogue.js**
+
+## [1.22b] 2026-11-08
 
 ### Added
 
@@ -551,19 +556,3 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 
 - Jackal actor: weak (5 HP) hostile creature that spawns in packs of 3-5 using `aggressive_melee` personality
 - Pack spawn mechanic: actors with `pack: true` attribute spawn clustered within Manhattan distance 2 of each other
-
-## [1.2b] 2026-03-17
-
-### Added
-
-- Scroll of Shattering visual effect: screen shake, amber canvas flash, and radiating tile fill that expands outward from the caster
-- `radial_tile_fill` effect primitive: fills tiles ring-by-ring outward by Manhattan distance with staggered timing and fade-out
-- `shatter` composite effect definition in effects.json
-- Staff of Lightning bolt visual effect: white-blue tile fill that races along the bolt path with screen shake and flash, replacing the projectile sprite animation
-- `line_tile_fill` effect primitive: fills tiles along a path sequentially with staggered timing
-- `lightning_bolt` composite effect definition in effects.json
-
-### Changed
-
-- Scroll of Shattering use sound changed from `magic` to `fireball`
-- Staff of Lightning bolt spells now use `line_tile_fill` instead of projectile sprite animation
