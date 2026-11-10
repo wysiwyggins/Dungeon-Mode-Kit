@@ -45,17 +45,6 @@ body {
   height: auto !important;
 }
 
-.continue-prompt {
-  padding: 16px;
-  line-height: 1.5;
-}
-.continue-prompt p + p {
-  margin-top: 8px;
-}
-.continue-prompt .continue-prompt-date {
-  opacity: 0.7;
-}
-
 .game-container {
   min-height: 280px;
   width: auto;
