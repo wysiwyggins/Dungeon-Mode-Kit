@@ -8,7 +8,7 @@
 import { installMethods } from '../core/mixin.js';
 import { MAGIC_POLARITY_TILE, MAGIC_POLARITY_TINTS } from '../engine/render/overlays.js';
 import { TILE_HEIGHT, TILE_WIDTH } from '../core/util.js';
-import { DialogueController } from '..core/dialogue.js';
+import { DialogueController } from '../core/dialogue.js';
 import { UIAiming } from './aiming.js';
 import { UIMenus } from './menus.js';
 import { UIPanels } from './panels.js';
