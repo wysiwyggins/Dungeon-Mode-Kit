@@ -2140,6 +2140,12 @@ export class InputManager {
             return;
         }
 
+        // An open dialogue window is modal: it handles or swallows every key
+        if (this.engine.interfaceManager?.handleDialogueKey(event.key)) {
+            event.preventDefault();
+            return;
+        }
+
         // Check if confirmation dialog wants to handle this key first
         if (this.engine.interfaceManager?.handleConfirmKey(event.key)) {
             event.preventDefault();

@@ -36,6 +36,32 @@ async function initializeGame() {
 
         engine = new DungeonEngine();
         window.engine = engine; // module scope isn't visible from the devtools console
+
+        // TEMPORARY (dialogue Phase B): open a sample conversation from the console
+        // with __testDialogue(). Replace with bump-to-talk in Phase C.
+        window.__testDialogue = () => engine.interfaceManager?.showDialogue({
+            start: 'greet',
+            nodes: {
+                greet: {
+                    text: 'Ahoj, traveler. The deep roads are no place to wander.',
+                    choices: [
+                        { label: 'Who are you?', goto: 'who' },
+                        { label: 'What lies below?', goto: 'below' },
+                        { label: 'Tell me everything.', goto: 'long' },
+                        { label: 'Farewell.', goto: null },
+                    ],
+                },
+                who: { text: 'A keeper of old keys.', choices: [{ label: 'I see.', goto: 'greet' }] },
+                below: { text: 'Only the patient find out.', choices: [{ label: 'Hm.', goto: 'greet' }] },
+                long: {
+                    text: 'Long ago, before the miners came with their lamps and their ' +
+                        'singing, these halls were quiet. I kept the keys then, and I keep ' +
+                        'them now, though the doors they open have mostly forgotten me. ' +
+                        'Down below the water runs black and cold, and the things that ' +
+                        'live in it do not care for visitors. Go carefully, or do not go.',
+                },
+            },
+        }, { speaker: 'Pohře' });
         engine.currentSeed = seed;
         await engine.initialize();
 

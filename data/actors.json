@@ -968,23 +968,37 @@
   },
   "grave": {
     "name": "grave",
-    "description": "A shallow grave. A mattock would open it.",
+    "description": "A shallow grave.",
     "tileIndexBase": "OPAQUE_DOTTED_LIGHT_SHADE",
-    "tint": "#6B4A2F",
+    "tint": "#ebebeb",
     "death_sound": "plunk3",
     "attributes": {
       "solid": false,
       "breakable": true,
+      "remains": "hole",
       "render_layer": "bottom",
       "break_threshold": 35,
       "dig_chance": 1,
-      "remains": "hole",
       "drops": [
-        { "item": "skull", "weight": 50 },
-        { "item": "treasure", "weight": 20 },
-        { "item": "weapon", "weight": 10 },
-        { "item": "ring", "weight": 5 },
-        { "weight": 15 }
+        {
+          "item": "skull",
+          "weight": 50
+        },
+        {
+          "item": "treasure",
+          "weight": 20
+        },
+        {
+          "item": "weapon",
+          "weight": 10
+        },
+        {
+          "item": "ring",
+          "weight": 5
+        },
+        {
+          "weight": 15
+        }
       ],
       "drop_message": "[name] comes free of the loose earth.",
       "mine_messages": {

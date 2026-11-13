@@ -3,7 +3,7 @@
 *A path to conversations with non-hostile actors (multiple-choice dialogue trees)
 and taunt lines for hostile actors.*
 
-Status: planning · Last updated: 2026-10-25
+Status: in progress (A, B done) · Last updated: 2026-11-12
 
 ---
 
@@ -132,7 +132,7 @@ Each phase is independently shippable. Taunts (Phase A) and bump-to-talk
 are simpler and make a good warm-up.
 
 - [x] Hostile taunts
-- Dialogue UI primitive (modal box + choices) `[foundation for talk]`
+- [x] Dialogue UI primitive (modal box + choices) `[foundation for talk]` — `ui/dialogue.js` (`UIDialogue` mixin); test with `__testDialogue()` in the console until Phase C
   - **Goal:** A reusable dialogue window: shows a node's text + a list of selectable
   choices; supports click and keyboard; gates game input while open.
 - **Work:**

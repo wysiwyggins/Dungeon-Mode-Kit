@@ -8,8 +8,8 @@
 import { installMethods } from '../core/mixin.js';
 import { MAGIC_POLARITY_TILE, MAGIC_POLARITY_TINTS } from '../engine/render/overlays.js';
 import { TILE_HEIGHT, TILE_WIDTH } from '../core/util.js';
-import { DialogueController } from '../core/dialogue.js';
 import { UIAiming } from './aiming.js';
+import { UIDialogue } from './dialogue.js';
 import { UIMenus } from './menus.js';
 import { UIPanels } from './panels.js';
 import { UISpells } from './spells.js';
@@ -60,6 +60,7 @@ export class InterfaceManager {
 
         // Confirmation dialog state
         this.confirmDialog = null; // { message, onConfirm, onCancel, primary }
+        this.dialogue = null; // { controller, speaker } while a conversation is open
 
         // Throw aiming mode state
         this.throwAimingMode = false;
@@ -465,6 +466,8 @@ export class InterfaceManager {
             activeBoxId = 'actor_info';
         } else if (this.confirmDialog) {
             activeBoxId = 'confirm_dialog';
+        } else if (this.dialogue) {
+            activeBoxId = 'dialogue';
         } else if (this.identifyMode) {
             activeBoxId = 'identify_picker';
         } else if (this.enchantMode) {
@@ -1325,4 +1328,4 @@ export class InterfaceManager {
     }
 }
 
-installMethods(InterfaceManager, UIPanels, UIMenus, UIAiming, UIThrowing, UISpells);
+installMethods(InterfaceManager, UIPanels, UIMenus, UIAiming, UIThrowing, UISpells, UIDialogue);

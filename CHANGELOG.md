@@ -16,6 +16,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 ### Added
 
 - **core/dialogue.js**
+- **Dialogue window.** `ui/dialogue.js` shows a conversation node with lettered choices, picked by letter, number or click, and Escape leaves. Long text is cut off on the canvas and shown in full in the sidebar. Open a sample with `__testDialogue()` in the console until bump-to-talk exists.
 
 ## [1.22b] 2026-11-08
 

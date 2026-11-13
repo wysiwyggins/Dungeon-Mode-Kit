@@ -679,6 +679,15 @@ export const UIMenus = {
             return true;
         }
 
+        // 1b. Dialogue window. An outside click is consumed but does nothing, so a
+        //     stray click can't end a conversation; Escape or a Leave choice does.
+        if (this.dialogue) {
+            const box = this.boxes.get('dialogue');
+            const hit = box && this._hitTestBox(box, tileX, tileY);
+            if (hit) this._handleDialogueClick(box, hit.contentLine);
+            return true;
+        }
+
         // 2. Identify picker (modal — highest priority after confirm)
         if (this.identifyMode) {
             const identBox = this.boxes.get('identify_picker');

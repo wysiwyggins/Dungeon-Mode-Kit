@@ -1,8 +1,11 @@
 
 ## Bugs
 
+- Loading a saved game drew rope bridges with the wrong box drawing tiles (a vertical rope was drawn as all horizontal tiles)
+
 ## Tweaks
 
+- is tint opacity possible? graves should be a darker version of the floor color underneath rather than an opaque opinionated tint that might stand out too much.
 - pushing a pushable actor onto a teleporter ought to teleport it.
 - I thought maybe if I added a collision effect to the pushable block I might magically damage a goblin wedged between it and a wall but no. I wonder how hard that would be to add.
 - There are a lot of items and actors in default data. Always be looking for opportunities to create types in data and move specific data to prototypes so that designers aren't overwhelmed by default actors and items.

@@ -117,22 +117,6 @@
       "health": 30
     }
   },
-  "gate_lever": {
-    "name": "lever",
-    "type": "switch",
-    "tileIndexBase": "LEVER_BASE",
-    "tileIndexTop": "LEVER_HANDLE",
-    "tileIndexBase_toggled": "LEVER_HANDLE",
-    "tileIndexTop_toggled": "LEVER_BASE",
-    "flipBaseV_toggled": true,
-    "flipTopV_toggled": true,
-    "collision_sound": "push1",
-    "switch_message": "You pull [name]. A gate grinds open.",
-    "switch_effects": {
-      "locked": false,
-      "open": true
-    }
-  },
   "church_lever": {
     "name": "lever",
     "type": "switch",
@@ -180,5 +164,29 @@
     "stats": {
       "health": 15
     }
+  },
+  "kobold_hermit": {
+    "type": "humanoid",
+    "name": "Pohře",
+    "description": "A small humanoid with a stooped back and a hairy, scaly face like an armadillo.",
+    "tileIndexBase": "LEG",
+    "tileIndexTop": "WHITE_HUNTING_ANIMAL_FACE",
+    "tint": "#FFBB55",
+    "defaultFacing": "left",
+    "personality": "kobold_hermit",
+    "vision_range": 10,
+    "collision_effect": {
+      "health": -3
+    },
+    "collision_sound": "hit",
+    "collision_description": "The [actor_name] strikes back at [attacked_actor_name]!",
+    "attributes": {
+      "accuracy": 35,
+      "defense": 5
+    },
+    "stats": {
+      "health": 20
+    }
   }
+
 }
