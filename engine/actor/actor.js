@@ -27,7 +27,7 @@ import {
     resolveTemplate
 } from '../../core/util.js';
 import { ActorCombat } from './combat.js';
-import { dialogueFunctions } from './dialogue-functions.js';
+import { dialogueFunctions, dialogueTemplate } from './dialogue-functions.js';
 import { ActorIdentity } from './identity.js';
 import { ActorItems } from './items.js';
 import { ActorMovement } from './movement.js';
@@ -368,7 +368,7 @@ export class Actor extends Entity {
             return;
         }
 
-        for (const itemType of this.defaultItems) {
+        for (const [slotIndex, itemType] of this.defaultItems.entries()) {
             const itemData = this.engine.currentPrototype?.getItemData(itemType);
             if (!itemData) {
                 console.warn(`Default item '${itemType}' not found for ${this.name}`);
@@ -380,6 +380,9 @@ export class Actor extends Entity {
             // member and reports it as .id, which must be the instance's id.
             const item = new Item(-1, -1, itemData.id || itemType, itemData, this.engine);
             item.owner = this; // Track item owner for per-turn stat messages
+            // Its 1-based position in default_items: a fixed slot dialogue can name
+            // (give(2), [speaker_slot:2]) that doesn't shift when another is given away.
+            item.inventorySlot = slotIndex + 1;
             // Naming a category ("weapon") is asking for a random one; a named item is placed as authored
             if (itemData.id && itemData.id !== itemType) item.rollEnchantment();
 
@@ -1149,11 +1152,15 @@ export class Actor extends Entity {
     getDialogueController(listener) {
         const source = this.getDialogue();
         if (!source) return null;
-        if (!isInkJson(source)) return new DialogueController(source);
+        if (!isInkJson(source)) {
+            const context = { speaker: this, listener };
+            return new DialogueController(source, { formatText: dialogueTemplate(() => context) });
+        }
         if (this._inkDialogue?.source !== source) {
             const engine = this.engine;
             const controller = new InkDialogueController(source, this.name, {
                 functions: dialogueFunctions(() => controller.context),
+                formatText: dialogueTemplate(() => controller.context),
                 variables: {
                     names: () => engine.variableNames?.() ?? [],
                     get: (name) => engine.getVariable?.(name),

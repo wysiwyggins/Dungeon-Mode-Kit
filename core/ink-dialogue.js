@@ -31,22 +31,28 @@ export class InkDialogueController {
      * @param {object} inkJson - Compiled ink, already parsed
      * @param {string} [name] - For warnings (usually the file path)
      * @param {object} [options]
-     * @param {Object<string, Function>} [options.functions] - name → function, bound
-     *   as ink EXTERNAL functions. They can read the conversation's `context`
-     *   (passed to restart) through the controller.
+     * @param {Object<string, Function|{fn: Function, lookaheadSafe: boolean}>} [options.functions]
+     *   name → function, bound as ink EXTERNAL functions. They can read the
+     *   conversation's `context` (passed to restart) through the controller. A
+     *   plain function isn't lookahead-safe; mark side-effect-free ones
+     *   { fn, lookaheadSafe: true }.
      * @param {{ names(): string[], get(name): *, set(name, value): * }} [options.variables]
      *   Game variables to mirror into same-named ink VARs
+     * @param {(text: string) => string} [options.formatText] - Applied to each
+     *   step's text and choice labels when they're shown (template tokens)
      */
-    constructor(inkJson, name = 'ink story', { functions = {}, variables = null } = {}) {
+    constructor(inkJson, name = 'ink story', { functions = {}, variables = null, formatText = null } = {}) {
         this.name = name;
         this.story = new Story(inkJson);
         this.story.onError = (message) => console.warn(`Ink (${this.name}): ${message}`);
-        // Side effects (giving items), so not lookahead-safe: ink stops before
-        // calling one rather than running it speculatively.
-        for (const [fnName, fn] of Object.entries(functions)) {
-            this.story.BindExternalFunction(fnName, fn, false);
+        // Functions with side effects (giving items) aren't lookahead-safe: ink
+        // stops before calling one rather than running it speculatively.
+        for (const [fnName, def] of Object.entries(functions)) {
+            const { fn, lookaheadSafe } = typeof def === 'function' ? { fn: def, lookaheadSafe: false } : def;
+            this.story.BindExternalFunction(fnName, fn, !!lookaheadSafe);
         }
         this.variables = variables;
+        this.formatText = formatText || (t => t);
         this.context = null;
         this.started = false;
         this.line = null;
@@ -123,7 +129,12 @@ export class InkDialogueController {
             this.line = null;
             return;
         }
-        this.line = { text: text.join(' '), choices: choices.length ? choices : ['Leave'], ended: !choices.length };
+        const format = this.formatText;
+        this.line = {
+            text: format(text.join(' ')),
+            choices: choices.length ? choices.map(format) : ['Leave'],
+            ended: !choices.length,
+        };
     }
 
     currentLine() {

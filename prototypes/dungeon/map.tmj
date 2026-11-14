@@ -1410,8 +1410,8 @@
                  "type":"kobold_hermit",
                  "visible":true,
                  "width":40,
-                 "x":520,
-                 "y":630
+                 "x":560,
+                 "y":450
                 }],
          "opacity":1,
          "type":"objectgroup",

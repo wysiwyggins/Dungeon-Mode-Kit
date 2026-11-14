@@ -802,6 +802,7 @@ export class Item extends Entity {
             magicDetected: this.magicDetected,
             combatUseCount: this.combatUseCount || 0,
             wornTurns: this.wornTurns || 0,
+            inventorySlot: this.inventorySlot,
             isItem: true
         };
     }
@@ -817,5 +818,6 @@ export class Item extends Entity {
         if (data.enchantment !== undefined) this.enchantment = data.enchantment;
         if (data.customName) this.customName = data.customName;
         if (data.magicDetected) this.magicDetected = true;
+        if (data.inventorySlot != null) this.inventorySlot = data.inventorySlot;
     }
 }

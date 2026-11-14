@@ -85,6 +85,7 @@ runtime by one shared function — `resolveTemplate` in `core/util.js`. That inc
 | `use_description` | items | re-rolled |
 | `collision_description` | actors, weapons | re-rolled |
 | `walk_description`, `switch_message` | actors | re-rolled |
+| dialogue text and choices | personalities, ink files | re-rolled, with slot and trade tokens ([ACTORS.md](ACTORS.md)) |
 
 **Memoized vs re-rolled** is the difference between an identity and an event. A
 name is drawn on every hover, so its random picks are cached — otherwise the thing

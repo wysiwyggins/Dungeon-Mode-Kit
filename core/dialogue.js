@@ -4,8 +4,15 @@
  * format (e.g. ink) can implement the same three methods later.
  */
 export class DialogueController {
-    constructor(tree) {
+    /**
+     * @param {object} tree
+     * @param {object} [options]
+     * @param {(text: string) => string} [options.formatText] - Applied to node text
+     *   and choice labels when shown (template tokens)
+     */
+    constructor(tree, { formatText = null } = {}) {
         this.tree = tree;
+        this.formatText = formatText || (t => t);
         this.nodeId = tree.start ?? null;
         if (this.nodeId === null) console.warn('Dialogue tree has no start node');
     }
@@ -13,8 +20,8 @@ export class DialogueController {
     currentLine() {
         const node = this.tree.nodes?.[this.nodeId];
         if (!node) return null;
-        const choices = node.choices?.length ? node.choices.map(c => c.label) : ['Leave'];
-        return { text: node.text ?? '', choices };
+        const choices = node.choices?.length ? node.choices.map(c => this.formatText(c.label)) : ['Leave'];
+        return { text: this.formatText(node.text ?? ''), choices };
     }
 
     choose(index) {

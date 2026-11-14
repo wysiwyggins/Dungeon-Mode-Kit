@@ -99,8 +99,8 @@
             "scale": 0.3975,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": 798.74213836478,
-                "y": 598.74213836478
+                "x": 800,
+                "y": 600
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/mine/map.tmj": {
@@ -143,8 +143,8 @@
             "scale": 0.2669,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": 1601.7234919445484,
-                "y": 1198.9509179467966
+                "x": 1599.8501311352563,
+                "y": 1200.8242787560882
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/2.tmj": {

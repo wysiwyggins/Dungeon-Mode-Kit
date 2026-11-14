@@ -38,6 +38,19 @@ const RefFields = (() => {
     }
 
     /**
+     * Every variable a prototype.json declares: its prototype variables and each
+     * floor's level variables (engine/dungeon-engine/variables.js).
+     */
+    function variablesIn(config) {
+        const v = config?.variables || {};
+        const names = new Set(Object.keys(v.prototype || {}));
+        for (const vars of Object.values(v.levels || {})) {
+            for (const name of Object.keys(vars || {})) names.add(name);
+        }
+        return [...names];
+    }
+
+    /**
      * Register a source.
      * @param {string} name - Source id, also the datalist id suffix
      * @param {Object} def
@@ -136,5 +149,5 @@ const RefFields = (() => {
         update();
     }
 
-    return { define, attach, attachAll, refresh, update, keysOf, valuesInUse };
+    return { define, attach, attachAll, refresh, update, keysOf, valuesInUse, variablesIn };
 })();

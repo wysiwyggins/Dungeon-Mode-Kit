@@ -171,6 +171,11 @@
                     <div class="attr-group-body">
                         <div class="checkbox-grid"></div>
                         <div class="typed-attrs"></div>
+                        <div class="attr-group-extra">
+                            <div class="sub-section-title" title="player_kill_sets: prototype or level variables (prototype.json variables) to set when the player kills or breaks this actor. Variables the current floor doesn't declare are skipped, so one definition can serve every floor.">Player Kill Sets Variables</div>
+                            <div id="player-kill-sets-list" class="dynamic-list"></div>
+                            <button class="add-btn" id="btn-add-player-kill-set">+ Add Variable</button>
+                        </div>
                     </div>
                 </details>
                 <details class="sub-collapsible attr-group" data-group="movement">
@@ -445,7 +450,7 @@ const TILE_DATA_PATH = '../data/static-tiles.json';
 const ATTR_GROUPS = [
     { id: 'core', bools: ['solid','visible','blocks_diagonal','hostile','sentient','controlled','light_source'], typed: ['opaque'] },
     { id: 'combat', bools: ['breakable','pushable','splits'],
-      typed: ['accuracy','defense','strength','inventory','remains','lode','lode_chance','split_min_health','chain_segment_type'] },
+      typed: ['accuracy','defense','strength','inventory','remains','lode','lode_chance','split_min_health','chain_segment_type','provoked_variable','wants'] },
     { id: 'movement', bools: ['flies','aquatic','web_immune','dark_vision','follows_thread','pack','conceals_when_submerged'], typed: [] },
     { id: 'terrain', bools: ['liquid','deep','hazard','flammable','ignites','platform','collapsible','consume_on_escape'],
       typed: ['conductive','damage_type','apply_state','entry_sound'] },
@@ -535,6 +540,8 @@ const TYPED_ATTRS = [
     { key: 'lock_color', type: 'colorname', label: 'Lock Color', hint: 'Fixed lock color (overrides random): a color name from data/colors.json, matched against color key items.' },
     { key: 'machine_id', type: 'text', ref: 'machine_id', label: 'Machine ID', hint: 'Links switches to targets. All actors with the same machine_id are affected together. Pick an existing ID to join that machine, or type a new one.' },
     { key: 'stairway', type: 'select', label: 'Stairway', hint: 'Links floors in multi-level prototypes.', options: ['', 'up', 'down'] },
+    { key: 'provoked_variable', type: 'text', ref: 'variable', label: 'Provoked Variable', hint: 'A prototype or level variable tied to provocation, overriding the personality\'s. Hurting this actor sets it true; while it is true the actor stops talking and fights the player.' },
+    { key: 'wants', type: 'text', ref: 'item_or_type', label: 'Wants (trades for)', hint: 'Item id or type this actor trades for in dialogue: trade(slot), take() and the [wanted] template. Its slots are its default_items, in order.' },
     { key: 'chain_segment_type', type: 'text', ref: 'actor', label: 'Chain Segment Type', hint: 'Actor type for body segments. Used by chain creatures (e.g. scutigera).' },
     { key: 'entry_sound', type: 'text', ref: 'sound', label: 'Entry Sound', hint: 'Sound played when another actor steps on this tile. e.g. step_mud.' },
     { key: 'apply_state', type: 'text', ref: 'state', label: 'Apply State', hint: 'State applied on contact (non-combat). e.g. nauseated. For combat use collision_effect.' },
@@ -669,11 +676,12 @@ async function loadBaseData() {
 
 // The files this page reads from the prototype (base only, a server
 // prototype or a workspace: scripts/prototype-source.js).
-const PROTOTYPE_FILES = ['actors.json', 'personalities.json', 'animations.json', 'vfx.json', 'items.json', 'states.json'];
+const PROTOTYPE_FILES = ['actors.json', 'personalities.json', 'animations.json', 'vfx.json', 'items.json', 'states.json', 'prototype.json'];
 
 async function loadPrototype() {
-    const [actors, personalities, protoAnimations, protoEffects, items, states] =
+    const [actors, personalities, protoAnimations, protoEffects, items, states, protoConfig] =
         await Promise.all(PROTOTYPE_FILES.map(PrototypeSource.readJSON));
+    state.protoConfig = protoConfig;
     state.protoActors = actors;
     state.protoPersonalities = personalities;
     state.protoItems = items;
@@ -1365,6 +1373,11 @@ function initRefFields() {
     RefFields.define('item', { file: 'items.json', names: () => keysOf(state.mergedItems),
         label: (k) => state.mergedItems[k]?.name });
     RefFields.define('machine_id', { kind: 'label', names: () => valuesInUse(state.mergedActors, 'machine_id') });
+    RefFields.define('variable', { file: 'prototype.json variables', names: () => RefFields.variablesIn(state.protoConfig) });
+    RefFields.define('item_or_type', { file: 'items.json', noun: 'item or type', names: () => [
+        ...keysOf(state.mergedItems),
+        ...new Set(Object.values(state.mergedItems).map(d => d?.type).filter(Boolean)),
+    ] });
 
     for (const [id, src] of Object.entries(REF_FIELDS)) RefFields.attach(document.getElementById(id), src);
     for (const ta of TYPED_ATTRS) if (ta.ref) RefFields.attach(document.getElementById('attr-' + ta.key), ta.ref);
@@ -1401,6 +1414,37 @@ function addCustomAttrRow(key, val) {
     btn.addEventListener('click', () => { row.remove(); updatePreview(); });
     row.appendChild(ki); row.appendChild(vi); row.appendChild(btn);
     container.appendChild(row);
+}
+
+// ---- player_kill_sets: variable name -> value ----
+
+function addPlayerKillSetRow(name, value) {
+    const container = document.getElementById('player-kill-sets-list');
+    const row = document.createElement('div');
+    row.className = 'list-item';
+    const ni = document.createElement('input');
+    ni.type = 'text'; ni.value = name || '';
+    ni.addEventListener('input', updatePreview);
+    const vi = document.createElement('input');
+    vi.type = 'text'; vi.placeholder = 'true, a number or text'; vi.value = value === undefined ? 'true' : String(value);
+    vi.style.flex = '0 0 30%';
+    vi.addEventListener('input', updatePreview);
+    const btn = document.createElement('button');
+    btn.className = 'remove-btn'; btn.textContent = 'x';
+    btn.addEventListener('click', () => { row.remove(); updatePreview(); });
+    row.append(ni, vi, btn);
+    container.appendChild(row);
+    RefFields.attach(ni, 'variable');
+}
+
+function readPlayerKillSets() {
+    const sets = {};
+    for (const row of document.querySelectorAll('#player-kill-sets-list .list-item')) {
+        const inputs = row.querySelectorAll('input');
+        const name = inputs[0].value.trim();
+        if (name) sets[name] = parseValue(inputs[1].value);
+    }
+    return sets;
 }
 
 // ---- Stats ----
@@ -1785,6 +1829,7 @@ function clearForm() {
     document.getElementById('hunts-list').innerHTML = '';
     document.getElementById('seeks-list').innerHTML = '';
     document.getElementById('unlock-conditions-list').innerHTML = '';
+    document.getElementById('player-kill-sets-list').innerHTML = '';
     document.getElementById('f-unlock_message').value = '';
     document.getElementById('f-search_radius').value = '';
     document.getElementById('switch-effects-list').innerHTML = '';
@@ -1896,7 +1941,10 @@ function populateForm(key, data) {
     // Root-level fields some older actors put inside attributes. They load from
     // either place and save at root, where the engine reads them.
     const ROOT_FIELDS_IN_ATTRS = ['collision_description', 'death_sound', 'vision_range', 'flying'];
-    const knownKeys = new Set([...BOOL_ATTRS, ...TYPED_ATTRS.map(t => t.key), 'hunts', 'seeks', 'search_radius', 'unlock_conditions', 'unlock_message', ...ROOT_FIELDS_IN_ATTRS]);
+    const knownKeys = new Set([...BOOL_ATTRS, ...TYPED_ATTRS.map(t => t.key), 'hunts', 'seeks', 'search_radius', 'unlock_conditions', 'unlock_message', 'player_kill_sets', ...ROOT_FIELDS_IN_ATTRS]);
+    if (attrs.player_kill_sets && typeof attrs.player_kill_sets === 'object') {
+        for (const [name, value] of Object.entries(attrs.player_kill_sets)) addPlayerKillSetRow(name, value);
+    }
     for (const q of [attrs.hunts].flat().filter(Boolean)) addHuntRow(q);
     for (const q of [attrs.seeks].flat().filter(Boolean)) addSeekRow(q);
     for (const c of [attrs.unlock_conditions].flat().filter(Boolean)) addUnlockConditionRow(c);
@@ -2148,6 +2196,8 @@ function readForm() {
     if (!isNaN(searchRadius)) attrs.search_radius = searchRadius;
     const unlockConds = readUnlockConditions();
     if (unlockConds.length) attrs.unlock_conditions = unlockConds;
+    const killSets = readPlayerKillSets();
+    if (Object.keys(killSets).length) attrs.player_kill_sets = killSets;
     const unlockMsg = document.getElementById('f-unlock_message').value.trim();
     if (unlockMsg) attrs.unlock_message = unlockMsg;
     if (Object.keys(attrs).length) obj.attributes = attrs;
@@ -2335,6 +2385,7 @@ function initEventListeners() {
     document.getElementById('btn-add-innate-state').addEventListener('click', () => addInnateStateRow(''));
     document.getElementById('btn-add-hunt').addEventListener('click', () => { addHuntRow(''); updatePreview(); });
     document.getElementById('btn-add-unlock-condition').addEventListener('click', () => { addUnlockConditionRow(''); updatePreview(); });
+    document.getElementById('btn-add-player-kill-set').addEventListener('click', () => { addPlayerKillSetRow('', true); updatePreview(); });
     document.getElementById('btn-add-seek').addEventListener('click', () => { addSeekRow(''); updatePreview(); });
     document.getElementById('btn-add-item').addEventListener('click', () => addItemRow(''));
     document.getElementById('btn-add-switch-effect').addEventListener('click', () => addSwitchEffectRow('', ''));

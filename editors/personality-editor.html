@@ -60,6 +60,10 @@
                     <label title="Health threshold (0-1) below which flee_from_danger activates">flee_threshold</label>
                     <input type="number" id="f-flee_threshold" min="0" max="1" step="0.1" value="" placeholder="e.g. 0.3">
                 </div>
+                <div class="field-row">
+                    <label title="A prototype or level variable (prototype.json variables) tied to provocation. Hurting this actor sets it true; while it is true the actor stops talking and fights the player. Anything else that sets it (a grave's player_kill_sets, a dialogue choice) has the same effect.">provoked_variable</label>
+                    <input type="text" id="f-provoked_variable">
+                </div>
                 <div class="group-title">Preferred Positions</div>
                 <div id="preferred-positions-list" class="dynamic-list"></div>
                 <button class="add-btn" id="btn-add-position">+ Add Position</button>
@@ -326,7 +330,7 @@ const PARAM_DEFS = [
     { key: 'countdown_display', type: 'text', ref: 'countdown_display', label: 'Countdown Display', hint: 'Display mode for countdown (e.g. digit)' },
 ];
 
-const FLAG_KEYS = new Set(['name', 'hostile', 'controlled', 'tactical', 'alert_allies', 'flee_threshold', 'preferred_positions', 'behaviors']);
+const FLAG_KEYS = new Set(['name', 'hostile', 'controlled', 'tactical', 'alert_allies', 'flee_threshold', 'provoked_variable', 'preferred_positions', 'behaviors']);
 const PARAM_KEYS = new Set(PARAM_DEFS.map(p => p.key));
 
 // ---- State ----
@@ -369,11 +373,11 @@ async function loadBaseData() {
 
 // The files this page reads from the prototype (base only, a server
 // prototype or a workspace: scripts/prototype-source.js).
-const PROTOTYPE_FILES = ['personalities.json', 'actors.json', 'items.json', 'states.json', 'vfx.json', 'spells.json'];
+const PROTOTYPE_FILES = ['personalities.json', 'actors.json', 'items.json', 'states.json', 'vfx.json', 'spells.json', 'prototype.json'];
 
 async function loadPrototype() {
     [state.protoPersonalities, state.protoActors, state.protoItems,
-        state.protoStates, state.protoEffects, state.protoSpells] =
+        state.protoStates, state.protoEffects, state.protoSpells, state.protoConfig] =
         await Promise.all(PROTOTYPE_FILES.map(PrototypeSource.readJSON));
     state.mergedItems = { ...state.baseItems, ...state.protoItems };
     state.mergedStates = { ...state.baseStates, ...state.protoStates };
@@ -413,6 +417,7 @@ function clearForm() {
     document.getElementById('f-tactical').checked = false;
     document.getElementById('f-alert_allies').checked = false;
     document.getElementById('f-flee_threshold').value = '';
+    document.getElementById('f-provoked_variable').value = '';
     document.getElementById('preferred-positions-list').innerHTML = '';
     state.currentBehaviors = [];
     renderBehaviorList();
@@ -440,6 +445,7 @@ function populateForm(key, data) {
     document.getElementById('f-tactical').checked = !!data.tactical;
     document.getElementById('f-alert_allies').checked = !!data.alert_allies;
     document.getElementById('f-flee_threshold').value = data.flee_threshold != null ? data.flee_threshold : '';
+    document.getElementById('f-provoked_variable').value = data.provoked_variable || '';
 
     if (data.preferred_positions) {
         for (const pos of data.preferred_positions) addPositionRow(pos);
@@ -823,6 +829,9 @@ function readForm() {
     const ft = parseFloat(document.getElementById('f-flee_threshold').value);
     if (!isNaN(ft)) obj.flee_threshold = ft;
 
+    const provokedVariable = document.getElementById('f-provoked_variable').value.trim();
+    if (provokedVariable) obj.provoked_variable = provokedVariable;
+
     const positions = [];
     for (const row of document.querySelectorAll('#preferred-positions-list .list-item')) {
         const v = row.querySelector('input').value.trim();
@@ -966,6 +975,8 @@ function initRefFields() {
     RefFields.define('behavior', { kind: 'label', names: () => BEHAVIOR_CATEGORIES.flatMap(c => c.behaviors) });
     // behaviors/special.js countdown_display only knows 'digit'.
     RefFields.define('countdown_display', { noun: 'display mode', names: () => ['digit'] });
+    RefFields.define('variable', { file: 'prototype.json variables', names: () => RefFields.variablesIn(state.protoConfig) });
+    RefFields.attach(document.getElementById('f-provoked_variable'), 'variable');
 }
 
 async function init() {
