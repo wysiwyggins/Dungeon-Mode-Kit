@@ -4,6 +4,13 @@
   "loaded_sound": "levelout",
   "turn_speed": 50,
   "floors": 26,
+  "variables": {
+    "levels": {
+      "1": {
+        "desecrated": false
+      }
+    }
+  },
   "win_state": {
     "via": "escape",
     "exit_floor": 1,

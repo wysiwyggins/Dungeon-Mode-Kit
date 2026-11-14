@@ -329,6 +329,27 @@ You can also compare a stat:
 
 `win_state` is different. It wins the whole game rather than unlocking a floor: `{ "via": "escape", "exit_floor": 1, "conditions": [...], "message": "..." }`. Reaching the exit on `exit_floor` with the conditions met ends the run in victory.
 
+## Variables
+
+`variables` declares named values the game can read and change while it runs. Prototype variables keep one value for the whole run, and level variables keep a separate value for each floor, listed by floor number. Values can be `true`/`false`, numbers or text, and both kinds are saved with the game.
+
+```json
+"variables": {
+  "prototype": { "met_hermit": false },
+  "levels": { "1": { "desecrated": false } }
+}
+```
+
+Only declared variables exist. Setting a name that isn't declared prints a warning in the console and changes nothing, so a misspelled name is easy to catch. If a level variable has the same name as a prototype variable, the level's value is used on that floor.
+
+The prototype editor's Variables section edits this block. Each variable has a name, a type and a starting value. Floor tabs show just that floor's level variables. The editor warns about names ink can't use and about a level variable that hides a prototype variable.
+
+Variables are changed by game events and read by actors and dialogue:
+
+- An actor with `player_kill_sets` (e.g. `{ "desecrated": true }`) sets variables when the player kills or breaks it. Names the current floor doesn't declare are skipped, so one definition can be shared by every floor.
+- An actor whose personality has a `provoked_variable` turns against the player once that variable is true. Provoking the actor also sets the variable true (see [ACTORS.md](ACTORS.md)).
+- In an ink conversation, a `VAR` with the same name as a variable mirrors it. The story reads the game's value when the conversation opens, and anything the story sets is written back.
+
 ## Rank
 
 `rank_order` gives a prototype chess-like capture rules instead of dice combat. It is a list of actor ids from weakest to strongest, based on the rules of Animal Chess (Dou Shou Qi).

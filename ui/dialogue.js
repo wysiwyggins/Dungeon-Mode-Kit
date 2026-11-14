@@ -1,8 +1,9 @@
 /**
  * InterfaceManager methods: the dialogue window. A modal box showing one node
  * of a conversation (speaker, text, lettered choices), driven by a
- * DialogueController. Only currentLine() / choose() / isFinished() are used,
- * so another backing format (e.g. ink) can slot in later.
+ * conversation controller: DialogueController (node trees) or
+ * InkDialogueController (compiled ink). Only currentLine() / choose() /
+ * isFinished() are used, so the window doesn't care which format it shows.
  *
  * Dual display: the canvas box carries a size-capped copy of each node's text;
  * the full untruncated text always goes to the sidebar via showMessage.
@@ -16,23 +17,37 @@ const DIALOGUE_BOX_ID = 'dialogue';
 const DIALOGUE_TEXT_WIDTH = 28;      // characters per wrapped line
 const DIALOGUE_MAX_TEXT_LINES = 6;   // canvas cap; the sidebar carries the rest
 const CHOICE_LETTERS = 'abcdefghijklmnopqrstuvwxyz';
+const UNTINTED = 0xFFFFFF;           // an actor's tint when it has none
+
+/** True if white text reads better than black on this color (perceived luminance). */
+function isDarkColor(color) {
+    const r = (color >> 16) & 0xFF;
+    const g = (color >> 8) & 0xFF;
+    const b = color & 0xFF;
+    return (0.299 * r + 0.587 * g + 0.114 * b) < 140;
+}
 
 export const UIDialogue = {
     /**
      * Open a conversation.
-     * @param {object} tree - { start, nodes: { id: { text, choices: [{label, goto}] } } }
+     * @param {object} source - A controller (anything with currentLine/choose/isFinished,
+     *   e.g. from Actor.getDialogueController), or a node tree
+     *   { start, nodes: { id: { text, choices: [{label, goto}] } } }
      * @param {object} [options]
      * @param {string} [options.speaker] - Name shown above the text and in the sidebar
+     * @param {number} [options.speakerTint] - The speaker's tint, used behind the name row.
+     *   Untinted (white) speakers get the border color instead.
      */
-    showDialogue(tree, options = {}) {
-        if (!tree) return;
+    showDialogue(source, options = {}) {
+        if (!source) return;
         this.closeDialogue();
         this.closeConfirmDialog?.();
         this.clearTargetingHighlights?.();
 
         this.dialogue = {
-            controller: new DialogueController(tree),
+            controller: typeof source.currentLine === 'function' ? source : new DialogueController(source),
             speaker: options.speaker || null,
+            speakerTint: options.speakerTint ?? null,
         };
         this._renderDialogue();
     },
@@ -100,8 +115,25 @@ export const UIDialogue = {
 
         const textStartX = (padding + 1) * TILE_WIDTH;
         const textStartY = (padding + 1) * TILE_HEIGHT;
+
+        // Speaker name row: a band in the speaker's tint across the box interior,
+        // with white letters when the tint is dark.
+        let nameTint = this.defaultTextTint;
+        if (speaker) {
+            const tint = dialogue.speakerTint;
+            const bandColor = (typeof tint === 'number' && tint !== UNTINTED) ? tint : this.defaultBorderTint;
+            const band = new PIXI.Graphics();
+            band.beginFill(bandColor);
+            band.drawRect(TILE_WIDTH, textStartY, (boxWidth - 2) * TILE_WIDTH, TILE_HEIGHT);
+            band.endFill();
+            box.addChild(band);
+            if (isDarkColor(bandColor)) nameTint = 0xFFFFFF;
+        }
+
         for (let i = 0; i < lines.length; i++) {
-            this.renderTextLine(box, lines[i], textStartX, textStartY + i * TILE_HEIGHT, this.defaultTextTint);
+            const isName = speaker && i === 0;
+            const tint = isName ? nameTint : this.defaultTextTint;
+            this.renderTextLine(box, lines[i], textStartX, textStartY + i * TILE_HEIGHT, tint, isName && tint !== this.defaultTextTint);
         }
 
         this.updateBoxOverlays();

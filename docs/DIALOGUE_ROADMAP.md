@@ -3,7 +3,7 @@
 *A path to conversations with non-hostile actors (multiple-choice dialogue trees)
 and taunt lines for hostile actors.*
 
-Status: in progress (A, B done) · Last updated: 2026-11-12
+Status: in progress (A, B, C, ink adapter done) · Last updated: 2026-11-14
 
 ---
 
@@ -132,7 +132,7 @@ Each phase is independently shippable. Taunts (Phase A) and bump-to-talk
 are simpler and make a good warm-up.
 
 - [x] Hostile taunts
-- [x] Dialogue UI primitive (modal box + choices) `[foundation for talk]` — `ui/dialogue.js` (`UIDialogue` mixin); test with `__testDialogue()` in the console until Phase C
+- [x] Dialogue UI primitive (modal box + choices) `[foundation for talk]` — `ui/dialogue.js` (`UIDialogue` mixin)
   - **Goal:** A reusable dialogue window: shows a node's text + a list of selectable
   choices; supports click and keyboard; gates game input while open.
 - **Work:**
@@ -156,7 +156,10 @@ are simpler and make a good warm-up.
 - **Risk/effort:** Medium. The one genuinely new UI; everything reuses existing
   primitives.
 
-### Phase C — Bump-to-talk wiring `[the core feature]`
+### [x] Phase C — Bump-to-talk wiring `[the core feature]`
+
+- **Done:** `Actor.canTalk()` / `getDialogue()` / `noteAttackedBy()` (`engine/actor/actor.js`); branch in `tryMove()` before the push check. Talking is free (no turn). Once the player hurts a talker by any route (melee, thrown, spell), `_provokedByPlayer` is set: it stops talking, bumps attack it, and it uses its taunts like a hostile actor. Test NPC: `kobold_hermit` in `prototypes/dungeon/personalities.json`.
+- **Known gap:** `_provokedByPlayer` isn't saved; a provoked NPC talks again after loading a save. Actors with a `provoked_variable` are covered, since the variable is saved and re-provokes them on load (see Phase D).
 
 - **Goal:** Bumping a non-hostile actor opens its dialogue instead of attacking.
 - **Work:**
@@ -183,9 +186,13 @@ are simpler and make a good warm-up.
 - **Unlocks:** Branching, stateful conversations and reuse.
 - **Risk/effort:** Medium; gated on the variables feature. Explicitly out of Phase 1.
 
-### Phase E (future) — Authoring `[tooling]`
+### [x] Phase E — Ink authoring `[tooling]`
 
-- an `inkjs` adapter implementing the conversation-controller interface over compiled ink JSON. The Phase B abstraction is what makes this a drop-in.
+- **Done:** `InkDialogueController` (`core/ink-dialogue.js`) implements the controller interface over compiled ink, using the inkjs runtime vendored as `lib/ink.mjs` (an ES module, so no `<script>` tags). A string `dialogue` is a path relative to the prototype folder; `Prototype.loadDialogueFiles()` fetches every path that personalities/actors name at load time, so bumping stays synchronous. `Actor.getDialogueController()` keeps one ink controller per actor: each conversation restarts from the top, but ink variables and visit counts carry over (restart resets the story and copies the memory half of ink's save JSON back in). `npm run ink` (`tools/compile-ink.mjs`, inkjs as a devDependency) compiles `.ink` files beside themselves; Inky's JSON export works too. Workspace "copy from server" brings named dialogue files and their `.ink` sources along.
+- **Ink → engine conventions so far:** all text up to the next choices is joined into one node; choice text becomes the lettered options; text with no choices after it gets a single "Leave"; `-> END` closes the window.
+- **Engine functions (Phase D, started):** `engine/actor/dialogue-functions.js` holds ink EXTERNAL functions, bound once per story by `InkDialogueController` and given `{ speaker, listener }` for the current conversation. Each `.ink` also defines a same-named ink function as a fallback, so it still previews in Inky. Done so far: `give(item)`, where the speaker gives one item to the listener (from inventory if carried, otherwise newly made). It goes through `pickUpItem` and returns false if refused (e.g. a full pack). Equipped items are never handed over.
+- **Variables (Phase D):** prototype and level variables (`engine/dungeon-engine/variables.js`) are declared in `prototype.json` `variables`, saved with the game, and mirrored by name into ink global VARs (pulled when a conversation opens, pushed after each step). `provoked_variable` (personality) and `player_kill_sets` (actor) connect them to provocation. The hermit, floor 1's graves and the hermit's own "I'll dig where I please" choice all share `desecrated`.
+- **Next (Phase D, via ink):** ink is a natural home for conditions and effects. Add more EXTERNAL functions: `take` (and a `has` check, for trades and shops), and use tags (e.g. `# speaker: Name`) for per-line metadata. Save each actor's ink state (`story.state.toJson()`) with the game alongside `_provokedByPlayer`.
 
 ---
 

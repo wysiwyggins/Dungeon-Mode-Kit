@@ -4,8 +4,9 @@
  *
  * A snapshot is every floor's saved state (the same one a floor transition
  * keeps, with the current floor added), the player, the entities in transit
- * between floors, the run's per-floor flags, the prototype stack, and the
- * prototype's own per-run choices (identification, item looks, lock colors).
+ * between floors, the run's per-floor flags, the prototype and level variables,
+ * the prototype stack, and the prototype's own per-run choices (identification,
+ * item looks, lock colors).
  * Resuming loads the prototype, puts that back and restores the current floor
  * the way a revisited floor is restored, with the player where they stood.
  */
@@ -46,6 +47,7 @@ export const DungeonEngineSavedGames = {
             mappedFloors: [...this.mappedFloors],
             prototypeStack: this.prototypeStack,
             prototypeRun: this.currentPrototype.serializeRunState(),
+            variables: this.serializeVariables(),
         };
     },
 
@@ -155,6 +157,7 @@ export const DungeonEngineSavedGames = {
         this.sealedDownFloors = new Set(snapshot.sealedDownFloors);
         this.mappedFloors = new Set(snapshot.mappedFloors);
         this.prototypeStack = snapshot.prototypeStack || [];
+        this.restoreVariables(snapshot.variables);
         if (!this.floorStates.has(this.currentFloor)) {
             throw new Error(`saved game has no state for floor ${this.currentFloor}`);
         }

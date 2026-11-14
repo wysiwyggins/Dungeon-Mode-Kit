@@ -113,6 +113,7 @@ export class Prototype {
         }
 
         await this.loadAnimationSheets(prototypeAnimations);
+        await this.loadDialogueFiles();
 
         this.warnUnknownFloorPlanBiomes();
         this.initItemCatalog();
@@ -425,6 +426,38 @@ export class Prototype {
         }
 
         return null;
+    }
+
+    /**
+     * Fetch the dialogue files that personalities and actors name. A `dialogue`
+     * given as a string is a path, relative to the prototype folder, to compiled
+     * ink JSON (e.g. "dialogue/kobold_hermit.json"). They're all loaded up front
+     * so bumping an actor can open its conversation at once, and a missing or
+     * broken file shows up as a warning at load rather than mid-game.
+     * Results land in this.dialogues, keyed by path (see getDialogueFile).
+     */
+    async loadDialogueFiles() {
+        this.dialogues = {};
+        const paths = new Set();
+        for (const def of [...Object.values(this.personalities), ...Object.values(this.actors)]) {
+            const dialogue = def?.dialogue ?? def?.attributes?.dialogue;
+            if (typeof dialogue === 'string' && dialogue) paths.add(dialogue);
+        }
+        await Promise.all([...paths].map(async (path) => {
+            try {
+                const response = await fetch(this.basePath + path);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                this.dialogues[path] = await response.json();
+            } catch (error) {
+                console.warn(`Couldn't load dialogue "${path}" for prototype ${this.name}:`, error.message);
+            }
+        }));
+        if (paths.size) console.log(`  Dialogue files: ${Object.keys(this.dialogues).length}/${paths.size}`);
+    }
+
+    /** A dialogue file loaded by loadDialogueFiles, or null. */
+    getDialogueFile(path) {
+        return this.dialogues?.[path] ?? null;
     }
 
     async loadJSON(filename, defaultValue) {

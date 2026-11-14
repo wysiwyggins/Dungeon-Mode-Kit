@@ -7,6 +7,8 @@
  */
 
 import { Personality, springTrapPayload } from '../../behaviors/behaviors.js';
+import { DialogueController } from '../../core/dialogue.js';
+import { InkDialogueController, isInkJson } from '../../core/ink-dialogue.js';
 import { installMethods } from '../../core/mixin.js';
 import {
     findAdjacentWalkable,
@@ -25,6 +27,7 @@ import {
     resolveTemplate
 } from '../../core/util.js';
 import { ActorCombat } from './combat.js';
+import { dialogueFunctions } from './dialogue-functions.js';
 import { ActorIdentity } from './identity.js';
 import { ActorItems } from './items.js';
 import { ActorMovement } from './movement.js';
@@ -996,6 +999,9 @@ export class Actor extends Entity {
         // AI actors execute their personality behaviors
         // Caught in a ward gas that repels it: getting out is the whole turn.
         if (this.personality && !this.escapeWard()) {
+            // A provoked_variable set before this actor existed (a revisited floor,
+            // a resumed game) still turns it against the player.
+            if (!this._provokedByPlayer && this.isProvokedByPlayer()) this.provokeByPlayer();
             this.personality.execute(this);
 
             // Hasted actors get a bonus action (no extra state processing)
@@ -1115,6 +1121,111 @@ export class Actor extends Entity {
         this.engine.inputManager?.showMessage(line, { x: this.x, y: this.y });
 
         return true;
+    }
+
+    /**
+     * This actor's dialogue, if it has one: the actor's own `dialogue` attribute
+     * (a per-actor override) first, then the personality's. Either is a node tree,
+     * compiled ink JSON inline, or a string path to a compiled ink file that the
+     * prototype loaded (Prototype.loadDialogueFiles). A path whose file didn't
+     * load counts as no dialogue.
+     * @returns {object|null} A node tree or compiled ink JSON
+     */
+    getDialogue() {
+        const dialogue = this.getAttribute('dialogue') || this.personality?.data?.dialogue || null;
+        if (typeof dialogue === 'string') return this.engine.currentPrototype?.getDialogueFile(dialogue) ?? null;
+        return dialogue;
+    }
+
+    /**
+     * A conversation controller for the dialogue window, positioned at the start.
+     * Ink stories keep one controller per actor, so ink variables and visit counts
+     * carry over from one conversation with this actor to the next. Ink stories
+     * can call the engine through the functions in dialogue-functions.js, and an
+     * ink VAR named like a prototype or level variable mirrors it.
+     * @param {Actor} listener - Who is talking to this actor (the player)
+     * @returns {DialogueController|InkDialogueController|null}
+     */
+    getDialogueController(listener) {
+        const source = this.getDialogue();
+        if (!source) return null;
+        if (!isInkJson(source)) return new DialogueController(source);
+        if (this._inkDialogue?.source !== source) {
+            const engine = this.engine;
+            const controller = new InkDialogueController(source, this.name, {
+                functions: dialogueFunctions(() => controller.context),
+                variables: {
+                    names: () => engine.variableNames?.() ?? [],
+                    get: (name) => engine.getVariable?.(name),
+                    set: (name, value) => engine.setVariable?.(name, value),
+                },
+            });
+            this._inkDialogue = { source, controller };
+        }
+        this._inkDialogue.controller.restart({ speaker: this, listener });
+        return this._inkDialogue.controller;
+    }
+
+    /**
+     * Record that `attacker` hurt this actor. Sets `_lastAttacker` (which the
+     * defend_self behavior answers) and, if the player did it, marks this actor
+     * provoked for good — a provoked NPC stops talking and can be bump-attacked.
+     * @param {Actor} attacker
+     */
+    noteAttackedBy(attacker) {
+        if (!attacker || attacker === this) return;
+        this._lastAttacker = attacker;
+        if (attacker.isPlayerControlled?.()) this.provokeByPlayer(attacker);
+    }
+
+    /**
+     * The level or prototype variable tied to this actor's provocation, if any
+     * (`provoked_variable` on the actor, else on its personality). The link runs
+     * both ways: provoking the actor sets the variable true, and while the
+     * variable is true the actor counts as provoked. So anything that sets it
+     * (breaking a grave with `player_kill_sets`, a dialogue choice) has the same
+     * result as hitting the actor, and every actor sharing the variable reacts together.
+     * @returns {string|null}
+     */
+    getProvokedVariable() {
+        return this.getAttribute('provoked_variable') || this.personality?.data?.provoked_variable || null;
+    }
+
+    /** Whether the player has provoked this actor, directly or through its provoked_variable. */
+    isProvokedByPlayer() {
+        if (this._provokedByPlayer) return true;
+        const variable = this.getProvokedVariable();
+        return !!variable && !!this.engine.getVariable?.(variable);
+    }
+
+    /**
+     * Turn this actor against the player: it stops talking, fights back
+     * (defend_self answers _lastAttacker) and uses its taunts.
+     * @param {Actor} [player]
+     */
+    provokeByPlayer(player = this.engine.entityManager?.player) {
+        if (this.isPlayerControlled()) return;
+        this._provokedByPlayer = true;
+        if (player && (!this._lastAttacker || this._lastAttacker.isDead)) this._lastAttacker = player;
+        const variable = this.getProvokedVariable();
+        if (variable) this.engine.setVariable?.(variable, true);
+    }
+
+    /** A level or prototype variable changed (DungeonEngine.setVariable). */
+    onVariableChanged(name, value) {
+        if (value && !this.isDead && !this._provokedByPlayer && name === this.getProvokedVariable()) {
+            this.provokeByPlayer();
+        }
+    }
+
+    /**
+     * Whether a player bump should open this actor's dialogue instead of
+     * attacking. Gated on having dialogue (not just on being non-hostile), so
+     * water, fire and the like never talk.
+     * @returns {boolean}
+     */
+    canTalk() {
+        return !this.isDead && !this.isProvokedByPlayer() && !this.personality?.hostile && !!this.getDialogue();
     }
 
     /**
@@ -1280,10 +1391,23 @@ export class Actor extends Entity {
             this._emitCounterKey = null;
         }
 
-        // Hostile actors get a last word before the death message (visibility and
-        // taunt-data checks live in sayTaunt). Players don't taunt themselves.
-        if (this.personality?.hostile && !this.isPlayerControlled()) {
+        // Hostile (or player-provoked) actors get a last word before the death
+        // message (visibility and taunt-data checks live in sayTaunt). Players
+        // don't taunt themselves.
+        if ((this.personality?.hostile || this.isProvokedByPlayer()) && !this.isPlayerControlled()) {
             this.sayTaunt('on_death');
+        }
+
+        // `player_kill_sets`: variables to change when the player is the one who
+        // killed (or broke) this actor, e.g. a grave dug up. Names this floor
+        // doesn't declare are skipped, so one grave definition can serve every
+        // floor and only the floors that declare the variable care.
+        const killer = this._killedBy || this._lastAttacker;
+        const playerKillSets = this.getAttribute('player_kill_sets');
+        if (playerKillSets && typeof playerKillSets === 'object' && killer?.isPlayerControlled?.()) {
+            for (const [name, value] of Object.entries(playerKillSets)) {
+                if (this.engine.hasVariable?.(name)) this.engine.setVariable(name, value);
+            }
         }
 
         // Show death message for visible actors (skip for mass nouns like clouds)

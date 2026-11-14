@@ -187,6 +187,13 @@
     "stats": {
       "health": 20
     }
+  },
+  "grave": {
+    "attributes": {
+      "player_kill_sets": {
+        "desecrated": true
+      }
+    }
   }
 
 }

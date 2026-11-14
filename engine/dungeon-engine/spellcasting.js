@@ -381,6 +381,7 @@ export const DungeonEngineSpellcasting = {
             if (!victim || struck.has(victim) || victim.isDead || !victim.stats?.health) continue;
             struck.add(victim);
             victim.modifyStat('health', damage, { source: item ?? caster });
+            if (damage < 0) victim.noteAttackedBy?.(caster);
             const pos = victim.isPlayerControlled?.() ? null : { x: victim.x, y: victim.y };
             this.inputManager?.showMessage(`${boltPhrase} strikes ${this._spellName(victim)}!`, pos);
             victim.flash?.();
@@ -500,6 +501,7 @@ export const DungeonEngineSpellcasting = {
             }
             const after = target.stats.health?.current;
             if (before !== undefined && after !== before) {
+                if (after < before) target.noteAttackedBy?.(caster);
                 const name = this._spellName(target, true);
                 say(after > before ? `${name} looks healthier.` : `${name} is hurt.`, at);
                 if (after <= 0) target.die();

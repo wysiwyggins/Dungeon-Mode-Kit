@@ -73,10 +73,10 @@
   "hole": {
     "name": "hole",
     "tileIndex": "SHALLOW_GRAVE",
-    "tint": "#aa7942",
+    "tint": "#c0c0c0",
     "attributes": {
       "visible": true,
-      "walk_description": "A shallow hole in the floor."
+      "walk_description": "A shallow hole in the ground."
     }
   },
   "log": {

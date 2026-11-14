@@ -1029,8 +1029,10 @@ export const ActorCombat = {
         const targetHasHealth = target.stats?.health !== undefined;
         const isCombatTarget = damageSource && (targetHasHealth || target.hasAttribute('breakable'));
 
-        // A hostile actor's first strike at the player gets a taunt, once per actor.
-        if (isCombatTarget && !this._hasTaunted && this.personality?.hostile && target.isPlayerControlled()) {
+        // A hostile (or player-provoked) actor's first strike at the player gets a
+        // taunt, once per actor.
+        if (isCombatTarget && !this._hasTaunted && (this.personality?.hostile || this.isProvokedByPlayer?.())
+            && target.isPlayerControlled()) {
             this._hasTaunted = true;
             this.sayTaunt('on_attack');
         }
@@ -1121,6 +1123,7 @@ export const ActorCombat = {
         if (targetShouldDie) {
             const wasBreakableWall = target.hasAttribute('breakable') && target.hasAttribute('solid');
             const targetPos = { x: target.x, y: target.y };
+            target._killedBy = this;   // read by die() for player_kill_sets
             target.die();
             if (wasBreakableWall) {
                 this.engine.entityManager.revealDugArea([targetPos]);
@@ -1160,9 +1163,10 @@ export const ActorCombat = {
             if (target.stats && target.stats[key] !== undefined) {
                 if (!isDamageSource) continue; // Skip stat effects for utility sources
 
-                // Track attacker for defend_self behavior (when health is reduced)
+                // Track attacker for defend_self (and player provocation) when health is reduced
                 if (key === 'health' && value < 0 && source.sourceActor) {
-                    target._lastAttacker = source.sourceActor;
+                    if (target.noteAttackedBy) target.noteAttackedBy(source.sourceActor);
+                    else target._lastAttacker = source.sourceActor;
                 }
 
                 let finalValue = value;

@@ -554,6 +554,7 @@ export const UIThrowing = {
                             }
 
                             if (hitActor.stats && hitActor.stats[key] !== undefined) {
+                                if (key === 'health' && value < 0) hitActor.noteAttackedBy?.(player);
                                 const stat = hitActor.stats[key];
                                 if (typeof stat === 'object' && stat.current !== undefined) {
                                     stat.current = Math.min(stat.max, Math.max(0, stat.current + value));

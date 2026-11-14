@@ -12,5 +12,21 @@
     "behaviors": [
       "chain_body_follow"
     ]
+  },
+
+  "kobold_hermit": {
+    "name": "Kobold Hermit",
+    "hostile": false,
+    "behaviors": [
+      "defend_self",
+      "flee_from_danger"
+    ],
+    "flee_threshold": 5,
+    "provoked_variable": "desecrated",
+    "taunts": {
+      "on_attack": ["So that's how it is."],
+      "on_death": ["Forgive me... I join you all now."]
+    },
+    "dialogue": "dialogue/kobold_hermit.json"
   }
 }

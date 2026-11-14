@@ -171,6 +171,7 @@ These are permadeath games, so there are no slots and no manual saving:
 | `floors` | Every visited floor's `snapshotFloor()`, the current one included (entities, map, exploration, RNG state) |
 | `pendingFallenActors`, `pendingFallenItems`, `pendingStairFollowers` | Entities in transit between floors |
 | `sealedDownFloors`, `mappedFloors` | Per-floor run flags |
+| `variables` | Prototype variables, and level variables per floor (`serializeVariables()`); see [PROTOTYPE.md](PROTOTYPE.md#variables) |
 | `prototypeStack` | The prototypes to return to, as `saveGameState()` snapshots |
 | `prototypeRun` | `Prototype.serializeRunState()`: identified types, the random colors, materials and glyph names of unidentified types, lock colors, and the item catalog |
 

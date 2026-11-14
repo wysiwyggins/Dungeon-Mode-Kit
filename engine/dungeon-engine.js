@@ -14,6 +14,7 @@ import { DungeonEngineProgression } from './dungeon-engine/progression.js';
 import { DungeonEngineSavedGames } from './dungeon-engine/saved-games.js';
 import { DungeonEngineSpellcasting } from './dungeon-engine/spellcasting.js';
 import { DungeonEngineStairways } from './dungeon-engine/stairways.js';
+import { DungeonEngineVariables } from './dungeon-engine/variables.js';
 import { RenderSystem } from './render/render-system.js';
 import { SpriteLibrary } from './sprite-library.js';
 import { InputManager } from '../input.js';
@@ -738,4 +739,4 @@ export class DungeonEngine {
 }
 
 installMethods(DungeonEngine, DungeonEngineFloors, DungeonEngineProgression, DungeonEngineStairways, DungeonEnginePersistence,
-    DungeonEngineSpellcasting, DungeonEngineSavedGames);
+    DungeonEngineSpellcasting, DungeonEngineSavedGames, DungeonEngineVariables);

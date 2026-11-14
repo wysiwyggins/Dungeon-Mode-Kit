@@ -423,6 +423,19 @@ export const ActorMovement = {
                 this.engine.updateLighting();
                 return { moved: true, actionTaken: true };
             }
+            // Bump-to-talk: the player bumping a non-hostile actor that has dialogue
+            // opens the conversation instead of attacking. Talking is free (no turn).
+            // Once the player has hurt it (canTalk turns false), bumps attack again.
+            if (this.isPlayerControlled() && actorAtTarget !== this && actorAtTarget.canTalk?.()) {
+                const talkDx = newX - this.x;
+                if (talkDx > 0) this.setFacing('right');
+                else if (talkDx < 0) this.setFacing('left');
+                this.engine.interfaceManager?.showDialogue(actorAtTarget.getDialogueController(this), {
+                    speaker: actorAtTarget.name,
+                    speakerTint: actorAtTarget.getDisplayTint?.() ?? actorAtTarget.tint,
+                });
+                return { moved: false, actionTaken: false };
+            }
             // Check if actor can be pushed (requires pusher to have strength > 0)
             const pusherStrength = this.getAttribute('strength');
             if (actorAtTarget.hasAttribute('pushable') && pusherStrength && pusherStrength > 0) {

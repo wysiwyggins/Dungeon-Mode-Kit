@@ -16,7 +16,13 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 ### Added
 
 - **core/dialogue.js**
-- **Dialogue window.** `ui/dialogue.js` shows a conversation node with lettered choices, picked by letter, number or click, and Escape leaves. Long text is cut off on the canvas and shown in full in the sidebar. Open a sample with `__testDialogue()` in the console until bump-to-talk exists.
+- **Dialogue window.** `ui/dialogue.js` shows a conversation node with lettered choices, picked by letter, number or click, and Escape leaves. Long text is cut off on the canvas and shown in full in the sidebar. The speaker's name sits on a band of their tint, in white letters when the tint is dark.
+- **Bump-to-talk.** Bumping a non-hostile actor that has a `dialogue` tree opens a conversation instead of attacking, without using a turn. If the player hurts it some other way it stops talking, fights back and can be bump-attacked. `kobold_hermit` in the dungeon prototype is the first talker.
+- **Ink dialogue.** A `dialogue` can be the path to a compiled [ink](https://www.inklestudios.com/ink/) JSON file in the prototype folder, run by the vendored inkjs runtime (`lib/ink.mjs`). `npm run ink` compiles every `.ink` under `prototypes/`, and the kobold hermit's conversation is now `prototypes/dungeon/dialogue/kobold_hermit.ink`.
+- **Dialogue gifts.** Ink stories can call `give("item")` (declared with `EXTERNAL`) to have the speaker hand the player an item, taken from their inventory if they carry one or made fresh if not. It returns false when the player's pack is full, so the story can branch, and the kobold hermit now gives bread once.
+- **Prototype and level variables.** `prototype.json` can declare `variables` for the whole run or for single floors. They're saved with the game and mirrored into ink VARs of the same name.
+- **Variable-linked provocation.** An actor with `player_kill_sets` changes variables when the player breaks or kills it, and a personality's `provoked_variable` turns its actor hostile while that variable is true. In the dungeon, digging up a floor 1 grave, attacking the hermit, or telling him "I'll dig where I please" all set `desecrated`, and he reacts the same way to each.
+- **Variables in the prototype editor.** A Variables section adds, renames and removes prototype and per-floor variables, with a type and starting value for each, and each floor tab lists its own. It warns about names ink can't use and about level variables that hide prototype ones.
 
 ## [1.22b] 2026-11-08
 

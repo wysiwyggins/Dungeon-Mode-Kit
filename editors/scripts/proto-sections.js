@@ -167,6 +167,7 @@ function renderForm() {
         if (isMultiLevel()) {
             root.appendChild(sectionBiomePlan().det);
         }
+        root.appendChild(sectionVariables().det);
         root.appendChild(sectionAdvanced().det);
     } else {
         const floor = currentTarget();
@@ -177,6 +178,7 @@ function renderForm() {
         root.appendChild(sectionDefaultFloor(floor, { inheritKey: 'default_floor' }).det);
         root.appendChild(sectionItemBudget(floor, { inheritKey: 'item_budget' }).det);
         root.appendChild(sectionSpawns(floor, { open: true }).det);
+        root.appendChild(sectionFloorVariables(state.activeFloor).det);
     }
 }
 
@@ -579,7 +581,7 @@ function effectsEditor(pat) {
 const KNOWN_TOP_KEYS = new Set([
     'name','description','loaded_sound','turn_speed','next_level','previous_level','intro_cutscene',
     'mechanics','win_state','win_conditions','map_generator','default_floor','void_tile','item_catalog','item_budget',
-    'random_actors','random_items','traps','switch_puzzles','levels','cutscene',
+    'random_actors','random_items','traps','switch_puzzles','levels','cutscene','variables',
     // Multi-level / biome keys, edited by the Biome plan section.
     'floors','floor_plan','biomes',
 ]);
@@ -800,6 +802,193 @@ function sectionCutscene() {
     }));
     body.appendChild(el('div', { class: 'hint-inline' },
         'Frame timing uses the Identity “Turn speed (ms)” value (ms per frame).'));
+    return { det };
+}
+
+/* =========================================================================
+   Variables — prototype.json `variables` (engine/dungeon-engine/variables.js)
+   -------------------------------------------------------------------------
+   { prototype: { name: value }, levels: { "<floor>": { name: value } } }
+   Prototype variables last the whole run; level variables are kept per floor.
+   Values are booleans, numbers or strings. Names double as ink VAR names (an
+   ink VAR with the same name mirrors the variable), so they must be valid ink
+   identifiers. Empty objects are pruned so an unused block leaves no trace.
+   ========================================================================= */
+const VARIABLE_NAME_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+function variablesBlock(create = false) {
+    const p = state.proto;
+    if (!p.variables && create) p.variables = {};
+    return p.variables || {};
+}
+
+// The object holding one scope's variables: 'proto' or a 1-based floor number.
+function variableScope(scope, create = false) {
+    const v = variablesBlock(create);
+    if (scope === 'proto') {
+        if (!v.prototype && create) v.prototype = {};
+        return v.prototype || {};
+    }
+    if (!v.levels && create) v.levels = {};
+    const levels = v.levels || {};
+    if (!levels[String(scope)] && create) levels[String(scope)] = {};
+    return levels[String(scope)] || {};
+}
+
+function pruneVariables() {
+    const v = state.proto.variables;
+    if (!v) return;
+    if (v.prototype && !Object.keys(v.prototype).length) delete v.prototype;
+    if (v.levels) {
+        for (const f of Object.keys(v.levels)) {
+            if (!v.levels[f] || !Object.keys(v.levels[f]).length) delete v.levels[f];
+        }
+        if (!Object.keys(v.levels).length) delete v.levels;
+    }
+    if (!Object.keys(v).length) delete state.proto.variables;
+}
+
+// Floors that have level variables, numerically.
+function variableFloors() {
+    return Object.keys(state.proto.variables?.levels || {}).map(Number).filter(n => n > 0).sort((a, b) => a - b);
+}
+
+// The kind of a value, for the type select.
+function variableKind(value) {
+    if (typeof value === 'number') return 'number';
+    if (typeof value === 'string') return 'text';
+    return 'bool';
+}
+const VARIABLE_DEFAULTS = { bool: false, number: 0, text: '' };
+
+// A name not in `scope`, for a new row.
+function freshVariableName(scope) {
+    let n = 1;
+    while (Object.hasOwn(scope, 'variable_' + n)) n++;
+    return 'variable_' + n;
+}
+
+/* Rows for one scope. Renaming rebuilds the object so key order (and so the
+   order in prototype.json) is kept. `other` is the scope this one shadows or is
+   shadowed by, for the same-name warning. */
+function variableTable(scopeKey, opts = {}) {
+    const wrap = el('div', { class: 'dynamic-list' });
+    function redraw() {
+        wrap.innerHTML = '';
+        const scope = variableScope(scopeKey);
+        const names = Object.keys(scope);
+        if (!names.length) {
+            wrap.appendChild(el('div', { class: 'hint-inline' }, opts.emptyHint || 'No variables.'));
+        }
+        for (const name of names) wrap.appendChild(variableRow(scopeKey, name, redraw, opts));
+        const add = el('button', { class: 'add-btn' }, '+ variable');
+        add.addEventListener('click', () => {
+            const s = variableScope(scopeKey, true);
+            s[freshVariableName(s)] = false;
+            commit(); redraw();
+        });
+        wrap.appendChild(add);
+    }
+    redraw();
+    return wrap;
+}
+
+function variableRow(scopeKey, name, redraw, opts) {
+    const scope = variableScope(scopeKey);
+    const value = scope[name];
+    const kind = variableKind(value);
+    const row = el('div', { class: 'list-item' });
+
+    const nameIn = el('input', { type: 'text', value: name, placeholder: 'name',
+        title: 'Variable name. Letters, digits and _, not starting with a digit. An ink VAR with this name mirrors the variable.' });
+    nameIn.addEventListener('change', () => {
+        const next = nameIn.value.trim();
+        if (!next || next === name) { nameIn.value = name; return; }
+        if (Object.hasOwn(scope, next)) { nameIn.value = name; setStatus(`“${next}” already exists here.`); return; }
+        const rebuilt = {};
+        for (const [k, v] of Object.entries(scope)) rebuilt[k === name ? next : k] = v;
+        for (const k of Object.keys(scope)) delete scope[k];
+        Object.assign(scope, rebuilt);
+        commit(); render();
+    });
+
+    const kindSel = el('select', { style: 'flex:0 0 90px;', title: 'Value type' });
+    [['bool', 'true/false'], ['number', 'number'], ['text', 'text']]
+        .forEach(([v, l]) => kindSel.appendChild(el('option', { value: v }, l)));
+    kindSel.value = kind;
+    kindSel.addEventListener('change', () => { scope[name] = VARIABLE_DEFAULTS[kindSel.value]; commit(); redraw(); });
+
+    let valueIn;
+    if (kind === 'bool') {
+        valueIn = el('label', { class: 'checkbox-label', style: 'flex:0 0 90px;', title: 'Starting value' });
+        const cb = el('input', { type: 'checkbox' });
+        cb.checked = !!value;
+        cb.addEventListener('change', () => { scope[name] = cb.checked; commit(); });
+        valueIn.append(cb, ' true');
+    } else {
+        valueIn = el('input', { type: kind === 'number' ? 'number' : 'text', value: value, title: 'Starting value' });
+        valueIn.addEventListener('input', () => {
+            scope[name] = kind === 'number' ? (Number(valueIn.value) || 0) : valueIn.value;
+            commit();
+        });
+    }
+
+    const rm = el('button', { class: 'remove-btn', title: 'Remove this variable' }, '×');
+    rm.addEventListener('click', () => { delete scope[name]; pruneVariables(); commit(); render(); });
+
+    row.append(nameIn, kindSel, valueIn, rm);
+
+    const problems = [];
+    if (!VARIABLE_NAME_RE.test(name)) problems.push('Not a valid name: use letters, digits and _, not starting with a digit, or ink can’t use it.');
+    if (scopeKey === 'proto') {
+        const shadowedOn = variableFloors().filter(f => Object.hasOwn(variableScope(f), name));
+        if (shadowedOn.length) problems.push(`Floor ${shadowedOn.join(', ')} also declares “${name}”; the floor’s value is used there.`);
+    } else if (Object.hasOwn(variableScope('proto'), name)) {
+        problems.push(`Shadows the prototype variable “${name}” on this floor.`);
+    }
+    if (!problems.length) return row;
+    const box = el('div', {}, row);
+    for (const msg of problems) box.appendChild(el('div', { class: 'hint-inline warning' }, msg));
+    return box;
+}
+
+// Prototype tab: the whole block — prototype variables, then each floor's.
+function sectionVariables() {
+    const { det, body } = section('Variables');
+    body.appendChild(el('div', { class: 'hint-inline' },
+        'Named values the game can read and change: actors (player_kill_sets, provoked_variable) and dialogue (an ink VAR with the same name mirrors one). Values are saved with the game. A name that isn’t declared here can’t be set.'));
+
+    body.appendChild(subTitle('Prototype (whole run)', 'One value that lasts across every floor of the run.'));
+    body.appendChild(variableTable('proto', { emptyHint: 'No prototype variables.' }));
+
+    body.appendChild(subTitle('Levels (per floor)', 'A separate value for each floor, kept when the player leaves and comes back.'));
+    const n = totalFloors();
+    for (const f of variableFloors()) {
+        const head = el('div', { class: 'field-row' }, el('strong', {}, 'Floor ' + f));
+        if (f > n) head.appendChild(el('span', { class: 'warning' }, ` (this prototype has ${n} floor${n === 1 ? '' : 's'})`));
+        body.appendChild(head);
+        body.appendChild(variableTable(f));
+    }
+    const addSel = el('select', { title: 'Add variables for a floor' });
+    addSel.appendChild(el('option', { value: '' }, '+ variables for floor…'));
+    const have = new Set(variableFloors());
+    for (let f = 1; f <= n; f++) if (!have.has(f)) addSel.appendChild(el('option', { value: f }, 'Floor ' + f));
+    addSel.addEventListener('change', () => {
+        if (!addSel.value) return;
+        const s = variableScope(Number(addSel.value), true);
+        s[freshVariableName(s)] = false;
+        commit(); render();
+    });
+    body.appendChild(el('div', { class: 'dynamic-list' }, addSel));
+    return { det };
+}
+
+// Floor tab: just this floor's level variables (the same data as above).
+function sectionFloorVariables(floor) {
+    const { det, body } = section('Variables (this floor)');
+    body.appendChild(el('div', { class: 'hint-inline' },
+        'Level variables for this floor. Prototype variables are on the Prototype defaults tab.'));
+    body.appendChild(variableTable(floor, { emptyHint: 'No level variables on this floor.' }));
     return { det };
 }
 

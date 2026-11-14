@@ -31,6 +31,7 @@ export const DungeonEngineFloors = {
         await this.currentPrototype.loadAssets();
         this.currentFloor = 1;
         this.floorStates.clear();
+        this.resetVariables();
         this.pendingFallenActors.clear();
         this.pendingFallenItems.clear();
         this.pendingStairFollowers.clear();

@@ -375,6 +375,18 @@ const Workspace = (() => {
             const file = typeof def === 'string' ? def : def?.file;
             if (file) extras.push(file);
         }
+        // Dialogue files (compiled ink) that personalities and actors name by path,
+        // as engine prototype.js loadDialogueFiles. The .ink source goes too if the
+        // server has it beside the .json, so the workspace stays editable.
+        for (const f of ['personalities.json', 'actors.json']) {
+            const defs = files[f] ? parse(files[f]) || {} : {};
+            for (const def of Object.values(defs)) {
+                const dialogue = def?.dialogue ?? def?.attributes?.dialogue;
+                if (typeof dialogue !== 'string' || !dialogue || extras.includes(dialogue)) continue;
+                extras.push(dialogue);
+                if (dialogue.endsWith('.json')) extras.push(dialogue.replace(/\.json$/, '.ink'));
+            }
+        }
         const extraBytes = await Promise.all(extras.map(getBytes));
         extras.forEach((f, i) => { if (extraBytes[i]) files[f] = extraBytes[i]; });
 

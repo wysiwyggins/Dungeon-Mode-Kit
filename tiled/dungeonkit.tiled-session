@@ -64,11 +64,11 @@
             "expandedObjectLayers": [
                 6
             ],
-            "scale": 1.7894,
-            "selectedLayer": 2,
+            "scale": 0.3782,
+            "selectedLayer": 4,
             "viewCenter": {
-                "x": 799.9888230691852,
-                "y": 596.8481055102268
+                "x": 523.532522474881,
+                "y": 516.9222633527236
             }
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/hunger_game/map.tmj": {
@@ -136,9 +136,9 @@
         },
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/sewer/map.tmj": {
             "expandedObjectLayers": [
-                3,
+                8,
                 6,
-                8
+                3
             ],
             "scale": 0.2669,
             "selectedLayer": 2,
@@ -204,7 +204,9 @@
             }
         }
     },
+    "last.exportedFilePath": "/Users/wileywiggins/Development/mantic-writer/mantic-writer/assets/tilemaps",
     "map.height": 4,
+    "map.lastUsedExportFilter": "JSON map files (*.tmj *.json)",
     "map.lastUsedFormat": "json",
     "map.tileHeight": 30,
     "map.tileWidth": 40,
@@ -217,10 +219,10 @@
     "project": "dungeonkit.tiled-project",
     "property.type": "bool",
     "recentFiles": [
-        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/pac/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/sewer/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/labyrinth/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/dungeon/map.tmj",
+        "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/pac/map.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/test/map.tmj",
         "tower.tmj",
         "/Users/wileywiggins/Development/Dungeon-Mode-Kit/prototypes/morass/map.tmj",
