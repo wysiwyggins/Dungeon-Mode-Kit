@@ -481,6 +481,7 @@ export class InputManager {
             this.updateDescription(tileX, tileY);
             this.updateTileHighlight(tileX, tileY);
             this.updateHoverInfo(tileX, tileY);
+            this.engine.interfaceManager?.updateOptionHover(tileX, tileY);
 
             // Update throw path if in aiming mode
             if (this.engine.interfaceManager?.isThrowAiming()) {
@@ -505,6 +506,7 @@ export class InputManager {
         // Clear hover description and redisplay turn history
         this.hoverDescription = null;
         this.displayMessages();
+        this.engine.interfaceManager?.clearOptionHover();
         // A hover panel belongs to the pointer, so it leaves with it. A sticky one was
         // asked for deliberately and stays until an action or Esc dismisses it — but a
         // pending open dies either way, since the pointer that requested it is gone.
@@ -2118,6 +2120,13 @@ export class InputManager {
         // other key closes the panel and carries on to its normal action, so this must
         // sit after the truly modal handlers above and before ordinary dispatch.
         if (this.engine.interfaceManager?.handleActorInfoKey(event.key)) {
+            event.preventDefault();
+            return;
+        }
+
+        // Arrow keys and Enter move through and pick the active box's choices
+        // (dialogue, confirm dialog, inventory and item menus).
+        if (this.engine.interfaceManager?.handleOptionNavKey(event.key)) {
             event.preventDefault();
             return;
         }

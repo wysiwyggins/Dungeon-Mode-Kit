@@ -128,6 +128,9 @@ export const UIMenus = {
         boxContainer._padding = padding;
         boxContainer._actionStartLine = actionStartLine;
         boxContainer._actionCount = actionNum - 1;
+        this.setBoxOptions(boxContainer, Array.from({ length: actionNum - 1 }, (_, i) => ({
+            line: actionStartLine + i, activate: () => this.executeItemAction(i + 1),
+        })));
 
         // Add text sprites
         const textStartX = (padding + 1) * TILE_WIDTH;
@@ -579,12 +582,29 @@ export const UIMenus = {
             boxContainer.addChild(highlight);
         }
 
+        // Both choices share the last line; each covers its label plus a space either side.
+        const choiceLineIndex = lines.length - 1;
+        const yesCol = choiceLine.indexOf(labels.yes);
+        const noCol = choiceLine.lastIndexOf(labels.no);
+        this.setBoxOptions(boxContainer, [
+            { line: choiceLineIndex, col: yesCol - 1, width: labels.yes.length + 2, activate: () => this._answerConfirm(true) },
+            { line: choiceLineIndex, col: noCol - 1, width: labels.no.length + 2, activate: () => this._answerConfirm(false) },
+        ]);
+
         for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
             const charY = textStartY + (lineIndex * TILE_HEIGHT);
             this.renderTextLine(boxContainer, lines[lineIndex], textStartX, charY, textTint);
         }
 
         this.updateBoxOverlays();
+    },
+
+    /** Close the confirmation dialog and run its yes or no callback. */
+    _answerConfirm(yes) {
+        if (!this.confirmDialog) return;
+        const callback = yes ? this.confirmDialog.onConfirm : this.confirmDialog.onCancel;
+        this.closeConfirmDialog();
+        if (callback) callback();
     },
 
     /**
@@ -983,6 +1003,13 @@ export const UIMenus = {
         const stripeRows = Array.from({ length: player.inventory.length },
             (_, i) => ({ lineIndex: 2 + i }));
         this.drawListStripes(boxContainer, stripeRows, contentWidth, padding);
+        this.setBoxOptions(boxContainer, player.inventory.map((item, i) => ({
+            line: 2 + i,
+            activate: () => {
+                this.closeThrowItemMenu();
+                this.enterThrowAimingMode(item);
+            },
+        })));
 
         // Add text sprites
         const textStartX = (padding + 1) * TILE_WIDTH;
@@ -1162,6 +1189,10 @@ export const UIMenus = {
                 (_, i) => ({ lineIndex: itemsStartLine + i }));
             this.drawListStripes(boxContainer, stripeRows, contentWidth, padding);
         }
+        this.setBoxOptions(boxContainer, this.equipmentMenuItems.map((entry, i) => ({
+            line: itemsStartLine + i,
+            activate: () => this._handleEquipmentClick(boxContainer, itemsStartLine + i),
+        })));
 
         // Add text sprites
         const textStartX = (padding + 1) * TILE_WIDTH;
@@ -1302,6 +1333,9 @@ export const UIMenus = {
         const stripeRows = Array.from({ length: this.useMenuItems.length },
             (_, i) => ({ lineIndex: 2 + i }));
         this.drawListStripes(boxContainer, stripeRows, contentWidth, padding);
+        this.setBoxOptions(boxContainer, this.useMenuItems.map((item, i) => ({
+            line: 2 + i, activate: () => this.handleUseMenuKey(String.fromCharCode(97 + i)),
+        })));
 
         const textStartX = (padding + 1) * TILE_WIDTH;
         const textStartY = (padding + 1) * TILE_HEIGHT;

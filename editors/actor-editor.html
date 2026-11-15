@@ -566,6 +566,12 @@ let state = {
     basePersonalities: {},
     protoPersonalities: {},
     mergedPersonalities: {},
+    // Ref-field sources read these before the first loadPrototype(), so they
+    // must exist from the start.
+    baseItems: {},
+    mergedItems: {},
+    mergedStates: {},
+    entities: {},
     currentTiles: {},
 };
 
@@ -1376,7 +1382,7 @@ function initRefFields() {
     RefFields.define('variable', { file: 'prototype.json variables', names: () => RefFields.variablesIn(state.protoConfig) });
     RefFields.define('item_or_type', { file: 'items.json', noun: 'item or type', names: () => [
         ...keysOf(state.mergedItems),
-        ...new Set(Object.values(state.mergedItems).map(d => d?.type).filter(Boolean)),
+        ...new Set(Object.values(state.mergedItems || {}).map(d => d?.type).filter(Boolean)),
     ] });
 
     for (const [id, src] of Object.entries(REF_FIELDS)) RefFields.attach(document.getElementById(id), src);

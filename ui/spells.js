@@ -114,6 +114,9 @@ export const UISpells = {
         const stripeRows = Array.from({ length: Math.min(unidentified.length, letters.length) },
             (_, i) => ({ lineIndex: 2 + i }));
         this.drawListStripes(boxContainer, stripeRows, maxLineLength, padding);
+        this.setBoxOptions(boxContainer, stripeRows.map(({ lineIndex }, i) => ({
+            line: lineIndex, activate: () => this.handleInventoryKey(letters[i]),
+        })));
 
         const textStartX = (padding + 1) * TILE_WIDTH;
         const textStartY = (padding + 1) * TILE_HEIGHT;
@@ -211,6 +214,9 @@ export const UISpells = {
         const stripeRows = Array.from({ length: Math.min(enchantable.length, letters.length) },
             (_, i) => ({ lineIndex: 2 + i }));
         this.drawListStripes(boxContainer, stripeRows, maxLineLength, padding);
+        this.setBoxOptions(boxContainer, stripeRows.map(({ lineIndex }, i) => ({
+            line: lineIndex, activate: () => this.handleInventoryKey(letters[i]),
+        })));
 
         const textStartX = (padding + 1) * TILE_WIDTH;
         const textStartY = (padding + 1) * TILE_HEIGHT;

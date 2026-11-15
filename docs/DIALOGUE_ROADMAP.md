@@ -22,7 +22,7 @@ Status: in progress (A, B, C, ink adapter done) · Last updated: 2026-11-14
 ---
 
 - Simple custom JSON tree now, ink-compatible later.** A small node/choice schema with no external runtime; the loader is designed so an `inkjs` adapter could be dropped in later as an alternate source.
-- Mouse click + keyboard: Reuse the existing inventory/menu click model (`_hitTestBox` → `_handle*Click`) plus letter/number keys.
+- Mouse click + keyboard: Reuse the existing inventory/menu click model (`_hitTestBox` → `_handle*Click`) plus letter/number keys. Arrow keys + Enter and pointer highlighting come from the shared option highlight (`ui/options.js`).
 - Data location: On the personality(`personalities.json`), where `hostile` already lives — with an optional per-actor override in `actors.json` for one-off NPCs.  I'm worried about personality.json getting too big though, which is another argument for ink json exports as the dialogue. Could reuse another parser I made for "textovka"
 - I want engine hooks to be able to check for a global (prototype-level) variable or a level specific variable (neither of these exist yet) and to be able to add or remove items from both conversing actors (shop or trade is an early target for convo)
 

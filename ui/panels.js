@@ -266,6 +266,9 @@ export const UIPanels = {
             span: itemStatLineIndices.some(s => s.lineIndex === lineIndex + 1) ? 2 : 1,
         }));
         this.drawListStripes(boxContainer, stripeRows, contentWidth, padding);
+        this.setBoxOptions(boxContainer, stripeRows.map(({ lineIndex, span }, i) => ({
+            line: lineIndex, span, activate: () => this.showItemActionMenu(i),
+        })));
 
         // Add text sprites
         const textStartX = (padding + 1) * TILE_WIDTH;

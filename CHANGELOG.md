@@ -26,6 +26,12 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 - **Variables in the prototype editor.** A Variables section adds, renames and removes prototype and per-floor variables, with a type and starting value for each, and each floor tab lists its own. It warns about names ink can't use and about level variables that hide prototype ones.
 - **Variable fields in the actor and personality editors.** The personality editor's Flags section has `provoked_variable`, and the actor editor's Combat group has a Provoked Variable override and a Player Kill Sets list. Each one suggests the open prototype's declared variables and warns about names it doesn't declare.
 - **Wants field in the actor editor.** The Combat group has a Wants field for the item or type an actor trades for in dialogue, suggesting item ids and types.
+- **Arrow-key menu selection.** In the dialogue window, confirm dialog, inventory and item menus, the arrow keys move a highlight through the choices and Enter picks it, alongside letter keys and clicks. The pointer highlights the choice it's over too (`ui/options.js`).
+
+### Fixed
+
+- **Actor editor loads again.** The editor crashed at startup, before loading any data, which left the actor dropdown and every field empty for both workspaces and base `data/`.
+- **"Base only" sticks in the editors.** Choosing base only or a server prototype from an editor's Prototype dropdown now forgets the remembered workspace, so the next page doesn't reopen it.
 
 ## [1.22b] 2026-11-08
 

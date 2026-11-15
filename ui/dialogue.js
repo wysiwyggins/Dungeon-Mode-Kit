@@ -130,6 +130,11 @@ export const UIDialogue = {
             if (isDarkColor(bandColor)) nameTint = 0xFFFFFF;
         }
 
+        // Each step is a new set of choices, so a kept highlight starts at the first.
+        this.setBoxOptions(box, choiceLines.map((line, i) => ({
+            line, activate: () => this.chooseDialogueOption(i),
+        })), { newList: true });
+
         for (let i = 0; i < lines.length; i++) {
             const isName = speaker && i === 0;
             const tint = isName ? nameTint : this.defaultTextTint;
@@ -167,7 +172,8 @@ export const UIDialogue = {
 
     /**
      * Keyboard for an open dialogue. Letters/digits pick a choice, Enter/Space
-     * picks the only choice, Escape leaves. Every other key is swallowed so the
+     * picks the only choice, Escape leaves. (Arrow keys and Enter on a
+     * highlighted choice are handled before this, by handleOptionNavKey.) Every other key is swallowed so the
      * game can't act while the window is open.
      * @param {string} key
      * @returns {boolean} True if the key was handled

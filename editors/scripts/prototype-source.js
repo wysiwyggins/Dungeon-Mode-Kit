@@ -82,7 +82,12 @@ const PrototypeSource = (() => {
         selected = value || '';
         const name = workspace();
         if (name) await Workspace.open(name);
-        else if (typeof Workspace !== 'undefined') Workspace.close();
+        else if (typeof Workspace !== 'undefined') {
+            // Forget the remembered workspace too (as the prototype editor does),
+            // or the next page load would reopen it over "base only".
+            Workspace.close();
+            Workspace.setCurrent('');
+        }
         EditorNav.setWorkspace(name);
         for (const fn of chooseListeners) fn(name);
     }

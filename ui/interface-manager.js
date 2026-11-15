@@ -11,6 +11,7 @@ import { TILE_HEIGHT, TILE_WIDTH } from '../core/util.js';
 import { UIAiming } from './aiming.js';
 import { UIDialogue } from './dialogue.js';
 import { UIMenus } from './menus.js';
+import { UIOptions } from './options.js';
 import { UIPanels } from './panels.js';
 import { UISpells } from './spells.js';
 import { UIThrowing } from './throwing.js';
@@ -47,6 +48,7 @@ export class InterfaceManager {
         this.defaultTextTint = 0x000000;
         this.warningFillColor = 0xEB8A90;
         this.primaryOptionFillColor = 0x9CCFC4; // Behind a dialog's primary (default) choice
+        this.optionHighlightColor = 0xF5D77A;   // Behind the choice the arrow keys or pointer are on
         this.inactiveTintColor = 0x999999;
         this.inactiveTintAlpha = 0.35;
         this.listStripeColor = 0xF0F0F0; // Subtle light gray for zebra-striping list rows
@@ -61,6 +63,7 @@ export class InterfaceManager {
         // Confirmation dialog state
         this.confirmDialog = null; // { message, onConfirm, onCancel, primary }
         this.dialogue = null; // { controller, speaker } while a conversation is open
+        this.optionHighlight = null; // { box, boxId, index, source } — see ui/options.js
 
         // Throw aiming mode state
         this.throwAimingMode = false;
@@ -318,6 +321,7 @@ export class InterfaceManager {
         boxContainer._boxY = y;
         boxContainer._boxWidth = width;
         boxContainer._boxHeight = height;
+        boxContainer._id = id;
 
         return boxContainer;
     }
@@ -393,6 +397,7 @@ export class InterfaceManager {
             this.container.removeChild(box);
             box.destroy({ children: true });
             this.boxes.delete(id);
+            this._forgetOptionHighlight(id);
         }
     }
 
@@ -456,7 +461,24 @@ export class InterfaceManager {
      * and all other visible boxes are dimmed with an inactive overlay.
      */
     updateBoxOverlays() {
-        // Determine the active box ID based on the current UI mode priority
+        const activeBoxId = this.getActiveBoxId();
+        for (const [id, box] of this.boxes) {
+            if (!box.visible) continue;
+            if (!activeBoxId || id === activeBoxId) {
+                // No active interactive box, or this IS the active box — show normally
+                this.removeInactiveOverlay(id);
+            } else {
+                this.applyInactiveOverlay(id);
+            }
+        }
+    }
+
+    /**
+     * The id of the box that has the player's attention (the one keys and clicks
+     * go to), by UI mode priority, or null when no interactive box is open.
+     * @returns {string|null}
+     */
+    getActiveBoxId() {
         let activeBoxId = null;
         if (this.engine.inputManager?.hasTextInput()) {
             activeBoxId = 'text_input';
@@ -484,16 +506,7 @@ export class InterfaceManager {
             activeBoxId = 'player_info';
         }
         // throwAimingMode and spellAimingMode are map-targeting modes with no dedicated box
-
-        for (const [id, box] of this.boxes) {
-            if (!box.visible) continue;
-            if (!activeBoxId || id === activeBoxId) {
-                // No active interactive box, or this IS the active box — show normally
-                this.removeInactiveOverlay(id);
-            } else {
-                this.applyInactiveOverlay(id);
-            }
-        }
+        return activeBoxId;
     }
 
     /**
@@ -536,6 +549,7 @@ export class InterfaceManager {
             box.destroy({ children: true });
         }
         this.boxes.clear();
+        this.optionHighlight = null;
     }
 
     /**
@@ -1328,4 +1342,4 @@ export class InterfaceManager {
     }
 }
 
-installMethods(InterfaceManager, UIPanels, UIMenus, UIAiming, UIThrowing, UISpells, UIDialogue);
+installMethods(InterfaceManager, UIPanels, UIMenus, UIAiming, UIThrowing, UISpells, UIDialogue, UIOptions);
