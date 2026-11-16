@@ -1002,8 +1002,9 @@ export class Actor extends Entity {
         // AI actors execute their personality behaviors
         // Caught in a ward gas that repels it: getting out is the whole turn.
         if (this.personality && !this.escapeWard()) {
-            // A provoked_variable set before this actor existed (a revisited floor,
-            // a resumed game) still turns it against the player.
+            // Provocation from before this actor existed (a provoked_variable set
+            // earlier, or a saved provokedByPlayer on a revisited floor or resumed
+            // game) still turns it against the player.
             if (!this._provokedByPlayer && this.isProvokedByPlayer()) this.provokeByPlayer();
             this.personality.execute(this);
 
@@ -1168,6 +1169,11 @@ export class Actor extends Entity {
                 },
             });
             this._inkDialogue = { source, controller };
+            // Memory from a saved game or an earlier visit to this floor.
+            if (this._savedDialogueMemory) {
+                controller.loadRememberedState(this._savedDialogueMemory);
+                this._savedDialogueMemory = null;
+            }
         }
         this._inkDialogue.controller.restart({ speaker: this, listener });
         return this._inkDialogue.controller;
@@ -1200,7 +1206,7 @@ export class Actor extends Entity {
 
     /** Whether the player has provoked this actor, directly or through its provoked_variable. */
     isProvokedByPlayer() {
-        if (this._provokedByPlayer) return true;
+        if (this._provokedByPlayer || this._restoreProvocation) return true;
         const variable = this.getProvokedVariable();
         return !!variable && !!this.engine.getVariable?.(variable);
     }
@@ -1213,6 +1219,7 @@ export class Actor extends Entity {
     provokeByPlayer(player = this.engine.entityManager?.player) {
         if (this.isPlayerControlled()) return;
         this._provokedByPlayer = true;
+        this._restoreProvocation = false;
         if (player && (!this._lastAttacker || this._lastAttacker.isDead)) this._lastAttacker = player;
         const variable = this.getProvokedVariable();
         if (variable) this.engine.setVariable?.(variable, true);
@@ -1893,6 +1900,9 @@ export class Actor extends Entity {
             // Only the player's side survives a save: a monster leader has no
             // id to point back to (getLeader reconnects the tag).
             leader: this.isPlayerAlly() ? 'player' : undefined,
+            provokedByPlayer: (this._provokedByPlayer || this._restoreProvocation) || undefined,
+            // An ink talker's memory of earlier conversations (visit counts, VARs).
+            dialogueMemory: this._inkDialogue?.controller.getRememberedState() || this._savedDialogueMemory || undefined,
             isActor: true
         };
     }
@@ -1921,6 +1931,10 @@ export class Actor extends Entity {
         if (data.states) this.states = JSON.parse(JSON.stringify(data.states));
         if (data.switchOverrides) this.data = { ...this.data, ...data.switchOverrides };
         if (data.leader === 'player') this._leaderTag = 'player';
+        // Re-provoked on its first turn, so it goes after the player again.
+        if (data.provokedByPlayer) this._restoreProvocation = true;
+        // Loaded into the ink controller when it's created (getDialogueController).
+        if (data.dialogueMemory) this._savedDialogueMemory = data.dialogueMemory;
         // Reconstruct inventory items
         if (data.inventory) {
             this.inventory = data.inventory.map(itemData => {

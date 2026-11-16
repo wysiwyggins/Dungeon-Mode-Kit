@@ -3,7 +3,7 @@
 *A path to conversations with non-hostile actors (multiple-choice dialogue trees)
 and taunt lines for hostile actors.*
 
-Status: in progress (A, B, C, ink adapter done) · Last updated: 2026-11-14
+Status: A, B, C and E done; D partly done (gifts, trades, variables, templates) · Last updated: 2026-11-15
 
 ---
 
@@ -131,9 +131,14 @@ Each phase is independently shippable. Taunts (Phase A) and bump-to-talk
 (Phases B–C) are largely independent and could even land in either order; taunts
 are simpler and make a good warm-up.
 
-- [x] Hostile taunts
-- [x] Dialogue UI primitive (modal box + choices) `[foundation for talk]` — `ui/dialogue.js` (`UIDialogue` mixin)
-  - **Goal:** A reusable dialogue window: shows a node's text + a list of selectable
+### [x] Phase A — Hostile taunts
+
+- **Done:** `sayTaunt()` in `engine/actor/actor.js`.
+
+### [x] Phase B — Dialogue UI primitive (modal box + choices) `[foundation for talk]`
+
+- **Done:** `ui/dialogue.js` (`UIDialogue` mixin) over `core/dialogue.js` (`DialogueController`). Arrow keys + Enter and pointer highlighting come from `ui/options.js`.
+- **Goal:** A reusable dialogue window: shows a node's text + a list of selectable
   choices; supports click and keyboard; gates game input while open.
 - **Work:**
   - Add `showDialogue(node, controller)` as a new `ui/` group (e.g. `ui/dialogue.js`), modeled on
@@ -159,7 +164,7 @@ are simpler and make a good warm-up.
 ### [x] Phase C — Bump-to-talk wiring `[the core feature]`
 
 - **Done:** `Actor.canTalk()` / `getDialogue()` / `noteAttackedBy()` (`engine/actor/actor.js`); branch in `tryMove()` before the push check. Talking is free (no turn). Once the player hurts a talker by any route (melee, thrown, spell), `_provokedByPlayer` is set: it stops talking, bumps attack it, and it uses its taunts like a hostile actor. Test NPC: `kobold_hermit` in `prototypes/dungeon/personalities.json`.
-- **Known gap:** `_provokedByPlayer` isn't saved; a provoked NPC talks again after loading a save. Actors with a `provoked_variable` are covered, since the variable is saved and re-provokes them on load (see Phase D).
+- **Saving:** `_provokedByPlayer` is saved as `provokedByPlayer` with the actor. On load the actor is re-provoked on its first turn, so it goes after the player again. Actors with a `provoked_variable` are covered by the saved variable as well (see Phase D).
 
 - **Goal:** Bumping a non-hostile actor opens its dialogue instead of attacking.
 - **Work:**
@@ -175,7 +180,7 @@ are simpler and make a good warm-up.
 - **Risk/effort:** Low–medium. Small, well-isolated change at a known seam; main
   care is not disturbing existing non-hostile bump behavior (swap/push).
 
-### Phase D — Effects, conditions & shared dialogue registry `[deferred]`
+### Phase D — Effects, conditions & shared dialogue registry `[partly done]`
 
 - **Goal:** Choices that give/take items, set prototype variables, or gate branches
   on conditions; dialogue referenced by id from a shared per-prototype registry.
@@ -185,6 +190,8 @@ are simpler and make a good warm-up.
   across actors and authored once.
 - **Unlocks:** Branching, stateful conversations and reuse.
 - **Risk/effort:** Medium; gated on the variables feature. Explicitly out of Phase 1.
+- **Done (via ink, see Phase E):** prototype and level variables (`engine/dungeon-engine/variables.js`), mirrored into ink VARs; give/trade/take functions; choice conditions; templates; `provoked_variable` and `player_kill_sets`.
+- **Still open:** the shared `dialogue.json` registry (ink files referenced by path cover most of it); per-line metadata via ink tags (e.g. `# speaker: Name`).
 
 ### [x] Phase E — Ink authoring `[tooling]`
 
@@ -197,7 +204,8 @@ are simpler and make a good warm-up.
   - `take()` (or `take("id")`): a wanted item → speaker, who keeps it whatever their capacity.
   - `speaker_slot(slot)`, `has_wanted()`, `can_trade(slot)`: lookahead-safe counts and checks for choice conditions. Gating on the speaker's inventory instead of ink VARs means a gift is gone for good once given, because the inventory is saved with the game.
   - Templates (`dialogueTemplate`): text and choice labels go through `resolveTemplate` with the speaker as subject, plus `[speaker_slot:N]`, `[wanted]`, `[given]`, `[taken]`, `[speaker_name]` and `[player_name]`. Text is resolved when shown, after the step's give/trade calls, so `[given]` names an item that has already left its slot. Ink choice text needs the brackets escaped (`\[...\]`).
-- **Next (Phase D, via ink):** ink is a natural home for conditions and effects. Use tags (e.g. `# speaker: Name`) for per-line metadata. Save each actor's ink state (`story.state.toJson()`) with the game alongside `_provokedByPlayer`.
+- **Saving:** each actor's ink memory (`InkDialogueController.getRememberedState()`: variables, visit counts, turn indices, not the story position) is saved with the actor as `dialogueMemory` and loaded back when its controller is next created, so a resumed game or a revisited floor remembers earlier conversations.
+- **Compiler note:** Inky's export counts visits to every knot; `npm run ink` only counts the ones the story reads. Both run the same, but a knot's visit count can only be read by a story compiled to track it.
 
 ---
 
@@ -214,7 +222,7 @@ are simpler and make a good warm-up.
   lifecycle (`ui/menus.js`); key precedence chain + input gating (`input.js`).
 - The supplement/override merge, so dialogue/taunts are per-prototype overridable.
 
-**Must build:**
+**Built (was "must build"):**
 
 - `charLimit`/truncation option on `showTextBox()` + a small dual-display helper.
 - Taunt firing in `attack_adjacent` and `die()` (Phase A).

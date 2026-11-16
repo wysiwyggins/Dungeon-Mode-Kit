@@ -45,7 +45,7 @@ The cathedral gate opens with a lever, but it will lock behind you to keep what 
 -> greet
 
 === threat ===
-A curse upon you!
+Again! I won't watch another human steal from the dead!
 ~ desecrated = true
 -> END
 

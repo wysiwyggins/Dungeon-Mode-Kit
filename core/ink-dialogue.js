@@ -84,6 +84,42 @@ export class InkDialogueController {
         this._advance();
     }
 
+    /**
+     * The story's memory (variables, visit counts, turn indices), without its
+     * position, for saving with the actor. Null before the first conversation.
+     * @returns {object|null}
+     */
+    getRememberedState() {
+        if (!this.started) return null;
+        const state = JSON.parse(this.story.state.toJson());
+        const out = {};
+        for (const key of REMEMBERED_STATE) {
+            if (key in state) out[key] = state[key];
+        }
+        return out;
+    }
+
+    /**
+     * Put back memory saved by getRememberedState(). The next restart() begins
+     * from the top of the story with it, as if earlier conversations had just happened.
+     * @param {object} remembered
+     */
+    loadRememberedState(remembered) {
+        if (!remembered) return;
+        try {
+            this.story.ResetState();
+            const fresh = JSON.parse(this.story.state.toJson());
+            for (const key of REMEMBERED_STATE) {
+                if (key in remembered) fresh[key] = remembered[key];
+            }
+            this.story.state.LoadJson(JSON.stringify(fresh));
+            this.started = true;
+        } catch (e) {
+            console.warn(`Ink (${this.name}): couldn't load saved state, starting fresh`, e);
+            this.story.ResetState();
+        }
+    }
+
     /** Names that are both an ink global VAR in this story and a game variable. */
     _mirroredNames() {
         if (!this.variables) return [];

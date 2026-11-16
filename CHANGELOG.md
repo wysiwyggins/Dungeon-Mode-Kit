@@ -7,15 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 These versions are pretty arbitrary, I know. When (if) other folks get involved, I'll formalize it a little.
 
-## [1.23b]
-
-## TO-DO
-
-- working on the DIALOGUE_ROADMAP epic
+## [1.23b] 2026-11-15
 
 ### Added
 
-- **core/dialogue.js**
 - **Dialogue window.** `ui/dialogue.js` shows a conversation node with lettered choices, picked by letter, number or click, and Escape leaves. Long text is cut off on the canvas and shown in full in the sidebar. The speaker's name sits on a band of their tint, in white letters when the tint is dark.
 - **Bump-to-talk.** Bumping a non-hostile actor that has a `dialogue` tree opens a conversation instead of attacking, without using a turn. If the player hurts it some other way it stops talking, fights back and can be bump-attacked. `kobold_hermit` in the dungeon prototype is the first talker.
 - **Ink dialogue.** A `dialogue` can be the path to a compiled [ink](https://www.inklestudios.com/ink/) JSON file in the prototype folder, run by the vendored inkjs runtime (`lib/ink.mjs`). `npm run ink` compiles every `.ink` under `prototypes/`, and the kobold hermit's conversation is now `prototypes/dungeon/dialogue/kobold_hermit.ink`.
@@ -27,6 +22,7 @@ These versions are pretty arbitrary, I know. When (if) other folks get involved,
 - **Variable fields in the actor and personality editors.** The personality editor's Flags section has `provoked_variable`, and the actor editor's Combat group has a Provoked Variable override and a Player Kill Sets list. Each one suggests the open prototype's declared variables and warns about names it doesn't declare.
 - **Wants field in the actor editor.** The Combat group has a Wants field for the item or type an actor trades for in dialogue, suggesting item ids and types.
 - **Arrow-key menu selection.** In the dialogue window, confirm dialog, inventory and item menus, the arrow keys move a highlight through the choices and Enter picks it, alongside letter keys and clicks. The pointer highlights the choice it's over too (`ui/options.js`).
+- **Talkers remember across saves.** An NPC's ink memory (visit counts, ink variables) and whether the player provoked it are saved with the game and kept when you leave its floor and come back.
 
 ### Fixed
 
